@@ -14,5 +14,8 @@ namespace SimplePickIt
 
         [Menu("Time between Clicks in Milliseconds")]
         public RangeNode<int> WaitTimeInMs { get; set; } = new RangeNode<int>(75, 40, 200);
+        public RangeNode<int> CacheIntervall { get; set; } = new RangeNode<int>(50, 0, 200);
+        public RangeNode<int> PickUpDistance { get; set; } = new RangeNode<int>(50, 0, 200);
+        public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
     }
 }

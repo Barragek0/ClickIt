@@ -9,3 +9,8 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+/.vs/ProjectSettings.json
+/.vs/slnx.sqlite
+/.vs/VSWorkspaceState.json
+/.vs/SimplePickIt/v16/.suo
+/packages.config
