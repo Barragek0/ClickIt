@@ -22,5 +22,6 @@ namespace SimplePickIt
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(true);
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
+        public ToggleNode BlockOnOpenLeftPanel { get; internal set; } = new ToggleNode(true);
     }
 }

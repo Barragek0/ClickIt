@@ -40,6 +40,8 @@ namespace SimplePickIt
             InventoryItems = GameController.Game.IngameState.ServerData.PlayerInventories[0].Inventory;
             inventorySlots = Misc.GetContainer2DArray(InventoryItems);
             if (!Input.GetKeyState(Settings.ClickLabelKey.Value)) return null;
+            if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null;
+            if (Settings.BlockOnOpenLeftPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0) return null;
             if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1) return null;
             if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20)) return null;
             if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown) return null;
@@ -87,8 +89,6 @@ namespace SimplePickIt
         }
         private LabelOnGround GetLabel()
         {
-
-
             var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance && 
                 (Settings.ClickItems.Value && 
                 x.ItemOnGround.Type == EntityType.WorldItem && 
