@@ -1,4 +1,5 @@
 ﻿using ExileCore;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Cache;
@@ -23,13 +24,13 @@ namespace SimplePickIt
         public static SimplePickIt Controller { get; set; }
         public int[,] inventorySlots { get; set; } = new int[0, 0];
         public ServerInventory InventoryItems { get; set; }
-        private TimeCache<List<CustomItem>> CachedItems { get; set; }
+        private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
         private RectangleF Gamewindow;
         public override bool Initialise()
         {
             Controller = this;
             Gamewindow = GameController.Window.GetWindowRectangle();
-            //CachedItems = new TimeCache<List<CustomItem>>(UpdateLabelComponent, Settings.CacheIntervall);
+            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheIntervall);
             Timer.Start();
             return true;
         }
@@ -38,39 +39,41 @@ namespace SimplePickIt
         {
             InventoryItems = GameController.Game.IngameState.ServerData.PlayerInventories[0].Inventory;
             inventorySlots = Misc.GetContainer2DArray(InventoryItems);
-            if (!Input.GetKeyState(Settings.PickUpKey.Value)) return null;
-            //if (CachedItems.Value.Count < 1) return null;
+            if (!Input.GetKeyState(Settings.ClickLabelKey.Value)) return null;
             if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1) return null;
             if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20)) return null;
+            if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown) return null;
            
             Timer.Restart();
-            PickItem();
+            ClickLabel();
             //return new Job("SimplePickIt", PickItem);
             return null;
         }
 
-        private List<CustomItem> UpdateLabelComponent() =>
+        private List<LabelOnGround> UpdateLabelComponent() =>
             GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
             .Where(x =>
                 x.ItemOnGround?.Path != null &&
                 x.Label.GetClientRect().Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)) &&
-                x.CanPickUp)
-            .Select(x => new CustomItem(x, GameController.Files))
-            .OrderBy(x => x.Distance)
+                x.CanPickUp &&
+                (x.ItemOnGround.Type == EntityType.WorldItem ||
+                x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
+                x.ItemOnGround.Type == EntityType.AreaTransition))
+            .OrderBy(x => x.ItemOnGround.DistancePlayer)
             .ToList();
 
-        private void PickItem()
+        private void ClickLabel()
         {
-            if (Settings.DebugMode) LogMessage("Trying to Pick item");
+            if (Settings.DebugMode) LogMessage("Trying to Click Label");
             Gamewindow = GameController.Window.GetWindowRectangle();
-            var nextItem = GetItemToPick();
-            if (nextItem == null)
+            var nextLabel = GetLabel();
+            if (nextLabel == null)
             {
-                if (Settings.DebugMode) LogMessage("nextItem in PickItem() is null");
+                if (Settings.DebugMode) LogMessage("nextLabel in ClickLabel() is null");
                 return;
             }
 
-            var centerOfLabel = nextItem?.Label?.GetClientRect().Center 
+            var centerOfLabel = nextLabel?.Label?.GetClientRect().Center 
                 + Gamewindow.TopLeft
                 + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
             
@@ -82,21 +85,20 @@ namespace SimplePickIt
             Input.SetCursorPos(centerOfLabel.Value);
             Input.Click(MouseButtons.Left);
         }
-        private LabelOnGround GetItemToPick()
+        private LabelOnGround GetLabel()
         {
-            var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
-                x.ItemOnGround.DistancePlayer <= Settings.PickUpDistance &&
-                x.Label.GetClientRect().Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)) &&
-                Misc.CanFitInventory(new CustomItem(x, GameController.Files))).OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
 
-            var closestValidItem = list.FirstOrDefault();
-          
-            if (closestValidItem == null)
-            {
-                if(Settings.DebugMode) LogError($"closestValidItem is null!");
-                return null;
-            }
-            return closestValidItem;
+
+            var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance && 
+                (Settings.ClickItems.Value && 
+                x.ItemOnGround.Type == EntityType.WorldItem && 
+                    (!x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && Misc.CanFitInventory(new CustomItem(x, GameController.Files)) || 
+                    (x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && !GameController.IngameState.IngameUi.ArchnemesisInventoryPanel.InventoryFull)) && 
+                (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique || 
+                x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
+                Settings.ClickChests.Value && x.ItemOnGround.Type == EntityType.Chest ||
+                Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition));
+            return label;
         }
     }
 }
