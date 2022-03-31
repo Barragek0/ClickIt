@@ -9,7 +9,7 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using Map = ExileCore.PoEMemory.Components.Map;
 
-namespace SimplePickIt
+namespace ClickIt
 {
     public class CustomItem
     {

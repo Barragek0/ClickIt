@@ -7,8 +7,8 @@
     <ProjectGuid>{57675CB8-F97E-443B-A870-BDF4128B9EC5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SimplePickIt</RootNamespace>
-    <AssemblyName>SimplePickIt</AssemblyName>
+    <RootNamespace>ClickIt</RootNamespace>
+    <AssemblyName>ClickIt</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\PoeHelper\Plugins\Compiled\SimplePickIt\</OutputPath>
+    <OutputPath>obj\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -26,7 +26,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\PoeHelper\PrivateHud\Plugins\Compiled\SimplePickIt\</OutputPath>
+    <OutputPath>obj\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -34,19 +34,23 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ExileCore">
-      <HintPath>..\..\PoeHelper\PrivateHud\ExileCore.dll</HintPath>
+      <HintPath>..\..\PrivateExileApi\PoeHelper\ExileCore.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="GameOffsets">
+      <HintPath>..\..\PrivateExileApi\PoeHelper\GameOffsets.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="ImGui.NET">
-      <HintPath>..\..\PoeHelper\PrivateHud\ImGui.NET.dll</HintPath>
+      <HintPath>..\..\PrivateExileApi\PoeHelper\ImGui.NET.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>..\..\PoeHelper\PrivateHud\SharpDX.dll</HintPath>
+      <HintPath>..\..\PrivateExileApi\PoeHelper\SharpDX.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="SharpDX.Mathematics">
-      <HintPath>..\..\PoeHelper\PrivateHud\SharpDX.Mathematics.dll</HintPath>
+      <HintPath>..\..\PrivateExileApi\PoeHelper\SharpDX.Mathematics.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -62,8 +66,8 @@
   <ItemGroup>
     <Compile Include="CustomItem.cs" />
     <Compile Include="Misc.cs" />
-    <Compile Include="SimplePickIt.cs" />
-    <Compile Include="SimplePickItSettings.cs" />
+    <Compile Include="ClickIt.cs" />
+    <Compile Include="ClickItSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

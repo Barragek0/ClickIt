@@ -11,7 +11,7 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace SimplePickIt
+namespace ClickIt
 {
     public class Misc
     {
@@ -27,8 +27,8 @@ namespace SimplePickIt
         public static Vector2 FindSpotInventory(CustomItem item)
         {
             var location = new Vector2(-1, -1);
-            var InventorySlots = SimplePickIt.Controller.inventorySlots;
-            var inventoryItems = SimplePickIt.Controller.InventoryItems.InventorySlotItems;
+            var InventorySlots = ClickIt.Controller.inventorySlots;
+            var inventoryItems = ClickIt.Controller.InventoryItems.InventorySlotItems;
             var width = 12;
             var height = 5;
 
@@ -102,7 +102,7 @@ namespace SimplePickIt
             catch (Exception e)
             {
                 // ignored
-                SimplePickIt.Controller.LogMessage(e.ToString(), 5);
+                ClickIt.Controller.LogMessage(e.ToString(), 5);
             }
 
             return containerCells;
