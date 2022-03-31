@@ -15,13 +15,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace SimplePickIt
+namespace ClickIt
 {
-    public class SimplePickIt : BaseSettingsPlugin<SimplePickItSettings>
+    public class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
         private Stopwatch Timer { get; } = new Stopwatch();
         private Random Random { get; } = new Random();
-        public static SimplePickIt Controller { get; set; }
+        public static ClickIt Controller { get; set; }
         public int[,] inventorySlots { get; set; } = new int[0, 0];
         public ServerInventory InventoryItems { get; set; }
         private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
@@ -30,9 +30,26 @@ namespace SimplePickIt
         {
             Controller = this;
             Gamewindow = GameController.Window.GetWindowRectangle();
-            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheIntervall);
+            Settings.ReloadPluginButton.OnPressed += () => { ToggleCaching(); };
+
+            if (Settings.CachingEnable)
+            {
+                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheIntervall);
+            }
+            
             Timer.Start();
             return true;
+        }
+        private void ToggleCaching()
+        {
+            if(Settings.CachingEnable.Value && CachedLabels == null)
+            {
+                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheIntervall);
+            }
+            else
+            {
+                CachedLabels = null;
+            }
         }
 
         public override Job Tick()
@@ -48,7 +65,6 @@ namespace SimplePickIt
            
             Timer.Restart();
             ClickLabel();
-            //return new Job("SimplePickIt", PickItem);
             return null;
         }
 
@@ -67,7 +83,11 @@ namespace SimplePickIt
         {
             if (Settings.DebugMode) LogMessage("Trying to Click Label");
             Gamewindow = GameController.Window.GetWindowRectangle();
-            var nextLabel = GetLabel();
+
+            LabelOnGround nextLabel;
+            if (Settings.CachingEnable) nextLabel = GetLabelCaching();
+            else nextLabel = GetLabelNoCaching();
+            
             if (nextLabel == null)
             {
                 if (Settings.DebugMode) LogMessage("nextLabel in ClickLabel() is null");
@@ -86,18 +106,43 @@ namespace SimplePickIt
             Input.SetCursorPos(centerOfLabel.Value);
             Input.Click(MouseButtons.Left);
         }
-        private LabelOnGround GetLabel()
+        private LabelOnGround GetLabelCaching()
         {
             var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance && 
                 (Settings.ClickItems.Value && 
                 x.ItemOnGround.Type == EntityType.WorldItem && 
-                    (!x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && Misc.CanFitInventory(new CustomItem(x, GameController.Files)) || 
-                    (x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && !GameController.IngameState.IngameUi.ArchnemesisInventoryPanel.InventoryFull)) && 
+                    (!x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && 
+                    Misc.CanFitInventory(new CustomItem(x, GameController.Files)) || 
+                    (x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && 
+                    !GameController.IngameState.IngameUi.ArchnemesisInventoryPanel.InventoryFull)) && 
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique || 
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
                 Settings.ClickChests.Value && x.ItemOnGround.Type == EntityType.Chest ||
                 Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition));
             return label;
+        }
+        private LabelOnGround GetLabelNoCaching()
+        {
+            var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
+                x.ItemOnGround?.Path != null &&
+                x.Label.GetClientRect().Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)) &&
+                (x.ItemOnGround.Type == EntityType.WorldItem ||
+                x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
+                x.ItemOnGround.Type == EntityType.AreaTransition))
+            .OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
+
+
+            return list.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
+                (Settings.ClickItems.Value &&
+                x.ItemOnGround.Type == EntityType.WorldItem &&
+                    (!x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") &&
+                    Misc.CanFitInventory(new CustomItem(x, GameController.Files)) ||
+                    (x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") &&
+                    !GameController.IngameState.IngameUi.ArchnemesisInventoryPanel.InventoryFull)) &&
+                (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
+                x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
+                Settings.ClickChests.Value && x.ItemOnGround.Type == EntityType.Chest ||
+                Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition));
         }
     }
 }
