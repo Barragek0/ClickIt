@@ -111,10 +111,6 @@ namespace ClickIt
             var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance && 
                 (Settings.ClickItems.Value && 
                 x.ItemOnGround.Type == EntityType.WorldItem && 
-                    (!x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && 
-                    Misc.CanFitInventory(new CustomItem(x, GameController.Files)) || 
-                    (x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") && 
-                    !GameController.IngameState.IngameUi.ArchnemesisInventoryPanel.InventoryFull)) && 
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique || 
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
                 Settings.ClickChests.Value && x.ItemOnGround.Type == EntityType.Chest ||
@@ -135,10 +131,6 @@ namespace ClickIt
             return list.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
                 (Settings.ClickItems.Value &&
                 x.ItemOnGround.Type == EntityType.WorldItem &&
-                    (!x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") &&
-                    Misc.CanFitInventory(new CustomItem(x, GameController.Files)) ||
-                    (x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Archnemesis/ArchnemesisMod") &&
-                    !GameController.IngameState.IngameUi.ArchnemesisInventoryPanel.InventoryFull)) &&
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
                 Settings.ClickChests.Value && x.ItemOnGround.Type == EntityType.Chest ||
