@@ -34,7 +34,7 @@ namespace ClickIt
 
             if (Settings.CachingEnable)
             {
-                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheIntervall);
+                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
             }
             
             Timer.Start();
@@ -44,7 +44,7 @@ namespace ClickIt
         {
             if(Settings.CachingEnable.Value && CachedLabels == null)
             {
-                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheIntervall);
+                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
             }
             else
             {

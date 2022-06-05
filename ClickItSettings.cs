@@ -23,8 +23,8 @@ namespace ClickIt
         public ToggleNode CachingEnable { get; set; } = new ToggleNode(true);
         [Menu("Reload","Press this when you toggle between Caching and no Caching", 2, 2000)]
         public ButtonNode ReloadPluginButton { get; set; } = new ButtonNode();
-        [Menu("CacheIntervall","Refresh Intervall of cached Labels", 3, 2000)]
-        public RangeNode<int> CacheIntervall { get; set; } = new RangeNode<int>(50, 0, 200);
+        [Menu("CacheIntervall","Refresh interval of cached labels", 3, 2000)]
+        public RangeNode<int> CacheInterval { get; set; } = new RangeNode<int>(50, 0, 200);
         [Menu("", 3000)]
         public EmptyNode EmptyClicking { get; set; } = new EmptyNode();
         [Menu("ClickDistance","How far away an item can be to be clicked", 1, 3000)]
