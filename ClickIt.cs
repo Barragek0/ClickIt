@@ -86,7 +86,7 @@ namespace ClickIt
             .Where(x =>
                 x.ItemOnGround?.Path != null &&
                 x.Label.GetClientRect().Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)) &&
-                (x.ItemOnGround.Type == EntityType.WorldItem ||
+                (x.ItemOnGround.Type == EntityType.WorldItem || x.ItemOnGround.Type == EntityType.Shrine ||
                 x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
                 x.ItemOnGround.Type == EntityType.AreaTransition))
             .OrderBy(x => x.ItemOnGround.DistancePlayer)
