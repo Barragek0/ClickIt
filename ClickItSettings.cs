@@ -35,7 +35,9 @@ namespace ClickIt
         public ToggleNode ClickChests { get; set; } = new ToggleNode(true);
         [Menu("Area Transitions", "Click Area Transitions", 4, 3000)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(true);
-        [Menu("Items", "Click Items", 5, 3000)]
+        [Menu("Area Transitions", "Click Shrines", 5, 3000)]
+        public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
+        [Menu("Items", "Click Items", 6, 3000)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
         [Menu("IgnoreUniques", "Ignore Unique Items, aside from Metamorph Organs", 6, 3000)]
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);

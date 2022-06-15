@@ -127,7 +127,8 @@ namespace ClickIt
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique || 
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
                 Settings.ClickChests.Value && x.ItemOnGround.Type == EntityType.Chest ||
-                Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition));
+                Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition ||
+                Settings.ClickShrines.Value && x.ItemOnGround.Type == EntityType.Shrine));
             return label;
         }
         private LabelOnGround GetLabelNoCaching()
@@ -135,7 +136,7 @@ namespace ClickIt
             var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
                 x.ItemOnGround?.Path != null &&
                 x.Label.GetClientRect().Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)) &&
-                (x.ItemOnGround.Type == EntityType.WorldItem ||
+                (x.ItemOnGround.Type == EntityType.WorldItem || x.ItemOnGround.Type == EntityType.Shrine ||
                 x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
                 x.ItemOnGround.Type == EntityType.AreaTransition))
             .OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
@@ -147,7 +148,8 @@ namespace ClickIt
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
                 Settings.ClickChests.Value && x.ItemOnGround.Type == EntityType.Chest ||
-                Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition));
+                Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition ||
+                Settings.ClickShrines.Value && x.ItemOnGround.Type == EntityType.Shrine));
         }
     }
 }
