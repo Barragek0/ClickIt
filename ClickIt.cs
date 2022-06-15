@@ -54,10 +54,7 @@ namespace ClickIt
             InventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
             inventorySlots = Misc.GetContainer2DArray(InventoryItems);
             if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
-            {
-                LogMessage("Click label key is not pressed, not clicking");
                 return null;
-            }
             //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
             if (Settings.BlockOnOpenLeftPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
             {
