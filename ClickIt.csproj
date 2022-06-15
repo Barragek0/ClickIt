@@ -45,13 +45,11 @@
       <HintPath>..\..\..\..\PoeHelper\ImGui.NET.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="SharpDX">
-      <HintPath>..\..\..\..\PoeHelper\SharpDX.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="SharpDX, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>..\ExileApi\packages\SharpDX.4.2.0\lib\net45\SharpDX.dll</HintPath>
     </Reference>
-    <Reference Include="SharpDX.Mathematics">
-      <HintPath>..\..\..\..\PoeHelper\SharpDX.Mathematics.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="SharpDX.Mathematics, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>..\ExileApi\packages\SharpDX.Mathematics.4.2.0\lib\net45\SharpDX.Mathematics.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -64,6 +62,15 @@
     <Compile Include="ClickIt.cs" />
     <Compile Include="ClickItSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ExileApi\Core\Core.csproj">
+      <Project>{5539D732-34A7-44AB-9E28-116C3429B12A}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
