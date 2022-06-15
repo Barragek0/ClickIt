@@ -39,10 +39,10 @@ namespace ClickIt
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
         [Menu("Items", "Click Items", 6, 3000)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("IgnoreUniques", "Ignore Unique Items, aside from Metamorph Organs", 6, 3000)]
+        [Menu("IgnoreUniques", "Ignore Unique Items, aside from Metamorph Organs", 7, 3000)]
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Block on Open UI", "Disables Clicking when certain Panels are open to avoid misclicks", 7, 3000)]
-        public ToggleNode BlockOnOpenLeftPanel { get; internal set; } = new ToggleNode(true);
-        
+        [Menu("Block on Open UI", "Disables Clicking when certain Panels are open to avoid misclicks", 8, 3000)]
+        public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
+
     }
 }

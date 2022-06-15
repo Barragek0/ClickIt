@@ -56,9 +56,14 @@ namespace ClickIt
             if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
                 return null;
             //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
-            if (Settings.BlockOnOpenLeftPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
+            if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
             {
                 LogMessage("OpenLeftPanel is open, not clicking");
+                return null;
+            }
+            if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
+            {
+                LogMessage("OpenRightPanel is open, not clicking");
                 return null;
             }
             if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
