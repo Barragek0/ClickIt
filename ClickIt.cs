@@ -1,4 +1,5 @@
 ﻿using ExileCore;
+using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -119,8 +120,25 @@ namespace ClickIt
                 if (Settings.DebugMode) LogMessage("centerOfLabel has no Value");
                 return;
             }
-            Input.SetCursorPos(centerOfLabel.Value);
-            Input.Click(MouseButtons.Left);
+            if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null)
+            {
+                Element label = nextLabel.Label;
+                if (label.GetElementByString("Misery") != null ||
+                    label.GetElementByString("Envy") != null ||
+                    label.GetElementByString("Dread") != null ||
+                    label.GetElementByString("Scorn") != null) {
+                    //we should corrupt this, dont do anything
+                } else
+                {
+                    Input.SetCursorPos(centerOfLabel.Value);
+                    Input.Click(MouseButtons.Left);
+                }
+            }
+            else
+            {
+                Input.SetCursorPos(centerOfLabel.Value);
+                Input.Click(MouseButtons.Left);
+            }
         }
         private LabelOnGround GetLabelCaching()
         {
