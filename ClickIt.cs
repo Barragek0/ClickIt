@@ -147,7 +147,7 @@ namespace ClickIt
             if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null)
             {
                 Element label = nextLabel.Label.Parent;
-                if (label.GetElementByString("Corrupted") == null &&
+                if (label.GetElementByString("Remnant of Corruption") == null &&
                     //According to the wiki, shrieking essences of these types cannot be corrupted into the special ones. Only screaming can.
                     (label.GetElementByString("Screaming Essence of Misery") != null ||
                     label.GetElementByString("Screaming Essence of Envy") != null ||
@@ -157,7 +157,7 @@ namespace ClickIt
                     label.GetElementByString("Shrieking Essence of Misery") != null ||
                     label.GetElementByString("Shrieking Essence of Envy") != null ||
                     label.GetElementByString("Shrieking Essence of Dread") != null ||
-                    label.GetElementByString("Shrieking Essence of Scorn") != null) ||
+                    label.GetElementByString("Shrieking Essence of Scorn") != null ||
                     //Corrupt if there's an essence that is worth more when upgraded
                     //This can change based on the market, so it will be better off using methods from ninjaprice rather than manually listing them, will update it later
                     label.GetElementByString("Shrieking Essence of Greed") != null ||
@@ -169,7 +169,7 @@ namespace ClickIt
                     label.GetElementByString("Shrieking Essence of Wrath") != null ||
                     label.GetElementByString("Shrieking Essence of Loathing") != null ||
                     label.GetElementByString("Shrieking Essence of Zeal") != null ||
-                    label.GetElementByString("Shrieking Essence of Spite") != null
+                    label.GetElementByString("Shrieking Essence of Spite") != null)
                     ) {
                     //we should corrupt this
 
