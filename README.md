@@ -1,5 +1,5 @@
 # ClickIt
 
-Plugin for ExileApi https://github.com/Queuete/ExileApi
+An improved version of pickit that automatically picks up items, interacts with chests (league mechanic chests too), clicks area transitions and clicks + corrupts essences.
 
-Auto clicker to click items/chests/area Transitions and possibly other Labels(in the future).
+Credit to Arecurius0 for the initial improvements to pickit (caching, chest interacting, etc)
