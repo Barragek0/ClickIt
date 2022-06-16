@@ -176,7 +176,7 @@ namespace ClickIt
                     float latency = GameController.Game.IngameState.CurLatency;
 
                     Keyboard.KeyPress(Settings.OpenInventoryKey);
-                    Thread.Sleep((int)(latency + Settings.WaitTimeInMs + 500)); //add 500ms in-case user has interface animations turned on
+                    Thread.Sleep((int)(latency + Settings.WaitTimeInMs + 100)); //add 100ms in-case user has interface animations turned on
                    
                     var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
                     
@@ -195,15 +195,19 @@ namespace ClickIt
                         Thread.Sleep(10);
                     }
 
-                    Input.Click(MouseButtons.Right);
+                    Mouse.RightClick();
                     Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
                     Input.SetCursorPos(centerOfLabel.Value);
-                    Input.Click(MouseButtons.Left);
+                    Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                    Mouse.LeftClick();
 
                     Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
                     Keyboard.KeyPress(Settings.OpenInventoryKey);
+
+                    Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
                 } else
                 {
