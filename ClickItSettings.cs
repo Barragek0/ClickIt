@@ -39,13 +39,15 @@ namespace ClickIt
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
         [Menu("Essences", "Click Essences", 6, 3000)]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
-        [Menu("Dont click corruptable essences", "Don't click essences which the player should corrupt themselves (misery, envy, dread, scorn)", 7, 3000)]
+        [Menu("Open Inventory Hotkey", "Hotkey to open your inventory", 7, 3000)]
+        public HotkeyNode OpenInventoryKey { get; set; } = new HotkeyNode(Keys.I);
+        [Menu("Corrupt Essences", "Corrupt essences automatically (misery, envy, dread, scorn)", 8, 3000)]
         public ToggleNode CorruptEssences { get; set; } = new ToggleNode(true);
-        [Menu("Items", "Click Items", 8, 3000)]
+        [Menu("Items", "Click Items", 9, 3000)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("IgnoreUniques", "Ignore Unique Items, aside from Metamorph Organs", 9, 3000)]
+        [Menu("IgnoreUniques", "Ignore Unique Items, aside from Metamorph Organs", 10, 3000)]
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Block on Open UI", "Disables clicking when certain panels are open to avoid misclicks", 10, 3000)]
+        [Menu("Block on Open UI", "Disables clicking when certain panels are open to avoid misclicks", 11, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
 
     }

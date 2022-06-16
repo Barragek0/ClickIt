@@ -1,4 +1,5 @@
-﻿using ExileCore;
+﻿using ClickIt.Utils;
+using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
@@ -11,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace ClickIt
@@ -127,7 +129,40 @@ namespace ClickIt
                     label.GetElementByString("Envy") != null ||
                     label.GetElementByString("Dread") != null ||
                     label.GetElementByString("Scorn") != null) {
-                    //we should corrupt this, dont do anything
+                    //we should corrupt this
+
+                    float latency = GameController.Game.IngameState.CurLatency;
+
+                    Keyboard.KeyPress(Settings.OpenInventoryKey);
+                    Thread.Sleep((int)(latency + Settings.WaitTimeInMs + 500)); //add 500ms in-case user has interface animations turned on
+                   
+                    var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
+                    
+                    var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
+                    if (remnantOfCorruption == null)
+                    {
+                        return;
+                    }
+
+                    Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
+                    Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                    //Wait until we're sure the item is being hovered
+                    while (GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].HoverItem?.Address != remnantOfCorruption.Address)
+                    {
+                        Thread.Sleep(10);
+                    }
+
+                    Input.Click(MouseButtons.Right);
+                    Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                    Input.SetCursorPos(centerOfLabel.Value);
+                    Input.Click(MouseButtons.Left);
+
+                    Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                    Keyboard.KeyPress(Settings.OpenInventoryKey);
+
                 } else
                 {
                     Input.SetCursorPos(centerOfLabel.Value);
