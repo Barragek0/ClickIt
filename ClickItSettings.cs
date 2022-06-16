@@ -31,13 +31,13 @@ namespace ClickIt
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(50, 0, 200);
         //[Menu("Not yet implemented", 2, 3000)]
         //public ToggleNode MouseProximityMode { get; set; } = new ToggleNode(false);
-        [Menu("Click Chest Labels", 3, 3000)]
+        [Menu("Chest Labels", "Click Chest Labels", 3, 3000)]
         public ToggleNode ClickChests { get; set; } = new ToggleNode(true);
         [Menu("Area Transitions", "Click Area Transitions", 4, 3000)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click Shrines", 5, 3000)]
+        [Menu("Shrines", "Click Shrines", 5, 3000)]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click Essences", 6, 3000)]
+        [Menu("Essences", "Click Essences", 6, 3000)]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
         [Menu("Items", "Click Items", 7, 3000)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
