@@ -147,8 +147,7 @@ namespace ClickIt
 
             if (shrine != null)
             {
-                Input.SetCursorPos((Vector2)shrine.Pos.Translate(0, 0, 0));
-                Input.Click(MouseButtons.Left);
+                Mouse.SetCursorPosAndLeftClick(shrine.GridPos, 0, new Vector2(0));
             }
             else
             {
