@@ -125,10 +125,11 @@ namespace ClickIt
             if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null)
             {
                 Element label = nextLabel.Label.Parent;
-                if (label.GetElementByString("Misery") != null ||
-                    label.GetElementByString("Envy") != null ||
-                    label.GetElementByString("Dread") != null ||
-                    label.GetElementByString("Scorn") != null) {
+                //According to the wiki, shrieking essences of these types cannot be corruptted into the better ones. Only screaming can.
+                if (label.GetElementByString("Screaming Essence of Misery") != null ||
+                    label.GetElementByString("Screaming Essence of Envy") != null ||
+                    label.GetElementByString("Screaming Essence of Dread") != null ||
+                    label.GetElementByString("Screaming Essence of Scorn") != null) {
                     //we should corrupt this
 
                     float latency = GameController.Game.IngameState.CurLatency;
