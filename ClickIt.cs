@@ -148,10 +148,11 @@ namespace ClickIt
             {
                 Element label = nextLabel.Label.Parent;
                 //According to the wiki, shrieking essences of these types cannot be corruptted into the better ones. Only screaming can.
-                if (label.GetElementByString("Screaming Essence of Misery") != null ||
+                if (label.GetElementByString("Remnant of Corruption") == null && 
+                    (label.GetElementByString("Screaming Essence of Misery") != null ||
                     label.GetElementByString("Screaming Essence of Envy") != null ||
                     label.GetElementByString("Screaming Essence of Dread") != null ||
-                    label.GetElementByString("Screaming Essence of Scorn") != null) {
+                    label.GetElementByString("Screaming Essence of Scorn") != null)) {
                     //we should corrupt this
 
                     float latency = GameController.Game.IngameState.CurLatency;
