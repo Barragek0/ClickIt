@@ -12,6 +12,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -26,6 +28,11 @@ namespace ClickIt
         public ServerInventory InventoryItems { get; set; }
         private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
         private RectangleF Gamewindow;
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")]
+        static extern int GetWindowText(IntPtr hwnd, StringBuilder ss, int count);
         public override bool Initialise()
         {
             Controller = this;
@@ -58,6 +65,9 @@ namespace ClickIt
             inventorySlots = Misc.GetContainer2DArray(InventoryItems);
             if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
                 return null;
+            if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+                LogMessage("Path of exile window not active, not clicking");
+            return null;
             //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
             if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
             {
@@ -84,6 +94,16 @@ namespace ClickIt
             Timer.Restart();
             ClickLabel();
             return null;
+        }
+
+        private static string ActiveWindowTitle()
+        {
+            const int nChar = 256;
+            StringBuilder ss = new StringBuilder(nChar);
+            IntPtr handle = IntPtr.Zero;
+            handle = GetForegroundWindow();
+            if (GetWindowText(handle, ss, nChar) > 0) return ss.ToString();
+            else return "";
         }
 
         private List<LabelOnGround> UpdateLabelComponent() =>
