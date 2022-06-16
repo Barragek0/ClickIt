@@ -57,7 +57,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Utils\Class1.cs" />
+    <Compile Include="Utils\Mouse.cs" />
     <Compile Include="Utils\Keyboard.cs" />
     <Compile Include="CustomItem.cs" />
     <Compile Include="Misc.cs" />
