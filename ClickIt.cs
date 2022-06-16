@@ -147,7 +147,7 @@ namespace ClickIt
             if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null)
             {
                 Element label = nextLabel.Label.Parent;
-                if (label.GetElementByString("Remnant of Corruption") == null &&
+                if (label.GetElementByString("Corrupted") == null &&
                     //According to the wiki, shrieking essences of these types cannot be corrupted into the special ones. Only screaming can.
                     (label.GetElementByString("Screaming Essence of Misery") != null ||
                     label.GetElementByString("Screaming Essence of Envy") != null ||
@@ -183,6 +183,7 @@ namespace ClickIt
                     var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
                     if (remnantOfCorruption == null)
                     {
+                        Keyboard.KeyPress(Settings.OpenInventoryKey);
                         return;
                     }
 
