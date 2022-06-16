@@ -124,7 +124,7 @@ namespace ClickIt
             }
             if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null)
             {
-                Element label = nextLabel.Label;
+                Element label = nextLabel.Label.Parent;
                 if (label.GetElementByString("Misery") != null ||
                     label.GetElementByString("Envy") != null ||
                     label.GetElementByString("Dread") != null ||
