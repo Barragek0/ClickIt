@@ -147,8 +147,8 @@ namespace ClickIt
 
             if (shrine != null)
             {
-                Mouse.SetCursorPos((int)shrine.GridPos.X, (int)shrine.GridPos.Y);
-                Mouse.LeftClick();
+                Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
+                Input.Click(MouseButtons.Left);
             }
             else
             {
