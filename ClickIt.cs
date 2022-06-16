@@ -66,8 +66,10 @@ namespace ClickIt
             if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
                 return null;
             if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+            {
                 LogMessage("Path of exile window not active, not clicking");
-            return null;
+                return null;
+            }
             //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
             if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
             {
