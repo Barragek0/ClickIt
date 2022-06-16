@@ -189,15 +189,12 @@ namespace ClickIt
                     Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
                     Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
-                    //Wait until we're sure the item is being hovered
-                    while (GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].HoverItem?.Address != remnantOfCorruption.Address)
-                    {
-                        Thread.Sleep(10);
-                    }
-
                     Mouse.RightClick();
                     Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
+                    centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                        + Gamewindow.TopLeft
+                        + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
                     Input.SetCursorPos(centerOfLabel.Value);
                     Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
