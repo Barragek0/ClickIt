@@ -196,7 +196,7 @@ namespace ClickIt
 
                         //we have to open the inventory first for inventoryItems to fetch items correctly
                         Keyboard.KeyPress(Settings.OpenInventoryKey);
-                        Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
+                        Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
 
                         var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
 
