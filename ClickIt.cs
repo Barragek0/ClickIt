@@ -166,10 +166,10 @@ namespace ClickIt
                     if (Settings.DebugMode) LogMessage("centerOfLabel has no Value");
                     return;
                 }
-                if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null)
+                if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
                 {
                     Element label = nextLabel.Label.Parent;
-                    if (label.GetElementByString("Corrupted") == null &&
+                    if (label.GetElementByString("Corrupted") == null && Settings.CorruptEssences &&
                         //According to the wiki, shrieking essences of these types cannot be corrupted into the special ones. Only screaming can.
                         (label.GetElementByString("Screaming Essence of Misery") != null ||
                         label.GetElementByString("Screaming Essence of Envy") != null ||
