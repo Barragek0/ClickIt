@@ -12,7 +12,7 @@ namespace ClickIt
         [Menu("", 1000)]
         public EmptyNode EmptyMain { get; set; } = new EmptyNode();
 
-        [Menu("Hotkey","Click Label Hotkey", 1, 1000)]
+        [Menu("Hotkey","Hotkey", 1, 1000)]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
 
         [Menu("WaitTime","Time between Clicks in Milliseconds", 2, 1000)]
@@ -31,23 +31,25 @@ namespace ClickIt
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(50, 0, 200);
         //[Menu("Not yet implemented", 2, 3000)]
         //public ToggleNode MouseProximityMode { get; set; } = new ToggleNode(false);
-        [Menu("Chest Labels", "Click Chest Labels", 3, 3000)]
-        public ToggleNode ClickChests { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click Area Transitions", 4, 3000)]
+        [Menu("Basic Chests", "Click normal (non-league related) chests", 3, 3000)]
+        public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
+        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, etc)", 4, 3000)]
+        public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(false);
+        [Menu("Area Transitions", "Click Area Transitions", 5, 3000)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(true);
-        [Menu("Shrines", "Click Shrines", 5, 3000)]
+        [Menu("Shrines", "Click Shrines", 6, 3000)]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Essences", "Click Essences", 6, 3000)]
+        [Menu("Essences", "Click Essences", 7, 3000)]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
-        [Menu("Open Inventory Hotkey", "Hotkey to open your inventory", 7, 3000)]
+        [Menu("Open Inventory Hotkey", "Hotkey to open your inventory", 8, 3000)]
         public HotkeyNode OpenInventoryKey { get; set; } = new HotkeyNode(Keys.I);
-        [Menu("Corrupt Essences", "Corrupt essences automatically (misery, envy, dread, scorn)", 8, 3000)]
+        [Menu("Corrupt Essences", "Corrupt essences automatically (misery, envy, dread, scorn)", 9, 3000)]
         public ToggleNode CorruptEssences { get; set; } = new ToggleNode(true);
-        [Menu("Items", "Click Items", 9, 3000)]
+        [Menu("Items", "Click Items", 10, 3000)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("IgnoreUniques", "Ignore Unique Items, aside from Metamorph Organs", 10, 3000)]
+        [Menu("IgnoreUniques", "Ignore Unique Items, aside from Metamorph Organs", 11, 3000)]
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Block on Open UI", "Disables clicking when certain panels are open to avoid misclicks", 11, 3000)]
+        [Menu("Block on Open UI", "Disables clicking when certain panels are open to avoid misclicks", 12, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
 
     }
