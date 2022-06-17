@@ -133,7 +133,7 @@ namespace ClickIt
 
             foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
             {
-                if (validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
+                if (validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable && !validEntity.IsOpened && !validEntity.IsHidden)
                 {
                     shrine = validEntity;
                 }
