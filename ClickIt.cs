@@ -133,7 +133,7 @@ namespace ClickIt
 
             foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
             {
-                if (validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable)
+                if (validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
                 {
                     shrine = validEntity;
                 }
@@ -145,7 +145,7 @@ namespace ClickIt
                 return;
             }
 
-            if (shrine != null)
+            if (shrine != null && new RectangleF(shrine.Pos.Translate(0, 0, 0).X, shrine.Pos.Translate(0, 0, 0).Y, Gamewindow.Width, Gamewindow.Height).Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)))
             {
                 Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
                 Input.Click(MouseButtons.Left);
@@ -194,9 +194,6 @@ namespace ClickIt
 
                         float latency = GameController.Game.IngameState.CurLatency;
 
-                        Keyboard.KeyPress(Settings.OpenInventoryKey);
-                        Thread.Sleep((int)(latency + Settings.WaitTimeInMs + 100)); //add 100ms in-case user has interface animations turned on
-
                         var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
 
                         var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
@@ -205,6 +202,9 @@ namespace ClickIt
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
                             return;
                         }
+
+                        Keyboard.KeyPress(Settings.OpenInventoryKey);
+                        Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
 
                         Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
                         Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
