@@ -153,14 +153,6 @@ namespace ClickIt
             {
                 Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
                 Input.Click(MouseButtons.Left);
-            } else if (shrine != null && Settings.DebugMode)
-            {
-                Graphics.DrawText("shrine x: " + shrine.Pos.Translate(0, 0, 0).X, new Vector2(10, 120), Color.White);
-                Graphics.DrawText("shrine y: " + shrine.Pos.Translate(0, 0, 0).Y, new Vector2(10, 140), Color.White);
-                Graphics.DrawText("gamewindow topleft x: " + Gamewindow.TopLeft.X, new Vector2(10, 160), Color.White);
-                Graphics.DrawText("gamewindow topright x: " + Gamewindow.TopRight.X, new Vector2(10, 180), Color.White);
-                Graphics.DrawText("gamewindow topleft y: " + Gamewindow.TopLeft.Y, new Vector2(10, 200), Color.White);
-                Graphics.DrawText("gamewindow bottomleft y: " + Gamewindow.BottomLeft.Y, new Vector2(10, 220), Color.White);
             }
             else
             {
