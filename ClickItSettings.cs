@@ -19,11 +19,11 @@ namespace ClickIt
         public RangeNode<int> WaitTimeInMs { get; set; } = new RangeNode<int>(75, 40, 200);
         [Menu("", 2000)]
         public EmptyNode EmptyCaching { get; set; } = new EmptyNode();
-        [Menu("Caching", "Enables caching of ground item labels, improving CPU load while picking up items.\n\nReload the plugin below if you change this setting!", 1, 2000)]
+        [Menu("Caching", "Enables caching, improving CPU load while picking up items.\n\nReload the plugin below if you change this setting!", 1, 2000)]
         public ToggleNode CachingEnable { get; set; } = new ToggleNode(true);
         [Menu("Reload","Press this when you toggle between caching and no caching", 2, 2000)]
         public ButtonNode ReloadPluginButton { get; set; } = new ButtonNode();
-        [Menu("Cache Refresh Interval","How often the ground item cache refreshes. Higher value will typically mean less CPU load on your system, but more chance to missclick labels.", 3, 2000)]
+        [Menu("Cache Refresh Interval","How often the cache refreshes. Higher value will typically mean less CPU load on your system, but more chance to missclick labels.", 3, 2000)]
         public RangeNode<int> CacheInterval { get; set; } = new RangeNode<int>(30, 0, 200);
 
         [Menu("", 3000)]
@@ -43,11 +43,11 @@ namespace ClickIt
         [Menu("Basic Chests", "Click normal (non-league related) chests", 6, 3000)]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
         [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 7, 3000)]
-        public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(false);
+        public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
         [Menu("Shrines", "Click shrines", 8, 3000)]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
         [Menu("Area Transitions", "Click area transitions", 9, 3000)]
-        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(true);
+        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
         [Menu("Open Inventory Hotkey", "Hotkey to open your inventory", 10, 3000)]
         public HotkeyNode OpenInventoryKey { get; set; } = new HotkeyNode(Keys.I);
 
