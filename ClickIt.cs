@@ -194,6 +194,10 @@ namespace ClickIt
 
                         float latency = GameController.Game.IngameState.CurLatency;
 
+                        //we have to open the inventory first for inventoryItems to fetch items correctly
+                        Keyboard.KeyPress(Settings.OpenInventoryKey);
+                        Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
+
                         var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
 
                         var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
@@ -202,9 +206,6 @@ namespace ClickIt
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
                             return;
                         }
-
-                        Keyboard.KeyPress(Settings.OpenInventoryKey);
-                        Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
 
                         Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
                         Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
