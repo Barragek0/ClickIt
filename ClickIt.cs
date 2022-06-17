@@ -182,13 +182,9 @@ namespace ClickIt
                         label.GetElementByString("Shrieking Essence of Scorn") != null ||
                         //Corrupt if there's an essence that is worth more when upgraded
                         //This can change based on the market, so it will be better off using methods from ninjaprice rather than manually listing them, will update it later
-                        label.GetElementByString("Shrieking Essence of Greed") != null ||
-                        label.GetElementByString("Shrieking Essence of Contempt") != null ||
-                        label.GetElementByString("Shrieking Essence of Hatred") != null ||
-                        label.GetElementByString("Shrieking Essence of Anger") != null ||
+                        //If we have too many essences here, self sustaining remnants of corruption is very difficult
                         label.GetElementByString("Shrieking Essence of Sorrow") != null ||
                         label.GetElementByString("Shrieking Essence of Rage") != null ||
-                        label.GetElementByString("Shrieking Essence of Wrath") != null ||
                         label.GetElementByString("Shrieking Essence of Loathing") != null ||
                         label.GetElementByString("Shrieking Essence of Zeal") != null ||
                         label.GetElementByString("Shrieking Essence of Spite") != null)
