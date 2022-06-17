@@ -145,7 +145,11 @@ namespace ClickIt
                 return;
             }
 
-            if (shrine != null && new RectangleF(shrine.Pos.Translate(0, 0, 0).X, shrine.Pos.Translate(0, 0, 0).Y, Gamewindow.Width, Gamewindow.Height).Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)))
+            if (shrine != null && 
+                shrine.Pos.Translate(0, 0, 0).X > Gamewindow.TopLeft.X && 
+                shrine.Pos.Translate(0, 0, 0).X < Gamewindow.TopRight.X && 
+                shrine.Pos.Translate(0, 0, 0).Y > Gamewindow.TopLeft.Y && 
+                shrine.Pos.Translate(0, 0, 0).Y < Gamewindow.BottomLeft.Y)
             {
                 Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
                 Input.Click(MouseButtons.Left);
