@@ -45,7 +45,7 @@ namespace ClickIt
         public HotkeyNode OpenInventoryKey { get; set; } = new HotkeyNode(Keys.I);
 
         [Menu("Inventory Open Delay", "Milliseconds to wait after opening the inventory, must be above 200ms as the game takes a short time to open and load the window, disabling clicks during that period. This process may take longer if you're running the game on older hardware or on a HDD, which is the reason for the slider.", 9, 3000)]
-        public RangeNode<int> InventoryOpenDelayInMs { get; set; } = new RangeNode<int>(150, 200, 800);
+        public RangeNode<int> InventoryOpenDelayInMs { get; set; } = new RangeNode<int>(200, 200, 800);
         [Menu("Corrupt Essences", "Corrupt essences automatically (misery, envy, dread, scorn)", 10, 3000)]
         public ToggleNode CorruptEssences { get; set; } = new ToggleNode(true);
         [Menu("Items", "Click Items", 11, 3000)]
