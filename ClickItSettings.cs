@@ -19,16 +19,16 @@ namespace ClickIt
         public RangeNode<int> WaitTimeInMs { get; set; } = new RangeNode<int>(75, 40, 200);
         [Menu("", 2000)]
         public EmptyNode EmptyCaching { get; set; } = new EmptyNode();
-        [Menu("Caching", "Enables Caching of Labels. Reload Plugin if you change this Setting!", 1, 2000)]
+        [Menu("Caching", "Enables caching of ground item labels, improving CPU load while picking up items.\n\nReload the plugin below if you change this setting!", 1, 2000)]
         public ToggleNode CachingEnable { get; set; } = new ToggleNode(true);
         [Menu("Reload","Press this when you toggle between Caching and no Caching", 2, 2000)]
         public ButtonNode ReloadPluginButton { get; set; } = new ButtonNode();
-        [Menu("CacheIntervall","Refresh interval of cached labels", 3, 2000)]
-        public RangeNode<int> CacheInterval { get; set; } = new RangeNode<int>(50, 0, 200);
+        [Menu("Cache Refresh Interval","How often the ground item cache refreshes. Higher value will typically mean less CPU load on your system, but more chance to missclick labels.", 3, 2000)]
+        public RangeNode<int> CacheInterval { get; set; } = new RangeNode<int>(30, 0, 200);
         [Menu("", 3000)]
         public EmptyNode EmptyClicking { get; set; } = new EmptyNode();
-        [Menu("ClickDistance","How far away an item can be to be clicked", 1, 3000)]
-        public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(50, 0, 200);
+        [Menu("Click Radius","Ground item label search radius, above 80 is not recommended typically as the plugin may missclick on the interface.", 1, 3000)]
+        public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(80, 0, 200);
         //[Menu("Not yet implemented", 2, 3000)]
         //public ToggleNode MouseProximityMode { get; set; } = new ToggleNode(false);
         [Menu("Basic Chests", "Click normal (non-league related) chests", 3, 3000)]
