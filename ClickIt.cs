@@ -61,8 +61,6 @@ namespace ClickIt
 
         public override Job Tick()
         {
-            try
-            {
                 InventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
                 inventorySlots = Misc.GetContainer2DArray(InventoryItems);
                 if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
@@ -97,11 +95,6 @@ namespace ClickIt
 
                 Timer.Restart();
                 ClickLabel();
-            }
-            catch (Exception ex)
-            {
-                LogMessage(ex.ToString());
-            }
             return null;
         }
 
@@ -129,111 +122,119 @@ namespace ClickIt
 
         private void ClickLabel()
         {
-            if (Settings.DebugMode) LogMessage("Trying to Click Label");
-            Gamewindow = GameController.Window.GetWindowRectangle();
-
-            LabelOnGround nextLabel;
-            if (Settings.CachingEnable) nextLabel = GetLabelCaching();
-            else nextLabel = GetLabelNoCaching();
-
-            Entity shrine = null;
-
-            foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
+            try
             {
-                if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
+                if (Settings.DebugMode) LogMessage("Trying to Click Label");
+                Gamewindow = GameController.Window.GetWindowRectangle();
+
+                LabelOnGround nextLabel;
+                if (Settings.CachingEnable) nextLabel = GetLabelCaching();
+                else nextLabel = GetLabelNoCaching();
+
+                Entity shrine = null;
+
+                foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
                 {
-                    shrine = validEntity;
+                    if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
+                    {
+                        shrine = validEntity;
+                    }
                 }
-            }
 
-            if (nextLabel == null && shrine == null)
-            {
-                if (Settings.DebugMode) LogMessage("nextLabel/shrine in ClickLabel() are both null");
-                return;
-            }
-
-            if (shrine != null && Settings.ClickShrines &&
-                GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X &&
-                GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X &&
-                GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y &&
-                GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y < Gamewindow.BottomLeft.Y)
-            {
-                Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
-                Input.Click(MouseButtons.Left);
-            }
-            else
-            {
-
-                var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                    + Gamewindow.TopLeft
-                    + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
-
-                if (!centerOfLabel.HasValue)
+                if (nextLabel == null && shrine == null)
                 {
-                    if (Settings.DebugMode) LogMessage("centerOfLabel has no Value");
+                    if (Settings.DebugMode) LogMessage("nextLabel/shrine in ClickLabel() are both null");
                     return;
                 }
-                if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
+
+                if (shrine != null && Settings.ClickShrines &&
+                    GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X &&
+                    GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X &&
+                    GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y &&
+                    GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y < Gamewindow.BottomLeft.Y)
                 {
-                    Element label = nextLabel.Label.Parent;
-                    if (label.GetElementByString("Corrupted") == null && Settings.CorruptEssences &&
-                        //According to the wiki, shrieking essences of these types cannot be corrupted into the special ones. Only screaming can.
-                        (label.GetElementByString("Screaming Essence of Misery") != null ||
-                        label.GetElementByString("Screaming Essence of Envy") != null ||
-                        label.GetElementByString("Screaming Essence of Dread") != null ||
-                        label.GetElementByString("Screaming Essence of Scorn") != null ||
-                        //Update: Wiki is wrong, shrieking can also be upgraded to them.
-                        label.GetElementByString("Shrieking Essence of Misery") != null ||
-                        label.GetElementByString("Shrieking Essence of Envy") != null ||
-                        label.GetElementByString("Shrieking Essence of Dread") != null ||
-                        label.GetElementByString("Shrieking Essence of Scorn") != null ||
-                        //Corrupt if there's an essence that is worth more when upgraded
-                        //This can change based on the market, so it will be better off using methods from ninjaprice rather than manually listing them, will update it later
-                        //If we have too many essences here, self sustaining remnants of corruption is very difficult
-                        label.GetElementByString("Shrieking Essence of Sorrow") != null ||
-                        label.GetElementByString("Shrieking Essence of Rage") != null ||
-                        label.GetElementByString("Shrieking Essence of Loathing") != null ||
-                        label.GetElementByString("Shrieking Essence of Zeal") != null ||
-                        label.GetElementByString("Shrieking Essence of Spite") != null)
-                        )
+                    Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
+                    Input.Click(MouseButtons.Left);
+                }
+                else
+                {
+
+                    var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                        + Gamewindow.TopLeft
+                        + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
+
+                    if (!centerOfLabel.HasValue)
                     {
-                        //we should corrupt this
-
-                        float latency = GameController.Game.IngameState.CurLatency;
-
-                        //we have to open the inventory first for inventoryItems to fetch items correctly
-                        Keyboard.KeyPress(Settings.OpenInventoryKey);
-                        Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
-
-                        var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
-
-                        var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
-                        if (remnantOfCorruption == null)
+                        if (Settings.DebugMode) LogMessage("centerOfLabel has no Value");
+                        return;
+                    }
+                    if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
+                    {
+                        Element label = nextLabel.Label.Parent;
+                        if (label.GetElementByString("Corrupted") == null && Settings.CorruptEssences &&
+                            //According to the wiki, shrieking essences of these types cannot be corrupted into the special ones. Only screaming can.
+                            (label.GetElementByString("Screaming Essence of Misery") != null ||
+                            label.GetElementByString("Screaming Essence of Envy") != null ||
+                            label.GetElementByString("Screaming Essence of Dread") != null ||
+                            label.GetElementByString("Screaming Essence of Scorn") != null ||
+                            //Update: Wiki is wrong, shrieking can also be upgraded to them.
+                            label.GetElementByString("Shrieking Essence of Misery") != null ||
+                            label.GetElementByString("Shrieking Essence of Envy") != null ||
+                            label.GetElementByString("Shrieking Essence of Dread") != null ||
+                            label.GetElementByString("Shrieking Essence of Scorn") != null ||
+                            //Corrupt if there's an essence that is worth more when upgraded
+                            //This can change based on the market, so it will be better off using methods from ninjaprice rather than manually listing them, will update it later
+                            //If we have too many essences here, self sustaining remnants of corruption is very difficult
+                            label.GetElementByString("Shrieking Essence of Sorrow") != null ||
+                            label.GetElementByString("Shrieking Essence of Rage") != null ||
+                            label.GetElementByString("Shrieking Essence of Loathing") != null ||
+                            label.GetElementByString("Shrieking Essence of Zeal") != null ||
+                            label.GetElementByString("Shrieking Essence of Spite") != null)
+                            )
                         {
+                            //we should corrupt this
+
+                            float latency = GameController.Game.IngameState.CurLatency;
+
+                            //we have to open the inventory first for inventoryItems to fetch items correctly
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
-                            return;
+                            Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
+
+                            var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
+
+                            var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
+                            if (remnantOfCorruption == null)
+                            {
+                                Keyboard.KeyPress(Settings.OpenInventoryKey);
+                                return;
+                            }
+
+                            Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            Mouse.RightClick();
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                                + Gamewindow.TopLeft
+                                + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
+                            Input.SetCursorPos(centerOfLabel.Value);
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            Mouse.LeftClick();
+
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            Keyboard.KeyPress(Settings.OpenInventoryKey);
+
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
                         }
-
-                        Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
-                        Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                        Mouse.RightClick();
-                        Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                        centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                            + Gamewindow.TopLeft
-                            + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
-                        Input.SetCursorPos(centerOfLabel.Value);
-                        Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                        Mouse.LeftClick();
-
-                        Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                        Keyboard.KeyPress(Settings.OpenInventoryKey);
-
-                        Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
+                        else
+                        {
+                            Input.SetCursorPos(centerOfLabel.Value);
+                            Input.Click(MouseButtons.Left);
+                        }
                     }
                     else
                     {
@@ -241,11 +242,10 @@ namespace ClickIt
                         Input.Click(MouseButtons.Left);
                     }
                 }
-                else
-                {
-                    Input.SetCursorPos(centerOfLabel.Value);
-                    Input.Click(MouseButtons.Left);
-                }
+            }
+            catch (Exception ex)
+            {
+                LogError(ex.ToString());
             }
         }
         private LabelOnGround GetLabelCaching()
