@@ -61,40 +61,47 @@ namespace ClickIt
 
         public override Job Tick()
         {
-            InventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
-            inventorySlots = Misc.GetContainer2DArray(InventoryItems);
-            if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
-                return null;
-            if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+            try
             {
-                LogMessage("Path of exile window not active, not clicking");
-                return null;
-            }
-            //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
-            if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
-            {
-                LogMessage("OpenLeftPanel is open, not clicking");
-                return null;
-            }
-            if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
-            {
-                LogMessage("OpenRightPanel is open, not clicking");
-                return null;
-            }
-            if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
-            {
-                LogMessage("Items on ground less than 1, not clicking");
-                return null;
-            }
-            if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20)) return null;
-            if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
-            {
-                LogMessage("In hideout or town, not clicking");
-                return null;
-            }
+                InventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
+                inventorySlots = Misc.GetContainer2DArray(InventoryItems);
+                if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
+                    return null;
+                if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+                {
+                    LogMessage("Path of exile window not active, not clicking");
+                    return null;
+                }
+                //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
+                if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
+                {
+                    LogMessage("OpenLeftPanel is open, not clicking");
+                    return null;
+                }
+                if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
+                {
+                    LogMessage("OpenRightPanel is open, not clicking");
+                    return null;
+                }
+                if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
+                {
+                    LogMessage("Items on ground less than 1, not clicking");
+                    return null;
+                }
+                if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20)) return null;
+                if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
+                {
+                    LogMessage("In hideout or town, not clicking");
+                    return null;
+                }
 
-            Timer.Restart();
-            ClickLabel();
+                Timer.Restart();
+                ClickLabel();
+            }
+            catch (Exception ex)
+            {
+                LogMessage(ex.ToString());
+            }
             return null;
         }
 
