@@ -16,7 +16,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using LINQPad;
 
 namespace ClickIt
 {
@@ -102,11 +101,34 @@ namespace ClickIt
             catch (Exception e)
             {
                 error = true;
-                LogError(e.Dump().ToString());
+                LogError(GetExceptionFootprints(e));
             }
             if (!error)
                 ClickLabel();
             return null;
+        }
+
+        public string GetExceptionFootprints(Exception x)
+        {
+            var st = new StackTrace(x, true);
+            var frames = st.GetFrames();
+            var traceString = new StringBuilder();
+
+            foreach (var frame in frames)
+            {
+                if (frame.GetFileLineNumber() < 1)
+                    continue;
+
+                traceString.Append("File: " + frame.GetFileName());
+                traceString.Append(", Method:" + frame.GetMethod().Name);
+                traceString.Append(", LineNumber: " + frame.GetFileLineNumber());
+                traceString.Append("  -->  ");
+            }
+
+            if (traceString.Length <= 0) 
+                return null;
+
+            return traceString.ToString();
         }
 
         private static string ActiveWindowTitle()
@@ -256,7 +278,7 @@ namespace ClickIt
             }
             catch (Exception e)
             {
-                LogError(e.Dump().ToString());
+                LogError(GetExceptionFootprints(e));
             }
         }
         private LabelOnGround GetLabelCaching()
