@@ -126,7 +126,7 @@ namespace ClickIt
             }
 
             if (traceString.Length <= 0) 
-                return null;
+                return "Unable to format stacktrace";
 
             return traceString.ToString();
         }
