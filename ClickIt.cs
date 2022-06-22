@@ -101,11 +101,31 @@ namespace ClickIt
             catch (Exception e)
             {
                 error = true;
-                LogError(e.StackTrace);
+                LogError(GetExceptionFootprints(e));
             }
             if (!error)
                 ClickLabel();
             return null;
+        }
+
+        public string GetExceptionFootprints(Exception x)
+        {
+            var st = new StackTrace(x, true);
+            var frames = st.GetFrames();
+            var traceString = new StringBuilder();
+
+            foreach (var frame in frames)
+            {
+                if (frame.GetFileLineNumber() < 1)
+                    continue;
+
+                traceString.Append("File: " + frame.GetFileName());
+                traceString.Append(", Method:" + frame.GetMethod().Name);
+                traceString.Append(", LineNumber: " + frame.GetFileLineNumber());
+                traceString.Append("  -->  ");
+            }
+
+            return traceString.ToString();
         }
 
         private static string ActiveWindowTitle()
@@ -253,9 +273,9 @@ namespace ClickIt
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                LogError(ex.StackTrace);
+                LogError(GetExceptionFootprints(e));
             }
         }
         private LabelOnGround GetLabelCaching()
