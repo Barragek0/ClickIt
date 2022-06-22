@@ -61,6 +61,9 @@ namespace ClickIt
 
         public override Job Tick()
         {
+            bool error = false;
+            try
+            {
                 InventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
                 inventorySlots = Misc.GetContainer2DArray(InventoryItems);
                 if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
@@ -94,6 +97,13 @@ namespace ClickIt
                 }
 
                 Timer.Restart();
+            }
+            catch (Exception e)
+            {
+                error = true;
+                LogError(e.StackTrace);
+            }
+            if (!error)
                 ClickLabel();
             return null;
         }
@@ -245,7 +255,7 @@ namespace ClickIt
             }
             catch (Exception ex)
             {
-                LogError(ex.ToString());
+                LogError(ex.StackTrace);
             }
         }
         private LabelOnGround GetLabelCaching()
