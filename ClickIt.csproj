@@ -45,6 +45,12 @@
       <HintPath>..\..\..\..\PoeHelper\ImGui.NET.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="LINQPad, Version=1.0.0.0, Culture=neutral, PublicKeyToken=21353812cd2a2db5, processorArchitecture=MSIL">
+      <HintPath>..\ExileApi\packages\LINQPad.5.40.0\lib\net46\LINQPad.exe</HintPath>
+    </Reference>
+    <Reference Include="lprun, Version=1.0.0.0, Culture=neutral, PublicKeyToken=21353812cd2a2db5, processorArchitecture=x86">
+      <HintPath>..\ExileApi\packages\LINQPad.5.40.0\lib\net46\lprun.exe</HintPath>
+    </Reference>
     <Reference Include="SharpDX, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
       <HintPath>..\ExileApi\packages\SharpDX.4.2.0\lib\net45\SharpDX.dll</HintPath>
     </Reference>
