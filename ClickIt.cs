@@ -101,7 +101,7 @@ namespace ClickIt
             catch (Exception e)
             {
                 error = true;
-                Core.Logger.Error($"{nameof(DebugWindow)} -> {e}");
+                LogError(e.ToString());
             }
             if (!error)
                 ClickLabel();
@@ -255,7 +255,7 @@ namespace ClickIt
             }
             catch (Exception e)
             {
-                Core.Logger.Error($"{nameof(DebugWindow)} -> {e}");
+                LogError(e.ToString());
             }
         }
         private LabelOnGround GetLabelCaching()
