@@ -58,53 +58,77 @@ namespace ClickIt
                 CachedLabels = null;
             }
         }
+        private bool isPOEActive()
+        {
+
+            if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+            {
+                if (Settings.DebugMode)
+                    LogMessage("(ClickIt) Path of exile window not active");
+                return false;
+            }
+            return true;
+        }
+        private bool isPanelOpen()
+        {
+
+            if (GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0 || GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
+            {
+                if (Settings.DebugMode)
+                    LogMessage("(ClickIt) Left or right panel is open");
+                return true;
+            }
+            return false;
+        }
+        private bool groundItemsVisible()
+        {
+            if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
+            {
+                if (Settings.DebugMode)
+                    LogMessage("(ClickIt) No ground items found");
+                return false;
+            }
+            return true;
+
+        }
+        private bool isShrineVisible()
+        {
+            Entity shrine = null;
+            foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
+            {
+                if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
+                {
+                    shrine = validEntity;
+                }
+            }
+            if (shrine == null)
+            {
+                if (Settings.DebugMode)
+                    LogMessage("(ClickIt) No shrines found");
+                return false;
+            }
+            return true;
+
+        }
+
+        private bool inTownOrHideout()
+        {
+
+            if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
+            {
+                if (Settings.DebugMode)
+                    LogMessage("(ClickIt) In hideout or town");
+                return true;
+            }
+            return false;
+        }
 
         public override Job Tick()
         {
-            bool error = false;
-            try
-            {
-                InventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
-                inventorySlots = Misc.GetContainer2DArray(InventoryItems);
-                if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
-                    return null;
-                if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
-                {
-                    LogMessage("Path of exile window not active, not clicking");
-                    return null;
-                }
-                //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
-                if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0)
-                {
-                    LogMessage("OpenLeftPanel is open, not clicking");
-                    return null;
-                }
-                if (Settings.BlockOnOpenLeftRightPanel && GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
-                {
-                    LogMessage("OpenRightPanel is open, not clicking");
-                    return null;
-                }
-                if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
-                {
-                    LogMessage("Items on ground less than 1, not clicking");
-                    return null;
-                }
-                if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20)) return null;
-                if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
-                {
-                    LogMessage("In hideout or town, not clicking");
-                    return null;
-                }
-
-                Timer.Restart();
-            }
-            catch (Exception e)
-            {
-                error = true;
-                LogError(e.ToString());
-            }
-            if (!error)
-                ClickLabel();
+            if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20))
+                return null;
+            Timer.Restart();
+            ClickLabel();
             return null;
         }
 
@@ -134,30 +158,30 @@ namespace ClickIt
         {
             try
             {
-                if (Settings.DebugMode) LogMessage("Trying to Click Label");
-                Gamewindow = GameController.Window.GetWindowRectangle();
+                if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
+                    return;
+                if (!isPOEActive())
+                    return;
+                //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
+                if (Settings.BlockOnOpenLeftRightPanel && isPanelOpen())
+                    return;
+                if (inTownOrHideout())
+                    return;
 
-                LabelOnGround nextLabel;
-                if (Settings.CachingEnable) nextLabel = GetLabelCaching();
-                else nextLabel = GetLabelNoCaching();
-
+                LabelOnGround nextLabel = null;
                 Entity shrine = null;
 
-                foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
+                Gamewindow = GameController.Window.GetWindowRectangle();
+
+                if (Settings.ClickItems && groundItemsVisible())
                 {
-                    if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
-                    {
-                        shrine = validEntity;
-                    }
+                    if (Settings.CachingEnable)
+                        nextLabel = GetLabelCaching();
+                    else 
+                        nextLabel = GetLabelNoCaching();
                 }
 
-                if (nextLabel == null && shrine == null)
-                {
-                    if (Settings.DebugMode) LogMessage("nextLabel/shrine in ClickLabel() are both null");
-                    return;
-                }
-
-                if (shrine != null && Settings.ClickShrines &&
+                if (shrine != null && Settings.ClickShrines && isShrineVisible() &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y &&
@@ -246,7 +270,7 @@ namespace ClickIt
                             Input.Click(MouseButtons.Left);
                         }
                     }
-                    else
+                    else if (Settings.ClickItems)
                     {
                         Input.SetCursorPos(centerOfLabel.Value);
                         Input.Click(MouseButtons.Left);
