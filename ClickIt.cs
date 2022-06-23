@@ -282,6 +282,15 @@ namespace ClickIt
                 LogError(e.ToString());
             }
         }
+        private bool isBasicChest(LabelOnGround label)
+        {
+            switch (label.ItemOnGround.RenderName)
+            {
+                case "Chest":
+                    return true;
+            }
+            return false;
+        }
         private LabelOnGround GetLabelCaching()
         {
             var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance && 
@@ -289,13 +298,14 @@ namespace ClickIt
                 x.ItemOnGround.Type == EntityType.WorldItem && 
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique || 
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
-                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && x.ItemOnGround.RenderName == "Chest") ||
-                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && x.ItemOnGround.RenderName != "Chest") ||
+                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && isBasicChest(x)) ||
+                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && !isBasicChest(x)) ||
                 Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition ||
                 Settings.ClickShrines.Value && x.ItemOnGround.Type == EntityType.Shrine ||
                 Settings.ClickEssences.Value && x.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null));
             return label;
         }
+
         private LabelOnGround GetLabelNoCaching()
         {
             var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
@@ -313,8 +323,8 @@ namespace ClickIt
                 x.ItemOnGround.Type == EntityType.WorldItem &&
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
-                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && x.ItemOnGround.RenderName == "Chest") ||
-                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && x.ItemOnGround.RenderName != "Chest") ||
+                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && isBasicChest(x)) ||
+                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && !isBasicChest(x)) ||
                 Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition ||
                 Settings.ClickEssences.Value && x.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null));
         }
