@@ -288,6 +288,7 @@ namespace ClickIt
             {
                 case "chest":
                 case "tribal chest":
+                case "cocoon":
                     return true;
             }
             return false;
