@@ -287,6 +287,7 @@ namespace ClickIt
             switch (label.ItemOnGround.RenderName.ToLower())
             {
                 case "chest":
+                case "tribal chest":
                     return true;
             }
             return false;
