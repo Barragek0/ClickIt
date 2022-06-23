@@ -289,6 +289,8 @@ namespace ClickIt
                 case "chest":
                 case "tribal chest":
                 case "cocoon":
+                case "weapon rack":
+                case "armour rack":
                     return true;
             }
             return false;
