@@ -284,9 +284,9 @@ namespace ClickIt
         }
         private bool isBasicChest(LabelOnGround label)
         {
-            switch (label.ItemOnGround.RenderName)
+            switch (label.ItemOnGround.RenderName.ToLower())
             {
-                case "Chest":
+                case "chest":
                     return true;
             }
             return false;
