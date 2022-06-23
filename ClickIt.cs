@@ -291,6 +291,7 @@ namespace ClickIt
                 case "cocoon":
                 case "weapon rack":
                 case "armour rack":
+                case "trunk":
                     return true;
             }
             return false;
