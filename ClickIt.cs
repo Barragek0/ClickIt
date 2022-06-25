@@ -144,8 +144,10 @@ namespace ClickIt
 
         private List<LabelOnGround> UpdateLabelComponent() =>
             GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
-            .Where(x =>
+            .Where(x => 
                 x.ItemOnGround?.Path != null &&
+                //this check is probably unnecessary, lets just make sure
+                !x.ItemOnGround.IsHidden &&
                 x.Label.GetClientRect().Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)) &&
                 (x.ItemOnGround.Type == EntityType.WorldItem ||
                 x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
@@ -315,6 +317,8 @@ namespace ClickIt
         {
             var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
                 x.ItemOnGround?.Path != null &&
+                //this check is probably unnecessary, lets just make sure
+                !x.ItemOnGround.IsHidden &&
                 x.Label.GetClientRect().Center.PointInRectangle(new RectangleF(0, 0, Gamewindow.Width, Gamewindow.Height)) &&
                 (x.ItemOnGround.Type == EntityType.WorldItem ||
                 x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
