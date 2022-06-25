@@ -199,7 +199,7 @@ namespace ClickIt
 
                     if (!centerOfLabel.HasValue)
                     {
-                        if (Settings.DebugMode) LogMessage("centerOfLabel has no Value");
+                        if (Settings.DebugMode) LogMessage("(ClickIt) centerOfLabel has no Value");
                         return;
                     }
                     if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
@@ -232,7 +232,27 @@ namespace ClickIt
 
                             //we have to open the inventory first for inventoryItems to fetch items correctly
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
-                            Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
+                            Thread.Sleep((int)(latency));
+
+                            int addr = GameController.IngameState.IngameUi.OpenRightPanel.Address;
+                            int timeout = 2000;
+                            int timeRan = 0;
+                            while (addr == 0) {
+                                if (Settings.DebugMode) 
+                                    LogMessage("(ClickIt) Waiting for right panel to be visible");
+                                Thread.Sleep(100);
+                                timeRan = timeRan + 100;
+                                if (timeRan > timeout)
+                                    break;
+                                addr = GameController.IngameState.IngameUi.OpenRightPanel.Address;
+                            }
+
+                            if (GameController.IngameState.IngameUi.OpenRightPanel.Address == 0)
+                            {
+                                Keyboard.KeyPress(Settings.OpenInventoryKey);
+                                LogError("(ClickIt) Right panel is not open, offset is incorrect or player has more than 2 second ping");
+                                return;
+                            }
 
                             var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
 
@@ -240,6 +260,7 @@ namespace ClickIt
                             if (remnantOfCorruption == null)
                             {
                                 Keyboard.KeyPress(Settings.OpenInventoryKey);
+                                LogError("(ClickIt) Couldn't find remnant of corruption in inventory");
                                 return;
                             }
 
