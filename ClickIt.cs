@@ -234,7 +234,7 @@ namespace ClickIt
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
                             Thread.Sleep((int)(latency));
 
-                            long addr = GameController.IngameState.IngameUi.OpenRightPanel.Address;
+                            int addr = GameController.IngameState.IngameUi.OpenRightPanel.Address;
                             int timeout = 2000;
                             int timeRan = 0;
                             while (addr == 0) {
