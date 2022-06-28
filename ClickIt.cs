@@ -94,7 +94,7 @@ namespace ClickIt
         private bool isShrineVisible()
         {
             Entity shrine = null;
-            foreach (Entity validEntity in GameController.EntityListWrapper.Entities)
+            foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
             {
                 if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
                 {
@@ -177,7 +177,7 @@ namespace ClickIt
                         nextLabel = GetLabelNoCaching();
                 }
 
-                if (shrine != null && Settings.ClickShrines && isShrineVisible() &&
+                if (Settings.ClickShrines && isShrineVisible() &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y &&
@@ -185,16 +185,6 @@ namespace ClickIt
                 {
                     Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
                     Input.Click(MouseButtons.Left);
-                }
-                else if (shrine != null)
-                {
-                    if (Settings.DebugMode) LogMessage("(ClickIt) Shrine exists but shrine isnt visible or isnt on screen: | clickShrines:" + Settings.ClickShrines
-                        + " | isShrineVisible:"+isShrineVisible()
-                        +" | topLeft:" + (GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X)
-                        +" | topRight:" +(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X)
-                        +" | topLeft:" + (GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y)
-                        +" | bottomLeft:" +(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y < Gamewindow.BottomLeft.Y));
-                    return;
                 } else
                 {
 
