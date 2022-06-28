@@ -93,15 +93,7 @@ namespace ClickIt
         }
         private bool isShrineVisible()
         {
-            Entity shrine = null;
-            foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
-            {
-                if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
-                {
-                    shrine = validEntity;
-                }
-            }
-            return shrine != null;
+            return getShrine() != null;
 
         }
         private Entity getShrine()
