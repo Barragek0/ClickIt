@@ -104,6 +104,19 @@ namespace ClickIt
             return shrine != null;
 
         }
+        private Entity getShrine()
+        {
+            Entity shrine = null;
+            foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
+            {
+                if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
+                {
+                    shrine = validEntity;
+                }
+            }
+            return shrine;
+
+        }
 
         private bool inTownOrHideout()
         {
@@ -165,7 +178,7 @@ namespace ClickIt
                     return;
 
                 LabelOnGround nextLabel = null;
-                Entity shrine = null;
+                Entity shrine = getShrine();
 
                 Gamewindow = GameController.Window.GetWindowRectangle();
 
