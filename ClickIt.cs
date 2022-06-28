@@ -94,20 +94,14 @@ namespace ClickIt
         private bool isShrineVisible()
         {
             Entity shrine = null;
-            foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
+            foreach (Entity validEntity in GameController.EntityListWrapper.Entities)
             {
                 if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) || validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable && !validEntity.IsOpened && !validEntity.IsHidden)
                 {
                     shrine = validEntity;
                 }
             }
-            if (shrine == null)
-            {
-                if (Settings.DebugMode)
-                    LogMessage("(ClickIt) No shrines found");
-                return false;
-            }
-            return true;
+            return shrine != null;
 
         }
 
