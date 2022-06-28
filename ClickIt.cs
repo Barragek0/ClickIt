@@ -192,7 +192,16 @@ namespace ClickIt
                     Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
                     Input.Click(MouseButtons.Left);
                 }
-                else
+                else if (shrine != null)
+                {
+                    if (Settings.DebugMode) LogMessage("(ClickIt) Shrine exists but shrine isnt visible or isnt on screen: | clickShrines:" + Settings.ClickShrines
+                        + " | isShrineVisible:"+isShrineVisible()
+                        +" | topLeft:" + (GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X)
+                        +" | topRight:" +(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X)
+                        +" | topLeft:" + (GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y)
+                        +" | bottomLeft:" +(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y < Gamewindow.BottomLeft.Y));
+                    return;
+                } else
                 {
 
                     var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
@@ -201,7 +210,7 @@ namespace ClickIt
 
                     if (!centerOfLabel.HasValue)
                     {
-                        if (Settings.DebugMode) LogMessage("centerOfLabel has no Value");
+                        if (Settings.DebugMode) LogMessage("(ClickIt) centerOfLabel has no Value");
                         return;
                     }
                     if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
