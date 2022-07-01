@@ -234,10 +234,19 @@ namespace ClickIt
                             //we have to open the inventory first for inventoryItems to fetch items correctly
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
                             Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
+                            bool visible = false;
+                            int waited = 0;
+                            while (!visible && waited < 2000)
+                            {
+                                if (Settings.DebugMode) LogMessage("(ClickIt) Waiting for inventory panel to be open");
+                                Thread.Sleep(30);
+                                waited += 30;
+                                visible = GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible;
+                            }
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Fetching inventory items");
-                            
-                            var inventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0]?.Inventory.InventorySlotItems;
+
+                            var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Finding remnant from list");
                             var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
@@ -250,7 +259,7 @@ namespace ClickIt
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Found remnant");
 
-                            Input.SetCursorPos(remnantOfCorruption.GetClientRect().Center + GameController.Window.GetWindowRectangle().TopLeft);
+                            Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
                             Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
                             Mouse.RightClick();
