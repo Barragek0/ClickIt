@@ -123,22 +123,12 @@ namespace ClickIt
             return false;
         }
 
-        Thread currentThread = null;
-
         public override Job Tick()
         {
             if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20))
                 return null;
             Timer.Restart();
-            if (currentThread == null)
-            {
-                currentThread = new Thread(() =>
-                {
-                    Thread threadResult = ClickLabel();
-                    currentThread = threadResult;
-                });
-                currentThread.Start();
-            }
+            ClickLabel();
             return null;
         }
 
@@ -166,19 +156,19 @@ namespace ClickIt
             .OrderBy(x => x.ItemOnGround.DistancePlayer)
             .ToList();
 
-        private Thread ClickLabel()
+        private void ClickLabel()
         {
             try
             {
                 if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
-                    return null;
+                    return;
                 if (!isPOEActive())
-                    return null;
+                    return;
                 //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
                 if (Settings.BlockOnOpenLeftRightPanel && isPanelOpen())
-                    return null;
+                    return;
                 if (inTownOrHideout())
-                    return null;
+                    return;
 
                 LabelOnGround nextLabel = null;
                 Entity shrine = getShrine();
@@ -211,7 +201,7 @@ namespace ClickIt
                     if (!centerOfLabel.HasValue)
                     {
                         if (Settings.DebugMode) LogMessage("(ClickIt) centerOfLabel has no Value");
-                        return null;
+                        return;
                     }
                     if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
                     {
@@ -244,20 +234,23 @@ namespace ClickIt
                             //we have to open the inventory first for inventoryItems to fetch items correctly
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
                             Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
-                            int waited = 0;
-
-                            while (!GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible)
-                            {
-                                if (waited > 1500)
-                                    break;
-                                if (Settings.DebugMode) LogMessage("(ClickIt) Waiting for inventory panel to be open");
-                                Thread.Sleep(30);
-                                waited += 30;
-                            }
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Fetching inventory items");
 
-                            var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
+                            var inventoryItems = new List<NormalInventoryItem>();
+
+                            if (GameController.Game.IngameState.IngameUi.InventoryPanel.ChildCount >= ((long)InventoryIndex.PlayerInventory))
+                            {
+                                if (Settings.DebugMode) LogMessage("(ClickIt) Does have enough children");
+                                inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
+                            }
+                            
+                            if (inventoryItems.Count <= 0)
+                            {
+                                if (Settings.DebugMode) LogMessage("(ClickIt) inventoryItems is incorrect offset, please corrupt manually");
+                                Keyboard.KeyPress(Settings.OpenInventoryKey);
+                                return;
+                            }
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Finding remnant from list");
                             var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
@@ -265,7 +258,7 @@ namespace ClickIt
                             {
                                 if (Settings.DebugMode) LogMessage("(ClickIt) Can't find remnant");
                                 Keyboard.KeyPress(Settings.OpenInventoryKey);
-                                return null;
+                                return;
                             }
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Found remnant");
@@ -303,12 +296,10 @@ namespace ClickIt
                         Input.Click(MouseButtons.Left);
                     }
                 }
-                return null;
             }
             catch (Exception e)
             {
                 LogError(e.ToString());
-                return null;
             }
         }
         private bool isBasicChest(LabelOnGround label)
