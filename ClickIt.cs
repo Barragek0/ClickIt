@@ -134,7 +134,8 @@ namespace ClickIt
             {
                 currentThread = new Thread(() =>
                 {
-                    currentThread = ClickLabel();
+                    Thread threadResult = ClickLabel();
+                    currentThread = threadResult;
                 });
                 currentThread.Start();
             }
