@@ -236,6 +236,9 @@ namespace ClickIt
 
                             var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
 
+                            if (inventoryItems.Count <= 0)
+                                inventoryItems = (List<ExileCore.PoEMemory.Elements.InventoryElements.NormalInventoryItem>) GameController.Game.IngameState.Data.ServerData.PlayerInventories[0]?.Inventory.InventorySlotItems;
+
                             var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
                             if (remnantOfCorruption == null)
                             {
