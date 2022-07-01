@@ -234,17 +234,25 @@ namespace ClickIt
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
                             Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
 
+                            if (Settings.DebugMode) LogMessage("(ClickIt) Fetching inventory items");
                             var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
 
                             if (inventoryItems.Count <= 0)
-                                inventoryItems = (List<ExileCore.PoEMemory.Elements.InventoryElements.NormalInventoryItem>) GameController.Game.IngameState.Data.ServerData.PlayerInventories[0]?.Inventory.InventorySlotItems;
+                            {
+                                if (Settings.DebugMode) LogMessage("(ClickIt) inventoryItems is incorrect offset, trying serverdata offset instead");
+                                inventoryItems = (List<ExileCore.PoEMemory.Elements.InventoryElements.NormalInventoryItem>)GameController.Game.IngameState.Data.ServerData.PlayerInventories[0]?.Inventory.InventorySlotItems;
+                            }
 
+                            if (Settings.DebugMode) LogMessage("(ClickIt) Finding remnant from list");
                             var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
                             if (remnantOfCorruption == null)
                             {
+                                if (Settings.DebugMode) LogMessage("(ClickIt) Can't find remnant");
                                 Keyboard.KeyPress(Settings.OpenInventoryKey);
                                 return;
                             }
+
+                            if (Settings.DebugMode) LogMessage("(ClickIt) Found remnant");
 
                             Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
                             Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
