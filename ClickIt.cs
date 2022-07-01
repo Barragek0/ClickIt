@@ -3,6 +3,7 @@ using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
+using ExileCore.PoEMemory.Elements.InventoryElements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Cache;
 using ExileCore.Shared.Enums;
@@ -235,12 +236,20 @@ namespace ClickIt
                             Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Fetching inventory items");
-                            var inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
+
+                            var inventoryItems = new List<NormalInventoryItem>();
+
+                            if (GameController.Game.IngameState.IngameUi.InventoryPanel.ChildCount >= ((long)InventoryIndex.PlayerInventory))
+                            {
+                                if (Settings.DebugMode) LogMessage("(ClickIt) Does have enough children");
+                                inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
+                            }
+                            
 
                             if (inventoryItems.Count <= 0)
                             {
                                 if (Settings.DebugMode) LogMessage("(ClickIt) inventoryItems is incorrect offset, trying serverdata offset instead");
-                                inventoryItems = (List<ExileCore.PoEMemory.Elements.InventoryElements.NormalInventoryItem>)GameController.Game.IngameState.Data.ServerData.PlayerInventories[0]?.Inventory.InventorySlotItems;
+                                inventoryItems = (List<NormalInventoryItem>)GameController.Game.IngameState.Data.ServerData.PlayerInventories[0]?.Inventory.InventorySlotItems;
                             }
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Finding remnant from list");
