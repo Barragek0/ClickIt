@@ -234,14 +234,12 @@ namespace ClickIt
                             //we have to open the inventory first for inventoryItems to fetch items correctly
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
                             Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
-                            bool visible = false;
                             int waited = 0;
-                            while (!visible && waited < 2000)
+                            while (!GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible && waited < 1500)
                             {
                                 if (Settings.DebugMode) LogMessage("(ClickIt) Waiting for inventory panel to be open");
                                 Thread.Sleep(30);
                                 waited += 30;
-                                visible = GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible;
                             }
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Fetching inventory items");
