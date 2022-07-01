@@ -248,8 +248,6 @@ namespace ClickIt
                             if (inventoryItems.Count <= 0)
                             {
                                 if (Settings.DebugMode) LogMessage("(ClickIt) inventoryItems is incorrect offset, please corrupt manually");
-                                Keyboard.KeyPress(Settings.OpenInventoryKey);
-                                return;
                             }
 
                             if (Settings.DebugMode) LogMessage("(ClickIt) Finding remnant from list");
