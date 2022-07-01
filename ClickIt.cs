@@ -248,9 +248,9 @@ namespace ClickIt
                             if (inventoryItems.Count <= 0)
                             {
                                 if (Settings.DebugMode) LogError("(ClickIt) inventoryItems is incorrect offset, please corrupt manually");
+                                return;
                             }
 
-                            if (Settings.DebugMode) LogMessage("(ClickIt) Finding remnant from list");
                             var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
                             if (remnantOfCorruption == null)
                             {
