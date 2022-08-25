@@ -34,6 +34,7 @@ namespace ClickIt
         static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")]
         static extern int GetWindowText(IntPtr hwnd, StringBuilder ss, int count);
+
         public override bool Initialise()
         {
             Controller = this;
@@ -48,6 +49,7 @@ namespace ClickIt
             Timer.Start();
             return true;
         }
+
         private void ToggleCaching()
         {
             if(Settings.CachingEnable.Value && CachedLabels == null)
@@ -59,6 +61,7 @@ namespace ClickIt
                 CachedLabels = null;
             }
         }
+
         private bool isPOEActive()
         {
 
@@ -70,6 +73,7 @@ namespace ClickIt
             }
             return true;
         }
+
         private bool isPanelOpen()
         {
 
@@ -81,6 +85,7 @@ namespace ClickIt
             }
             return false;
         }
+
         private bool groundItemsVisible()
         {
             if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
@@ -92,11 +97,13 @@ namespace ClickIt
             return true;
 
         }
+
         private bool isShrineVisible()
         {
             return getShrine() != null;
 
         }
+
         private Entity getShrine()
         {
             Entity shrine = null;
@@ -220,11 +227,9 @@ namespace ClickIt
                             //Corrupt if there's an essence that is worth more when upgraded
                             //This can change based on the market, so it will be better off using methods from ninjaprice rather than manually listing them, will update it later
                             //If we have too many essences here, self sustaining remnants of corruption is very difficult
-                            label.GetElementByString("Shrieking Essence of Sorrow") != null ||
-                            label.GetElementByString("Shrieking Essence of Rage") != null ||
+                            label.GetElementByString("Shrieking Essence of Greed") != null ||
                             label.GetElementByString("Shrieking Essence of Loathing") != null ||
-                            label.GetElementByString("Shrieking Essence of Zeal") != null ||
-                            label.GetElementByString("Shrieking Essence of Spite") != null)
+                            label.GetElementByString("Shrieking Essence of Wrath") != null)
                             )
                         {
                             //we should corrupt this
