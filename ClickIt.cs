@@ -245,18 +245,12 @@ namespace ClickIt
 
                             var inventoryItems = new List<NormalInventoryItem>();
 
-                            if (((int)GameController.Game.IngameState.IngameUi.InventoryPanel.ChildCount) >= ((int)InventoryIndex.PlayerInventory))
+                            try
                             {
-                                if (Settings.DebugMode) LogMessage("(ClickIt) Does have enough children");
                                 inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems.ToList();
-                            } else
+                            } catch (Exception e)
                             {
-                                if (Settings.DebugMode) LogMessage("(ClickIt) InvPanel ChildCount: "+ ((int)GameController.Game.IngameState.IngameUi.InventoryPanel.ChildCount)+" < PlayerInventoryIndex:"+ ((int)InventoryIndex.PlayerInventory)+" - we must have incorrect inventory offset");
-                            }
-
-                            if (inventoryItems.Count <= 0)
-                            {
-                                if (Settings.DebugMode) LogError("(ClickIt) inventoryItems is incorrect offset, please corrupt manually");
+                                LogError("(ClickIt) inventoryItems has incorrect offset, please corrupt manually");
                                 return;
                             }
 
