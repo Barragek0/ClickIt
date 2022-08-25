@@ -45,14 +45,14 @@ namespace ClickIt
             {
                 CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
             }
-            
+
             Timer.Start();
             return true;
         }
 
         private void ToggleCaching()
         {
-            if(Settings.CachingEnable.Value && CachedLabels == null)
+            if (Settings.CachingEnable.Value && CachedLabels == null)
             {
                 CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
             }
@@ -151,7 +151,7 @@ namespace ClickIt
 
         private List<LabelOnGround> UpdateLabelComponent() =>
             GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
-            .Where(x => 
+            .Where(x =>
                 x.ItemOnGround?.Path != null &&
                 //this check is probably unnecessary, lets just make sure
                 !x.ItemOnGround.IsHidden &&
@@ -186,7 +186,7 @@ namespace ClickIt
                 {
                     if (Settings.CachingEnable)
                         nextLabel = GetLabelCaching();
-                    else 
+                    else
                         nextLabel = GetLabelNoCaching();
                 }
 
@@ -198,7 +198,8 @@ namespace ClickIt
                 {
                     Input.SetCursorPos(GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
                     Input.Click(MouseButtons.Left);
-                } else
+                }
+                else
                 {
 
                     var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
@@ -244,12 +245,15 @@ namespace ClickIt
 
                             var inventoryItems = new List<NormalInventoryItem>();
 
-                            if (GameController.Game.IngameState.IngameUi.InventoryPanel.ChildCount >= ((long)InventoryIndex.PlayerInventory))
+                            if (((int)GameController.Game.IngameState.IngameUi.InventoryPanel.ChildCount) >= ((int)InventoryIndex.PlayerInventory))
                             {
                                 if (Settings.DebugMode) LogMessage("(ClickIt) Does have enough children");
-                                inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]?.VisibleInventoryItems.ToList();
+                                inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems.ToList();
+                            } else
+                            {
+                                if (Settings.DebugMode) LogMessage("(ClickIt) InvPanel ChildCount: "+ ((int)GameController.Game.IngameState.IngameUi.InventoryPanel.ChildCount)+" < PlayerInventoryIndex:"+ ((int)InventoryIndex.PlayerInventory)+" - we must have incorrect inventory offset");
                             }
-                            
+
                             if (inventoryItems.Count <= 0)
                             {
                                 if (Settings.DebugMode) LogError("(ClickIt) inventoryItems is incorrect offset, please corrupt manually");
@@ -320,10 +324,10 @@ namespace ClickIt
         }
         private LabelOnGround GetLabelCaching()
         {
-            var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance && 
-                (Settings.ClickItems.Value && 
-                x.ItemOnGround.Type == EntityType.WorldItem && 
-                (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique || 
+            var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
+                (Settings.ClickItems.Value &&
+                x.ItemOnGround.Type == EntityType.WorldItem &&
+                (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
                 (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && isBasicChest(x)) ||
                 (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && !isBasicChest(x)) ||
