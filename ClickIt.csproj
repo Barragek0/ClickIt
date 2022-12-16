@@ -87,7 +87,6 @@
     <Compile Include="Utils\Mouse.cs" />
     <Compile Include="Utils\Keyboard.cs" />
     <Compile Include="CustomItem.cs" />
-    <Compile Include="Misc.cs" />
     <Compile Include="ClickIt.cs" />
     <Compile Include="ClickItSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

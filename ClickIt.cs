@@ -24,9 +24,6 @@ namespace ClickIt
     {
         private Stopwatch Timer { get; } = new Stopwatch();
         private Random Random { get; } = new Random();
-        public static ClickIt Controller { get; set; }
-        public int[,] InventorySlots { get; set; } = new int[0, 0];
-        public ServerInventory InventoryItems { get; set; }
         private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
         private RectangleF Gamewindow;
 
@@ -37,7 +34,6 @@ namespace ClickIt
 
         public override bool Initialise()
         {
-            Controller = this;
             Gamewindow = GameController.Window.GetWindowRectangle();
             Settings.ReloadPluginButton.OnPressed += () => { ToggleCaching(); };
 
@@ -162,7 +158,6 @@ namespace ClickIt
             .OrderBy(x => x.ItemOnGround.DistancePlayer)
             .ToList();
 
-        [Obsolete]
         private void ClickLabel()
         {
             try
