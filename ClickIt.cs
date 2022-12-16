@@ -25,7 +25,7 @@ namespace ClickIt
         private Stopwatch Timer { get; } = new Stopwatch();
         private Random Random { get; } = new Random();
         public static ClickIt Controller { get; set; }
-        public int[,] inventorySlots { get; set; } = new int[0, 0];
+        public int[,] InventorySlots { get; set; } = new int[0, 0];
         public ServerInventory InventoryItems { get; set; }
         private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
         private RectangleF Gamewindow;
@@ -62,7 +62,7 @@ namespace ClickIt
             }
         }
 
-        private bool isPOEActive()
+        private bool IsPOEActive()
         {
 
             if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
@@ -74,7 +74,7 @@ namespace ClickIt
             return true;
         }
 
-        private bool isPanelOpen()
+        private bool IsPanelOpen()
         {
 
             if (GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0 || GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
@@ -86,7 +86,7 @@ namespace ClickIt
             return false;
         }
 
-        private bool groundItemsVisible()
+        private bool GroundItemsVisible()
         {
             if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
             {
@@ -98,13 +98,13 @@ namespace ClickIt
 
         }
 
-        private bool isShrineVisible()
+        private bool IsShrineVisible()
         {
-            return getShrine() != null;
+            return GetShrine() != null;
 
         }
 
-        private Entity getShrine()
+        private Entity GetShrine()
         {
             Entity shrine = null;
             foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
@@ -118,7 +118,7 @@ namespace ClickIt
 
         }
 
-        private bool inTownOrHideout()
+        private bool InTownOrHideout()
         {
 
             if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
@@ -143,8 +143,7 @@ namespace ClickIt
         {
             const int nChar = 256;
             StringBuilder ss = new StringBuilder(nChar);
-            IntPtr handle = IntPtr.Zero;
-            handle = GetForegroundWindow();
+            IntPtr handle = GetForegroundWindow();
             if (GetWindowText(handle, ss, nChar) > 0) return ss.ToString();
             else return "";
         }
@@ -159,30 +158,31 @@ namespace ClickIt
                 (x.ItemOnGround.Type == EntityType.WorldItem ||
                 x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
                 x.ItemOnGround.Type == EntityType.AreaTransition ||
-                x.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null))
+                GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null))
             .OrderBy(x => x.ItemOnGround.DistancePlayer)
             .ToList();
 
+        [Obsolete]
         private void ClickLabel()
         {
             try
             {
                 if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
                     return;
-                if (!isPOEActive())
+                if (!IsPOEActive())
                     return;
                 //if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible) return null; // this has been removed or renamed? can't find the new reference for it
-                if (Settings.BlockOnOpenLeftRightPanel && isPanelOpen())
+                if (Settings.BlockOnOpenLeftRightPanel && IsPanelOpen())
                     return;
-                if (inTownOrHideout())
+                if (InTownOrHideout())
                     return;
 
                 LabelOnGround nextLabel = null;
-                Entity shrine = getShrine();
+                Entity shrine = GetShrine();
 
                 Gamewindow = GameController.Window.GetWindowRectangle();
 
-                if (Settings.ClickItems && groundItemsVisible())
+                if (Settings.ClickItems && GroundItemsVisible())
                 {
                     if (Settings.CachingEnable)
                         nextLabel = GetLabelCaching();
@@ -190,7 +190,7 @@ namespace ClickIt
                         nextLabel = GetLabelNoCaching();
                 }
 
-                if (Settings.ClickShrines && isShrineVisible() &&
+                if (Settings.ClickShrines && IsShrineVisible() &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y &&
@@ -211,31 +211,31 @@ namespace ClickIt
                         if (Settings.DebugMode) LogMessage("(ClickIt) centerOfLabel has no Value");
                         return;
                     }
-                    if (nextLabel.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
+                    if (GetElementByString(nextLabel.Label, "The monster is imprisoned by powerful Essences.") != null && Settings.ClickEssences)
                     {
                         Element label = nextLabel.Label.Parent;
-                        if (label.GetElementByString("Corrupted") == null && Settings.CorruptEssences &&
+                        if (GetElementByString(label, "Corrupted") == null && Settings.CorruptEssences &&
                             //According to the wiki, shrieking essences of these types cannot be corrupted into the special ones. Only screaming can.
-                            (label.GetElementByString("Screaming Essence of Misery") != null ||
-                            label.GetElementByString("Screaming Essence of Envy") != null ||
-                            label.GetElementByString("Screaming Essence of Dread") != null ||
-                            label.GetElementByString("Screaming Essence of Scorn") != null ||
+                            (GetElementByString(label, "Screaming Essence of Misery") != null ||
+                            GetElementByString(label, "Screaming Essence of Envy") != null ||
+                            GetElementByString(label, "Screaming Essence of Dread") != null ||
+                            GetElementByString(label, "Screaming Essence of Scorn") != null ||
                             //Update: Wiki is wrong, shrieking can also be upgraded to them.
-                            label.GetElementByString("Shrieking Essence of Misery") != null ||
-                            label.GetElementByString("Shrieking Essence of Envy") != null ||
-                            label.GetElementByString("Shrieking Essence of Dread") != null ||
-                            label.GetElementByString("Shrieking Essence of Scorn") != null ||
+                            GetElementByString(label, "Shrieking Essence of Misery") != null ||
+                            GetElementByString(label, "Shrieking Essence of Envy") != null ||
+                            GetElementByString(label, "Shrieking Essence of Dread") != null ||
+                            GetElementByString(label, "Shrieking Essence of Scorn") != null ||
                             //Corrupt if there's an essence that is worth more when upgraded
                             //This can change based on the market, so it will be better off using methods from ninjaprice rather than manually listing them, will update it later
                             //If we have too many essences here, self sustaining remnants of corruption is very difficult
-                            label.GetElementByString("Shrieking Essence of Greed") != null ||
-                            label.GetElementByString("Shrieking Essence of Loathing") != null ||
-                            label.GetElementByString("Shrieking Essence of Wrath") != null)
+                            GetElementByString(label, "Shrieking Essence of Greed") != null ||
+                            GetElementByString(label, "Shrieking Essence of Loathing") != null ||
+                            GetElementByString(label, "Shrieking Essence of Wrath") != null)
                             )
                         {
                             //we should corrupt this
 
-                            float latency = GameController.Game.IngameState.CurLatency;
+                            float latency = GameController.Game.IngameState.ServerData.Latency;
 
                             //we have to open the inventory first for inventoryItems to fetch items correctly
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
@@ -248,7 +248,7 @@ namespace ClickIt
                             try
                             {
                                 inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems.ToList();
-                            } catch (Exception e)
+                            } catch (Exception)
                             {
                                 LogError("(ClickIt) inventoryItems has incorrect offset, please corrupt manually");
                                 return;
@@ -302,7 +302,7 @@ namespace ClickIt
                 LogError(e.ToString());
             }
         }
-        private bool isBasicChest(LabelOnGround label)
+        private bool IsBasicChest(LabelOnGround label)
         {
             switch (label.ItemOnGround.RenderName.ToLower())
             {
@@ -323,11 +323,11 @@ namespace ClickIt
                 x.ItemOnGround.Type == EntityType.WorldItem &&
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
-                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && isBasicChest(x)) ||
-                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && !isBasicChest(x)) ||
+                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && IsBasicChest(x)) ||
+                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && !IsBasicChest(x)) ||
                 Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition ||
                 Settings.ClickShrines.Value && x.ItemOnGround.Type == EntityType.Shrine ||
-                Settings.ClickEssences.Value && x.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null));
+                Settings.ClickEssences.Value && GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null));
             return label;
         }
 
@@ -341,7 +341,7 @@ namespace ClickIt
                 (x.ItemOnGround.Type == EntityType.WorldItem ||
                 x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
                 x.ItemOnGround.Type == EntityType.AreaTransition ||
-                x.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null))
+                GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null))
             .OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
 
 
@@ -350,10 +350,15 @@ namespace ClickIt
                 x.ItemOnGround.Type == EntityType.WorldItem &&
                 (!Settings.IgnoreUniques || x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
                 x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path.StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
-                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && isBasicChest(x)) ||
-                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && !isBasicChest(x)) ||
+                (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest && IsBasicChest(x)) ||
+                (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest && !IsBasicChest(x)) ||
                 Settings.ClickAreaTransitions.Value && x.ItemOnGround.Type == EntityType.AreaTransition ||
-                Settings.ClickEssences.Value && x.Label.GetElementByString("The monster is imprisoned by powerful Essences.") != null));
+                Settings.ClickEssences.Value && GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null));
+        }
+
+        public Element GetElementByString(Element label, string str)
+        {
+            return label.Text == str ? label : label.Children.Select(child => GetElementByString(child, str)).FirstOrDefault(element => element != null);
         }
     }
 }

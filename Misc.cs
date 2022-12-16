@@ -27,7 +27,7 @@ namespace ClickIt
         public static Vector2 FindSpotInventory(CustomItem item)
         {
             var location = new Vector2(-1, -1);
-            var InventorySlots = ClickIt.Controller.inventorySlots;
+            var InventorySlots = ClickIt.Controller.InventorySlots;
             var inventoryItems = ClickIt.Controller.InventoryItems.InventorySlotItems;
             var width = 12;
             var height = 5;
@@ -65,7 +65,6 @@ namespace ClickIt
             if (!item.GroundItem.HasComponent<Stack>() || !inventoryItem.Item.HasComponent<Stack>())
                 return StackableItem.Cannot;
 
-            var itemStackComp = item.GroundItem.GetComponent<Stack>();
             var inventoryItemStackComp = inventoryItem.Item.GetComponent<Stack>();
 
             if (inventoryItemStackComp.Size == inventoryItemStackComp.Info.MaxStackSize)
