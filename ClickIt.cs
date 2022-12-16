@@ -5,11 +5,13 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.Elements.InventoryElements;
 using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using ExileCore.Shared.Enums;
 using ExileCore.Shared.Helpers;
 using SharpDX;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -18,6 +20,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
+#nullable enable
 namespace ClickIt
 {
     public class ClickIt : BaseSettingsPlugin<ClickItSettings>
@@ -31,6 +34,8 @@ namespace ClickIt
         static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")]
         static extern int GetWindowText(IntPtr hwnd, StringBuilder ss, int count);
+
+        private bool waitingForCorruption = false;
 
         public override bool Initialise()
         {
@@ -171,6 +176,8 @@ namespace ClickIt
                     return;
                 if (InTownOrHideout())
                     return;
+                if (waitingForCorruption)
+                    return;
 
                 LabelOnGround nextLabel = null;
                 Entity shrine = GetShrine();
@@ -185,7 +192,7 @@ namespace ClickIt
                         nextLabel = GetLabelNoCaching();
                 }
 
-                if (Settings.ClickShrines && IsShrineVisible() &&
+                if (Settings.ClickShrines && IsShrineVisible() && !waitingForCorruption &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X > Gamewindow.TopLeft.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X < Gamewindow.TopRight.X &&
                     GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y > Gamewindow.TopLeft.Y &&
@@ -229,63 +236,59 @@ namespace ClickIt
                             )
                         {
                             //we should corrupt this
+                            waitingForCorruption = true;
+                            new Thread(() => 
+{
+                                float latency = GameController.Game.IngameState.ServerData.Latency;
 
-                            float latency = GameController.Game.IngameState.ServerData.Latency;
+                                //we have to open the inventory first for inventoryItems to fetch items correctly
+                                Keyboard.KeyPress(Settings.OpenInventoryKey);
+                                Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
 
-                            //we have to open the inventory first for inventoryItems to fetch items correctly
-                            Keyboard.KeyPress(Settings.OpenInventoryKey);
-                            Thread.Sleep((int)(latency + Settings.InventoryOpenDelayInMs));
+                                if (Settings.DebugMode) LogMessage("(ClickIt) Fetching inventory items");
 
-                            if (Settings.DebugMode) LogMessage("(ClickIt) Fetching inventory items");
+                                List<NormalInventoryItem> inventoryItems = FetchInventoryItems();
 
-                            var inventoryItems = new List<NormalInventoryItem>();
+                                var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
+                                if (remnantOfCorruption == null)
+                                {
+                                    if (Settings.DebugMode) LogError("(ClickIt) Can't find remnant");
+                                    return;
+                                }
 
-                            try
-                            {
-                                inventoryItems = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems.ToList();
-                            } catch (Exception)
-                            {
-                                LogError("(ClickIt) inventoryItems has incorrect offset, please corrupt manually");
-                                return;
-                            }
+                                if (Settings.DebugMode) LogMessage("(ClickIt) Found remnant");
 
-                            var remnantOfCorruption = inventoryItems.FirstOrDefault(slot => slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
-                            if (remnantOfCorruption == null)
-                            {
-                                if (Settings.DebugMode) LogError("(ClickIt) Can't find remnant");
-                                return;
-                            }
+                                Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
+                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
-                            if (Settings.DebugMode) LogMessage("(ClickIt) Found remnant");
+                                Mouse.RightClick();
+                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
-                            Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center + GameController.Window.GetWindowRectangle().TopLeft);
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                                centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                                    + Gamewindow.TopLeft
+                                    + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
+                                Input.SetCursorPos(centerOfLabel.Value);
+                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
-                            Mouse.RightClick();
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                                Mouse.LeftClick();
 
-                            centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                + Gamewindow.TopLeft
-                                + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
-                            Input.SetCursorPos(centerOfLabel.Value);
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
-                            Mouse.LeftClick();
+                                Keyboard.KeyPress(Settings.OpenInventoryKey);
 
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
-                            Keyboard.KeyPress(Settings.OpenInventoryKey);
-
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                                waitingForCorruption = false;
+                            }).Start();
 
                         }
-                        else
+                        else if (!waitingForCorruption)
                         {
                             Input.SetCursorPos(centerOfLabel.Value);
                             Input.Click(MouseButtons.Left);
                         }
                     }
-                    else if (Settings.ClickItems)
+                    else if (Settings.ClickItems && !waitingForCorruption)
                     {
                         Input.SetCursorPos(centerOfLabel.Value);
                         Input.Click(MouseButtons.Left);
@@ -297,6 +300,16 @@ namespace ClickIt
                 LogError(e.ToString());
             }
         }
+        
+        private List<NormalInventoryItem> FetchInventoryItems()
+        {
+            ClickIt core = this;
+            List<NormalInventoryItem> inventoryItems = new List<NormalInventoryItem>();
+            IList<NormalInventoryItem> pullItems = core.GameController.Game.IngameState.IngameUi.InventoryPanel[(InventoryIndex) 13].VisibleInventoryItems;
+            new WaitFunctionTimed((Func<bool>) (() => pullItems != null), true, 500, "PlayerInventory->VisibleInventoryItems is null");
+            return new List<NormalInventoryItem>(pullItems);
+        }
+
         private bool IsBasicChest(LabelOnGround label)
         {
             switch (label.ItemOnGround.RenderName.ToLower())
