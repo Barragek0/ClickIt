@@ -36,6 +36,13 @@ namespace ClickIt.Utils
             KeyUp(key);
         }
 
+        public static void KeyPress(Keys key, int delay)
+        {
+            KeyDown(key);
+            Thread.Sleep(delay);
+            KeyUp(key);
+        }
+
         public static bool IsKeyDown(Keys key)
         {
             return GetKeyState((int)key) < 0;

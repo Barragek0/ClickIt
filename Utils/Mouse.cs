@@ -1,6 +1,6 @@
-﻿using System.Runtime.InteropServices;
+﻿using SharpDX;
+using System.Runtime.InteropServices;
 using System.Threading;
-using SharpDX;
 
 namespace ClickIt.Utils
 {
@@ -11,6 +11,10 @@ namespace ClickIt.Utils
 
         [DllImport("user32.dll")]
         private static extern void mouse_event(int dwFlags, int dx, int dy, int cButtons, int dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        private static extern bool BlockInput(bool block);
+        public static void blockInput(bool block) => Mouse.BlockInput(block);
 
         public const int MOUSEEVENTF_LEFTDOWN = 0x02;
         public const int MOUSEEVENTF_LEFTUP = 0x04;
