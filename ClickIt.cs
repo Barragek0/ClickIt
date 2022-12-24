@@ -378,7 +378,8 @@ namespace ClickIt
                     {
                         Graphics.DrawText("Top upside weights couldn't be recognised " +
                             "\n1:" + (string.IsNullOrEmpty(altar.TopMods.FirstUpside) ? "null" : string.IsNullOrEmpty(altar.TopMods.FirstUpside)) +
-                            "\n2:" + (string.IsNullOrEmpty(altar.TopMods.SecondUpside) ? "null" : string.IsNullOrEmpty(altar.TopMods.SecondUpside)),
+                            "\n2:" + (string.IsNullOrEmpty(altar.TopMods.SecondUpside) ? "null" : string.IsNullOrEmpty(altar.TopMods.SecondUpside)) +
+                            "\nPlease report this as a bug on github",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
@@ -412,6 +413,13 @@ namespace ClickIt
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
+                    }
+                    else if ((TopDownside1Weight >= 90 || TopDownside2Weight >= 90) && (BottomDownside1Weight >= 90 || BottomDownside2Weight >= 90))
+                    {
+                        Graphics.DrawText("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.",
+                            altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
+                        Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 2);
+                        Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 2);
                     }
                     else if (TopUpside1Weight >= 90 || TopUpside2Weight >= 90)
                     {
