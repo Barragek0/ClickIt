@@ -2435,31 +2435,31 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 26, 16000)]
         public RangeNode<int> Eater_EldritchMinionsChanceToDropAnAdditionalOrbOfScouring_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Chromatic Orb", 25, 16000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Chromatic Orb", 27, 16000)]
         public ToggleNode Eater_EldritchMinionsChanceToDropAnAdditionalChromaticOrb { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 26, 16000)]
+            "If the mod is garbage, set it to 0.", 28, 16000)]
         public RangeNode<int> Eater_EldritchMinionsChanceToDropAnAdditionalChromaticOrb_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Orb of Fusing", 27, 16000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Orb of Fusing", 29, 16000)]
         public ToggleNode Eater_EldritchMinionsChanceToDropAnAdditionalOrbOfFusing { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 28, 16000)]
+            "If the mod is garbage, set it to 0.", 30, 16000)]
         public RangeNode<int> Eater_EldritchMinionsChanceToDropAnAdditionalOrbOfFusing_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Jeweller's Orb ", 29, 16000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Jeweller's Orb ", 31, 16000)]
         public ToggleNode Eater_EldritchMinionsChanceToDropAnAdditionalJewellersOrb { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 30, 16000)]
+            "If the mod is garbage, set it to 0.", 32, 16000)]
         public RangeNode<int> Eater_EldritchMinionsChanceToDropAnAdditionalJewellersOrb_Weight { get; set; } = new RangeNode<int>(3, 1, 100);
 
         [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Chaos Orb ", 37, 16000)]
@@ -2782,41 +2782,41 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 6, 17000)]
         public RangeNode<int> Eater_PlayerMapsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:  	Divination Cards dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 5, 17000)]
+        [Menu("Player:  	Divination Cards dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 7, 17000)]
         public ToggleNode Eater_PlayerDivinationCardsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 6, 17000)]
+            "If the mod is garbage, set it to 0.", 8, 17000)]
         public RangeNode<int> Eater_PlayerDivinationCardsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
         [Menu("Player:  	(10 to 20)% increased Quantity of Items found in this Area\n" +
-            "                   (15 to 35)% increased Rarity of Items found in this Area ", 7, 17000)]
+            "                   (15 to 35)% increased Rarity of Items found in this Area ", 9, 17000)]
         public ToggleNode Eater_PlayerIncreasedQuantityOfItemsFoundInThisArea { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 8, 17000)]
+            "If the mod is garbage, set it to 0.", 10, 17000)]
         public RangeNode<int> Eater_PlayerIncreasedQuantityOfItemsFoundInThisArea_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Player:  	Basic Currency Items dropped by slain Enemies have (10 to 15)% chance to be Duplicated", 9, 17000)]
+        [Menu("Player:  	Basic Currency Items dropped by slain Enemies have (10 to 15)% chance to be Duplicated", 11, 17000)]
         public ToggleNode Eater_PlayerBasicCurrencyItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 10, 17000)]
+            "If the mod is garbage, set it to 0.", 12, 17000)]
         public RangeNode<int> Eater_PlayerBasicCurrencyItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Player:  	Gems dropped by slain Enemies have (10 to 15)% chance to be Duplicated ", 11, 17000)]
+        [Menu("Player:  	Gems dropped by slain Enemies have (10 to 15)% chance to be Duplicated ", 13, 17000)]
         public ToggleNode Eater_PlayerGemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 12, 17000)]
+            "If the mod is garbage, set it to 0.", 14, 17000)]
         public RangeNode<int> Eater_PlayerGemsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(1, 1, 100);
 
     }
