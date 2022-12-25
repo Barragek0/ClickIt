@@ -423,7 +423,7 @@ namespace ClickIt
                     }
                     else if (TopUpside1Weight >= 90 || TopUpside2Weight >= 90)
                     {
-                        Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the mods has a weight of 90+",
+                        Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.LawnGreen, 3);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 2);
@@ -431,11 +431,27 @@ namespace ClickIt
                     }
                     else if (BottomUpside1Weight >= 90 || BottomUpside2Weight >= 90)
                     {
-                        Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the mods has a weight of 90+",
+                        Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 2);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.LawnGreen, 3);
                         boxToClick = altar.BottomButton.Element;
+                    }
+                    else if (TopDownside1Weight >= 90 || TopDownside2Weight >= 90)
+                    {
+                        Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the top downsides has a weight of 90+",
+                            altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
+                        Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 3);
+                        Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.LawnGreen, 2);
+                        boxToClick = altar.BottomButton.Element;
+                    }
+                    else if (BottomDownside1Weight >= 90 || BottomDownside2Weight >= 90)
+                    {
+                        Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the bottom downsides has a weight of 90+",
+                            altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
+                        Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.LawnGreen, 2);
+                        Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 3);
+                        boxToClick = altar.TopButton.Element;
                     }
                     else if (TopWeight > BottomWeight)
                     {

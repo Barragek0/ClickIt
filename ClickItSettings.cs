@@ -425,68 +425,68 @@ namespace ClickIt
             "If the mod doesn't affect your build at all, set the weight to 1.", 8, 7000)]
         public RangeNode<int> Exarch_PlayerTakeChaosDamagePerSecondDuringAnyFlaskEffect_Weight { get; set; } = new RangeNode<int>(100, 1, 100);
 
-        [Menu("Player:  Spell Hits have (20 to 30)% chance to Hinder you ", 7, 7000)]
+        [Menu("Player:  Spell Hits have (20 to 30)% chance to Hinder you ", 9, 7000)]
         public ToggleNode Exarch_PlayerSpellHitsHaveChanceToHinderYou { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 8, 7000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 10, 7000)]
         public RangeNode<int> Exarch_PlayerSpellHitsHaveChanceToHinderYou_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
         [Menu("Player:  All Damage taken from Hits can Scorch you\n" +
-            "               (25 to 35)% chance to be Scorched when Hit ", 9, 7000)]
+            "               (25 to 35)% chance to be Scorched when Hit ", 11, 7000)]
         public ToggleNode Exarch_PlayerAllDamageTakenFromHitsCanScorchYou { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 10, 7000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 12, 7000)]
         public RangeNode<int> Exarch_PlayerAllDamageTakenFromHitsCanScorchYou_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Player:  Curses you inflict are reflected back to you ", 11, 7000)]
+        [Menu("Player:  Curses you inflict are reflected back to you ", 13, 7000)]
         public ToggleNode Exarch_PlayerCursesYouInflictAreReflectedBackToYou { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 12, 7000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 14, 7000)]
         public RangeNode<int> Exarch_PlayerCursesYouInflictAreReflectedBackToYou_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Player:  (15 to 20)% chance for Enemies to drop Burning Ground when Hitting you, no more than once every 2 seconds ", 13, 7000)]
+        [Menu("Player:  (15 to 20)% chance for Enemies to drop Burning Ground when Hitting you, no more than once every 2 seconds ", 15, 7000)]
         public ToggleNode Exarch_PlayerChanceForEnemiesToDropBurningGroundWhenHittingYou { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 14, 7000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 16, 7000)]
         public RangeNode<int> Exarch_PlayerChanceForEnemiesToDropBurningGroundWhenHittingYou_Weight { get; set; } = new RangeNode<int>(1, 1, 100);
 
-        [Menu("Player:  30% chance to be targeted by a Meteor when you use a Flask ", 15, 7000)]
+        [Menu("Player:  30% chance to be targeted by a Meteor when you use a Flask ", 17, 7000)]
         public ToggleNode Exarch_PlayerChanceToBeTargetedByAMeteor { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 16, 7000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 18, 7000)]
         public RangeNode<int> Exarch_PlayerChanceToBeTargetedByAMeteor_Weight { get; set; } = new RangeNode<int>(100, 1, 100);
 
-        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Fire Damage ", 17, 7000)]
+        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Fire Damage ", 19, 7000)]
         public ToggleNode Exarch_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraFire { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 18, 7000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 20, 7000)]
         public RangeNode<int> Exarch_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraFire_Weight { get; set; } = new RangeNode<int>(60, 1, 100);
 
-        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Chaos Damage ", 19, 7000)]
+        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Chaos Damage ", 21, 7000)]
         public ToggleNode Exarch_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraChaos { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 20, 7000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 22, 7000)]
         public RangeNode<int> Exarch_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraChaos_Weight { get; set; } = new RangeNode<int>(85, 1, 100);
 
 
