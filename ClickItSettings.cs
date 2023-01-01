@@ -82,8 +82,8 @@ namespace ClickIt
             "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 12, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
 
-        [Menu("Block User Input", "Blocks the user from moving the mouse / clicking while the hotkey is held. Will help stop missclicking.", 13, 3000)]
-        public ToggleNode BlockUserInput { get; internal set; } = new ToggleNode(true);
+        [Menu("Block User Input", "Blocks the user from moving the mouse or clicking while the hotkey is held. Will help stop missclicking.", 13, 3000)]
+        public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
 
         [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 14, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
