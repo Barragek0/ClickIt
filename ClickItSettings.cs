@@ -101,15 +101,18 @@ namespace ClickIt
         [Menu("Open Inventory Hotkey", "Hotkey to open your inventory", 2, 3500)]
         public HotkeyNode OpenInventoryKey { get; set; } = new HotkeyNode(Keys.I);
 
-        [Menu("Corrupt Essences", "Corrupt misery, envy, dread, scorn.", 3, 3500)]
-        public ToggleNode CorruptEssences { get; set; } = new ToggleNode(true);
+        [Menu("Corrupt ALL Essences (Warning: This overrides all settings below)", "Corrupt all essences, overriding the settings below.", 3, 3500)]
+        public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
 
-        [Menu("Corrupt Essences that typically result in profit", "Corrupt certain essences that typically result in a profit (Currently: Loathing).\n\n" +
-            "Warning: This may result in you losing money, check the price of the essences listed above occasionally during the league.", 4, 3500)]
+        [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 4, 3500)]
+        public ToggleNode CorruptMEDSEssences { get; set; } = new ToggleNode(true);
+
+        [Menu("Corrupt Shrieking Essences that typically result in profit when sold in bulk", "Corrupt shrieking essences that typically result in a profit when sold in bulk (Currently: Contempt, Woe, Sorrow, Loathing, Zeal, Envy).\n\n" +
+            "Warning: This may result in you losing money, check the price of the essences listed above occasionally during the league.", 5, 3500)]
         public ToggleNode CorruptProfitableEssences { get; set; } = new ToggleNode(true);
 
         [Menu("Corrupt Essences which don't contain a shrieking essence", "Corrupt any essences that don't have a shrieking essence on them.\n\n" +
-            "This is for if you use the 'Crystal Resonance' atlas passive, which duplicates monsters when they contain a shrieking essence.", 5, 3500)]
+            "This is for if you use the 'Crystal Resonance' atlas passive, which duplicates monsters when they contain a shrieking essence.", 6, 3500)]
         public ToggleNode CorruptAnyNonShrieking { get; set; } = new ToggleNode(true);
 
 

@@ -1166,42 +1166,65 @@ namespace ClickIt
                         }
 
                         Element label = nextLabel.Label.Parent;
-                        if (GetElementByString(label, "Corrupted") == null && Settings.CorruptEssences &&
-                            (GetElementByString(label, "Screaming Essence of Misery") != null ||
-                             GetElementByString(label, "Screaming Essence of Envy") != null ||
-                             GetElementByString(label, "Screaming Essence of Dread") != null ||
-                             GetElementByString(label, "Screaming Essence of Scorn") != null ||
-                             GetElementByString(label, "Shrieking Essence of Misery") != null ||
-                             GetElementByString(label, "Shrieking Essence of Envy") != null ||
-                             GetElementByString(label, "Shrieking Essence of Dread") != null ||
-                             GetElementByString(label, "Shrieking Essence of Scorn") != null
-                             || (Settings.CorruptProfitableEssences &&
-                                 (GetElementByString(label, "Shrieking Essence of Loathing") != null))
-                             || (Settings.CorruptAnyNonShrieking &&
-                                 GetElementByString(label, "Shrieking Essence of Greed") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Contempt") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Hatred") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Woe") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Fear") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Anger") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Torment") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Sorrow") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Rage") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Suffering") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Wrath") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Doubt") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Loathing") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Zeal") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Anguish") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Spite") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Scorn") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Envy") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Misery") == null &&
-                                 GetElementByString(label, "Shrieking Essence of Dread") == null)))
+                        bool MeetsCorruptCriteria = false;
+                        if (GetElementByString(label, "Corrupted") == null)
+                        {
+                            if (Settings.CorruptAllEssences)
+                            {
+                                MeetsCorruptCriteria = true;
+                            }
+                            else if (Settings.CorruptMEDSEssences &&
+                                (GetElementByString(label, "Screaming Essence of Misery") != null ||
+                                GetElementByString(label, "Screaming Essence of Envy") != null ||
+                                GetElementByString(label, "Screaming Essence of Dread") != null ||
+                                GetElementByString(label, "Screaming Essence of Scorn") != null ||
+                                GetElementByString(label, "Shrieking Essence of Misery") != null ||
+                                GetElementByString(label, "Shrieking Essence of Envy") != null ||
+                                GetElementByString(label, "Shrieking Essence of Dread") != null ||
+                                GetElementByString(label, "Shrieking Essence of Scorn") != null))
+                            {
+                                MeetsCorruptCriteria = true;
+                            }
+                            else if (Settings.CorruptProfitableEssences &&
+                               (GetElementByString(label, "Shrieking Essence of Contempt") != null) ||
+                               (GetElementByString(label, "Shrieking Essence of Woe") != null) ||
+                               (GetElementByString(label, "Shrieking Essence of Sorrow") != null) ||
+                               (GetElementByString(label, "Shrieking Essence of Loathing") != null) ||
+                               (GetElementByString(label, "Shrieking Essence of Zeal") != null) ||
+                               (GetElementByString(label, "Shrieking Essence of Envy") != null))
+                            {
+                                MeetsCorruptCriteria = true;
+                            }
+                            else if (Settings.CorruptAnyNonShrieking &&
+                               GetElementByString(label, "Shrieking Essence of Greed") == null &&
+                               GetElementByString(label, "Shrieking Essence of Contempt") == null &&
+                               GetElementByString(label, "Shrieking Essence of Hatred") == null &&
+                               GetElementByString(label, "Shrieking Essence of Woe") == null &&
+                               GetElementByString(label, "Shrieking Essence of Fear") == null &&
+                               GetElementByString(label, "Shrieking Essence of Anger") == null &&
+                               GetElementByString(label, "Shrieking Essence of Torment") == null &&
+                               GetElementByString(label, "Shrieking Essence of Sorrow") == null &&
+                               GetElementByString(label, "Shrieking Essence of Rage") == null &&
+                               GetElementByString(label, "Shrieking Essence of Suffering") == null &&
+                               GetElementByString(label, "Shrieking Essence of Wrath") == null &&
+                               GetElementByString(label, "Shrieking Essence of Doubt") == null &&
+                               GetElementByString(label, "Shrieking Essence of Loathing") == null &&
+                               GetElementByString(label, "Shrieking Essence of Zeal") == null &&
+                               GetElementByString(label, "Shrieking Essence of Anguish") == null &&
+                               GetElementByString(label, "Shrieking Essence of Spite") == null &&
+                               GetElementByString(label, "Shrieking Essence of Scorn") == null &&
+                               GetElementByString(label, "Shrieking Essence of Envy") == null &&
+                               GetElementByString(label, "Shrieking Essence of Misery") == null &&
+                               GetElementByString(label, "Shrieking Essence of Dread") == null)
+                            {
+                                MeetsCorruptCriteria = true;
+                            }
+                        }
+                        if (MeetsCorruptCriteria)
                         {
                             if (Settings.DebugMode)
                             {
-                                LogMessage("Essence is not corrupted, lets corrupt it?", 5);
+                                LogMessage("Essence is not corrupted and meets criteria, lets corrupt it", 5);
                             }
                             //we should corrupt this
                             if (Settings.DebugMode)
@@ -1344,6 +1367,10 @@ namespace ClickIt
                         }
                         Mouse.blockInput(false);
                     }
+                }
+                else
+                {
+                    Mouse.blockInput(false);
                 }
             }
             catch (Exception e)
