@@ -493,9 +493,27 @@ namespace ClickIt
 
                     if (Settings.ClickExarchAltars && PointIsInClickableArea(boxToClick.GetClientRect().Center))
                     {
-                        if (boxToClick != null)
+                        if (boxToClick != null && boxToClick.IsVisible)
                         {
-                            ClickLabel(boxToClick);
+                            if (canClick())
+                            {
+                                if (ThirdTimer.ElapsedMilliseconds > Settings.WaitTimeInMs.Value + Random.Next(0, 5))
+                                {
+                                    Mouse.blockInput(true);
+                                    ThirdTimer.Restart();
+                                    Input.SetCursorPos(boxToClick.GetClientRect().Center);
+                                    if (Settings.LeftHanded)
+                                    {
+                                        Mouse.RightClick();
+                                    }
+                                    else
+                                    {
+                                        Mouse.LeftClick();
+                                    }
+                                    Mouse.blockInput(false);
+                                }
+                            }
+
                         }
                     }
                 }
@@ -503,40 +521,45 @@ namespace ClickIt
 
             Core.ParallelRunner.Run(new Coroutine(ScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
 
-            bool runClickLogic = true;
+
+            if (canClick())
+            {
+                Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
+            }
+        }
+
+        private bool canClick()
+        {
             if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
             {
-                runClickLogic = false;
+                return false;
             }
 
             if (!IsPOEActive())
             {
-                runClickLogic = false;
+                return false;
             }
 
             if (Settings.BlockOnOpenLeftRightPanel && IsPanelOpen())
             {
-                runClickLogic = false;
+                return false;
             }
 
             if (InTownOrHideout())
             {
-                runClickLogic = false;
+                return false;
             }
 
             if (waitingForCorruption)
             {
-                runClickLogic = false;
+                return false;
             }
 
             if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible)
             {
-                runClickLogic = false;
+                return false;
             }
-            if (runClickLogic)
-            {
-                Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
-            }
+            return true;
         }
 
         private IEnumerator ScanForAltarsLogic()
@@ -1061,29 +1084,7 @@ namespace ClickIt
 
                 List<LabelOnGround> harvestLabels = GetHarvestLabels();
 
-                if (altar != null && altar.IsVisible)
-                {
-                    if (ThirdTimer.ElapsedMilliseconds <
-                        Settings.WaitTimeInMs.Value +
-                        Random.Next(0, 5)) //+random to add variation, so we're not clicking at the same interval everytime
-                    {
-                        yield break;
-                    }
-
-                    ThirdTimer.Restart();
-                    Input.SetCursorPos(altar.GetClientRect().Center);
-                    if (Settings.LeftHanded)
-                    {
-                        Mouse.RightClick();
-                    }
-                    else
-                    {
-                        Mouse.LeftClick();
-                    }
-
-                    Mouse.blockInput(false);
-                }
-                else if (Settings.NearestHarvest && harvestLabels.Count > 0)
+                if (Settings.NearestHarvest && harvestLabels.Count > 0)
                 {
                     LabelOnGround harvestLabel = harvestLabels.FirstOrDefault();
                     if (harvestLabel != null && harvestLabel.IsVisible)
