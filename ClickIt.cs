@@ -5,12 +5,14 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.Elements.InventoryElements;
 using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using ExileCore.Shared.Enums;
 using ExileCore.Shared.Helpers;
 using ExileCore.Shared.Nodes;
 using SharpDX;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -22,6 +24,7 @@ using System.Threading.Tasks;
 
 namespace ClickIt
 {
+#nullable enable
     public class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
         private Stopwatch Timer { get; } = new Stopwatch();
@@ -29,7 +32,6 @@ namespace ClickIt
         private Stopwatch ThirdTimer { get; } = new Stopwatch();
         private Random Random { get; } = new Random();
         private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
-        private RectangleF Gamewindow;
 
         [DllImport("user32.dll")]
         static extern IntPtr GetForegroundWindow();
@@ -46,9 +48,8 @@ namespace ClickIt
 
         public override bool Initialise()
         {
-            Gamewindow = GameController.Window.GetWindowRectangle();
             Settings.ReloadPluginButton.OnPressed += () => { ToggleCaching(); };
-            Settings.ReportBugButton.OnPressed += () => { Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues/new"); };
+            Settings.ReportBugButton.OnPressed += () => { Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
 
             if (Settings.CachingEnable)
             {
@@ -499,160 +500,51 @@ namespace ClickIt
                     }
                 }
             }
-        }
 
-        private void ToggleCaching()
-        {
-            if (Settings.CachingEnable.Value && CachedLabels == null)
-            {
-                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
-            }
-            else
-            {
-                CachedLabels = null;
-            }
-        }
+            Core.ParallelRunner.Run(new Coroutine(ScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
 
-        private bool IsPOEActive()
-        {
-            if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+            bool runClickLogic = true;
+            if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) Path of exile window not active");
-                }
-
-                return false;
+                runClickLogic = false;
             }
 
-            return true;
-        }
-
-        private bool IsPanelOpen()
-        {
-            if (GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0 ||
-                GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
+            if (!IsPOEActive())
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) Left or right panel is open");
-                }
-
-                return true;
+                runClickLogic = false;
             }
 
-            return false;
-        }
-
-        private bool GroundItemsVisible()
-        {
-            if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
+            if (Settings.BlockOnOpenLeftRightPanel && IsPanelOpen())
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) No ground items found");
-                }
-
-                return false;
+                runClickLogic = false;
             }
 
-            return true;
-        }
-
-        private bool IsShrineVisible()
-        {
-            return GetShrine() != null;
-        }
-
-        private Entity GetShrine()
-        {
-            Entity shrine = null;
-            foreach (Entity validEntity in GameController.EntityListWrapper.OnlyValidEntities)
+            if (InTownOrHideout())
             {
-                if (validEntity != null &&
-                    PointIsInClickableArea(GameController.Game.IngameState.Camera.WorldToScreen(validEntity.Pos)))
-                {
-                    if (((validEntity.HasComponent<Shrine>() && validEntity.GetComponent<Shrine>().IsAvailable) ||
-                         validEntity.Path == "Metadata/Shrines/Shrine") && validEntity.IsTargetable &&
-                        !validEntity.IsOpened && !validEntity.IsHidden)
-                    {
-                        shrine = validEntity;
-                    }
-                }
+                runClickLogic = false;
             }
 
-            return shrine;
-        }
-
-        private bool InTownOrHideout()
-        {
-            if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
+            if (waitingForCorruption)
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) In hideout or town");
-                }
-
-                return true;
+                runClickLogic = false;
             }
 
-            return false;
+            if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible)
+            {
+                runClickLogic = false;
+            }
+            if (runClickLogic)
+            {
+                Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
+            }
         }
 
-        private static List<Element> elementsByStringContainsList = new List<Element>();
-
-        public List<Element> GetElementsByStringContains(Element label, string str)
+        private IEnumerator ScanForAltarsLogic()
         {
-            elementsByStringContainsList.Clear();
-            if (label != null && label.GetText(512) != null && label.GetText(512).Contains(str))
-            {
-                elementsByStringContainsList.Add(label);
-            }
-
-            IEnumerable<Element> children = label.GetChildAtIndex(0).Children
-                .Where(c => c != null && c.GetText(512) != null && c.GetText(512).Contains(str));
-            if (children != null && children.Count() > 0)
-            {
-                elementsByStringContainsList.AddRange(children);
-            }
-
-            IEnumerable<Element> childrenOfChildren = label.GetChildAtIndex(1).Children
-                .Where(c => c != null && c.GetText(512) != null && c.GetText(512).Contains(str));
-            if (childrenOfChildren != null && childrenOfChildren.Count() > 0)
-            {
-                elementsByStringContainsList.AddRange(childrenOfChildren);
-            }
-
-            return elementsByStringContainsList;
-        }
-
-        List<PrimaryAltarComponent> altarComponents = new List<PrimaryAltarComponent>();
-
-        string GetLine(string text, int lineNo)
-        {
-            string[] lines = text.Replace("\r", "").Split('\n');
-            return lines.Length >= lineNo ? lines[lineNo] : null;
-        }
-
-        int CountLines(string text)
-        {
-            string[] lines = text.Replace("\r", "").Split('\n');
-            return lines.Length;
-        }
-
-        public override Job Tick()
-        {
-            if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 20))
-            {
-                return null;
-            }
-
-            Timer.Restart();
-            ClickLabel();
-            //the code below is taxing, we don't want to run it on every tick
+            //the code below is taxing, we don't want to run it too often
             if (SecondTimer.ElapsedMilliseconds < 500)
             {
-                return null;
+                yield break;
             }
 
             SecondTimer.Restart();
@@ -770,7 +662,132 @@ namespace ClickIt
             {
                 altarComponents.Clear();
             }
+            yield break;
+        }
 
+        private void ToggleCaching()
+        {
+            if (Settings.CachingEnable.Value && CachedLabels == null)
+            {
+                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
+            }
+            else
+            {
+                CachedLabels = null;
+            }
+        }
+
+        private bool IsPOEActive()
+        {
+            if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+            {
+                if (Settings.DebugMode)
+                {
+                    LogMessage("(ClickIt) Path of exile window not active");
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsPanelOpen()
+        {
+            if (GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0 ||
+                GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
+            {
+                if (Settings.DebugMode)
+                {
+                    LogMessage("(ClickIt) Left or right panel is open");
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool GroundItemsVisible()
+        {
+            if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
+            {
+                if (Settings.DebugMode)
+                {
+                    LogMessage("(ClickIt) No ground items found");
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private Entity? GetShrine()
+        {
+            return GameController.EntityListWrapper.OnlyValidEntities.Find(x => x != null && PointIsInClickableArea(GameController.Game.IngameState.Camera.WorldToScreen(x.Pos)) &&
+                                                                            x.HasComponent<Shrine>() && x.GetComponent<Shrine>() != null && x.GetComponent<Shrine>().IsAvailable &&
+                                                                            !x.IsOpened && x.IsTargetable && !x.IsHidden && x.IsValid);
+        }
+
+        private bool InTownOrHideout()
+        {
+            if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
+            {
+                if (Settings.DebugMode)
+                {
+                    LogMessage("(ClickIt) In hideout or town");
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static List<Element> elementsByStringContainsList = new List<Element>();
+
+        public List<Element> GetElementsByStringContains(Element label, string str)
+        {
+            elementsByStringContainsList.Clear();
+            if (label != null && label.GetText(512) != null && label.GetText(512).Contains(str))
+            {
+                elementsByStringContainsList.Add(label);
+            }
+
+            IEnumerable<Element> children = label.GetChildAtIndex(0).Children
+                .Where(c => c != null && c.GetText(512) != null && c.GetText(512).Contains(str));
+            if (children != null && children.Count() > 0)
+            {
+                elementsByStringContainsList.AddRange(children);
+            }
+
+            IEnumerable<Element> childrenOfChildren = label.GetChildAtIndex(1).Children
+                .Where(c => c != null && c.GetText(512) != null && c.GetText(512).Contains(str));
+            if (childrenOfChildren != null && childrenOfChildren.Count() > 0)
+            {
+                elementsByStringContainsList.AddRange(childrenOfChildren);
+            }
+
+            return elementsByStringContainsList;
+        }
+
+        List<PrimaryAltarComponent> altarComponents = new List<PrimaryAltarComponent>();
+
+        string GetLine(string text, int lineNo)
+        {
+            string[] lines = text.Replace("\r", "").Split('\n');
+            return lines.Length >= lineNo ? lines[lineNo] : null;
+        }
+
+        int CountLines(string text)
+        {
+            string[] lines = text.Replace("\r", "").Split('\n');
+            return lines.Length;
+        }
+
+        public override Job Tick()
+        {
             return null;
         }
 
@@ -1023,39 +1040,16 @@ namespace ClickIt
                 .OrderBy(x => x.ItemOnGround.DistancePlayer)
                 .ToList();
 
-        private void ClickLabel(Element? altar = null)
+        private IEnumerator ClickLabel(Element? altar = null)
         {
+            if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 5))
+            {
+                yield break;
+            }
+
+            Timer.Restart();
             try
             {
-                if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
-                {
-                    return;
-                }
-
-                if (!IsPOEActive())
-                {
-                    return;
-                }
-
-                if (Settings.BlockOnOpenLeftRightPanel && IsPanelOpen())
-                {
-                    return;
-                }
-
-                if (InTownOrHideout())
-                {
-                    return;
-                }
-
-                if (waitingForCorruption)
-                {
-                    return;
-                }
-
-                if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible)
-                {
-                    return;
-                }
 
                 if (Settings.BlockUserInput)
                 {
@@ -1063,9 +1057,7 @@ namespace ClickIt
                 }
 
                 LabelOnGround nextLabel = null;
-                Entity shrine = GetShrine();
-
-                Gamewindow = GameController.Window.GetWindowRectangle();
+                Entity? shrine = GetShrine();
 
                 List<LabelOnGround> harvestLabels = GetHarvestLabels();
 
@@ -1073,10 +1065,9 @@ namespace ClickIt
                 {
                     if (ThirdTimer.ElapsedMilliseconds <
                         Settings.WaitTimeInMs.Value +
-                        Random.Next(0,
-                            5)) //+random to add a little variation, so we're not clicking at the exact same interval everytime
+                        Random.Next(0, 5)) //+random to add variation, so we're not clicking at the same interval everytime
                     {
-                        return;
+                        yield break;
                     }
 
                     ThirdTimer.Restart();
@@ -1098,18 +1089,19 @@ namespace ClickIt
                     if (harvestLabel != null && harvestLabel.IsVisible)
                     {
                         ClickLabel(harvestLabel.Label);
+                        yield break;
                     }
                 }
 
-                else if (Settings.ClickShrines && IsShrineVisible() && !waitingForCorruption &&
+                else if (Settings.ClickShrines && shrine != null && !waitingForCorruption &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X >
-                         Gamewindow.TopLeft.X &&
+                         GameController.Window.GetWindowRectangle().TopLeft.X &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X <
-                         Gamewindow.TopRight.X &&
+                         GameController.Window.GetWindowRectangle().TopRight.X &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y >
-                         Gamewindow.TopLeft.Y + 150 &&
+                         GameController.Window.GetWindowRectangle().TopLeft.Y + 150 &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y <
-                         Gamewindow.BottomLeft.Y - 275)
+                         GameController.Window.GetWindowRectangle().BottomLeft.Y - 275)
                 {
                     Input.SetCursorPos(
                         GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
@@ -1136,13 +1128,13 @@ namespace ClickIt
                     }
 
                     var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                        + Gamewindow.TopLeft
+                                        + GameController.Window.GetWindowRectangle().TopLeft
                                         + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
 
                     if (nextLabel?.ItemOnGround.Type == EntityType.Chest)
                     {
                         centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                        + Gamewindow.TopLeft
+                                        + GameController.Window.GetWindowRectangle().TopLeft
                                         + new Vector2(Random.Next(0, 2),
                                             -Random.Next(Settings.ChestHeightOffset, Settings.ChestHeightOffset + 2));
                     }
@@ -1154,7 +1146,7 @@ namespace ClickIt
                             LogMessage("(ClickIt) centerOfLabel has no Value | Cache: " + Settings.CachingEnable.Value);
                         }
 
-                        return;
+                        yield break;
                     }
 
                     if (GetElementByString(nextLabel.Label, "The monster is imprisoned by powerful Essences.") !=
@@ -1295,7 +1287,7 @@ namespace ClickIt
                                 Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
 
                                 centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                                + Gamewindow.TopLeft
+                                                + GameController.Window.GetWindowRectangle().TopLeft
                                                 + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
                                 Input.SetCursorPos(centerOfLabel.Value);
                                 Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
@@ -1360,7 +1352,7 @@ namespace ClickIt
                         }
 
 
-                        if (Settings.ToggleItems && Random.Next(0, 30) == 0)
+                        if (Settings.ToggleItems && Random.Next(0, 20) == 0)
                         {
                             Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);
                             Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);

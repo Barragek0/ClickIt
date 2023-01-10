@@ -19,7 +19,7 @@ namespace ClickIt
         [Menu("Additional Debug Information - Render", "Provides more debug text related to rendering the overlay. ", 2, 900)]
         public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
 
-        [Menu("Report Bug", "If you run into a bug, please report it here.", 3, 900)]
+        [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 3, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
 
 
@@ -1788,13 +1788,13 @@ namespace ClickIt
             "If the mod doesn't affect your build at all, set the weight to 1.", 8, 14000)]
         public RangeNode<int> Eater_PlayerReducedRecoveryRateOfLifeManaAndEnergyShieldPerEnduranceCharge_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Player:  (10 to 20)% reduced Cooldown Recovery Rate per Power Charge  ", 7, 14000)]
+        [Menu("Player:  (10 to 20)% reduced Cooldown Recovery Rate per Power Charge  ", 9, 14000)]
         public ToggleNode Eater_PlayerReducedCooldownRecoveryRatePerPowerCharge { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 8, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 10, 14000)]
         public RangeNode<int> Eater_PlayerReducedCooldownRecoveryRatePerPowerCharge_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
         [Menu("Player:  (25 to 35)% chance for Enemies to drop Chilled Ground when Hitting you, no more than once every 2 seconds ", 9, 14000)]
@@ -1803,80 +1803,80 @@ namespace ClickIt
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 10, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 11, 14000)]
         public RangeNode<int> Eater_PlayerChanceForEnemiesToDropChilledGroundWhenHittingYou_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Player:  (25 to 35)% chance for Enemies to drop Shocked Ground when Hitting you, no more than once every 2 seconds ", 11, 14000)]
+        [Menu("Player:  (25 to 35)% chance for Enemies to drop Shocked Ground when Hitting you, no more than once every 2 seconds ", 12, 14000)]
         public ToggleNode Eater_PlayerChanceForEnemiesToDropShockedGroundWhenHittingYou { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 12, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 13, 14000)]
         public RangeNode<int> Eater_PlayerChanceForEnemiesToDropShockedGroundWhenHittingYou_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
         [Menu("Player:  All Damage taken from Hits can Sap you\n" +
-            "               (25 to 35)% chance to be Sapped when Hit ", 13, 14000)]
+            "               (25 to 35)% chance to be Sapped when Hit ", 14, 14000)]
         public ToggleNode Eater_PlayerAllDamageTakenFromHitsCanSapYou { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 14, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 15, 14000)]
         public RangeNode<int> Eater_PlayerAllDamageTakenFromHitsCanSapYou_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Cold Damage ", 15, 14000)]
+        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Cold Damage ", 16, 14000)]
         public ToggleNode Eater_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraCold { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 16, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 17, 14000)]
         public RangeNode<int> Eater_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraCold_Weight { get; set; } = new RangeNode<int>(60, 1, 100);
 
-        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Lightning Damage ", 17, 14000)]
+        [Menu("Player:  Nearby Enemies Gain 100% of their Physical Damage as Extra Lightning Damage ", 18, 14000)]
         public ToggleNode Eater_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraLightning { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 18, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 19, 14000)]
         public RangeNode<int> Eater_PlayerNearbyEnemiesGainOfTheirPhysicalDamageAsExtraLightning_Weight { get; set; } = new RangeNode<int>(60, 1, 100);
 
-        [Menu("Player:  Projectiles are fired in random directions ", 19, 14000)]
+        [Menu("Player:  Projectiles are fired in random directions ", 20, 14000)]
         public ToggleNode Eater_PlayerProjectilesAreFiredInRandomDirections { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 20, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 21, 14000)]
         public RangeNode<int> Eater_PlayerProjectilesAreFiredInRandomDirections_Weight { get; set; } = new RangeNode<int>(100, 1, 100);
 
-        [Menu("Player:  Spell Hits have (25 to 35)% chance to Hinder you ", 21, 14000)]
+        [Menu("Player:  Spell Hits have (25 to 35)% chance to Hinder you ", 22, 14000)]
         public ToggleNode Eater_PlayerSpellHitsHaveChanceToHinder { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 22, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 23, 14000)]
         public RangeNode<int> Eater_PlayerSpellHitsHaveChanceToHinder_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Player:  Non-Damaging Ailments you inflict are reflected back to you ", 23, 14000)]
+        [Menu("Player:  Non-Damaging Ailments you inflict are reflected back to you ", 24, 14000)]
         public ToggleNode Eater_PlayerNonDamagingAilmentsYouInflictAreReflected { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 24, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 25, 14000)]
         public RangeNode<int> Eater_PlayerNonDamagingAilmentsYouInflictAreReflected_Weight { get; set; } = new RangeNode<int>(50, 1, 100);
 
-        [Menu("Player:  Number of grasping vines to gain every second while stationary", 25, 14000)]
+        [Menu("Player:  Number of grasping vines to gain every second while stationary", 26, 14000)]
         public ToggleNode Eater_PlayerNumberOfGraspingVinesToGainEverySecondWhileStationary { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
-            "If the mod doesn't affect your build at all, set the weight to 1.", 26, 14000)]
+            "If the mod doesn't affect your build at all, set the weight to 1.", 27, 14000)]
         public RangeNode<int> Eater_PlayerNumberOfGraspingVinesToGainEverySecondWhileStationary_Weight { get; set; } = new RangeNode<int>(100, 1, 100);
 
 
