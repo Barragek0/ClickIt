@@ -29,7 +29,6 @@ namespace ClickIt
     {
         private Stopwatch Timer { get; } = new Stopwatch();
         private Stopwatch SecondTimer { get; } = new Stopwatch();
-        private Stopwatch ThirdTimer { get; } = new Stopwatch();
         private Random Random { get; } = new Random();
         private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
 
@@ -58,7 +57,6 @@ namespace ClickIt
 
             Timer.Start();
             SecondTimer.Start();
-            ThirdTimer.Start();
             return true;
         }
 
@@ -497,21 +495,17 @@ namespace ClickIt
                         {
                             if (canClick())
                             {
-                                if (ThirdTimer.ElapsedMilliseconds > Settings.WaitTimeInMs.Value + Random.Next(0, 5))
+                                Mouse.blockInput(true);
+                                Input.SetCursorPos(boxToClick.GetClientRect().Center);
+                                if (Settings.LeftHanded)
                                 {
-                                    Mouse.blockInput(true);
-                                    ThirdTimer.Restart();
-                                    Input.SetCursorPos(boxToClick.GetClientRect().Center);
-                                    if (Settings.LeftHanded)
-                                    {
-                                        Mouse.RightClick();
-                                    }
-                                    else
-                                    {
-                                        Mouse.LeftClick();
-                                    }
-                                    Mouse.blockInput(false);
+                                    Mouse.RightClick();
                                 }
+                                else
+                                {
+                                    Mouse.LeftClick();
+                                }
+                                Mouse.blockInput(false);
                             }
 
                         }
@@ -1084,12 +1078,49 @@ namespace ClickIt
 
                 List<LabelOnGround> harvestLabels = GetHarvestLabels();
 
+                var timer = new Stopwatch();
+                if (Settings.CachingEnable)
+                {
+                    timer.Start();
+                    nextLabel = GetLabelCaching();
+                    if (Settings.DebugMode)
+                    {
+                        LogMessage("Collecting cached ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
+                    }
+
+                    timer.Stop();
+                }
+                else
+                {
+                    timer.Start();
+                    nextLabel = GetLabelNoCaching();
+                    if (Settings.DebugMode)
+                    {
+                        LogMessage("Collecting uncached ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
+                    }
+
+                    timer.Stop();
+                }
+
                 if (Settings.NearestHarvest && harvestLabels.Count > 0)
                 {
                     LabelOnGround harvestLabel = harvestLabels.FirstOrDefault();
                     if (harvestLabel != null && harvestLabel.IsVisible)
                     {
-                        ClickLabel(harvestLabel.Label);
+                        if (canClick())
+                        {
+                            Mouse.blockInput(true);
+                            Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center);
+                            if (Settings.LeftHanded)
+                            {
+                                Mouse.RightClick();
+                            }
+                            else
+                            {
+                                Mouse.LeftClick();
+                            }
+                            Mouse.blockInput(false);
+                        }
                         yield break;
                     }
                 }
@@ -1117,16 +1148,221 @@ namespace ClickIt
 
                     Mouse.blockInput(false);
                 }
-                else if (Settings.ClickItems && GroundItemsVisible())
+                else if (nextLabel != null && GetElementByString(nextLabel.Label, "The monster is imprisoned by powerful Essences.") !=
+                        null && Settings.ClickEssences && GroundItemsVisible())
                 {
-                    if (Settings.CachingEnable)
+                    if (Settings.DebugMode)
                     {
-                        nextLabel = GetLabelCaching();
+                        LogMessage("Found an essence", 5);
+                    }
+
+                    Element label = nextLabel.Label.Parent;
+                    bool MeetsCorruptCriteria = false;
+
+                    var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                                        + GameController.Window.GetWindowRectangle().TopLeft
+                                        + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
+
+                    if (nextLabel?.ItemOnGround.Type == EntityType.Chest)
+                    {
+                        centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                                        + GameController.Window.GetWindowRectangle().TopLeft
+                                        + new Vector2(Random.Next(0, 2),
+                                            -Random.Next(Settings.ChestHeightOffset, Settings.ChestHeightOffset + 2));
+                    }
+
+                    if (!centerOfLabel.HasValue)
+                    {
+                        if (Settings.DebugMode)
+                        {
+                            LogMessage("(ClickIt) centerOfLabel has no Value | Cache: " + Settings.CachingEnable.Value);
+                        }
+
+                        yield break;
+                    }
+                    if (GetElementByString(label, "Corrupted") == null)
+                    {
+                        if (Settings.CorruptAllEssences)
+                        {
+                            MeetsCorruptCriteria = true;
+                        }
+                        else if (Settings.CorruptMEDSEssences &&
+                            (GetElementByString(label, "Screaming Essence of Misery") != null ||
+                            GetElementByString(label, "Screaming Essence of Envy") != null ||
+                            GetElementByString(label, "Screaming Essence of Dread") != null ||
+                            GetElementByString(label, "Screaming Essence of Scorn") != null ||
+                            GetElementByString(label, "Shrieking Essence of Misery") != null ||
+                            GetElementByString(label, "Shrieking Essence of Envy") != null ||
+                            GetElementByString(label, "Shrieking Essence of Dread") != null ||
+                            GetElementByString(label, "Shrieking Essence of Scorn") != null))
+                        {
+                            MeetsCorruptCriteria = true;
+                        }
+                        else if (Settings.CorruptProfitableEssences &&
+                           (GetElementByString(label, "Shrieking Essence of Contempt") != null) ||
+                           (GetElementByString(label, "Shrieking Essence of Woe") != null) ||
+                           (GetElementByString(label, "Shrieking Essence of Sorrow") != null) ||
+                           (GetElementByString(label, "Shrieking Essence of Loathing") != null) ||
+                           (GetElementByString(label, "Shrieking Essence of Zeal") != null) ||
+                           (GetElementByString(label, "Shrieking Essence of Envy") != null))
+                        {
+                            MeetsCorruptCriteria = true;
+                        }
+                        else if (Settings.CorruptAnyNonShrieking &&
+                           GetElementByString(label, "Shrieking Essence of Greed") == null &&
+                           GetElementByString(label, "Shrieking Essence of Contempt") == null &&
+                           GetElementByString(label, "Shrieking Essence of Hatred") == null &&
+                           GetElementByString(label, "Shrieking Essence of Woe") == null &&
+                           GetElementByString(label, "Shrieking Essence of Fear") == null &&
+                           GetElementByString(label, "Shrieking Essence of Anger") == null &&
+                           GetElementByString(label, "Shrieking Essence of Torment") == null &&
+                           GetElementByString(label, "Shrieking Essence of Sorrow") == null &&
+                           GetElementByString(label, "Shrieking Essence of Rage") == null &&
+                           GetElementByString(label, "Shrieking Essence of Suffering") == null &&
+                           GetElementByString(label, "Shrieking Essence of Wrath") == null &&
+                           GetElementByString(label, "Shrieking Essence of Doubt") == null &&
+                           GetElementByString(label, "Shrieking Essence of Loathing") == null &&
+                           GetElementByString(label, "Shrieking Essence of Zeal") == null &&
+                           GetElementByString(label, "Shrieking Essence of Anguish") == null &&
+                           GetElementByString(label, "Shrieking Essence of Spite") == null &&
+                           GetElementByString(label, "Shrieking Essence of Scorn") == null &&
+                           GetElementByString(label, "Shrieking Essence of Envy") == null &&
+                           GetElementByString(label, "Shrieking Essence of Misery") == null &&
+                           GetElementByString(label, "Shrieking Essence of Dread") == null)
+                        {
+                            MeetsCorruptCriteria = true;
+                        }
+                    }
+                    if (MeetsCorruptCriteria)
+                    {
+                        if (Settings.DebugMode)
+                        {
+                            LogMessage("Essence is not corrupted and meets criteria, lets corrupt it", 5);
+                        }
+                        //we should corrupt this
+                        if (Settings.DebugMode)
+                        {
+                            LogMessage("Starting corruption", 5);
+                        }
+
+                        waitingForCorruption = true;
+                        new Thread(async () =>
+                        {
+                            LogMessage("Async corruption started", 5);
+                            float latency = GameController.Game.IngameState.ServerData.Latency;
+
+                            //we have to open the inventory first for inventoryItems to fetch items correctly
+                            Keyboard.KeyPress(Settings.OpenInventoryKey);
+
+                            if (Settings.DebugMode)
+                            {
+                                LogMessage("(ClickIt) Fetching inventory items");
+                            }
+
+                            List<NormalInventoryItem> inventoryItems;
+
+                            var task = FetchInventoryItemsTask();
+                            if (await Task.WhenAny(task, Task.Delay(1000)) == task)
+                            {
+                                inventoryItems = FetchInventoryItems();
+                            }
+                            else
+                            {
+                                LogError(
+                                    "(ClickIt) Inventory offsets are broken and auto corrupting essences won't work until they're fixed in ExileAPI.",
+                                    20);
+                                waitingForCorruption = false;
+                                Mouse.blockInput(false);
+                                return;
+                            }
+
+                            var remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
+                                slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
+                            if (remnantOfCorruption == null)
+                            {
+                                LogError(
+                                    "(ClickIt) Couldn't find remnant of corruption in inventory, make sure you have some.");
+                                waitingForCorruption = false;
+                                Mouse.blockInput(false);
+                                return;
+                            }
+
+                            if (Settings.DebugMode)
+                            {
+                                LogMessage("(ClickIt) Found remnant");
+                            }
+
+                            Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
+                                               GameController.Window.GetWindowRectangle().TopLeft);
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            if (Settings.LeftHanded)
+                            {
+                                Mouse.LeftClick();
+                            }
+                            else
+                            {
+                                Mouse.RightClick();
+                            }
+
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                                            + GameController.Window.GetWindowRectangle().TopLeft
+                                            + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
+                            Input.SetCursorPos(centerOfLabel.Value);
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            if (Settings.LeftHanded)
+                            {
+                                Mouse.RightClick();
+                            }
+                            else
+                            {
+                                Mouse.LeftClick();
+                            }
+
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            Keyboard.KeyPress(Settings.OpenInventoryKey);
+
+                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+
+                            Mouse.blockInput(false);
+                            waitingForCorruption = false;
+                        }).Start();
                     }
                     else
                     {
-                        nextLabel = GetLabelNoCaching();
+                        if (Settings.DebugMode)
+                        {
+                            LogMessage("Not corrupting essence", 5);
+                        }
+
+                        if (!waitingForCorruption)
+                        {
+                            if (Settings.DebugMode)
+                            {
+                                LogMessage("Clicking essence", 5);
+                            }
+
+                            Input.SetCursorPos(centerOfLabel.Value);
+                            if (Settings.LeftHanded)
+                            {
+                                Mouse.RightClick();
+                            }
+                            else
+                            {
+                                Mouse.LeftClick();
+                            }
+
+                            Mouse.blockInput(false);
+                        }
                     }
+                }
+
+                else if (Settings.ClickItems && GroundItemsVisible() && !waitingForCorruption)
+                {
 
                     var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                         + GameController.Window.GetWindowRectangle().TopLeft
@@ -1150,216 +1386,23 @@ namespace ClickIt
                         yield break;
                     }
 
-                    if (GetElementByString(nextLabel.Label, "The monster is imprisoned by powerful Essences.") !=
-                        null && Settings.ClickEssences)
+                    Input.SetCursorPos(centerOfLabel.Value);
+                    if (Settings.LeftHanded)
                     {
-                        if (Settings.DebugMode)
-                        {
-                            LogMessage("Found an essence", 5);
-                        }
-
-                        Element label = nextLabel.Label.Parent;
-                        bool MeetsCorruptCriteria = false;
-                        if (GetElementByString(label, "Corrupted") == null)
-                        {
-                            if (Settings.CorruptAllEssences)
-                            {
-                                MeetsCorruptCriteria = true;
-                            }
-                            else if (Settings.CorruptMEDSEssences &&
-                                (GetElementByString(label, "Screaming Essence of Misery") != null ||
-                                GetElementByString(label, "Screaming Essence of Envy") != null ||
-                                GetElementByString(label, "Screaming Essence of Dread") != null ||
-                                GetElementByString(label, "Screaming Essence of Scorn") != null ||
-                                GetElementByString(label, "Shrieking Essence of Misery") != null ||
-                                GetElementByString(label, "Shrieking Essence of Envy") != null ||
-                                GetElementByString(label, "Shrieking Essence of Dread") != null ||
-                                GetElementByString(label, "Shrieking Essence of Scorn") != null))
-                            {
-                                MeetsCorruptCriteria = true;
-                            }
-                            else if (Settings.CorruptProfitableEssences &&
-                               (GetElementByString(label, "Shrieking Essence of Contempt") != null) ||
-                               (GetElementByString(label, "Shrieking Essence of Woe") != null) ||
-                               (GetElementByString(label, "Shrieking Essence of Sorrow") != null) ||
-                               (GetElementByString(label, "Shrieking Essence of Loathing") != null) ||
-                               (GetElementByString(label, "Shrieking Essence of Zeal") != null) ||
-                               (GetElementByString(label, "Shrieking Essence of Envy") != null))
-                            {
-                                MeetsCorruptCriteria = true;
-                            }
-                            else if (Settings.CorruptAnyNonShrieking &&
-                               GetElementByString(label, "Shrieking Essence of Greed") == null &&
-                               GetElementByString(label, "Shrieking Essence of Contempt") == null &&
-                               GetElementByString(label, "Shrieking Essence of Hatred") == null &&
-                               GetElementByString(label, "Shrieking Essence of Woe") == null &&
-                               GetElementByString(label, "Shrieking Essence of Fear") == null &&
-                               GetElementByString(label, "Shrieking Essence of Anger") == null &&
-                               GetElementByString(label, "Shrieking Essence of Torment") == null &&
-                               GetElementByString(label, "Shrieking Essence of Sorrow") == null &&
-                               GetElementByString(label, "Shrieking Essence of Rage") == null &&
-                               GetElementByString(label, "Shrieking Essence of Suffering") == null &&
-                               GetElementByString(label, "Shrieking Essence of Wrath") == null &&
-                               GetElementByString(label, "Shrieking Essence of Doubt") == null &&
-                               GetElementByString(label, "Shrieking Essence of Loathing") == null &&
-                               GetElementByString(label, "Shrieking Essence of Zeal") == null &&
-                               GetElementByString(label, "Shrieking Essence of Anguish") == null &&
-                               GetElementByString(label, "Shrieking Essence of Spite") == null &&
-                               GetElementByString(label, "Shrieking Essence of Scorn") == null &&
-                               GetElementByString(label, "Shrieking Essence of Envy") == null &&
-                               GetElementByString(label, "Shrieking Essence of Misery") == null &&
-                               GetElementByString(label, "Shrieking Essence of Dread") == null)
-                            {
-                                MeetsCorruptCriteria = true;
-                            }
-                        }
-                        if (MeetsCorruptCriteria)
-                        {
-                            if (Settings.DebugMode)
-                            {
-                                LogMessage("Essence is not corrupted and meets criteria, lets corrupt it", 5);
-                            }
-                            //we should corrupt this
-                            if (Settings.DebugMode)
-                            {
-                                LogMessage("Starting corruption", 5);
-                            }
-
-                            waitingForCorruption = true;
-                            new Thread(async () =>
-                            {
-                                LogMessage("Async corruption started", 5);
-                                float latency = GameController.Game.IngameState.ServerData.Latency;
-
-                                //we have to open the inventory first for inventoryItems to fetch items correctly
-                                Keyboard.KeyPress(Settings.OpenInventoryKey);
-
-                                if (Settings.DebugMode)
-                                {
-                                    LogMessage("(ClickIt) Fetching inventory items");
-                                }
-
-                                List<NormalInventoryItem> inventoryItems;
-
-                                var task = FetchInventoryItemsTask();
-                                if (await Task.WhenAny(task, Task.Delay(1000)) == task)
-                                {
-                                    inventoryItems = FetchInventoryItems();
-                                }
-                                else
-                                {
-                                    LogError(
-                                        "(ClickIt) Inventory offsets are broken and auto corrupting essences won't work until they're fixed in ExileAPI.",
-                                        20);
-                                    waitingForCorruption = false;
-                                    Mouse.blockInput(false);
-                                    return;
-                                }
-
-                                var remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
-                                    slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
-                                if (remnantOfCorruption == null)
-                                {
-                                    LogError(
-                                        "(ClickIt) Couldn't find remnant of corruption in inventory, make sure you have some.");
-                                    waitingForCorruption = false;
-                                    Mouse.blockInput(false);
-                                    return;
-                                }
-
-                                if (Settings.DebugMode)
-                                {
-                                    LogMessage("(ClickIt) Found remnant");
-                                }
-
-                                Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
-                                                   GameController.Window.GetWindowRectangle().TopLeft);
-                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                                if (Settings.LeftHanded)
-                                {
-                                    Mouse.LeftClick();
-                                }
-                                else
-                                {
-                                    Mouse.RightClick();
-                                }
-
-                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                                centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                                + GameController.Window.GetWindowRectangle().TopLeft
-                                                + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
-                                Input.SetCursorPos(centerOfLabel.Value);
-                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                                if (Settings.LeftHanded)
-                                {
-                                    Mouse.RightClick();
-                                }
-                                else
-                                {
-                                    Mouse.LeftClick();
-                                }
-
-                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                                Keyboard.KeyPress(Settings.OpenInventoryKey);
-
-                                Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
-
-                                Mouse.blockInput(false);
-                                waitingForCorruption = false;
-                            }).Start();
-                        }
-                        else
-                        {
-                            if (Settings.DebugMode)
-                            {
-                                LogMessage("Not corrupting essence", 5);
-                            }
-
-                            if (!waitingForCorruption)
-                            {
-                                if (Settings.DebugMode)
-                                {
-                                    LogMessage("Clicking essence", 5);
-                                }
-
-                                Input.SetCursorPos(centerOfLabel.Value);
-                                if (Settings.LeftHanded)
-                                {
-                                    Mouse.RightClick();
-                                }
-                                else
-                                {
-                                    Mouse.LeftClick();
-                                }
-
-                                Mouse.blockInput(false);
-                            }
-                        }
+                        Mouse.RightClick();
                     }
-                    else if (Settings.ClickItems && !waitingForCorruption)
+                    else
                     {
-                        Input.SetCursorPos(centerOfLabel.Value);
-                        if (Settings.LeftHanded)
-                        {
-                            Mouse.RightClick();
-                        }
-                        else
-                        {
-                            Mouse.LeftClick();
-                        }
-
-
-                        if (Settings.ToggleItems && Random.Next(0, 20) == 0)
-                        {
-                            Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);
-                            Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);
-                        }
-                        Mouse.blockInput(false);
+                        Mouse.LeftClick();
                     }
+
+
+                    if (Settings.ToggleItems && Random.Next(0, 20) == 0)
+                    {
+                        Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);
+                        Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);
+                    }
+                    Mouse.blockInput(false);
                 }
                 else
                 {
@@ -1394,7 +1437,6 @@ namespace ClickIt
         private List<NormalInventoryItem> FetchInventoryItems()
         {
             ClickIt core = this;
-            List<NormalInventoryItem> inventoryItems = new List<NormalInventoryItem>();
             IList<NormalInventoryItem> pullItems = core.GameController.Game.IngameState.IngameUi
                 .InventoryPanel[(InventoryIndex)13].VisibleInventoryItems;
             return new List<NormalInventoryItem>(pullItems);
@@ -1443,7 +1485,6 @@ namespace ClickIt
         {
             var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
                     x.ItemOnGround?.Path != null &&
-                    //this check is probably unnecessary, lets just make sure
                     !x.ItemOnGround.IsHidden &&
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
