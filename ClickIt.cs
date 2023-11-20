@@ -1110,7 +1110,8 @@ namespace ClickIt
                         if (canClick())
                         {
                             Mouse.blockInput(true);
-                            Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center);
+                            Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center +
+                                               GameController.Window.GetWindowRectangle().TopLeft);
                             if (Settings.LeftHanded)
                             {
                                 Mouse.RightClick();
