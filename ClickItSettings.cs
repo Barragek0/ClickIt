@@ -1434,7 +1434,7 @@ namespace ClickIt
         [Menu("Searing Exarch Mod Weights - Upsides (Player)", 10000)]
         public EmptyNode ExarchUpsidePlayerMods { get; set; } = new EmptyNode();
 
-        [Menu("Player:      Unique Items dropped by slain Enemies have (15 to 30)% chance to be Duplicated  ", 1, 10000)]
+        [Menu("Player:  	Unique Items dropped by slain Enemies have (15 to 30)% chance to be Duplicated  ", 1, 10000)]
         public ToggleNode Exarch_PlayerUniqueItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -1443,7 +1443,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 2, 10000)]
         public RangeNode<int> Exarch_PlayerUniqueItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Player:      Scarabs dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 3, 10000)]
+        [Menu("Player:  	Scarabs dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 3, 10000)]
         public ToggleNode Exarch_PlayerScarabsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -1452,7 +1452,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 4, 10000)]
         public RangeNode<int> Exarch_PlayerScarabsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:      Maps dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 5, 10000)]
+        [Menu("Player:  	Maps dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 5, 10000)]
         public ToggleNode Exarch_PlayerMapsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -1461,7 +1461,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 6, 10000)]
         public RangeNode<int> Exarch_PlayerMapsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:      Divination Cards dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 5, 10000)]
+        [Menu("Player:  	Divination Cards dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 5, 10000)]
         public ToggleNode Exarch_PlayerDivinationCardsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -1470,7 +1470,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 6, 10000)]
         public RangeNode<int> Exarch_PlayerDivinationCardsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:      (10 to 30)% increased Quantity of Items found in this Area\n" +
+        [Menu("Player:  	(10 to 30)% increased Quantity of Items found in this Area\n" +
             "                   (15 to 35)% increased Rarity of Items found in this Area ", 7, 10000)]
         public ToggleNode Exarch_PlayerIncreasedQuantityOfItemsFoundInThisArea { get; set; } = new ToggleNode(false);
 
@@ -1480,7 +1480,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 8, 10000)]
         public RangeNode<int> Exarch_PlayerIncreasedQuantityOfItemsFoundInThisArea_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Player:      Basic Currency Items dropped by slain Enemies have (10 to 15)% chance to be Duplicated", 9, 10000)]
+        [Menu("Player:  	Basic Currency Items dropped by slain Enemies have (10 to 15)% chance to be Duplicated", 9, 10000)]
         public ToggleNode Exarch_PlayerBasicCurrencyItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -1489,7 +1489,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 10, 10000)]
         public RangeNode<int> Exarch_PlayerBasicCurrencyItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Player:      Gems dropped by slain Enemies have (10 to 15)% chance to be Duplicated ", 11, 10000)]
+        [Menu("Player:  	Gems dropped by slain Enemies have (10 to 15)% chance to be Duplicated ", 11, 10000)]
         public ToggleNode Exarch_PlayerGemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -2758,7 +2758,7 @@ namespace ClickIt
         [Menu("Eater of Worlds Mod Weights - Upsides (Player)", 17000)]
         public EmptyNode EaterUpsidePlayerMods { get; set; } = new EmptyNode();
 
-        [Menu("Player:      Unique Items dropped by slain Enemies have (15 to 30)% chance to be Duplicated  ", 1, 17000)]
+        [Menu("Player:  	Unique Items dropped by slain Enemies have (15 to 30)% chance to be Duplicated  ", 1, 17000)]
         public ToggleNode Eater_PlayerUniqueItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -2767,7 +2767,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 2, 17000)]
         public RangeNode<int> Eater_PlayerUniqueItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Player:      Scarabs dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 3, 17000)]
+        [Menu("Player:  	Scarabs dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 3, 17000)]
         public ToggleNode Eater_PlayerScarabsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -2776,7 +2776,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 4, 17000)]
         public RangeNode<int> Eater_PlayerScarabsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:      Maps dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 5, 17000)]
+        [Menu("Player:  	Maps dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 5, 17000)]
         public ToggleNode Eater_PlayerMapsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -2785,7 +2785,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 6, 17000)]
         public RangeNode<int> Eater_PlayerMapsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:      Divination Cards dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 7, 17000)]
+        [Menu("Player:  	Divination Cards dropped by slain Enemies have (15 to 30)% chance to be Duplicated   ", 7, 17000)]
         public ToggleNode Eater_PlayerDivinationCardsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -2794,7 +2794,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 8, 17000)]
         public RangeNode<int> Eater_PlayerDivinationCardsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Player:      (10 to 20)% increased Quantity of Items found in this Area\n" +
+        [Menu("Player:  	(10 to 20)% increased Quantity of Items found in this Area\n" +
             "                   (15 to 35)% increased Rarity of Items found in this Area ", 9, 17000)]
         public ToggleNode Eater_PlayerIncreasedQuantityOfItemsFoundInThisArea { get; set; } = new ToggleNode(false);
 
@@ -2804,7 +2804,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 10, 17000)]
         public RangeNode<int> Eater_PlayerIncreasedQuantityOfItemsFoundInThisArea_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Player:      Basic Currency Items dropped by slain Enemies have (10 to 15)% chance to be Duplicated", 11, 17000)]
+        [Menu("Player:  	Basic Currency Items dropped by slain Enemies have (10 to 15)% chance to be Duplicated", 11, 17000)]
         public ToggleNode Eater_PlayerBasicCurrencyItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
@@ -2813,7 +2813,7 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 12, 17000)]
         public RangeNode<int> Eater_PlayerBasicCurrencyItemsDroppedBySlainEnemiesHaveChanceToBeDuplicated_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Player:      Gems dropped by slain Enemies have (10 to 15)% chance to be Duplicated ", 13, 17000)]
+        [Menu("Player:  	Gems dropped by slain Enemies have (10 to 15)% chance to be Duplicated ", 13, 17000)]
         public ToggleNode Eater_PlayerGemsDroppedBySlainEnemiesHaveChanceToBeDuplicated { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +

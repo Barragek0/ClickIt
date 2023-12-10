@@ -121,7 +121,7 @@ namespace ClickIt
                 foreach (FieldInfo field in typeof(ClickItSettings).GetFields(BindingFlags.Public |
                                                                               BindingFlags.NonPublic |
                                                                               BindingFlags.Instance |
-                                                                              BindingFlags.Static))
+                                                                              BindingFlags.Static).ToList())
                 {
                     fields.Add(field);
                 }
@@ -132,7 +132,7 @@ namespace ClickIt
                 LogMessage("Render 0");
             }
 
-            foreach (PrimaryAltarComponent altar in altarComponents)
+            foreach (PrimaryAltarComponent altar in altarComponents.ToList())
             {
                 if (altar.TopMods.Element.GetClientRect().Center.PointInRectangle(FullScreenArea()) && altar.TopMods.Element.IsVisible)
                 {
@@ -165,7 +165,7 @@ namespace ClickIt
                         LogMessage("Render 2");
                     }
 
-                    foreach (FieldInfo field in fields)
+                    foreach (FieldInfo field in fields.ToList())
                     {
                         string FieldName = field.Name.Replace("<", "").Replace(">", "").Replace("k__BackingField", "");
                         if (Settings.DebugMode && Settings.RenderDebug)
@@ -578,11 +578,11 @@ namespace ClickIt
 
             if (altarLabels.Count > 0)
             {
-                foreach (LabelOnGround label in altarLabels)
+                foreach (LabelOnGround label in altarLabels.ToList())
                 {
                     //altar mods start with <valuedefault> and also include <enchanted> before the positive mods
                     List<Element> elements = GetElementsByStringContains(label.Label, "valuedefault");
-                    foreach (Element element in elements)
+                    foreach (Element element in elements.ToList())
                     {
                         if (element != null && element.IsVisible)
                         {
@@ -841,14 +841,14 @@ namespace ClickIt
                 }
             }
 
-            foreach (string mod in mods)
+            foreach (string mod in mods.ToList())
             {
                 bool found = false;
                 string localmod = NegativeModType + new string(mod.Where(char.IsLetter).ToArray());
                 foreach (FieldInfo field in typeof(ClickItSettings).GetFields(BindingFlags.Public |
                                                                               BindingFlags.NonPublic |
                                                                               BindingFlags.Instance |
-                                                                              BindingFlags.Static))
+                                                                              BindingFlags.Static).ToList())
                 {
                     string FieldName = field.Name.Replace("<", "").Replace(">", "").Replace("k__BackingField", "");
                     if (FieldName.StartsWith("Exarch_") || FieldName.StartsWith("Eater_"))
