@@ -1438,7 +1438,7 @@ namespace ClickIt
         {
             ClickIt core = this;
             IList<NormalInventoryItem> pullItems = core.GameController.Game.IngameState.IngameUi
-                .InventoryPanel[(InventoryIndex)13].VisibleInventoryItems;
+                .InventoryPanel[(InventoryIndex)17].VisibleInventoryItems;
             return new List<NormalInventoryItem>(pullItems);
         }
 
