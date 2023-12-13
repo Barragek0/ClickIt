@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ExileCore.PoEMemory;
-using static ClickIt.ClickIt;
+﻿using static ClickIt.ClickIt;
 
 namespace ClickIt
 {
