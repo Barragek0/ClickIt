@@ -1269,7 +1269,7 @@ namespace ClickIt
                             else
                             {
                                 LogError(
-                                    "(ClickIt) Inventory offsets are broken and auto corrupting essences won't work until they're fixed in ExileAPI.",
+                                    "(ClickIt) Inventory offsets are incorrect. You need to manually corrupt until the offsets are fixed in PoeHelper (this isn't an issue with the ClickIt plugin).",
                                     20);
                                 waitingForCorruption = false;
                                 Mouse.blockInput(false);
@@ -1278,6 +1278,7 @@ namespace ClickIt
 
                             var remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
                                 slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
+
                             if (remnantOfCorruption == null)
                             {
                                 LogError(
@@ -1438,7 +1439,7 @@ namespace ClickIt
         {
             ClickIt core = this;
             IList<NormalInventoryItem> pullItems = core.GameController.Game.IngameState.IngameUi
-                .InventoryPanel[(InventoryIndex)13].VisibleInventoryItems;
+                .InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
             return new List<NormalInventoryItem>(pullItems);
         }
 
