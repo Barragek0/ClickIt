@@ -127,11 +127,6 @@ namespace ClickIt
                 }
             }
 
-            if (Settings.DebugMode && Settings.RenderDebug)
-            {
-                LogMessage("Render 0");
-            }
-
             foreach (PrimaryAltarComponent altar in altarComponents.ToList())
             {
                 if (altar.TopMods.Element.GetClientRect().Center.PointInRectangle(FullScreenArea()) && altar.TopMods.Element.IsVisible)
