@@ -69,7 +69,10 @@ namespace ClickIt
 
         bool PointIsInClickableArea(Vector2 point)
         {
-            return point.PointInRectangle(FullScreenArea()) &&
+            var timer = new Stopwatch();
+            timer.Start();
+
+            var isInClickableArea = point.PointInRectangle(FullScreenArea()) &&
                    //is point in bottom left corner with health globe/flasks?
                    (!point.PointInRectangle(new RectangleF(
                        (float)(GameController.Window.GetWindowRectangle().BottomLeft.X / 3),
@@ -89,6 +92,12 @@ namespace ClickIt
                        GameController.Window.GetWindowRectangle().TopLeft.Y,
                        GameController.Window.GetWindowRectangle().TopRight.X / 2,
                        GameController.Window.GetWindowRectangle().TopLeft.Y + 120));
+            timer.Stop();
+            if (Settings.DebugMode)
+            {
+                LogMessage("Checking if point is in clickable area took " + timer.ElapsedMilliseconds + " ms", 5);
+            }
+            return isInClickableArea;
             //if the point is in any of these, we don't want to click or move the mouse to it
         }
 
@@ -1002,8 +1011,7 @@ namespace ClickIt
         private List<LabelOnGround> GetHarvestLabels()
         {
             var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
-                x.ItemOnGround.Path != null &&
-                !x.ItemOnGround.IsHidden
+                x.ItemOnGround.Path != null
                 && PointIsInClickableArea(x.Label.GetClientRect().Center)
             ).ToList();
 
@@ -1014,8 +1022,7 @@ namespace ClickIt
         private List<LabelOnGround> GetAltarLabels(AltarType type)
         {
             var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
-                x.ItemOnGround.Path != null &&
-                !x.ItemOnGround.IsHidden
+                x.ItemOnGround.Path != null
                 && x.Label.GetClientRect().Center.PointInRectangle(FullScreenArea())
             ).ToList();
 
@@ -1043,7 +1050,6 @@ namespace ClickIt
                 .Where(x =>
                     x.ItemOnGround?.Path != null &&
                     //this check is probably unnecessary, lets just make sure
-                    !x.ItemOnGround.IsHidden &&
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
                      x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
@@ -1479,9 +1485,8 @@ namespace ClickIt
 
         private LabelOnGround GetLabelNoCaching()
         {
-            var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
+            var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.ToList().Where(x =>
                     x.ItemOnGround?.Path != null &&
-                    !x.ItemOnGround.IsHidden &&
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
                      x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
@@ -1510,10 +1515,19 @@ namespace ClickIt
 
         public Element GetElementByString(Element label, string str)
         {
-            return label.GetText(512) == str
+            var timer = new Stopwatch();
+            timer.Start();
+            var element = label.GetText(512) == str
                 ? label
                 : label.Children.Select(child => GetElementByString(child, str))
                     .FirstOrDefault(element => element != null);
+            timer.Stop();
+
+            if (Settings.DebugMode)
+            {
+                LogMessage("GetElementByString took " + timer.ElapsedMilliseconds + " ms", 5);
+            }
+            return element;
         }
 
         public enum AltarType
