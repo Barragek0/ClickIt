@@ -30,13 +30,13 @@ namespace ClickIt
         private Stopwatch Timer { get; } = new Stopwatch();
         private Stopwatch SecondTimer { get; } = new Stopwatch();
         private Random Random { get; } = new Random();
-        private TimeCache<List<LabelOnGround>> CachedLabels { get; set; }
+        private TimeCache<List<LabelOnGround>>? CachedLabels { get; set; }
 
         [DllImport("user32.dll")]
-        static extern IntPtr GetForegroundWindow();
+        private static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]
-        static extern int GetWindowText(IntPtr hwnd, StringBuilder ss, int count);
+        private static extern int GetWindowText(IntPtr hwnd, StringBuilder ss, int count);
 
         private bool waitingForCorruption = false;
 
@@ -47,8 +47,8 @@ namespace ClickIt
 
         public override bool Initialise()
         {
-            Settings.ReloadPluginButton.OnPressed += () => { ToggleCaching(); };
-            Settings.ReportBugButton.OnPressed += () => { Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
+            Settings.ReloadPluginButton.OnPressed += ToggleCaching;
+            Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
 
             if (Settings.CachingEnable)
             {
@@ -60,19 +60,18 @@ namespace ClickIt
             return true;
         }
 
-
-        RectangleF FullScreenArea()
+        private RectangleF FullScreenArea()
         {
             return new RectangleF(0, 0, GameController.Window.GetWindowRectangle().Width,
                 GameController.Window.GetWindowRectangle().Height);
         }
 
-        bool PointIsInClickableArea(Vector2 point)
+        private bool PointIsInClickableArea(Vector2 point)
         {
-            var timer = new Stopwatch();
+            Stopwatch timer = new();
             timer.Start();
 
-            var isInClickableArea = point.PointInRectangle(FullScreenArea()) &&
+            bool isInClickableArea = point.PointInRectangle(FullScreenArea()) &&
                    //is point in bottom left corner with health globe/flasks?
                    (!point.PointInRectangle(new RectangleF(
                        (float)(GameController.Window.GetWindowRectangle().BottomLeft.X / 3),
@@ -101,7 +100,7 @@ namespace ClickIt
             //if the point is in any of these, we don't want to click or move the mouse to it
         }
 
-        public List<FieldInfo> fields = new List<FieldInfo>();
+        public List<FieldInfo> fields = new();
 
         public override void Render()
         {
@@ -379,7 +378,7 @@ namespace ClickIt
                     Element? boxToClick = null;
                     if (TopUpsideWeight <= 0)
                     {
-                        Graphics.DrawText("Top upside weights couldn't be recognised " +
+                        _ = Graphics.DrawText("Top upside weights couldn't be recognised " +
                             "\n1:" + (string.IsNullOrEmpty(altar.TopMods.FirstUpside) ? "null" : string.IsNullOrEmpty(altar.TopMods.FirstUpside)) +
                             "\n2:" + (string.IsNullOrEmpty(altar.TopMods.SecondUpside) ? "null" : string.IsNullOrEmpty(altar.TopMods.SecondUpside)) +
                             "\nPlease report this as a bug on github",
@@ -389,7 +388,7 @@ namespace ClickIt
                     }
                     else if (TopDownsideWeight <= 0)
                     {
-                        Graphics.DrawText("Top downside weights couldn't be recognised " +
+                        _ = Graphics.DrawText("Top downside weights couldn't be recognised " +
                             "\n1:" + (string.IsNullOrEmpty(altar.TopMods.FirstDownside) ? "null" : string.IsNullOrEmpty(altar.TopMods.FirstDownside)) +
                             "\n2:" + (string.IsNullOrEmpty(altar.TopMods.SecondDownside) ? "null" : string.IsNullOrEmpty(altar.TopMods.SecondDownside)) +
                             "\nPlease report this as a bug on github",
@@ -399,7 +398,7 @@ namespace ClickIt
                     }
                     else if (BottomUpsideWeight <= 0)
                     {
-                        Graphics.DrawText("Bottom upside weights couldn't be recognised " +
+                        _ = Graphics.DrawText("Bottom upside weights couldn't be recognised " +
                             "\n1:" + (string.IsNullOrEmpty(altar.BottomMods.FirstUpside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.FirstUpside)) +
                             "\n2:" + (string.IsNullOrEmpty(altar.BottomMods.SecondUpside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.SecondUpside)) +
                             "\nPlease report this as a bug on github",
@@ -409,7 +408,7 @@ namespace ClickIt
                     }
                     else if (BottomDownsideWeight <= 0)
                     {
-                        Graphics.DrawText("Bottom downside weights couldn't be recognised " +
+                        _ = Graphics.DrawText("Bottom downside weights couldn't be recognised " +
                             "\n1:" + (string.IsNullOrEmpty(altar.BottomMods.FirstDownside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.FirstDownside)) +
                             "\n2:" + (string.IsNullOrEmpty(altar.BottomMods.SecondDownside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.SecondDownside)) +
                             "\nPlease report this as a bug on github",
@@ -419,14 +418,14 @@ namespace ClickIt
                     }
                     else if ((TopDownside1Weight >= 90 || TopDownside2Weight >= 90) && (BottomDownside1Weight >= 90 || BottomDownside2Weight >= 90))
                     {
-                        Graphics.DrawText("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.",
+                        _ = Graphics.DrawText("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 2);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 2);
                     }
                     else if (TopUpside1Weight >= 90 || TopUpside2Weight >= 90)
                     {
-                        Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+",
+                        _ = Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.LawnGreen, 3);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 2);
@@ -434,7 +433,7 @@ namespace ClickIt
                     }
                     else if (BottomUpside1Weight >= 90 || BottomUpside2Weight >= 90)
                     {
-                        Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+",
+                        _ = Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 2);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.LawnGreen, 3);
@@ -442,7 +441,7 @@ namespace ClickIt
                     }
                     else if (TopDownside1Weight >= 90 || TopDownside2Weight >= 90)
                     {
-                        Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the top downsides has a weight of 90+",
+                        _ = Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the top downsides has a weight of 90+",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 3);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.LawnGreen, 2);
@@ -450,7 +449,7 @@ namespace ClickIt
                     }
                     else if (BottomDownside1Weight >= 90 || BottomDownside2Weight >= 90)
                     {
-                        Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the bottom downsides has a weight of 90+",
+                        _ = Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the bottom downsides has a weight of 90+",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.LawnGreen, 2);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 3);
@@ -470,25 +469,25 @@ namespace ClickIt
                     }
                     else
                     {
-                        Graphics.DrawText("Mods have equal weight, you should choose.",
+                        _ = Graphics.DrawText("Mods have equal weight, you should choose.",
                             altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -25), Color.Orange, 30);
                         Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
                         Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
                     }
 
-                    Graphics.DrawText("Upside: " + TopUpsideWeight,
+                    _ = Graphics.DrawText("Upside: " + TopUpsideWeight,
                         altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(5, -32), Color.LawnGreen, 14);
-                    Graphics.DrawText("Downside: " + TopDownsideWeight,
+                    _ = Graphics.DrawText("Downside: " + TopDownsideWeight,
                         altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(5, -20), Color.OrangeRed, 14);
-                    Graphics.DrawText("Upside: " + BottomUpsideWeight,
+                    _ = Graphics.DrawText("Upside: " + BottomUpsideWeight,
                         altar.BottomMods.Element.GetClientRect().TopLeft + new Vector2(10, -32), Color.LawnGreen, 14);
-                    Graphics.DrawText("Downside: " + BottomDownsideWeight,
+                    _ = Graphics.DrawText("Downside: " + BottomDownsideWeight,
                         altar.BottomMods.Element.GetClientRect().TopLeft + new Vector2(10, -20), Color.OrangeRed, 14);
-                    Graphics.DrawText("" + TopWeight,
+                    _ = Graphics.DrawText("" + TopWeight,
                         altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(10, 5),
                         TopWeight > BottomWeight ? Color.LawnGreen :
                         BottomWeight > TopWeight ? Color.OrangeRed : Color.Yellow, 18);
-                    Graphics.DrawText("" + BottomWeight,
+                    _ = Graphics.DrawText("" + BottomWeight,
                         altar.BottomMods.Element.GetClientRect().TopLeft + new Vector2(10, 5),
                         TopWeight > BottomWeight ? Color.OrangeRed :
                         BottomWeight > TopWeight ? Color.LawnGreen : Color.Yellow, 18);
@@ -517,12 +516,12 @@ namespace ClickIt
                 }
             }
 
-            Core.ParallelRunner.Run(new Coroutine(ScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
+            _ = Core.ParallelRunner.Run(new Coroutine(ScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
 
 
             if (canClick())
             {
-                Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
+                _ = Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
             }
         }
 
@@ -553,11 +552,7 @@ namespace ClickIt
                 return false;
             }
 
-            if (GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible)
-            {
-                return false;
-            }
-            return true;
+            return !GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         }
 
         private IEnumerator ScanForAltarsLogic()
@@ -569,7 +564,7 @@ namespace ClickIt
             }
 
             SecondTimer.Restart();
-            List<LabelOnGround> altarLabels = new List<LabelOnGround>();
+            List<LabelOnGround> altarLabels = new();
             if (Settings.HighlightExarchAltars)
             {
                 altarLabels.AddRange(GetAltarLabels(AltarType.SearingExarch));
@@ -613,7 +608,7 @@ namespace ClickIt
                                     ? AltarType.EaterOfWorlds
                                     :
                                     AltarType.Unknown;
-                            PrimaryAltarComponent altarComponent = new PrimaryAltarComponent(altarType,
+                            PrimaryAltarComponent altarComponent = new(altarType,
                                 new SecondaryAltarComponent(new Element(), "", "", "", "")
                                 , new AltarButton(new Element()),
                                 new SecondaryAltarComponent(new Element(), "", "", "", ""),
@@ -688,14 +683,9 @@ namespace ClickIt
 
         private void ToggleCaching()
         {
-            if (Settings.CachingEnable.Value && CachedLabels == null)
-            {
-                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
-            }
-            else
-            {
-                CachedLabels = null;
-            }
+            CachedLabels = Settings.CachingEnable.Value && CachedLabels == null
+                ? new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval)
+                : null;
         }
 
         private bool IsPOEActive()
@@ -766,7 +756,7 @@ namespace ClickIt
             return false;
         }
 
-        private static List<Element> elementsByStringContainsList = new List<Element>();
+        private static readonly List<Element> elementsByStringContainsList = new();
 
         public List<Element> GetElementsByStringContains(Element label, string str)
         {
@@ -793,21 +783,21 @@ namespace ClickIt
             return elementsByStringContainsList;
         }
 
-        List<PrimaryAltarComponent> altarComponents = new List<PrimaryAltarComponent>();
+        private readonly List<PrimaryAltarComponent> altarComponents = new();
 
-        string GetLine(string text, int lineNo)
+        private string? GetLine(string text, int lineNo)
         {
             string[] lines = text.Replace("\r", "").Split('\n');
             return lines.Length >= lineNo ? lines[lineNo] : null;
         }
 
-        int CountLines(string text)
+        private int CountLines(string text)
         {
             string[] lines = text.Replace("\r", "").Split('\n');
             return lines.Length;
         }
 
-        public override Job Tick()
+        public override Job? Tick()
         {
             return null;
         }
@@ -815,10 +805,10 @@ namespace ClickIt
         private void updateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
             Element ElementToExtractDataFrom, AltarType altarType)
         {
-            var NegativeModType = "";
-            List<string> mods = new List<string>();
-            List<string> upsides = new List<string>();
-            List<string> downsides = new List<string>();
+            string NegativeModType = "";
+            List<string> mods = new();
+            List<string> upsides = new();
+            List<string> downsides = new();
             if (Settings.DebugMode)
             {
                 LogMessage(ElementToExtractDataFrom.GetText(512));
@@ -924,10 +914,10 @@ namespace ClickIt
 
             if (top)
             {
-                var upside1 = "";
-                var upside2 = "";
-                var downside1 = "";
-                var downside2 = "";
+                string upside1 = "";
+                string upside2 = "";
+                string downside1 = "";
+                string downside2 = "";
                 altarComponent.TopButton = new AltarButton(ElementToExtractDataFrom.Parent);
                 if (upsides.Count > 0)
                 {
@@ -962,10 +952,10 @@ namespace ClickIt
             }
             else
             {
-                var upside1 = "";
-                var upside2 = "";
-                var downside1 = "";
-                var downside2 = "";
+                string upside1 = "";
+                string upside2 = "";
+                string downside1 = "";
+                string downside2 = "";
                 altarComponent.BottomButton = new AltarButton(ElementToExtractDataFrom.Parent);
                 if (upsides.Count > 0)
                 {
@@ -1010,7 +1000,7 @@ namespace ClickIt
 
         private List<LabelOnGround> GetHarvestLabels()
         {
-            var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
+            List<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
                 x.ItemOnGround.Path != null
                 && PointIsInClickableArea(x.Label.GetClientRect().Center)
             ).ToList();
@@ -1021,7 +1011,7 @@ namespace ClickIt
 
         private List<LabelOnGround> GetAltarLabels(AltarType type)
         {
-            var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
+            List<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
                 x.ItemOnGround.Path != null
                 && x.Label.GetClientRect().Center.PointInRectangle(FullScreenArea())
             ).ToList();
@@ -1033,30 +1023,25 @@ namespace ClickIt
         private static string ActiveWindowTitle()
         {
             const int nChar = 256;
-            StringBuilder ss = new StringBuilder(nChar);
+            StringBuilder ss = new(nChar);
             IntPtr handle = GetForegroundWindow();
-            if (GetWindowText(handle, ss, nChar) > 0)
-            {
-                return ss.ToString();
-            }
-            else
-            {
-                return "";
-            }
+            return GetWindowText(handle, ss, nChar) > 0 ? ss.ToString() : "";
         }
 
-        private List<LabelOnGround> UpdateLabelComponent() =>
-            GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
+        private List<LabelOnGround> UpdateLabelComponent()
+        {
+            return GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
                 .Where(x =>
                     x.ItemOnGround?.Path != null &&
                     //this check is probably unnecessary, lets just make sure
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
-                     x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
+                     (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
                      x.ItemOnGround.Type == EntityType.AreaTransition ||
                      GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null))
                 .OrderBy(x => x.ItemOnGround.DistancePlayer)
                 .ToList();
+        }
 
         private IEnumerator ClickLabel(Element? altar = null)
         {
@@ -1079,7 +1064,7 @@ namespace ClickIt
 
                 List<LabelOnGround> harvestLabels = GetHarvestLabels();
 
-                var timer = new Stopwatch();
+                Stopwatch timer = new();
                 if (Settings.CachingEnable)
                 {
                     timer.Start();
@@ -1160,7 +1145,7 @@ namespace ClickIt
                     Element label = nextLabel.Label.Parent;
                     bool MeetsCorruptCriteria = false;
 
-                    var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                    Vector2? centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                         + GameController.Window.GetWindowRectangle().TopLeft
                                         + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
 
@@ -1200,12 +1185,12 @@ namespace ClickIt
                             MeetsCorruptCriteria = true;
                         }
                         else if (Settings.CorruptProfitableEssences &&
-                           (GetElementByString(label, "Shrieking Essence of Contempt") != null) ||
+                           ((GetElementByString(label, "Shrieking Essence of Contempt") != null) ||
                            (GetElementByString(label, "Shrieking Essence of Woe") != null) ||
                            (GetElementByString(label, "Shrieking Essence of Sorrow") != null) ||
                            (GetElementByString(label, "Shrieking Essence of Loathing") != null) ||
                            (GetElementByString(label, "Shrieking Essence of Zeal") != null) ||
-                           (GetElementByString(label, "Shrieking Essence of Envy") != null))
+                           (GetElementByString(label, "Shrieking Essence of Envy") != null)))
                         {
                             MeetsCorruptCriteria = true;
                         }
@@ -1262,7 +1247,7 @@ namespace ClickIt
 
                             List<NormalInventoryItem> inventoryItems;
 
-                            var task = FetchInventoryItemsTask();
+                            Task<List<NormalInventoryItem>> task = FetchInventoryItemsTask();
                             if (await Task.WhenAny(task, Task.Delay(1000)) == task)
                             {
                                 inventoryItems = FetchInventoryItems();
@@ -1277,7 +1262,7 @@ namespace ClickIt
                                 return;
                             }
 
-                            var remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
+                            NormalInventoryItem remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
                                 slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
 
                             if (remnantOfCorruption == null)
@@ -1296,7 +1281,7 @@ namespace ClickIt
 
                             Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
                                                GameController.Window.GetWindowRectangle().TopLeft);
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
 
                             if (Settings.LeftHanded)
                             {
@@ -1307,13 +1292,13 @@ namespace ClickIt
                                 Mouse.RightClick();
                             }
 
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
 
                             centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                             + GameController.Window.GetWindowRectangle().TopLeft
                                             + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
                             Input.SetCursorPos(centerOfLabel.Value);
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
 
                             if (Settings.LeftHanded)
                             {
@@ -1324,11 +1309,11 @@ namespace ClickIt
                                 Mouse.LeftClick();
                             }
 
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
 
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
 
-                            Thread.Sleep((int)(latency + this.Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
 
                             Mouse.blockInput(false);
                             waitingForCorruption = false;
@@ -1366,7 +1351,7 @@ namespace ClickIt
                 else if (Settings.ClickItems && GroundItemsVisible() && !waitingForCorruption)
                 {
 
-                    var centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                    Vector2? centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                         + GameController.Window.GetWindowRectangle().TopLeft
                                         + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
 
@@ -1426,7 +1411,7 @@ namespace ClickIt
             Loopstart:
                 try
                 {
-                    FetchInventoryItems();
+                    _ = FetchInventoryItems();
                 }
                 catch (Exception)
                 {
@@ -1446,78 +1431,71 @@ namespace ClickIt
 
         private bool IsBasicChest(LabelOnGround label)
         {
-            switch (label.ItemOnGround.RenderName.ToLower())
+            return label.ItemOnGround.RenderName.ToLower() switch
             {
-                case "chest":
-                case "tribal chest":
-                case "cocoon":
-                case "weapon rack":
-                case "armour rack":
-                case "trunk":
-                    return true;
-            }
-
-            return false;
+                "chest" or "tribal chest" or "cocoon" or "weapon rack" or "armour rack" or "trunk" => true,
+                _ => false,
+            };
         }
 
         private LabelOnGround GetLabelCaching()
         {
-            var label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
-                                                     (Settings.ClickItems.Value &&
+            LabelOnGround label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
+                                                     ((Settings.ClickItems.Value &&
                                                       x.ItemOnGround.Type == EntityType.WorldItem &&
                                                       (!Settings.IgnoreUniques ||
                                                        x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity
                                                            .GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
                                                        x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path
-                                                           .StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
+                                                           .StartsWith("Metadata/Items/Metamorphosis/Metamorphosis"))) ||
                                                       (Settings.ClickBasicChests.Value &&
                                                        x.ItemOnGround.Type == EntityType.Chest && IsBasicChest(x)) ||
                                                       (Settings.ClickLeagueChests.Value &&
                                                        x.ItemOnGround.Type == EntityType.Chest && !IsBasicChest(x)) ||
-                                                      Settings.ClickAreaTransitions.Value &&
-                                                      x.ItemOnGround.Type == EntityType.AreaTransition ||
-                                                      Settings.ClickShrines.Value &&
-                                                      x.ItemOnGround.Type == EntityType.Shrine ||
-                                                      Settings.ClickEssences.Value && GetElementByString(x.Label,
-                                                          "The monster is imprisoned by powerful Essences.") != null));
+                                                      (Settings.ClickAreaTransitions.Value &&
+                                                      x.ItemOnGround.Type == EntityType.AreaTransition) ||
+                                                      (Settings.ClickShrines.Value &&
+                                                      x.ItemOnGround.Type == EntityType.Shrine) ||
+                                                      (Settings.ClickEssences.Value && GetElementByString(x.Label,
+                                                          "The monster is imprisoned by powerful Essences.") != null)));
             return label;
         }
 
         private LabelOnGround GetLabelNoCaching()
         {
-            var list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.ToList().Where(x =>
+            List<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.ToList().Where(x =>
                     x.ItemOnGround?.Path != null &&
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
-                     x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage ||
+                     (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
                      x.ItemOnGround.Type == EntityType.AreaTransition ||
                      GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null))
                 .OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
 
 
             return list.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
-                                  (Settings.ClickItems.Value &&
+                                  ((Settings.ClickItems.Value &&
                                    x.ItemOnGround.Type == EntityType.WorldItem &&
                                    (!Settings.IgnoreUniques ||
                                     x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()
                                         ?.ItemRarity != ItemRarity.Unique ||
                                     x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path
-                                        .StartsWith("Metadata/Items/Metamorphosis/Metamorphosis")) ||
+                                        .StartsWith("Metadata/Items/Metamorphosis/Metamorphosis"))) ||
                                    (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest &&
                                     IsBasicChest(x)) ||
                                    (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest &&
                                     !IsBasicChest(x)) ||
-                                   Settings.ClickAreaTransitions.Value &&
-                                   x.ItemOnGround.Type == EntityType.AreaTransition ||
-                                   Settings.ClickEssences.Value && GetElementByString(x.Label,
-                                       "The monster is imprisoned by powerful Essences.") != null));
+                                   (Settings.ClickAreaTransitions.Value &&
+                                   x.ItemOnGround.Type == EntityType.AreaTransition) ||
+                                   (Settings.ClickEssences.Value && GetElementByString(x.Label,
+                                       "The monster is imprisoned by powerful Essences.") != null)));
         }
 
         public Element GetElementByString(Element label, string str)
         {
-            var timer = new Stopwatch();
+            Stopwatch timer = new();
             timer.Start();
-            var element = label.GetText(512) == str
+            Element element = label.GetText(512) == str
                 ? label
                 : label.Children.Select(child => GetElementByString(child, str))
                     .FirstOrDefault(element => element != null);
