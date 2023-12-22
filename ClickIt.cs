@@ -1063,11 +1063,13 @@ namespace ClickIt
         {
             if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 5))
             {
+                workFinished = true;
                 yield break;//todo
             }
 
             if (!canClick())
             {
+                workFinished = true;
                 yield break;//todo
             }
 
@@ -1128,6 +1130,7 @@ namespace ClickIt
                             }
                             Mouse.blockInput(false);
                         }
+                        workFinished = true;
                         yield break;
                     }
                 }
@@ -1185,6 +1188,7 @@ namespace ClickIt
                             LogMessage("(ClickIt) centerOfLabel has no Value | Cache: " + Settings.CachingEnable.Value);
                         }
 
+                        workFinished = true;
                         yield break;
                     }
                     if (GetElementByString(label, "Corrupted") == null)
@@ -1280,6 +1284,7 @@ namespace ClickIt
                                     20);
                                 waitingForCorruption = false;
                                 Mouse.blockInput(false);
+                                workFinished = true;
                                 return;
                             }
 
@@ -1292,6 +1297,7 @@ namespace ClickIt
                                     "(ClickIt) Couldn't find remnant of corruption in inventory, make sure you have some.");
                                 waitingForCorruption = false;
                                 Mouse.blockInput(false);
+                                workFinished = true;
                                 return;
                             }
 
@@ -1391,6 +1397,7 @@ namespace ClickIt
                             LogMessage("(ClickIt) centerOfLabel has no Value | Cache: " + Settings.CachingEnable.Value);
                         }
 
+                        workFinished = true;
                         yield break;
                     }
 
@@ -1416,10 +1423,12 @@ namespace ClickIt
                 {
                     Mouse.blockInput(false);
                 }
+                workFinished = true;
             }
             catch (Exception e)
             {
                 Mouse.blockInput(false);
+                workFinished = true;
                 waitingForCorruption = false;
                 LogError(e.ToString());
             }
