@@ -61,12 +61,11 @@ namespace ClickIt
             Timer.Start();
             SecondTimer.Start();
 
-            altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic");
+            altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic", false);
             _ = Core.ParallelRunner.Run(altarCoroutine);
 
-            clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic");
+            clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic", false);
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
-            clickLabelCoroutine.Pause();
 
             return true;
         }
@@ -538,13 +537,6 @@ namespace ClickIt
 
         private IEnumerator ScanForAltarsLogic()
         {
-            //the code below is taxing, we don't want to run it too often
-            if (SecondTimer.ElapsedMilliseconds < 500)
-            {
-                yield break;
-            }
-
-            SecondTimer.Restart();
             List<LabelOnGround> altarLabels = new();
             if (Settings.HighlightExarchAltars)
             {
@@ -659,6 +651,7 @@ namespace ClickIt
             {
                 altarComponents.Clear();
             }
+            altarCoroutine.Pause();
             yield break;
         }
 
@@ -804,6 +797,11 @@ namespace ClickIt
                 {
                     clickLabelCoroutine.Pause();
                 }
+            }
+            if (SecondTimer.ElapsedMilliseconds > 500)
+            {
+                altarCoroutine.Resume();
+                SecondTimer.Restart();
             }
             return null;
         }
@@ -1063,13 +1061,13 @@ namespace ClickIt
             if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 5))
             {
                 workFinished = true;
-                yield break;//todo
+                yield break;
             }
 
             if (!canClick())
             {
                 workFinished = true;
-                yield break;//todo
+                yield break;
             }
 
             Timer.Restart();
