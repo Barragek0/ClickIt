@@ -61,11 +61,11 @@ namespace ClickIt
             Timer.Start();
             SecondTimer.Start();
 
-            altarCoroutine = Core.ParallelRunner.Run(new Coroutine(ScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
+            altarCoroutine = Core.ParallelRunner.Run(new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
             _ = Core.ParallelRunner.Run(altarCoroutine);
             altarCoroutine.Pause();
 
-            clickLabelCoroutine = Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
+            clickLabelCoroutine = Core.ParallelRunner.Run(new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic"));
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
             clickLabelCoroutine.Pause();
 
@@ -533,7 +533,7 @@ namespace ClickIt
 
         private bool canClick()
         {
-            return Input.GetKeyState(Settings.ClickLabelKey.Value) && IsPOEActive() && (!Settings.BlockOnOpenLeftRightPanel || !IsPanelOpen())
+            return IsPOEActive() && (!Settings.BlockOnOpenLeftRightPanel || !IsPanelOpen())
                     && !InTownOrHideout() && !waitingForCorruption && !GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         }
 
@@ -807,6 +807,23 @@ namespace ClickIt
                 }
             }
             return null;
+        }
+
+        // we need these here to keep the coroutine alive after finishing the work
+        private IEnumerator MainClickLabelCoroutine()
+        {
+            while (true)
+            {
+                yield return ClickLabel();
+            }
+        }
+
+        private IEnumerator MainScanForAltarsLogic()
+        {
+            while (true)
+            {
+                yield return ScanForAltarsLogic();
+            }
         }
 
         private void updateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
