@@ -531,7 +531,7 @@ namespace ClickIt
 
         private bool canClick()
         {
-            return IsPOEActive() && (!Settings.BlockOnOpenLeftRightPanel || !IsPanelOpen())
+            return Input.GetKeyState(Settings.ClickLabelKey.Value) && IsPOEActive() && (!Settings.BlockOnOpenLeftRightPanel || !IsPanelOpen())
                     && !InTownOrHideout() && !waitingForCorruption && !GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         }
 
