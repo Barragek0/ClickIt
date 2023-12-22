@@ -40,6 +40,9 @@ namespace ClickIt
 
         private bool waitingForCorruption = false;
 
+        private Coroutine? altarCoroutine;
+        private Coroutine? clickLabelCoroutine;
+
         public override void OnLoad()
         {
             CanUseMultiThreading = true;
@@ -57,6 +60,15 @@ namespace ClickIt
 
             Timer.Start();
             SecondTimer.Start();
+
+            altarCoroutine = Core.ParallelRunner.Run(new Coroutine(ScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
+            _ = Core.ParallelRunner.Run(altarCoroutine);
+            altarCoroutine.Pause();
+
+            clickLabelCoroutine = Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
+            _ = Core.ParallelRunner.Run(clickLabelCoroutine);
+            clickLabelCoroutine.Pause();
+
             return true;
         }
 
@@ -517,33 +529,12 @@ namespace ClickIt
                 }
             }
 
-            _ = Core.ParallelRunner.Run(new Coroutine(ScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
-
-
-            if (canClick())
-            {
-                _ = Core.ParallelRunner.Run(new Coroutine(ClickLabel(), this, "ClickIt.ClickLogic"));
-            }
         }
 
         private bool canClick()
         {
-            if (!Input.GetKeyState(Settings.ClickLabelKey.Value))
-            {
-                return false;
-            }
-
-            if (!IsPOEActive())
-            {
-                return false;
-            }
-
-            if (Settings.BlockOnOpenLeftRightPanel && IsPanelOpen())
-            {
-                return false;
-            }
-
-            return !InTownOrHideout() && !waitingForCorruption && !GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
+            return Input.GetKeyState(Settings.ClickLabelKey.Value) && IsPOEActive() && (!Settings.BlockOnOpenLeftRightPanel || !IsPanelOpen())
+                    && !InTownOrHideout() && !waitingForCorruption && !GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         }
 
         private IEnumerator ScanForAltarsLogic()
@@ -681,7 +672,7 @@ namespace ClickIt
 
         private bool IsPOEActive()
         {
-            if (ActiveWindowTitle().IndexOf("Path of Exile", 0, StringComparison.CurrentCultureIgnoreCase) == -1)
+            if (!GameController.Window.IsForeground())
             {
                 if (Settings.DebugMode)
                 {
@@ -788,8 +779,33 @@ namespace ClickIt
             return lines.Length;
         }
 
+        private bool workFinished;
+
         public override Job? Tick()
         {
+            if (Input.GetKeyState(Settings.ClickLabelKey.Value))
+            {
+
+                if (clickLabelCoroutine.IsDone)
+                {
+                    Coroutine firstOrDefault = Core.ParallelRunner.Coroutines.FirstOrDefault(x => x.Name == "ClickIt.ClickLogic");
+
+                    if (firstOrDefault != null)
+                    {
+                        clickLabelCoroutine = firstOrDefault;
+                    }
+                }
+
+                clickLabelCoroutine.Resume();
+                workFinished = false;
+            }
+            else
+            {
+                if (workFinished)
+                {
+                    clickLabelCoroutine.Pause();
+                }
+            }
             return null;
         }
 
@@ -1011,14 +1027,6 @@ namespace ClickIt
                 x.ItemOnGround.Path.Contains(type == AltarType.SearingExarch ? "CleansingFireAltar" : "TangleAltar"));
         }
 
-        private static string ActiveWindowTitle()
-        {
-            const int nChar = 256;
-            StringBuilder ss = new(nChar);
-            IntPtr handle = GetForegroundWindow();
-            return GetWindowText(handle, ss, nChar) > 0 ? ss.ToString() : "";
-        }
-
         private List<LabelOnGround> UpdateLabelComponent()
         {
             return GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
@@ -1038,7 +1046,12 @@ namespace ClickIt
         {
             if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 5))
             {
-                yield break;
+                yield break;//todo
+            }
+
+            if (!canClick())
+            {
+                yield break;//todo
             }
 
             Timer.Restart();
