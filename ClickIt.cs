@@ -61,10 +61,10 @@ namespace ClickIt
             Timer.Start();
             SecondTimer.Start();
 
-            altarCoroutine = Core.ParallelRunner.Run(new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic"));
+            altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic");
             _ = Core.ParallelRunner.Run(altarCoroutine);
 
-            clickLabelCoroutine = Core.ParallelRunner.Run(new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic"));
+            clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic");
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
             clickLabelCoroutine.Pause();
 
