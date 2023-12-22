@@ -492,7 +492,8 @@ namespace ClickIt
                         TopWeight > BottomWeight ? Color.OrangeRed :
                         BottomWeight > TopWeight ? Color.LawnGreen : Color.Yellow, 18);
 
-                    if (Settings.ClickExarchAltars && PointIsInClickableArea(boxToClick.GetClientRect().Center))
+                    if (((altar.AltarType == AltarType.EaterOfWorlds && Settings.ClickEaterAltars) || (altar.AltarType == AltarType.SearingExarch && Settings.ClickExarchAltars)) &&
+                        PointIsInClickableArea(boxToClick.GetClientRect().Center))
                     {
                         if (boxToClick != null && boxToClick.IsVisible)
                         {
@@ -542,17 +543,7 @@ namespace ClickIt
                 return false;
             }
 
-            if (InTownOrHideout())
-            {
-                return false;
-            }
-
-            if (waitingForCorruption)
-            {
-                return false;
-            }
-
-            return !GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
+            return !InTownOrHideout() && !waitingForCorruption && !GameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         }
 
         private IEnumerator ScanForAltarsLogic()
