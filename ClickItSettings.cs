@@ -1788,8 +1788,8 @@ namespace ClickIt
             "If the mod doesn't affect your build at all, set the weight to 1.", 8, 14000)]
         public RangeNode<int> Eater_PlayerReducedRecoveryRateOfLifeManaAndEnergyShieldPerEnduranceCharge_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Player:  (10 to 20)% reduced Cooldown Recovery Rate per Power Charge  ", 9, 14000)]
-        public ToggleNode Eater_PlayerReducedCooldownRecoveryRatePerPowerCharge { get; set; } = new ToggleNode(false);
+        [Menu("Player:  (-40 to -20)% to Critical Strike Multiplier per Power Charge  ", 9, 14000)]
+        public ToggleNode Eater_PlayertoCriticalStrikeMultiplierPerPowerCharge { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
