@@ -1070,43 +1070,45 @@ namespace ClickIt
                 LabelOnGround nextLabel = null;
                 Entity? shrine = GetShrine();
 
-                List<LabelOnGround> harvestLabels = GetHarvestLabels();
-
                 Stopwatch timer = new();
                 timer.Start();
                 nextLabel = GetLabelCaching();
+                timer.Stop();
                 if (Settings.DebugMode)
                 {
                     LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
                 }
 
-                timer.Stop();
-
-                if (Settings.NearestHarvest && harvestLabels.Count > 0)
+                if (Settings.NearestHarvest)
                 {
-                    LabelOnGround harvestLabel = harvestLabels.FirstOrDefault();
-                    if (harvestLabel != null && harvestLabel.IsVisible)
+
+                    List<LabelOnGround> harvestLabels = GetHarvestLabels();
+                    if (harvestLabels.Count > 0)
                     {
-                        if (canClick())
+                        LabelOnGround harvestLabel = harvestLabels.FirstOrDefault();
+                        if (harvestLabel != null && harvestLabel.IsVisible)
                         {
-                            Mouse.blockInput(true);
-                            Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center);
-                            if (Settings.LeftHanded)
+                            if (canClick())
                             {
-                                Mouse.RightClick();
+                                Mouse.blockInput(true);
+                                Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center);
+                                if (Settings.LeftHanded)
+                                {
+                                    Mouse.RightClick();
+                                }
+                                else
+                                {
+                                    Mouse.LeftClick();
+                                }
+                                Mouse.blockInput(false);
                             }
-                            else
-                            {
-                                Mouse.LeftClick();
-                            }
-                            Mouse.blockInput(false);
+                            workFinished = true;
+                            yield break;
                         }
-                        workFinished = true;
-                        yield break;
                     }
                 }
 
-                else if (Settings.ClickShrines && shrine != null && !waitingForCorruption &&
+                if (Settings.ClickShrines && shrine != null && !waitingForCorruption &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X >
                          GameController.Window.GetWindowRectangle().TopLeft.X &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X <
