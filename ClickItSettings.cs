@@ -28,17 +28,6 @@ namespace ClickIt
         [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 1, 1000)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
 
-        [Menu("Cache", 2000)]
-        public EmptyNode EmptyCaching { get; set; } = new EmptyNode();
-        [Menu("Caching", "Enables caching, improving CPU load while picking up items.\n\n" +
-            "Reload the plugin below if you change this setting!", 1, 2000)]
-        public ToggleNode CachingEnable { get; set; } = new ToggleNode(true);
-        [Menu("Reload", "Press this when you toggle between caching and no caching", 2, 2000)]
-        public ButtonNode ReloadPluginButton { get; set; } = new ButtonNode();
-        [Menu("Cache Refresh Interval", "How often the cache refreshes. Higher value will typically mean less CPU load on your system, but more chance to missclick labels.", 3, 2000)]
-        public RangeNode<int> CacheInterval { get; set; } = new RangeNode<int>(20, 5, 200);
-
-
         [Menu("General", 3000)]
         public EmptyNode Click { get; set; } = new EmptyNode();
 

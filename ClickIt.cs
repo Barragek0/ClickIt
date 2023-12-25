@@ -50,13 +50,9 @@ namespace ClickIt
 
         public override bool Initialise()
         {
-            Settings.ReloadPluginButton.OnPressed += ToggleCaching;
             Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
 
-            if (Settings.CachingEnable)
-            {
-                CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval);
-            }
+            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 500);
 
             Timer.Start();
             SecondTimer.Start();
@@ -655,13 +651,6 @@ namespace ClickIt
             yield break;
         }
 
-        private void ToggleCaching()
-        {
-            CachedLabels = Settings.CachingEnable.Value && CachedLabels == null
-                ? new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, Settings.CacheInterval)
-                : null;
-        }
-
         private bool IsPOEActive()
         {
             if (!GameController.Window.IsForeground())
@@ -1046,7 +1035,6 @@ namespace ClickIt
             return GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
                 .Where(x =>
                     x.ItemOnGround?.Path != null &&
-                    //this check is probably unnecessary, lets just make sure
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
                      (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
@@ -1085,28 +1073,14 @@ namespace ClickIt
                 List<LabelOnGround> harvestLabels = GetHarvestLabels();
 
                 Stopwatch timer = new();
-                if (Settings.CachingEnable)
+                timer.Start();
+                nextLabel = GetLabelCaching();
+                if (Settings.DebugMode)
                 {
-                    timer.Start();
-                    nextLabel = GetLabelCaching();
-                    if (Settings.DebugMode)
-                    {
-                        LogMessage("Collecting cached ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
-                    }
-
-                    timer.Stop();
+                    LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
                 }
-                else
-                {
-                    timer.Start();
-                    nextLabel = GetLabelNoCaching();
-                    if (Settings.DebugMode)
-                    {
-                        LogMessage("Collecting uncached ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
-                    }
 
-                    timer.Stop();
-                }
+                timer.Stop();
 
                 if (Settings.NearestHarvest && harvestLabels.Count > 0)
                 {
@@ -1182,7 +1156,7 @@ namespace ClickIt
                     {
                         if (Settings.DebugMode)
                         {
-                            LogMessage("(ClickIt) centerOfLabel has no Value | Cache: " + Settings.CachingEnable.Value);
+                            LogMessage("(ClickIt) centerOfLabel has no Value @ Essence");
                         }
 
                         workFinished = true;
@@ -1391,7 +1365,7 @@ namespace ClickIt
                     {
                         if (Settings.DebugMode)
                         {
-                            LogMessage("(ClickIt) centerOfLabel has no Value | Cache: " + Settings.CachingEnable.Value);
+                            LogMessage("(ClickIt) centerOfLabel has no Value @ ClickItems");
                         }
 
                         workFinished = true;
@@ -1486,36 +1460,6 @@ namespace ClickIt
                                                       (Settings.ClickEssences.Value && GetElementByString(x.Label,
                                                           "The monster is imprisoned by powerful Essences.") != null)));
             return label;
-        }
-
-        private LabelOnGround GetLabelNoCaching()
-        {
-            List<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.ToList().Where(x =>
-                    x.ItemOnGround?.Path != null &&
-                    PointIsInClickableArea(x.Label.GetClientRect().Center) &&
-                    (x.ItemOnGround.Type == EntityType.WorldItem ||
-                     (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
-                     x.ItemOnGround.Type == EntityType.AreaTransition ||
-                     GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null))
-                .OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
-
-
-            return list.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
-                                  ((Settings.ClickItems.Value &&
-                                   x.ItemOnGround.Type == EntityType.WorldItem &&
-                                   (!Settings.IgnoreUniques ||
-                                    x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity.GetComponent<Mods>()
-                                        ?.ItemRarity != ItemRarity.Unique ||
-                                    x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path
-                                        .StartsWith("Metadata/Items/Metamorphosis/Metamorphosis"))) ||
-                                   (Settings.ClickBasicChests.Value && x.ItemOnGround.Type == EntityType.Chest &&
-                                    IsBasicChest(x)) ||
-                                   (Settings.ClickLeagueChests.Value && x.ItemOnGround.Type == EntityType.Chest &&
-                                    !IsBasicChest(x)) ||
-                                   (Settings.ClickAreaTransitions.Value &&
-                                   x.ItemOnGround.Type == EntityType.AreaTransition) ||
-                                   (Settings.ClickEssences.Value && GetElementByString(x.Label,
-                                       "The monster is imprisoned by powerful Essences.") != null)));
         }
 
         public Element GetElementByString(Element label, string str)
