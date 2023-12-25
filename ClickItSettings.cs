@@ -28,17 +28,6 @@ namespace ClickIt
         [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 1, 1000)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
 
-        [Menu("Cache", 2000)]
-        public EmptyNode EmptyCaching { get; set; } = new EmptyNode();
-        [Menu("Caching", "Enables caching, improving CPU load while picking up items.\n\n" +
-            "Reload the plugin below if you change this setting!", 1, 2000)]
-        public ToggleNode CachingEnable { get; set; } = new ToggleNode(true);
-        [Menu("Reload", "Press this when you toggle between caching and no caching", 2, 2000)]
-        public ButtonNode ReloadPluginButton { get; set; } = new ButtonNode();
-        [Menu("Cache Refresh Interval", "How often the cache refreshes. Higher value will typically mean less CPU load on your system, but more chance to missclick labels.", 3, 2000)]
-        public RangeNode<int> CacheInterval { get; set; } = new RangeNode<int>(20, 5, 200);
-
-
         [Menu("General", 3000)]
         public EmptyNode Click { get; set; } = new EmptyNode();
 
@@ -1078,355 +1067,355 @@ namespace ClickIt
             "If the mod is garbage, set it to 0.", 26, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalOrbOfAnnulment_Weight { get; set; } = new RangeNode<int>(50, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Vaal Orb ", 25, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Vaal Orb ", 27, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalVaalOrb { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 26, 9000)]
+            "If the mod is garbage, set it to 0.", 28, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalVaalOrb_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Enkindling Orb ", 27, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Enkindling Orb ", 29, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalEnkindlingOrb { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 28, 9000)]
+            "If the mod is garbage, set it to 0.", 30, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalEnkindlingOrb_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Instilling Orb ", 29, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Instilling Orb ", 31, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalInstillingOrb { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 30, 9000)]
+            "If the mod is garbage, set it to 0.", 32, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalInstillingOrb_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Orb of Regret ", 31, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Orb of Regret ", 33, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalOrbOfRegret { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 32, 9000)]
+            "If the mod is garbage, set it to 0.", 34, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalOrbOfRegret_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Glassblower's Bauble ", 33, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Glassblower's Bauble ", 35, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGlassblowersBauble { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 34, 9000)]
+            "If the mod is garbage, set it to 0.", 36, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGlassblowersBauble_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gemcutter's Prism ", 35, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gemcutter's Prism ", 37, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGemcuttersPrism { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 36, 9000)]
+            "If the mod is garbage, set it to 0.", 38, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGemcuttersPrism_Weight { get; set; } = new RangeNode<int>(30, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Chaos Orb ", 37, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Chaos Orb ", 39, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalChaosOrb { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 38, 9000)]
+            "If the mod is garbage, set it to 0.", 40, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalChaosOrb_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Breach Scarab ", 39, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Breach Scarab ", 41, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedBreachScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 40, 9000)]
+            "If the mod is garbage, set it to 0.", 42, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedBreachScarab_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Breach Scarab ", 41, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Breach Scarab ", 43, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedBreachScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 42, 9000)]
+            "If the mod is garbage, set it to 0.", 44, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedBreachScarab_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Breach Scarab ", 43, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Breach Scarab ", 45, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedBreachScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 44, 9000)]
+            "If the mod is garbage, set it to 0.", 46, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedBreachScarab_Weight { get; set; } = new RangeNode<int>(35, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Torment Scarab ", 45, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Torment Scarab ", 47, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedTormentScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 46, 9000)]
+            "If the mod is garbage, set it to 0.", 48, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedTormentScarab_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Torment Scarab ", 47, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Torment Scarab ", 49, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedTormentScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 48, 9000)]
+            "If the mod is garbage, set it to 0.", 50, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedTormentScarab_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Torment Scarab ", 49, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Torment Scarab ", 51, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedTormentScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 50, 9000)]
+            "If the mod is garbage, set it to 0.", 52, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedTormentScarab_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Metamorph Scarab ", 51, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Metamorph Scarab ", 53, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedMetamorphScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 52, 9000)]
+            "If the mod is garbage, set it to 0.", 54, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedMetamorphScarab_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Metamorph Scarab ", 53, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Metamorph Scarab ", 55, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedMetamorphScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 54, 9000)]
+            "If the mod is garbage, set it to 0.", 56, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedMetamorphScarab_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Metamorph Scarab ", 55, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Metamorph Scarab ", 57, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedMetamorphScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 56, 9000)]
+            "If the mod is garbage, set it to 0.", 58, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedMetamorphScarab_Weight { get; set; } = new RangeNode<int>(35, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Blight Scarab ", 57, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Blight Scarab ", 59, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedBlightScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 58, 9000)]
+            "If the mod is garbage, set it to 0.", 60, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedBlightScarab_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Blight Scarab ", 59, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Blight Scarab ", 61, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedBlightScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 60, 9000)]
+            "If the mod is garbage, set it to 0.", 62, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedBlightScarab_Weight { get; set; } = new RangeNode<int>(30, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Blight Scarab ", 61, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Blight Scarab ", 63, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedBlightScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 62, 9000)]
+            "If the mod is garbage, set it to 0.", 64, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedBlightScarab_Weight { get; set; } = new RangeNode<int>(40, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Reliquary Scarab ", 63, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Reliquary Scarab ", 65, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedReliquaryScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 64, 9000)]
+            "If the mod is garbage, set it to 0.", 66, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedReliquaryScarab_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Reliquary Scarab ", 65, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Reliquary Scarab ", 67, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedReliquaryScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 66, 9000)]
+            "If the mod is garbage, set it to 0.", 68, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedReliquaryScarab_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Reliquary Scarab ", 67, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Reliquary Scarab ", 69, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedReliquaryScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 68, 9000)]
+            "If the mod is garbage, set it to 0.", 70, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedReliquaryScarab_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Divination Scarab ", 69, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Divination Scarab ", 71, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedDivinationScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 70, 9000)]
+            "If the mod is garbage, set it to 0.", 72, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedDivinationScarab_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Divination Scarab ", 71, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Divination Scarab ", 73, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedDivinationScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 72, 9000)]
+            "If the mod is garbage, set it to 0.", 74, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedDivinationScarab_Weight { get; set; } = new RangeNode<int>(30, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Divination Scarab ", 73, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Divination Scarab ", 75, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedDivinationScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 74, 9000)]
+            "If the mod is garbage, set it to 0.", 76, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedDivinationScarab_Weight { get; set; } = new RangeNode<int>(45, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Shaper Scarab ", 75, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Shaper Scarab ", 77, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedShaperScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 76, 9000)]
+            "If the mod is garbage, set it to 0.", 78, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedShaperScarab_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Shaper Scarab ", 77, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Shaper Scarab ", 79, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedShaperScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 78, 9000)]
+            "If the mod is garbage, set it to 0.", 80, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedShaperScarab_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Shaper Scarab ", 79, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Shaper Scarab ", 81, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedShaperScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 80, 9000)]
+            "If the mod is garbage, set it to 0.", 82, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedShaperScarab_Weight { get; set; } = new RangeNode<int>(20, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Cartography Scarab ", 81, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Rusted Cartography Scarab ", 83, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalRustedCartographyScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 82, 9000)]
+            "If the mod is garbage, set it to 0.", 84, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalRustedCartographyScarab_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Cartography Scarab ", 83, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Polished Cartography Scarab ", 85, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedCartographyScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 84, 9000)]
+            "If the mod is garbage, set it to 0.", 86, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalPolishedCartographyScarab_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Cartography Scarab ", 85, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Gilded Cartography Scarab ", 87, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalGildedCartographyScarab { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 86, 9000)]
+            "If the mod is garbage, set it to 0.", 88, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalGildedCartographyScarab_Weight { get; set; } = new RangeNode<int>(35, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Item ", 87, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Item ", 89, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueItem { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 88, 9000)]
+            "If the mod is garbage, set it to 0.", 90, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueItem_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Weapon ", 89, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Weapon ", 91, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueWeapon { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 90, 9000)]
+            "If the mod is garbage, set it to 0.", 92, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueWeapon_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Armour ", 91, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Armour ", 93, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueArmour { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 92, 9000)]
+            "If the mod is garbage, set it to 0.", 94, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueArmour_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards Unique Jewellery ", 93, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards Unique Jewellery ", 95, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsUniqueJewellery { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 94, 9000)]
+            "If the mod is garbage, set it to 0.", 96, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsUniqueJewellery_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Corrupted Unique Item ", 95, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Corrupted Unique Item ", 97, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsACorruptedUniqueItem { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 96, 9000)]
+            "If the mod is garbage, set it to 0.", 98, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsACorruptedUniqueItem_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Map ", 97, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Map ", 99, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAMap { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 98, 9000)]
+            "If the mod is garbage, set it to 0.", 100, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAMap_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Map ", 99, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Unique Map ", 101, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueMap { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 100, 9000)]
+            "If the mod is garbage, set it to 0.", 102, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsAUniqueMap_Weight { get; set; } = new RangeNode<int>(25, 1, 100);
 
-        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Corrupted Item ", 101, 9000)]
+        [Menu("Eldritch Minions:  (1.6 to 3.2)% chance to drop an additional Divination Card which rewards a Corrupted Item ", 103, 9000)]
         public ToggleNode Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsACorruptedItem { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How good is this reward?\n\n" +
             "If this reward is perfect, and couldn't be better, set it to 100.\n\n" +
             "If the mod is very good, but not amazing, set it to 75.\n\n" +
-            "If the mod is garbage, set it to 0.", 102, 9000)]
+            "If the mod is garbage, set it to 0.", 104, 9000)]
         public RangeNode<int> Exarch_EldritchMinionsChanceToDropAnAdditionalDivinationCardWhichRewardsACorruptedItem_Weight { get; set; } = new RangeNode<int>(15, 1, 100);
 
 
@@ -1788,8 +1777,8 @@ namespace ClickIt
             "If the mod doesn't affect your build at all, set the weight to 1.", 8, 14000)]
         public RangeNode<int> Eater_PlayerReducedRecoveryRateOfLifeManaAndEnergyShieldPerEnduranceCharge_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
-        [Menu("Player:  (10 to 20)% reduced Cooldown Recovery Rate per Power Charge  ", 9, 14000)]
-        public ToggleNode Eater_PlayerReducedCooldownRecoveryRatePerPowerCharge { get; set; } = new ToggleNode(false);
+        [Menu("Player:  (-40 to -20)% to Critical Strike Multiplier per Power Charge  ", 9, 14000)]
+        public ToggleNode Eater_PlayertoCriticalStrikeMultiplierPerPowerCharge { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
