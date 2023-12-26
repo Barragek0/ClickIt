@@ -684,7 +684,7 @@ namespace ClickIt
 
         private bool GroundItemsVisible()
         {
-            if (GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Count < 1)
+            if (CachedLabels.Value.Count < 1)
             {
                 if (Settings.DebugMode)
                 {
@@ -1010,18 +1010,18 @@ namespace ClickIt
 
         private List<LabelOnGround> GetHarvestLabels()
         {
-            List<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
+            List<LabelOnGround> list = CachedLabels.Value.Where(x =>
                 x.ItemOnGround.Path != null
                 && PointIsInClickableArea(x.Label.GetClientRect().Center)
             ).ToList();
 
-            return list.FindAll(x =>
-                x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor")).OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
+            return list.FindAll(x => x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor")
+                ).OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
         }
 
         private List<LabelOnGround> GetAltarLabels(AltarType type)
         {
-            List<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible.Where(x =>
+            List<LabelOnGround> list = CachedLabels.Value.Where(x =>
                 x.ItemOnGround.Path != null
                 && x.Label.GetClientRect().Center.PointInRectangle(FullScreenArea())
             ).ToList();
@@ -1037,9 +1037,11 @@ namespace ClickIt
                     x.ItemOnGround?.Path != null &&
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
-                     (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
-                     x.ItemOnGround.Type == EntityType.AreaTransition ||
-                     GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null))
+                    (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
+                    x.ItemOnGround.Type == EntityType.AreaTransition ||
+                    GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null) ||
+                    (x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor")) ||
+                    (x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar")))
                 .OrderBy(x => x.ItemOnGround.DistancePlayer)
                 .ToList();
         }
@@ -1448,20 +1450,25 @@ namespace ClickIt
                                                      ((Settings.ClickItems.Value &&
                                                       x.ItemOnGround.Type == EntityType.WorldItem &&
                                                       (!Settings.IgnoreUniques ||
-                                                       x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity
+                                                            x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity
                                                            .GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
-                                                       x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path
+                                                            x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path
                                                            .StartsWith("Metadata/Items/Metamorphosis/Metamorphosis"))) ||
                                                       (Settings.ClickBasicChests.Value &&
-                                                       x.ItemOnGround.Type == EntityType.Chest && IsBasicChest(x)) ||
+                                                            x.ItemOnGround.Type == EntityType.Chest && IsBasicChest(x)) ||
                                                       (Settings.ClickLeagueChests.Value &&
-                                                       x.ItemOnGround.Type == EntityType.Chest && !IsBasicChest(x)) ||
+                                                             x.ItemOnGround.Type == EntityType.Chest && !IsBasicChest(x)) ||
                                                       (Settings.ClickAreaTransitions.Value &&
-                                                      x.ItemOnGround.Type == EntityType.AreaTransition) ||
+                                                            x.ItemOnGround.Type == EntityType.AreaTransition) ||
                                                       (Settings.ClickShrines.Value &&
-                                                      x.ItemOnGround.Type == EntityType.Shrine) ||
-                                                      (Settings.ClickEssences.Value && GetElementByString(x.Label,
-                                                          "The monster is imprisoned by powerful Essences.") != null)));
+                                                            x.ItemOnGround.Type == EntityType.Shrine) ||
+                                                      (Settings.NearestHarvest &&
+                                                            (x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor"))) ||
+                                                      ((Settings.HighlightEaterAltars || Settings.HighlightExarchAltars ||
+                                                        Settings.ClickEaterAltars || Settings.ClickExarchAltars) &&
+                                                            (x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar"))) ||
+                                                      (Settings.ClickEssences.Value &&
+                                                            GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null)));
             return label;
         }
 
