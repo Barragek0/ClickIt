@@ -1453,7 +1453,8 @@ namespace ClickIt
                 Mouse.blockInput(false);
                 workFinished = true;
                 waitingForCorruption = false;
-                LogError(e.ToString(), 10);
+                if (Settings.DebugMode)
+                    LogError(e.ToString(), 10);
             }
         }
 
