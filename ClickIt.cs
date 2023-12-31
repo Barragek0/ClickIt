@@ -31,6 +31,7 @@ namespace ClickIt
         private Stopwatch SecondTimer { get; } = new Stopwatch();
         private Random Random { get; } = new Random();
         private TimeCache<List<LabelOnGround>>? CachedLabels { get; set; }
+        public int ItemOnGroundLabelCount { get; private set; }
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -52,7 +53,7 @@ namespace ClickIt
         {
             Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
 
-            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 500);
+            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 200);
 
             Timer.Start();
             SecondTimer.Start();
@@ -68,15 +69,12 @@ namespace ClickIt
 
         private RectangleF FullScreenArea()
         {
-            return new RectangleF(0, 0, GameController.Window.GetWindowRectangle().Width,
+            return new RectangleF(GameController.Window.GetWindowRectangle().X, GameController.Window.GetWindowRectangle().Y, GameController.Window.GetWindowRectangle().Width,
                 GameController.Window.GetWindowRectangle().Height);
         }
 
         private bool PointIsInClickableArea(Vector2 point)
         {
-            Stopwatch timer = new();
-            timer.Start();
-
             bool isInClickableArea = point.PointInRectangle(FullScreenArea()) &&
                    //is point in bottom left corner with health globe/flasks?
                    (!point.PointInRectangle(new RectangleF(
@@ -97,11 +95,6 @@ namespace ClickIt
                        GameController.Window.GetWindowRectangle().TopLeft.Y,
                        GameController.Window.GetWindowRectangle().TopRight.X / 2,
                        GameController.Window.GetWindowRectangle().TopLeft.Y + 120));
-            timer.Stop();
-            if (Settings.DebugMode)
-            {
-                LogMessage("Checking if point is in clickable area took " + timer.ElapsedMilliseconds + " ms", 5);
-            }
             return isInClickableArea;
             //if the point is in any of these, we don't want to click or move the mouse to it
         }
@@ -113,11 +106,16 @@ namespace ClickIt
             if (Settings.DebugMode && Settings.RenderDebug)
             {
                 Graphics.DrawFrame(new RectangleF(
+                    GameController.Window.GetWindowRectangle().TopLeft.X,
+                    GameController.Window.GetWindowRectangle().TopLeft.Y,
+                    GameController.Window.GetWindowRectangle().Width,
+                    GameController.Window.GetWindowRectangle().Height), Color.Green, 1);
+                Graphics.DrawFrame(new RectangleF(
                     (float)(GameController.Window.GetWindowRectangle().BottomLeft.X / 3),
                     (float)(GameController.Window.GetWindowRectangle().BottomLeft.Y / 5 * 3.92),
                     (float)(GameController.Window.GetWindowRectangle().BottomLeft.X +
                             (GameController.Window.GetWindowRectangle().BottomRight.X / 3.4)),
-                    GameController.Window.GetWindowRectangle().BottomLeft.Y), Color.Green, 1);
+                    GameController.Window.GetWindowRectangle().BottomLeft.Y), Color.Orange, 1);
                 Graphics.DrawFrame(new RectangleF(
                     (float)(GameController.Window.GetWindowRectangle().BottomRight.X / 3 * 2.12),
                     (float)(GameController.Window.GetWindowRectangle().BottomLeft.Y / 5 * 3.92),
@@ -333,52 +331,55 @@ namespace ClickIt
                                        (BottomDownsideWeight <= 0 ? 1 : BottomDownsideWeight), 2);
                     }
 
-                    if (TopUpside1Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.FirstUpside.ToLower()))
+                    if (Settings.DebugMode && Settings.RenderDebug)
                     {
-                        LogError("Could not match top upside 1 with field - " + altar.TopMods.FirstUpside.ToLower() +
-                                 "_weight");
-                    }
+                        if (TopUpside1Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.FirstUpside.ToLower()))
+                        {
+                            LogError("Could not match top upside 1 with field - " + altar.TopMods.FirstUpside.ToLower() +
+                                     "_weight", 10);
+                        }
 
-                    if (TopUpside2Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.SecondUpside.ToLower()))
-                    {
-                        LogError("Could not match top upside 2 with field - " + altar.TopMods.SecondUpside.ToLower() +
-                                 "_weight");
-                    }
+                        if (TopUpside2Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.SecondUpside.ToLower()))
+                        {
+                            LogError("Could not match top upside 2 with field - " + altar.TopMods.SecondUpside.ToLower() +
+                                     "_weight", 10);
+                        }
 
-                    if (TopDownside1Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.FirstDownside.ToLower()))
-                    {
-                        LogError("Could not match top downside 1 with field - " + altar.TopMods.FirstDownside.ToLower() +
-                                 "_weight");
-                    }
+                        if (TopDownside1Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.FirstDownside.ToLower()))
+                        {
+                            LogError("Could not match top downside 1 with field - " + altar.TopMods.FirstDownside.ToLower() +
+                                     "_weight", 10);
+                        }
 
-                    if (TopDownside2Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.SecondDownside.ToLower()))
-                    {
-                        LogError("Could not match top downside 2 with field - " + altar.TopMods.SecondDownside.ToLower() +
-                                 "_weight");
-                    }
+                        if (TopDownside2Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.SecondDownside.ToLower()))
+                        {
+                            LogError("Could not match top downside 2 with field - " + altar.TopMods.SecondDownside.ToLower() +
+                                     "_weight", 10);
+                        }
 
-                    if (BottomUpside1Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.FirstUpside.ToLower()))
-                    {
-                        LogError("Could not match bottom upside 1 with field - " + altar.BottomMods.FirstUpside.ToLower() +
-                                 "_weight");
-                    }
+                        if (BottomUpside1Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.FirstUpside.ToLower()))
+                        {
+                            LogError("Could not match bottom upside 1 with field - " + altar.BottomMods.FirstUpside.ToLower() +
+                                     "_weight", 10);
+                        }
 
-                    if (BottomUpside2Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.SecondUpside.ToLower()))
-                    {
-                        LogError("Could not match bottom upside 2 with field - " + altar.BottomMods.SecondUpside.ToLower() +
-                                 "_weight");
-                    }
+                        if (BottomUpside2Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.SecondUpside.ToLower()))
+                        {
+                            LogError("Could not match bottom upside 2 with field - " + altar.BottomMods.SecondUpside.ToLower() +
+                                     "_weight", 10);
+                        }
 
-                    if (BottomDownside1Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.FirstDownside.ToLower()))
-                    {
-                        LogError("Could not match bottom downside 1 with field - " +
-                                 altar.BottomMods.FirstDownside.ToLower() + "_weight");
-                    }
+                        if (BottomDownside1Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.FirstDownside.ToLower()))
+                        {
+                            LogError("Could not match bottom downside 1 with field - " +
+                                     altar.BottomMods.FirstDownside.ToLower() + "_weight", 10);
+                        }
 
-                    if (BottomDownside2Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.SecondDownside.ToLower()))
-                    {
-                        LogError("Could not match bottom downside 2 with field - " +
-                                 altar.BottomMods.SecondDownside.ToLower() + "_weight");
+                        if (BottomDownside2Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.SecondDownside.ToLower()))
+                        {
+                            LogError("Could not match bottom downside 2 with field - " +
+                                     altar.BottomMods.SecondDownside.ToLower() + "_weight", 10);
+                        }
                     }
 
                     Element? boxToClick = null;
@@ -499,13 +500,14 @@ namespace ClickIt
                         BottomWeight > TopWeight ? Color.LawnGreen : Color.Yellow, 18);
 
                     if (((altar.AltarType == AltarType.EaterOfWorlds && Settings.ClickEaterAltars) || (altar.AltarType == AltarType.SearingExarch && Settings.ClickExarchAltars)) &&
-                        PointIsInClickableArea(boxToClick.GetClientRect().Center))
+                        boxToClick != null && PointIsInClickableArea(boxToClick.GetClientRect().Center))
                     {
-                        if (boxToClick != null && boxToClick.IsVisible)
+                        if (boxToClick.IsVisible)
                         {
                             if (canClick())
                             {
                                 Mouse.blockInput(true);
+                                LogMessage("Moving mouse for altar", 5);
                                 Input.SetCursorPos(boxToClick.GetClientRect().Center);
                                 if (Settings.LeftHanded)
                                 {
@@ -628,17 +630,17 @@ namespace ClickIt
                             {
                                 if (Settings.DebugMode)
                                 {
-                                    LogError("Part of altarcomponent is null");
-                                    LogError("part1: " + altarComponent.TopMods);
-                                    LogError("part2: " + altarComponent.TopButton);
-                                    LogError("part3: " + altarComponent.BottomMods);
-                                    LogError("part4: " + altarComponent.BottomButton);
+                                    LogError("Part of altarcomponent is null", 10);
+                                    LogError("part1: " + altarComponent.TopMods, 10);
+                                    LogError("part2: " + altarComponent.TopButton, 10);
+                                    LogError("part3: " + altarComponent.BottomMods, 10);
+                                    LogError("part4: " + altarComponent.BottomButton, 10);
                                 }
                             }
                         }
                         else
                         {
-                            LogError("Element is null");
+                            LogError("Element is null", 10);
                         }
                     }
                 }
@@ -903,7 +905,7 @@ namespace ClickIt
                         {
                             LogError(
                                 "updateComponentFromElementData: Failed to match mod with field? Field may not be required - localmod:" +
-                                localmod);
+                                localmod, 10);
                         }
                     }
                     catch (Exception)
@@ -911,7 +913,7 @@ namespace ClickIt
                         if (Settings.DebugMode)
                         {
                             LogError(
-                                "updateComponentFromElementData: Failed to match mod with field? Field may not be required - unable to write field, sequence contains no elements");
+                                "updateComponentFromElementData: Failed to match mod with field? Field may not be required - unable to write field, sequence contains no elements", 10);
                         }
                     }
                 }
@@ -1032,9 +1034,12 @@ namespace ClickIt
 
         private List<LabelOnGround> UpdateLabelComponent()
         {
-            return GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible
+            IList<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabels;
+            ItemOnGroundLabelCount = list.Count;
+            return list
                 .Where(x =>
                     x.ItemOnGround?.Path != null &&
+                    x.IsVisible &&
                     PointIsInClickableArea(x.Label.GetClientRect().Center) &&
                     (x.ItemOnGround.Type == EntityType.WorldItem ||
                     (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
@@ -1046,13 +1051,38 @@ namespace ClickIt
                 .ToList();
         }
 
+        //the more items on the ground, the longer we should wait, otherwise, the plugin will lag and missclick.
+        private int CalculateTimeInMsForNextWait()
+        {
+            switch (ItemOnGroundLabelCount)
+            {
+                case int i when i > 0 && i <= 500:
+                    return 80;
+                case int i when i > 500 && i <= 1000:
+                    return 100;
+                case int i when i > 1500 && i <= 2000:
+                    return 120;
+                case int i when i > 2000 && i <= 2500:
+                    return 140;
+                case int i when i > 2000 && i <= 2500:
+                    return 160;
+                case int i when i > 2500 && i <= 3000:
+                    return 180;
+                case int i when i > 3000:
+                    return 200;
+            }
+            return 80;
+        }
+
         private IEnumerator ClickLabel(Element? altar = null)
         {
-            if (Timer.ElapsedMilliseconds < Settings.WaitTimeInMs.Value - 10 + Random.Next(0, 5))
+            if (Timer.ElapsedMilliseconds < CalculateTimeInMsForNextWait() + Random.Next(0, 10))
             {
                 workFinished = true;
                 yield break;
             }
+
+            if (Settings.DebugMode) LogMessage("ms wait time: " + CalculateTimeInMsForNextWait());
 
             if (!canClick())
             {
@@ -1093,8 +1123,8 @@ namespace ClickIt
                             if (canClick())
                             {
                                 Mouse.blockInput(true);
-                                Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center +
-                                               GameController.Window.GetWindowRectangle().TopLeft);
+                                LogMessage("Moving mouse for harvest", 5);
+                                Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center);
                                 if (Settings.LeftHanded)
                                 {
                                     Mouse.RightClick();
@@ -1121,6 +1151,7 @@ namespace ClickIt
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y <
                          GameController.Window.GetWindowRectangle().BottomLeft.Y - 275)
                 {
+                    LogMessage("Moving mouse for shrine", 5);
                     Input.SetCursorPos(
                         GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)));
                     if (Settings.LeftHanded)
@@ -1249,7 +1280,7 @@ namespace ClickIt
                             List<NormalInventoryItem> inventoryItems;
 
                             Task<List<NormalInventoryItem>> task = FetchInventoryItemsTask();
-                            if (await Task.WhenAny(task, Task.Delay(1000)) == task)
+                            if (await Task.WhenAny(task, Task.Delay(2000)) == task)
                             {
                                 inventoryItems = FetchInventoryItems();
                             }
@@ -1264,13 +1295,16 @@ namespace ClickIt
                                 return;
                             }
 
+                            //we add this delay in-case the game stutters when loading the inventory, may be related to the league mechanic additional inventory
+                            Thread.Sleep((int)(latency + 200));
+
                             NormalInventoryItem remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
                                 slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
 
                             if (remnantOfCorruption == null)
                             {
                                 LogError(
-                                    "(ClickIt) Couldn't find remnant of corruption in inventory, make sure you have some.");
+                                    "(ClickIt) Couldn't find remnant of corruption in inventory, make sure you have some.", 20);
                                 waitingForCorruption = false;
                                 Mouse.blockInput(false);
                                 workFinished = true;
@@ -1282,9 +1316,10 @@ namespace ClickIt
                                 LogMessage("(ClickIt) Found remnant");
                             }
 
+                            LogMessage("Moving mouse for remnant", 5);
                             Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
                                                GameController.Window.GetWindowRectangle().TopLeft);
-                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + CalculateTimeInMsForNextWait()));
 
                             if (Settings.LeftHanded)
                             {
@@ -1295,13 +1330,14 @@ namespace ClickIt
                                 Mouse.RightClick();
                             }
 
-                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + CalculateTimeInMsForNextWait()));
 
                             centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                             + GameController.Window.GetWindowRectangle().TopLeft
                                             + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
+                            LogMessage("Moving mouse for remnant 2", 5);
                             Input.SetCursorPos(centerOfLabel.Value);
-                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + CalculateTimeInMsForNextWait()));
 
                             if (Settings.LeftHanded)
                             {
@@ -1312,11 +1348,11 @@ namespace ClickIt
                                 Mouse.LeftClick();
                             }
 
-                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + CalculateTimeInMsForNextWait()));
 
                             Keyboard.KeyPress(Settings.OpenInventoryKey);
 
-                            Thread.Sleep((int)(latency + Settings.WaitTimeInMs));
+                            Thread.Sleep((int)(latency + CalculateTimeInMsForNextWait()));
 
                             Mouse.blockInput(false);
                             waitingForCorruption = false;
@@ -1336,6 +1372,7 @@ namespace ClickIt
                                 LogMessage("Clicking essence", 5);
                             }
 
+                            LogMessage("Moving mouse for essence", 5);
                             Input.SetCursorPos(centerOfLabel.Value);
                             if (Settings.LeftHanded)
                             {
@@ -1353,7 +1390,16 @@ namespace ClickIt
 
                 else if (Settings.ClickItems && GroundItemsVisible() && !waitingForCorruption)
                 {
+                    if (nextLabel == null || !PointIsInClickableArea(nextLabel.Label.GetClientRect().Center))
+                    {
+                        if (Settings.DebugMode)
+                        {
+                            LogMessage("(ClickIt) nextLabel is not in clickable area");
+                        }
 
+                        workFinished = true;
+                        yield break;
+                    }
                     Vector2? centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                         + GameController.Window.GetWindowRectangle().TopLeft
                                         + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
@@ -1377,6 +1423,7 @@ namespace ClickIt
                         yield break;
                     }
 
+                    LogMessage("Moving mouse to click item", 5);
                     Input.SetCursorPos(centerOfLabel.Value);
                     if (Settings.LeftHanded)
                     {
@@ -1406,7 +1453,7 @@ namespace ClickIt
                 Mouse.blockInput(false);
                 workFinished = true;
                 waitingForCorruption = false;
-                LogError(e.ToString());
+                LogError(e.ToString(), 10);
             }
         }
 
