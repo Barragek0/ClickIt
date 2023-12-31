@@ -1403,13 +1403,13 @@ namespace ClickIt
                     }
                     Vector2? centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                         + GameController.Window.GetWindowRectangleTimeCache.TopLeft
-                                        + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
+                                        + new Vector2(Random.Next(0, 5), Random.Next(0, 5));
 
                     if (nextLabel?.ItemOnGround.Type == EntityType.Chest)
                     {
                         centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                         + GameController.Window.GetWindowRectangleTimeCache.TopLeft
-                                        + new Vector2(Random.Next(0, 2),
+                                        + new Vector2(Random.Next(0, 5),
                                             -Random.Next(Settings.ChestHeightOffset, Settings.ChestHeightOffset + 2));
                     }
 
@@ -1436,7 +1436,7 @@ namespace ClickIt
                     }
 
 
-                    if (Settings.ToggleItems && Random.Next(0, 20) == 0)
+                    if (Settings.ToggleItems && Random.Next(0, 10) == 0)
                     {
                         Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);
                         Keyboard.KeyPress(Settings.ToggleItemsHotkey, 20);
@@ -1448,6 +1448,7 @@ namespace ClickIt
                     Mouse.blockInput(false);
                 }
                 workFinished = true;
+                yield break;
             }
             catch (Exception e)
             {
@@ -1456,6 +1457,7 @@ namespace ClickIt
                 waitingForCorruption = false;
                 if (Settings.DebugMode)
                     LogError(e.ToString(), 10);
+                yield break;
             }
         }
 
