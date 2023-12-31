@@ -34,10 +34,6 @@ namespace ClickIt
         [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
 
-        [Menu("Wait Time Between Clicks", "Time between clicks in milliseconds\n\n" +
-            "You will get disconnected for clicking too fast if setting this too low.", 2, 3000)]
-        public RangeNode<int> WaitTimeInMs { get; set; } = new RangeNode<int>(55, 20, 200);
-
         [Menu("Search Radius", "Radius the plugin will search in for interactable objects.", 1, 3000)]
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(95, 0, 300);
 
