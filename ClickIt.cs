@@ -69,8 +69,8 @@ namespace ClickIt
 
         private RectangleF FullScreenArea()
         {
-            return new RectangleF(GameController.Window.GetWindowRectangle().X, GameController.Window.GetWindowRectangle().Y, GameController.Window.GetWindowRectangle().Width,
-                GameController.Window.GetWindowRectangle().Height);
+            return new RectangleF(GameController.Window.GetWindowRectangleTimeCache.X, GameController.Window.GetWindowRectangleTimeCache.Y, GameController.Window.GetWindowRectangleTimeCache.Width,
+                GameController.Window.GetWindowRectangleTimeCache.Height);
         }
 
         private bool PointIsInClickableArea(Vector2 point)
@@ -78,23 +78,23 @@ namespace ClickIt
             bool isInClickableArea = point.PointInRectangle(FullScreenArea()) &&
                    //is point in bottom left corner with health globe/flasks?
                    (!point.PointInRectangle(new RectangleF(
-                       (float)(GameController.Window.GetWindowRectangle().BottomLeft.X / 3),
-                       (float)(GameController.Window.GetWindowRectangle().BottomLeft.Y / 5 * 3.92),
-                       (float)(GameController.Window.GetWindowRectangle().BottomLeft.X +
-                               (GameController.Window.GetWindowRectangle().BottomRight.X / 3.4)),
-                       GameController.Window.GetWindowRectangle().BottomLeft.Y)))
+                       (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.X / 3),
+                       (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.Y / 5 * 3.92),
+                       (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.X +
+                               (GameController.Window.GetWindowRectangleTimeCache.BottomRight.X / 3.4)),
+                       GameController.Window.GetWindowRectangleTimeCache.BottomLeft.Y)))
                    //is point in bottom right corner with skills and mana globe?
                    && !point.PointInRectangle(new RectangleF(
-                       (float)(GameController.Window.GetWindowRectangle().BottomRight.X / 3 * 2.12),
-                       (float)(GameController.Window.GetWindowRectangle().BottomLeft.Y / 5 * 3.92),
-                       GameController.Window.GetWindowRectangle().BottomRight.X,
-                       GameController.Window.GetWindowRectangle().BottomRight.Y))
+                       (float)(GameController.Window.GetWindowRectangleTimeCache.BottomRight.X / 3 * 2.12),
+                       (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.Y / 5 * 3.92),
+                       GameController.Window.GetWindowRectangleTimeCache.BottomRight.X,
+                       GameController.Window.GetWindowRectangleTimeCache.BottomRight.Y))
                    //is point at the very top of the screen where buffs and debuffs are?
                    && !point.PointInRectangle(new RectangleF(
-                       GameController.Window.GetWindowRectangle().TopLeft.X,
-                       GameController.Window.GetWindowRectangle().TopLeft.Y,
-                       GameController.Window.GetWindowRectangle().TopRight.X / 2,
-                       GameController.Window.GetWindowRectangle().TopLeft.Y + 120));
+                       GameController.Window.GetWindowRectangleTimeCache.TopLeft.X,
+                       GameController.Window.GetWindowRectangleTimeCache.TopLeft.Y,
+                       GameController.Window.GetWindowRectangleTimeCache.TopRight.X / 2,
+                       GameController.Window.GetWindowRectangleTimeCache.TopLeft.Y + 120));
             return isInClickableArea;
             //if the point is in any of these, we don't want to click or move the mouse to it
         }
@@ -106,26 +106,26 @@ namespace ClickIt
             if (Settings.DebugMode && Settings.RenderDebug)
             {
                 Graphics.DrawFrame(new RectangleF(
-                    GameController.Window.GetWindowRectangle().TopLeft.X,
-                    GameController.Window.GetWindowRectangle().TopLeft.Y,
-                    GameController.Window.GetWindowRectangle().Width,
-                    GameController.Window.GetWindowRectangle().Height), Color.Green, 1);
+                    GameController.Window.GetWindowRectangleTimeCache.TopLeft.X,
+                    GameController.Window.GetWindowRectangleTimeCache.TopLeft.Y,
+                    GameController.Window.GetWindowRectangleTimeCache.Width,
+                    GameController.Window.GetWindowRectangleTimeCache.Height), Color.Green, 1);
                 Graphics.DrawFrame(new RectangleF(
-                    (float)(GameController.Window.GetWindowRectangle().BottomLeft.X / 3),
-                    (float)(GameController.Window.GetWindowRectangle().BottomLeft.Y / 5 * 3.92),
-                    (float)(GameController.Window.GetWindowRectangle().BottomLeft.X +
-                            (GameController.Window.GetWindowRectangle().BottomRight.X / 3.4)),
-                    GameController.Window.GetWindowRectangle().BottomLeft.Y), Color.Orange, 1);
+                    (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.X / 3),
+                    (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.Y / 5 * 3.92),
+                    (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.X +
+                            (GameController.Window.GetWindowRectangleTimeCache.BottomRight.X / 3.4)),
+                    GameController.Window.GetWindowRectangleTimeCache.BottomLeft.Y), Color.Orange, 1);
                 Graphics.DrawFrame(new RectangleF(
-                    (float)(GameController.Window.GetWindowRectangle().BottomRight.X / 3 * 2.12),
-                    (float)(GameController.Window.GetWindowRectangle().BottomLeft.Y / 5 * 3.92),
-                    GameController.Window.GetWindowRectangle().BottomRight.X,
-                    GameController.Window.GetWindowRectangle().BottomRight.Y), Color.Cyan, 1);
+                    (float)(GameController.Window.GetWindowRectangleTimeCache.BottomRight.X / 3 * 2.12),
+                    (float)(GameController.Window.GetWindowRectangleTimeCache.BottomLeft.Y / 5 * 3.92),
+                    GameController.Window.GetWindowRectangleTimeCache.BottomRight.X,
+                    GameController.Window.GetWindowRectangleTimeCache.BottomRight.Y), Color.Cyan, 1);
                 Graphics.DrawFrame(new RectangleF(
-                    GameController.Window.GetWindowRectangle().TopLeft.X,
-                    GameController.Window.GetWindowRectangle().TopLeft.Y,
-                    GameController.Window.GetWindowRectangle().TopRight.X / 2,
-                    GameController.Window.GetWindowRectangle().TopLeft.Y + 120), Color.Yellow, 1);
+                    GameController.Window.GetWindowRectangleTimeCache.TopLeft.X,
+                    GameController.Window.GetWindowRectangleTimeCache.TopLeft.Y,
+                    GameController.Window.GetWindowRectangleTimeCache.TopRight.X / 2,
+                    GameController.Window.GetWindowRectangleTimeCache.TopLeft.Y + 120), Color.Yellow, 1);
             }
 
             if (fields.Count == 0)
@@ -1143,13 +1143,13 @@ namespace ClickIt
 
                 if (Settings.ClickShrines && shrine != null && !waitingForCorruption &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X >
-                         GameController.Window.GetWindowRectangle().TopLeft.X &&
+                         GameController.Window.GetWindowRectangleTimeCache.TopLeft.X &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).X <
-                         GameController.Window.GetWindowRectangle().TopRight.X &&
+                         GameController.Window.GetWindowRectangleTimeCache.TopRight.X &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y >
-                         GameController.Window.GetWindowRectangle().TopLeft.Y + 150 &&
+                         GameController.Window.GetWindowRectangleTimeCache.TopLeft.Y + 150 &&
                          GameController.Game.IngameState.Camera.WorldToScreen(shrine.Pos.Translate(0, 0, 0)).Y <
-                         GameController.Window.GetWindowRectangle().BottomLeft.Y - 275)
+                         GameController.Window.GetWindowRectangleTimeCache.BottomLeft.Y - 275)
                 {
                     LogMessage("Moving mouse for shrine", 5);
                     Input.SetCursorPos(
@@ -1177,13 +1177,13 @@ namespace ClickIt
                     bool MeetsCorruptCriteria = false;
 
                     Vector2? centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                        + GameController.Window.GetWindowRectangle().TopLeft
+                                        + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                         + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
 
                     if (nextLabel?.ItemOnGround.Type == EntityType.Chest)
                     {
                         centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                        + GameController.Window.GetWindowRectangle().TopLeft
+                                        + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                         + new Vector2(Random.Next(0, 2),
                                             -Random.Next(Settings.ChestHeightOffset, Settings.ChestHeightOffset + 2));
                     }
@@ -1318,7 +1318,7 @@ namespace ClickIt
 
                             LogMessage("Moving mouse for remnant", 5);
                             Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
-                                               GameController.Window.GetWindowRectangle().TopLeft);
+                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                             Thread.Sleep((int)(latency + CalculateTimeInMsForNextWait()));
 
                             if (Settings.LeftHanded)
@@ -1333,7 +1333,7 @@ namespace ClickIt
                             Thread.Sleep((int)(latency + CalculateTimeInMsForNextWait()));
 
                             centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                            + GameController.Window.GetWindowRectangle().TopLeft
+                                            + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                             + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
                             LogMessage("Moving mouse for remnant 2", 5);
                             Input.SetCursorPos(centerOfLabel.Value);
@@ -1390,7 +1390,8 @@ namespace ClickIt
 
                 else if (Settings.ClickItems && GroundItemsVisible() && !waitingForCorruption)
                 {
-                    if (nextLabel == null || !PointIsInClickableArea(nextLabel.Label.GetClientRect().Center))
+                    if (nextLabel == null ||
+                        !PointIsInClickableArea(nextLabel.Label.GetClientRect().Center + GameController.Window.GetWindowRectangleTimeCache.TopLeft))
                     {
                         if (Settings.DebugMode)
                         {
@@ -1401,13 +1402,13 @@ namespace ClickIt
                         yield break;
                     }
                     Vector2? centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                        + GameController.Window.GetWindowRectangle().TopLeft
+                                        + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                         + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
 
                     if (nextLabel?.ItemOnGround.Type == EntityType.Chest)
                     {
                         centerOfLabel = nextLabel?.Label?.GetClientRect().Center
-                                        + GameController.Window.GetWindowRectangle().TopLeft
+                                        + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                         + new Vector2(Random.Next(0, 2),
                                             -Random.Next(Settings.ChestHeightOffset, Settings.ChestHeightOffset + 2));
                     }
