@@ -1045,6 +1045,7 @@ namespace ClickIt
                     (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
                     x.ItemOnGround.Type == EntityType.AreaTransition ||
                     GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null) ||
+                    x.ItemOnGround.Path.Contains("DelveMineralVein") ||
                     (x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor")) ||
                     (x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar")))
                 .OrderBy(x => x.ItemOnGround.DistancePlayer)
@@ -1104,13 +1105,12 @@ namespace ClickIt
 
                 Stopwatch timer = new();
                 timer.Start();
-                nextLabel = GetLabelCaching();
+                nextLabel = GetCachedLabels();
                 timer.Stop();
                 if (Settings.DebugMode)
                 {
                     LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
                 }
-
                 if (Settings.NearestHarvest)
                 {
 
@@ -1164,6 +1164,27 @@ namespace ClickIt
                     }
 
                     Mouse.blockInput(false);
+                }
+                else if (nextLabel != null && GetElementByString(nextLabel.Label, "Interact to acquire Voltaxic Sulphite") !=
+                        null && Settings.ClickSulphiteVeins && GroundItemsVisible())
+                {
+                    if (canClick())
+                    {
+                        Mouse.blockInput(true);
+                        LogMessage("Moving mouse for sulphite vein", 5);
+                        Input.SetCursorPos(nextLabel.Label.GetClientRect().Center);
+                        if (Settings.LeftHanded)
+                        {
+                            Mouse.RightClick();
+                        }
+                        else
+                        {
+                            Mouse.LeftClick();
+                        }
+                        Mouse.blockInput(false);
+                    }
+                    workFinished = true;
+                    yield break;
                 }
                 else if (nextLabel != null && GetElementByString(nextLabel.Label, "The monster is imprisoned by powerful Essences.") !=
                         null && Settings.ClickEssences && GroundItemsVisible())
@@ -1495,7 +1516,7 @@ namespace ClickIt
             };
         }
 
-        private LabelOnGround GetLabelCaching()
+        private LabelOnGround GetCachedLabels()
         {
             LabelOnGround label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
                                                      ((Settings.ClickItems.Value &&
@@ -1515,6 +1536,8 @@ namespace ClickIt
                                                             x.ItemOnGround.Type == EntityType.Shrine) ||
                                                       (Settings.NearestHarvest &&
                                                             (x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor"))) ||
+                                                      (Settings.ClickSulphiteVeins &&
+                                                            x.ItemOnGround.Path.Contains("DelveMineralVein")) ||
                                                       ((Settings.HighlightEaterAltars || Settings.HighlightExarchAltars ||
                                                         Settings.ClickEaterAltars || Settings.ClickExarchAltars) &&
                                                             (x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar"))) ||

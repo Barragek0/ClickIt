@@ -40,7 +40,7 @@ namespace ClickIt
         [Menu("Items", "Click items", 2, 3000)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
 
-        [Menu("Ignore Unique Items", "Ignore unique items, aside from metamorph organs", 3, 3000)]
+        [Menu("Ignore Unique Items", "Ignore unique items", 3, 3000)]
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
 
         //[Menu("Not yet implemented", 2, 3000)]
@@ -60,20 +60,23 @@ namespace ClickIt
         [Menu("Area Transitions", "Click area transitions", 10, 3000)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
 
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 11, 3000)]
+        [Menu("Sulphite Veins", "Click sulphite veins", 11, 3000)]
+        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(false);
+
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 12, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
 
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 12, 3000)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 13, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
 
-        [Menu("Block User Input", "Blocks the user from moving the mouse or clicking while the hotkey is held. Will help stop missclicking.", 13, 3000)]
+        [Menu("Block User Input", "Blocks the user from moving the mouse or clicking while the hotkey is held. Will help stop missclicking.", 14, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
 
-        [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 14, 3000)]
+        [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 15, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
 
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 15, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 16, 3000)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
 
 
