@@ -1,46 +1,19 @@
 {
   "version": 2,
-  "dgSpecHash": "LViTZ46R1DFfi7a4bEsxOqz08ElxO9ARMJG2LHtt8CGPHtaSm5JyWEOu024tc4nUQIjklH9MOOEHeqeaZ6gDOQ==",
+  "dgSpecHash": "V0oJATTJGuwQR/Igpn0p0gtwR6mjbRL/qVY8EvH37eBGd0zYQRgmYXzoyaXdto4CcoRIJPxugj+Z5TsoTts2JA==",
   "success": true,
   "projectFilePath": "E:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\Alex\\.nuget\\packages\\imgui.net\\1.86.0\\imgui.net.1.86.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\imgui.net\\1.90.0.1\\imgui.net.1.90.0.1.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\serilog\\3.1.1\\serilog.3.1.1.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\sharpdx\\4.2.0\\sharpdx.4.2.0.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\sharpdx.mathematics\\4.2.0\\sharpdx.mathematics.4.2.0.nupkg.sha512",
-    "C:\\Users\\Alex\\.nuget\\packages\\system.buffers\\4.4.0\\system.buffers.4.4.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\system.diagnostics.diagnosticsource\\7.0.2\\system.diagnostics.diagnosticsource.7.0.2.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
-    "C:\\Users\\Alex\\.nuget\\packages\\system.numerics.vectors\\4.4.0\\system.numerics.vectors.4.4.0.nupkg.sha512",
-    "C:\\Users\\Alex\\.nuget\\packages\\system.runtime\\4.1.1\\system.runtime.4.1.1.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\system.numerics.vectors\\4.5.0\\system.numerics.vectors.4.5.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\system.runtime\\4.3.1\\system.runtime.4.3.1.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1605",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Detected package downgrade: System.Buffers from 4.5.1 to 4.4.0. Reference the package directly from the project to select a different version. \r\n ClickIt -> Serilog 3.1.1 -> System.Diagnostics.DiagnosticSource 7.0.2 -> System.Memory 4.5.5 -> System.Buffers (>= 4.5.1) \r\n ClickIt -> System.Buffers (>= 4.4.0)",
-      "libraryId": "System.Buffers",
-      "targetGraphs": [
-        ".NETFramework,Version=v4.8",
-        ".NETFramework,Version=v4.8/win",
-        ".NETFramework,Version=v4.8/win-x64",
-        ".NETFramework,Version=v4.8/win-x86"
-      ]
-    },
-    {
-      "code": "NU1605",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Detected package downgrade: System.Numerics.Vectors from 4.5.0 to 4.4.0. Reference the package directly from the project to select a different version. \r\n ClickIt -> Serilog 3.1.1 -> System.Diagnostics.DiagnosticSource 7.0.2 -> System.Memory 4.5.5 -> System.Numerics.Vectors (>= 4.5.0) \r\n ClickIt -> System.Numerics.Vectors (>= 4.4.0)",
-      "libraryId": "System.Numerics.Vectors",
-      "targetGraphs": [
-        ".NETFramework,Version=v4.8",
-        ".NETFramework,Version=v4.8/win",
-        ".NETFramework,Version=v4.8/win-x64",
-        ".NETFramework,Version=v4.8/win-x86"
-      ]
-    }
-  ]
+  "logs": []
 }
