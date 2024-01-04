@@ -1059,6 +1059,7 @@ namespace ClickIt
                     x.ItemOnGround.Type == EntityType.AreaTransition ||
                     GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null ||
                     x.ItemOnGround.Path.Contains("DelveMineral") ||
+                    x.ItemOnGround.Path.Contains("AzuriteEncounterController") ||
                     x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor") ||
                     x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar")))
                 .OrderBy(x => x.ItemOnGround.DistancePlayer)
@@ -1540,6 +1541,8 @@ namespace ClickIt
                                                             (x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor"))) ||
                                                       (Settings.ClickSulphiteVeins &&
                                                             x.ItemOnGround.Path.Contains("DelveMineral")) ||
+                                                      (Settings.ClickAzuriteVeins &&
+                                                            x.ItemOnGround.Path.Contains("AzuriteEncounterController")) ||
                                                       ((Settings.HighlightEaterAltars || Settings.HighlightExarchAltars ||
                                                         Settings.ClickEaterAltars || Settings.ClickExarchAltars) &&
                                                             (x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar"))) ||
