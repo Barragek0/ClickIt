@@ -63,7 +63,7 @@ namespace ClickIt
         [Menu("Sulphite Veins", "Click sulphite veins", 11, 3000)]
         public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(false);
 
-        [Menu("Azurite Veins", "Click azurite veins", 12, 3000)]
+        [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 12, 3000)]
         public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(false);
 
         [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 13, 3000)]
