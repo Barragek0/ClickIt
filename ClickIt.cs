@@ -1402,7 +1402,7 @@ namespace ClickIt
                     }
                 }
 
-                else if (Settings.ClickItems && GroundItemsVisible() && !waitingForCorruption)
+                else if (GroundItemsVisible() && !waitingForCorruption)
                 {
                     if (nextLabel == null ||
                         !PointIsInClickableArea(nextLabel.Label.GetClientRect().Center + GameController.Window.GetWindowRectangleTimeCache.TopLeft, true, nextLabel.ItemOnGround.Path))
@@ -1421,6 +1421,14 @@ namespace ClickIt
                     if (nextLabel.ItemOnGround.Path.Contains("CleansingFireAltar") || nextLabel.ItemOnGround.Path.Contains("TangleAltar"))
                     {
                         //This is handled in Render().
+                        workFinished = true;
+                        yield break;
+                    }
+                    if (!(Settings.ClickSulphiteVeins && nextLabel.ItemOnGround.Path.Contains("DelveMineral")) &&
+                        !(Settings.ClickAzuriteVeins && nextLabel.ItemOnGround.Path.Contains("AzuriteEncounterController")) &&
+                        !Settings.ClickItems)
+                    {
+                        //We only want to click these things, if the code reaches here, it's an unrecognised label that we shouldn't click.
                         workFinished = true;
                         yield break;
                     }
