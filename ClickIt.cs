@@ -1417,6 +1417,12 @@ namespace ClickIt
                         workFinished = true;
                         yield break;
                     }
+                    if (nextLabel.ItemOnGround.Path.Contains("CleansingFireAltar") || nextLabel.ItemOnGround.Path.Contains("TangleAltar"))
+                    {
+                        //This is handled in Render().
+                        workFinished = true;
+                        yield break;
+                    }
                     Vector2? centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                         + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                         + new Vector2(Random.Next(0, 5), Random.Next(0, 5));
