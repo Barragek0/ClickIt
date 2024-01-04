@@ -517,7 +517,8 @@ namespace ClickIt
                         {
                             Mouse.blockInput(true);
                             LogMessage("Moving mouse for altar", 5);
-                            Input.SetCursorPos(boxToClick.GetClientRect().Center);
+                            Input.SetCursorPos(boxToClick.GetClientRect().Center +
+                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                             if (Settings.LeftHanded)
                             {
                                 Mouse.RightClick();
@@ -1111,7 +1112,8 @@ namespace ClickIt
                             {
                                 Mouse.blockInput(true);
                                 LogMessage("Moving mouse for harvest", 5);
-                                Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center);
+                                Input.SetCursorPos(harvestLabel.Label.GetClientRect().Center +
+                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                                 if (Settings.LeftHanded)
                                 {
                                     Mouse.RightClick();
@@ -1345,7 +1347,8 @@ namespace ClickIt
                                             + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
                             LogMessage("Moving mouse for remnant 2", 5);
                             if (centerOfLabel != null)
-                                Input.SetCursorPos(centerOfLabel.Value);
+                                Input.SetCursorPos(centerOfLabel.Value +
+                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                             Thread.Sleep((int)(latency + 100));
 
                             if (Settings.LeftHanded)
@@ -1382,7 +1385,8 @@ namespace ClickIt
                             }
 
                             LogMessage("Moving mouse for essence", 5);
-                            Input.SetCursorPos(centerOfLabel.Value);
+                            Input.SetCursorPos(centerOfLabel.Value +
+                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                             if (Settings.LeftHanded)
                             {
                                 Mouse.RightClick();
@@ -1437,7 +1441,8 @@ namespace ClickIt
                     }
 
                     LogMessage("Moving mouse to click item", 5);
-                    Input.SetCursorPos(centerOfLabel.Value);
+                    Input.SetCursorPos(centerOfLabel.Value +
+                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                     if (Settings.LeftHanded)
                     {
                         Mouse.RightClick();
