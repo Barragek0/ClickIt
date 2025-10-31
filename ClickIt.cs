@@ -105,7 +105,10 @@ namespace ClickIt
         private bool PointIsInClickableArea(Vector2 point, bool debug = false, string? path = null)
         {
             if (Settings.DebugMode && debug)
-                LogMessage("Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path == null ? "unknown path" : path));
+            {
+                LogMessage("Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
+            }
+
             if (Settings.DebugMode && debug)
             {
                 if (point.PointInRectangle(HealthAndFlaskRectangle))
@@ -127,7 +130,7 @@ namespace ClickIt
                   !point.PointInRectangle(BuffsAndDebuffsRectangle);
         }
 
-        public List<FieldInfo> fields = new();
+        public List<FieldInfo> fields = [];
 
         public override void Render()
         {
@@ -544,7 +547,7 @@ namespace ClickIt
 
         private IEnumerator ScanForAltarsLogic()
         {
-            List<LabelOnGround> altarLabels = new();
+            List<LabelOnGround> altarLabels = [];
             if (Settings.HighlightExarchAltars)
             {
                 altarLabels.AddRange(GetAltarLabels(AltarType.SearingExarch));
@@ -733,7 +736,7 @@ namespace ClickIt
             return false;
         }
 
-        private static readonly List<Element> elementsByStringContainsList = new();
+        private static readonly List<Element> elementsByStringContainsList = [];
 
         public List<Element> GetElementsByStringContains(Element label, string str)
         {
@@ -761,7 +764,7 @@ namespace ClickIt
             return elementsByStringContainsList;
         }
 
-        private readonly List<PrimaryAltarComponent> altarComponents = new();
+        private readonly List<PrimaryAltarComponent> altarComponents = [];
 
         private string GetLine(string text, int lineNo)
         {
@@ -831,9 +834,9 @@ namespace ClickIt
             Element ElementToExtractDataFrom, AltarType altarType)
         {
             string NegativeModType = "";
-            List<string> mods = new();
-            List<string> upsides = new();
-            List<string> downsides = new();
+            List<string> mods = [];
+            List<string> upsides = [];
+            List<string> downsides = [];
             if (Settings.DebugMode)
             {
                 LogMessage(ElementToExtractDataFrom.GetText(512));
@@ -1348,8 +1351,11 @@ namespace ClickIt
                                             + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
                             LogMessage("Moving mouse for remnant 2", 5);
                             if (centerOfLabel != null)
+                            {
                                 Input.SetCursorPos(centerOfLabel.Value +
                                                GameController.Window.GetWindowRectangleTimeCache.TopLeft);
+                            }
+
                             Thread.Sleep((int)(latency + 100));
 
                             if (Settings.LeftHanded)
@@ -1410,9 +1416,13 @@ namespace ClickIt
                         if (Settings.DebugMode)
                         {
                             if (nextLabel == null)
+                            {
                                 LogMessage("(ClickIt) nextLabel is null");
+                            }
                             else
+                            {
                                 LogMessage("(ClickIt) nextLabel is not in clickable area");
+                            }
                         }
 
                         workFinished = true;
@@ -1488,7 +1498,10 @@ namespace ClickIt
                 workFinished = true;
                 waitingForCorruption = false;
                 if (Settings.DebugMode)
+                {
                     LogError(e.ToString(), 10);
+                }
+
                 yield break;
             }
         }
