@@ -32,6 +32,7 @@ namespace ClickIt
         public EmptyNode Click { get; set; } = new EmptyNode();
 
         [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
+        [System.Obsolete]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
 
         [Menu("Search Radius", "Radius the plugin will search in for interactable objects.", 1, 3000)]
@@ -66,20 +67,24 @@ namespace ClickIt
         [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 12, 3000)]
         public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(false);
 
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 13, 3000)]
+        [Menu("Crafting Recipes", "Click crafting recipes", 13, 3000)]
+        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(false);
+
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 14, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
 
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 14, 3000)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 15, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
 
-        [Menu("Block User Input", "Blocks the user from moving the mouse or clicking while the hotkey is held. Will help stop missclicking.", 15, 3000)]
+        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.", 16, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
 
-        [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 16, 3000)]
+        [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 17, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
 
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 17, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 18, 3000)]
+        [System.Obsolete]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
 
 
@@ -90,6 +95,7 @@ namespace ClickIt
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
 
         [Menu("Open Inventory Hotkey", "Hotkey to open your inventory", 2, 3500)]
+        [System.Obsolete]
         public HotkeyNode OpenInventoryKey { get; set; } = new HotkeyNode(Keys.I);
 
         [Menu("Corrupt ALL Essences (Warning: This overrides all settings below)", "Corrupt all essences, overriding the settings below.", 3, 3500)]

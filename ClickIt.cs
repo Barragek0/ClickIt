@@ -19,6 +19,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -848,6 +849,8 @@ namespace ClickIt
                 .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "").Replace("gain:", "")
                 .Replace("gains:", "");
 
+            AltarMods = Regex.Replace(AltarMods, @"<rgb\(\d+,\d+,\d+\)>", "");
+
             for (int i = 0; i < CountLines(ElementToExtractDataFrom.GetText(512)); i++)
             {
                 if (i == 0)
@@ -1066,7 +1069,9 @@ namespace ClickIt
                     x.ItemOnGround.Path.Contains("DelveMineral") ||
                     x.ItemOnGround.Path.Contains("AzuriteEncounterController") ||
                     x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor") ||
-                    x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar")))
+                    x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar") ||
+                    x.ItemOnGround.Path.Contains("CraftingUnlocks")
+                    ))
                 .OrderBy(x => x.ItemOnGround.DistancePlayer)
                 .ToList();
         }
@@ -1280,78 +1285,93 @@ namespace ClickIt
                         }
 
                         waitingForCorruption = true;
-                        new Thread(async () =>
+                        new Thread(() =>
                         {
-                            LogMessage("Async corruption started", 5);
+                            LogMessage("Corruption started", 5);
                             float latency = GameController.Game.IngameState.ServerData.Latency;
 
-                            //we have to open the inventory first for inventoryItems to fetch items correctly
-                            Keyboard.KeyPress(Settings.OpenInventoryKey);
+                            // previous logic to find vaal orb in inventory is commented out
+                            // going to keep this here in-case we need it in the future
 
-                            if (Settings.DebugMode)
-                            {
-                                LogMessage("(ClickIt) Fetching inventory items");
-                            }
+                            /*    //we have to open the inventory first for inventoryItems to fetch items correctly
+                                Keyboard.KeyPress(Settings.OpenInventoryKey);
 
-                            List<NormalInventoryItem> inventoryItems;
+                                if (Settings.DebugMode)
+                                {
+                                    LogMessage("(ClickIt) Fetching inventory items");
+                                }
 
-                            Task<List<NormalInventoryItem>> task = FetchInventoryItemsTask();
-                            if (await Task.WhenAny(task, Task.Delay(2000)) == task)
+                                List<NormalInventoryItem> inventoryItems;
+
+                                Task<List<NormalInventoryItem>> task = FetchInventoryItemsTask();
+                                if (await Task.WhenAny(task, Task.Delay(2000)) == task)
+                                {
+                                    inventoryItems = FetchInventoryItems();
+                                }
+                                else
+                                {
+                                    LogError(
+                                        "(ClickIt) Inventory offsets are incorrect. You need to manually corrupt until the offsets are fixed in PoeHelper (this isn't an issue with the ClickIt plugin).",
+                                        20);
+                                    waitingForCorruption = false;
+                                    Mouse.blockInput(false);
+                                    workFinished = true;
+                                    return;
+                                } 
+
+                                //we add this delay in-case the game stutters when loading the inventory, may be related to the league mechanic additional inventory
+                                Thread.Sleep((int)(latency + 200));
+
+                                NormalInventoryItem remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
+                                    slot.Item.Path.Contains("Metadata/Items/Currency/CurrencyCorrupt"));
+
+                                if (remnantOfCorruption == null)
+                                {
+                                    LogError(
+                                        "(ClickIt) Couldn't find vaal in inventory, make sure you have some.", 20);
+                                    waitingForCorruption = false;
+                                    Mouse.blockInput(false);
+                                    workFinished = true;
+                                    return;
+                                }
+
+                                if (Settings.DebugMode)
+                                {
+                                    LogMessage("(ClickIt) Found vaal");
+                                }
+
+                                LogMessage("Moving mouse for vaal", 5);
+                                Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
+                                                   GameController.Window.GetWindowRectangleTimeCache.TopLeft);
+                                Thread.Sleep((int)(latency + 100));
+
+                                if (Settings.LeftHanded)
+                                {
+                                    Mouse.LeftClick();
+                                }
+                                else
+                                {
+                                    Mouse.RightClick();
+                                }
+
+                                Thread.Sleep((int)(latency + 100));
+                           */
+
+                            // we can now use the vaal orb icon on the essence label to corrupt it
+
+                            if (nextLabel?.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0) == null)
                             {
-                                inventoryItems = FetchInventoryItems();
-                            }
-                            else
-                            {
-                                LogError(
-                                    "(ClickIt) Inventory offsets are incorrect. You need to manually corrupt until the offsets are fixed in PoeHelper (this isn't an issue with the ClickIt plugin).",
-                                    20);
+                                LogError("(ClickIt) You need vaal orbs in your inventory to corrupt essences.", 20);
                                 waitingForCorruption = false;
                                 Mouse.blockInput(false);
                                 workFinished = true;
                                 return;
                             }
 
-                            //we add this delay in-case the game stutters when loading the inventory, may be related to the league mechanic additional inventory
-                            Thread.Sleep((int)(latency + 200));
-
-                            NormalInventoryItem remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
-                                slot.Item.Path.Contains("Metadata/Items/Currency/CurrencyCorrupt"));
-
-                            if (remnantOfCorruption == null)
-                            {
-                                LogError(
-                                    "(ClickIt) Couldn't find vaal in inventory, make sure you have some.", 20);
-                                waitingForCorruption = false;
-                                Mouse.blockInput(false);
-                                workFinished = true;
-                                return;
-                            }
-
-                            if (Settings.DebugMode)
-                            {
-                                LogMessage("(ClickIt) Found vaal");
-                            }
-
-                            LogMessage("Moving mouse for vaal", 5);
-                            Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
-                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
-                            Thread.Sleep((int)(latency + 100));
-
-                            if (Settings.LeftHanded)
-                            {
-                                Mouse.LeftClick();
-                            }
-                            else
-                            {
-                                Mouse.RightClick();
-                            }
-
-                            Thread.Sleep((int)(latency + 100));
-
-                            centerOfLabel = nextLabel?.Label?.GetClientRect().Center
+                            centerOfLabel = nextLabel?.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0)?.GetClientRect().Center
                                             + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                             + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
-                            LogMessage("Moving mouse for vaal 2", 5);
+                            LogMessage("Moved mouse to vaal", 5);
                             if (centerOfLabel != null)
                             {
                                 Input.SetCursorPos(centerOfLabel.Value +
@@ -1369,9 +1389,9 @@ namespace ClickIt
                                 Mouse.LeftClick();
                             }
 
-                            Thread.Sleep((int)(latency + 100));
+                            // Thread.Sleep((int)(latency + 100));
 
-                            Keyboard.KeyPress(Settings.OpenInventoryKey);
+                            // Keyboard.KeyPress(Settings.OpenInventoryKey);
 
                             Thread.Sleep((int)(latency + 100));
 
@@ -1392,8 +1412,6 @@ namespace ClickIt
                             {
                                 LogMessage("Clicking essence", 5);
                             }
-
-                            LogMessage("Moving mouse for essence", 5);
                             Input.SetCursorPos(centerOfLabel.Value +
                                                GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                             if (Settings.LeftHanded)
@@ -1408,6 +1426,30 @@ namespace ClickIt
                             Mouse.blockInput(false);
                         }
                     }
+                }
+                else if (nextLabel != null && nextLabel.ItemOnGround.Path.Contains("CraftingUnlocks") &&
+                    Settings.ClickCraftingRecipes && GroundItemsVisible())
+                {
+                    if (canClick())
+                    {
+                        Mouse.blockInput(true);
+                        if (Settings.DebugMode)
+                        {
+                            LogMessage("Clicking crafting recipe", 5);
+                        }
+                        Input.SetCursorPos(nextLabel.Label.GetClientRect().Center);
+                        if (Settings.LeftHanded)
+                        {
+                            Mouse.RightClick();
+                        }
+                        else
+                        {
+                            Mouse.LeftClick();
+                        }
+                        Mouse.blockInput(false);
+                    }
+                    workFinished = true;
+                    yield break;
                 }
 
                 else if (GroundItemsVisible() && !waitingForCorruption)
@@ -1438,6 +1480,7 @@ namespace ClickIt
                     }
                     if (!(Settings.ClickSulphiteVeins && nextLabel.ItemOnGround.Path.Contains("DelveMineral")) &&
                         !(Settings.ClickAzuriteVeins && nextLabel.ItemOnGround.Path.Contains("AzuriteEncounterController")) &&
+                        !(Settings.ClickCraftingRecipes && nextLabel.ItemOnGround.Path.Contains("CraftUnlocks")) &&
                         !Settings.ClickItems)
                     {
                         //We only want to click these things, if the code reaches here, it's an unrecognised label that we shouldn't click.
@@ -1571,7 +1614,9 @@ namespace ClickIt
                                                         Settings.ClickEaterAltars || Settings.ClickExarchAltars) &&
                                                             (x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar"))) ||
                                                       (Settings.ClickEssences.Value &&
-                                                            GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null)));
+                                                            GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null) ||
+                                                      (Settings.ClickCraftingRecipes.Value &&
+                                                            x.ItemOnGround.Path.Contains("CraftingUnlocks"))));
             return label;
         }
 
