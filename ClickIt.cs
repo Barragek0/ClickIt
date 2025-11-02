@@ -1108,7 +1108,10 @@ namespace ClickIt
                 timer.Stop();
                 if (Settings.DebugMode)
                 {
-                    LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
+                    if (timer.ElapsedMilliseconds > 10)
+                    {
+                        LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
+                    }
                 }
 
                 Stopwatch fullTimer = new();
@@ -1543,7 +1546,10 @@ namespace ClickIt
                 fullTimer.Stop();
                 if (Settings.DebugMode)
                 {
-                    LogMessage("ClickLabel took " + fullTimer.ElapsedMilliseconds + " ms", 5);
+                    if (fullTimer.ElapsedMilliseconds > 10)
+                    {
+                        LogMessage("ClickLabel took " + fullTimer.ElapsedMilliseconds + " ms", 5);
+                    }
                 }
                 workFinished = true;
                 yield break;
@@ -1641,7 +1647,10 @@ namespace ClickIt
 
             if (Settings.DebugMode)
             {
-                LogMessage("GetElementByString took " + timer.ElapsedMilliseconds + " ms", 5);
+                if (timer.ElapsedMilliseconds > 10)
+                {
+                    LogMessage("GetElementByString took " + timer.ElapsedMilliseconds + " ms", 5);
+                }
             }
             return element;
         }
