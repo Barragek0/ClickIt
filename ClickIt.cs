@@ -1313,12 +1313,12 @@ namespace ClickIt
                             Thread.Sleep((int)(latency + 200));
 
                             NormalInventoryItem remnantOfCorruption = inventoryItems.FirstOrDefault(slot =>
-                                slot.Item.Path == "Metadata/Items/Currency/CurrencyCorruptMonolith");
+                                slot.Item.Path.Contains("Metadata/Items/Currency/CurrencyCorrupt"));
 
                             if (remnantOfCorruption == null)
                             {
                                 LogError(
-                                    "(ClickIt) Couldn't find remnant of corruption in inventory, make sure you have some.", 20);
+                                    "(ClickIt) Couldn't find vaal in inventory, make sure you have some.", 20);
                                 waitingForCorruption = false;
                                 Mouse.blockInput(false);
                                 workFinished = true;
@@ -1327,10 +1327,10 @@ namespace ClickIt
 
                             if (Settings.DebugMode)
                             {
-                                LogMessage("(ClickIt) Found remnant");
+                                LogMessage("(ClickIt) Found vaal");
                             }
 
-                            LogMessage("Moving mouse for remnant", 5);
+                            LogMessage("Moving mouse for vaal", 5);
                             Input.SetCursorPos(remnantOfCorruption.GetClientRectCache.Center +
                                                GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                             Thread.Sleep((int)(latency + 100));
@@ -1349,7 +1349,7 @@ namespace ClickIt
                             centerOfLabel = nextLabel?.Label?.GetClientRect().Center
                                             + GameController.Window.GetWindowRectangleTimeCache.TopLeft
                                             + new Vector2(Random.Next(0, 2), Random.Next(0, 2));
-                            LogMessage("Moving mouse for remnant 2", 5);
+                            LogMessage("Moving mouse for vaal 2", 5);
                             if (centerOfLabel != null)
                             {
                                 Input.SetCursorPos(centerOfLabel.Value +
@@ -1464,8 +1464,10 @@ namespace ClickIt
                         workFinished = true;
                         yield break;
                     }
-
-                    LogMessage("Moving mouse to click item", 5);
+                    if (Settings.DebugMode)
+                    {
+                        LogMessage("Moving mouse to click item", 5);
+                    }
                     Input.SetCursorPos(centerOfLabel.Value +
                                                GameController.Window.GetWindowRectangleTimeCache.TopLeft);
                     if (Settings.LeftHanded)
@@ -1525,17 +1527,16 @@ namespace ClickIt
 
         private List<NormalInventoryItem> FetchInventoryItems()
         {
-            ClickIt core = this;
-            IList<NormalInventoryItem> pullItems = core.GameController.Game.IngameState.IngameUi
+            IList<NormalInventoryItem> pullItems = GameController.Game.IngameState.IngameUi
                 .InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
-            return new List<NormalInventoryItem>(pullItems);
+            return [.. pullItems];
         }
 
         private bool IsBasicChest(LabelOnGround label)
         {
             return label.ItemOnGround.RenderName.ToLower() switch
             {
-                "chest" or "tribal chest" or "cocoon" or "weapon rack" or "armour rack" or "trunk" => true,
+                "chest" or "tribal chest" or "golden chest" or "cocoon" or "weapon rack" or "armour rack" or "trunk" => true,
                 _ => false,
             };
         }
