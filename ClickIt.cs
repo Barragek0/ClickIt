@@ -89,9 +89,11 @@ namespace ClickIt
 
             altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic", false);
             _ = Core.ParallelRunner.Run(altarCoroutine);
+            altarCoroutine.Priority = CoroutinePriority.High;
 
             clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic", false);
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
+            clickLabelCoroutine.Priority = CoroutinePriority.High;
 
             return true;
         }
