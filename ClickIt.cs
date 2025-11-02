@@ -816,7 +816,7 @@ namespace ClickIt
             return null;
         }
 
-        // we need these here to keep the coroutine alive after finishing the work
+        // we need these here to keep the coroutines alive after finishing the work
         private IEnumerator MainClickLabelCoroutine()
         {
             while (true)
@@ -1078,7 +1078,7 @@ namespace ClickIt
 
         private IEnumerator ClickLabel(Element? altar = null)
         {
-            if (Timer.ElapsedMilliseconds < 100 + Random.Next(0, 10))
+            if (Timer.ElapsedMilliseconds < 50 + Random.Next(0, 10))
             {
                 workFinished = true;
                 yield break;
@@ -1110,6 +1110,10 @@ namespace ClickIt
                 {
                     LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
                 }
+
+                Stopwatch fullTimer = new();
+                fullTimer.Start();
+
                 if (Settings.NearestHarvest)
                 {
 
@@ -1535,6 +1539,11 @@ namespace ClickIt
                 else
                 {
                     Mouse.blockInput(false);
+                }
+                fullTimer.Stop();
+                if (Settings.DebugMode)
+                {
+                    LogMessage("ClickLabel took " + fullTimer.ElapsedMilliseconds + " ms", 5);
                 }
                 workFinished = true;
                 yield break;
