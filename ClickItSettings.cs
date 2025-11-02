@@ -1662,13 +1662,13 @@ namespace ClickIt
         public RangeNode<int> Eater_EldritchMinionsToMaximumColdResistance_Weight { get; set; } = new RangeNode<int>(10, 1, 100);
 
         [Menu("Eldritch Minions:    (50 to 80)% additional Physical Damage Reduction ", 9, 13000)]
-        public ToggleNode Eater_EldritchMinionsToMaximumFireResistance { get; set; } = new ToggleNode(false);
+        public ToggleNode Eater_EldritchMinionsAdditionalPhysicalDamageReduction { get; set; } = new ToggleNode(false);
 
         [Menu("Weight", "How detrimental is this mod to your build?\n\n" +
             "If you cannot do this mod, set this to 100.\n\n" +
             "If the mod is very difficult, but still doable, a value of 75 would be good.\n\n" +
             "If the mod doesn't affect your build at all, set the weight to 1.", 10, 13000)]
-        public RangeNode<int> Eater_EldritchMinionsToMaximumFireResistance_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
+        public RangeNode<int> Eater_EldritchMinionsAdditionalPhysicalDamageReduction_Weight { get; set; } = new RangeNode<int>(5, 1, 100);
 
         [Menu("Eldritch Minions:    Prevent +(20 to 30)% of Suppressed Spell Damage\n" +
             "                               +100% chance to Suppress Spell Damage ", 11, 13000)]
