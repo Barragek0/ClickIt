@@ -107,25 +107,15 @@ namespace ClickIt
 
         private bool PointIsInClickableArea(Vector2 point, bool debug = false, string? path = null)
         {
-            if (Settings.DebugMode && debug)
-            {
-                LogMessage("Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
-            }
+            LogMessage(debug, "Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
 
-            if (Settings.DebugMode && debug)
+            if (debug)
             {
-                if (point.PointInRectangle(HealthAndFlaskRectangle))
-                {
-                    LogMessage("Point is in orange - health globe / flasks");
-                }
-                else if (point.PointInRectangle(ManaAndSkillsRectangle))
-                {
-                    LogMessage("Point is in blue - mana globe / skills");
-                }
-                else if (point.PointInRectangle(BuffsAndDebuffsRectangle))
-                {
-                    LogMessage("Point is in blue - mana globe / skills");
-                }
+                LogMessage(debug, point.PointInRectangle(HealthAndFlaskRectangle)
+                    ? "Point is in orange - health globe / flasks"
+                    : point.PointInRectangle(ManaAndSkillsRectangle) ? "Point is in blue - mana globe / skills"
+                    : point.PointInRectangle(BuffsAndDebuffsRectangle) ? "Point is in blue - mana globe / skills"
+                    : string.Empty);
             }
             return point.PointInRectangle(FullScreenArea()) &&
                   !point.PointInRectangle(HealthAndFlaskRectangle) &&
@@ -165,15 +155,9 @@ namespace ClickIt
                 decimal BottomUpside1Weight = 0, BottomUpside2Weight = 0;
                 decimal BottomDownside1Weight = 0, BottomDownside2Weight = 0;
 
-                if (Settings.DebugMode && Settings.RenderDebug)
-                {
-                    LogMessage("Render 1");
-                }
+                LogMessage(Settings.RenderDebug, "Render 1");
 
-                if (Settings.DebugMode && Settings.RenderDebug)
-                {
-                    LogMessage("Render 2");
-                }
+                LogMessage(Settings.RenderDebug, "Render 2");
 
                 // Build lookup names once to avoid repeated allocations / ToLower calls in the inner loop
                 string topFirstUpsideName = string.IsNullOrEmpty(altar.TopMods.FirstUpside) ? string.Empty : (altar.TopMods.FirstUpside + "_weight").ToLowerInvariant();
@@ -192,20 +176,14 @@ namespace ClickIt
                     string FieldName = field.Name.Replace("<", "").Replace(">", "").Replace("k__BackingField", "");
                     string FieldNameLower = FieldName.ToLowerInvariant();
 
-                    if (Settings.DebugMode && Settings.RenderDebug)
-                    {
-                        LogMessage("Render 3");
-                    }
+                    LogMessage(Settings.RenderDebug, "Render 3");
 
                     try
                     {
                         // top upsides
                         if (!string.IsNullOrEmpty(topFirstUpsideName) && FieldNameLower.Equals(topFirstUpsideName, StringComparison.Ordinal))
                         {
-                            if (Settings.DebugMode && Settings.RenderDebug)
-                            {
-                                LogMessage("Render 4-1-1 - " + topFirstUpsideName + " = " + ((RangeNode<int>)field.GetValue(Settings)).Value);
-                            }
+                            LogMessage(Settings.RenderDebug, "Render 4-1-1 - " + topFirstUpsideName + " = " + ((RangeNode<int>)field.GetValue(Settings)).Value);
 
                             TopUpside1Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
                             continue;
@@ -213,10 +191,7 @@ namespace ClickIt
 
                         if (!string.IsNullOrEmpty(topSecondUpsideName) && FieldNameLower.Equals(topSecondUpsideName, StringComparison.Ordinal))
                         {
-                            if (Settings.DebugMode && Settings.RenderDebug)
-                            {
-                                LogMessage("Render 4-1-2 - " + topSecondUpsideName);
-                            }
+                            LogMessage(Settings.RenderDebug, "Render 4-1-2 - " + topSecondUpsideName);
 
                             TopUpside2Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
                             continue;
@@ -262,48 +237,18 @@ namespace ClickIt
                         }
 
                         // if none matched, log debug info as original behaviour
-                        if (Settings.DebugMode && Settings.RenderDebug)
-                        {
-                            if (!string.IsNullOrEmpty(altar.TopMods.FirstUpside))
-                            {
-                                LogMessage("Render 4-5-1: " + altar.TopMods.FirstUpside + "_Weight");
-                            }
-                            if (!string.IsNullOrEmpty(altar.TopMods.SecondUpside))
-                            {
-                                LogMessage("Render 4-5-2: " + altar.TopMods.SecondUpside + "_Weight");
-                            }
-                            if (!string.IsNullOrEmpty(altar.TopMods.FirstDownside))
-                            {
-                                LogMessage("Render 4-5-3: " + altar.TopMods.FirstDownside + "_Weight");
-                            }
-                            if (!string.IsNullOrEmpty(altar.TopMods.SecondDownside))
-                            {
-                                LogMessage("Render 4-5-4: " + altar.TopMods.SecondDownside + "_Weight");
-                            }
-                            if (!string.IsNullOrEmpty(altar.BottomMods.FirstUpside))
-                            {
-                                LogMessage("Render 4-5-5: " + altar.BottomMods.FirstUpside + "_Weight");
-                            }
-                            if (!string.IsNullOrEmpty(altar.BottomMods.SecondUpside))
-                            {
-                                LogMessage("Render 4-5-6: " + altar.BottomMods.SecondUpside + "_Weight");
-                            }
-                            if (!string.IsNullOrEmpty(altar.BottomMods.FirstDownside))
-                            {
-                                LogMessage("Render 4-5-7: " + altar.BottomMods.FirstDownside + "_Weight");
-                            }
-                            if (!string.IsNullOrEmpty(altar.BottomMods.SecondDownside))
-                            {
-                                LogMessage("Render 4-5-8: " + altar.BottomMods.SecondDownside + "_Weight");
-                            }
-                        }
+                        LogMessage(Settings.RenderDebug, "Render 4-5-1: " + altar.TopMods.FirstUpside + "_Weight");
+                        LogMessage(Settings.RenderDebug, "Render 4-5-2: " + altar.TopMods.SecondUpside + "_Weight");
+                        LogMessage(Settings.RenderDebug, "Render 4-5-3: " + altar.TopMods.FirstDownside + "_Weight");
+                        LogMessage(Settings.RenderDebug, "Render 4-5-4: " + altar.TopMods.SecondDownside + "_Weight");
+                        LogMessage(Settings.RenderDebug, "Render 4-5-5: " + altar.BottomMods.FirstUpside + "_Weight");
+                        LogMessage(Settings.RenderDebug, "Render 4-5-6: " + altar.BottomMods.SecondUpside + "_Weight");
+                        LogMessage(Settings.RenderDebug, "Render 4-5-7: " + altar.BottomMods.FirstDownside + "_Weight");
+                        LogMessage(Settings.RenderDebug, "Render 4-5-8: " + altar.BottomMods.SecondDownside + "_Weight");
                     }
                     catch (Exception ex)
                     {
-                        if (Settings.DebugMode)
-                        {
-                            LogError("Render: error reading setting field '" + field.Name + "': " + ex.Message, 10);
-                        }
+                        LogError(Settings.DebugMode, "Render: error reading setting field '" + field.Name + "': " + ex.Message, 10);
                     }
                 }
 
@@ -313,63 +258,23 @@ namespace ClickIt
                 decimal BottomUpsideWeight = BottomUpside1Weight + BottomUpside2Weight;
                 decimal BottomDownsideWeight = BottomDownside1Weight + BottomDownside2Weight;
 
-                if (Settings.DebugMode && Settings.RenderDebug)
-                {
-                    LogMessage("Render 9 - top - " + TopWeightPlaceholder() + " = " + TopUpsideWeight + " / " + TopDownsideWeight);
-                }
+                LogMessage(Settings.RenderDebug, "Render 9 - top - " + TopWeightPlaceholder() + " = " + TopUpsideWeight + " / " + TopDownsideWeight);
 
                 decimal TopWeight = Math.Round((TopUpsideWeight <= 0 ? 1 : TopUpsideWeight) / (TopDownsideWeight <= 0 ? 1 : TopDownsideWeight), 2);
 
-                if (Settings.DebugMode && Settings.RenderDebug)
-                {
-                    LogMessage("Render 9 - bot - " + BottomWeightPlaceholder() + " = " + BottomUpsideWeight + " / " + BottomDownsideWeight);
-                }
+                LogMessage(Settings.RenderDebug, "Render 9 - bot - " + BottomWeightPlaceholder() + " = " + BottomUpsideWeight + " / " + BottomDownsideWeight);
 
                 decimal BottomWeight = Math.Round((BottomUpsideWeight <= 0 ? 1 : BottomUpsideWeight) / (BottomDownsideWeight <= 0 ? 1 : BottomDownsideWeight), 2);
 
                 // preserve original debug error checks
-                if (Settings.DebugMode && Settings.RenderDebug)
-                {
-                    if (TopUpside1Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.FirstUpside))
-                    {
-                        LogError("Could not match top upside 1 with field - " + altar.TopMods.FirstUpside.ToLower() + "_weight", 10);
-                    }
-
-                    if (TopUpside2Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.SecondUpside))
-                    {
-                        LogError("Could not match top upside 2 with field - " + altar.TopMods.SecondUpside.ToLower() + "_weight", 10);
-                    }
-
-                    if (TopDownside1Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.FirstDownside))
-                    {
-                        LogError("Could not match top downside 1 with field - " + altar.TopMods.FirstDownside.ToLower() + "_weight", 10);
-                    }
-
-                    if (TopDownside2Weight <= 0 && !string.IsNullOrEmpty(altar.TopMods.SecondDownside))
-                    {
-                        LogError("Could not match top downside 2 with field - " + altar.TopMods.SecondDownside.ToLower() + "_weight", 10);
-                    }
-
-                    if (BottomUpside1Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.FirstUpside))
-                    {
-                        LogError("Could not match bottom upside 1 with field - " + altar.BottomMods.FirstUpside.ToLower() + "_weight", 10);
-                    }
-
-                    if (BottomUpside2Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.SecondUpside))
-                    {
-                        LogError("Could not match bottom upside 2 with field - " + altar.BottomMods.SecondUpside.ToLower() + "_weight", 10);
-                    }
-
-                    if (BottomDownside1Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.FirstDownside))
-                    {
-                        LogError("Could not match bottom downside 1 with field - " + altar.BottomMods.FirstDownside.ToLower() + "_weight", 10);
-                    }
-
-                    if (BottomDownside2Weight <= 0 && !string.IsNullOrEmpty(altar.BottomMods.SecondDownside))
-                    {
-                        LogError("Could not match bottom downside 2 with field - " + altar.BottomMods.SecondDownside.ToLower() + "_weight", 10);
-                    }
-                }
+                LogError(Settings.RenderDebug, "Could not match top upside 1 with field - " + altar.TopMods.FirstUpside.ToLower() + "_weight", 10);
+                LogError(Settings.RenderDebug, "Could not match top upside 2 with field - " + altar.TopMods.SecondUpside.ToLower() + "_weight", 10);
+                LogError(Settings.RenderDebug, "Could not match top downside 1 with field - " + altar.TopMods.FirstDownside.ToLower() + "_weight", 10);
+                LogError(Settings.RenderDebug, "Could not match top downside 2 with field - " + altar.TopMods.SecondDownside.ToLower() + "_weight", 10);
+                LogError(Settings.RenderDebug, "Could not match bottom upside 1 with field - " + altar.BottomMods.FirstUpside.ToLower() + "_weight", 10);
+                LogError(Settings.RenderDebug, "Could not match bottom upside 2 with field - " + altar.BottomMods.SecondUpside.ToLower() + "_weight", 10);
+                LogError(Settings.RenderDebug, "Could not match bottom downside 1 with field - " + altar.BottomMods.FirstDownside.ToLower() + "_weight", 10);
+                LogError(Settings.RenderDebug, "Could not match bottom downside 2 with field - " + altar.BottomMods.SecondDownside.ToLower() + "_weight", 10);
 
                 Element? boxToClick = null;
 
@@ -528,6 +433,39 @@ namespace ClickIt
             return string.Empty;
         }
 
+        // Centralized LogMessage helpers: new overloads ensure Settings.DebugMode is checked in one place
+        public void LogMessage(string message, int frame = 0)
+        {
+            if (Settings.DebugMode)
+            {
+                base.LogMessage(message, frame);
+            }
+        }
+
+        public void LogMessage(bool localDebug, string message, int frame = 0)
+        {
+            if (localDebug && Settings.DebugMode)
+            {
+                base.LogMessage(message, frame);
+            }
+        }
+
+        public void LogError(string message, int frame = 0)
+        {
+            if (Settings.DebugMode)
+            {
+                base.LogError(message, frame);
+            }
+        }
+
+        public void LogError(bool localDebug, string message, int frame = 0)
+        {
+            if (localDebug && Settings.DebugMode)
+            {
+                base.LogError(message, frame);
+            }
+        }
+
         private bool canClick()
         {
             return Input.GetKeyState(Settings.ClickLabelKey.Value) && IsPOEActive() && (!Settings.BlockOnOpenLeftRightPanel || !IsPanelOpen())
@@ -537,20 +475,26 @@ namespace ClickIt
         private IEnumerator ScanForAltarsLogic()
         {
             // collect labels based on settings (avoid intermediate ToList allocations)
-            List<LabelOnGround> altarLabels = new List<LabelOnGround>();
+            List<LabelOnGround> altarLabels = [];
             bool highlightExarch = Settings.HighlightExarchAltars;
             bool highlightEater = Settings.HighlightEaterAltars;
 
             if (highlightExarch)
             {
-                var l = GetAltarLabels(AltarType.SearingExarch);
-                if (l != null && l.Count > 0) altarLabels.AddRange(l);
+                List<LabelOnGround> l = GetAltarLabels(AltarType.SearingExarch);
+                if (l != null && l.Count > 0)
+                {
+                    altarLabels.AddRange(l);
+                }
             }
 
             if (highlightEater)
             {
-                var l = GetAltarLabels(AltarType.EaterOfWorlds);
-                if (l != null && l.Count > 0) altarLabels.AddRange(l);
+                List<LabelOnGround> l = GetAltarLabels(AltarType.EaterOfWorlds);
+                if (l != null && l.Count > 0)
+                {
+                    altarLabels.AddRange(l);
+                }
             }
 
             if (altarLabels.Count == 0)
@@ -566,12 +510,18 @@ namespace ClickIt
             // iterate without creating extra copies
             for (int i = 0; i < altarLabels.Count; i++)
             {
-                var label = altarLabels[i];
-                if (label == null) continue;
+                LabelOnGround label = altarLabels[i];
+                if (label == null)
+                {
+                    continue;
+                }
 
                 // Get elements that likely contain altar mods; this uses a shared list internally
                 List<Element> elements = GetElementsByStringContains(label.Label, "valuedefault");
-                if (elements == null || elements.Count == 0) continue;
+                if (elements == null || elements.Count == 0)
+                {
+                    continue;
+                }
 
                 string path = label.ItemOnGround?.Path ?? string.Empty;
 
@@ -590,11 +540,17 @@ namespace ClickIt
 
                     if (path.Contains("CleansingFireAltar"))
                     {
-                        if (debug) LogMessage("CleansingFireAltar");
+                        if (debug)
+                        {
+                            LogMessage("CleansingFireAltar");
+                        }
                     }
                     else if (path.Contains("TangleAltar"))
                     {
-                        if (debug) LogMessage("TangleAltar");
+                        if (debug)
+                        {
+                            LogMessage("TangleAltar");
+                        }
                     }
 
                     AltarType altarType = path.Contains("CleansingFireAltar")
@@ -602,7 +558,7 @@ namespace ClickIt
                         : path.Contains("TangleAltar") ? AltarType.EaterOfWorlds : AltarType.Unknown;
 
                     // build a new component and populate it
-                    PrimaryAltarComponent altarComponent = new PrimaryAltarComponent(altarType,
+                    PrimaryAltarComponent altarComponent = new(altarType,
                         new SecondaryAltarComponent(new Element(), "", "", "", ""), new AltarButton(new Element()),
                         new SecondaryAltarComponent(new Element(), "", "", "", ""), new AltarButton(new Element()));
 
@@ -650,11 +606,17 @@ namespace ClickIt
                     if (!exists)
                     {
                         altarComponents.Add(altarComponent);
-                        if (debug) LogMessage("New altar added to altarcomponents list");
+                        if (debug)
+                        {
+                            LogMessage("New altar added to altarcomponents list");
+                        }
                     }
                     else
                     {
-                        if (debug) LogMessage("Altar already added to altarcomponents list");
+                        if (debug)
+                        {
+                            LogMessage("Altar already added to altarcomponents list");
+                        }
                     }
                 }
             }
@@ -684,10 +646,7 @@ namespace ClickIt
         {
             if (!GameController.Window.IsForeground())
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) Path of exile window not active");
-                }
+                LogMessage("(ClickIt) Path of exile window not active");
 
                 return false;
             }
@@ -700,10 +659,7 @@ namespace ClickIt
             if (GameController.IngameState.IngameUi.OpenLeftPanel.Address != 0 ||
                 GameController.IngameState.IngameUi.OpenRightPanel.Address != 0)
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) Left or right panel is open");
-                }
+                LogMessage("(ClickIt) Left or right panel is open");
 
                 return true;
             }
@@ -715,10 +671,7 @@ namespace ClickIt
         {
             if (CachedLabels.Value.Count < 1)
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) No ground items found");
-                }
+                LogMessage("(ClickIt) No ground items found");
 
                 return false;
             }
@@ -737,10 +690,7 @@ namespace ClickIt
         {
             if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown)
             {
-                if (Settings.DebugMode)
-                {
-                    LogMessage("(ClickIt) In hideout or town");
-                }
+                LogMessage("(ClickIt) In hideout or town");
 
                 return true;
             }
@@ -756,7 +706,9 @@ namespace ClickIt
             elementsByStringContainsList.Clear();
 
             if (label == null)
+            {
                 return elementsByStringContainsList;
+            }
 
             try
             {
@@ -774,18 +726,24 @@ namespace ClickIt
                     {
                         Element container = label.GetChildAtIndex(containerIndex);
                         if (container == null)
+                        {
                             continue;
+                        }
 
                         IList<Element> children = container.Children;
                         if (children == null)
+                        {
                             continue;
+                        }
 
                         // iterate using index to avoid LINQ allocations
                         for (int i = 0; i < children.Count; i++)
                         {
                             Element? child = children[i];
                             if (child == null)
+                            {
                                 continue;
+                            }
 
                             string childText = child.GetText(512);
                             if (!string.IsNullOrEmpty(childText) && childText.Contains(str))
@@ -802,10 +760,7 @@ namespace ClickIt
             }
             catch (Exception ex)
             {
-                if (Settings.DebugMode)
-                {
-                    LogError("GetElementsByStringContains error: " + ex.Message, 5);
-                }
+                LogError(Settings.DebugMode, "GetElementsByStringContains error: " + ex.Message, 5);
             }
 
             return elementsByStringContainsList;
@@ -881,16 +836,13 @@ namespace ClickIt
             Element ElementToExtractDataFrom, AltarType altarType)
         {
             string NegativeModType = "";
-            var mods = new List<string>();
-            var upsides = new List<string>();
-            var downsides = new List<string>();
+            List<string> mods = new();
+            List<string> upsides = new();
+            List<string> downsides = new();
 
             // Read raw text once
             string rawText = ElementToExtractDataFrom.GetText(512) ?? string.Empty;
-            if (Settings.DebugMode)
-            {
-                LogMessage(rawText);
-            }
+            LogMessage(Settings.DebugMode, rawText);
 
             // Normalize and clean up once
             string AltarMods = rawText.Replace("<valuedefault>", "").Replace("{", "")
@@ -914,10 +866,7 @@ namespace ClickIt
                     mods.Add(line);
                 }
 
-                if (Settings.DebugMode)
-                {
-                    LogMessage("Altarmods (" + i + ") Added: " + line);
-                }
+                LogMessage(Settings.DebugMode, "Altarmods (" + i + ") Added: " + line);
             }
 
             // Cache ClickItSettings fields once and build candidate list (only Exarch_/Eater_ fields)
@@ -925,7 +874,7 @@ namespace ClickIt
                                                                            BindingFlags.NonPublic |
                                                                            BindingFlags.Instance |
                                                                            BindingFlags.Static);
-            var candidateFields = new List<(FieldInfo field, string nameLower)>();
+            List<(FieldInfo field, string nameLower)> candidateFields = new();
             for (int f = 0; f < settingsFields.Length; f++)
             {
                 FieldInfo fi = settingsFields[f];
@@ -945,14 +894,14 @@ namespace ClickIt
                 bool found = false;
 
                 // Extract letters only and lower-case once
-                string localmodLetters = new string(mod.Where(char.IsLetter).ToArray());
+                string localmodLetters = new(mod.Where(char.IsLetter).ToArray());
                 string localmodLower = localmodLetters.ToLowerInvariant();
-                string localmodToLowerWithPrefix = (prefix + localmodLower);
+                string localmodToLowerWithPrefix = prefix + localmodLower;
 
                 // Compare against candidate fields
                 for (int c = 0; c < candidateFields.Count; c++)
                 {
-                    var (field, fieldToLower) = candidateFields[c];
+                    (FieldInfo field, string fieldToLower) = candidateFields[c];
 
                     if (localmodToLowerWithPrefix.Contains(fieldToLower))
                     {
@@ -976,11 +925,8 @@ namespace ClickIt
 
                         found = true;
 
-                        if (Settings.DebugMode)
-                        {
-                            LogMessage("Added " + (altarType == AltarType.SearingExarch ? "Exarch" : altarType == AltarType.EaterOfWorlds ? "Eater" : "Unknown") +
+                        LogMessage(Settings.DebugMode, "Added " + (altarType == AltarType.SearingExarch ? "Exarch" : altarType == AltarType.EaterOfWorlds ? "Eater" : "Unknown") +
                                        (isUpside ? " upside: " : " downside: ") + fieldToLower + " - " + localmodToLowerWithPrefix);
-                        }
 
                         // note: do not break to allow multiple field matches per mod (preserve original behavior)
                     }
@@ -990,28 +936,17 @@ namespace ClickIt
                 {
                     try
                     {
-                        if (Settings.DebugMode)
-                        {
-                            LogError(
-                                "updateComponentFromElementData: Failed to match mod with field? Field may not be required - localmod:" +
+                        LogError(Settings.DebugMode, "updateComponentFromElementData: Failed to match mod with field? Field may not be required - localmod:" +
                                 localmodLetters, 10);
-                        }
                     }
                     catch (Exception)
                     {
-                        if (Settings.DebugMode)
-                        {
-                            LogError(
-                                "updateComponentFromElementData: Failed to match mod with field? Field may not be required - unable to write field, sequence contains no elements", 10);
-                        }
+                        LogError(Settings.DebugMode, "updateComponentFromElementData: Failed to match mod with field? Field may not be required - unable to write field, sequence contains no elements", 10);
                     }
                 }
             }
 
-            if (Settings.DebugMode)
-            {
-                LogMessage("Setting up altar component");
-            }
+            LogMessage(Settings.DebugMode, "Setting up altar component");
 
             // populate the component (preserve original selection logic)
             if (top)
@@ -1043,14 +978,11 @@ namespace ClickIt
 
                 altarComponent.TopMods =
                     new SecondaryAltarComponent(ElementToExtractDataFrom, upside1, upside2, downside1, downside2);
-                if (Settings.DebugMode)
-                {
-                    LogMessage("Updated top altar component: " + altarComponent.TopMods);
-                    LogMessage("Upside1: " + altarComponent.TopMods.FirstUpside);
-                    LogMessage("Upside2: " + altarComponent.TopMods.SecondUpside);
-                    LogMessage("Downside1: " + altarComponent.TopMods.FirstDownside);
-                    LogMessage("Downside2: " + altarComponent.TopMods.SecondDownside);
-                }
+                LogMessage(Settings.DebugMode, "Updated top altar component: " + altarComponent.TopMods);
+                LogMessage(Settings.DebugMode, "Upside1: " + altarComponent.TopMods.FirstUpside);
+                LogMessage(Settings.DebugMode, "Upside2: " + altarComponent.TopMods.SecondUpside);
+                LogMessage(Settings.DebugMode, "Downside1: " + altarComponent.TopMods.FirstDownside);
+                LogMessage(Settings.DebugMode, "Downside2: " + altarComponent.TopMods.SecondDownside);
             }
             else
             {
@@ -1081,22 +1013,19 @@ namespace ClickIt
 
                 altarComponent.BottomMods =
                     new SecondaryAltarComponent(ElementToExtractDataFrom, upside1, upside2, downside1, downside2);
-                if (Settings.DebugMode)
-                {
-                    LogMessage("Updated bottom altar component: ");
-                    LogMessage("Upside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstUpside)
-                        ? "null"
-                        : altarComponent.BottomMods.FirstUpside));
-                    LogMessage("Upside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondUpside)
-                        ? "null"
-                        : altarComponent.BottomMods.SecondUpside));
-                    LogMessage("Downside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstDownside)
-                        ? "Null"
-                        : altarComponent.BottomMods.FirstDownside));
-                    LogMessage("Downside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondDownside)
-                        ? "null"
-                        : altarComponent.BottomMods.SecondDownside));
-                }
+                LogMessage(Settings.DebugMode, "Updated bottom altar component: ");
+                LogMessage(Settings.DebugMode, "Upside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstUpside)
+                    ? "null"
+                    : altarComponent.BottomMods.FirstUpside));
+                LogMessage(Settings.DebugMode, "Upside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondUpside)
+                    ? "null"
+                    : altarComponent.BottomMods.SecondUpside));
+                LogMessage(Settings.DebugMode, "Downside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstDownside)
+                    ? "Null"
+                    : altarComponent.BottomMods.FirstDownside));
+                LogMessage(Settings.DebugMode, "Downside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondDownside)
+                    ? "null"
+                    : altarComponent.BottomMods.SecondDownside));
             }
         }
 
@@ -1173,12 +1102,9 @@ namespace ClickIt
                 LabelOnGround? nextLabel = GetCachedLabels();
                 timer.Stop();
 
-                if (isDebugMode)
+                if (timer.ElapsedMilliseconds > 10)
                 {
-                    if (timer.ElapsedMilliseconds > 10)
-                    {
-                        LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
-                    }
+                    LogMessage("Collecting ground labels took " + timer.ElapsedMilliseconds + " ms", 5);
                 }
 
                 // Process Harvest Labels
@@ -1298,10 +1224,7 @@ namespace ClickIt
                 {
                     if (!PointIsInClickableArea(labelElement.GetClientRect().Center + windowTopLeft, isDebugMode, nextLabel.ItemOnGround.Path))
                     {
-                        if (isDebugMode)
-                        {
-                            LogMessage("(ClickIt) nextLabel is not in clickable area");
-                        }
+                        LogMessage(isDebugMode, "(ClickIt) nextLabel is not in clickable area");
 
                         workFinished = true;
                         yield break;
@@ -1355,16 +1278,13 @@ namespace ClickIt
                 Mouse.blockInput(false);
                 workFinished = true;
                 waitingForCorruption = false;
-                if (Settings.DebugMode)
-                {
-                    LogError(e.ToString(), 10);
-                }
+                LogError(isDebugMode, e.ToString(), 10);
                 yield break;
             }
             finally
             {
                 ClickLabelTimer.Stop();
-                if (isDebugMode && ClickLabelTimer.ElapsedMilliseconds > 10)
+                if (ClickLabelTimer.ElapsedMilliseconds > 10)
                 {
                     LogMessage("ClickLabel took " + ClickLabelTimer.ElapsedMilliseconds + " ms", 5);
                 }
@@ -1731,7 +1651,7 @@ namespace ClickIt
             if (root == null)
             {
                 sw.Stop();
-                if (Settings.DebugMode && sw.ElapsedMilliseconds > 10)
+                if (sw.ElapsedMilliseconds > 10)
                 {
                     LogMessage("GetElementByString took " + sw.ElapsedMilliseconds + " ms", 5);
                 }
@@ -1775,7 +1695,7 @@ namespace ClickIt
             }
 
             sw.Stop();
-            if (Settings.DebugMode && sw.ElapsedMilliseconds > 10)
+            if (sw.ElapsedMilliseconds > 10)
             {
                 LogMessage("GetElementByString took " + sw.ElapsedMilliseconds + " ms", 5);
             }
@@ -1785,11 +1705,8 @@ namespace ClickIt
 
         private void StartEssenceCorruption(LabelOnGround nextLabel, Vector2 windowTopLeft)
         {
-            if (Settings.DebugMode)
-            {
-                LogMessage("Essence is not corrupted and meets criteria, lets corrupt it", 5);
-                LogMessage("Starting corruption", 5);
-            }
+            LogMessage("Essence is not corrupted and meets criteria, lets corrupt it", 5);
+            LogMessage("Starting corruption", 5);
 
             waitingForCorruption = true;
             new Thread(() =>
