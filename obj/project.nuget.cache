@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "nT3FfecZoS8=",
+  "dgSpecHash": "kRxptwafwOg=",
   "success": true,
-  "projectFilePath": "E:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
+  "projectFilePath": "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Alex\\.nuget\\packages\\imgui.net\\1.90.0.1\\imgui.net.1.90.0.1.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\serilog\\3.1.1\\serilog.3.1.1.nupkg.sha512",

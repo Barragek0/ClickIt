@@ -1289,11 +1289,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
+      "projectUniqueName": "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
       "projectName": "ClickIt",
-      "projectPath": "E:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
+      "projectPath": "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
       "packagesPath": "C:\\Users\\Alex\\.nuget\\packages\\",
-      "outputPath": "E:\\1.Path stuff\\GithubRepositories\\ClickIt\\obj\\",
+      "outputPath": "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\obj\\",
       "projectStyle": "PackageReference",
       "skipContentFileWrite": true,
       "UsingMicrosoftNETSdk": false,
@@ -1301,7 +1301,7 @@
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "E:\\1.Path stuff\\GithubRepositories\\ClickIt\\NuGet.Config",
+        "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\NuGet.Config",
         "C:\\Users\\Alex\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
