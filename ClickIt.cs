@@ -1078,20 +1078,20 @@ namespace ClickIt
 
         private IEnumerator ClickLabel(Element? altar = null)
         {
-            // Early exit conditions
-            if (Timer.ElapsedMilliseconds < 50 + Random.Next(0, 10) || !canClick())
-            {
-                workFinished = true;
-                yield break;
-            }
-
-            Timer.Restart();
+            Stopwatch ClickLabelTimer = Stopwatch.StartNew();
+            bool isDebugMode = Settings.DebugMode;
 
             try
             {
-                // Cache window position to avoid multiple calls
+                if (Timer.ElapsedMilliseconds < 50 + Random.Next(0, 10) || !canClick())
+                {
+                    workFinished = true;
+                    yield break;
+                }
+
+                Timer.Restart();
+
                 Vector2 windowTopLeft = GameController.Window.GetWindowRectangleTimeCache.TopLeft;
-                bool isDebugMode = Settings.DebugMode;
 
                 if (Settings.BlockUserInput)
                 {
@@ -1100,7 +1100,6 @@ namespace ClickIt
 
                 Entity? shrine = GetShrine();
 
-                // measure only the call to GetCachedLabels with a dedicated stopwatch
                 Stopwatch timer = Stopwatch.StartNew();
                 LabelOnGround? nextLabel = GetCachedLabels();
                 timer.Stop();
@@ -1293,6 +1292,14 @@ namespace ClickIt
                 }
                 yield break;
             }
+            finally
+            {
+                ClickLabelTimer.Stop();
+                if (isDebugMode && ClickLabelTimer.ElapsedMilliseconds > 10)
+                {
+                    LogMessage("ClickLabel took " + ClickLabelTimer.ElapsedMilliseconds + " ms", 5);
+                }
+            }
         }
 
         private void ProcessEssenceLabel(LabelOnGround nextLabel, Vector2 windowTopLeft)
@@ -1457,38 +1464,137 @@ namespace ClickIt
             };
         }
 
-        private LabelOnGround GetCachedLabels()
+        private LabelOnGround? GetCachedLabels()
         {
-            LabelOnGround label = CachedLabels.Value.Find(x => x.ItemOnGround.DistancePlayer <= Settings.ClickDistance &&
-                                                     ((Settings.ClickItems.Value &&
-                                                      x.ItemOnGround.Type == EntityType.WorldItem &&
-                                                      (!Settings.IgnoreUniques ||
-                                                            x.ItemOnGround.GetComponent<WorldItem>()?.ItemEntity
-                                                           .GetComponent<Mods>()?.ItemRarity != ItemRarity.Unique ||
-                                                            x.ItemOnGround.GetComponent<WorldItem>().ItemEntity.Path
-                                                           .StartsWith("Metadata/Items/Metamorphosis/Metamorphosis"))) ||
-                                                      (Settings.ClickBasicChests.Value &&
-                                                            x.ItemOnGround.Type == EntityType.Chest && IsBasicChest(x)) ||
-                                                      (Settings.ClickLeagueChests.Value &&
-                                                             x.ItemOnGround.Type == EntityType.Chest && !IsBasicChest(x)) ||
-                                                      (Settings.ClickAreaTransitions.Value &&
-                                                            x.ItemOnGround.Type == EntityType.AreaTransition) ||
-                                                      (Settings.ClickShrines.Value &&
-                                                            x.ItemOnGround.Type == EntityType.Shrine) ||
-                                                      (Settings.NearestHarvest &&
-                                                            (x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor"))) ||
-                                                      (Settings.ClickSulphiteVeins &&
-                                                            x.ItemOnGround.Path.Contains("DelveMineral")) ||
-                                                      (Settings.ClickAzuriteVeins &&
-                                                            x.ItemOnGround.Path.Contains("AzuriteEncounterController")) ||
-                                                      ((Settings.HighlightEaterAltars || Settings.HighlightExarchAltars ||
-                                                        Settings.ClickEaterAltars || Settings.ClickExarchAltars) &&
-                                                            (x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar"))) ||
-                                                      (Settings.ClickEssences.Value &&
-                                                            GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null) ||
-                                                      (Settings.ClickCraftingRecipes.Value &&
-                                                            x.ItemOnGround.Path.Contains("CraftingUnlocks"))));
-            return label;
+            List<LabelOnGround>? cached = CachedLabels?.Value;
+            if (cached == null || cached.Count == 0)
+            {
+                return null;
+            }
+
+            ClickItSettings s = Settings;
+            RangeNode<int> clickDistance = s.ClickDistance;
+            bool clickItems = s.ClickItems.Value;
+            bool ignoreUniques = s.IgnoreUniques;
+            bool clickBasicChests = s.ClickBasicChests.Value;
+            bool clickLeagueChests = s.ClickLeagueChests.Value;
+            bool clickAreaTransitions = s.ClickAreaTransitions.Value;
+            bool clickShrines = s.ClickShrines.Value;
+            bool nearestHarvest = s.NearestHarvest.Value;
+            bool clickSulphite = s.ClickSulphiteVeins.Value;
+            bool clickAzurite = s.ClickAzuriteVeins.Value;
+            bool highlightEater = s.HighlightEaterAltars.Value;
+            bool highlightExarch = s.HighlightExarchAltars.Value;
+            bool clickEater = s.ClickEaterAltars.Value;
+            bool clickExarch = s.ClickExarchAltars.Value;
+            bool clickEssences = s.ClickEssences.Value;
+            bool clickCrafting = s.ClickCraftingRecipes.Value;
+
+            for (int i = 0; i < cached.Count; i++)
+            {
+                LabelOnGround label = cached[i];
+                Entity item = label.ItemOnGround;
+                if (item == null)
+                {
+                    continue;
+                }
+
+                if (item.DistancePlayer > clickDistance)
+                {
+                    continue;
+                }
+
+                string path = item.Path;
+                EntityType type = item.Type;
+
+                // World items
+                if (clickItems && type == EntityType.WorldItem)
+                {
+                    if (ignoreUniques)
+                    {
+                        try
+                        {
+                            WorldItem worldItemComp = item.GetComponent<WorldItem>();
+                            Entity? itemEntity = worldItemComp?.ItemEntity;
+                            Mods? mods = itemEntity?.GetComponent<Mods>();
+                            if (mods?.ItemRarity == ItemRarity.Unique && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/") ?? false))
+                            {
+                                continue; // skip uniques when ignoring
+                            }
+                        }
+                        catch
+                        {
+                            // ignore exceptions and treat as not-unique
+                        }
+                    }
+
+                    return label;
+                }
+
+                // Chests
+                if (type == EntityType.Chest)
+                {
+                    if (clickBasicChests && IsBasicChest(label))
+                    {
+                        return label;
+                    }
+
+                    if (clickLeagueChests && !IsBasicChest(label))
+                    {
+                        return label;
+                    }
+                }
+
+                // Area transitions
+                if (clickAreaTransitions && type == EntityType.AreaTransition)
+                {
+                    return label;
+                }
+
+                // Shrines
+                if (clickShrines && type == EntityType.Shrine)
+                {
+                    return label;
+                }
+
+                // Harvest
+                if (nearestHarvest && !string.IsNullOrEmpty(path) && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor")))
+                {
+                    return label;
+                }
+
+                // Sulphite
+                if (clickSulphite && !string.IsNullOrEmpty(path) && path.Contains("DelveMineral"))
+                {
+                    return label;
+                }
+
+                // Azurite
+                if (clickAzurite && !string.IsNullOrEmpty(path) && path.Contains("AzuriteEncounterController"))
+                {
+                    return label;
+                }
+
+                // Altars
+                if ((highlightEater || highlightExarch || clickEater || clickExarch) && !string.IsNullOrEmpty(path) && (path.Contains("CleansingFireAltar") || path.Contains("TangleAltar")))
+                {
+                    return label;
+                }
+
+                // Essences
+                if (clickEssences && GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null)
+                {
+                    return label;
+                }
+
+                // Crafting recipes
+                if (clickCrafting && !string.IsNullOrEmpty(path) && path.Contains("CraftingUnlocks"))
+                {
+                    return label;
+                }
+            }
+
+            return null;
         }
 
         public Element GetElementByString(Element label, string str)
