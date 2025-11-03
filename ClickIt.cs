@@ -1597,23 +1597,59 @@ namespace ClickIt
             return null;
         }
 
-        public Element GetElementByString(Element label, string str)
+        // Optimized: iterative DFS, nullable return, avoid LINQ and recursion
+        public Element? GetElementByString(Element? root, string str)
         {
-            Stopwatch timer = Stopwatch.StartNew();
-            Element element = label.GetText(512) == str
-                ? label
-                : label.Children.Select(child => GetElementByString(child, str))
-                    .FirstOrDefault(element => element != null);
-            timer.Stop();
+            var sw = Stopwatch.StartNew();
 
-            if (Settings.DebugMode)
+            if (root == null)
             {
-                if (timer.ElapsedMilliseconds > 10)
+                sw.Stop();
+                if (Settings.DebugMode && sw.ElapsedMilliseconds > 10)
+                    LogMessage("GetElementByString took " + sw.ElapsedMilliseconds + " ms", 5);
+                return null;
+            }
+
+            Element? found = null;
+            var stack = new Stack<Element>();
+            stack.Push(root);
+
+            while (stack.Count > 0)
+            {
+                var el = stack.Pop();
+                try
                 {
-                    LogMessage("GetElementByString took " + timer.ElapsedMilliseconds + " ms", 5);
+                    var text = el.GetText(512);
+                    if (text != null && text.Equals(str))
+                    {
+                        found = el;
+                        break;
+                    }
+
+                    var children = el.Children;
+                    if (children != null)
+                    {
+                        // push children onto stack
+                        foreach (var c in children)
+                        {
+                            if (c != null)
+                                stack.Push(c);
+                        }
+                    }
+                }
+                catch
+                {
+                    // ignore read errors and continue
                 }
             }
-            return element;
+
+            sw.Stop();
+            if (Settings.DebugMode && sw.ElapsedMilliseconds > 10)
+            {
+                LogMessage("GetElementByString took " + sw.ElapsedMilliseconds + " ms", 5);
+            }
+
+            return found;
         }
 
         public enum AltarType
