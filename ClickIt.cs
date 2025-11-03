@@ -1304,39 +1304,83 @@ namespace ClickIt
 
         private void ProcessEssenceLabel(LabelOnGround nextLabel, Vector2 windowTopLeft)
         {
-            Element label = nextLabel.Label.Parent;
+            Element? label = nextLabel.Label.Parent;
+            if (label == null)
+            {
+                // fallback click if parent not available
+                Vector2 clickPosFallback = nextLabel.Label.GetClientRect().Center + windowTopLeft;
+                Input.SetCursorPos(clickPosFallback);
+                if (Settings.LeftHanded)
+                {
+                    Mouse.RightClick();
+                }
+                else
+                {
+                    Mouse.LeftClick();
+                }
+
+                Mouse.blockInput(false);
+                return;
+            }
+
+            // If already corrupted, just click (unless waiting for corrupt)
+            if (ElementContainsAnyStrings(label, new[] { "Corrupted" }))
+            {
+                if (!waitingForCorruption)
+                {
+                    Vector2 clickPos = nextLabel.Label.GetClientRect().Center + windowTopLeft;
+                    Input.SetCursorPos(clickPos);
+                    if (Settings.LeftHanded)
+                    {
+                        Mouse.RightClick();
+                    }
+                    else
+                    {
+                        Mouse.LeftClick();
+                    }
+
+                    Mouse.blockInput(false);
+                }
+                return;
+            }
+
             bool meetsCorruptCriteria = false;
 
-            if (GetElementByString(label, "Corrupted") == null)
+            if (Settings.CorruptAllEssences)
             {
-                if (Settings.CorruptAllEssences)
+                meetsCorruptCriteria = true;
+            }
+            else if (Settings.CorruptMEDSEssences)
+            {
+                string[] meds = new[]
                 {
-                    meetsCorruptCriteria = true;
-                }
-                else if (Settings.CorruptMEDSEssences)
+                    "Screaming Essence of Misery",
+                    "Screaming Essence of Envy",
+                    "Screaming Essence of Dread",
+                    "Screaming Essence of Scorn",
+                    "Shrieking Essence of Misery",
+                    "Shrieking Essence of Envy",
+                    "Shrieking Essence of Dread",
+                    "Shrieking Essence of Scorn"
+                };
+                meetsCorruptCriteria = ElementContainsAnyStrings(label, meds);
+            }
+            else if (Settings.CorruptProfitableEssences)
+            {
+                string[] profitable = new[]
                 {
-                    meetsCorruptCriteria = GetElementByString(label, "Screaming Essence of Misery") != null ||
-                                          GetElementByString(label, "Screaming Essence of Envy") != null ||
-                                          GetElementByString(label, "Screaming Essence of Dread") != null ||
-                                          GetElementByString(label, "Screaming Essence of Scorn") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Misery") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Envy") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Dread") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Scorn") != null;
-                }
-                else if (Settings.CorruptProfitableEssences)
-                {
-                    meetsCorruptCriteria = GetElementByString(label, "Shrieking Essence of Contempt") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Woe") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Sorrow") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Loathing") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Zeal") != null ||
-                                          GetElementByString(label, "Shrieking Essence of Envy") != null;
-                }
-                else if (Settings.CorruptAnyNonShrieking)
-                {
-                    meetsCorruptCriteria = !CheckForAnyShriekingEssence(label);
-                }
+                    "Shrieking Essence of Contempt",
+                    "Shrieking Essence of Woe",
+                    "Shrieking Essence of Sorrow",
+                    "Shrieking Essence of Loathing",
+                    "Shrieking Essence of Zeal",
+                    "Shrieking Essence of Envy"
+                };
+                meetsCorruptCriteria = ElementContainsAnyStrings(label, profitable);
+            }
+            else if (Settings.CorruptAnyNonShrieking)
+            {
+                meetsCorruptCriteria = !CheckForAnyShriekingEssenceOptimized(label);
             }
 
             if (meetsCorruptCriteria)
@@ -1360,75 +1404,88 @@ namespace ClickIt
             }
         }
 
-        private bool CheckForAnyShriekingEssence(Element label)
+        // Helper: search element tree once for any of the provided patterns (case-sensitive Contains)
+        private bool ElementContainsAnyStrings(Element? root, IEnumerable<string> patterns)
         {
-            return GetElementByString(label, "Shrieking Essence of Greed") != null ||
-                   GetElementByString(label, "Shrieking Essence of Contempt") != null ||
-                   GetElementByString(label, "Shrieking Essence of Hatred") != null ||
-                   GetElementByString(label, "Shrieking Essence of Woe") != null ||
-                   GetElementByString(label, "Shrieking Essence of Fear") != null ||
-                   GetElementByString(label, "Shrieking Essence of Anger") != null ||
-                   GetElementByString(label, "Shrieking Essence of Torment") != null ||
-                   GetElementByString(label, "Shrieking Essence of Sorrow") != null ||
-                   GetElementByString(label, "Shrieking Essence of Rage") != null ||
-                   GetElementByString(label, "Shrieking Essence of Suffering") != null ||
-                   GetElementByString(label, "Shrieking Essence of Wrath") != null ||
-                   GetElementByString(label, "Shrieking Essence of Doubt") != null ||
-                   GetElementByString(label, "Shrieking Essence of Loathing") != null ||
-                   GetElementByString(label, "Shrieking Essence of Zeal") != null ||
-                   GetElementByString(label, "Shrieking Essence of Anguish") != null ||
-                   GetElementByString(label, "Shrieking Essence of Spite") != null ||
-                   GetElementByString(label, "Shrieking Essence of Scorn") != null ||
-                   GetElementByString(label, "Shrieking Essence of Envy") != null ||
-                   GetElementByString(label, "Shrieking Essence of Misery") != null ||
-                   GetElementByString(label, "Shrieking Essence of Dread") != null;
-        }
-
-        private void StartEssenceCorruption(LabelOnGround nextLabel, Vector2 windowTopLeft)
-        {
-            if (Settings.DebugMode)
+            if (root == null)
             {
-                LogMessage("Essence is not corrupted and meets criteria, lets corrupt it", 5);
-                LogMessage("Starting corruption", 5);
+                return false;
             }
 
-            waitingForCorruption = true;
-            new Thread(() =>
+            string[] patList = patterns as string[] ?? patterns.ToArray();
+            if (patList.Length == 0)
             {
-                LogMessage("Corruption started", 5);
-                float latency = GameController.Game.IngameState.ServerData.Latency;
+                return false;
+            }
 
-                if (nextLabel?.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0) == null)
+            Stack<Element> stack = new();
+            stack.Push(root);
+
+            while (stack.Count > 0)
+            {
+                Element el = stack.Pop();
+                try
                 {
-                    LogError("(ClickIt) You need vaal orbs in your inventory to corrupt essences.", 20);
-                    waitingForCorruption = false;
-                    Mouse.blockInput(false);
-                    workFinished = true;
-                    return;
+                    string text = el.GetText(512);
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        for (int i = 0; i < patList.Length; i++)
+                        {
+                            if (text.Contains(patList[i]))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+
+                    IList<Element> children = el.Children;
+                    if (children != null)
+                    {
+                        foreach (Element? c in children)
+                        {
+                            if (c != null)
+                            {
+                                stack.Push(c);
+                            }
+                        }
+                    }
                 }
-
-                Vector2 offset = new(Random.Next(0, 2), Random.Next(0, 2));
-                Vector2 centerOfLabel = nextLabel.Label.GetChildAtIndex(2).GetChildAtIndex(0).GetChildAtIndex(0).GetClientRect().Center + windowTopLeft + offset;
-
-                LogMessage("Moved mouse to vaal", 5);
-                Input.SetCursorPos(centerOfLabel);
-
-                Thread.Sleep((int)(latency + 100));
-
-                if (Settings.LeftHanded)
+                catch
                 {
-                    Mouse.RightClick();
+                    // ignore read errors
                 }
-                else
-                {
-                    Mouse.LeftClick();
-                }
+            }
 
-                Thread.Sleep((int)(latency + 100));
+            return false;
+        }
 
-                Mouse.blockInput(false);
-                waitingForCorruption = false;
-            }).Start();
+        private bool CheckForAnyShriekingEssenceOptimized(Element label)
+        {
+            string[] shrieking =
+            [
+                "Shrieking Essence of Greed",
+                "Shrieking Essence of Contempt",
+                "Shrieking Essence of Hatred",
+                "Shrieking Essence of Woe",
+                "Shrieking Essence of Fear",
+                "Shrieking Essence of Anger",
+                "Shrieking Essence of Torment",
+                "Shrieking Essence of Sorrow",
+                "Shrieking Essence of Rage",
+                "Shrieking Essence of Suffering",
+                "Shrieking Essence of Wrath",
+                "Shrieking Essence of Doubt",
+                "Shrieking Essence of Loathing",
+                "Shrieking Essence of Zeal",
+                "Shrieking Essence of Anguish",
+                "Shrieking Essence of Spite",
+                "Shrieking Essence of Scorn",
+                "Shrieking Essence of Envy",
+                "Shrieking Essence of Misery",
+                "Shrieking Essence of Dread"
+            ];
+
+            return ElementContainsAnyStrings(label, shrieking);
         }
 
         private async Task<List<NormalInventoryItem>> FetchInventoryItemsTask()
@@ -1600,40 +1657,45 @@ namespace ClickIt
         // Optimized: iterative DFS, nullable return, avoid LINQ and recursion
         public Element? GetElementByString(Element? root, string str)
         {
-            var sw = Stopwatch.StartNew();
+            Stopwatch sw = Stopwatch.StartNew();
 
             if (root == null)
             {
                 sw.Stop();
                 if (Settings.DebugMode && sw.ElapsedMilliseconds > 10)
+                {
                     LogMessage("GetElementByString took " + sw.ElapsedMilliseconds + " ms", 5);
+                }
+
                 return null;
             }
 
             Element? found = null;
-            var stack = new Stack<Element>();
+            Stack<Element> stack = new();
             stack.Push(root);
 
             while (stack.Count > 0)
             {
-                var el = stack.Pop();
+                Element el = stack.Pop();
                 try
                 {
-                    var text = el.GetText(512);
+                    string text = el.GetText(512);
                     if (text != null && text.Equals(str))
                     {
                         found = el;
                         break;
                     }
 
-                    var children = el.Children;
+                    IList<Element> children = el.Children;
                     if (children != null)
                     {
                         // push children onto stack
-                        foreach (var c in children)
+                        foreach (Element? c in children)
                         {
                             if (c != null)
+                            {
                                 stack.Push(c);
+                            }
                         }
                     }
                 }
@@ -1650,6 +1712,53 @@ namespace ClickIt
             }
 
             return found;
+        }
+
+        private void StartEssenceCorruption(LabelOnGround nextLabel, Vector2 windowTopLeft)
+        {
+            if (Settings.DebugMode)
+            {
+                LogMessage("Essence is not corrupted and meets criteria, lets corrupt it", 5);
+                LogMessage("Starting corruption", 5);
+            }
+
+            waitingForCorruption = true;
+            new Thread(() =>
+            {
+                LogMessage("Corruption started", 5);
+                float latency = GameController.Game.IngameState.ServerData.Latency;
+
+                if (nextLabel?.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0) == null)
+                {
+                    LogError("(ClickIt) You need vaal orbs in your inventory to corrupt essences.", 20);
+                    waitingForCorruption = false;
+                    Mouse.blockInput(false);
+                    workFinished = true;
+                    return;
+                }
+
+                Vector2 offset = new(Random.Next(0, 2), Random.Next(0, 2));
+                Vector2 centerOfLabel = nextLabel.Label.GetChildAtIndex(2).GetChildAtIndex(0).GetChildAtIndex(0).GetClientRect().Center + windowTopLeft + offset;
+
+                LogMessage("Moved mouse to vaal", 5);
+                Input.SetCursorPos(centerOfLabel);
+
+                Thread.Sleep((int)(latency + 100));
+
+                if (Settings.LeftHanded)
+                {
+                    Mouse.RightClick();
+                }
+                else
+                {
+                    Mouse.LeftClick();
+                }
+
+                Thread.Sleep((int)(latency + 100));
+
+                Mouse.blockInput(false);
+                waitingForCorruption = false;
+            }).Start();
         }
 
         public enum AltarType
