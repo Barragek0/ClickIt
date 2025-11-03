@@ -62,28 +62,31 @@ namespace ClickIt
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
 
         [Menu("Sulphite Veins", "Click sulphite veins", 11, 3000)]
-        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(false);
+        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
 
         [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 12, 3000)]
-        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(false);
+        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
 
         [Menu("Crafting Recipes", "Click crafting recipes", 13, 3000)]
-        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(false);
+        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
 
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 14, 3000)]
+        [Menu("Breach Nodes", "Click breach nodes", 14, 3000)]
+        public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
+
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 15, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
 
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 15, 3000)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 16, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
 
-        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.", 16, 3000)]
+        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.", 17, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
 
-        [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 17, 3000)]
+        [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 18, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
 
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 18, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 19, 3000)]
         [System.Obsolete]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
 
@@ -103,10 +106,6 @@ namespace ClickIt
 
         [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 4, 3500)]
         public ToggleNode CorruptMEDSEssences { get; set; } = new ToggleNode(true);
-
-        [Menu("Corrupt Shrieking Essences that typically result in profit when sold in bulk", "Corrupt shrieking essences that typically result in a profit when sold in bulk (Currently: Contempt, Woe, Sorrow, Loathing, Zeal, Envy).\n\n" +
-            "Warning: This may result in you losing money, check the price of the essences listed above occasionally during the league.", 5, 3500)]
-        public ToggleNode CorruptProfitableEssences { get; set; } = new ToggleNode(true);
 
         [Menu("Corrupt Essences which don't contain a shrieking essence", "Corrupt any essences that don't have a shrieking essence on them.\n\n" +
             "This is for if you use the 'Crystal Resonance' atlas passive, which duplicates monsters when they contain a shrieking essence.", 6, 3500)]

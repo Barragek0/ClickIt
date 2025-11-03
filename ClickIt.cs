@@ -107,13 +107,13 @@ namespace ClickIt
 
         private bool PointIsInClickableArea(Vector2 point, string? path = null)
         {
-            LogMessage("Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
+            /*LogMessage("Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
 
             LogMessage(point.PointInRectangle(HealthAndFlaskRectangle)
                 ? "Point is in orange - health globe / flasks"
                 : point.PointInRectangle(ManaAndSkillsRectangle) ? "Point is in blue - mana globe / skills"
                 : point.PointInRectangle(BuffsAndDebuffsRectangle) ? "Point is in blue - mana globe / skills"
-                : string.Empty);
+                : string.Empty);*/
             return point.PointInRectangle(FullScreenArea()) &&
                   !point.PointInRectangle(HealthAndFlaskRectangle) &&
                   !point.PointInRectangle(ManaAndSkillsRectangle) &&
@@ -1065,7 +1065,8 @@ namespace ClickIt
                     x.ItemOnGround.Path.Contains("AzuriteEncounterController") ||
                     x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor") ||
                     x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar") ||
-                    x.ItemOnGround.Path.Contains("CraftingUnlocks")
+                    x.ItemOnGround.Path.Contains("CraftingUnlocks") ||
+                    x.ItemOnGround.Path.Contains("Brequel")
                     ))
                 .OrderBy(x => x.ItemOnGround.DistancePlayer)
                 .ToList();
@@ -1215,6 +1216,25 @@ namespace ClickIt
                     yield break;
                 }
 
+                // Handle Breach Nodes
+                if (nextLabel.ItemOnGround.Path.Contains("Brequel") && Settings.ClickBreachNodes)
+                {
+                    Vector2 clickPos = labelElement.GetClientRect().Center;
+                    Input.SetCursorPos(clickPos);
+                    if (Settings.LeftHanded)
+                    {
+                        Mouse.RightClick();
+                    }
+                    else
+                    {
+                        Mouse.LeftClick();
+                    }
+
+                    Mouse.blockInput(false);
+                    workFinished = true;
+                    yield break;
+                }
+
                 // Handle regular items
                 if (!waitingForCorruption)
                 {
@@ -1236,6 +1256,7 @@ namespace ClickIt
                     if (!(Settings.ClickSulphiteVeins && nextLabel.ItemOnGround.Path.Contains("DelveMineral")) &&
                         !(Settings.ClickAzuriteVeins && nextLabel.ItemOnGround.Path.Contains("AzuriteEncounterController")) &&
                         !(Settings.ClickCraftingRecipes && nextLabel.ItemOnGround.Path.Contains("CraftUnlocks")) &&
+                        !(Settings.ClickBreachNodes && nextLabel.ItemOnGround.Path.Contains("Brequel")) &&
                         !Settings.ClickItems)
                     {
                         workFinished = true;
@@ -1346,22 +1367,13 @@ namespace ClickIt
                     "Shrieking Essence of Misery",
                     "Shrieking Essence of Envy",
                     "Shrieking Essence of Dread",
-                    "Shrieking Essence of Scorn"
+                    "Shrieking Essence of Scorn",
+                    "Deafening Essence of Misery",
+                    "Deafening Essence of Envy",
+                    "Deafening Essence of Dread",
+                    "Deafening Essence of Scorn"
                 };
                 meetsCorruptCriteria = ElementContainsAnyStrings(label, meds);
-            }
-            else if (Settings.CorruptProfitableEssences)
-            {
-                string[] profitable = new[]
-                {
-                    "Shrieking Essence of Contempt",
-                    "Shrieking Essence of Woe",
-                    "Shrieking Essence of Sorrow",
-                    "Shrieking Essence of Loathing",
-                    "Shrieking Essence of Zeal",
-                    "Shrieking Essence of Envy"
-                };
-                meetsCorruptCriteria = ElementContainsAnyStrings(label, profitable);
             }
             else if (Settings.CorruptAnyNonShrieking)
             {
@@ -1531,6 +1543,7 @@ namespace ClickIt
             bool clickExarch = s.ClickExarchAltars.Value;
             bool clickEssences = s.ClickEssences.Value;
             bool clickCrafting = s.ClickCraftingRecipes.Value;
+            bool ClickBreach = s.ClickBreachNodes.Value;
 
             for (int i = 0; i < cached.Count; i++)
             {
@@ -1631,6 +1644,12 @@ namespace ClickIt
 
                 // Crafting recipes
                 if (clickCrafting && !string.IsNullOrEmpty(path) && path.Contains("CraftingUnlocks"))
+                {
+                    return label;
+                }
+
+                // Breach Nodes
+                if (ClickBreach && !string.IsNullOrEmpty(path) && path.Contains("Brequel"))
                 {
                     return label;
                 }
