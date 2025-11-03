@@ -105,18 +105,15 @@ namespace ClickIt
                 GameController.Window.GetWindowRectangleTimeCache.Height);
         }
 
-        private bool PointIsInClickableArea(Vector2 point, bool debug = false, string? path = null)
+        private bool PointIsInClickableArea(Vector2 point, string? path = null)
         {
-            LogMessage(debug, "Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
+            LogMessage("Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
 
-            if (debug)
-            {
-                LogMessage(debug, point.PointInRectangle(HealthAndFlaskRectangle)
-                    ? "Point is in orange - health globe / flasks"
-                    : point.PointInRectangle(ManaAndSkillsRectangle) ? "Point is in blue - mana globe / skills"
-                    : point.PointInRectangle(BuffsAndDebuffsRectangle) ? "Point is in blue - mana globe / skills"
-                    : string.Empty);
-            }
+            LogMessage(point.PointInRectangle(HealthAndFlaskRectangle)
+                ? "Point is in orange - health globe / flasks"
+                : point.PointInRectangle(ManaAndSkillsRectangle) ? "Point is in blue - mana globe / skills"
+                : point.PointInRectangle(BuffsAndDebuffsRectangle) ? "Point is in blue - mana globe / skills"
+                : string.Empty);
             return point.PointInRectangle(FullScreenArea()) &&
                   !point.PointInRectangle(HealthAndFlaskRectangle) &&
                   !point.PointInRectangle(ManaAndSkillsRectangle) &&
@@ -396,7 +393,7 @@ namespace ClickIt
                     BottomWeight > TopWeight ? Color.LawnGreen : Color.Yellow, 18);
 
                 if (((altar.AltarType == AltarType.EaterOfWorlds && Settings.ClickEaterAltars) || (altar.AltarType == AltarType.SearingExarch && Settings.ClickExarchAltars)) &&
-                    boxToClick != null && PointIsInClickableArea(boxToClick.GetClientRect().Center, true, altar.AltarType.ToString()))
+                    boxToClick != null && PointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()))
                 {
                     if (boxToClick.IsVisible)
                     {
@@ -836,9 +833,9 @@ namespace ClickIt
             Element ElementToExtractDataFrom, AltarType altarType)
         {
             string NegativeModType = "";
-            List<string> mods = new();
-            List<string> upsides = new();
-            List<string> downsides = new();
+            List<string> mods = [];
+            List<string> upsides = [];
+            List<string> downsides = [];
 
             // Read raw text once
             string rawText = ElementToExtractDataFrom.GetText(512) ?? string.Empty;
@@ -874,7 +871,7 @@ namespace ClickIt
                                                                            BindingFlags.NonPublic |
                                                                            BindingFlags.Instance |
                                                                            BindingFlags.Static);
-            List<(FieldInfo field, string nameLower)> candidateFields = new();
+            List<(FieldInfo field, string nameLower)> candidateFields = [];
             for (int f = 0; f < settingsFields.Length; f++)
             {
                 FieldInfo fi = settingsFields[f];
@@ -1077,7 +1074,6 @@ namespace ClickIt
         private IEnumerator ClickLabel(Element? altar = null)
         {
             Stopwatch ClickLabelTimer = Stopwatch.StartNew();
-            bool isDebugMode = Settings.DebugMode;
 
             try
             {
@@ -1222,9 +1218,9 @@ namespace ClickIt
                 // Handle regular items
                 if (!waitingForCorruption)
                 {
-                    if (!PointIsInClickableArea(labelElement.GetClientRect().Center + windowTopLeft, isDebugMode, nextLabel.ItemOnGround.Path))
+                    if (!PointIsInClickableArea(labelElement.GetClientRect().Center + windowTopLeft, nextLabel.ItemOnGround.Path))
                     {
-                        LogMessage(isDebugMode, "(ClickIt) nextLabel is not in clickable area");
+                        LogMessage("(ClickIt) nextLabel is not in clickable area");
 
                         workFinished = true;
                         yield break;
@@ -1278,7 +1274,7 @@ namespace ClickIt
                 Mouse.blockInput(false);
                 workFinished = true;
                 waitingForCorruption = false;
-                LogError(isDebugMode, e.ToString(), 10);
+                LogError(e.ToString(), 10);
                 yield break;
             }
             finally
