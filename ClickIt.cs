@@ -101,20 +101,41 @@ namespace ClickIt
 
         private RectangleF FullScreenArea()
         {
-            return new RectangleF(GameController.Window.GetWindowRectangleTimeCache.X, GameController.Window.GetWindowRectangleTimeCache.Y, GameController.Window.GetWindowRectangleTimeCache.Width,
-                GameController.Window.GetWindowRectangleTimeCache.Height);
+            // Refresh cached FullScreenRectangle only when underlying window rectangle changes to avoid allocations
+            RectangleF winRect = GameController.Window.GetWindowRectangleTimeCache;
+            if (FullScreenRectangle.Width != winRect.Width || FullScreenRectangle.Height != winRect.Height ||
+                FullScreenRectangle.X != winRect.X || FullScreenRectangle.Y != winRect.Y)
+            {
+                FullScreenRectangle = new RectangleF(winRect.X, winRect.Y, winRect.Width, winRect.Height);
+
+                // Also refresh dependent rectangles that were initially calculated in Initialise
+                HealthAndFlaskRectangle = new RectangleF(
+                    (float)(winRect.BottomLeft.X / 3),
+                    (float)(winRect.BottomLeft.Y / 5 * 3.92),
+                    (float)(winRect.BottomLeft.X + (winRect.BottomRight.X / 3.4)),
+                    winRect.BottomLeft.Y);
+
+                ManaAndSkillsRectangle = new RectangleF(
+                    (float)(winRect.BottomRight.X / 3 * 2.12),
+                    (float)(winRect.BottomLeft.Y / 5 * 3.92),
+                    winRect.BottomRight.X,
+                    winRect.BottomRight.Y);
+
+                BuffsAndDebuffsRectangle = new RectangleF(
+                    winRect.TopLeft.X,
+                    winRect.TopLeft.Y,
+                    winRect.TopRight.X / 2,
+                    winRect.TopLeft.Y + 120);
+            }
+
+            return FullScreenRectangle;
         }
 
         private bool PointIsInClickableArea(Vector2 point, string? path = null)
         {
-            /*LogMessage("Checking if point: x:" + point.X + " y:" + point.Y + " is in rectangle for: " + (path ?? "unknown path"));
-
-            LogMessage(point.PointInRectangle(HealthAndFlaskRectangle)
-                ? "Point is in orange - health globe / flasks"
-                : point.PointInRectangle(ManaAndSkillsRectangle) ? "Point is in blue - mana globe / skills"
-                : point.PointInRectangle(BuffsAndDebuffsRectangle) ? "Point is in blue - mana globe / skills"
-                : string.Empty);*/
-            return point.PointInRectangle(FullScreenArea()) &&
+            // Use cached FullScreenRectangle and avoid creating temporary rectangles on every check
+            RectangleF full = FullScreenArea();
+            return point.PointInRectangle(full) &&
                   !point.PointInRectangle(HealthAndFlaskRectangle) &&
                   !point.PointInRectangle(ManaAndSkillsRectangle) &&
                   !point.PointInRectangle(BuffsAndDebuffsRectangle);
@@ -124,7 +145,11 @@ namespace ClickIt
 
         public override void Render()
         {
-            if (Settings.DebugMode && Settings.RenderDebug)
+            // Cache settings values once at the start
+            bool debugMode = Settings.DebugMode;
+            bool renderDebug = Settings.RenderDebug;
+
+            if (debugMode && renderDebug)
             {
                 Graphics.DrawFrame(FullScreenRectangle, Color.Green, 1);
                 Graphics.DrawFrame(HealthAndFlaskRectangle, Color.Orange, 1);
@@ -141,8 +166,38 @@ namespace ClickIt
                                                                       BindingFlags.Static));
             }
 
+            // Early exit if no altars
+            if (altarComponents.Count == 0)
+            {
+                return;
+            }
+
             // Take a snapshot to avoid enumeration issues if the collection is modified elsewhere
             List<PrimaryAltarComponent> altarSnapshot = altarComponents.ToList();
+
+            // Cache additional settings
+            bool clickEater = Settings.ClickEaterAltars;
+            bool clickExarch = Settings.ClickExarchAltars;
+            bool leftHanded = Settings.LeftHanded;
+            Vector2 windowTopLeft = GameController.Window.GetWindowRectangleTimeCache.TopLeft;
+
+            // Pre-cache commonly used Vector2 offsets to avoid repeated allocations
+            Vector2 offset120_Minus60 = new(120, -60);
+            Vector2 offset120_Minus25 = new(120, -25);
+            Vector2 offset5_Minus32 = new(5, -32);
+            Vector2 offset5_Minus20 = new(5, -20);
+            Vector2 offset10_Minus32 = new(10, -32);
+            Vector2 offset10_Minus20 = new(10, -20);
+            Vector2 offset10_5 = new(10, 5);
+
+            // Pre-cache colors to avoid repeated property access
+            Color colorOrange = Color.Orange;
+            Color colorYellow = Color.Yellow;
+            Color colorLawnGreen = Color.LawnGreen;
+            Color colorOrangeRed = Color.OrangeRed;
+
+            // Pre-cache string constants used in field name processing
+            const string weightSuffix = "_weight";
 
             foreach (PrimaryAltarComponent altar in altarSnapshot)
             {
@@ -152,100 +207,111 @@ namespace ClickIt
                 decimal BottomUpside1Weight = 0, BottomUpside2Weight = 0;
                 decimal BottomDownside1Weight = 0, BottomDownside2Weight = 0;
 
-                LogMessage(Settings.RenderDebug, "Render 1");
-
-                LogMessage(Settings.RenderDebug, "Render 2");
+                // Cache mod string properties once to avoid repeated property access
+                string topFirstUpside = altar.TopMods.FirstUpside;
+                string topSecondUpside = altar.TopMods.SecondUpside;
+                string topFirstDownside = altar.TopMods.FirstDownside;
+                string topSecondDownside = altar.TopMods.SecondDownside;
+                string botFirstUpside = altar.BottomMods.FirstUpside;
+                string botSecondUpside = altar.BottomMods.SecondUpside;
+                string botFirstDownside = altar.BottomMods.FirstDownside;
+                string botSecondDownside = altar.BottomMods.SecondDownside;
 
                 // Build lookup names once to avoid repeated allocations / ToLower calls in the inner loop
-                string topFirstUpsideName = string.IsNullOrEmpty(altar.TopMods.FirstUpside) ? string.Empty : (altar.TopMods.FirstUpside + "_weight").ToLowerInvariant();
-                string topSecondUpsideName = string.IsNullOrEmpty(altar.TopMods.SecondUpside) ? string.Empty : (altar.TopMods.SecondUpside + "_weight").ToLowerInvariant();
-                string topFirstDownName = string.IsNullOrEmpty(altar.TopMods.FirstDownside) ? string.Empty : (altar.TopMods.FirstDownside + "_weight").ToLowerInvariant();
-                string topSecondDownName = string.IsNullOrEmpty(altar.TopMods.SecondDownside) ? string.Empty : (altar.TopMods.SecondDownside + "_weight").ToLowerInvariant();
+                string topFirstUpsideName = string.IsNullOrEmpty(topFirstUpside) ? string.Empty : string.Concat(topFirstUpside, weightSuffix).ToLowerInvariant();
+                string topSecondUpsideName = string.IsNullOrEmpty(topSecondUpside) ? string.Empty : string.Concat(topSecondUpside, weightSuffix).ToLowerInvariant();
+                string topFirstDownName = string.IsNullOrEmpty(topFirstDownside) ? string.Empty : string.Concat(topFirstDownside, weightSuffix).ToLowerInvariant();
+                string topSecondDownName = string.IsNullOrEmpty(topSecondDownside) ? string.Empty : string.Concat(topSecondDownside, weightSuffix).ToLowerInvariant();
 
-                string botFirstUpsideName = string.IsNullOrEmpty(altar.BottomMods.FirstUpside) ? string.Empty : (altar.BottomMods.FirstUpside + "_weight").ToLowerInvariant();
-                string botSecondUpsideName = string.IsNullOrEmpty(altar.BottomMods.SecondUpside) ? string.Empty : (altar.BottomMods.SecondUpside + "_weight").ToLowerInvariant();
-                string botFirstDownName = string.IsNullOrEmpty(altar.BottomMods.FirstDownside) ? string.Empty : (altar.BottomMods.FirstDownside + "_weight").ToLowerInvariant();
-                string botSecondDownName = string.IsNullOrEmpty(altar.BottomMods.SecondDownside) ? string.Empty : (altar.BottomMods.SecondDownside + "_weight").ToLowerInvariant();
+                string botFirstUpsideName = string.IsNullOrEmpty(botFirstUpside) ? string.Empty : string.Concat(botFirstUpside, weightSuffix).ToLowerInvariant();
+                string botSecondUpsideName = string.IsNullOrEmpty(botSecondUpside) ? string.Empty : string.Concat(botSecondUpside, weightSuffix).ToLowerInvariant();
+                string botFirstDownName = string.IsNullOrEmpty(botFirstDownside) ? string.Empty : string.Concat(botFirstDownside, weightSuffix).ToLowerInvariant();
+                string botSecondDownName = string.IsNullOrEmpty(botSecondDownside) ? string.Empty : string.Concat(botSecondDownside, weightSuffix).ToLowerInvariant();
 
-                // single traversal of fields
+                // Track how many weights we've found for early exit
+                int foundCount = 0;
+                int targetCount = 8;
+
+                // single traversal of fields with early exit
                 foreach (FieldInfo field in fields)
                 {
+                    // Early exit if all weights found
+                    if (foundCount >= targetCount)
+                    {
+                        break;
+                    }
+
                     string FieldName = field.Name.Replace("<", "").Replace(">", "").Replace("k__BackingField", "");
                     string FieldNameLower = FieldName.ToLowerInvariant();
-
-                    LogMessage(Settings.RenderDebug, "Render 3");
 
                     try
                     {
                         // top upsides
-                        if (!string.IsNullOrEmpty(topFirstUpsideName) && FieldNameLower.Equals(topFirstUpsideName, StringComparison.Ordinal))
+                        if (TopUpside1Weight == 0 && !string.IsNullOrEmpty(topFirstUpsideName) && FieldNameLower.Equals(topFirstUpsideName, StringComparison.Ordinal))
                         {
-                            LogMessage(Settings.RenderDebug, "Render 4-1-1 - " + topFirstUpsideName + " = " + ((RangeNode<int>)field.GetValue(Settings)).Value);
-
                             TopUpside1Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
 
-                        if (!string.IsNullOrEmpty(topSecondUpsideName) && FieldNameLower.Equals(topSecondUpsideName, StringComparison.Ordinal))
+                        if (TopUpside2Weight == 0 && !string.IsNullOrEmpty(topSecondUpsideName) && FieldNameLower.Equals(topSecondUpsideName, StringComparison.Ordinal))
                         {
-                            LogMessage(Settings.RenderDebug, "Render 4-1-2 - " + topSecondUpsideName);
-
                             TopUpside2Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
 
                         // top downsides
-                        if (!string.IsNullOrEmpty(topFirstDownName) && FieldNameLower.Equals(topFirstDownName, StringComparison.Ordinal))
+                        if (TopDownside1Weight == 0 && !string.IsNullOrEmpty(topFirstDownName) && FieldNameLower.Equals(topFirstDownName, StringComparison.Ordinal))
                         {
                             TopDownside1Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
 
-                        if (!string.IsNullOrEmpty(topSecondDownName) && FieldNameLower.Equals(topSecondDownName, StringComparison.Ordinal))
+                        if (TopDownside2Weight == 0 && !string.IsNullOrEmpty(topSecondDownName) && FieldNameLower.Equals(topSecondDownName, StringComparison.Ordinal))
                         {
                             TopDownside2Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
 
                         // bottom upsides
-                        if (!string.IsNullOrEmpty(botFirstUpsideName) && FieldNameLower.Equals(botFirstUpsideName, StringComparison.Ordinal))
+                        if (BottomUpside1Weight == 0 && !string.IsNullOrEmpty(botFirstUpsideName) && FieldNameLower.Equals(botFirstUpsideName, StringComparison.Ordinal))
                         {
                             BottomUpside1Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
 
-                        if (!string.IsNullOrEmpty(botSecondUpsideName) && FieldNameLower.Equals(botSecondUpsideName, StringComparison.Ordinal))
+                        if (BottomUpside2Weight == 0 && !string.IsNullOrEmpty(botSecondUpsideName) && FieldNameLower.Equals(botSecondUpsideName, StringComparison.Ordinal))
                         {
                             BottomUpside2Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
 
                         // bottom downsides
-                        if (!string.IsNullOrEmpty(botFirstDownName) && FieldNameLower.Equals(botFirstDownName, StringComparison.Ordinal))
+                        if (BottomDownside1Weight == 0 && !string.IsNullOrEmpty(botFirstDownName) && FieldNameLower.Equals(botFirstDownName, StringComparison.Ordinal))
                         {
                             BottomDownside1Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
 
-                        if (!string.IsNullOrEmpty(botSecondDownName) && FieldNameLower.Equals(botSecondDownName, StringComparison.Ordinal))
+                        if (BottomDownside2Weight == 0 && !string.IsNullOrEmpty(botSecondDownName) && FieldNameLower.Equals(botSecondDownName, StringComparison.Ordinal))
                         {
                             BottomDownside2Weight = ((RangeNode<int>)field.GetValue(Settings)).Value;
+                            foundCount++;
                             continue;
                         }
-
-                        // if none matched, log debug info as original behaviour
-                        LogMessage(Settings.RenderDebug, "Render 4-5-1: " + altar.TopMods.FirstUpside + "_Weight");
-                        LogMessage(Settings.RenderDebug, "Render 4-5-2: " + altar.TopMods.SecondUpside + "_Weight");
-                        LogMessage(Settings.RenderDebug, "Render 4-5-3: " + altar.TopMods.FirstDownside + "_Weight");
-                        LogMessage(Settings.RenderDebug, "Render 4-5-4: " + altar.TopMods.SecondDownside + "_Weight");
-                        LogMessage(Settings.RenderDebug, "Render 4-5-5: " + altar.BottomMods.FirstUpside + "_Weight");
-                        LogMessage(Settings.RenderDebug, "Render 4-5-6: " + altar.BottomMods.SecondUpside + "_Weight");
-                        LogMessage(Settings.RenderDebug, "Render 4-5-7: " + altar.BottomMods.FirstDownside + "_Weight");
-                        LogMessage(Settings.RenderDebug, "Render 4-5-8: " + altar.BottomMods.SecondDownside + "_Weight");
                     }
                     catch (Exception ex)
                     {
-                        LogError(Settings.DebugMode, "Render: error reading setting field '" + field.Name + "': " + ex.Message, 10);
+                        if (debugMode)
+                        {
+                            LogError("Render: error reading setting field '" + field.Name + "': " + ex.Message, 10);
+                        }
                     }
                 }
 
@@ -255,165 +321,151 @@ namespace ClickIt
                 decimal BottomUpsideWeight = BottomUpside1Weight + BottomUpside2Weight;
                 decimal BottomDownsideWeight = BottomDownside1Weight + BottomDownside2Weight;
 
-                LogMessage(Settings.RenderDebug, "Render 9 - top - " + TopWeightPlaceholder() + " = " + TopUpsideWeight + " / " + TopDownsideWeight);
-
                 decimal TopWeight = Math.Round((TopUpsideWeight <= 0 ? 1 : TopUpsideWeight) / (TopDownsideWeight <= 0 ? 1 : TopDownsideWeight), 2);
-
-                LogMessage(Settings.RenderDebug, "Render 9 - bot - " + BottomWeightPlaceholder() + " = " + BottomUpsideWeight + " / " + BottomDownsideWeight);
-
                 decimal BottomWeight = Math.Round((BottomUpsideWeight <= 0 ? 1 : BottomUpsideWeight) / (BottomDownsideWeight <= 0 ? 1 : BottomDownsideWeight), 2);
-
-                // preserve original debug error checks
-                LogError(Settings.RenderDebug, "Could not match top upside 1 with field - " + altar.TopMods.FirstUpside.ToLower() + "_weight", 10);
-                LogError(Settings.RenderDebug, "Could not match top upside 2 with field - " + altar.TopMods.SecondUpside.ToLower() + "_weight", 10);
-                LogError(Settings.RenderDebug, "Could not match top downside 1 with field - " + altar.TopMods.FirstDownside.ToLower() + "_weight", 10);
-                LogError(Settings.RenderDebug, "Could not match top downside 2 with field - " + altar.TopMods.SecondDownside.ToLower() + "_weight", 10);
-                LogError(Settings.RenderDebug, "Could not match bottom upside 1 with field - " + altar.BottomMods.FirstUpside.ToLower() + "_weight", 10);
-                LogError(Settings.RenderDebug, "Could not match bottom upside 2 with field - " + altar.BottomMods.SecondUpside.ToLower() + "_weight", 10);
-                LogError(Settings.RenderDebug, "Could not match bottom downside 1 with field - " + altar.BottomMods.FirstDownside.ToLower() + "_weight", 10);
-                LogError(Settings.RenderDebug, "Could not match bottom downside 2 with field - " + altar.BottomMods.SecondDownside.ToLower() + "_weight", 10);
 
                 Element? boxToClick = null;
 
-                // original decision tree kept intact, using the cached weight values
+                // Cache GetClientRect calls to avoid repeated expensive operations
+                RectangleF topModsRect = altar.TopMods.Element.GetClientRect();
+                RectangleF bottomModsRect = altar.BottomMods.Element.GetClientRect();
+                Vector2 topModsTopLeft = topModsRect.TopLeft;
+                Vector2 bottomModsTopLeft = bottomModsRect.TopLeft;
+
+                // original decision tree kept intact, using the cached weight values and rectangles
                 if (TopUpsideWeight <= 0)
                 {
                     _ = Graphics.DrawText("Top upside weights couldn't be recognised " +
-                        "\n1:" + (string.IsNullOrEmpty(altar.TopMods.FirstUpside) ? "null" : string.IsNullOrEmpty(altar.TopMods.FirstUpside).ToString()) +
-                        "\n2:" + (string.IsNullOrEmpty(altar.TopMods.SecondUpside) ? "null" : string.IsNullOrEmpty(altar.TopMods.SecondUpside).ToString()) +
+                        "\n1:" + (string.IsNullOrEmpty(topFirstUpside) ? "null" : string.IsNullOrEmpty(topFirstUpside).ToString()) +
+                        "\n2:" + (string.IsNullOrEmpty(topSecondUpside) ? "null" : string.IsNullOrEmpty(topSecondUpside).ToString()) +
                         "\nPlease report this as a bug on github",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
+                        topModsTopLeft + offset120_Minus60, colorOrange, 30);
+                    Graphics.DrawFrame(topModsRect, colorYellow, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorYellow, 2);
                 }
                 else if (TopDownsideWeight <= 0)
                 {
                     _ = Graphics.DrawText("Top downside weights couldn't be recognised " +
-                        "\n1:" + (string.IsNullOrEmpty(altar.TopMods.FirstDownside) ? "null" : string.IsNullOrEmpty(altar.TopMods.FirstDownside).ToString()) +
-                        "\n2:" + (string.IsNullOrEmpty(altar.TopMods.SecondDownside) ? "null" : string.IsNullOrEmpty(altar.TopMods.SecondDownside).ToString()) +
+                        "\n1:" + (string.IsNullOrEmpty(topFirstDownside) ? "null" : string.IsNullOrEmpty(topFirstDownside).ToString()) +
+                        "\n2:" + (string.IsNullOrEmpty(topSecondDownside) ? "null" : string.IsNullOrEmpty(topSecondDownside).ToString()) +
                         "\nPlease report this as a bug on github",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
+                        topModsTopLeft + offset120_Minus60, colorOrange, 30);
+                    Graphics.DrawFrame(topModsRect, colorYellow, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorYellow, 2);
                 }
                 else if (BottomUpsideWeight <= 0)
                 {
                     _ = Graphics.DrawText("Bottom upside weights couldn't be recognised " +
-                        "\n1:" + (string.IsNullOrEmpty(altar.BottomMods.FirstUpside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.FirstUpside).ToString()) +
-                        "\n2:" + (string.IsNullOrEmpty(altar.BottomMods.SecondUpside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.SecondUpside).ToString()) +
+                        "\n1:" + (string.IsNullOrEmpty(botFirstUpside) ? "null" : string.IsNullOrEmpty(botFirstUpside).ToString()) +
+                        "\n2:" + (string.IsNullOrEmpty(botSecondUpside) ? "null" : string.IsNullOrEmpty(botSecondUpside).ToString()) +
                         "\nPlease report this as a bug on github",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
+                        topModsTopLeft + offset120_Minus60, colorOrange, 30);
+                    Graphics.DrawFrame(topModsRect, colorYellow, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorYellow, 2);
                 }
                 else if (BottomDownsideWeight <= 0)
                 {
                     _ = Graphics.DrawText("Bottom downside weights couldn't be recognised " +
-                        "\n1:" + (string.IsNullOrEmpty(altar.BottomMods.FirstDownside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.FirstDownside).ToString()) +
-                        "\n2:" + (string.IsNullOrEmpty(altar.BottomMods.SecondDownside) ? "null" : string.IsNullOrEmpty(altar.BottomMods.SecondDownside).ToString()) +
+                        "\n1:" + (string.IsNullOrEmpty(botFirstDownside) ? "null" : string.IsNullOrEmpty(botFirstDownside).ToString()) +
+                        "\n2:" + (string.IsNullOrEmpty(botSecondDownside) ? "null" : string.IsNullOrEmpty(botSecondDownside).ToString()) +
                         "\nPlease report this as a bug on github",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
+                        topModsTopLeft + offset120_Minus60, colorOrange, 30);
+                    Graphics.DrawFrame(topModsRect, colorYellow, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorYellow, 2);
                 }
                 else if ((TopDownside1Weight >= 90 || TopDownside2Weight >= 90) && (BottomDownside1Weight >= 90 || BottomDownside2Weight >= 90))
                 {
                     _ = Graphics.DrawText("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.Orange, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 2);
+                        topModsTopLeft + offset120_Minus60, colorOrange, 30);
+                    Graphics.DrawFrame(topModsRect, colorOrangeRed, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorOrangeRed, 2);
                 }
                 else if (TopUpside1Weight >= 90 || TopUpside2Weight >= 90)
                 {
                     _ = Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.LawnGreen, 3);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 2);
+                        topModsTopLeft + offset120_Minus60, colorLawnGreen, 30);
+                    Graphics.DrawFrame(topModsRect, colorLawnGreen, 3);
+                    Graphics.DrawFrame(bottomModsRect, colorOrangeRed, 2);
                     boxToClick = altar.TopButton.Element;
                 }
                 else if (BottomUpside1Weight >= 90 || BottomUpside2Weight >= 90)
                 {
                     _ = Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.LawnGreen, 3);
+                        topModsTopLeft + offset120_Minus60, colorLawnGreen, 30);
+                    Graphics.DrawFrame(topModsRect, colorOrangeRed, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorLawnGreen, 3);
                     boxToClick = altar.BottomButton.Element;
                 }
                 else if (TopDownside1Weight >= 90 || TopDownside2Weight >= 90)
                 {
                     _ = Graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the top downsides has a weight of 90+",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 3);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.LawnGreen, 2);
+                        topModsTopLeft + offset120_Minus60, colorLawnGreen, 30);
+                    Graphics.DrawFrame(topModsRect, colorOrangeRed, 3);
+                    Graphics.DrawFrame(bottomModsRect, colorLawnGreen, 2);
                     boxToClick = altar.BottomButton.Element;
                 }
                 else if (BottomDownside1Weight >= 90 || BottomDownside2Weight >= 90)
                 {
                     _ = Graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the bottom downsides has a weight of 90+",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -60), Color.LawnGreen, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.LawnGreen, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 3);
+                        topModsTopLeft + offset120_Minus60, colorLawnGreen, 30);
+                    Graphics.DrawFrame(topModsRect, colorLawnGreen, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorOrangeRed, 3);
                     boxToClick = altar.TopButton.Element;
                 }
                 else if (TopWeight > BottomWeight)
                 {
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.LawnGreen, 3);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.OrangeRed, 2);
+                    Graphics.DrawFrame(topModsRect, colorLawnGreen, 3);
+                    Graphics.DrawFrame(bottomModsRect, colorOrangeRed, 2);
                     boxToClick = altar.TopButton.Element;
                 }
                 else if (BottomWeight > TopWeight)
                 {
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.OrangeRed, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.LawnGreen, 3);
+                    Graphics.DrawFrame(topModsRect, colorOrangeRed, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorLawnGreen, 3);
                     boxToClick = altar.BottomButton.Element;
                 }
                 else
                 {
                     _ = Graphics.DrawText("Mods have equal weight, you should choose.",
-                        altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(120, -25), Color.Orange, 30);
-                    Graphics.DrawFrame(altar.TopMods.Element.GetClientRect(), Color.Yellow, 2);
-                    Graphics.DrawFrame(altar.BottomMods.Element.GetClientRect(), Color.Yellow, 2);
+                        topModsTopLeft + offset120_Minus25, colorOrange, 30);
+                    Graphics.DrawFrame(topModsRect, colorYellow, 2);
+                    Graphics.DrawFrame(bottomModsRect, colorYellow, 2);
                 }
 
                 _ = Graphics.DrawText("Upside: " + TopUpsideWeight,
-                    altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(5, -32), Color.LawnGreen, 14);
+                    topModsTopLeft + offset5_Minus32, colorLawnGreen, 14);
                 _ = Graphics.DrawText("Downside: " + TopDownsideWeight,
-                    altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(5, -20), Color.OrangeRed, 14);
+                    topModsTopLeft + offset5_Minus20, colorOrangeRed, 14);
                 _ = Graphics.DrawText("Upside: " + BottomUpsideWeight,
-                    altar.BottomMods.Element.GetClientRect().TopLeft + new Vector2(10, -32), Color.LawnGreen, 14);
+                    bottomModsTopLeft + offset10_Minus32, colorLawnGreen, 14);
                 _ = Graphics.DrawText("Downside: " + BottomDownsideWeight,
-                    altar.BottomMods.Element.GetClientRect().TopLeft + new Vector2(10, -20), Color.OrangeRed, 14);
+                    bottomModsTopLeft + offset10_Minus20, colorOrangeRed, 14);
                 _ = Graphics.DrawText("" + TopWeight,
-                    altar.TopMods.Element.GetClientRect().TopLeft + new Vector2(10, 5),
-                    TopWeight > BottomWeight ? Color.LawnGreen :
-                    BottomWeight > TopWeight ? Color.OrangeRed : Color.Yellow, 18);
+                    topModsTopLeft + offset10_5,
+                    TopWeight > BottomWeight ? colorLawnGreen :
+                    BottomWeight > TopWeight ? colorOrangeRed : colorYellow, 18);
                 _ = Graphics.DrawText("" + BottomWeight,
-                    altar.BottomMods.Element.GetClientRect().TopLeft + new Vector2(10, 5),
-                    TopWeight > BottomWeight ? Color.OrangeRed :
-                    BottomWeight > TopWeight ? Color.LawnGreen : Color.Yellow, 18);
+                    bottomModsTopLeft + offset10_5,
+                    TopWeight > BottomWeight ? colorOrangeRed :
+                    BottomWeight > TopWeight ? colorLawnGreen : colorYellow, 18);
 
-                if (((altar.AltarType == AltarType.EaterOfWorlds && Settings.ClickEaterAltars) || (altar.AltarType == AltarType.SearingExarch && Settings.ClickExarchAltars)) &&
+                if (((altar.AltarType == AltarType.EaterOfWorlds && clickEater) || (altar.AltarType == AltarType.SearingExarch && clickExarch)) &&
                     boxToClick != null && PointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()))
                 {
-                    if (boxToClick.IsVisible)
+                    if (boxToClick.IsVisible && canClick())
                     {
-                        if (canClick())
+                        Mouse.blockInput(true);
+                        LogMessage("Moving mouse for altar", 5);
+                        Input.SetCursorPos(boxToClick.GetClientRect().Center + windowTopLeft);
+                        if (leftHanded)
                         {
-                            Mouse.blockInput(true);
-                            LogMessage("Moving mouse for altar", 5);
-                            Input.SetCursorPos(boxToClick.GetClientRect().Center +
-                                               GameController.Window.GetWindowRectangleTimeCache.TopLeft);
-                            if (Settings.LeftHanded)
-                            {
-                                Mouse.RightClick();
-                            }
-                            else
-                            {
-                                Mouse.LeftClick();
-                            }
-                            Mouse.blockInput(false);
+                            Mouse.RightClick();
                         }
-
+                        else
+                        {
+                            Mouse.LeftClick();
+                        }
+                        Mouse.blockInput(false);
                     }
                 }
             }
@@ -765,17 +817,6 @@ namespace ClickIt
 
         private readonly List<PrimaryAltarComponent> altarComponents = [];
 
-        private string GetLine(string text, int lineNo)
-        {
-            string[] lines = text.Replace("\r", "").Split('\n');
-            return lines.Length >= lineNo ? lines[lineNo] : "ERROR: Could not read line.";
-        }
-
-        private int CountLines(string text)
-        {
-            string[] lines = text.Replace("\r", "").Split('\n');
-            return lines.Length;
-        }
 
         private bool workFinished;
 
@@ -1028,48 +1069,135 @@ namespace ClickIt
 
         private List<LabelOnGround> GetHarvestLabels()
         {
-            List<LabelOnGround> list = CachedLabels.Value.Where(x =>
-                x.ItemOnGround.Path != null
-                && PointIsInClickableArea(x.Label.GetClientRect().Center)
-            ).ToList();
+            // Skip creating unnecessary list and avoid LINQ allocations 
+            List<LabelOnGround> result = [];
+            List<LabelOnGround>? cachedLabels = CachedLabels?.Value;
 
-            return list.FindAll(x => x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor")
-                ).OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
+            if (cachedLabels == null)
+            {
+                return result;
+            }
+
+            for (int i = 0; i < cachedLabels.Count; i++)
+            {
+                LabelOnGround label = cachedLabels[i];
+                if (label.ItemOnGround?.Path == null ||
+                    !PointIsInClickableArea(label.Label.GetClientRect().Center))
+                {
+                    continue;
+                }
+
+                string path = label.ItemOnGround.Path;
+                if (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))
+                {
+                    result.Add(label);
+                }
+            }
+
+            // Sort by distance without LINQ
+            if (result.Count > 1)
+            {
+                result.Sort((a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
+            }
+
+            return result;
         }
 
         private List<LabelOnGround> GetAltarLabels(AltarType type)
         {
-            List<LabelOnGround> list = CachedLabels.Value.Where(x =>
-                x.ItemOnGround.Path != null && x.Label.IsVisible
-                && x.Label.GetClientRect().Center.PointInRectangle(FullScreenArea())
-            ).ToList();
+            // Preallocate result list and avoid LINQ
+            List<LabelOnGround> result = [];
+            List<LabelOnGround>? cachedLabels = CachedLabels?.Value;
 
-            return list.FindAll(x =>
-                x.ItemOnGround.Path.Contains(type == AltarType.SearingExarch ? "CleansingFireAltar" : "TangleAltar"));
+            if (cachedLabels == null)
+            {
+                return result;
+            }
+
+            string typeStr = type == AltarType.SearingExarch ? "CleansingFireAltar" : "TangleAltar";
+            RectangleF fullScreen = FullScreenArea();
+
+            for (int i = 0; i < cachedLabels.Count; i++)
+            {
+                LabelOnGround label = cachedLabels[i];
+                if (label.ItemOnGround?.Path == null ||
+                    !label.Label.IsVisible ||
+                    !label.Label.GetClientRect().Center.PointInRectangle(fullScreen))
+                {
+                    continue;
+                }
+
+                if (label.ItemOnGround.Path.Contains(typeStr))
+                {
+                    result.Add(label);
+                }
+            }
+
+            return result;
         }
 
         private List<LabelOnGround> UpdateLabelComponent()
         {
-            IList<LabelOnGround> list = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabels;
-            return list
-                .Where(x =>
-                    x.ItemOnGround?.Path != null &&
-                    x.IsVisible &&
-                    x.Label.IsVisible &&
-                    PointIsInClickableArea(x.Label.GetClientRect().Center) &&
-                    (x.ItemOnGround.Type == EntityType.WorldItem ||
-                    (x.ItemOnGround.Type == EntityType.Chest && !x.ItemOnGround.GetComponent<Chest>().OpenOnDamage) ||
-                    x.ItemOnGround.Type == EntityType.AreaTransition ||
-                    GetElementByString(x.Label, "The monster is imprisoned by powerful Essences.") != null ||
-                    x.ItemOnGround.Path.Contains("DelveMineral") ||
-                    x.ItemOnGround.Path.Contains("AzuriteEncounterController") ||
-                    x.ItemOnGround.Path.Contains("Harvest/Irrigator") || x.ItemOnGround.Path.Contains("Harvest/Extractor") ||
-                    x.ItemOnGround.Path.Contains("CleansingFireAltar") || x.ItemOnGround.Path.Contains("TangleAltar") ||
-                    x.ItemOnGround.Path.Contains("CraftingUnlocks") ||
-                    x.ItemOnGround.Path.Contains("Brequel")
-                    ))
-                .OrderBy(x => x.ItemOnGround.DistancePlayer)
-                .ToList();
+            List<LabelOnGround> result = [];
+            IList<LabelOnGround>? groundLabels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabels;
+
+            if (groundLabels == null)
+            {
+                return result;
+            }
+
+            RectangleF clickableArea = FullScreenArea();
+
+            result.Capacity = Math.Min(groundLabels.Count, 1000);
+
+            for (int i = 0; i < groundLabels.Count; i++)
+            {
+                LabelOnGround label = groundLabels[i];
+                if (label == null || label.ItemOnGround?.Path == null ||
+                    !label.IsVisible || !label.Label.IsVisible)
+                {
+                    continue;
+                }
+
+                // Cache frequently accessed values
+                Vector2 labelCenter = label.Label.GetClientRect().Center;
+                if (!PointIsInClickableArea(labelCenter))
+                {
+                    continue;
+                }
+
+                Entity item = label.ItemOnGround;
+                EntityType type = item.Type;
+                string path = item.Path;
+
+                // Check type and path conditions efficiently
+                bool isValidType = type == EntityType.WorldItem ||
+                                 (type == EntityType.Chest && !item.GetComponent<Chest>().OpenOnDamage) ||
+                                 type == EntityType.AreaTransition;
+
+                bool isValidPath = !string.IsNullOrEmpty(path) && (
+                    path.Contains("DelveMineral") ||
+                    path.Contains("AzuriteEncounterController") ||
+                    path.Contains("Harvest/Irrigator") ||
+                    path.Contains("Harvest/Extractor") ||
+                    path.Contains("CleansingFireAltar") ||
+                    path.Contains("TangleAltar") ||
+                    path.Contains("CraftingUnlocks") ||
+                    path.Contains("Brequel"));
+
+                if (isValidType || isValidPath || GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null)
+                {
+                    result.Add(label);
+                }
+            }
+
+            // Sort by distance if we have items
+            if (result.Count > 1)
+            {
+                result.Sort((a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
+            }
+
+            return result;
         }
 
         private IEnumerator ClickLabel(Element? altar = null)
@@ -1727,7 +1855,6 @@ namespace ClickIt
             new Thread(() =>
             {
                 LogMessage("Corruption started", 5);
-                float latency = GameController.Game.IngameState.ServerData.Latency;
 
                 if (nextLabel?.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0) == null)
                 {
@@ -1744,8 +1871,6 @@ namespace ClickIt
                 LogMessage("Moved mouse to vaal", 5);
                 Input.SetCursorPos(centerOfLabel);
 
-                Thread.Sleep((int)(latency + 100));
-
                 if (Settings.LeftHanded)
                 {
                     Mouse.RightClick();
@@ -1754,8 +1879,6 @@ namespace ClickIt
                 {
                     Mouse.LeftClick();
                 }
-
-                Thread.Sleep((int)(latency + 100));
 
                 Mouse.blockInput(false);
                 waitingForCorruption = false;
