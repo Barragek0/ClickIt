@@ -834,7 +834,7 @@ namespace ClickIt
                     clickLabelCoroutine.Pause();
                 }
             }
-            if (SecondTimer.ElapsedMilliseconds > 500)
+            if (SecondTimer.ElapsedMilliseconds > 50)
             {
                 altarCoroutine.Resume();
                 SecondTimer.Restart();
