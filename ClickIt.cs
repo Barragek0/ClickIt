@@ -471,17 +471,6 @@ namespace ClickIt
             }
         }
 
-        // small helpers used only for debug messages (avoid unused variable warnings)
-        private string TopWeightPlaceholder()
-        {
-            return string.Empty;
-        }
-
-        private string BottomWeightPlaceholder()
-        {
-            return string.Empty;
-        }
-
         // Centralized LogMessage helpers: new overloads ensure Settings.DebugMode is checked in one place
         public void LogMessage(string message, int frame = 0)
         {
@@ -877,96 +866,81 @@ namespace ClickIt
             List<string> mods = [];
             List<string> upsides = [];
             List<string> downsides = [];
+            if (Settings.DebugMode)
+            {
+                LogMessage(ElementToExtractDataFrom.GetText(512));
+            }
 
-            // Read raw text once
-            string rawText = ElementToExtractDataFrom.GetText(512) ?? string.Empty;
-            LogMessage(Settings.DebugMode, rawText);
-
-            // Normalize and clean up once
-            string AltarMods = rawText.Replace("<valuedefault>", "").Replace("{", "")
+            string AltarMods = ElementToExtractDataFrom.GetText(512).Replace("<valuedefault>", "").Replace("{", "")
                 .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "").Replace("gain:", "")
                 .Replace("gains:", "");
 
             AltarMods = Regex.Replace(AltarMods, @"<rgb\(\d+,\d+,\d+\)>", "");
 
-            // Split into lines once
-            string[] lines = AltarMods.Replace("\r", "").Split('\n');
-            if (lines.Length > 0)
+            for (int i = 0; i < CountLines(ElementToExtractDataFrom.GetText(512)); i++)
             {
-                NegativeModType = lines[0];
-            }
-
-            for (int i = 1; i < lines.Length; i++)
-            {
-                string line = lines[i];
-                if (!string.IsNullOrEmpty(line))
+                if (i == 0)
                 {
-                    mods.Add(line);
+                    NegativeModType = GetLine(AltarMods, 0);
+                }
+                else if (GetLine(AltarMods, i) != null)
+                {
+                    mods.Add(GetLine(AltarMods, i));
                 }
 
-                LogMessage(Settings.DebugMode, "Altarmods (" + i + ") Added: " + line);
-            }
-
-            // Cache ClickItSettings fields once and build candidate list (only Exarch_/Eater_ fields)
-            FieldInfo[] settingsFields = typeof(ClickItSettings).GetFields(BindingFlags.Public |
-                                                                           BindingFlags.NonPublic |
-                                                                           BindingFlags.Instance |
-                                                                           BindingFlags.Static);
-            List<(FieldInfo field, string nameLower)> candidateFields = [];
-            for (int f = 0; f < settingsFields.Length; f++)
-            {
-                FieldInfo fi = settingsFields[f];
-                string FieldName = fi.Name.Replace("<", "").Replace(">", "").Replace("k__BackingField", "");
-                if (FieldName.StartsWith("Exarch_") || FieldName.StartsWith("Eater_"))
+                if (Settings.DebugMode)
                 {
-                    candidateFields.Add((fi, FieldName.ToLowerInvariant()));
+                    LogMessage("Altarmods (" + i + ") Added: " + GetLine(AltarMods, i));
                 }
             }
 
-            // Process each mod and attempt to match to a candidate field
-            string prefix = altarType == AltarType.SearingExarch ? "Exarch_" : altarType == AltarType.EaterOfWorlds ? "Eater_" : "Unknown_";
-
-            for (int mi = 0; mi < mods.Count; mi++)
+            foreach (string mod in mods.ToList())
             {
-                string mod = mods[mi];
                 bool found = false;
-
-                // Extract letters only and lower-case once
-                string localmodLetters = new(mod.Where(char.IsLetter).ToArray());
-                string localmodLower = localmodLetters.ToLowerInvariant();
-                string localmodToLowerWithPrefix = prefix + localmodLower;
-
-                // Compare against candidate fields
-                for (int c = 0; c < candidateFields.Count; c++)
+                string localmod = NegativeModType + new string(mod.Where(char.IsLetter).ToArray());
+                foreach (FieldInfo field in typeof(ClickItSettings).GetFields(BindingFlags.Public |
+                                                                              BindingFlags.NonPublic |
+                                                                              BindingFlags.Instance |
+                                                                              BindingFlags.Static).ToList())
                 {
-                    (FieldInfo field, string fieldToLower) = candidateFields[c];
-
-                    if (localmodToLowerWithPrefix.Contains(fieldToLower))
+                    string FieldName = field.Name.Replace("<", "").Replace(">", "").Replace("k__BackingField", "");
+                    if (FieldName.StartsWith("Exarch_") || FieldName.StartsWith("Eater_"))
                     {
-                        // determine upside vs downside based on known tokens
-                        bool isUpside = localmodLower.Contains("chancetodropanadditional") ||
-                                        localmodLower.Contains("finalbossdrops") ||
-                                        localmodLower.Contains("increasedquantityofitems") ||
-                                        localmodLower.Contains("droppedbyslainenemieshave") ||
-                                        localmodLower.Contains("chancetobeduplicated");
-
-                        string FieldName = field.Name.Replace("<", "").Replace(">", "").Replace("k__BackingField", "");
-
-                        if (isUpside)
+                        string fieldToLower = FieldName.ToLower();
+                        string localmodToLowerWithPrefix = (altarType == AltarType.SearingExarch ? "Exarch_" :
+                            altarType == AltarType.EaterOfWorlds ? "Eater_" : "Unknown_") + localmod;
+                        if (localmodToLowerWithPrefix.ToLower().Contains(fieldToLower))
                         {
-                            upsides.Add(FieldName);
+                            //upside
+                            if (localmod.ToLower().Contains("chancetodropanadditional") ||
+                                localmod.ToLower().Contains("finalbossdrops") ||
+                                localmod.ToLower().Contains("increasedquantityofitems") ||
+                                localmod.ToLower().Contains("droppedbyslainenemieshave") ||
+                                localmod.ToLower().Contains("chancetobeduplicated"))
+                            {
+                                upsides.Add(FieldName);
+                                found = true;
+                                if (Settings.DebugMode)
+                                {
+                                    LogMessage("Added " +
+                                               (altarType == AltarType.SearingExarch ? "Exarch" :
+                                                   altarType == AltarType.EaterOfWorlds ? "Eater" : "Unknown") +
+                                               " upside: " + fieldToLower + " - " + localmodToLowerWithPrefix);
+                                }
+                            }
+                            else //downside
+                            {
+                                downsides.Add(FieldName);
+                                found = true;
+                                if (Settings.DebugMode)
+                                {
+                                    LogMessage("Added " +
+                                               (altarType == AltarType.SearingExarch ? "Exarch" :
+                                                   altarType == AltarType.EaterOfWorlds ? "Eater" : "Unknown") +
+                                               " downside: " + fieldToLower + " - " + localmodToLowerWithPrefix);
+                                }
+                            }
                         }
-                        else
-                        {
-                            downsides.Add(FieldName);
-                        }
-
-                        found = true;
-
-                        LogMessage(Settings.DebugMode, "Added " + (altarType == AltarType.SearingExarch ? "Exarch" : altarType == AltarType.EaterOfWorlds ? "Eater" : "Unknown") +
-                                       (isUpside ? " upside: " : " downside: ") + fieldToLower + " - " + localmodToLowerWithPrefix);
-
-                        // note: do not break to allow multiple field matches per mod (preserve original behavior)
                     }
                 }
 
@@ -974,19 +948,29 @@ namespace ClickIt
                 {
                     try
                     {
-                        LogError(Settings.DebugMode, "updateComponentFromElementData: Failed to match mod with field? Field may not be required - localmod:" +
-                                localmodLetters, 10);
+                        if (Settings.DebugMode)
+                        {
+                            LogError(
+                                "updateComponentFromElementData: Failed to match mod with field? Field may not be required - localmod:" +
+                                localmod, 10);
+                        }
                     }
                     catch (Exception)
                     {
-                        LogError(Settings.DebugMode, "updateComponentFromElementData: Failed to match mod with field? Field may not be required - unable to write field, sequence contains no elements", 10);
+                        if (Settings.DebugMode)
+                        {
+                            LogError(
+                                "updateComponentFromElementData: Failed to match mod with field? Field may not be required - unable to write field, sequence contains no elements", 10);
+                        }
                     }
                 }
             }
 
-            LogMessage(Settings.DebugMode, "Setting up altar component");
+            if (Settings.DebugMode)
+            {
+                LogMessage("Setting up altar component");
+            }
 
-            // populate the component (preserve original selection logic)
             if (top)
             {
                 string upside1 = "";
@@ -1016,11 +1000,14 @@ namespace ClickIt
 
                 altarComponent.TopMods =
                     new SecondaryAltarComponent(ElementToExtractDataFrom, upside1, upside2, downside1, downside2);
-                LogMessage(Settings.DebugMode, "Updated top altar component: " + altarComponent.TopMods);
-                LogMessage(Settings.DebugMode, "Upside1: " + altarComponent.TopMods.FirstUpside);
-                LogMessage(Settings.DebugMode, "Upside2: " + altarComponent.TopMods.SecondUpside);
-                LogMessage(Settings.DebugMode, "Downside1: " + altarComponent.TopMods.FirstDownside);
-                LogMessage(Settings.DebugMode, "Downside2: " + altarComponent.TopMods.SecondDownside);
+                if (Settings.DebugMode)
+                {
+                    LogMessage("Updated top altar component: " + altarComponent.TopMods);
+                    LogMessage("Upside1: " + altarComponent.TopMods.FirstUpside);
+                    LogMessage("Upside2: " + altarComponent.TopMods.SecondUpside);
+                    LogMessage("Downside1: " + altarComponent.TopMods.FirstDownside);
+                    LogMessage("Downside2: " + altarComponent.TopMods.SecondDownside);
+                }
             }
             else
             {
@@ -1051,20 +1038,35 @@ namespace ClickIt
 
                 altarComponent.BottomMods =
                     new SecondaryAltarComponent(ElementToExtractDataFrom, upside1, upside2, downside1, downside2);
-                LogMessage(Settings.DebugMode, "Updated bottom altar component: ");
-                LogMessage(Settings.DebugMode, "Upside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstUpside)
-                    ? "null"
-                    : altarComponent.BottomMods.FirstUpside));
-                LogMessage(Settings.DebugMode, "Upside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondUpside)
-                    ? "null"
-                    : altarComponent.BottomMods.SecondUpside));
-                LogMessage(Settings.DebugMode, "Downside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstDownside)
-                    ? "Null"
-                    : altarComponent.BottomMods.FirstDownside));
-                LogMessage(Settings.DebugMode, "Downside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondDownside)
-                    ? "null"
-                    : altarComponent.BottomMods.SecondDownside));
+                if (Settings.DebugMode)
+                {
+                    LogMessage("Updated bottom altar component: ");
+                    LogMessage("Upside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstUpside)
+                        ? "null"
+                        : altarComponent.BottomMods.FirstUpside));
+                    LogMessage("Upside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondUpside)
+                        ? "null"
+                        : altarComponent.BottomMods.SecondUpside));
+                    LogMessage("Downside1: " + (string.IsNullOrEmpty(altarComponent.BottomMods.FirstDownside)
+                        ? "Null"
+                        : altarComponent.BottomMods.FirstDownside));
+                    LogMessage("Downside2: " + (string.IsNullOrEmpty(altarComponent.BottomMods.SecondDownside)
+                        ? "null"
+                        : altarComponent.BottomMods.SecondDownside));
+                }
             }
+        }
+
+        private string GetLine(string text, int lineNo)
+        {
+            string[] lines = text.Replace("\r", "").Split('\n');
+            return lines.Length >= lineNo ? lines[lineNo] : "ERROR: Could not read line.";
+        }
+
+        private int CountLines(string text)
+        {
+            string[] lines = text.Replace("\r", "").Split('\n');
+            return lines.Length;
         }
 
         private List<LabelOnGround> GetHarvestLabels()
