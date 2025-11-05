@@ -39,7 +39,7 @@ namespace ClickIt.Rendering
             Vector2 topModsTopLeft = topModsRect.TopLeft;
             Vector2 bottomModsTopLeft = bottomModsRect.TopLeft;
 
-            Element? boxToClick = DetermineAltarChoice(altar, altarWeights, topModsRect, bottomModsRect, topModsTopLeft);
+            DetermineAltarChoice(altar, altarWeights, topModsRect, bottomModsRect, topModsTopLeft);
 
             DrawWeightTexts(altarWeights, topModsTopLeft, bottomModsTopLeft);
         }
