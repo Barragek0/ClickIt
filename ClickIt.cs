@@ -24,6 +24,7 @@ namespace ClickIt
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
+        private const string CrimsonIron = "CrimsonIron";
         private const string ReportBugMessage = "\nPlease report this as a bug on github";
 
         private Stopwatch Timer { get; } = new Stopwatch();
@@ -541,7 +542,8 @@ namespace ClickIt
                     path.Contains(CleansingFireAltar) ||
                     path.Contains(TangleAltar) ||
                     path.Contains("CraftingUnlocks") ||
-                    path.Contains(Brequel));
+                    path.Contains(Brequel) ||
+                    path.Contains(CrimsonIron));
 
                 if (isValidType || isValidPath || GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null)
                 {

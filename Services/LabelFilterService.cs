@@ -19,6 +19,7 @@ namespace ClickIt.Services
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
+        private const string CrimsonIron = "CrimsonIron";
 
         public LabelFilterService(ClickItSettings settings)
         {
@@ -73,6 +74,7 @@ namespace ClickIt.Services
             bool clickEssences = s.ClickEssences.Value;
             bool clickCrafting = s.ClickCraftingRecipes.Value;
             bool clickBreach = s.ClickBreachNodes.Value;
+            bool clickSettlersOre = s.ClickSettlersOre.Value;
 
             for (int i = 0; i < allLabels.Count; i++)
             {
@@ -97,7 +99,7 @@ namespace ClickIt.Services
                 if (clickShrines && type == EntityType.Shrine)
                     return label;
 
-                if (ShouldClickSpecialPath(nearestHarvest, clickSulphite, clickAzurite, clickCrafting, clickBreach, path))
+                if (ShouldClickSpecialPath(nearestHarvest, clickSulphite, clickAzurite, clickCrafting, clickBreach, clickSettlersOre, path))
                     return label;
 
                 if (ShouldClickAltar(highlightEater, highlightExarch, clickEater, clickExarch, path))
@@ -143,7 +145,7 @@ namespace ClickIt.Services
             return (clickBasicChests && isBasicChest) || (clickLeagueChests && !isBasicChest);
         }
 
-        private static bool ShouldClickSpecialPath(bool nearestHarvest, bool clickSulphite, bool clickAzurite, bool clickCrafting, bool clickBreach, string path)
+        private static bool ShouldClickSpecialPath(bool nearestHarvest, bool clickSulphite, bool clickAzurite, bool clickCrafting, bool clickBreach, bool clickSettlersOre, string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
@@ -152,7 +154,8 @@ namespace ClickIt.Services
                    (clickSulphite && path.Contains("DelveMineral")) ||
                    (clickAzurite && path.Contains("AzuriteEncounterController")) ||
                    (clickCrafting && path.Contains("CraftingUnlocks")) ||
-                   (clickBreach && path.Contains(Brequel));
+                   (clickBreach && path.Contains(Brequel)) ||
+                   (clickSettlersOre && path.Contains(CrimsonIron));
         }
 
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
