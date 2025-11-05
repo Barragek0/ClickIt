@@ -44,7 +44,7 @@ namespace ClickIt.Rendering
             DrawWeightTexts(altarWeights, topModsTopLeft, bottomModsTopLeft);
         }
 
-        private Element? DetermineAltarChoice(PrimaryAltarComponent altar, Services.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
+        private void DetermineAltarChoice(PrimaryAltarComponent altar, Services.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
             Vector2 offset120_Minus60 = new(120, -70);
             Vector2 offset120_Minus25 = new(120, -25);
@@ -53,34 +53,34 @@ namespace ClickIt.Rendering
             {
                 DrawUnrecognizedWeightText("Top upside", altar.TopMods.FirstUpside, altar.TopMods.SecondUpside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
-                return null;
+                return;
             }
 
             if (weights.TopDownsideWeight <= 0)
             {
                 DrawUnrecognizedWeightText("Top downside", altar.TopMods.FirstDownside, altar.TopMods.SecondDownside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
-                return null;
+                return;
             }
 
             if (weights.BottomUpsideWeight <= 0)
             {
                 DrawUnrecognizedWeightText("Bottom upside", altar.BottomMods.FirstUpside, altar.BottomMods.SecondUpside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
-                return null;
+                return;
             }
 
             if (weights.BottomDownsideWeight <= 0)
             {
                 DrawUnrecognizedWeightText("Bottom downside", altar.BottomMods.FirstDownside, altar.BottomMods.SecondDownside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
-                return null;
+                return;
             }
 
-            return EvaluateAltarWeights(weights, altar, topModsRect, bottomModsRect, topModsTopLeft + offset120_Minus60, topModsTopLeft + offset120_Minus25);
+            EvaluateAltarWeights(weights, altar, topModsRect, bottomModsRect, topModsTopLeft + offset120_Minus60, topModsTopLeft + offset120_Minus25);
         }
 
-        private Element? EvaluateAltarWeights(Services.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
+        private void EvaluateAltarWeights(Services.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
             Color colorOrange = Color.Orange;
             Color colorLawnGreen = Color.LawnGreen;
@@ -91,7 +91,7 @@ namespace ClickIt.Rendering
                 _graphics.DrawText("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.", textPos1, colorOrange, 30);
                 _graphics.DrawFrame(topModsRect, colorOrangeRed, 2);
                 _graphics.DrawFrame(bottomModsRect, colorOrangeRed, 2);
-                return null;
+                return;
             }
 
             if (weights.TopUpside1Weight >= 90 || weights.TopUpside2Weight >= 90)
@@ -99,7 +99,7 @@ namespace ClickIt.Rendering
                 _graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+", textPos1, colorLawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, colorLawnGreen, 3);
                 _graphics.DrawFrame(bottomModsRect, colorOrangeRed, 2);
-                return altar.TopButton.Element;
+                return;
             }
 
             if (weights.BottomUpside1Weight >= 90 || weights.BottomUpside2Weight >= 90)
@@ -107,7 +107,7 @@ namespace ClickIt.Rendering
                 _graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+", textPos1, colorLawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, colorOrangeRed, 2);
                 _graphics.DrawFrame(bottomModsRect, colorLawnGreen, 3);
-                return altar.BottomButton.Element;
+                return;
             }
 
             if (weights.TopDownside1Weight >= 90 || weights.TopDownside2Weight >= 90)
@@ -115,7 +115,7 @@ namespace ClickIt.Rendering
                 _graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the top downsides has a weight of 90+", textPos1, colorLawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, colorOrangeRed, 3);
                 _graphics.DrawFrame(bottomModsRect, colorLawnGreen, 2);
-                return altar.BottomButton.Element;
+                return;
             }
 
             if (weights.BottomDownside1Weight >= 90 || weights.BottomDownside2Weight >= 90)
@@ -123,26 +123,25 @@ namespace ClickIt.Rendering
                 _graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the bottom downsides has a weight of 90+", textPos1, colorLawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, colorLawnGreen, 2);
                 _graphics.DrawFrame(bottomModsRect, colorOrangeRed, 3);
-                return altar.TopButton.Element;
+                return;
             }
 
             if (weights.TopWeight > weights.BottomWeight)
             {
                 _graphics.DrawFrame(topModsRect, colorLawnGreen, 3);
                 _graphics.DrawFrame(bottomModsRect, colorOrangeRed, 2);
-                return altar.TopButton.Element;
+                return;
             }
 
             if (weights.BottomWeight > weights.TopWeight)
             {
                 _graphics.DrawFrame(topModsRect, colorOrangeRed, 2);
                 _graphics.DrawFrame(bottomModsRect, colorLawnGreen, 3);
-                return altar.BottomButton.Element;
+                return;
             }
 
             _graphics.DrawText("Mods have equal weight, you should choose.", textPos2, colorOrange, 30);
             DrawYellowFrames(topModsRect, bottomModsRect);
-            return null;
         }
 
         private void DrawUnrecognizedWeightText(string weightType, string mod1, string mod2, Vector2 position)
