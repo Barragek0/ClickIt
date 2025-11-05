@@ -1208,7 +1208,7 @@ namespace ClickIt
 
             try
             {
-                if (Timer.ElapsedMilliseconds < 50 + Random.Next(0, 10) || !canClick())
+                if (Timer.ElapsedMilliseconds < 60 + Random.Next(0, 10) || !canClick())
                 {
                     workFinished = true;
                     yield break;
