@@ -25,6 +25,8 @@ namespace ClickIt
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
         private const string CrimsonIron = "CrimsonIron";
+        private const string CopperAltar = "copper_altar";
+        private const string Verisium = "Verisium";
         private const string ReportBugMessage = "\nPlease report this as a bug on github";
 
         private Stopwatch Timer { get; } = new Stopwatch();
@@ -42,6 +44,11 @@ namespace ClickIt
 
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
+
+        // Verisium hold click state
+        private bool isHoldingVerisiumClick = false;
+        private readonly Stopwatch verisiumHoldTimer = new Stopwatch();
+        private const int VERISIUM_HOLD_FAILSAFE_MS = 10000; // 10 seconds
 
         // Services
         private Services.AreaService? areaService;
@@ -543,7 +550,9 @@ namespace ClickIt
                     path.Contains(TangleAltar) ||
                     path.Contains("CraftingUnlocks") ||
                     path.Contains(Brequel) ||
-                    path.Contains(CrimsonIron));
+                    path.Contains(CrimsonIron) ||
+                    path.Contains(CopperAltar) ||
+                    path.Contains(Verisium));
 
                 if (isValidType || isValidPath || GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null)
                 {
@@ -638,27 +647,86 @@ namespace ClickIt
                 yield break;
             }
 
+            // Check if this is Verisium and handle it specially
+            string path = item.Path ?? "";
+            bool isVerisium = Settings.ClickVerisium.Value && path.Contains(Verisium);
+
             RectangleF windowArea = GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 clickPos = nextLabel.Label.GetClientRect().Center + windowTopLeft;
 
-            if (Settings.BlockUserInput.Value)
+            if (isVerisium)
             {
-                Mouse.blockInput(true);
-            }
-
-            ExileCore.Input.SetCursorPos(clickPos);
-            if (Settings.LeftHanded.Value)
-            {
-                Mouse.RightClick();
+                yield return ProcessVerisiumHoldClick(clickPos);
             }
             else
             {
-                Mouse.LeftClick();
+                // Regular click logic
+                if (Settings.BlockUserInput.Value)
+                {
+                    Mouse.blockInput(true);
+                }
+
+                ExileCore.Input.SetCursorPos(clickPos);
+                if (Settings.LeftHanded.Value)
+                {
+                    Mouse.RightClick();
+                }
+                else
+                {
+                    Mouse.LeftClick();
+                }
+
+                Mouse.blockInput(false);
+                yield return new WaitTime(Random.Next(50, 150));
+            }
+        }
+
+        private IEnumerator ProcessVerisiumHoldClick(Vector2 clickPos)
+        {
+            // Start holding if not already holding
+            if (!isHoldingVerisiumClick)
+            {
+                LogMessage("Starting Verisium hold click", 3);
+
+                if (Settings.BlockUserInput.Value)
+                {
+                    Mouse.blockInput(true);
+                }
+
+                ExileCore.Input.SetCursorPos(clickPos);
+
+                // Start holding left click (press down but don't release)
+                Mouse.LeftMouseDown();
+
+                isHoldingVerisiumClick = true;
+                verisiumHoldTimer.Restart();
             }
 
-            Mouse.blockInput(false);
-            yield return new WaitTime(Random.Next(50, 150));
+            // Check if we should continue holding (hotkey still pressed and within failsafe time)
+#pragma warning disable CS0618 // Type or member is obsolete
+            bool hotkeyPressed = ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
+#pragma warning restore CS0618 // Type or member is obsolete
+            bool withinFailsafeTime = verisiumHoldTimer.ElapsedMilliseconds < VERISIUM_HOLD_FAILSAFE_MS;
+            bool hasVerisiumOnScreen = labelFilterService?.HasVerisiumOnScreen(CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+
+            if ((!hotkeyPressed || !withinFailsafeTime || !hasVerisiumOnScreen) && isHoldingVerisiumClick)
+            {
+                // Stop holding
+                LogMessage($"Stopping Verisium hold click - Hotkey: {hotkeyPressed}, Time: {withinFailsafeTime}, HasVerisium: {hasVerisiumOnScreen}", 3);
+
+                Mouse.LeftMouseUp();
+
+                if (Settings.BlockUserInput.Value)
+                {
+                    Mouse.blockInput(false);
+                }
+
+                isHoldingVerisiumClick = false;
+                verisiumHoldTimer.Stop();
+            }
+
+            yield return new WaitTime(50); // Short delay for responsiveness
         }
 
         public static Element? GetElementByString(Element? root, string str)

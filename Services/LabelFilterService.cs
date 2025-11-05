@@ -20,10 +20,31 @@ namespace ClickIt.Services
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
         private const string CrimsonIron = "CrimsonIron";
+        private const string CopperAltar = "copper_altar";
+        private const string Verisium = "Verisium";
 
         public LabelFilterService(ClickItSettings settings)
         {
             _settings = settings;
+        }
+
+        public bool HasVerisiumOnScreen(List<LabelOnGround> allLabels)
+        {
+            if (!_settings.ClickVerisium.Value || allLabels == null)
+                return false;
+
+            for (int i = 0; i < allLabels.Count; i++)
+            {
+                LabelOnGround label = allLabels[i];
+                Entity item = label.ItemOnGround;
+                if (item != null && item.DistancePlayer <= _settings.ClickDistance.Value)
+                {
+                    string path = item.Path;
+                    if (!string.IsNullOrEmpty(path) && path.Contains(Verisium))
+                        return true;
+                }
+            }
+            return false;
         }
 
         public List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, System.Func<Vector2, bool> isInClickableArea)
@@ -75,6 +96,7 @@ namespace ClickIt.Services
             bool clickCrafting = s.ClickCraftingRecipes.Value;
             bool clickBreach = s.ClickBreachNodes.Value;
             bool clickSettlersOre = s.ClickSettlersOre.Value;
+            bool clickVerisium = s.ClickVerisium.Value;
 
             for (int i = 0; i < allLabels.Count; i++)
             {
@@ -87,6 +109,10 @@ namespace ClickIt.Services
                 EntityType type = item.Type;
 
                 // Check different item types
+                // Priority check for Verisium (requires special handling)
+                if (clickVerisium && !string.IsNullOrEmpty(path) && path.Contains(Verisium))
+                    return label;
+
                 if (ShouldClickWorldItem(clickItems, ignoreUniques, type, item))
                     return label;
 
@@ -155,7 +181,7 @@ namespace ClickIt.Services
                    (clickAzurite && path.Contains("AzuriteEncounterController")) ||
                    (clickCrafting && path.Contains("CraftingUnlocks")) ||
                    (clickBreach && path.Contains(Brequel)) ||
-                   (clickSettlersOre && path.Contains(CrimsonIron));
+                   (clickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar)));
         }
 
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)

@@ -238,118 +238,156 @@ namespace ClickIt.Services
 
         public void ProcessAltarScanningLogic(Action<string, float> logMessage, Action<string, float> logError)
         {
-            List<LabelOnGround> altarLabels = new();
-            bool highlightExarch = _settings.HighlightExarchAltars;
-            bool highlightEater = _settings.HighlightEaterAltars;
-
-            if (highlightExarch)
-            {
-                List<LabelOnGround> l = GetAltarLabels(ClickIt.AltarType.SearingExarch);
-                if (l.Count > 0)
-                {
-                    altarLabels.AddRange(l);
-                }
-            }
-
-            if (highlightEater)
-            {
-                List<LabelOnGround> l = GetAltarLabels(ClickIt.AltarType.EaterOfWorlds);
-                if (l.Count > 0)
-                {
-                    altarLabels.AddRange(l);
-                }
-            }
-
+            List<LabelOnGround> altarLabels = CollectAltarLabels();
+            
             if (altarLabels.Count == 0)
             {
                 ClearAltarComponents();
                 return;
             }
 
-            bool debug = _settings.DebugMode;
+            ProcessAltarLabels(altarLabels, logMessage, logError);
+        }
 
-            for (int i = 0; i < altarLabels.Count; i++)
+        private List<LabelOnGround> CollectAltarLabels()
+        {
+            List<LabelOnGround> altarLabels = new();
+
+            if (_settings.HighlightExarchAltars)
             {
-                LabelOnGround label = altarLabels[i];
-                if (label == null)
+                List<LabelOnGround> exarchLabels = GetAltarLabels(ClickIt.AltarType.SearingExarch);
+                if (exarchLabels.Count > 0)
                 {
-                    continue;
+                    altarLabels.AddRange(exarchLabels);
                 }
+            }
+
+            if (_settings.HighlightEaterAltars)
+            {
+                List<LabelOnGround> eaterLabels = GetAltarLabels(ClickIt.AltarType.EaterOfWorlds);
+                if (eaterLabels.Count > 0)
+                {
+                    altarLabels.AddRange(eaterLabels);
+                }
+            }
+
+            return altarLabels;
+        }
+
+        private void ProcessAltarLabels(List<LabelOnGround> altarLabels, Action<string, float> logMessage, Action<string, float> logError)
+        {
+            foreach (LabelOnGround label in altarLabels)
+            {
+                if (label == null) continue;
 
                 List<Element> elements = Services.ElementService.GetElementsByStringContains(label.Label, "valuedefault");
-                if (elements == null || elements.Count == 0)
-                {
-                    continue;
-                }
+                if (elements == null || elements.Count == 0) continue;
 
                 string path = label.ItemOnGround?.Path ?? string.Empty;
+                ProcessElementsForLabel(elements, path, logMessage, logError);
+            }
+        }
 
-                for (int j = 0; j < elements.Count; j++)
+        private void ProcessElementsForLabel(List<Element> elements, string path, Action<string, float> logMessage, Action<string, float> logError)
+        {
+            foreach (Element element in elements)
+            {
+                if (!IsValidElement(element, logError)) continue;
+
+                LogAltarType(path, logMessage);
+                ClickIt.AltarType altarType = DetermineAltarType(path);
+                PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType, logMessage, logError);
+
+                if (IsValidAltarComponent(altarComponent, logError))
                 {
-                    Element element = elements[j];
-                    if (element == null || !element.IsVisible)
-                    {
-                        if (debug)
-                        {
-                            logError("Element is null", 10);
-                        }
-                        continue;
-                    }
-
-                    if (debug && path.Contains(CleansingFireAltar))
-                    {
-                        logMessage("CleansingFireAltar", 0);
-                    }
-                    else if (debug && path.Contains(TangleAltar))
-                    {
-                        logMessage("TangleAltar", 0);
-                    }
-
-                    ClickIt.AltarType altarType;
-                    if (path.Contains(CleansingFireAltar))
-                        altarType = ClickIt.AltarType.SearingExarch;
-                    else if (path.Contains(TangleAltar))
-                        altarType = ClickIt.AltarType.EaterOfWorlds;
-                    else
-                        altarType = ClickIt.AltarType.Unknown;
-
-                    PrimaryAltarComponent altarComponent = new(altarType,
-                        new SecondaryAltarComponent(new Element(), new List<string>(), new List<string>()), new AltarButton(new Element()),
-                        new SecondaryAltarComponent(new Element(), new List<string>(), new List<string>()), new AltarButton(new Element()));
-
-                    Element altarParent = element.Parent.Parent;
-                    Element? topAltarElement = altarParent.GetChildFromIndices(0, 1);
-                    Element? bottomAltarElement = altarParent.GetChildFromIndices(1, 1);
-
-                    if (topAltarElement != null)
-                    {
-                        UpdateComponentFromElementData(true, altarParent, altarComponent, topAltarElement, altarType, logMessage, logError);
-                    }
-
-                    if (bottomAltarElement != null)
-                    {
-                        UpdateComponentFromElementData(false, altarParent, altarComponent, bottomAltarElement, altarType, logMessage, logError);
-                    }
-
-                    if (altarComponent.TopMods == null || altarComponent.TopButton == null || altarComponent.BottomMods == null || altarComponent.BottomButton == null)
-                    {
-                        if (debug)
-                        {
-                            logError("Part of altarcomponent is null", 10);
-                            logError("part1: " + altarComponent.TopMods, 10);
-                            logError("part2: " + altarComponent.TopButton, 10);
-                            logError("part3: " + altarComponent.BottomMods, 10);
-                            logError("part4: " + altarComponent.BottomButton, 10);
-                        }
-                        continue;
-                    }
-
                     bool wasAdded = AddAltarComponent(altarComponent);
-                    if (debug)
-                    {
-                        logMessage(wasAdded ? "New altar added to altarcomponents list" : "Altar already added to altarcomponents list", 0);
-                    }
+                    LogAltarAddition(wasAdded, logMessage);
                 }
+            }
+        }
+
+        private bool IsValidElement(Element element, Action<string, float> logError)
+        {
+            if (element == null || !element.IsVisible)
+            {
+                if (_settings.DebugMode)
+                {
+                    logError("Element is null", 10);
+                }
+                return false;
+            }
+            return true;
+        }
+
+        private void LogAltarType(string path, Action<string, float> logMessage)
+        {
+            if (!_settings.DebugMode) return;
+
+            if (path.Contains(CleansingFireAltar))
+            {
+                logMessage("CleansingFireAltar", 0);
+            }
+            else if (path.Contains(TangleAltar))
+            {
+                logMessage("TangleAltar", 0);
+            }
+        }
+
+        private ClickIt.AltarType DetermineAltarType(string path)
+        {
+            if (path.Contains(CleansingFireAltar))
+                return ClickIt.AltarType.SearingExarch;
+            else if (path.Contains(TangleAltar))
+                return ClickIt.AltarType.EaterOfWorlds;
+            else
+                return ClickIt.AltarType.Unknown;
+        }
+
+        private PrimaryAltarComponent CreateAltarComponent(Element element, ClickIt.AltarType altarType, Action<string, float> logMessage, Action<string, float> logError)
+        {
+            PrimaryAltarComponent altarComponent = new(altarType,
+                new SecondaryAltarComponent(new Element(), new List<string>(), new List<string>()), new AltarButton(new Element()),
+                new SecondaryAltarComponent(new Element(), new List<string>(), new List<string>()), new AltarButton(new Element()));
+
+            Element altarParent = element.Parent.Parent;
+            Element? topAltarElement = altarParent.GetChildFromIndices(0, 1);
+            Element? bottomAltarElement = altarParent.GetChildFromIndices(1, 1);
+
+            if (topAltarElement != null)
+            {
+                UpdateComponentFromElementData(true, altarParent, altarComponent, topAltarElement, altarType, logMessage, logError);
+            }
+
+            if (bottomAltarElement != null)
+            {
+                UpdateComponentFromElementData(false, altarParent, altarComponent, bottomAltarElement, altarType, logMessage, logError);
+            }
+
+            return altarComponent;
+        }
+
+        private bool IsValidAltarComponent(PrimaryAltarComponent altarComponent, Action<string, float> logError)
+        {
+            bool isValid = altarComponent.TopMods != null && altarComponent.TopButton != null && 
+                          altarComponent.BottomMods != null && altarComponent.BottomButton != null;
+
+            if (!isValid && _settings.DebugMode)
+            {
+                logError("Part of altarcomponent is null", 10);
+                logError("part1: " + altarComponent.TopMods, 10);
+                logError("part2: " + altarComponent.TopButton, 10);
+                logError("part3: " + altarComponent.BottomMods, 10);
+                logError("part4: " + altarComponent.BottomButton, 10);
+            }
+
+            return isValid;
+        }
+
+        private void LogAltarAddition(bool wasAdded, Action<string, float> logMessage)
+        {
+            if (_settings.DebugMode)
+            {
+                logMessage(wasAdded ? "New altar added to altarcomponents list" : "Altar already added to altarcomponents list", 0);
             }
         }
 
