@@ -26,36 +26,21 @@ namespace ClickIt.Utils
         public const int MOUSEEVENTF_RIGHTUP = 0x0010;
         public const int MOUSE_EVENT_WHEEL = 0x800;
 
-        // 
         private const int MOVEMENT_DELAY = 10;
 
         private const int CLICK_DELAY = 1;
 
 
-        /// <summary>
-        /// Sets the cursor position relative to the game window.
-        /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <param name="gameWindow"></param>
-        /// <returns></returns>
         public static bool SetCursorPos(int x, int y, RectangleF gameWindow)
         {
             return SetCursorPos(x + (int)gameWindow.X, y + (int)gameWindow.Y);
         }
 
-        /// <summary>
-        /// Sets the cursor position to the center of a given rectangle relative to the game window
-        /// </summary>
-        /// <param name="position"></param>
-        /// <param name="gameWindow"></param>
-        /// <returns></returns>
         public static bool SetCurosPosToCenterOfRec(RectangleF position, RectangleF gameWindow)
         {
             return SetCursorPos((int)(gameWindow.X + position.Center.X),
                 (int)(gameWindow.Y + position.Center.Y));
         }
-        ////////////////////////////////////////////////////////////
 
 
         [StructLayout(LayoutKind.Sequential)]
@@ -70,10 +55,7 @@ namespace ClickIt.Utils
             }
         }
 
-        /// <summary>
-        /// Retrieves the cursor's position, in screen coordinates.
-        /// </summary>
-        /// <see>See MSDN documentation for further information.</see>
+
         [DllImport("user32.dll")]
         public static extern bool GetCursorPos(out POINT lpPoint);
 
