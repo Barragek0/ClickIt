@@ -118,5 +118,11 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="AfterBuild">
     <Copy SourceFiles="$(ProjectDir)$(OutputPath)ClickIt.dll" DestinationFolder="C:\1.Path stuff\PoeHelper\net48\Plugins\Compiled\ClickIt" />
+    
+    <!-- Run automated tests after successful build (if test project exists) -->
+    <Exec Command="&quot;$(ProjectDir)run-tests.bat&quot;" 
+          Condition="Exists('$(ProjectDir)Tests\ClickIt.Tests.csproj') and '$(Configuration)' == 'Debug'" 
+          ContinueOnError="false" 
+          WorkingDirectory="$(ProjectDir)" />
   </Target>
 </Project>

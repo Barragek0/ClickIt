@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura,opencover</Format>
+          <Exclude>[*.Tests]*,[*]*.Program,[ExileCore]*,[ImGui.NET]*,[Newtonsoft.Json]*,[System.*]*,[Microsoft.*]*</Exclude>
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
+          <IncludeDirectory>../</IncludeDirectory>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+  <TestRunParameters>
+    <Parameter name="TestTimeout" value="60000" />
+  </TestRunParameters>
+  <MSTest>
+    <Parallelize>
+      <Workers>4</Workers>
+      <Scope>method</Scope>
+    </Parallelize>
+    <ForcedLegacyMode>false</ForcedLegacyMode>
+  </MSTest>
+</RunSettings>

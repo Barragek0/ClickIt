@@ -388,7 +388,7 @@ namespace ClickIt
 
         }
 
-        private void InitializeDefaultWeights()
+        internal void InitializeDefaultWeights()
         {
             // Initialize with UpsideMods default values (only if not already set)
             foreach ((string id, _, _, int defaultValue) in AltarModsConstants.UpsideMods)

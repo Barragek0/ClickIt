@@ -1,0 +1,200 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="66ecea3c-6bd3-46fc-9a47-8f31ab8a59fa" name="Alex@DESKTOP-G8PCQAF 2025-11-05 20:39:12" runUser="DESKTOP-G8PCQAF\Alex" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2025-11-05T20:39:12.7791197+00:00" queuing="2025-11-05T20:39:12.7791199+00:00" start="2025-11-05T20:39:11.6099303+00:00" finish="2025-11-05T20:39:12.9252345+00:00" />
+  <TestSettings name="default" id="415c3bfe-e120-484d-bd84-8f2dba5a6d9d">
+    <Deployment runDeploymentRoot="Alex_DESKTOP-G8PCQAF_2025-11-05_20_39_12" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="c9561d99-d638-402e-988b-0e01b7c3f96b" testId="ed57d447-e093-d5c1-cf09-9f7c15f531c2" testName="DefaultWeights_ShouldFollowReasonableDistribution" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0435697" startTime="2025-11-05T20:39:12.7518755+00:00" endTime="2025-11-05T20:39:12.7957725+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c9561d99-d638-402e-988b-0e01b7c3f96b" />
+    <UnitTestResult executionId="98555f6b-a651-4ee1-bdca-413a46849145" testId="128b796f-ea93-fb99-78f5-b328aafb2a7e" testName="ModCollections_ShouldHaveBalancedCounts" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0001822" startTime="2025-11-05T20:39:12.7995161+00:00" endTime="2025-11-05T20:39:12.8000156+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="98555f6b-a651-4ee1-bdca-413a46849145" />
+    <UnitTestResult executionId="91ea520c-e47f-4c6c-8c7b-dbaa5348bd2c" testId="15fcb06f-8632-359a-75ce-6f44f89c5277" testName="FilterTargetDict_ShouldHaveCorrectMappings" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0010500" startTime="2025-11-05T20:39:12.7450505+00:00" endTime="2025-11-05T20:39:12.7460558+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="91ea520c-e47f-4c6c-8c7b-dbaa5348bd2c" />
+    <UnitTestResult executionId="f60910c0-db75-42ad-941e-2adabd66adde" testId="f436735f-e0e0-5642-0c04-aae30d37785a" testName="BossTargetedMods_ShouldExist" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0003048" startTime="2025-11-05T20:39:12.7990123+00:00" endTime="2025-11-05T20:39:12.7995161+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f60910c0-db75-42ad-941e-2adabd66adde" />
+    <UnitTestResult executionId="a503a171-21c0-4083-83c3-44479e946caa" testId="c9a312cc-aa1d-e7ec-7115-906a6a9a3d22" testName="DownsideMods_ShouldContainEssentialGameplayMods" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0002473" startTime="2025-11-05T20:39:12.7445507+00:00" endTime="2025-11-05T20:39:12.7450505+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a503a171-21c0-4083-83c3-44479e946caa" />
+    <UnitTestResult executionId="2900f33d-a4a3-47b3-bbea-ca0b404a2be2" testId="e892ec32-5ef7-2210-3298-2be37b1da00f" testName="AltarModsConstants_AllMods_ShouldHaveValidWeightRanges" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0015075" startTime="2025-11-05T20:39:12.8047028+00:00" endTime="2025-11-05T20:39:12.8062374+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2900f33d-a4a3-47b3-bbea-ca0b404a2be2" />
+    <UnitTestResult executionId="1a230d4d-95e4-4a59-88b2-0649452479ab" testId="ee4c6a80-67ea-ad07-5d96-ac8c10b054ad" testName="AltarModsConstants_UpsideMods_ShouldHaveUniqueNames" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0038342" startTime="2025-11-05T20:39:12.8000156+00:00" endTime="2025-11-05T20:39:12.8041320+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1a230d4d-95e4-4a59-88b2-0649452479ab" />
+    <UnitTestResult executionId="61e3f1c5-f897-4727-a264-7055a72519c3" testId="46cabf82-2444-0088-5b02-785f0f225c12" testName="UpsideMods_ShouldHaveUniqueIds" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0002079" startTime="2025-11-05T20:39:12.7193188+00:00" endTime="2025-11-05T20:39:12.7193188+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="61e3f1c5-f897-4727-a264-7055a72519c3" />
+    <UnitTestResult executionId="b9921114-ff52-41b2-8490-bb37c42c7b3f" testId="8ade1ad6-cd5b-8300-f442-60d687ecfaf9" testName="AltarModsConstants_PlayerMods_ShouldBePrioritized" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0004822" startTime="2025-11-05T20:39:12.8249835+00:00" endTime="2025-11-05T20:39:12.8259892+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b9921114-ff52-41b2-8490-bb37c42c7b3f" />
+    <UnitTestResult executionId="7fe2e1f3-c7f5-4ef5-b6e9-74cf629aa97f" testId="cd8fea07-85c5-7062-80c5-9fe5081431e8" testName="UpsideMods_ShouldNotBeEmpty" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0001157" startTime="2025-11-05T20:39:12.6958647+00:00" endTime="2025-11-05T20:39:12.6958647+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7fe2e1f3-c7f5-4ef5-b6e9-74cf629aa97f" />
+    <UnitTestResult executionId="6c8fdb29-81d4-477f-92a0-44fff0b146ea" testId="6b8ec001-d942-663e-5555-3cd7c053c8d4" testName="ModCollections_ShouldHaveReasonableSize" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0034016" startTime="2025-11-05T20:39:12.7193188+00:00" endTime="2025-11-05T20:39:12.7231100+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6c8fdb29-81d4-477f-92a0-44fff0b146ea" />
+    <UnitTestResult executionId="977035a7-250c-49f9-b960-b9a749f643ad" testId="248d00c6-c302-7bd6-fc5a-6bca7756d217" testName="UpsideMods_ShouldHaveValidStructure" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0003772" startTime="2025-11-05T20:39:12.7147694+00:00" endTime="2025-11-05T20:39:12.7157747+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="977035a7-250c-49f9-b960-b9a749f643ad" />
+    <UnitTestResult executionId="fef85580-c9b1-444f-a5a7-8e7b007acac9" testId="6d698d24-a9fe-2474-63bf-08d79ad53192" testName="FilterTargetDict_ShouldContainExpectedKeys" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0067188" startTime="2025-11-05T20:39:12.6958647+00:00" endTime="2025-11-05T20:39:12.7023825+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fef85580-c9b1-444f-a5a7-8e7b007acac9" />
+    <UnitTestResult executionId="a0294f95-142e-4085-8309-9d646da4b105" testId="7e440687-2125-c666-9384-8cda94159715" testName="DownsideMods_ShouldNotBeEmpty" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0285633" startTime="2025-11-05T20:39:12.4858165+00:00" endTime="2025-11-05T20:39:12.6886840+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a0294f95-142e-4085-8309-9d646da4b105" />
+    <UnitTestResult executionId="a743777d-c866-40bc-9e14-7f215f950649" testId="8369a21d-54a8-a919-98dd-2c710db28541" testName="AltarModsConstants_ModIds_ShouldNotHaveLeadingOrTrailingWhitespace" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0025745" startTime="2025-11-05T20:39:12.8062374+00:00" endTime="2025-11-05T20:39:12.8087442+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a743777d-c866-40bc-9e14-7f215f950649" />
+    <UnitTestResult executionId="4e5a1e63-5d20-4a7d-babc-e10bc4052346" testId="f6e9bfc6-6443-4123-a982-6d2a4eb4858a" testName="AltarModsConstants_ShouldHaveValidTypeDistribution" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0048278" startTime="2025-11-05T20:39:12.8087442+00:00" endTime="2025-11-05T20:39:12.8135541+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4e5a1e63-5d20-4a7d-babc-e10bc4052346" />
+    <UnitTestResult executionId="a0397295-23ca-4c5a-9c16-6ada4e46fcac" testId="e2469839-e919-9f58-0648-fd6483af4b0b" testName="AltarTargetDict_ShouldHaveCorrectMappings" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0001410" startTime="2025-11-05T20:39:12.7460558+00:00" endTime="2025-11-05T20:39:12.7460558+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a0397295-23ca-4c5a-9c16-6ada4e46fcac" />
+    <UnitTestResult executionId="e611c944-479a-46af-a723-754a916dca0e" testId="cebd853f-9b4e-ca20-b1f3-76488911521a" testName="PlayerTargetedMods_ShouldHaveAppropriateWeights" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0028551" startTime="2025-11-05T20:39:12.7957725+00:00" endTime="2025-11-05T20:39:12.7985075+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e611c944-479a-46af-a723-754a916dca0e" />
+    <UnitTestResult executionId="10a1419f-456d-48cf-8064-7534fa89ef42" testId="b6edeb4d-3e3c-642a-f6f0-27641568a038" testName="UpsideMods_ShouldHaveConsistentDataFormat" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0015985" startTime="2025-11-05T20:39:12.7405168+00:00" endTime="2025-11-05T20:39:12.7425395+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="10a1419f-456d-48cf-8064-7534fa89ef42" />
+    <UnitTestResult executionId="15e8f5ec-e1cc-4f5e-b073-91753d51fb35" testId="595f203c-4c11-4413-5fed-f653b27e96f2" testName="AltarTargetDict_ShouldContainExpectedKeys" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0001943" startTime="2025-11-05T20:39:12.7023825+00:00" endTime="2025-11-05T20:39:12.7033877+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="15e8f5ec-e1cc-4f5e-b073-91753d51fb35" />
+    <UnitTestResult executionId="e94f5e8c-9586-46da-94a4-8a85ab726e73" testId="426ee2a5-cf45-4842-36aa-a2444b978cca" testName="AltarModsConstants_DownsideMods_ShouldHaveUniqueNames" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0002169" startTime="2025-11-05T20:39:12.8041320+00:00" endTime="2025-11-05T20:39:12.8047028+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e94f5e8c-9586-46da-94a4-8a85ab726e73" />
+    <UnitTestResult executionId="18e92a9a-2d63-41ec-a6b9-66ecd38b6778" testId="2e14e2a6-11eb-c8c2-9f7a-50c0ca1738f2" testName="DownsideMods_ShouldHaveValidStructure" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0120527" startTime="2025-11-05T20:39:12.7033877+00:00" endTime="2025-11-05T20:39:12.7147694+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="18e92a9a-2d63-41ec-a6b9-66ecd38b6778" />
+    <UnitTestResult executionId="8a8ebd0f-6251-48b7-9420-ddcd5af26d39" testId="2b942233-0b14-723c-536c-69c3832eef7b" testName="AltarModsConstants_HighValueMods_ShouldBeIdentifiable" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0015589" startTime="2025-11-05T20:39:12.8140568+00:00" endTime="2025-11-05T20:39:12.8156034+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8a8ebd0f-6251-48b7-9420-ddcd5af26d39" />
+    <UnitTestResult executionId="a09ab70a-7a66-4765-bcae-6a82921da9d4" testId="061e59bf-0492-5b0e-6078-213fa56918b7" testName="DownsideMods_ShouldHaveConsistentDataFormat" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0006212" startTime="2025-11-05T20:39:12.7425395+00:00" endTime="2025-11-05T20:39:12.7435433+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a09ab70a-7a66-4765-bcae-6a82921da9d4" />
+    <UnitTestResult executionId="d1a4c054-79c6-4751-9a3a-bf589e448a67" testId="078ca68a-9d68-e993-23b7-79de24968cb8" testName="AltarModsConstants_FilterAndAltarDicts_ShouldHaveExpectedCoverage" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0085706" startTime="2025-11-05T20:39:12.8166205+00:00" endTime="2025-11-05T20:39:12.8249835+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d1a4c054-79c6-4751-9a3a-bf589e448a67" />
+    <UnitTestResult executionId="3617409b-dc9e-4346-b320-e59a8ea85f15" testId="53d6b819-c67d-0003-1d18-1e487a15d2ef" testName="AltarModsConstants_ModNames_ShouldBeDescriptive" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0015448" startTime="2025-11-05T20:39:12.8259892+00:00" endTime="2025-11-05T20:39:12.8280251+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3617409b-dc9e-4346-b320-e59a8ea85f15" />
+    <UnitTestResult executionId="81765454-b4a4-4890-8550-5acbea26de4e" testId="97d31d73-bf28-0aa5-7ffd-7d9562c2baca" testName="UpsideMods_ShouldContainEssentialGameplayMods" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0009572" startTime="2025-11-05T20:39:12.7435433+00:00" endTime="2025-11-05T20:39:12.7445507+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="81765454-b4a4-4890-8550-5acbea26de4e" />
+    <UnitTestResult executionId="7a6b7591-d960-416e-b6ed-f34b0597cf88" testId="260489a1-cf2d-ac81-79c0-c2c4ad88bdb5" testName="ModTypes_ShouldBeValidAndConsistent" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0054215" startTime="2025-11-05T20:39:12.7460558+00:00" endTime="2025-11-05T20:39:12.7518755+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7a6b7591-d960-416e-b6ed-f34b0597cf88" />
+    <UnitTestResult executionId="ae970133-3849-4343-a851-f36bb5732dbe" testId="3a61beba-698c-f922-c647-1aed1276266b" testName="AltarModsConstants_LowValueMods_ShouldExist" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0003158" startTime="2025-11-05T20:39:12.8156034+00:00" endTime="2025-11-05T20:39:12.8161116+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ae970133-3849-4343-a851-f36bb5732dbe" />
+    <UnitTestResult executionId="748aad69-34fb-4aa5-9269-bedcdbea8712" testId="8f93e997-62b9-86aa-244b-4acb788e20de" testName="DownsideMods_ShouldHaveUniqueIds" computerName="DESKTOP-G8PCQAF" duration="00:00:00.0030761" startTime="2025-11-05T20:39:12.7157747+00:00" endTime="2025-11-05T20:39:12.7193188+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="748aad69-34fb-4aa5-9269-bedcdbea8712" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="AltarModsConstants_PlayerMods_ShouldBePrioritized" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="8ade1ad6-cd5b-8300-f442-60d687ecfaf9">
+      <Execution id="b9921114-ff52-41b2-8490-bb37c42c7b3f" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_PlayerMods_ShouldBePrioritized" />
+    </UnitTest>
+    <UnitTest name="PlayerTargetedMods_ShouldHaveAppropriateWeights" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="cebd853f-9b4e-ca20-b1f3-76488911521a">
+      <Execution id="e611c944-479a-46af-a723-754a916dca0e" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="PlayerTargetedMods_ShouldHaveAppropriateWeights" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_ShouldHaveValidTypeDistribution" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="f6e9bfc6-6443-4123-a982-6d2a4eb4858a">
+      <Execution id="4e5a1e63-5d20-4a7d-babc-e10bc4052346" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_ShouldHaveValidTypeDistribution" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_HighValueMods_ShouldBeIdentifiable" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="2b942233-0b14-723c-536c-69c3832eef7b">
+      <Execution id="8a8ebd0f-6251-48b7-9420-ddcd5af26d39" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_HighValueMods_ShouldBeIdentifiable" />
+    </UnitTest>
+    <UnitTest name="DownsideMods_ShouldNotBeEmpty" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="7e440687-2125-c666-9384-8cda94159715">
+      <Execution id="a0294f95-142e-4085-8309-9d646da4b105" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="DownsideMods_ShouldNotBeEmpty" />
+    </UnitTest>
+    <UnitTest name="FilterTargetDict_ShouldContainExpectedKeys" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="6d698d24-a9fe-2474-63bf-08d79ad53192">
+      <Execution id="fef85580-c9b1-444f-a5a7-8e7b007acac9" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="FilterTargetDict_ShouldContainExpectedKeys" />
+    </UnitTest>
+    <UnitTest name="BossTargetedMods_ShouldExist" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="f436735f-e0e0-5642-0c04-aae30d37785a">
+      <Execution id="f60910c0-db75-42ad-941e-2adabd66adde" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="BossTargetedMods_ShouldExist" />
+    </UnitTest>
+    <UnitTest name="DownsideMods_ShouldContainEssentialGameplayMods" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="c9a312cc-aa1d-e7ec-7115-906a6a9a3d22">
+      <Execution id="a503a171-21c0-4083-83c3-44479e946caa" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="DownsideMods_ShouldContainEssentialGameplayMods" />
+    </UnitTest>
+    <UnitTest name="UpsideMods_ShouldNotBeEmpty" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="cd8fea07-85c5-7062-80c5-9fe5081431e8">
+      <Execution id="7fe2e1f3-c7f5-4ef5-b6e9-74cf629aa97f" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="UpsideMods_ShouldNotBeEmpty" />
+    </UnitTest>
+    <UnitTest name="UpsideMods_ShouldHaveValidStructure" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="248d00c6-c302-7bd6-fc5a-6bca7756d217">
+      <Execution id="977035a7-250c-49f9-b960-b9a749f643ad" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="UpsideMods_ShouldHaveValidStructure" />
+    </UnitTest>
+    <UnitTest name="ModTypes_ShouldBeValidAndConsistent" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="260489a1-cf2d-ac81-79c0-c2c4ad88bdb5">
+      <Execution id="7a6b7591-d960-416e-b6ed-f34b0597cf88" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="ModTypes_ShouldBeValidAndConsistent" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_DownsideMods_ShouldHaveUniqueNames" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="426ee2a5-cf45-4842-36aa-a2444b978cca">
+      <Execution id="e94f5e8c-9586-46da-94a4-8a85ab726e73" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_DownsideMods_ShouldHaveUniqueNames" />
+    </UnitTest>
+    <UnitTest name="UpsideMods_ShouldHaveConsistentDataFormat" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="b6edeb4d-3e3c-642a-f6f0-27641568a038">
+      <Execution id="10a1419f-456d-48cf-8064-7534fa89ef42" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="UpsideMods_ShouldHaveConsistentDataFormat" />
+    </UnitTest>
+    <UnitTest name="DownsideMods_ShouldHaveConsistentDataFormat" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="061e59bf-0492-5b0e-6078-213fa56918b7">
+      <Execution id="a09ab70a-7a66-4765-bcae-6a82921da9d4" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="DownsideMods_ShouldHaveConsistentDataFormat" />
+    </UnitTest>
+    <UnitTest name="AltarTargetDict_ShouldHaveCorrectMappings" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="e2469839-e919-9f58-0648-fd6483af4b0b">
+      <Execution id="a0397295-23ca-4c5a-9c16-6ada4e46fcac" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="AltarTargetDict_ShouldHaveCorrectMappings" />
+    </UnitTest>
+    <UnitTest name="FilterTargetDict_ShouldHaveCorrectMappings" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="15fcb06f-8632-359a-75ce-6f44f89c5277">
+      <Execution id="91ea520c-e47f-4c6c-8c7b-dbaa5348bd2c" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="FilterTargetDict_ShouldHaveCorrectMappings" />
+    </UnitTest>
+    <UnitTest name="DownsideMods_ShouldHaveValidStructure" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="2e14e2a6-11eb-c8c2-9f7a-50c0ca1738f2">
+      <Execution id="18e92a9a-2d63-41ec-a6b9-66ecd38b6778" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="DownsideMods_ShouldHaveValidStructure" />
+    </UnitTest>
+    <UnitTest name="DefaultWeights_ShouldFollowReasonableDistribution" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="ed57d447-e093-d5c1-cf09-9f7c15f531c2">
+      <Execution id="c9561d99-d638-402e-988b-0e01b7c3f96b" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="DefaultWeights_ShouldFollowReasonableDistribution" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_FilterAndAltarDicts_ShouldHaveExpectedCoverage" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="078ca68a-9d68-e993-23b7-79de24968cb8">
+      <Execution id="d1a4c054-79c6-4751-9a3a-bf589e448a67" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_FilterAndAltarDicts_ShouldHaveExpectedCoverage" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_ModIds_ShouldNotHaveLeadingOrTrailingWhitespace" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="8369a21d-54a8-a919-98dd-2c710db28541">
+      <Execution id="a743777d-c866-40bc-9e14-7f215f950649" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_ModIds_ShouldNotHaveLeadingOrTrailingWhitespace" />
+    </UnitTest>
+    <UnitTest name="ModCollections_ShouldHaveReasonableSize" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="6b8ec001-d942-663e-5555-3cd7c053c8d4">
+      <Execution id="6c8fdb29-81d4-477f-92a0-44fff0b146ea" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="ModCollections_ShouldHaveReasonableSize" />
+    </UnitTest>
+    <UnitTest name="ModCollections_ShouldHaveBalancedCounts" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="128b796f-ea93-fb99-78f5-b328aafb2a7e">
+      <Execution id="98555f6b-a651-4ee1-bdca-413a46849145" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="ModCollections_ShouldHaveBalancedCounts" />
+    </UnitTest>
+    <UnitTest name="UpsideMods_ShouldHaveUniqueIds" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="46cabf82-2444-0088-5b02-785f0f225c12">
+      <Execution id="61e3f1c5-f897-4727-a264-7055a72519c3" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="UpsideMods_ShouldHaveUniqueIds" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_AllMods_ShouldHaveValidWeightRanges" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="e892ec32-5ef7-2210-3298-2be37b1da00f">
+      <Execution id="2900f33d-a4a3-47b3-bbea-ca0b404a2be2" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_AllMods_ShouldHaveValidWeightRanges" />
+    </UnitTest>
+    <UnitTest name="UpsideMods_ShouldContainEssentialGameplayMods" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="97d31d73-bf28-0aa5-7ffd-7d9562c2baca">
+      <Execution id="81765454-b4a4-4890-8550-5acbea26de4e" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.ExtendedConstantsTests" name="UpsideMods_ShouldContainEssentialGameplayMods" />
+    </UnitTest>
+    <UnitTest name="DownsideMods_ShouldHaveUniqueIds" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="8f93e997-62b9-86aa-244b-4acb788e20de">
+      <Execution id="748aad69-34fb-4aa5-9269-bedcdbea8712" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="DownsideMods_ShouldHaveUniqueIds" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_ModNames_ShouldBeDescriptive" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="53d6b819-c67d-0003-1d18-1e487a15d2ef">
+      <Execution id="3617409b-dc9e-4346-b320-e59a8ea85f15" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_ModNames_ShouldBeDescriptive" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_LowValueMods_ShouldExist" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="3a61beba-698c-f922-c647-1aed1276266b">
+      <Execution id="ae970133-3849-4343-a851-f36bb5732dbe" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_LowValueMods_ShouldExist" />
+    </UnitTest>
+    <UnitTest name="AltarModsConstants_UpsideMods_ShouldHaveUniqueNames" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="ee4c6a80-67ea-ad07-5d96-ac8c10b054ad">
+      <Execution id="1a230d4d-95e4-4a59-88b2-0649452479ab" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.UtilityFunctionTests" name="AltarModsConstants_UpsideMods_ShouldHaveUniqueNames" />
+    </UnitTest>
+    <UnitTest name="AltarTargetDict_ShouldContainExpectedKeys" storage="c:\1.path stuff\githubrepositories\clickit\tests\bin\debug\net48\clickit.tests.dll" id="595f203c-4c11-4413-5fed-f653b27e96f2">
+      <Execution id="15e8f5ec-e1cc-4f5e-b073-91753d51fb35" />
+      <TestMethod codeBase="C:\1.Path stuff\GithubRepositories\ClickIt\Tests\bin\Debug\net48\ClickIt.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="ClickIt.Tests.AltarModsConstantsTests" name="AltarTargetDict_ShouldContainExpectedKeys" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="ed57d447-e093-d5c1-cf09-9f7c15f531c2" executionId="c9561d99-d638-402e-988b-0e01b7c3f96b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="128b796f-ea93-fb99-78f5-b328aafb2a7e" executionId="98555f6b-a651-4ee1-bdca-413a46849145" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="15fcb06f-8632-359a-75ce-6f44f89c5277" executionId="91ea520c-e47f-4c6c-8c7b-dbaa5348bd2c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f436735f-e0e0-5642-0c04-aae30d37785a" executionId="f60910c0-db75-42ad-941e-2adabd66adde" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c9a312cc-aa1d-e7ec-7115-906a6a9a3d22" executionId="a503a171-21c0-4083-83c3-44479e946caa" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e892ec32-5ef7-2210-3298-2be37b1da00f" executionId="2900f33d-a4a3-47b3-bbea-ca0b404a2be2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ee4c6a80-67ea-ad07-5d96-ac8c10b054ad" executionId="1a230d4d-95e4-4a59-88b2-0649452479ab" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="46cabf82-2444-0088-5b02-785f0f225c12" executionId="61e3f1c5-f897-4727-a264-7055a72519c3" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8ade1ad6-cd5b-8300-f442-60d687ecfaf9" executionId="b9921114-ff52-41b2-8490-bb37c42c7b3f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="cd8fea07-85c5-7062-80c5-9fe5081431e8" executionId="7fe2e1f3-c7f5-4ef5-b6e9-74cf629aa97f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6b8ec001-d942-663e-5555-3cd7c053c8d4" executionId="6c8fdb29-81d4-477f-92a0-44fff0b146ea" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="248d00c6-c302-7bd6-fc5a-6bca7756d217" executionId="977035a7-250c-49f9-b960-b9a749f643ad" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6d698d24-a9fe-2474-63bf-08d79ad53192" executionId="fef85580-c9b1-444f-a5a7-8e7b007acac9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7e440687-2125-c666-9384-8cda94159715" executionId="a0294f95-142e-4085-8309-9d646da4b105" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8369a21d-54a8-a919-98dd-2c710db28541" executionId="a743777d-c866-40bc-9e14-7f215f950649" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f6e9bfc6-6443-4123-a982-6d2a4eb4858a" executionId="4e5a1e63-5d20-4a7d-babc-e10bc4052346" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e2469839-e919-9f58-0648-fd6483af4b0b" executionId="a0397295-23ca-4c5a-9c16-6ada4e46fcac" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="cebd853f-9b4e-ca20-b1f3-76488911521a" executionId="e611c944-479a-46af-a723-754a916dca0e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b6edeb4d-3e3c-642a-f6f0-27641568a038" executionId="10a1419f-456d-48cf-8064-7534fa89ef42" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="595f203c-4c11-4413-5fed-f653b27e96f2" executionId="15e8f5ec-e1cc-4f5e-b073-91753d51fb35" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="426ee2a5-cf45-4842-36aa-a2444b978cca" executionId="e94f5e8c-9586-46da-94a4-8a85ab726e73" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2e14e2a6-11eb-c8c2-9f7a-50c0ca1738f2" executionId="18e92a9a-2d63-41ec-a6b9-66ecd38b6778" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2b942233-0b14-723c-536c-69c3832eef7b" executionId="8a8ebd0f-6251-48b7-9420-ddcd5af26d39" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="061e59bf-0492-5b0e-6078-213fa56918b7" executionId="a09ab70a-7a66-4765-bcae-6a82921da9d4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="078ca68a-9d68-e993-23b7-79de24968cb8" executionId="d1a4c054-79c6-4751-9a3a-bf589e448a67" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="53d6b819-c67d-0003-1d18-1e487a15d2ef" executionId="3617409b-dc9e-4346-b320-e59a8ea85f15" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="97d31d73-bf28-0aa5-7ffd-7d9562c2baca" executionId="81765454-b4a4-4890-8550-5acbea26de4e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="260489a1-cf2d-ac81-79c0-c2c4ad88bdb5" executionId="7a6b7591-d960-416e-b6ed-f34b0597cf88" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3a61beba-698c-f922-c647-1aed1276266b" executionId="ae970133-3849-4343-a851-f36bb5732dbe" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8f93e997-62b9-86aa-244b-4acb788e20de" executionId="748aad69-34fb-4aa5-9269-bedcdbea8712" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="30" executed="30" passed="30" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>
