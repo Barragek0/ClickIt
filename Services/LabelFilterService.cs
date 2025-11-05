@@ -47,7 +47,7 @@ namespace ClickIt.Services
             return false;
         }
 
-        public List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, System.Func<Vector2, bool> isInClickableArea)
+        public static List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, System.Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = new();
 
@@ -77,65 +77,104 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0)
                 return null;
 
-            var s = _settings;
-            int clickDistance = s.ClickDistance.Value;
-            bool clickItems = s.ClickItems.Value;
-            bool ignoreUniques = s.IgnoreUniques.Value;
-            bool clickBasicChests = s.ClickBasicChests.Value;
-            bool clickLeagueChests = s.ClickLeagueChests.Value;
-            bool clickAreaTransitions = s.ClickAreaTransitions.Value;
-            bool clickShrines = s.ClickShrines.Value;
-            bool nearestHarvest = s.NearestHarvest.Value;
-            bool clickSulphite = s.ClickSulphiteVeins.Value;
-            bool clickAzurite = s.ClickAzuriteVeins.Value;
-            bool highlightEater = s.HighlightEaterAltars.Value;
-            bool highlightExarch = s.HighlightExarchAltars.Value;
-            bool clickEater = s.ClickEaterAltars.Value;
-            bool clickExarch = s.ClickExarchAltars.Value;
-            bool clickEssences = s.ClickEssences.Value;
-            bool clickCrafting = s.ClickCraftingRecipes.Value;
-            bool clickBreach = s.ClickBreachNodes.Value;
-            bool clickSettlersOre = s.ClickSettlersOre.Value;
-            bool clickVerisium = s.ClickVerisium.Value;
+            var clickSettings = CreateClickSettings();
 
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
                 Entity item = label.ItemOnGround;
-                if (item == null || item.DistancePlayer > clickDistance)
+
+                if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
                     continue;
 
-                string path = item.Path;
-                EntityType type = item.Type;
-
-                // Check different item types
-                // Priority check for Verisium (requires special handling)
-                if (clickVerisium && !string.IsNullOrEmpty(path) && path.Contains(Verisium))
-                    return label;
-
-                if (ShouldClickWorldItem(clickItems, ignoreUniques, type, item))
-                    return label;
-
-                if (ShouldClickChest(clickBasicChests, clickLeagueChests, type, label))
-                    return label;
-
-                if (clickAreaTransitions && type == EntityType.AreaTransition)
-                    return label;
-
-                if (clickShrines && type == EntityType.Shrine)
-                    return label;
-
-                if (ShouldClickSpecialPath(nearestHarvest, clickSulphite, clickAzurite, clickCrafting, clickBreach, clickSettlersOre, path))
-                    return label;
-
-                if (ShouldClickAltar(highlightEater, highlightExarch, clickEater, clickExarch, path))
-                    return label;
-
-                if (ShouldClickEssence(clickEssences, label))
+                if (ShouldClickLabel(label, item, clickSettings))
                     return label;
             }
 
             return null;
+        }
+
+        private ClickSettings CreateClickSettings()
+        {
+            var s = _settings;
+            return new ClickSettings
+            {
+                ClickDistance = s.ClickDistance.Value,
+                ClickItems = s.ClickItems.Value,
+                IgnoreUniques = s.IgnoreUniques.Value,
+                ClickBasicChests = s.ClickBasicChests.Value,
+                ClickLeagueChests = s.ClickLeagueChests.Value,
+                ClickAreaTransitions = s.ClickAreaTransitions.Value,
+                ClickShrines = s.ClickShrines.Value,
+                NearestHarvest = s.NearestHarvest.Value,
+                ClickSulphite = s.ClickSulphiteVeins.Value,
+                ClickAzurite = s.ClickAzuriteVeins.Value,
+                HighlightEater = s.HighlightEaterAltars.Value,
+                HighlightExarch = s.HighlightExarchAltars.Value,
+                ClickEater = s.ClickEaterAltars.Value,
+                ClickExarch = s.ClickExarchAltars.Value,
+                ClickEssences = s.ClickEssences.Value,
+                ClickCrafting = s.ClickCraftingRecipes.Value,
+                ClickBreach = s.ClickBreachNodes.Value,
+                ClickSettlersOre = s.ClickSettlersOre.Value,
+                ClickVerisium = s.ClickVerisium.Value
+            };
+        }
+
+        private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
+        {
+            string path = item.Path;
+            EntityType type = item.Type;
+
+            // Priority check for Verisium (requires special handling)
+            if (settings.ClickVerisium && !string.IsNullOrEmpty(path) && path.Contains(Verisium))
+                return true;
+
+            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, type, item))
+                return true;
+
+            if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
+                return true;
+
+            if (settings.ClickAreaTransitions && type == EntityType.AreaTransition)
+                return true;
+
+            if (settings.ClickShrines && type == EntityType.Shrine)
+                return true;
+
+            if (ShouldClickSpecialPath(settings.NearestHarvest, settings.ClickSulphite, settings.ClickAzurite, settings.ClickCrafting, settings.ClickBreach, settings.ClickSettlersOre, path))
+                return true;
+
+            if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
+                return true;
+
+            if (ShouldClickEssence(settings.ClickEssences, label))
+                return true;
+
+            return false;
+        }
+
+        private struct ClickSettings
+        {
+            public int ClickDistance { get; set; }
+            public bool ClickItems { get; set; }
+            public bool IgnoreUniques { get; set; }
+            public bool ClickBasicChests { get; set; }
+            public bool ClickLeagueChests { get; set; }
+            public bool ClickAreaTransitions { get; set; }
+            public bool ClickShrines { get; set; }
+            public bool NearestHarvest { get; set; }
+            public bool ClickSulphite { get; set; }
+            public bool ClickAzurite { get; set; }
+            public bool HighlightEater { get; set; }
+            public bool HighlightExarch { get; set; }
+            public bool ClickEater { get; set; }
+            public bool ClickExarch { get; set; }
+            public bool ClickEssences { get; set; }
+            public bool ClickCrafting { get; set; }
+            public bool ClickBreach { get; set; }
+            public bool ClickSettlersOre { get; set; }
+            public bool ClickVerisium { get; set; }
         }
 
         private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, EntityType type, Entity item)
