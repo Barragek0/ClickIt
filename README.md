@@ -1,6 +1,6 @@
 # ClickIt
 
-[![CI/CD](https://github.com/Barragek0/ClickIt/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Barragek0/ClickIt/actions/workflows/ci-cd.yml)
+
 
 ## Overview
 
