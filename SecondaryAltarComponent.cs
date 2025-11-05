@@ -1,21 +1,22 @@
 ﻿using ExileCore.PoEMemory;
+using System.Collections.Generic;
 
 namespace ClickIt
 {
     public class SecondaryAltarComponent
     {
-        public SecondaryAltarComponent(Element element, string FirstUpside, string SecondUpside, string FirstDownside, string SecondDownside)
+        public SecondaryAltarComponent(Element element, List<string> upsides, List<string> downsides)
         {
             this.Element = element;
-            this.FirstUpside = FirstUpside;
-            this.SecondUpside = SecondUpside;
-            this.FirstDownside = FirstDownside;
-            this.SecondDownside = SecondDownside;
+            this.Upsides = upsides;
+            this.Downsides = downsides;
         }
         public Element Element;
-        public string FirstUpside;
-        public string SecondUpside;
-        public string FirstDownside;
-        public string SecondDownside;
+        public List<string> Upsides;
+        public List<string> Downsides;
+        public string FirstUpside => Upsides.Count > 0 ? Upsides[0] : "";
+        public string SecondUpside => Upsides.Count > 1 ? Upsides[1] : "";
+        public string FirstDownside => Downsides.Count > 0 ? Downsides[0] : "";
+        public string SecondDownside => Downsides.Count > 1 ? Downsides[1] : "";
     }
 }
