@@ -1,6 +1,10 @@
 ﻿using ExileCore.Shared.Attributes;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
+using ImGuiNET;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Numerics;
 using System.Windows.Forms;
 
 namespace ClickIt
@@ -110,6 +114,183 @@ namespace ClickIt
         [Menu("Corrupt Essences which don't contain a shrieking essence", "Corrupt any essences that don't have a shrieking essence on them.\n\n" +
             "This is for if you use the 'Crystal Resonance' atlas passive, which duplicates monsters when they contain a shrieking essence.", 6, 3500)]
         public ToggleNode CorruptAnyNonShrieking { get; set; } = new ToggleNode(true);
+
+        [JsonIgnore]
+        public CustomNode Tribes { get; }
+
+        public ClickItSettings()
+        {
+            Tribes = new CustomNode
+            {
+                DrawDelegate = () =>
+                {
+                    if (ImGui.TreeNode("Altar Upside Mods"))
+                    {
+                        ImGui.Spacing();
+                        ImGui.Spacing();
+
+                        ImGui.TextWrapped("Weight Scale:");
+                        DrawWeightScale(bestAtHigh: true);
+
+                        ImGui.Spacing();
+                        ImGui.Spacing();
+
+                        if (ImGui.BeginTable("UnitConfig", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
+                        {
+                            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 100);
+                            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 1000);
+                            ImGui.TableHeadersRow();
+                            foreach ((string id, string name, string type, int defaultValue) in AltarModsConstants.UpsideMods)
+                            {
+                                ImGui.PushID($"unit{id}");
+                                ImGui.TableNextRow(ImGuiTableRowFlags.None);
+                                _ = ImGui.TableNextColumn();
+                                ImGui.SetNextItemWidth(100);
+                                int currentValue = GetModTier(id);
+                                if (ImGui.SliderInt($"", ref currentValue, 1, 100))
+                                {
+                                    ModTiers[id] = currentValue;
+                                }
+                                ImGui.SetNextItemWidth(1000);
+                                _ = ImGui.TableNextColumn();
+                                ImGui.Text(name);
+                                //_ = ImGui.TableNextColumn();
+                                //ImGui.Text(type);
+                                //ImGui.SetNextItemWidth(50);
+                                //_ = ImGui.TableNextColumn();
+
+                                ImGui.PopID();
+                            }
+
+                            ImGui.EndTable();
+                        }
+
+                        ImGui.TreePop();
+                    }
+
+                    if (ImGui.TreeNode("Altar Downside Mods"))
+                    {
+                        ImGui.Spacing();
+                        ImGui.Spacing();
+
+                        ImGui.TextWrapped("Weight Scale:");
+                        DrawWeightScale(bestAtHigh: false); // Red → Green (100 = Worst)
+
+                        ImGui.Spacing();
+                        ImGui.Spacing();
+
+                        if (ImGui.BeginTable("UnitConfig", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
+                        {
+                            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 100);
+                            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 1000);
+                            ImGui.TableHeadersRow();
+                            foreach ((string id, string name, string type, int defaultValue) in AltarModsConstants.DownsideMods)
+                            {
+                                ImGui.PushID($"unit{id}");
+                                ImGui.TableNextRow(ImGuiTableRowFlags.None);
+                                _ = ImGui.TableNextColumn();
+                                ImGui.SetNextItemWidth(100);
+                                int currentValue = GetModTier(id);
+                                if (ImGui.SliderInt($"", ref currentValue, 1, 100))
+                                {
+                                    ModTiers[id] = currentValue;
+                                }
+                                ImGui.SetNextItemWidth(1000);
+                                _ = ImGui.TableNextColumn();
+                                ImGui.Text(name);
+                                //_ = ImGui.TableNextColumn();
+                                //ImGui.Text(type);
+                                //ImGui.SetNextItemWidth(50);
+                                //_ = ImGui.TableNextColumn();
+
+                                ImGui.PopID();
+                            }
+
+                            ImGui.EndTable();
+                        }
+
+                        ImGui.TreePop();
+                    }
+                }
+            };
+
+        }
+
+        public int GetModTier(string mod)
+        {
+            return ModTiers.TryGetValue(mod ?? "", out int value) ? value : 1;
+        }
+
+        public Dictionary<string, int> ModTiers = [];
+
+
+        // Requires: using System.Numerics; using ImGuiNET;
+
+        private void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
+        {
+            ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+            Vector2 p = ImGui.GetCursorScreenPos();
+
+            // Colors (good -> bad). We'll flip which is left/right based on bestAtHigh.
+            Vector4 colGood = new(0.2f, 1.0f, 0.2f, 1.0f); // green
+            Vector4 colBad = new(1.0f, 0.2f, 0.2f, 1.0f); // red
+
+            uint colLeft = ImGui.GetColorU32(bestAtHigh ? colBad : colGood);
+            uint colRight = ImGui.GetColorU32(bestAtHigh ? colGood : colBad);
+
+            Vector2 rectMin = p;
+            Vector2 rectMax = new(p.X + width, p.Y + height);
+
+            // Horizontal gradient (efficient)
+            drawList.AddRectFilledMultiColor(rectMin, rectMax, colLeft, colRight, colRight, colLeft);
+
+            // Outline
+            uint borderCol = ImGui.GetColorU32(ImGuiCol.Border);
+            drawList.AddRect(rectMin, rectMax, borderCol);
+
+            // Tick marks and labels
+            int steps = 4; // 0,25,50,75,100 -> 4 intervals
+            float stepPx = width / steps;
+
+            float tickTop = rectMax.Y;
+            float tickBottom = rectMax.Y + 6f;
+            float labelY = rectMax.Y + 8f;
+
+            for (int i = 0; i <= steps; i++)
+            {
+                float x = rectMin.X + (i * stepPx);
+
+                // Tick line
+                drawList.AddLine(new Vector2(x, tickTop), new Vector2(x, tickBottom), ImGui.GetColorU32(ImGuiCol.Text), 1.0f);
+
+                // Label text (centered)
+                string label = (i * 25).ToString();
+                Vector2 textSize = ImGui.CalcTextSize(label);
+                Vector2 textPos = new(x - (textSize.X * 0.5f), labelY);
+                drawList.AddText(textPos, ImGui.GetColorU32(ImGuiCol.Text), label);
+            }
+
+            // Optional legend text under the bar (centered)
+            string leftLegend = bestAtHigh ? "Best" : "Worst";
+            string rightLegend = bestAtHigh ? "Worst" : "Best";
+            Vector2 leftLegendSize = ImGui.CalcTextSize(leftLegend);
+            Vector2 rightLegendSize = ImGui.CalcTextSize(rightLegend);
+
+            // Place legends near the ends, with a small margin
+            float margin = 2f;
+            Vector2 leftPos = new(rectMin.X + margin, labelY + leftLegendSize.Y + 4f);
+            Vector2 rightPos = new(rectMax.X - rightLegendSize.X - margin, labelY + rightLegendSize.Y + 4f);
+            drawList.AddText(leftPos, ImGui.GetColorU32(ImGuiCol.Text), leftLegend);
+            drawList.AddText(rightPos, ImGui.GetColorU32(ImGuiCol.Text), rightLegend);
+
+            // Advance layout so following widgets don't overlap the bar/labels
+            ImGui.Dummy(new Vector2(width, height + 28f + leftLegendSize.Y));
+        }
+
+
+
+
+
 
 
         [Menu("Searing Exarch", 4000)]

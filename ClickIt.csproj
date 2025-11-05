@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AltarButton.cs" />
+    <Compile Include="AltarModsConstants.cs" />
     <Compile Include="PrimaryAltarComponent.cs" />
     <Compile Include="SecondaryAltarComponent.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
@@ -80,6 +81,9 @@
   <ItemGroup>
     <PackageReference Include="ImGui.NET">
       <Version>1.90.0.1</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>13.0.4</Version>
     </PackageReference>
     <PackageReference Include="Serilog">
       <Version>3.1.1</Version>

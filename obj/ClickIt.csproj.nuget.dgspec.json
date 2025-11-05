@@ -48,6 +48,10 @@
               "target": "Package",
               "version": "[1.90.0.1, )"
             },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.4, )"
+            },
             "Serilog": {
               "target": "Package",
               "version": "[3.1.1, )"
@@ -73,20 +77,6 @@
               "version": "[4.3.1, )"
             }
           }
-        }
-      },
-      "runtimes": {
-        "win": {
-          "#import": []
-        },
-        "win-arm64": {
-          "#import": []
-        },
-        "win-x64": {
-          "#import": []
-        },
-        "win-x86": {
-          "#import": []
         }
       }
     }
