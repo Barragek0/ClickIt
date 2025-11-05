@@ -72,92 +72,128 @@ namespace ClickIt.Services
         public void UpdateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
             Element ElementToExtractDataFrom, ClickIt.AltarType altarType, Action<string, float> logMessage, Action<string, float> logError)
         {
-            string NegativeModType = "";
+            var (negativeModType, mods) = ExtractModsFromElement(ElementToExtractDataFrom, logMessage);
+            var (upsides, downsides) = ProcessMods(mods, negativeModType, logMessage, logError);
+            UpdateAltarComponent(top, altarComponent, ElementToExtractDataFrom, upsides, downsides, logMessage);
+        }
+
+        private (string negativeModType, List<string> mods) ExtractModsFromElement(Element element, Action<string, float> logMessage)
+        {
+            string negativeModType = "";
             List<string> mods = new();
-            List<string> upsides = new();
-            List<string> downsides = new();
 
             if (_settings.DebugMode)
             {
-                logMessage(ElementToExtractDataFrom.GetText(512), 0);
+                logMessage(element.GetText(512), 0);
             }
 
-            string AltarMods = ElementToExtractDataFrom.GetText(512).Replace("<valuedefault>", "").Replace("{", "")
-                .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "").Replace("gain:", "")
-                .Replace("gains:", "");
+            string altarMods = CleanAltarModsText(element.GetText(512));
+            int lineCount = CountLines(element.GetText(512));
 
-            AltarMods = Regex.Replace(AltarMods, @"<rgb\(\d+,\d+,\d+\)>", "");
-
-            for (int i = 0; i < CountLines(ElementToExtractDataFrom.GetText(512)); i++)
+            for (int i = 0; i < lineCount; i++)
             {
+                string line = GetLine(altarMods, i);
                 if (i == 0)
                 {
-                    NegativeModType = GetLine(AltarMods, 0);
+                    negativeModType = line;
                 }
-                else if (GetLine(AltarMods, i) != null)
+                else if (line != null)
                 {
-                    mods.Add(GetLine(AltarMods, i));
+                    mods.Add(line);
                 }
 
                 if (_settings.DebugMode)
                 {
-                    logMessage("Altarmods (" + i + ") Added: " + GetLine(AltarMods, i), 0);
+                    logMessage("Altarmods (" + i + ") Added: " + line, 0);
                 }
             }
 
-            foreach (string mod in mods.ToList())
+            return (negativeModType, mods);
+        }
+
+        private static string CleanAltarModsText(string text)
+        {
+            string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
+                .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
+                .Replace("gain:", "").Replace("gains:", "");
+
+            return Regex.Replace(cleaned, @"<rgb\(\d+,\d+,\d+\)>", "");
+        }
+
+        private (List<string> upsides, List<string> downsides) ProcessMods(List<string> mods, string negativeModType,
+            Action<string, float> logMessage, Action<string, float> logError)
+        {
+            List<string> upsides = new();
+            List<string> downsides = new();
+
+            foreach (string mod in mods)
             {
-                bool found = false;
-                string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
-                string cleanedNegativeModType = new string(NegativeModType.Where(char.IsLetter).ToArray());
-
-                var searchLists = new[]
+                if (TryMatchMod(mod, negativeModType, out bool isUpside, out string matchedId))
                 {
-                    new { List = AltarModsConstants.UpsideMods, IsUpside = true },
-                    new { List = AltarModsConstants.DownsideMods, IsUpside = false }
-                };
+                    if (isUpside)
+                        upsides.Add(matchedId);
+                    else
+                        downsides.Add(matchedId);
 
-                foreach (var searchList in searchLists)
-                {
-                    foreach (var (Id, _, Type, _) in searchList.List)
+                    if (_settings.DebugMode)
                     {
-                        string cleanedId = new string(Id.Where(char.IsLetter).ToArray());
-                        if (cleanedId.Equals(cleanedMod, StringComparison.OrdinalIgnoreCase))
-                        {
-                            string modTarget = "";
-                            if (cleanedNegativeModType.Contains("Mapboss")) modTarget = "Boss";
-                            else if (cleanedNegativeModType.Contains("EldritchMinions")) modTarget = "Minion";
-                            else if (cleanedNegativeModType.Contains("Player")) modTarget = "Player";
-
-                            if (Type.Equals(modTarget, StringComparison.OrdinalIgnoreCase))
-                            {
-                                if (searchList.IsUpside)
-                                {
-                                    upsides.Add(Id);
-                                }
-                                else
-                                {
-                                    downsides.Add(Id);
-                                }
-                                found = true;
-
-                                if (_settings.DebugMode)
-                                {
-                                    logMessage($"Added {(searchList.IsUpside ? "upside" : "downside")}: {Id} (Type: {Type})", 0);
-                                }
-                                break;
-                            }
-                        }
+                        logMessage($"Added {(isUpside ? "upside" : "downside")}: {matchedId}", 0);
                     }
-                    if (found) break;
                 }
-
-                if (!found && _settings.DebugMode)
+                else if (_settings.DebugMode)
                 {
-                    logError($"updateComponentFromElementData: Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{NegativeModType}'", 10);
+                    string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
+                    logError($"updateComponentFromElementData: Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{negativeModType}'", 10);
                 }
             }
 
+            return (upsides, downsides);
+        }
+
+        private static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
+        {
+            isUpside = false;
+            matchedId = string.Empty;
+
+            string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
+            string cleanedNegativeModType = new string(negativeModType.Where(char.IsLetter).ToArray());
+            string modTarget = GetModTarget(cleanedNegativeModType);
+
+            var searchLists = new[]
+            {
+                new { List = AltarModsConstants.UpsideMods, IsUpside = true },
+                new { List = AltarModsConstants.DownsideMods, IsUpside = false }
+            };
+
+            foreach (var searchList in searchLists)
+            {
+                foreach (var (Id, _, Type, _) in searchList.List)
+                {
+                    string cleanedId = new string(Id.Where(char.IsLetter).ToArray());
+                    if (cleanedId.Equals(cleanedMod, StringComparison.OrdinalIgnoreCase) &&
+                        Type.Equals(modTarget, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isUpside = searchList.IsUpside;
+                        matchedId = Id;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static string GetModTarget(string cleanedNegativeModType)
+        {
+            if (cleanedNegativeModType.Contains("Mapboss")) return "Boss";
+            if (cleanedNegativeModType.Contains("EldritchMinions")) return "Minion";
+            if (cleanedNegativeModType.Contains("Player")) return "Player";
+            return "";
+        }
+
+        private void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element element,
+            List<string> upsides, List<string> downsides, Action<string, float> logMessage)
+        {
             if (_settings.DebugMode)
             {
                 logMessage("Setting up altar component", 0);
@@ -165,30 +201,27 @@ namespace ClickIt.Services
 
             if (top)
             {
-                altarComponent.TopButton = new AltarButton(ElementToExtractDataFrom.Parent);
-                altarComponent.TopMods = new SecondaryAltarComponent(ElementToExtractDataFrom, upsides, downsides);
-                if (_settings.DebugMode)
-                {
-                    logMessage("Updated top altar component: " + altarComponent.TopMods, 0);
-                    logMessage("Upside1: " + altarComponent.TopMods.FirstUpside, 0);
-                    logMessage("Upside2: " + altarComponent.TopMods.SecondUpside, 0);
-                    logMessage("Downside1: " + altarComponent.TopMods.FirstDownside, 0);
-                    logMessage("Downside2: " + altarComponent.TopMods.SecondDownside, 0);
-                }
+                altarComponent.TopButton = new AltarButton(element.Parent);
+                altarComponent.TopMods = new SecondaryAltarComponent(element, upsides, downsides);
+                LogAltarComponentDetails("top", altarComponent.TopMods, logMessage);
             }
             else
             {
-                altarComponent.BottomButton = new AltarButton(ElementToExtractDataFrom.Parent);
-                altarComponent.BottomMods = new SecondaryAltarComponent(ElementToExtractDataFrom, upsides, downsides);
-                if (_settings.DebugMode)
-                {
-                    logMessage("Updated bottom altar component: " + altarComponent.BottomMods, 0);
-                    logMessage("Upside1: " + altarComponent.BottomMods.FirstUpside, 0);
-                    logMessage("Upside2: " + altarComponent.BottomMods.SecondUpside, 0);
-                    logMessage("Downside1: " + altarComponent.BottomMods.FirstDownside, 0);
-                    logMessage("Downside2: " + altarComponent.BottomMods.SecondDownside, 0);
-                }
+                altarComponent.BottomButton = new AltarButton(element.Parent);
+                altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides);
+                LogAltarComponentDetails("bottom", altarComponent.BottomMods, logMessage);
             }
+        }
+
+        private void LogAltarComponentDetails(string position, SecondaryAltarComponent mods, Action<string, float> logMessage)
+        {
+            if (!_settings.DebugMode) return;
+
+            logMessage($"Updated {position} altar component: " + mods, 0);
+            logMessage("Upside1: " + mods.FirstUpside, 0);
+            logMessage("Upside2: " + mods.SecondUpside, 0);
+            logMessage("Downside1: " + mods.FirstDownside, 0);
+            logMessage("Downside2: " + mods.SecondDownside, 0);
         }
 
         private static string GetLine(string text, int lineNo)
