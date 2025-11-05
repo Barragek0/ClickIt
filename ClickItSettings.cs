@@ -142,250 +142,262 @@ namespace ClickIt
         public ClickItSettings()
         {
             InitializeDefaultWeights();
+            AltarModWeights = new CustomNode { DrawDelegate = DrawAltarModWeights };
+        }
 
-            AltarModWeights = new CustomNode
+        private void DrawAltarModWeights()
+        {
+            DrawUpsideModsSection();
+            DrawDownsideModsSection();
+        }
+
+        private void DrawUpsideModsSection()
+        {
+            if (!ImGui.TreeNode("Altar Upside Mods")) return;
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            ImGui.TextWrapped("Weight Scale:");
+            DrawWeightScale(bestAtHigh: true);
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            DrawSearchBar("##UpsideSearch", "Clear##UpsideClear", ref upsideSearchFilter);
+
+            ImGui.Spacing();
+
+            DrawUpsideModsTable();
+            ImGui.TreePop();
+        }
+
+        private void DrawDownsideModsSection()
+        {
+            if (!ImGui.TreeNode("Altar Downside Mods")) return;
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            ImGui.TextWrapped("Weight Scale (Higher = More Dangerous):");
+            DrawWeightScale(bestAtHigh: false);
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            DrawSearchBar("##DownsideSearch", "Clear##DownsideClear", ref downsideSearchFilter);
+
+            ImGui.Spacing();
+
+            DrawDownsideModsTable();
+            ImGui.TreePop();
+        }
+
+        private static void DrawSearchBar(string searchId, string clearId, ref string searchFilter)
+        {
+            ImGui.SetNextItemWidth(300);
+            ImGui.InputTextWithHint(searchId, "Search", ref searchFilter, 256);
+            ImGui.SameLine();
+            if (ImGui.Button(clearId))
             {
-                DrawDelegate = () =>
-                {
-                    if (ImGui.TreeNode("Altar Upside Mods"))
-                    {
-                        ImGui.Spacing();
-                        ImGui.Spacing();
+                searchFilter = "";
+            }
+        }
 
-                        ImGui.TextWrapped("Weight Scale:");
-                        DrawWeightScale(bestAtHigh: true);
+        private void DrawUpsideModsTable()
+        {
+            if (!ImGui.BeginTable("UpsideModsConfig", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
+                return;
 
-                        ImGui.Spacing();
-                        ImGui.Spacing();
+            SetupModTableColumns();
 
-                        // Search bar
-                        ImGui.SetNextItemWidth(300);
-                        ImGui.InputTextWithHint("##UpsideSearch", "Search", ref upsideSearchFilter, 256);
-                        ImGui.SameLine();
-                        if (ImGui.Button("Clear##UpsideClear"))
-                        {
-                            upsideSearchFilter = "";
-                        }
+            string currentSection = "";
+            foreach ((string id, string name, string type, int _) in AltarModsConstants.UpsideMods)
+            {
+                if (!MatchesSearchFilter(name, type, upsideSearchFilter))
+                    continue;
 
-                        ImGui.Spacing();
+                string sectionHeader = GetUpsideSectionHeader(type);
+                DrawSectionHeaderIfNeeded(ref currentSection, sectionHeader, type);
+                DrawUpsideModRow(id, name, type);
+            }
 
-                        if (ImGui.BeginTable("UpsideModsConfig", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
-                        {
-                            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 100);
-                            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 800);
-                            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 75);
-                            ImGui.TableHeadersRow();
+            ImGui.EndTable();
+        }
 
-                            string currentSection = "";
+        private void DrawDownsideModsTable()
+        {
+            if (!ImGui.BeginTable("DownsideModsConfig", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
+                return;
 
-                            foreach ((string id, string name, string type, int _) in AltarModsConstants.UpsideMods)
-                            {
-                                bool matchesSearch = string.IsNullOrEmpty(upsideSearchFilter) ||
-                                                   name.ToLower().Contains(upsideSearchFilter.ToLower()) ||
-                                                   type.ToLower().Contains(upsideSearchFilter.ToLower());
+            SetupModTableColumns();
 
-                                if (!matchesSearch) continue;
+            string lastProcessedSection = "";
+            foreach ((string id, string name, string type, int defaultWeight) in AltarModsConstants.DownsideMods)
+            {
+                if (!MatchesSearchFilter(name, type, downsideSearchFilter))
+                    continue;
 
-                                // Determine section based on mod type
-                                string sectionHeader = type switch
-                                {
-                                    "Minion" => "Minion Drops",
-                                    "Boss" => "Boss Drops",
-                                    "Player" => "Player Bonuses",
-                                    _ => ""
-                                };
+                string sectionHeader = GetDownsideSectionHeader(defaultWeight);
+                DrawDownsideSectionHeaderIfNeeded(ref lastProcessedSection, sectionHeader);
+                DrawDownsideModRow(id, name, type, sectionHeader);
+            }
 
-                                if (!string.IsNullOrEmpty(sectionHeader) && sectionHeader != currentSection)
-                                {
-                                    currentSection = sectionHeader;
+            ImGui.EndTable();
+        }
 
-                                    ImGui.TableNextRow(ImGuiTableRowFlags.None);
-                                    ImGui.TableNextColumn();
-                                    Vector4 headerColor = type switch
-                                    {
-                                        "Minion" => new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                                        "Boss" => new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
-                                        "Player" => new Vector4(0.2f, 0.2f, 0.6f, 0.3f),
-                                        _ => new Vector4(0.4f, 0.4f, 0.4f, 0.3f)
-                                    };
+        private static void SetupModTableColumns()
+        {
+            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 100);
+            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 800);
+            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 75);
+            ImGui.TableHeadersRow();
+        }
 
-                                    ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(headerColor));
+        private static bool MatchesSearchFilter(string name, string type, string filter)
+        {
+            return string.IsNullOrEmpty(filter) ||
+                   name.ToLower().Contains(filter.ToLower()) ||
+                   type.ToLower().Contains(filter.ToLower());
+        }
 
-                                    ImGui.Text(""); // Empty weight column for header
-                                    ImGui.TableNextColumn();
-                                    ImGui.Text($"{sectionHeader}");
-                                }
+        private static string GetUpsideSectionHeader(string type)
+        {
+            return type switch
+            {
+                "Minion" => "Minion Drops",
+                "Boss" => "Boss Drops",
+                "Player" => "Player Bonuses",
+                _ => ""
+            };
+        }
 
-                                ImGui.PushID($"upside_{id}");
-                                ImGui.TableNextRow(ImGuiTableRowFlags.None);
-                                _ = ImGui.TableNextColumn();
-                                ImGui.SetNextItemWidth(100);
-                                int currentValue = GetModTier(id);
-                                if (ImGui.SliderInt($"", ref currentValue, 1, 100))
-                                {
-                                    ModTiers[id] = currentValue;
-                                }
-                                ImGui.SetNextItemWidth(1000);
-                                _ = ImGui.TableNextColumn();
+        private static string GetDownsideSectionHeader(int defaultWeight)
+        {
+            return defaultWeight switch
+            {
+                100 => "Common Build Bricking Modifiers",
+                >= 70 => "Very Dangerous Modifiers",
+                >= 40 => "Dangerous Modifiers",
+                >= 2 => "Ok Modifiers",
+                _ => "Free Modifiers"
+            };
+        }
 
-                                Vector4 textColor = type switch
-                                {
-                                    "Minion" => new Vector4(0.4f, 0.8f, 0.4f, 1.0f),
-                                    "Boss" => new Vector4(0.8f, 0.4f, 0.4f, 1.0f),
-                                    "Player" => new Vector4(0.4f, 0.7f, 0.9f, 1.0f),
-                                    _ => new Vector4(1.0f, 1.0f, 1.0f, 1.0f)
-                                };
+        private static void DrawSectionHeaderIfNeeded(ref string currentSection, string sectionHeader, string type)
+        {
+            if (string.IsNullOrEmpty(sectionHeader) || sectionHeader == currentSection)
+                return;
 
-                                ImGui.TextColored(textColor, name);
+            currentSection = sectionHeader;
+            DrawUpsideSectionHeader(sectionHeader, type);
+        }
 
-                                // Third column - Type
-                                _ = ImGui.TableNextColumn();
-                                ImGui.Text(type);
+        private static void DrawUpsideSectionHeader(string sectionHeader, string type)
+        {
+            ImGui.TableNextRow(ImGuiTableRowFlags.None);
+            ImGui.TableNextColumn();
 
-                                ImGui.PopID();
-                            }
-
-                            ImGui.EndTable();
-                        }
-
-                        ImGui.TreePop();
-                    }
-
-                    if (ImGui.TreeNode("Altar Downside Mods"))
-                    {
-                        ImGui.Spacing();
-                        ImGui.Spacing();
-
-                        ImGui.TextWrapped("Weight Scale (Higher = More Dangerous):");
-                        DrawWeightScale(bestAtHigh: false); // Red → Green (100 = Worst)
-
-                        ImGui.Spacing();
-                        ImGui.Spacing();
-
-                        // Search bar
-                        ImGui.SetNextItemWidth(300);
-                        ImGui.InputTextWithHint("##DownsideSearch", "Search", ref downsideSearchFilter, 256);
-                        ImGui.SameLine();
-                        if (ImGui.Button("Clear##DownsideClear"))
-                        {
-                            downsideSearchFilter = "";
-                        }
-
-                        ImGui.Spacing();
-
-                        if (ImGui.BeginTable("DownsideModsConfig", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
-                        {
-                            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 100);
-                            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 800);
-                            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 75);
-                            ImGui.TableHeadersRow();
-
-                            string lastProcessedSection = "";
-                            int modIndex = 0;
-
-                            foreach ((string id, string name, string type, int defaultWeight) in AltarModsConstants.DownsideMods)
-                            {
-                                // Check if this matches the search filter
-                                bool matchesSearch = string.IsNullOrEmpty(downsideSearchFilter) ||
-                                                   name.ToLower().Contains(downsideSearchFilter.ToLower()) ||
-                                                   type.ToLower().Contains(downsideSearchFilter.ToLower());
-
-                                if (!matchesSearch) continue;
-
-                                // Determine section header based on the weight (simplified to 5 categories only)
-                                string sectionHeader = "";
-
-                                // Use the weight to determine category - all modifiers go into these 5 categories regardless of type
-                                if (defaultWeight == 100)
-                                {
-                                    sectionHeader = "Common Build Bricking Modifiers";
-                                }
-                                else if (defaultWeight >= 70)
-                                {
-                                    sectionHeader = "Very Dangerous Modifiers";
-                                }
-                                else if (defaultWeight >= 40)
-                                {
-                                    sectionHeader = "Dangerous Modifiers";
-                                }
-                                else if (defaultWeight >= 2)
-                                {
-                                    sectionHeader = "Ok Modifiers";
-                                }
-                                else
-                                {
-                                    sectionHeader = "Free Modifiers";
-                                }
-
-                                // Draw section header if we have one and it's different from the last
-                                if (!string.IsNullOrEmpty(sectionHeader) && sectionHeader != lastProcessedSection)
-                                {
-                                    lastProcessedSection = sectionHeader;
-
-                                    // Section header row with colored background
-                                    ImGui.TableNextRow(ImGuiTableRowFlags.None);
-                                    ImGui.TableNextColumn();
-
-                                    // Color the header based on danger level
-                                    Vector4 headerColor = sectionHeader switch
-                                    {
-                                        "Build Bricking Modifiers" => new Vector4(1.0f, 0.0f, 0.0f, 0.6f),  // Bright red - extremely dangerous
-                                        "Very Dangerous Modifiers" => new Vector4(0.9f, 0.1f, 0.1f, 0.5f),          // Red - very dangerous
-                                        "Dangerous Modifiers" => new Vector4(1.0f, 0.5f, 0.0f, 0.4f),               // Orange - dangerous
-                                        "Ok Modifiers" => new Vector4(1.0f, 1.0f, 0.0f, 0.3f),                      // Yellow - manageable
-                                        "Free Modifiers" => new Vector4(0.0f, 0.7f, 0.0f, 0.3f),                    // Green - easy/beneficial
-                                        _ => new Vector4(0.4f, 0.4f, 0.4f, 0.3f)                                     // Gray default
-                                    };
-
-                                    ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(headerColor));
-
-                                    ImGui.Text(""); // Empty weight column for header
-                                    ImGui.TableNextColumn();
-                                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), sectionHeader);
-                                }
-
-                                // Regular mod row
-                                ImGui.PushID($"downside_{id}");
-                                ImGui.TableNextRow(ImGuiTableRowFlags.None);
-                                _ = ImGui.TableNextColumn();
-                                ImGui.SetNextItemWidth(100);
-                                int currentValue = GetModTier(id);
-                                if (ImGui.SliderInt($"", ref currentValue, 1, 100))
-                                {
-                                    ModTiers[id] = currentValue;
-                                }
-                                ImGui.SetNextItemWidth(1000);
-                                _ = ImGui.TableNextColumn();
-
-                                // Color the mod name based on danger level
-                                Vector4 textColor = sectionHeader switch
-                                {
-                                    "Build Bricking Modifiers" => new Vector4(1.0f, 0.2f, 0.2f, 1.0f),  // Bright red text
-                                    "Very Dangerous Modifiers" => new Vector4(1.0f, 0.4f, 0.4f, 1.0f),         // Light red text
-                                    "Dangerous Modifiers" => new Vector4(1.0f, 0.7f, 0.3f, 1.0f),              // Orange text
-                                    "Ok Modifiers" => new Vector4(1.0f, 1.0f, 0.5f, 1.0f),                     // Yellow text
-                                    "Free Modifiers" => new Vector4(0.5f, 1.0f, 0.5f, 1.0f),                   // Green text
-                                    _ => new Vector4(1.0f, 1.0f, 1.0f, 1.0f)                                    // White default
-                                };
-
-                                ImGui.TextColored(textColor, name);
-
-                                // Third column - Type
-                                _ = ImGui.TableNextColumn();
-                                ImGui.Text(type);
-
-                                ImGui.PopID();
-                                modIndex++;
-                            }
-
-                            ImGui.EndTable();
-                        }
-
-                        ImGui.TreePop();
-                    }
-                }
+            Vector4 headerColor = type switch
+            {
+                "Minion" => new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                "Boss" => new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                "Player" => new Vector4(0.2f, 0.2f, 0.6f, 0.3f),
+                _ => new Vector4(0.4f, 0.4f, 0.4f, 0.3f)
             };
 
+            ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(headerColor));
+            ImGui.Text("");
+            ImGui.TableNextColumn();
+            ImGui.Text($"{sectionHeader}");
+        }
+
+        private static void DrawDownsideSectionHeaderIfNeeded(ref string lastProcessedSection, string sectionHeader)
+        {
+            if (string.IsNullOrEmpty(sectionHeader) || sectionHeader == lastProcessedSection)
+                return;
+
+            lastProcessedSection = sectionHeader;
+            DrawDownsideSectionHeader(sectionHeader);
+        }
+
+        private static void DrawDownsideSectionHeader(string sectionHeader)
+        {
+            ImGui.TableNextRow(ImGuiTableRowFlags.None);
+            ImGui.TableNextColumn();
+
+            Vector4 headerColor = sectionHeader switch
+            {
+                "Build Bricking Modifiers" => new Vector4(1.0f, 0.0f, 0.0f, 0.6f),
+                "Very Dangerous Modifiers" => new Vector4(0.9f, 0.1f, 0.1f, 0.5f),
+                "Dangerous Modifiers" => new Vector4(1.0f, 0.5f, 0.0f, 0.4f),
+                "Ok Modifiers" => new Vector4(1.0f, 1.0f, 0.0f, 0.3f),
+                "Free Modifiers" => new Vector4(0.0f, 0.7f, 0.0f, 0.3f),
+                _ => new Vector4(0.4f, 0.4f, 0.4f, 0.3f)
+            };
+
+            ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(headerColor));
+            ImGui.Text("");
+            ImGui.TableNextColumn();
+            ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), sectionHeader);
+        }
+
+        private void DrawUpsideModRow(string id, string name, string type)
+        {
+            ImGui.PushID($"upside_{id}");
+            ImGui.TableNextRow(ImGuiTableRowFlags.None);
+            _ = ImGui.TableNextColumn();
+            ImGui.SetNextItemWidth(100);
+            int currentValue = GetModTier(id);
+            if (ImGui.SliderInt($"", ref currentValue, 1, 100))
+            {
+                ModTiers[id] = currentValue;
+            }
+            ImGui.SetNextItemWidth(1000);
+            _ = ImGui.TableNextColumn();
+
+            Vector4 textColor = type switch
+            {
+                "Minion" => new Vector4(0.4f, 0.8f, 0.4f, 1.0f),
+                "Boss" => new Vector4(0.8f, 0.4f, 0.4f, 1.0f),
+                "Player" => new Vector4(0.4f, 0.7f, 0.9f, 1.0f),
+                _ => new Vector4(1.0f, 1.0f, 1.0f, 1.0f)
+            };
+
+            ImGui.TextColored(textColor, name);
+            _ = ImGui.TableNextColumn();
+            ImGui.Text(type);
+            ImGui.PopID();
+        }
+
+        private void DrawDownsideModRow(string id, string name, string type, string sectionHeader)
+        {
+            ImGui.PushID($"downside_{id}");
+            ImGui.TableNextRow(ImGuiTableRowFlags.None);
+            _ = ImGui.TableNextColumn();
+            ImGui.SetNextItemWidth(100);
+            int currentValue = GetModTier(id);
+            if (ImGui.SliderInt($"", ref currentValue, 1, 100))
+            {
+                ModTiers[id] = currentValue;
+            }
+            ImGui.SetNextItemWidth(1000);
+            _ = ImGui.TableNextColumn();
+
+            Vector4 textColor = sectionHeader switch
+            {
+                "Build Bricking Modifiers" => new Vector4(1.0f, 0.2f, 0.2f, 1.0f),
+                "Very Dangerous Modifiers" => new Vector4(1.0f, 0.4f, 0.4f, 1.0f),
+                "Dangerous Modifiers" => new Vector4(1.0f, 0.7f, 0.3f, 1.0f),
+                "Ok Modifiers" => new Vector4(1.0f, 1.0f, 0.5f, 1.0f),
+                "Free Modifiers" => new Vector4(0.5f, 1.0f, 0.5f, 1.0f),
+                _ => new Vector4(1.0f, 1.0f, 1.0f, 1.0f)
+            };
+
+            ImGui.TextColored(textColor, name);
+            _ = ImGui.TableNextColumn();
+            ImGui.Text(type);
+            ImGui.PopID();
         }
 
         internal void InitializeDefaultWeights()
