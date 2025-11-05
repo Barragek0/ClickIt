@@ -7,7 +7,6 @@ on:
     branches: [ main ]
 
 env:
-  DOTNET_VERSION: '8.0.x'
   BUILD_CONFIGURATION: 'Debug'
 
 jobs:
@@ -18,27 +17,37 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup .NET
+    - name: Setup .NET Framework
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+        dotnet-version: '8.0.x'
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
         
-    - name: Restore dependencies
-      run: dotnet restore ClickIt.sln
+    - name: Restore NuGet packages for main project
+      run: nuget restore ClickIt.sln
+      
+    - name: Restore test project dependencies
+      run: dotnet restore Tests\ClickIt.Tests.csproj
       
     - name: Build solution
-      run: dotnet build ClickIt.sln --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+      run: msbuild ClickIt.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /verbosity:minimal
+      
+    - name: Build test project
+      run: msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /verbosity:minimal
       
     - name: Run tests
       run: |
-        dotnet test Tests/ClickIt.Tests.csproj `
+        dotnet test Tests\ClickIt.Tests.csproj `
           --configuration ${{ env.BUILD_CONFIGURATION }} `
           --no-build `
           --verbosity normal `
           --logger "trx;LogFileName=ClickIt.Tests.trx" `
-          --results-directory TestResults `
-          --collect:"XPlat Code Coverage" `
-          --settings runsettings.xml
+          --results-directory TestResults
       
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -73,17 +82,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup .NET
+    - name: Setup .NET Framework
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+        dotnet-version: '8.0.x'
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+        
+    - name: Restore NuGet packages
+      run: nuget restore ClickIt.sln
         
     - name: Run code analysis
       run: |
-        dotnet build ClickIt.sln --configuration ${{ env.BUILD_CONFIGURATION }} `
-          --verbosity normal `
-          -p:RunAnalyzersDuringBuild=true `
-          -p:TreatWarningsAsErrors=false
+        msbuild ClickIt.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} `
+          /p:Platform="Any CPU" `
+          /verbosity:normal `
+          /p:RunAnalyzersDuringBuild=true `
+          /p:TreatWarningsAsErrors=false
           
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
