@@ -13,10 +13,10 @@ namespace ClickIt
             this.BottomButton = BottomButton;
         }
 
-        public AltarType AltarType;
-        public SecondaryAltarComponent TopMods;
-        public AltarButton TopButton;
-        public SecondaryAltarComponent BottomMods;
-        public AltarButton BottomButton;
+        public AltarType AltarType { get; set; }
+        public SecondaryAltarComponent TopMods { get; set; }
+        public AltarButton TopButton { get; set; }
+        public SecondaryAltarComponent BottomMods { get; set; }
+        public AltarButton BottomButton { get; set; }
     }
 }
