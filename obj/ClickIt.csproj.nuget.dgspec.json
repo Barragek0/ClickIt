@@ -1,28 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj": {}
+    "/home/runner/work/ClickIt/ClickIt/ClickIt.csproj": {}
   },
   "projects": {
-    "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj": {
+    "/home/runner/work/ClickIt/ClickIt/ClickIt.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
+        "projectUniqueName": "/home/runner/work/ClickIt/ClickIt/ClickIt.csproj",
         "projectName": "ClickIt",
-        "projectPath": "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\ClickIt.csproj",
-        "packagesPath": "C:\\Users\\Alex\\.nuget\\packages\\",
-        "outputPath": "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\obj\\",
+        "projectPath": "/home/runner/work/ClickIt/ClickIt/ClickIt.csproj",
+        "packagesPath": "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages",
+        "outputPath": "/home/runner/work/ClickIt/ClickIt/obj/",
         "projectStyle": "PackageReference",
         "skipContentFileWrite": true,
         "UsingMicrosoftNETSdk": false,
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\1.Path stuff\\GithubRepositories\\ClickIt\\NuGet.Config",
-          "C:\\Users\\Alex\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/home/runner/work/ClickIt/ClickIt/nuget.config",
+          "/home/runner/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net48"
