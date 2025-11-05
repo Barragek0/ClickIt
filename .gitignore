@@ -17,6 +17,4 @@ bld/
 *.suo
 *.sln
 .vscode/settings.json
-obj/ClickIt.csproj.nuget.dgspec.json
-obj/project.assets.json
-obj/project.nuget.cache
+obj/*
