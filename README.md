@@ -8,9 +8,8 @@ ClickIt is an automation plugin for Path of Exile that streamlines gameplay by i
 
 ### Key Features
 - **Interaction**: Picks up items, opens chests, strongboxes, and league mechanic containers. Clicks and corrupts essences. Clicks shrines, area transitions, crafting recipes and more
-- **Altar Optimization**: Advanced eater / exarch altar selection system that evaluates and chooses optimal altar modifiers based on configurable weights and gameplay impact
+- **Pinnacle Altars**: Advanced eater / exarch altar selection system that evaluates and chooses optimal altar modifiers based on configurable weights and gameplay impact
 - **Performance Focused**: Optimized for minimal game impact with efficient caching and coroutine-based processing
-- **Safety Features**: Includes UI avoidance zones to prevent accidental clicks on health globes, skill bars, and other critical interface elements
 
 ### How It Works
 
