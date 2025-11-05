@@ -11,9 +11,9 @@ namespace ClickIt
             this.Upsides = upsides;
             this.Downsides = downsides;
         }
-        public Element Element;
-        public List<string> Upsides;
-        public List<string> Downsides;
+        public Element Element { get; set; }
+        public List<string> Upsides { get; set; }
+        public List<string> Downsides { get; set; }
         public string FirstUpside => Upsides.Count > 0 ? Upsides[0] : "";
         public string SecondUpside => Upsides.Count > 1 ? Upsides[1] : "";
         public string FirstDownside => Downsides.Count > 0 ? Downsides[0] : "";
