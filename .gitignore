@@ -15,7 +15,6 @@ bld/
 /.vs/SimplePickIt/v16/.suo
 /packages.config
 *.suo
-*.sln
 .vscode/settings.json
 obj/*
 /TestResults
