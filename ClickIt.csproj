@@ -71,6 +71,14 @@
     <Compile Include="ClickIt.cs" />
     <Compile Include="ClickItSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\AltarService.cs" />
+    <Compile Include="Services\LabelFilterService.cs" />
+    <Compile Include="Services\ElementService.cs" />
+    <Compile Include="Services\AltarWeightCalculator.cs" />
+    <Compile Include="Services\EssenceService.cs" />
+    <Compile Include="Services\AreaService.cs" />
+    <Compile Include="Rendering\AltarRenderer.cs" />
+    <Compile Include="Input\InputHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />

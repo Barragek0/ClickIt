@@ -36,7 +36,7 @@ namespace ClickIt
         public EmptyNode Click { get; set; } = new EmptyNode();
 
         [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
-        [System.Obsolete]
+        [System.Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
 
         [Menu("Search Radius", "Radius the plugin will search in for interactable objects.", 1, 3000)]
@@ -89,7 +89,7 @@ namespace ClickIt
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
 
         [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 19, 3000)]
-        [System.Obsolete]
+        [System.Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
 
 
@@ -178,7 +178,7 @@ namespace ClickIt
 
                             string currentSection = "";
 
-                            foreach ((string id, string name, string type, int defaultValue) in AltarModsConstants.UpsideMods)
+                            foreach ((string id, string name, string type, int _) in AltarModsConstants.UpsideMods)
                             {
                                 bool matchesSearch = string.IsNullOrEmpty(upsideSearchFilter) ||
                                                    name.ToLower().Contains(upsideSearchFilter.ToLower()) ||
@@ -419,7 +419,7 @@ namespace ClickIt
             return ModTiers.TryGetValue(modId ?? "", out int value) ? value : 1;
         }
 
-        public Dictionary<string, int> ModTiers = new Dictionary<string, int>();
+        public Dictionary<string, int> ModTiers { get; set; } = new Dictionary<string, int>();
 
         private static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
         {
@@ -451,7 +451,7 @@ namespace ClickIt
             float tickBottom = rectMax.Y + 6f;
             float labelY = rectMax.Y + 8f;
 
-            for (int i = 1; i <= steps; i++)
+            for (int i = 0; i <= steps; i++)
             {
                 float x = rectMin.X + (i * stepPx);
 
@@ -459,7 +459,7 @@ namespace ClickIt
                 drawList.AddLine(new Vector2(x, tickTop), new Vector2(x, tickBottom), ImGui.GetColorU32(ImGuiCol.Text), 1.0f);
 
                 // Label text (centered)
-                string label = (i * 25 == 0 ? 1 : i * 25).ToString();
+                string label = (i == 0 ? 1 : i * 25).ToString();
                 Vector2 textSize = ImGui.CalcTextSize(label);
                 Vector2 textPos = new(x - (textSize.X * 0.5f), labelY);
                 drawList.AddText(textPos, ImGui.GetColorU32(ImGuiCol.Text), label);
