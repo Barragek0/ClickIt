@@ -154,10 +154,6 @@ namespace ClickIt
                                 ImGui.SetNextItemWidth(1000);
                                 _ = ImGui.TableNextColumn();
                                 ImGui.Text(name);
-                                //_ = ImGui.TableNextColumn();
-                                //ImGui.Text(type);
-                                //ImGui.SetNextItemWidth(50);
-                                //_ = ImGui.TableNextColumn();
 
                                 ImGui.PopID();
                             }
@@ -198,10 +194,6 @@ namespace ClickIt
                                 ImGui.SetNextItemWidth(1000);
                                 _ = ImGui.TableNextColumn();
                                 ImGui.Text(name);
-                                //_ = ImGui.TableNextColumn();
-                                //ImGui.Text(type);
-                                //ImGui.SetNextItemWidth(50);
-                                //_ = ImGui.TableNextColumn();
 
                                 ImGui.PopID();
                             }
@@ -224,9 +216,7 @@ namespace ClickIt
         public Dictionary<string, int> ModTiers = [];
 
 
-        // Requires: using System.Numerics; using ImGuiNET;
-
-        private void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
+        private static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
         {
             ImDrawListPtr drawList = ImGui.GetWindowDrawList();
             Vector2 p = ImGui.GetCursorScreenPos();
