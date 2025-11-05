@@ -261,8 +261,8 @@ namespace ClickIt
             }
 
             // Optional legend text under the bar (centered)
-            string leftLegend = bestAtHigh ? "Best" : "Worst";
-            string rightLegend = bestAtHigh ? "Worst" : "Best";
+            string leftLegend = bestAtHigh ? "Worst" : "Best";
+            string rightLegend = bestAtHigh ? "Best" : "Worst";
             Vector2 leftLegendSize = ImGui.CalcTextSize(leftLegend);
             Vector2 rightLegendSize = ImGui.CalcTextSize(rightLegend);
 
