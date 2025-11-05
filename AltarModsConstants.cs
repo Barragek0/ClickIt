@@ -44,6 +44,7 @@ namespace ClickIt
             ("Nearby Enemies Gain #% of their Physical Damage as Extra Lightning Damage", "Nearby Enemies Gain 100%% of their Physical Damage as Extra Lightning Damage", Player, 50),
             ("Damage Penetrates #% of Enemy Elemental Resistances", "Damage Penetrates (15-25)%% of Enemy Elemental Resistances", "Boss", 45),
             ("Gain #% of Physical Damage as Extra Damage of a random Element", "Gain (50-80)%% of Physical Damage as Extra Damage of a random Element", "Boss", 45),
+            ("Gain #% of Physical Damage as Extra Damage of a random Element", "Gain (?-?)%% of Physical Damage as Extra Damage of a random Element", Minion, 45),
             ("-# to Armour", "-3000 to Armour", Player, 45),
             ("-# to Evasion Rating", "-3000 to Evasion Rating", Player, 45),
             ("#% chance to be targeted by a Meteor when you use a Flask", "30%% chance to be targeted by a Meteor when you use a Flask", Player, 40),

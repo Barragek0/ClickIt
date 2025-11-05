@@ -88,20 +88,20 @@ namespace ClickIt.Tests
         public void DownsideMods_ShouldHaveUniqueIds()
         {
             // Act
-            var ids = AltarModsConstants.DownsideMods.Select(mod => mod.Id);
+            var idTypePairs = AltarModsConstants.DownsideMods.Select(mod => new { mod.Id, mod.Type });
 
             // Assert
-            ids.Should().OnlyHaveUniqueItems("Downside mod IDs should be unique");
+            idTypePairs.Should().OnlyHaveUniqueItems("Downside mod (ID, Type) pairs should be unique");
         }
 
         [TestMethod]
         public void UpsideMods_ShouldHaveUniqueIds()
         {
             // Act
-            var ids = AltarModsConstants.UpsideMods.Select(mod => mod.Id);
+            var idTypePairs = AltarModsConstants.UpsideMods.Select(mod => new { mod.Id, mod.Type });
 
             // Assert
-            ids.Should().OnlyHaveUniqueItems("Upside mod IDs should be unique");
+            idTypePairs.Should().OnlyHaveUniqueItems("Upside mod (ID, Type) pairs should be unique");
         }
 
         [TestMethod]

@@ -239,7 +239,7 @@ namespace ClickIt.Services
         public void ProcessAltarScanningLogic(Action<string, float> logMessage, Action<string, float> logError)
         {
             List<LabelOnGround> altarLabels = CollectAltarLabels();
-            
+
             if (altarLabels.Count == 0)
             {
                 ClearAltarComponents();
@@ -333,7 +333,7 @@ namespace ClickIt.Services
             }
         }
 
-        private ClickIt.AltarType DetermineAltarType(string path)
+        private static ClickIt.AltarType DetermineAltarType(string path)
         {
             if (path.Contains(CleansingFireAltar))
                 return ClickIt.AltarType.SearingExarch;
@@ -368,7 +368,7 @@ namespace ClickIt.Services
 
         private bool IsValidAltarComponent(PrimaryAltarComponent altarComponent, Action<string, float> logError)
         {
-            bool isValid = altarComponent.TopMods != null && altarComponent.TopButton != null && 
+            bool isValid = altarComponent.TopMods != null && altarComponent.TopButton != null &&
                           altarComponent.BottomMods != null && altarComponent.BottomButton != null;
 
             if (!isValid && _settings.DebugMode)
