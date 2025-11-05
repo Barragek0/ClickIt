@@ -1,20 +1,20 @@
 {
   "version": 2,
-  "dgSpecHash": "cIVvZ/DE2/w=",
+  "dgSpecHash": "e5t8BbDw0f8=",
   "success": true,
   "projectFilePath": "/home/runner/work/ClickIt/ClickIt/ClickIt.csproj",
   "expectedPackageFiles": [
-    "/home/runner/.nuget/packages/imgui.net/1.90.0.1/imgui.net.1.90.0.1.nupkg.sha512",
-    "/home/runner/.nuget/packages/newtonsoft.json/13.0.4/newtonsoft.json.13.0.4.nupkg.sha512",
-    "/home/runner/.nuget/packages/serilog/3.1.1/serilog.3.1.1.nupkg.sha512",
-    "/home/runner/.nuget/packages/sharpdx/4.2.0/sharpdx.4.2.0.nupkg.sha512",
-    "/home/runner/.nuget/packages/sharpdx.mathematics/4.2.0/sharpdx.mathematics.4.2.0.nupkg.sha512",
-    "/home/runner/.nuget/packages/system.buffers/4.5.1/system.buffers.4.5.1.nupkg.sha512",
-    "/home/runner/.nuget/packages/system.diagnostics.diagnosticsource/7.0.2/system.diagnostics.diagnosticsource.7.0.2.nupkg.sha512",
-    "/home/runner/.nuget/packages/system.memory/4.5.5/system.memory.4.5.5.nupkg.sha512",
-    "/home/runner/.nuget/packages/system.numerics.vectors/4.5.0/system.numerics.vectors.4.5.0.nupkg.sha512",
-    "/home/runner/.nuget/packages/system.runtime/4.3.1/system.runtime.4.3.1.nupkg.sha512",
-    "/home/runner/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512"
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/imgui.net/1.90.0.1/imgui.net.1.90.0.1.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/newtonsoft.json/13.0.4/newtonsoft.json.13.0.4.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/serilog/3.1.1/serilog.3.1.1.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/sharpdx/4.2.0/sharpdx.4.2.0.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/sharpdx.mathematics/4.2.0/sharpdx.mathematics.4.2.0.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/system.buffers/4.5.1/system.buffers.4.5.1.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/system.diagnostics.diagnosticsource/7.0.2/system.diagnostics.diagnosticsource.7.0.2.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/system.memory/4.5.5/system.memory.4.5.5.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/system.numerics.vectors/4.5.0/system.numerics.vectors.4.5.0.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/system.runtime/4.3.1/system.runtime.4.3.1.nupkg.sha512",
+    "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512"
   ],
   "logs": []
 }
