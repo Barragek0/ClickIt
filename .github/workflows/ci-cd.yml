@@ -10,21 +10,15 @@ env:
   BUILD_CONFIGURATION: 'Debug'
 
 jobs:
+  # Note: We only build and test the test project in CI/CD because the main ClickIt project
+  # requires ExileCore framework dependencies that are not available in GitHub Actions.
+  # The main plugin is designed to be built locally within the ExileCore environment.
   build-and-test:
     runs-on: windows-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: List repository contents (debug)
-      run: |
-        Write-Host "Current directory:"
-        Get-Location
-        Write-Host "Repository contents:"
-        Get-ChildItem -Name
-        Write-Host "Looking for solution file:"
-        Test-Path "ClickIt.sln"
       
     - name: Setup .NET Framework
       uses: actions/setup-dotnet@v4
@@ -37,17 +31,11 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
         
-    - name: Restore NuGet packages for main project
-      run: nuget restore ClickIt.sln
-      
-    - name: Restore test project dependencies
+    - name: Restore test project dependencies  
       run: dotnet restore Tests\ClickIt.Tests.csproj
       
-    - name: Build solution
-      run: msbuild ClickIt.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /verbosity:minimal
-      
     - name: Build test project
-      run: msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /verbosity:minimal
+      run: dotnet build Tests\ClickIt.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
       
     - name: Run tests
       run: |
@@ -83,7 +71,7 @@ jobs:
         reporter: 'dotnet-trx'
         fail-on-error: true
 
-  static-analysis:
+  code-quality:
     runs-on: windows-latest
     needs: build-and-test
     
@@ -91,42 +79,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: List repository contents (debug)
-      run: |
-        Write-Host "Current directory:"
-        Get-Location
-        Write-Host "Repository contents:"
-        Get-ChildItem -Name
-        Write-Host "Looking for solution file:"
-        Test-Path "ClickIt.sln"
-      
     - name: Setup .NET Framework
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-    
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+        
+    - name: Restore test project dependencies  
+      run: dotnet restore Tests\ClickIt.Tests.csproj
       
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v2
-        
-    - name: Restore NuGet packages
-      run: nuget restore ClickIt.sln
-        
-    - name: Run code analysis
+    - name: Run code analysis on test project
       run: |
-        msbuild ClickIt.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} `
-          /p:Platform="Any CPU" `
-          /verbosity:normal `
-          /p:RunAnalyzersDuringBuild=true `
-          /p:TreatWarningsAsErrors=false
+        dotnet build Tests\ClickIt.Tests.csproj `
+          --configuration ${{ env.BUILD_CONFIGURATION }} `
+          --verbosity:normal `
+          --no-restore
           
-    - name: Upload build artifacts
+    - name: Upload test artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: clickit-plugin
+        name: test-artifacts
         path: |
-          obj/Debug/ClickIt.dll
-          obj/Debug/ClickIt.pdb
+          Tests/bin/Debug/net48/ClickIt.Tests.dll
+          Tests/bin/Debug/net48/ClickIt.Tests.pdb
         retention-days: 7

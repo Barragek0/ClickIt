@@ -7,10 +7,7 @@
 ClickIt is an automation plugin for Path of Exile that streamlines gameplay by intelligently interacting with various game elements. Built for ExileApi, this plugin helps players navigate and interact with the game world.
 
 ### Key Features
-
-- **Smart Item Pickup**: Automatically identifies and picks up valuable items based on configurable filters
-- **Chest Interaction**: Opens chests, strongboxes, and league mechanic containers automatically
-- **Automatic Clicking**: Clicks and corrupts essences, shrines, area transitions, crafting recipes and more
+- **Interaction**: Picks up items, opens chests, strongboxes, and league mechanic containers. Clicks and corrupts essences. Clicks shrines, area transitions, crafting recipes and more
 - **Altar Optimization**: Advanced eater / exarch altar selection system that evaluates and chooses optimal altar modifiers based on configurable weights and gameplay impact
 - **Performance Focused**: Optimized for minimal game impact with efficient caching and coroutine-based processing
 - **Safety Features**: Includes UI avoidance zones to prevent accidental clicks on health globes, skill bars, and other critical interface elements
@@ -29,17 +26,27 @@ The plugin operates through a hotkey-activated system that scans the game world 
 
 This project uses automated testing and CI/CD to ensure code quality. The test suite runs automatically on every push and pull request.
 
+### Requirements
+
+- **ExileCore Framework**: This plugin requires ExileCore framework dependencies to build and run
+- **.NET Framework 4.8**: The plugin targets .NET Framework 4.8
+- **Path of Exile**: Designed to work with the Path of Exile game client
+
 ### Building Locally
 
-The project uses .NET Framework 4.8 and requires MSBuild:
+**Important**: The main ClickIt plugin requires ExileCore framework dependencies that must be available in your build environment. The plugin is designed to be built within the ExileCore ecosystem.
 
 ```bash
-# Restore dependencies
-nuget restore ClickIt.sln
-
-# Build the solution
-msbuild ClickIt.sln /p:Configuration=Debug /p:Platform="Any CPU"
-
-# Run tests
+# Build test project only (works without ExileCore dependencies)
+dotnet restore Tests\ClickIt.Tests.csproj
+dotnet build Tests\ClickIt.Tests.csproj --configuration Debug
 dotnet test Tests\ClickIt.Tests.csproj --configuration Debug
+
+# Full solution build (requires ExileCore dependencies)
+nuget restore ClickIt.sln
+msbuild ClickIt.sln /p:Configuration=Debug /p:Platform="Any CPU"
 ```
+
+### CI/CD Notes
+
+The automated CI/CD pipeline only builds and tests the test project since the main plugin requires ExileCore framework dependencies that are not available in GitHub Actions. The test project contains comprehensive validation of game data and utility functions that can be tested independently.
