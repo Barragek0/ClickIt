@@ -212,6 +212,7 @@ namespace ClickIt.Constants
             ("Final Boss drops # additional Orbs of Regret", "Final Boss drops (2-4) additional Orbs of Regret", Boss, 8),
             ("Final Boss drops # additional Orbs of Unmaking", "Final Boss drops (2-4) additional Orbs of Unmaking", Boss, 5),
             ("Final Boss drops # additional Glassblower's Baubles", "Final Boss drops (2-4) additional Glassblower's Baubles", Boss, 3),
+            ("Final Boss drops # additional Cartographer's Chisels", "Final Boss drops (2-4) additional Cartographer's Chisels", Boss, 8),
             ("Final Boss drops # additional Enkindling Orbs", "Final Boss drops (2-4) additional Enkindling Orbs", Boss, 4),
             ("Final Boss drops # additional Instilling Orbs", "Final Boss drops (2-4) additional Instilling Orbs", Boss, 4),
             ("Final Boss drops # additional Orbs of Alteration", "Final Boss drops (2-4) additional Orbs of Alteration", Boss, 2),
