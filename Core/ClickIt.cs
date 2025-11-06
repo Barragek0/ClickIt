@@ -67,7 +67,7 @@ namespace ClickIt
         public override bool Initialise()
         {
             Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
-            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 200);
+            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             areaService = new Services.AreaService();
             areaService.UpdateScreenAreas(GameController);
             altarService = new Services.AltarService(Settings, CachedLabels);
@@ -467,7 +467,7 @@ namespace ClickIt
                 Mouse.LeftClick();
             }
             SafeBlockInput(false);
-            yield return new WaitTime(Random.Next(50, 150));
+            yield return new WaitTime(Random.Next(50, 60));
         }
         private IEnumerator ProcessRegularClickSimple()
         {
@@ -513,7 +513,7 @@ namespace ClickIt
                 Mouse.LeftClick();
             }
             SafeBlockInput(false);
-            yield return new WaitTime(Random.Next(50, 150));
+            yield return new WaitTime(Random.Next(50, 60));
         }
         private IEnumerator ProcessAltarClicking()
         {
@@ -587,7 +587,7 @@ namespace ClickIt
             }
 
             SafeBlockInput(false);
-            yield return new WaitTime(Random.Next(200, 300));
+            yield return new WaitTime(Random.Next(50, 60));
         }
         public static Element? GetElementByString(Element? root, string str)
         {
