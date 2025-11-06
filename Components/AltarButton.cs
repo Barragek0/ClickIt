@@ -8,6 +8,7 @@ namespace ClickIt.Components
         {
             this.Element = Element;
         }
-        public Element Element;
+
+        public Element Element { get; set; }
     }
 }
