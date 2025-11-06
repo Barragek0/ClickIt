@@ -48,11 +48,17 @@ namespace ClickIt
 
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
+        private Coroutine? inputSafetyCoroutine;
 
         // Verisium hold click state
         private bool isHoldingVerisiumClick = false;
         private readonly Stopwatch verisiumHoldTimer = new Stopwatch();
         private const int VERISIUM_HOLD_FAILSAFE_MS = 10000; // 10 seconds
+
+        private bool isInputCurrentlyBlocked = false;
+        private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
+        private const int HOTKEY_RELEASE_FAILSAFE_MS = 5000; // 5 seconds after hotkey release
+        private bool lastHotkeyState = false;
 
         // Services
         private Services.AreaService? areaService;
@@ -70,6 +76,36 @@ namespace ClickIt
         public override void OnLoad()
         {
             CanUseMultiThreading = true;
+        }
+
+        public override void OnClose()
+        {
+            try
+            {
+                ForceUnblockInput("Plugin closing");
+
+                // Clean up Verisium state
+                if (isHoldingVerisiumClick)
+                {
+                    Mouse.LeftMouseUp();
+                    isHoldingVerisiumClick = false;
+                    verisiumHoldTimer.Stop();
+                }
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    Mouse.blockInput(false);
+                }
+                catch
+                {
+                    // Nothing more we can do
+                }
+                LogError($"Error during plugin shutdown: {ex.Message}");
+            }
+
+            base.OnClose();
         }
 
         public override bool Initialise()
@@ -104,6 +140,10 @@ namespace ClickIt
             clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic", false);
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
             clickLabelCoroutine.Priority = CoroutinePriority.High;
+
+            inputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), this, "ClickIt.InputSafety");
+            _ = Core.ParallelRunner.Run(inputSafetyCoroutine);
+            inputSafetyCoroutine.Priority = CoroutinePriority.Critical;
 
             Settings.EnsureAllModsHaveWeights();
 
@@ -357,7 +397,7 @@ namespace ClickIt
 
             if (shouldClick && boxToClick != null)
             {
-                Mouse.blockInput(true);
+                SafeBlockInput(true);
                 LogMessage("Moving mouse for altar", 5);
                 ExileCore.Input.SetCursorPos(boxToClick.GetClientRect().Center + windowTopLeft);
                 if (leftHanded)
@@ -368,7 +408,7 @@ namespace ClickIt
                 {
                     Mouse.LeftClick();
                 }
-                Mouse.blockInput(false);
+                SafeBlockInput(false);
             }
         }
 
@@ -426,6 +466,117 @@ namespace ClickIt
         private bool canClick()
         {
             return inputHandler?.CanClick(GameController) ?? false;
+        }
+
+        private void SafeBlockInput(bool block)
+        {
+            try
+            {
+                if (block)
+                {
+                    if (!isInputCurrentlyBlocked)
+                    {
+                        Mouse.blockInput(true);
+                        isInputCurrentlyBlocked = true;
+                        LogMessage($"INPUT BLOCKED at {DateTime.Now:HH:mm:ss.fff}", 1);
+                    }
+                }
+                else
+                {
+                    if (isInputCurrentlyBlocked)
+                    {
+                        Mouse.blockInput(false);
+                        isInputCurrentlyBlocked = false;
+                        LogMessage($"INPUT UNBLOCKED at {DateTime.Now:HH:mm:ss.fff}", 1);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ForceUnblockInput($"SafeBlockInput exception: {ex.Message}");
+            }
+        }
+
+        private void ForceUnblockInput(string reason)
+        {
+            try
+            {
+                Mouse.blockInput(false);
+                isInputCurrentlyBlocked = false;
+                LogError($"EMERGENCY INPUT UNBLOCK: {reason} at {DateTime.Now:HH:mm:ss.fff}", 1);
+            }
+            catch (Exception ex)
+            {
+                // Last resort - log the error but we can't do much more
+                LogError($"CRITICAL: Failed to force unblock input: {ex.Message}", 1);
+            }
+        }
+
+        /// <summary>
+        /// Input Safety Coroutine - Monitors for stuck input and auto-unblocks
+        /// This is the main failsafe that prevents permanently blocked input
+        /// </summary>
+        private IEnumerator InputSafetyCoroutine()
+        {
+            while (Settings.Enable)
+            {
+                bool shouldWaitLong = false;
+
+                try
+                {
+                    PerformSafetyChecks();
+                }
+                catch (Exception ex)
+                {
+                    ForceUnblockInput($"InputSafetyCoroutine exception: {ex.Message}");
+                    shouldWaitLong = true;
+                }
+
+                if (shouldWaitLong)
+                {
+                    yield return new WaitTime(1000); // Wait longer after an exception
+                }
+                else
+                {
+                    yield return new WaitTime(100); // Check every 100ms for responsiveness
+                }
+            }
+
+            ForceUnblockInput("Plugin disabled - cleanup");
+        }
+
+        private void PerformSafetyChecks()
+        {
+#pragma warning disable CS0618
+            bool currentHotkeyState = ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
+#pragma warning restore CS0618
+
+            if (currentHotkeyState != lastHotkeyState)
+            {
+                if (!currentHotkeyState)
+                {
+                    lastHotkeyReleaseTimer.Restart();
+                    LogMessage($"Hotkey released at {DateTime.Now:HH:mm:ss.fff}", 3);
+                }
+                else
+                {
+                    lastHotkeyReleaseTimer.Stop();
+                    LogMessage($"Hotkey pressed at {DateTime.Now:HH:mm:ss.fff}", 3);
+                }
+                lastHotkeyState = currentHotkeyState;
+            }
+
+            if (!currentHotkeyState && isInputCurrentlyBlocked &&
+                lastHotkeyReleaseTimer.IsRunning &&
+                lastHotkeyReleaseTimer.ElapsedMilliseconds > HOTKEY_RELEASE_FAILSAFE_MS)
+            {
+                ForceUnblockInput($"Hotkey released for {lastHotkeyReleaseTimer.ElapsedMilliseconds}ms");
+            }
+
+            if (isInputCurrentlyBlocked && GameController?.Game?.IngameState?.InGame != true)
+            {
+                ForceUnblockInput("Not in game");
+            }
         }
 
         private IEnumerator ScanForAltarsLogic()
@@ -624,7 +775,7 @@ namespace ClickIt
 
             if (Settings.BlockUserInput.Value)
             {
-                Mouse.blockInput(true);
+                SafeBlockInput(true);
             }
 
             ExileCore.Input.SetCursorPos(clickPos);
@@ -637,7 +788,7 @@ namespace ClickIt
                 Mouse.LeftClick();
             }
 
-            Mouse.blockInput(false);
+            SafeBlockInput(false);
             yield return new WaitTime(Random.Next(50, 150));
         }
 
@@ -682,7 +833,7 @@ namespace ClickIt
                 // Regular click logic
                 if (Settings.BlockUserInput.Value)
                 {
-                    Mouse.blockInput(true);
+                    SafeBlockInput(true);
                 }
 
                 ExileCore.Input.SetCursorPos(clickPos);
@@ -695,7 +846,7 @@ namespace ClickIt
                     Mouse.LeftClick();
                 }
 
-                Mouse.blockInput(false);
+                SafeBlockInput(false);
                 yield return new WaitTime(Random.Next(50, 150));
             }
         }
@@ -709,7 +860,7 @@ namespace ClickIt
 
                 if (Settings.BlockUserInput.Value)
                 {
-                    Mouse.blockInput(true);
+                    SafeBlockInput(true);
                 }
 
                 ExileCore.Input.SetCursorPos(clickPos);
@@ -737,7 +888,7 @@ namespace ClickIt
 
                 if (Settings.BlockUserInput.Value)
                 {
-                    Mouse.blockInput(false);
+                    SafeBlockInput(false);
                 }
 
                 isHoldingVerisiumClick = false;
