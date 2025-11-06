@@ -672,7 +672,7 @@ namespace ClickIt
 
             bool safetyRunning = inputSafetyCoroutine?.IsDone == false;
             Graphics.DrawText($"   InputSafety: ", new Vector2(xPos, yPos), Color.Orange, 16);
-            Graphics.DrawText(safetyRunning ? "Running" : "IDLE", new Vector2(xPos + 120, yPos),
+            Graphics.DrawText(safetyRunning ? "Running" : "IDLE", new Vector2(xPos + 125, yPos),
                 safetyRunning ? Color.LightGreen : Color.Gray, 16);
             yPos += lineHeight;
 
