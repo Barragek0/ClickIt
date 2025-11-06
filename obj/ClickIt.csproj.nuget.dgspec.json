@@ -10,7 +10,7 @@
         "projectUniqueName": "/home/runner/work/ClickIt/ClickIt/ClickIt.csproj",
         "projectName": "ClickIt",
         "projectPath": "/home/runner/work/ClickIt/ClickIt/ClickIt.csproj",
-        "packagesPath": "/home/runner/.nuget/packages/",
+        "packagesPath": "/home/runner/work/ClickIt/.codeql-scratch/dbs/csharp/working/packages",
         "outputPath": "/home/runner/work/ClickIt/ClickIt/obj/",
         "projectStyle": "PackageReference",
         "skipContentFileWrite": true,
