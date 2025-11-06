@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt;
+using ClickIt.Constants;
 using System.Collections.Generic;
 using System.Linq;
 

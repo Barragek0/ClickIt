@@ -1,6 +1,6 @@
-﻿using ExileCore.PoEMemory;
+using ExileCore.PoEMemory;
 
-namespace ClickIt
+namespace ClickIt.Components
 {
     public class AltarButton
     {

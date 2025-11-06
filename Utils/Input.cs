@@ -1,6 +1,8 @@
 
+using System.Numerics;
+using System.Windows.Forms;
 
-namespace ClickIt
+namespace ClickIt.Utils
 {
     internal static class Input
     {

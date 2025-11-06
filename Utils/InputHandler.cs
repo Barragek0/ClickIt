@@ -8,7 +8,7 @@ using System.Threading;
 
 #nullable enable
 
-namespace ClickIt.Input
+namespace ClickIt.Utils
 {
     /// <summary>
     /// Handles mouse clicks and input management

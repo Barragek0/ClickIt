@@ -56,29 +56,45 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AltarButton.cs" />
-    <Compile Include="AltarModsConstants.cs" />
-    <Compile Include="PrimaryAltarComponent.cs" />
-    <Compile Include="SecondaryAltarComponent.cs" />
+    <!-- Core Classes -->
+    <Compile Include="Core\ClickIt.cs" />
+    <Compile Include="Core\ClickItSettings.cs" />
+    
+    <!-- Constants -->
+    <Compile Include="Constants\AltarModsConstants.cs" />
+    <Compile Include="Constants\Constants.cs" />
+    
+    <!-- Components -->
+    <Compile Include="Components\AltarButton.cs" />
+    <Compile Include="Components\PrimaryAltarComponent.cs" />
+    <Compile Include="Components\SecondaryAltarComponent.cs" />
+    <Compile Include="Components\CustomItem.cs" />
+    
+    <!-- Properties -->
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="Utils\Mouse.cs" />
-    <Compile Include="Utils\Keyboard.cs" />
-    <Compile Include="CustomItem.cs" />
-    <Compile Include="ClickIt.cs" />
-    <Compile Include="ClickItSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    
+    <!-- Services -->
     <Compile Include="Services\AltarService.cs" />
     <Compile Include="Services\LabelFilterService.cs" />
     <Compile Include="Services\ElementService.cs" />
     <Compile Include="Services\AltarWeightCalculator.cs" />
     <Compile Include="Services\EssenceService.cs" />
     <Compile Include="Services\AreaService.cs" />
+    <Compile Include="Services\ClickService.cs" />
+    
+    <!-- Rendering -->
     <Compile Include="Rendering\AltarRenderer.cs" />
-    <Compile Include="Input\InputHandler.cs" />
+    
+    <!-- Utils -->
+    <Compile Include="Utils\Mouse.cs" />
+    <Compile Include="Utils\Keyboard.cs" />
+    <Compile Include="Utils\Input.cs" />
+    <Compile Include="Utils\InputHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />

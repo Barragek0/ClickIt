@@ -1,4 +1,15 @@
+using System;
 using System.Collections;
+using ExileCore;
+using ExileCore.PoEMemory.Components;
+using ExileCore.PoEMemory.Elements;
+using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.PoEMemory;
+using ExileCore.Shared;
+using ExileCore.Shared.Enums;
+using ClickIt.Utils;
+
+using SharpDX;
 
 #nullable enable
 
@@ -13,7 +24,7 @@ namespace ClickIt.Services
         private readonly GameController gameController;
         private readonly Action<string, float> logMessage;
         private readonly Func<LabelOnGround?> cachedLabels;
-        private readonly Input.InputHandler inputHandler;
+        private readonly InputHandler inputHandler;
         private readonly Func<Entity?> getShrine;
         private readonly Func<bool> groundItemsVisible;
 
@@ -22,7 +33,7 @@ namespace ClickIt.Services
             GameController gameController,
             Action<string, float> logMessage,
             Func<LabelOnGround?> cachedLabels,
-            Input.InputHandler inputHandler,
+            InputHandler inputHandler,
             Func<Entity?> getShrine,
             Func<bool> groundItemsVisible)
         {
@@ -54,12 +65,13 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            System.Drawing.Rectangle windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             SharpDX.Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            SharpDX.Vector2 clickPos = inputHandler.CalculateClickPosition(altar.GetClientRect(), windowTopLeft);
+            // For altars, use the center of the element directly
+            SharpDX.Vector2 clickPos = altar.GetClientRect().Center + windowTopLeft;
 
-            inputHandler.PerformClick(clickPos, settings.ClickBetweenMsMin, settings.ClickBetweenMsMax);
-            yield return new WaitTime(Random.Shared.Next(settings.ClickBetweenMsMin, settings.ClickBetweenMsMax));
+            inputHandler.PerformClick(clickPos);
+            yield return new WaitTime(new Random().Next(50, 150));
         }
 
         private IEnumerator ProcessStandardClick()
@@ -88,7 +100,7 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            System.Drawing.Rectangle windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             SharpDX.Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Element labelElement = nextLabel.Label;
 
@@ -99,7 +111,7 @@ namespace ClickIt.Services
 
             // Handle regular clicking
             ProcessRegularClick(nextLabel, windowTopLeft);
-            yield return new WaitTime(Random.Shared.Next(settings.ClickBetweenMsMin, settings.ClickBetweenMsMax));
+            yield return new WaitTime(new Random().Next(50, 150));
         }
 
         private bool ProcessSpecialCases(LabelOnGround nextLabel, Element labelElement, SharpDX.Vector2 windowTopLeft)
@@ -154,8 +166,8 @@ namespace ClickIt.Services
                 return;
             }
 
-            SharpDX.Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel.Label.GetClientRect(), windowTopLeft);
-            inputHandler.PerformClick(clickPos, settings.ClickBetweenMsMin, settings.ClickBetweenMsMax);
+            SharpDX.Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
+            inputHandler.PerformClick(clickPos);
         }
     }
 }

@@ -1,4 +1,6 @@
 ﻿using ClickIt.Utils;
+using ClickIt.Constants;
+using ClickIt.Components;
 using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
@@ -54,7 +56,7 @@ namespace ClickIt
         private Services.AreaService? areaService;
         private Services.AltarService? altarService;
         private Services.LabelFilterService? labelFilterService;
-        private Input.InputHandler? inputHandler;
+        private Utils.InputHandler? inputHandler;
 
         private RectangleF FullScreenRectangle { get; set; }
         private RectangleF HealthAndFlaskRectangle { get; set; }
@@ -78,7 +80,7 @@ namespace ClickIt
 
             altarService = new Services.AltarService(Settings, CachedLabels);
             labelFilterService = new Services.LabelFilterService(Settings);
-            inputHandler = new Input.InputHandler(Settings);
+            inputHandler = new Utils.InputHandler(Settings);
 
             // Initialize legacy rectangles for backward compatibility (to be removed)
             FullScreenRectangle = areaService.FullScreenRectangle;

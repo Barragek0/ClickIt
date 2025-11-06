@@ -5,7 +5,7 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using System;
 
-namespace ClickIt
+namespace ClickIt.Components
 {
     public class CustomItem
     {

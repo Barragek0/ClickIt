@@ -1,24 +1,53 @@
 using System.Collections.Generic;
 
-namespace ClickIt
+namespace ClickIt.Constants
 {
+    /// <summary>
+    /// Contains all altar modifier constants and lookup dictionaries for the ClickIt plugin.
+    /// This class provides the data needed for altar decision-making and mod type mapping.
+    /// </summary>
     internal static class AltarModsConstants
     {
+        #region Type Constants (transitional - will be removed when fully migrated to Constants class)
+        /// <summary>Constant for Player-targeted modifications</summary>
         private const string Player = "Player";
+
+        /// <summary>Constant for Minion-targeted modifications</summary>
         private const string Minion = "Minion";
 
-        public static Dictionary<string, AffectedTarget> FilterTargetDict { get; } = new Dictionary<string, AffectedTarget> {
+        /// <summary>Constant for Boss-targeted modifications</summary>
+        private const string Boss = "Boss";
+        #endregion
+
+        #region Lookup Dictionaries
+        /// <summary>
+        /// Maps filter target strings to AffectedTarget enums for UI filtering
+        /// </summary>
+        public static Dictionary<string, AffectedTarget> FilterTargetDict { get; } = new Dictionary<string, AffectedTarget>
+        {
             { "Any", AffectedTarget.Any },
             { Player, AffectedTarget.Player },
             { "Minions", AffectedTarget.Minions },
-            { "Boss", AffectedTarget.FinalBoss }
+            { Boss, AffectedTarget.FinalBoss }
         };
-        public static Dictionary<string, AffectedTarget> AltarTargetDict { get; } = new Dictionary<string, AffectedTarget> {
+
+        /// <summary>
+        /// Maps altar text prefixes to AffectedTarget enums for parsing altar mods
+        /// </summary>
+        public static Dictionary<string, AffectedTarget> AltarTargetDict { get; } = new Dictionary<string, AffectedTarget>
+        {
             { "Player gains:", AffectedTarget.Player },
             { "Eldritch Minions gain:", AffectedTarget.Minions },
             { "Map boss gains:", AffectedTarget.FinalBoss }
         };
+        #endregion
 
+        #region Modifier Data
+        /// <summary>
+        /// Collection of downside (negative) altar modifications.
+        /// Each tuple contains: Id, Name (with values), Type (Player/Minion/Boss), DefaultValue (weight 1-100)
+        /// Higher weights indicate more undesirable effects that should be avoided.
+        /// </summary>
         public static readonly IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> DownsideMods = new List<(string, string, string, int)>
         {
             ("Projectiles are fired in random directions", "Projectiles are fired in random directions", Player, 100),
@@ -31,83 +60,88 @@ namespace ClickIt
             ("-#% to Chaos Resistance", "(-60--40)%% to Chaos Resistance", Player, 75),
             ("Nearby Enemies Gain #% of their Physical Damage as Extra Chaos Damage", "Nearby Enemies Gain 100%% of their Physical Damage as Extra Chaos Damage", Player, 75),
             ("number of grasping vines to gain every second while stationary [#]", "number of grasping vines to gain every second while stationary [1]", Player, 70),
-            ("Gain #% of Physical Damage as Extra Chaos Damage", "Gain (70-130)%% of Physical Damage as Extra Chaos Damage", "Boss", 60),
+            ("Gain #% of Physical Damage as Extra Chaos Damage", "Gain (70-130)%% of Physical Damage as Extra Chaos Damage", Boss, 60),
             ("-#% to Fire Resistance", "(-60--40)%% to Fire Resistance", Player, 60),
             ("-#% to Cold Resistance", "(-60--40)%% to Cold Resistance", Player, 60),
             ("-#% to Lightning Resistance", "(-60--40)%% to Lightning Resistance", Player, 60),
-            ("Gain #% of Physical Damage as Extra Lightning Damage", "Gain (70-130)%% of Physical Damage as Extra Lightning Damage", "Boss", 55),
+            ("Gain #% of Physical Damage as Extra Lightning Damage", "Gain (70-130)%% of Physical Damage as Extra Lightning Damage", Boss, 55),
             ("-#% additional Physical Damage Reduction", "(-60--40)%% additional Physical Damage Reduction", Player, 55),
-            ("Gain #% of Physical Damage as Extra Cold Damage", "Gain (50-80)%% of Physical Damage as Extra Cold Damage", "Boss", 50),
-            ("Gain #% of Physical Damage as Extra Fire Damage", "Gain (50-80)%% of Physical Damage as Extra Fire Damage", "Boss", 50),
+            ("Gain #% of Physical Damage as Extra Cold Damage", "Gain (50-80)%% of Physical Damage as Extra Cold Damage", Boss, 50),
+            ("Gain #% of Physical Damage as Extra Fire Damage", "Gain (50-80)%% of Physical Damage as Extra Fire Damage", Boss, 50),
             ("Nearby Enemies Gain #% of their Physical Damage as Extra Fire Damage", "Nearby Enemies Gain 100%% of their Physical Damage as Extra Fire Damage", Player, 50),
             ("Nearby Enemies Gain #% of their Physical Damage as Extra Cold Damage", "Nearby Enemies Gain 100%% of their Physical Damage as Extra Cold Damage", Player, 50),
             ("Nearby Enemies Gain #% of their Physical Damage as Extra Lightning Damage", "Nearby Enemies Gain 100%% of their Physical Damage as Extra Lightning Damage", Player, 50),
-            ("Damage Penetrates #% of Enemy Elemental Resistances", "Damage Penetrates (15-25)%% of Enemy Elemental Resistances", "Boss", 45),
-            ("Gain #% of Physical Damage as Extra Damage of a random Element", "Gain (50-80)%% of Physical Damage as Extra Damage of a random Element", "Boss", 45),
+            ("Damage Penetrates #% of Enemy Elemental Resistances", "Damage Penetrates (15-25)%% of Enemy Elemental Resistances", Boss, 45),
+            ("Gain #% of Physical Damage as Extra Damage of a random Element", "Gain (50-80)%% of Physical Damage as Extra Damage of a random Element", Boss, 45),
             ("Gain #% of Physical Damage as Extra Damage of a random Element", "Gain (?-?)%% of Physical Damage as Extra Damage of a random Element", Minion, 45),
             ("-# to Armour", "-3000 to Armour", Player, 45),
             ("-# to Evasion Rating", "-3000 to Evasion Rating", Player, 45),
             ("#% chance to be targeted by a Meteor when you use a Flask", "30%% chance to be targeted by a Meteor when you use a Flask", Player, 40),
-            ("Gain #% of Maximum Life as Extra Maximum Energy Shield", "Gain (50-70)%% of Maximum Life as Extra Maximum Energy Shield", "Boss", 40),
+            ("Gain #% of Maximum Life as Extra Maximum Energy Shield", "Gain (50-70)%% of Maximum Life as Extra Maximum Energy Shield", Boss, 40),
             ("Hits have #% chance to ignore Enemy Physical Damage Reduction", "Hits have (50-80)%% chance to ignore Enemy Physical Damage Reduction", Minion, 40),
-            ("#% additional Physical Damage Reduction", "(50-70)%% additional Physical Damage Reduction", "Boss", 35),
+            ("#% additional Physical Damage Reduction", "(50-70)%% additional Physical Damage Reduction", Boss, 35),
             ("Inflict Fire, Cold, and Lightning Exposure on Hit", "Inflict Fire, Cold, and Lightning Exposure on Hit", Minion, 35),
             ("Curse Enemies with Vulnerability on Hit", "Curse Enemies with Vulnerability on Hit", Minion, 35),
-            ("+#% to maximum Fire Resistance", "+10%% to maximum Fire Resistance", "Boss", 30),
-            ("+#% to maximum Cold Resistance", "+10%% to maximum Cold Resistance", "Boss", 30),
-            ("+#% to maximum Lightning Resistance", "+10%% to maximum Lightning Resistance", "Boss", 30),
-            ("+#% to maximum Chaos Resistance", "+10%% to maximum Chaos Resistance", "Boss", 30),
+            ("+#% to maximum Fire Resistance", "+10%% to maximum Fire Resistance", Boss, 30),
+            ("+#% to maximum Cold Resistance", "+10%% to maximum Cold Resistance", Boss, 30),
+            ("+#% to maximum Lightning Resistance", "+10%% to maximum Lightning Resistance", Boss, 30),
+            ("+#% to maximum Chaos Resistance", "+10%% to maximum Chaos Resistance", Boss, 30),
             ("All Damage taken from Hits can Sap you", "All Damage taken from Hits can Sap you", Player, 30),
             ("All Damage taken from Hits can Scorch you", "All Damage taken from Hits can Scorch you", Player, 30),
             ("Curse Enemies with Punishment on Hit", "Curse Enemies with Punishment on Hit", Minion, 30),
-            ("+#% to Fire Resistance", "+80%% to Fire Resistance", "Boss", 25),
-            ("+#% to Cold Resistance", "+80%% to Cold Resistance", "Boss", 25),
-            ("+#% to Lightning Resistance", "+80%% to Lightning Resistance", "Boss", 25),
-            ("+#% to Chaos Resistance", "+80%% to Chaos Resistance", "Boss", 25),
+            ("+#% to Fire Resistance", "+80%% to Fire Resistance", Boss, 25),
+            ("+#% to Cold Resistance", "+80%% to Cold Resistance", Boss, 25),
+            ("+#% to Lightning Resistance", "+80%% to Lightning Resistance", Boss, 25),
+            ("+#% to Chaos Resistance", "+80%% to Chaos Resistance", Boss, 25),
             ("#% chance to be Sapped when Hit", "(25-35)%% chance to be Sapped when Hit", Player, 25),
             ("#% chance to be Scorched when Hit", "(25-35)%% chance to be Scorched when Hit", Player, 25),
             ("Skills fire # additional Projectiles", "Skills fire (3-5) additional Projectiles", Minion, 25),
             ("Spell Hits have #% chance to Hinder you", "Spell Hits have (25-35)%% chance to Hinder you", Player, 20),
             ("#% increased Flask Charges used", "(20-40)%% increased Flask Charges used", Player, 20),
             ("#% reduced Flask Effect Duration", "(40-60)%% reduced Flask Effect Duration", Player, 20),
-            ("All Damage can Ignite", "All Damage can Ignite", "Boss", 20),
-            ("All Damage can Shock", "All Damage can Shock", "Boss", 20),
+            ("All Damage can Ignite", "All Damage can Ignite", Boss, 20),
+            ("All Damage can Shock", "All Damage can Shock", Boss, 20),
             ("#% increased Area of Effect", "(70-130)%% increased Area of Effect", Minion, 20),
             ("#% increased Attack Speed", "(30-50)%% increased Attack Speed", Minion, 20),
             ("#% increased Cast Speed", "(30-50)%% increased Cast Speed", Minion, 20),
             ("#% chance for Enemies to drop Chilled Ground when Hitting you, no more than once every 2 seconds", "(25-35)%% chance for Enemies to drop Chilled Ground when Hitting you, no more than once every 2 seconds", Player, 15),
             ("#% chance for Enemies to drop Shocked Ground when Hitting you, no more than once every 2 seconds", "(25-35)%% chance for Enemies to drop Shocked Ground when Hitting you, no more than once every 2 seconds", Player, 15),
-            ("All Damage with Hits can Chill", "All Damage with Hits can Chill", "Boss", 15),
-            ("All Damage from Hits can Poison", "All Damage from Hits can Poison", "Boss", 15),
-            ("Hits always Ignite", "Hits always Ignite", "Boss", 15),
-            ("Hits always Shock", "Hits always Shock", "Boss", 15),
+            ("All Damage with Hits can Chill", "All Damage with Hits can Chill", Boss, 15),
+            ("All Damage from Hits can Poison", "All Damage from Hits can Poison", Boss, 15),
+            ("Hits always Ignite", "Hits always Ignite", Boss, 15),
+            ("Hits always Shock", "Hits always Shock", Boss, 15),
             ("#% increased Movement Speed", "(30-50)%% increased Movement Speed", Minion, 15),
             ("#% chance to remove a random Charge from Enemy on Hit", "100%% chance to remove a random Charge from Enemy on Hit", Minion, 15),
             ("#% chance for Enemies to drop Burning Ground when Hitting you, no more than once every 2 seconds", "(15-20)%% chance for Enemies to drop Burning Ground when Hitting you, no more than once every 2 seconds", Player, 10),
-            ("Poison on Hit", "Poison on Hit", "Boss", 10),
-            ("+#% chance to Suppress Spell Damage", "+100%% chance to Suppress Spell Damage", "Boss", 10),
-            ("Prevent +#% of Suppressed Spell Damage", "Prevent +(20-30)%% of Suppressed Spell Damage", "Boss", 10),
+            ("Poison on Hit", "Poison on Hit", Boss, 10),
+            ("+#% chance to Suppress Spell Damage", "+100%% chance to Suppress Spell Damage", Boss, 10),
+            ("Prevent +#% of Suppressed Spell Damage", "Prevent +(20-30)%% of Suppressed Spell Damage", Boss, 10),
             ("Inflict # Grasping Vine on Hit", "Inflict 1 Grasping Vine on Hit", Minion, 10),
-            ("+# to Armour", "+50000 to Armour", "Boss", 8),
-            ("#% increased Armour", "(100-200)%% increased Armour", "Boss", 5),
-            ("#% increased Evasion Rating", "(100-200)%% increased Evasion Rating", "Boss", 5),
-            ("#% increased Blind Effect", "(100-200)%% increased Blind Effect", "Boss", 5),
-            ("Your hits inflict Malediction", "Your hits inflict Malediction", "Boss", 3),
-            ("Enemies lose # Flask Charges every # seconds and cannot gain Flask Charges for # seconds after being Hit", "Enemies lose 6 Flask Charges every 3 seconds and cannot gain Flask Charges for 6 seconds after being Hit", "Boss", 3),
-            ("hinder aura behaviour variation [#]", "hinder aura behaviour variation [1]", "Boss", 2),
-            ("Eldritch Tentacles", "Eldritch Tentacles", "Boss", 2),
+            ("+# to Armour", "+50000 to Armour", Boss, 8),
+            ("#% increased Armour", "(100-200)%% increased Armour", Boss, 5),
+            ("#% increased Evasion Rating", "(100-200)%% increased Evasion Rating", Boss, 5),
+            ("#% increased Blind Effect", "(100-200)%% increased Blind Effect", Boss, 5),
+            ("Your hits inflict Malediction", "Your hits inflict Malediction", Boss, 3),
+            ("Enemies lose # Flask Charges every # seconds and cannot gain Flask Charges for # seconds after being Hit", "Enemies lose 6 Flask Charges every 3 seconds and cannot gain Flask Charges for 6 seconds after being Hit", Boss, 3),
+            ("hinder aura behaviour variation [#]", "hinder aura behaviour variation [1]", Boss, 2),
+            ("Eldritch Tentacles", "Eldritch Tentacles", Boss, 2),
             ("Drops Burning Ground on Death, lasting # seconds", "Drops Burning Ground on Death, lasting 3 seconds", Minion, 1),
             ("Drops Chilled Ground on Death, lasting # seconds", "Drops Chilled Ground on Death, lasting 3 seconds", Minion, 1),
             ("#% chance to create Shocked Ground on Death, lasting # seconds", "100%% chance to create Shocked Ground on Death, lasting 3 seconds", Minion, 1),
             ("Create Consecrated Ground on Death, lasting # seconds", "Create Consecrated Ground on Death, lasting 6 seconds", Minion, 1),
-            ("Cover Enemies in Frost on Hit", "Cover Enemies in Frost on Hit", "Boss", 1),
-            ("Cover Enemies in Ash on Hit", "Cover Enemies in ash on Hit", "Boss", 1),
-            ("Create Consecrated Ground on Hit, lasting # seconds", "Create Consecrated Ground on Hit, lasting 6 seconds", "Boss", 1),
-            ("Nearby Enemies are Hindered, with #% reduced Movement Speed", "Nearby Enemies are Hindered, with 40%% reduced Movement Speed", "Boss", 1),
-            ("#% Global chance to Blind Enemies on hit", "100%% Global chance to Blind Enemies on hit", "Boss", 1),
+            ("Cover Enemies in Frost on Hit", "Cover Enemies in Frost on Hit", Boss, 1),
+            ("Cover Enemies in Ash on Hit", "Cover Enemies in ash on Hit", Boss, 1),
+            ("Create Consecrated Ground on Hit, lasting # seconds", "Create Consecrated Ground on Hit, lasting 6 seconds", Boss, 1),
+            ("Nearby Enemies are Hindered, with #% reduced Movement Speed", "Nearby Enemies are Hindered, with 40%% reduced Movement Speed", Boss, 1),
+            ("#% Global chance to Blind Enemies on hit", "100%% Global chance to Blind Enemies on hit", Boss, 1),
 
         };
 
+        /// <summary>
+        /// Collection of upside (positive) altar modifications.
+        /// Each tuple contains: Id, Name (with values), Type (Player/Minion/Boss), DefaultValue (weight 1-100)
+        /// Higher weights indicate more desirable effects that should be prioritized.
+        /// </summary>
         public static readonly IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> UpsideMods = new List<(string, string, string, int)>
         {
             ("#% chance to drop an additional Divine Orb", "(1.6-3.2)%% chance to drop an additional Divine Orb", Minion, 100),
@@ -178,83 +212,83 @@ namespace ClickIt
             ("#% chance to drop an additional Divination Card which rewards a Unique Map", "(1.6-3.2)%% chance to drop an additional Divination Card which rewards a Unique Map", Minion, 15),
             ("#% chance to drop an additional Divination Card which rewards other Divination Cards", "(1.6-3.2)%% chance to drop an additional Divination Card which rewards other Divination Cards", Minion, 10),
             ("#% chance to drop an additional Divination Card which rewards a Corrupted Item", "(1.6-3.2)%% chance to drop an additional Divination Card which rewards a Corrupted Item", Minion, 3),
-            ("Final Boss drops # additional Divine Orbs", "Final Boss drops (2-4) additional Divine Orbs", "Boss", 100),
-            ("Final Boss drops # additional Exalted Orbs", "Final Boss drops (2-4) additional Exalted Orbs", "Boss", 50),
-            ("Final Boss drops # additional Chaos Orbs", "Final Boss drops (2-4) additional Chaos Orbs", "Boss", 20),
-            ("Final Boss drops # additional Orbs of Annulment", "Final Boss drops (2-4) additional Orbs of Annulment", "Boss", 35),
-            ("Final Boss drops # additional Vaal Orbs", "Final Boss drops (2-4) additional Vaal Orbs", "Boss", 25),
-            ("Final Boss drops # additional Regal Orbs", "Final Boss drops (2-4) additional Regal Orbs", "Boss", 15),
-            ("Final Boss drops # additional Gemcutter's Prisms", "Final Boss drops (2-4) additional Gemcutter's Prisms", "Boss", 18),
-            ("Final Boss drops # additional Grand Eldritch Ichors", "Final Boss drops (2-4) additional Grand Eldritch Ichors", "Boss", 40),
-            ("Final Boss drops # additional Greater Eldritch Ichors", "Final Boss drops (2-4) additional Greater Eldritch Ichors", "Boss", 20),
-            ("Final Boss drops # additional Lesser Eldritch Ichors", "Final Boss drops (2-4) additional Lesser Eldritch Ichors", "Boss", 8),
-            ("Final Boss drops # additional Grand Eldritch Embers", "Final Boss drops (2-4) additional Grand Eldritch Embers", "Boss", 40),
-            ("Final Boss drops # additional Greater Eldritch Embers", "Final Boss drops (2-4) additional Greater Eldritch Embers", "Boss", 20),
-            ("Final Boss drops # additional Lesser Eldritch Embers", "Final Boss drops (2-4) additional Lesser Eldritch Embers", "Boss", 9),
-            ("Final Boss drops # additional Eldritch Exalted Orbs", "Final Boss drops (2-4) additional Eldritch Exalted Orbs", "Boss", 36),
-            ("Final Boss drops # additional Eldritch Chaos Orbs", "Final Boss drops (2-4) additional Eldritch Chaos Orbs", "Boss", 6),
-            ("Final Boss drops # additional Eldritch Orbs of Annulment", "Final Boss drops (2-4) additional Eldritch Orbs of Annulment", "Boss", 30),
-            ("Final Boss drops # additional Grand Eldritch Ichor", "Final Boss drops 1 additional Grand Eldritch Ichor", "Boss", 40),
-            ("Final Boss drops # additional Greater Eldritch Ichor", "Final Boss drops 1 additional Greater Eldritch Ichor", "Boss", 20),
-            ("Final Boss drops # additional Lesser Eldritch Ichor", "Final Boss drops 1 additional Lesser Eldritch Ichor", "Boss", 8),
-            ("Final Boss drops # additional Grand Eldritch Ember", "Final Boss drops 1 additional Grand Eldritch Ember", "Boss", 40),
-            ("Final Boss drops # additional Greater Eldritch Ember", "Final Boss drops 1 additional Greater Eldritch Ember", "Boss", 20),
-            ("Final Boss drops # additional Lesser Eldritch Ember", "Final Boss drops 1 additional Lesser Eldritch Ember", "Boss", 8),
-            ("Final Boss drops # additional Orbs of Fusing", "Final Boss drops (2-4) additional Orbs of Fusing", "Boss", 6),
-            ("Final Boss drops # additional Cartographer's Chisels", "Final Boss drops (2-4) additional Cartographer's Chisels", "Boss", 3),
-            ("Final Boss drops # additional Orbs of Alteration", "Final Boss drops (2-4) additional Orbs of Alteration", "Boss", 3),
-            ("Final Boss drops # additional Orbs of Scouring", "Final Boss drops (2-4) additional Orbs of Scouring", "Boss", 3),
-            ("Final Boss drops # additional Jeweller's Orbs", "Final Boss drops (2-4) additional Jeweller's Orbs", "Boss", 3),
-            ("Final Boss drops # additional Chromatic Orbs", "Final Boss drops (2-4) additional Chromatic Orbs", "Boss", 3),
-            ("Final Boss drops # additional Orbs of Binding", "Final Boss drops (2-4) additional Orbs of Binding", "Boss", 3),
-            ("Final Boss drops # additional Orbs of Horizons", "Final Boss drops (2-4) additional Orbs of Horizons", "Boss", 3),
-            ("Final Boss drops # additional Blessed Orbs", "Final Boss drops (2-4) additional Blessed Orbs", "Boss", 3),
-            ("Final Boss drops # additional Orbs of Regret", "Final Boss drops (2-4) additional Orbs of Regret", "Boss", 6),
-            ("Final Boss drops # additional Orbs of Unmaking", "Final Boss drops (2-4) additional Orbs of Unmaking", "Boss", 3),
-            ("Final Boss drops # additional Glassblower's Baubles", "Final Boss drops (2-4) additional Glassblower's Baubles", "Boss", 3),
-            ("Final Boss drops # additional Enkindling Orbs", "Final Boss drops (2-4) additional Enkindling Orbs", "Boss", 3),
-            ("Final Boss drops # additional Instilling Orbs", "Final Boss drops (2-4) additional Instilling Orbs", "Boss", 3),
-            ("Final Boss drops # additional Delirium Scarabs", "Final Boss drops (2-4) additional Delirium Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Breach Scarabs", "Final Boss drops (2-4) additional Breach Scarabs", "Boss", 75),
-            ("Final Boss drops # additional Legion Scarabs", "Final Boss drops (2-4) additional Legion Scarabs", "Boss", 78),
-            ("Final Boss drops # additional Expedition Scarabs", "Final Boss drops (2-4) additional Expedition Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Harvest Scarabs", "Final Boss drops (2-4) additional Harvest Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Ultimatum Scarabs", "Final Boss drops (2-4) additional Ultimatum Scarabs", "Boss", 69),
-            ("Final Boss drops # additional Betrayal Scarabs", "Final Boss drops (2-4) additional Betrayal Scarabs", "Boss", 69),
-            ("Final Boss drops # additional Ritual Scarabs", "Final Boss drops (2-4) additional Ritual Scarabs", "Boss", 60),
-            ("Final Boss drops # additional Blight Scarabs", "Final Boss drops (2-4) additional Blight Scarabs", "Boss", 69),
-            ("Final Boss drops # additional Abyss Scarabs", "Final Boss drops (2-4) additional Abyss Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Bestiary Scarabs", "Final Boss drops (2-4) additional Bestiary Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Incursion Scarabs", "Final Boss drops (2-4) additional Incursion Scarabs", "Boss", 69),
-            ("Final Boss drops # additional Harbinger Scarabs", "Final Boss drops (2-4) additional Harbinger Scarabs", "Boss", 54),
-            ("Final Boss drops # additional Sulphite Scarabs", "Final Boss drops (2-4) additional Sulphite Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Influence Scarabs", "Final Boss drops (2-4) additional Influence Scarabs", "Boss", 60),
-            ("Final Boss drops # additional Cartography Scarabs", "Final Boss drops (2-4) additional Cartography Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Divination Scarabs", "Final Boss drops (2-4) additional Divination Scarabs", "Boss", 90),
-            ("Final Boss drops # additional Essence Scarabs", "Final Boss drops (2-4) additional Essence Scarabs", "Boss", 54),
-            ("Final Boss drops # additional Beyond Scarabs", "Final Boss drops (2-4) additional Beyond Scarabs", "Boss", 66),
-            ("Final Boss drops # additional Anarchy Scarabs", "Final Boss drops (2-4) additional Anarchy Scarabs", "Boss", 69),
-            ("Final Boss drops # additional Torment Scarabs", "Final Boss drops (2-4) additional Torment Scarabs", "Boss", 69),
-            ("Final Boss drops # additional Ambush Scarabs", "Final Boss drops (2-4) additional Ambush Scarabs", "Boss", 96),
-            ("Final Boss drops # additional Domination Scarabs", "Final Boss drops (2-4) additional Domination Scarabs", "Boss", 90),
-            ("Final Boss drops # additional Reliquary Scarabs", "Final Boss drops (2-4) additional Reliquary Scarabs", "Boss", 45),
-            ("Final Boss drops # additional Miscellaneous Scarabs", "Final Boss drops (2-4) additional Miscellaneous Scarabs", "Boss", 45),
+            ("Final Boss drops # additional Divine Orbs", "Final Boss drops (2-4) additional Divine Orbs", Boss, 100),
+            ("Final Boss drops # additional Exalted Orbs", "Final Boss drops (2-4) additional Exalted Orbs", Boss, 50),
+            ("Final Boss drops # additional Chaos Orbs", "Final Boss drops (2-4) additional Chaos Orbs", Boss, 20),
+            ("Final Boss drops # additional Orbs of Annulment", "Final Boss drops (2-4) additional Orbs of Annulment", Boss, 35),
+            ("Final Boss drops # additional Vaal Orbs", "Final Boss drops (2-4) additional Vaal Orbs", Boss, 25),
+            ("Final Boss drops # additional Regal Orbs", "Final Boss drops (2-4) additional Regal Orbs", Boss, 15),
+            ("Final Boss drops # additional Gemcutter's Prisms", "Final Boss drops (2-4) additional Gemcutter's Prisms", Boss, 18),
+            ("Final Boss drops # additional Grand Eldritch Ichors", "Final Boss drops (2-4) additional Grand Eldritch Ichors", Boss, 40),
+            ("Final Boss drops # additional Greater Eldritch Ichors", "Final Boss drops (2-4) additional Greater Eldritch Ichors", Boss, 20),
+            ("Final Boss drops # additional Lesser Eldritch Ichors", "Final Boss drops (2-4) additional Lesser Eldritch Ichors", Boss, 8),
+            ("Final Boss drops # additional Grand Eldritch Embers", "Final Boss drops (2-4) additional Grand Eldritch Embers", Boss, 40),
+            ("Final Boss drops # additional Greater Eldritch Embers", "Final Boss drops (2-4) additional Greater Eldritch Embers", Boss, 20),
+            ("Final Boss drops # additional Lesser Eldritch Embers", "Final Boss drops (2-4) additional Lesser Eldritch Embers", Boss, 9),
+            ("Final Boss drops # additional Eldritch Exalted Orbs", "Final Boss drops (2-4) additional Eldritch Exalted Orbs", Boss, 36),
+            ("Final Boss drops # additional Eldritch Chaos Orbs", "Final Boss drops (2-4) additional Eldritch Chaos Orbs", Boss, 6),
+            ("Final Boss drops # additional Eldritch Orbs of Annulment", "Final Boss drops (2-4) additional Eldritch Orbs of Annulment", Boss, 30),
+            ("Final Boss drops # additional Grand Eldritch Ichor", "Final Boss drops 1 additional Grand Eldritch Ichor", Boss, 40),
+            ("Final Boss drops # additional Greater Eldritch Ichor", "Final Boss drops 1 additional Greater Eldritch Ichor", Boss, 20),
+            ("Final Boss drops # additional Lesser Eldritch Ichor", "Final Boss drops 1 additional Lesser Eldritch Ichor", Boss, 8),
+            ("Final Boss drops # additional Grand Eldritch Ember", "Final Boss drops 1 additional Grand Eldritch Ember", Boss, 40),
+            ("Final Boss drops # additional Greater Eldritch Ember", "Final Boss drops 1 additional Greater Eldritch Ember", Boss, 20),
+            ("Final Boss drops # additional Lesser Eldritch Ember", "Final Boss drops 1 additional Lesser Eldritch Ember", Boss, 8),
+            ("Final Boss drops # additional Orbs of Fusing", "Final Boss drops (2-4) additional Orbs of Fusing", Boss, 6),
+            ("Final Boss drops # additional Cartographer's Chisels", "Final Boss drops (2-4) additional Cartographer's Chisels", Boss, 3),
+            ("Final Boss drops # additional Orbs of Alteration", "Final Boss drops (2-4) additional Orbs of Alteration", Boss, 3),
+            ("Final Boss drops # additional Orbs of Scouring", "Final Boss drops (2-4) additional Orbs of Scouring", Boss, 3),
+            ("Final Boss drops # additional Jeweller's Orbs", "Final Boss drops (2-4) additional Jeweller's Orbs", Boss, 3),
+            ("Final Boss drops # additional Chromatic Orbs", "Final Boss drops (2-4) additional Chromatic Orbs", Boss, 3),
+            ("Final Boss drops # additional Orbs of Binding", "Final Boss drops (2-4) additional Orbs of Binding", Boss, 3),
+            ("Final Boss drops # additional Orbs of Horizons", "Final Boss drops (2-4) additional Orbs of Horizons", Boss, 3),
+            ("Final Boss drops # additional Blessed Orbs", "Final Boss drops (2-4) additional Blessed Orbs", Boss, 3),
+            ("Final Boss drops # additional Orbs of Regret", "Final Boss drops (2-4) additional Orbs of Regret", Boss, 6),
+            ("Final Boss drops # additional Orbs of Unmaking", "Final Boss drops (2-4) additional Orbs of Unmaking", Boss, 3),
+            ("Final Boss drops # additional Glassblower's Baubles", "Final Boss drops (2-4) additional Glassblower's Baubles", Boss, 3),
+            ("Final Boss drops # additional Enkindling Orbs", "Final Boss drops (2-4) additional Enkindling Orbs", Boss, 3),
+            ("Final Boss drops # additional Instilling Orbs", "Final Boss drops (2-4) additional Instilling Orbs", Boss, 3),
+            ("Final Boss drops # additional Delirium Scarabs", "Final Boss drops (2-4) additional Delirium Scarabs", Boss, 66),
+            ("Final Boss drops # additional Breach Scarabs", "Final Boss drops (2-4) additional Breach Scarabs", Boss, 75),
+            ("Final Boss drops # additional Legion Scarabs", "Final Boss drops (2-4) additional Legion Scarabs", Boss, 78),
+            ("Final Boss drops # additional Expedition Scarabs", "Final Boss drops (2-4) additional Expedition Scarabs", Boss, 66),
+            ("Final Boss drops # additional Harvest Scarabs", "Final Boss drops (2-4) additional Harvest Scarabs", Boss, 66),
+            ("Final Boss drops # additional Ultimatum Scarabs", "Final Boss drops (2-4) additional Ultimatum Scarabs", Boss, 69),
+            ("Final Boss drops # additional Betrayal Scarabs", "Final Boss drops (2-4) additional Betrayal Scarabs", Boss, 69),
+            ("Final Boss drops # additional Ritual Scarabs", "Final Boss drops (2-4) additional Ritual Scarabs", Boss, 60),
+            ("Final Boss drops # additional Blight Scarabs", "Final Boss drops (2-4) additional Blight Scarabs", Boss, 69),
+            ("Final Boss drops # additional Abyss Scarabs", "Final Boss drops (2-4) additional Abyss Scarabs", Boss, 66),
+            ("Final Boss drops # additional Bestiary Scarabs", "Final Boss drops (2-4) additional Bestiary Scarabs", Boss, 66),
+            ("Final Boss drops # additional Incursion Scarabs", "Final Boss drops (2-4) additional Incursion Scarabs", Boss, 69),
+            ("Final Boss drops # additional Harbinger Scarabs", "Final Boss drops (2-4) additional Harbinger Scarabs", Boss, 54),
+            ("Final Boss drops # additional Sulphite Scarabs", "Final Boss drops (2-4) additional Sulphite Scarabs", Boss, 66),
+            ("Final Boss drops # additional Influence Scarabs", "Final Boss drops (2-4) additional Influence Scarabs", Boss, 60),
+            ("Final Boss drops # additional Cartography Scarabs", "Final Boss drops (2-4) additional Cartography Scarabs", Boss, 66),
+            ("Final Boss drops # additional Divination Scarabs", "Final Boss drops (2-4) additional Divination Scarabs", Boss, 90),
+            ("Final Boss drops # additional Essence Scarabs", "Final Boss drops (2-4) additional Essence Scarabs", Boss, 54),
+            ("Final Boss drops # additional Beyond Scarabs", "Final Boss drops (2-4) additional Beyond Scarabs", Boss, 66),
+            ("Final Boss drops # additional Anarchy Scarabs", "Final Boss drops (2-4) additional Anarchy Scarabs", Boss, 69),
+            ("Final Boss drops # additional Torment Scarabs", "Final Boss drops (2-4) additional Torment Scarabs", Boss, 69),
+            ("Final Boss drops # additional Ambush Scarabs", "Final Boss drops (2-4) additional Ambush Scarabs", Boss, 96),
+            ("Final Boss drops # additional Domination Scarabs", "Final Boss drops (2-4) additional Domination Scarabs", Boss, 90),
+            ("Final Boss drops # additional Reliquary Scarabs", "Final Boss drops (2-4) additional Reliquary Scarabs", Boss, 45),
+            ("Final Boss drops # additional Miscellaneous Scarabs", "Final Boss drops (2-4) additional Miscellaneous Scarabs", Boss, 45),
 
-            ("Final Boss drops # additional Divination Cards which reward Currency", "Final Boss drops (2-4) additional Divination Cards which reward Currency", "Boss", 45),
-            ("Final Boss drops # additional Divination Cards which reward League Currency", "Final Boss drops (2-4) additional Divination Cards which reward League Currency", "Boss", 55),
-            ("Final Boss drops # additional Divination Cards which reward Basic Currency", "Final Boss drops (2-4) additional Divination Cards which reward Basic Currency", "Boss", 10),
-            ("Final Boss drops # additional Divination Cards which reward a Unique Item", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Item", "Boss", 18),
-            ("Final Boss drops # additional Divination Cards which reward a Unique Weapon", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Weapon", "Boss", 15),
-            ("Final Boss drops # additional Divination Cards which reward a Unique Armour", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Armour", "Boss", 15),
-            ("Final Boss drops # additional Divination Cards which reward Unique Jewellery", "Final Boss drops (2-4) additional Divination Cards which reward Unique Jewellery", "Boss", 22),
-            ("Final Boss drops # additional Divination Cards which reward a Corrupted Unique Item", "Final Boss drops (2-4) additional Divination Cards which reward a Corrupted Unique Item", "Boss", 10),
-            ("Final Boss drops # additional Divination Cards which reward Gems", "Final Boss drops (2-4) additional Divination Cards which reward Gems", "Boss", 8),
-            ("Final Boss drops # additional Divination Cards which reward Levelled Gems", "Final Boss drops (2-4) additional Divination Cards which reward Levelled Gems", "Boss", 12),
-            ("Final Boss drops # additional Divination Cards which reward Quality Gems", "Final Boss drops (2-4) additional Divination Cards which reward Quality Gems", "Boss", 15),
-            ("Final Boss drops # additional Divination Cards which reward a Map", "Final Boss drops (2-4) additional Divination Cards which reward a Map", "Boss", 8),
-            ("Final Boss drops # additional Divination Cards which reward a Unique Map", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Map", "Boss", 28),
-            ("Final Boss drops # additional Divination Cards which reward other Divination Cards", "Final Boss drops (2-4) additional Divination Cards which reward other Divination Cards", "Boss", 22),
-            ("Final Boss drops # additional Divination Cards which reward a Corrupted Item", "Final Boss drops (2-4) additional Divination Cards which reward a Corrupted Item", "Boss", 8),
+            ("Final Boss drops # additional Divination Cards which reward Currency", "Final Boss drops (2-4) additional Divination Cards which reward Currency", Boss, 45),
+            ("Final Boss drops # additional Divination Cards which reward League Currency", "Final Boss drops (2-4) additional Divination Cards which reward League Currency", Boss, 55),
+            ("Final Boss drops # additional Divination Cards which reward Basic Currency", "Final Boss drops (2-4) additional Divination Cards which reward Basic Currency", Boss, 10),
+            ("Final Boss drops # additional Divination Cards which reward a Unique Item", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Item", Boss, 18),
+            ("Final Boss drops # additional Divination Cards which reward a Unique Weapon", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Weapon", Boss, 15),
+            ("Final Boss drops # additional Divination Cards which reward a Unique Armour", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Armour", Boss, 15),
+            ("Final Boss drops # additional Divination Cards which reward Unique Jewellery", "Final Boss drops (2-4) additional Divination Cards which reward Unique Jewellery", Boss, 22),
+            ("Final Boss drops # additional Divination Cards which reward a Corrupted Unique Item", "Final Boss drops (2-4) additional Divination Cards which reward a Corrupted Unique Item", Boss, 10),
+            ("Final Boss drops # additional Divination Cards which reward Gems", "Final Boss drops (2-4) additional Divination Cards which reward Gems", Boss, 8),
+            ("Final Boss drops # additional Divination Cards which reward Levelled Gems", "Final Boss drops (2-4) additional Divination Cards which reward Levelled Gems", Boss, 12),
+            ("Final Boss drops # additional Divination Cards which reward Quality Gems", "Final Boss drops (2-4) additional Divination Cards which reward Quality Gems", Boss, 15),
+            ("Final Boss drops # additional Divination Cards which reward a Map", "Final Boss drops (2-4) additional Divination Cards which reward a Map", Boss, 8),
+            ("Final Boss drops # additional Divination Cards which reward a Unique Map", "Final Boss drops (2-4) additional Divination Cards which reward a Unique Map", Boss, 28),
+            ("Final Boss drops # additional Divination Cards which reward other Divination Cards", "Final Boss drops (2-4) additional Divination Cards which reward other Divination Cards", Boss, 22),
+            ("Final Boss drops # additional Divination Cards which reward a Corrupted Item", "Final Boss drops (2-4) additional Divination Cards which reward a Corrupted Item", Boss, 8),
             ("Basic Currency Items dropped by slain Enemies have #% chance to be Duplicated", "Basic Currency Items dropped by slain Enemies have (15-30)%% chance to be Duplicated", Player, 45),
             ("Unique Items dropped by slain Enemies have #% chance to be Duplicated", "Unique Items dropped by slain Enemies have (15-30)%% chance to be Duplicated", Player, 28),
             ("Scarabs dropped by slain Enemies have #% chance to be Duplicated", "Scarabs dropped by slain Enemies have (15-30)%% chance to be Duplicated", Player, 60),
@@ -265,8 +299,13 @@ namespace ClickIt
             ("#% increased Rarity of Items found in this Area", "(15-35)%% increased Rarity of Items found in this Area", Player, 40),
             ("#% increased Experience gain", "(8-12)%% increased Experience gain", Player, 25),
         };
+        #endregion
     }
 
+    #region Enums
+    /// <summary>
+    /// Defines which entity type is affected by an altar modification
+    /// </summary>
     public enum AffectedTarget
     {
         Any = 0,
@@ -274,13 +313,15 @@ namespace ClickIt
         Minions = 2,
         FinalBoss = 3,
     }
+
+    /// <summary>
+    /// Categorizes altar modifications as beneficial, harmful, or neutral
+    /// </summary>
     public enum EffectType
     {
         Neutral,
         Upside,
         Downside,
     }
-
-
-
+    #endregion
 }

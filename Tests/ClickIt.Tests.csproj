@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\AltarModsConstants.cs">
+    <Compile Include="..\Constants\AltarModsConstants.cs">
       <Link>Shared\AltarModsConstants.cs</Link>
     </Compile>
   </ItemGroup>

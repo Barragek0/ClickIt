@@ -2,6 +2,7 @@ using ExileCore;
 using ExileCore.PoEMemory;
 using SharpDX;
 using System.Collections.Generic;
+using ClickIt.Components;
 
 #nullable enable
 

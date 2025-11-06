@@ -1,6 +1,6 @@
-﻿using static ClickIt.ClickIt;
+using static ClickIt.ClickIt;
 
-namespace ClickIt
+namespace ClickIt.Components
 {
     public class PrimaryAltarComponent
     {
