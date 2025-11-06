@@ -21,6 +21,8 @@ namespace ClickIt.Services
         private const string Brequel = "Brequel";
         private const string CrimsonIron = "CrimsonIron";
         private const string CopperAltar = "copper_altar";
+        private const string PetrifiedWood = "PetrifiedWood";
+        private const string Bismuth = "Bismuth";
         private const string Verisium = "Verisium";
 
         public LabelFilterService(ClickItSettings settings)
@@ -220,7 +222,7 @@ namespace ClickIt.Services
                    (clickAzurite && path.Contains("AzuriteEncounterController")) ||
                    (clickCrafting && path.Contains("CraftingUnlocks")) ||
                    (clickBreach && path.Contains(Brequel)) ||
-                   (clickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar)));
+                   (clickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth)));
         }
 
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)

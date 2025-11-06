@@ -28,6 +28,8 @@ namespace ClickIt
         private const string Brequel = "Brequel";
         private const string CrimsonIron = "CrimsonIron";
         private const string CopperAltar = "copper_altar";
+        private const string PetrifiedWood = "PetrifiedWood";
+        private const string Bismuth = "Bismuth";
         private const string Verisium = "Verisium";
         private const string ReportBugMessage = "\nPlease report this as a bug on github";
 
@@ -554,6 +556,8 @@ namespace ClickIt
                     path.Contains(Brequel) ||
                     path.Contains(CrimsonIron) ||
                     path.Contains(CopperAltar) ||
+                    path.Contains(PetrifiedWood) ||
+                    path.Contains(Bismuth) ||
                     path.Contains(Verisium));
 
                 if (isValidType || isValidPath || GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null)
