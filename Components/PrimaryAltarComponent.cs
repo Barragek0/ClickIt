@@ -1,5 +1,4 @@
-using static ClickIt.ClickIt;
-
+﻿using static ClickIt.ClickIt;
 namespace ClickIt.Components
 {
     public class PrimaryAltarComponent
@@ -12,7 +11,6 @@ namespace ClickIt.Components
             this.BottomMods = BottomMods;
             this.BottomButton = BottomButton;
         }
-
         public AltarType AltarType { get; set; }
         public SecondaryAltarComponent TopMods { get; set; }
         public AltarButton TopButton { get; set; }

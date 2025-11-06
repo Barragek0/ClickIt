@@ -118,11 +118,14 @@
     
     <!-- Rendering -->
     <Compile Include="Rendering\AltarRenderer.cs" />
+    <Compile Include="Rendering\DebugRenderer.cs" />
+    <Compile Include="Rendering\AltarDisplayRenderer.cs" />
     
     <!-- Utils -->
     <Compile Include="Utils\Mouse.cs" />
     <Compile Include="Utils\Keyboard.cs" />
     <Compile Include="Utils\Input.cs" />
+    <Compile Include="Utils\WeightCalculator.cs" />
     <Compile Include="Utils\InputHandler.cs" />
   </ItemGroup>
   <ItemGroup>

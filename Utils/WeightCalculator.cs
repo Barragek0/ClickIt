@@ -1,0 +1,79 @@
+﻿using ClickIt.Components;
+using System;
+using System.Collections.Generic;
+namespace ClickIt.Utils
+{
+    public class WeightCalculator
+    {
+        private readonly ClickItSettings _settings;
+        public WeightCalculator(ClickItSettings settings)
+        {
+            _settings = settings;
+        }
+        public AltarWeights CalculateAltarWeights(PrimaryAltarComponent altar)
+        {
+            decimal TopUpsideWeight = CalculateUpsideWeight(altar.TopMods.Upsides);
+            decimal TopDownsideWeight = CalculateDownsideWeight(altar.TopMods.Downsides);
+            decimal BottomUpsideWeight = CalculateUpsideWeight(altar.BottomMods.Upsides);
+            decimal BottomDownsideWeight = CalculateDownsideWeight(altar.BottomMods.Downsides);
+            return new AltarWeights
+            {
+                TopUpsideWeight = TopUpsideWeight,
+                TopDownsideWeight = TopDownsideWeight,
+                BottomUpsideWeight = BottomUpsideWeight,
+                BottomDownsideWeight = BottomDownsideWeight,
+                TopDownside1Weight = CalculateDownsideWeight([altar.TopMods.FirstDownside]),
+                TopDownside2Weight = CalculateDownsideWeight([altar.TopMods.SecondDownside]),
+                BottomDownside1Weight = CalculateDownsideWeight([altar.BottomMods.FirstDownside]),
+                BottomDownside2Weight = CalculateDownsideWeight([altar.BottomMods.SecondDownside]),
+                TopUpside1Weight = CalculateUpsideWeight([altar.TopMods.FirstUpside]),
+                TopUpside2Weight = CalculateUpsideWeight([altar.TopMods.SecondUpside]),
+                BottomUpside1Weight = CalculateUpsideWeight([altar.BottomMods.FirstUpside]),
+                BottomUpside2Weight = CalculateUpsideWeight([altar.BottomMods.SecondUpside]),
+                TopWeight = Math.Round(TopUpsideWeight / TopDownsideWeight, 2),
+                BottomWeight = Math.Round(BottomUpsideWeight / BottomDownsideWeight, 2)
+            };
+        }
+        public decimal CalculateUpsideWeight(List<string> upsides)
+        {
+            decimal totalWeight = 0;
+            if (upsides == null) return totalWeight;
+            foreach (string upside in upsides)
+            {
+                if (string.IsNullOrEmpty(upside)) continue;
+                int weight = _settings.GetModTier(upside);
+                totalWeight += weight;
+            }
+            return totalWeight;
+        }
+        public decimal CalculateDownsideWeight(List<string> downsides)
+        {
+            decimal totalWeight = 1;
+            if (downsides == null) return totalWeight;
+            foreach (string downside in downsides)
+            {
+                if (string.IsNullOrEmpty(downside)) continue;
+                int weight = _settings.GetModTier(downside);
+                totalWeight += weight;
+            }
+            return totalWeight;
+        }
+    }
+    public struct AltarWeights
+    {
+        public decimal TopUpsideWeight;
+        public decimal TopDownsideWeight;
+        public decimal BottomUpsideWeight;
+        public decimal BottomDownsideWeight;
+        public decimal TopDownside1Weight;
+        public decimal TopDownside2Weight;
+        public decimal BottomDownside1Weight;
+        public decimal BottomDownside2Weight;
+        public decimal TopUpside1Weight;
+        public decimal TopUpside2Weight;
+        public decimal BottomUpside1Weight;
+        public decimal BottomUpside2Weight;
+        public decimal TopWeight;
+        public decimal BottomWeight;
+    }
+}

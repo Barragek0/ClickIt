@@ -1,32 +1,23 @@
-using ExileCore.PoEMemory;
+﻿using ExileCore.PoEMemory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 #nullable enable
-
 namespace ClickIt.Services
 {
-    /// <summary>
-    /// Handles Element tree traversal and search operations
-    /// </summary>
     public static class ElementService
     {
         private static readonly List<Element> ElementsByStringContainsList = new();
-
         public static List<Element> GetElementsByStringContains(Element? label, string str)
         {
             ElementsByStringContainsList.Clear();
-
             if (label == null)
                 return ElementsByStringContainsList;
-
             try
             {
                 string rootText = label.GetText(512);
                 if (!string.IsNullOrEmpty(rootText) && rootText.Contains(str))
                     ElementsByStringContainsList.Add(label);
-
                 for (int containerIndex = 0; containerIndex <= 1; containerIndex++)
                 {
                     try
@@ -34,17 +25,14 @@ namespace ClickIt.Services
                         Element? container = label.GetChildAtIndex(containerIndex);
                         if (container == null)
                             continue;
-
                         IList<Element> children = container.Children;
                         if (children == null)
                             continue;
-
                         for (int i = 0; i < children.Count; i++)
                         {
                             Element? child = children[i];
                             if (child == null)
                                 continue;
-
                             string childText = child.GetText(512);
                             if (!string.IsNullOrEmpty(childText) && childText.Contains(str))
                                 ElementsByStringContainsList.Add(child);
@@ -52,27 +40,21 @@ namespace ClickIt.Services
                     }
                     catch (Exception)
                     {
-                        // Ignore per-element read errors to prevent crashes when elements become invalid
                     }
                 }
             }
             catch (Exception)
             {
-                // Ignore errors
             }
-
             return ElementsByStringContainsList;
         }
-
         public static Element? GetElementByString(Element? root, string str)
         {
             if (root == null)
                 return null;
-
             Element? found = null;
             Stack<Element> stack = new();
             stack.Push(root);
-
             while (stack.Count > 0)
             {
                 Element el = stack.Pop();
@@ -84,7 +66,6 @@ namespace ClickIt.Services
                         found = el;
                         break;
                     }
-
                     IList<Element> children = el.Children;
                     if (children != null)
                     {
@@ -96,25 +77,19 @@ namespace ClickIt.Services
                 }
                 catch
                 {
-                    // ignore read errors and continue
                 }
             }
-
             return found;
         }
-
         public static bool ElementContainsAnyStrings(Element? root, IEnumerable<string> patterns)
         {
             if (root == null)
                 return false;
-
             string[] patList = patterns as string[] ?? patterns.ToArray();
             if (patList.Length == 0)
                 return false;
-
             Stack<Element> stack = new();
             stack.Push(root);
-
             while (stack.Count > 0)
             {
                 Element el = stack.Pop();
@@ -129,7 +104,6 @@ namespace ClickIt.Services
                                 return true;
                         }
                     }
-
                     IList<Element> children = el.Children;
                     if (children != null)
                     {
@@ -141,10 +115,8 @@ namespace ClickIt.Services
                 }
                 catch
                 {
-                    // ignore read errors
                 }
             }
-
             return false;
         }
     }

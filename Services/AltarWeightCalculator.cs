@@ -1,29 +1,21 @@
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using ClickIt.Components;
-
 namespace ClickIt.Services
 {
-    /// <summary>
-    /// Handles altar weight calculations and decision-making logic
-    /// </summary>
     public class AltarWeightCalculator
     {
         private readonly ClickItSettings _settings;
-
         public AltarWeightCalculator(ClickItSettings settings)
         {
             _settings = settings;
         }
-
         public AltarWeights CalculateAltarWeights(PrimaryAltarComponent altar)
         {
             decimal topUpsideWeight = CalculateUpsideWeight(altar.TopMods.Upsides);
             decimal topDownsideWeight = CalculateDownsideWeight(altar.TopMods.Downsides);
             decimal bottomUpsideWeight = CalculateUpsideWeight(altar.BottomMods.Upsides);
             decimal bottomDownsideWeight = CalculateDownsideWeight(altar.BottomMods.Downsides);
-
             return new AltarWeights
             {
                 TopUpsideWeight = topUpsideWeight,
@@ -42,12 +34,10 @@ namespace ClickIt.Services
                 BottomWeight = System.Math.Round(bottomUpsideWeight / bottomDownsideWeight, 2)
             };
         }
-
         private decimal CalculateUpsideWeight(List<string> upsides)
         {
             decimal totalWeight = 0;
             if (upsides == null) return totalWeight;
-
             foreach (string upside in upsides.Where(u => !string.IsNullOrEmpty(u)))
             {
                 int weight = _settings.GetModTier(upside);
@@ -55,12 +45,10 @@ namespace ClickIt.Services
             }
             return totalWeight;
         }
-
         private decimal CalculateDownsideWeight(List<string> downsides)
         {
-            decimal totalWeight = 1; // Start with 1 to avoid division by zero
+            decimal totalWeight = 1;
             if (downsides == null) return totalWeight;
-
             foreach (string downside in downsides.Where(d => !string.IsNullOrEmpty(d)))
             {
                 int weight = _settings.GetModTier(downside);
@@ -69,7 +57,6 @@ namespace ClickIt.Services
             return totalWeight;
         }
     }
-
     public struct AltarWeights
     {
         public decimal TopUpsideWeight { get; set; }

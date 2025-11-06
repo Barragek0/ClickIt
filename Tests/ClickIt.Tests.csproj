@@ -19,6 +19,9 @@
     <Compile Include="..\Constants\AltarModsConstants.cs">
       <Link>Shared\AltarModsConstants.cs</Link>
     </Compile>
+    <Compile Include="..\Constants\Constants.cs">
+      <Link>Shared\Constants.cs</Link>
+    </Compile>
   </ItemGroup>
 
 </Project>

@@ -1,28 +1,14 @@
-using System.Collections.Generic;
-
+﻿using System.Collections.Generic;
 namespace ClickIt.Constants
 {
-    /// <summary>
-    /// Contains all altar modifier constants and lookup dictionaries for the ClickIt plugin.
-    /// This class provides the data needed for altar decision-making and mod type mapping.
-    /// </summary>
     internal static class AltarModsConstants
     {
         #region Type Constants (transitional - will be removed when fully migrated to Constants class)
-        /// <summary>Constant for Player-targeted modifications</summary>
         private const string Player = "Player";
-
-        /// <summary>Constant for Minion-targeted modifications</summary>
         private const string Minion = "Minion";
-
-        /// <summary>Constant for Boss-targeted modifications</summary>
         private const string Boss = "Boss";
         #endregion
-
         #region Lookup Dictionaries
-        /// <summary>
-        /// Maps filter target strings to AffectedTarget enums for UI filtering
-        /// </summary>
         public static Dictionary<string, AffectedTarget> FilterTargetDict { get; } = new Dictionary<string, AffectedTarget>
         {
             { "Any", AffectedTarget.Any },
@@ -30,10 +16,6 @@ namespace ClickIt.Constants
             { "Minions", AffectedTarget.Minions },
             { Boss, AffectedTarget.FinalBoss }
         };
-
-        /// <summary>
-        /// Maps altar text prefixes to AffectedTarget enums for parsing altar mods
-        /// </summary>
         public static Dictionary<string, AffectedTarget> AltarTargetDict { get; } = new Dictionary<string, AffectedTarget>
         {
             { "Player gains:", AffectedTarget.Player },
@@ -41,13 +23,7 @@ namespace ClickIt.Constants
             { "Map boss gains:", AffectedTarget.FinalBoss }
         };
         #endregion
-
         #region Modifier Data
-        /// <summary>
-        /// Collection of downside (negative) altar modifications.
-        /// Each tuple contains: Id, Name (with values), Type (Player/Minion/Boss), DefaultValue (weight 1-100)
-        /// Higher weights indicate more undesirable effects that should be avoided.
-        /// </summary>
         public static readonly IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> DownsideMods = new List<(string, string, string, int)>
         {
             ("Projectiles are fired in random directions", "Projectiles are fired in random directions", Player, 100),
@@ -134,14 +110,7 @@ namespace ClickIt.Constants
             ("Create Consecrated Ground on Hit, lasting # seconds", "Create Consecrated Ground on Hit, lasting 6 seconds", Boss, 1),
             ("Nearby Enemies are Hindered, with #% reduced Movement Speed", "Nearby Enemies are Hindered, with 40%% reduced Movement Speed", Boss, 1),
             ("#% Global chance to Blind Enemies on hit", "100%% Global chance to Blind Enemies on hit", Boss, 1),
-
         };
-
-        /// <summary>
-        /// Collection of upside (positive) altar modifications.
-        /// Each tuple contains: Id, Name (with values), Type (Player/Minion/Boss), DefaultValue (weight 1-100)
-        /// Higher weights indicate more desirable effects that should be prioritized.
-        /// </summary>
         public static readonly IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> UpsideMods = new List<(string, string, string, int)>
         {
             ("#% chance to drop an additional Divine Orb", "(1.6-3.2)%% chance to drop an additional Divine Orb", Minion, 100),
@@ -301,11 +270,7 @@ namespace ClickIt.Constants
         };
         #endregion
     }
-
     #region Enums
-    /// <summary>
-    /// Defines which entity type is affected by an altar modification
-    /// </summary>
     public enum AffectedTarget
     {
         Any = 0,
@@ -313,10 +278,6 @@ namespace ClickIt.Constants
         Minions = 2,
         FinalBoss = 3,
     }
-
-    /// <summary>
-    /// Categorizes altar modifications as beneficial, harmful, or neutral
-    /// </summary>
     public enum EffectType
     {
         Neutral,

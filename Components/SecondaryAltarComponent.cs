@@ -1,6 +1,5 @@
-using ExileCore.PoEMemory;
+﻿using ExileCore.PoEMemory;
 using System.Collections.Generic;
-
 namespace ClickIt.Components
 {
     public class SecondaryAltarComponent

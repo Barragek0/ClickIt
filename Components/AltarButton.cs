@@ -1,5 +1,4 @@
-using ExileCore.PoEMemory;
-
+﻿using ExileCore.PoEMemory;
 namespace ClickIt.Components
 {
     public class AltarButton
@@ -8,7 +7,6 @@ namespace ClickIt.Components
         {
             this.Element = Element;
         }
-
         public Element Element { get; set; }
     }
 }

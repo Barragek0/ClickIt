@@ -1,10 +1,9 @@
-using ExileCore;
+﻿using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using System;
-
 namespace ClickIt.Components
 {
     public class CustomItem
@@ -19,18 +18,15 @@ namespace ClickIt.Components
         public int Height { get; }
         public string Path { get; }
         public int Width { get; }
-
         public CustomItem(LabelOnGround item, FilesContainer fs)
         {
             LabelOnGround = item;
-            //Distance = distance;
             var itemItemOnGround = item.ItemOnGround;
             var worldItem = itemItemOnGround?.GetComponent<WorldItem>();
             if (worldItem == null)
             {
                 return;
             }
-
             var groundItem = worldItem.ItemEntity;
             GroundItem = groundItem;
             Path = groundItem?.Path;
@@ -38,18 +34,14 @@ namespace ClickIt.Components
             {
                 return;
             }
-
             if (Path != null && Path.Length < 1)
             {
                 DebugWindow.LogMsg($"World: {worldItem.Address:X} P: {Path}", 2);
                 DebugWindow.LogMsg($"Ground: {GroundItem.Address:X} P {Path}", 2);
                 return;
             }
-
             IsTargeted = () => itemItemOnGround?.GetComponent<Targetable>()?.isTargeted == true;
-
             var baseItemType = fs.BaseItemTypes.Translate(Path);
-
             if (baseItemType != null)
             {
                 ClassName = baseItemType.ClassName;
@@ -59,7 +51,6 @@ namespace ClickIt.Components
             }
             IsValid = true;
         }
-
         public override string ToString()
         {
             return $"{BaseName} ({ClassName}) Dist: {GroundItem.DistancePlayer}";

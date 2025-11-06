@@ -1,21 +1,16 @@
-using ExileCore.PoEMemory.Components;
+﻿using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using SharpDX;
+using System;
 using System.Collections.Generic;
-
 #nullable enable
-
 namespace ClickIt.Services
 {
-    /// <summary>
-    /// Handles label processing and filtering logic
-    /// </summary>
     public class LabelFilterService
     {
         private readonly ClickItSettings _settings;
-
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
@@ -25,17 +20,14 @@ namespace ClickIt.Services
         private const string Bismuth = "Bismuth";
         private const string Verisium = "Verisium";
         private const string ClosedDoorPast = "ClosedDoorPast";
-
         public LabelFilterService(ClickItSettings settings)
         {
             _settings = settings;
         }
-
         public bool HasVerisiumOnScreen(List<LabelOnGround> allLabels)
         {
             if (!_settings.ClickSettlersOre.Value || allLabels == null)
                 return false;
-
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
@@ -49,54 +41,40 @@ namespace ClickIt.Services
             }
             return false;
         }
-
         public static List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, System.Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = new();
-
             if (allLabels == null)
                 return result;
-
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
                 if (label.ItemOnGround?.Path == null || !isInClickableArea(label.Label.GetClientRect().Center))
                     continue;
-
                 string path = label.ItemOnGround.Path;
                 if (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))
                     result.Add(label);
             }
-
-            // Sort by distance without LINQ
             if (result.Count > 1)
                 result.Sort((a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
-
             return result;
         }
-
         public LabelOnGround? GetNextLabelToClick(List<LabelOnGround> allLabels)
         {
             if (allLabels == null || allLabels.Count == 0)
                 return null;
-
             var clickSettings = CreateClickSettings();
-
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
                 Entity item = label.ItemOnGround;
-
                 if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
                     continue;
-
                 if (ShouldClickLabel(label, item, clickSettings))
                     return label;
             }
-
             return null;
         }
-
         private ClickSettings CreateClickSettings()
         {
             var s = _settings;
@@ -123,36 +101,26 @@ namespace ClickIt.Services
                 ClickAlvaTempleDoors = s.ClickAlvaTempleDoors.Value,
             };
         }
-
         private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
         {
             string path = item.Path;
             EntityType type = item.Type;
-
             if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, type, item))
                 return true;
-
             if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
                 return true;
-
             if (settings.ClickAreaTransitions && type == EntityType.AreaTransition)
                 return true;
-
             if (settings.ClickShrines && type == EntityType.Shrine)
                 return true;
-
-            if (ShouldClickSpecialPath(settings.NearestHarvest, settings.ClickSulphite, settings.ClickAzurite, settings.ClickCrafting, settings.ClickBreach, settings.ClickSettlersOre, settings.ClickAlvaTempleDoors, path))
+            if (ShouldClickSpecialPath(settings, path))
                 return true;
-
             if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
                 return true;
-
             if (ShouldClickEssence(settings.ClickEssences, label))
                 return true;
-
             return false;
         }
-
         private struct ClickSettings
         {
             public int ClickDistance { get; set; }
@@ -175,71 +143,57 @@ namespace ClickIt.Services
             public bool ClickBreach { get; set; }
             public bool ClickSettlersOre { get; set; }
         }
-
         private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, EntityType type, Entity item)
         {
             if (!clickItems || type != EntityType.WorldItem)
                 return false;
-
             if (!ignoreUniques)
                 return true;
-
             try
             {
                 WorldItem? worldItemComp = item.GetComponent<WorldItem>();
                 Entity? itemEntity = worldItemComp?.ItemEntity;
                 Mods? mods = itemEntity?.GetComponent<Mods>();
                 if (mods?.ItemRarity == ItemRarity.Unique && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/") ?? false))
-                    return false; // skip uniques when ignoring
+                    return false;
             }
-            catch
+            catch (Exception)
             {
-                // ignore exceptions and treat as not-unique
             }
-
             return true;
         }
-
         private static bool ShouldClickChest(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)
         {
             if (type != EntityType.Chest)
                 return false;
-
             bool isBasicChest = IsBasicChest(label);
             return (clickBasicChests && isBasicChest) || (clickLeagueChests && !isBasicChest);
         }
-
-        private static bool ShouldClickSpecialPath(bool nearestHarvest, bool clickSulphite, bool clickAzurite, bool clickCrafting, bool clickBreach, bool clickSettlersOre, bool clickAlvaTempleDoors, string path)
+        private static bool ShouldClickSpecialPath(ClickSettings settings, string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
-
-            return (nearestHarvest && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))) ||
-                   (clickSulphite && path.Contains("DelveMineral")) ||
-                   (clickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
-                   (clickAzurite && path.Contains("AzuriteEncounterController")) ||
-                   (clickCrafting && path.Contains("CraftingUnlocks")) ||
-                   (clickBreach && path.Contains(Brequel)) ||
-                   (clickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth) || path.Contains(Verisium)));
+            return (settings.NearestHarvest && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))) ||
+                   (settings.ClickSulphite && path.Contains("DelveMineral")) ||
+                   (settings.ClickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
+                   (settings.ClickAzurite && path.Contains("AzuriteEncounterController")) ||
+                   (settings.ClickCrafting && path.Contains("CraftingUnlocks")) ||
+                   (settings.ClickBreach && path.Contains(Brequel)) ||
+                   (settings.ClickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth) || path.Contains(Verisium)));
         }
-
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
-
             return (highlightEater || highlightExarch || clickEater || clickExarch) &&
                    (path.Contains(CleansingFireAltar) || path.Contains(TangleAltar));
         }
-
         private static bool ShouldClickEssence(bool clickEssences, LabelOnGround label)
         {
             if (!clickEssences)
                 return false;
-
             return ElementService.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
         }
-
         private static bool IsBasicChest(LabelOnGround label)
         {
             return label.ItemOnGround.RenderName.ToLower() switch

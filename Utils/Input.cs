@@ -1,7 +1,5 @@
-
-using System.Numerics;
+﻿using System.Numerics;
 using System.Windows.Forms;
-
 namespace ClickIt.Utils
 {
     internal static class Input
@@ -10,7 +8,6 @@ namespace ClickIt.Utils
         {
             Mouse.SetCursorPos((int)position.X, (int)position.Y);
         }
-
         public static bool GetKeyState(Keys key)
         {
             return Keyboard.IsKeyDown(key);
