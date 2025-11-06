@@ -61,11 +61,6 @@ namespace ClickIt
         private Coroutine? clickLabelCoroutine;
         private Coroutine? inputSafetyCoroutine;
 
-        // Verisium hold click state
-        private bool isHoldingVerisiumClick = false;
-        private readonly Stopwatch verisiumHoldTimer = new Stopwatch();
-        private const int VERISIUM_HOLD_FAILSAFE_MS = 10000; // 10 seconds
-
         private bool isInputCurrentlyBlocked = false;
         private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
         private const int HOTKEY_RELEASE_FAILSAFE_MS = 5000; // 5 seconds after hotkey release
@@ -98,14 +93,6 @@ namespace ClickIt
             try
             {
                 ForceUnblockInput("Plugin closing");
-
-                // Clean up Verisium state
-                if (isHoldingVerisiumClick)
-                {
-                    Mouse.LeftMouseUp();
-                    isHoldingVerisiumClick = false;
-                    verisiumHoldTimer.Stop();
-                }
             }
             catch (Exception ex)
             {
@@ -244,9 +231,6 @@ namespace ClickIt
 
             // Error Section
             yPos = RenderErrorsDebug(col2X, yPos, lineHeight);
-
-            // Verisium State Section
-            yPos = RenderVerisiumDebug(col2X, yPos, lineHeight);
         }
 
         private int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)
@@ -716,38 +700,6 @@ namespace ClickIt
 
 
 
-        private int RenderVerisiumDebug(int xPos, int yPos, int lineHeight)
-        {
-            if (isHoldingVerisiumClick || verisiumHoldTimer.ElapsedMilliseconds > 0)
-            {
-                Graphics.DrawText("--- Verisium State ---", new Vector2(xPos, yPos), Color.Yellow, 16);
-                yPos += lineHeight;
-
-                var verisiumStatus = GetStatusText(isHoldingVerisiumClick, "Active", "Inactive");
-                Graphics.DrawText($"Holding Verisium Click: ", new Vector2(xPos, yPos), Color.Orange, 16);
-                Graphics.DrawText(verisiumStatus.text, new Vector2(xPos + 185, yPos), verisiumStatus.color, 16);
-                yPos += lineHeight;
-
-                if (verisiumHoldTimer.IsRunning)
-                {
-                    long holdTime = verisiumHoldTimer.ElapsedMilliseconds;
-                    Color holdColor;
-                    if (holdTime > 8000)
-                        holdColor = Color.Red;
-                    else if (holdTime > 5000)
-                        holdColor = Color.Orange;
-                    else
-                        holdColor = Color.White;
-
-                    Graphics.DrawText($"Hold Duration: {holdTime}ms", new Vector2(xPos, yPos), holdColor, 16);
-                    yPos += lineHeight;
-                }
-
-                yPos += lineHeight;
-            }
-
-            return yPos;
-        }
         private int RenderErrorsDebug(int xPos, int yPos, int lineHeight)
         {
             if (recentErrors.Count > 0)
@@ -1407,11 +1359,8 @@ namespace ClickIt
                 yield break;
             }
 
-            // Check if this is Verisium and handle it specially
-            string path = item.Path ?? "";
-            bool isVerisium = Settings.ClickVerisium.Value && path.Contains(Verisium);
-
             // Skip if this is an altar - altars are handled by ProcessAltarClicking()
+            string path = item.Path ?? "";
             bool isAltar = path.Contains(CleansingFireAltar) || path.Contains(TangleAltar);
             if (isAltar)
             {
@@ -1422,31 +1371,24 @@ namespace ClickIt
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 clickPos = nextLabel.Label.GetClientRect().Center + windowTopLeft;
 
-            if (isVerisium)
+            // Regular click logic for all items (including Verisium)
+            if (Settings.BlockUserInput.Value)
             {
-                yield return ProcessVerisiumHoldClick(clickPos);
+                SafeBlockInput(true);
+            }
+
+            ExileCore.Input.SetCursorPos(clickPos);
+            if (Settings.LeftHanded.Value)
+            {
+                Mouse.RightClick();
             }
             else
             {
-                // Regular click logic
-                if (Settings.BlockUserInput.Value)
-                {
-                    SafeBlockInput(true);
-                }
-
-                ExileCore.Input.SetCursorPos(clickPos);
-                if (Settings.LeftHanded.Value)
-                {
-                    Mouse.RightClick();
-                }
-                else
-                {
-                    Mouse.LeftClick();
-                }
-
-                SafeBlockInput(false);
-                yield return new WaitTime(Random.Next(50, 150));
+                Mouse.LeftClick();
             }
+
+            SafeBlockInput(false);
+            yield return new WaitTime(Random.Next(50, 150));
         }
 
         private IEnumerator ProcessAltarClicking()
@@ -1508,52 +1450,6 @@ namespace ClickIt
                     yield break; // Exit after clicking one altar
                 }
             }
-        }
-        private IEnumerator ProcessVerisiumHoldClick(Vector2 clickPos)
-        {
-            // Start holding if not already holding
-            if (!isHoldingVerisiumClick)
-            {
-                LogMessage("Starting Verisium hold click", 3);
-
-                if (Settings.BlockUserInput.Value)
-                {
-                    SafeBlockInput(true);
-                }
-
-                ExileCore.Input.SetCursorPos(clickPos);
-
-                // Start holding left click (press down but don't release)
-                Mouse.LeftMouseDown();
-
-                isHoldingVerisiumClick = true;
-                verisiumHoldTimer.Restart();
-            }
-
-            // Check if we should continue holding (hotkey still pressed and within failsafe time)
-#pragma warning disable CS0618 // Type or member is obsolete
-            bool hotkeyPressed = ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
-#pragma warning restore CS0618 // Type or member is obsolete
-            bool withinFailsafeTime = verisiumHoldTimer.ElapsedMilliseconds < VERISIUM_HOLD_FAILSAFE_MS;
-            bool hasVerisiumOnScreen = labelFilterService?.HasVerisiumOnScreen(CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
-
-            if ((!hotkeyPressed || !withinFailsafeTime || !hasVerisiumOnScreen) && isHoldingVerisiumClick)
-            {
-                // Stop holding
-                LogMessage($"Stopping Verisium hold click - Hotkey: {hotkeyPressed}, Time: {withinFailsafeTime}, HasVerisium: {hasVerisiumOnScreen}", 3);
-
-                Mouse.LeftMouseUp();
-
-                if (Settings.BlockUserInput.Value)
-                {
-                    SafeBlockInput(false);
-                }
-
-                isHoldingVerisiumClick = false;
-                verisiumHoldTimer.Stop();
-            }
-
-            yield return new WaitTime(50); // Short delay for responsiveness
         }
 
         public static Element? GetElementByString(Element? root, string str)

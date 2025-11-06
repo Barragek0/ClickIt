@@ -24,6 +24,7 @@ namespace ClickIt.Services
         private const string PetrifiedWood = "PetrifiedWood";
         private const string Bismuth = "Bismuth";
         private const string Verisium = "Verisium";
+        private const string ClosedDoorPast = "ClosedDoorPast";
 
         public LabelFilterService(ClickItSettings settings)
         {
@@ -32,7 +33,7 @@ namespace ClickIt.Services
 
         public bool HasVerisiumOnScreen(List<LabelOnGround> allLabels)
         {
-            if (!_settings.ClickVerisium.Value || allLabels == null)
+            if (!_settings.ClickSettlersOre.Value || allLabels == null)
                 return false;
 
             for (int i = 0; i < allLabels.Count; i++)
@@ -119,7 +120,7 @@ namespace ClickIt.Services
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = s.ClickSettlersOre.Value,
-                ClickVerisium = s.ClickVerisium.Value
+                ClickAlvaTempleDoors = s.ClickAlvaTempleDoors.Value,
             };
         }
 
@@ -127,10 +128,6 @@ namespace ClickIt.Services
         {
             string path = item.Path;
             EntityType type = item.Type;
-
-            // Priority check for Verisium (requires special handling)
-            if (settings.ClickVerisium && !string.IsNullOrEmpty(path) && path.Contains(Verisium))
-                return true;
 
             if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, type, item))
                 return true;
@@ -144,7 +141,7 @@ namespace ClickIt.Services
             if (settings.ClickShrines && type == EntityType.Shrine)
                 return true;
 
-            if (ShouldClickSpecialPath(settings.NearestHarvest, settings.ClickSulphite, settings.ClickAzurite, settings.ClickCrafting, settings.ClickBreach, settings.ClickSettlersOre, path))
+            if (ShouldClickSpecialPath(settings.NearestHarvest, settings.ClickSulphite, settings.ClickAzurite, settings.ClickCrafting, settings.ClickBreach, settings.ClickSettlersOre, settings.ClickAlvaTempleDoors, path))
                 return true;
 
             if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
@@ -167,6 +164,7 @@ namespace ClickIt.Services
             public bool ClickShrines { get; set; }
             public bool NearestHarvest { get; set; }
             public bool ClickSulphite { get; set; }
+            public bool ClickAlvaTempleDoors { get; set; }
             public bool ClickAzurite { get; set; }
             public bool HighlightEater { get; set; }
             public bool HighlightExarch { get; set; }
@@ -176,7 +174,6 @@ namespace ClickIt.Services
             public bool ClickCrafting { get; set; }
             public bool ClickBreach { get; set; }
             public bool ClickSettlersOre { get; set; }
-            public bool ClickVerisium { get; set; }
         }
 
         private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, EntityType type, Entity item)
@@ -212,17 +209,18 @@ namespace ClickIt.Services
             return (clickBasicChests && isBasicChest) || (clickLeagueChests && !isBasicChest);
         }
 
-        private static bool ShouldClickSpecialPath(bool nearestHarvest, bool clickSulphite, bool clickAzurite, bool clickCrafting, bool clickBreach, bool clickSettlersOre, string path)
+        private static bool ShouldClickSpecialPath(bool nearestHarvest, bool clickSulphite, bool clickAzurite, bool clickCrafting, bool clickBreach, bool clickSettlersOre, bool clickAlvaTempleDoors, string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
 
             return (nearestHarvest && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))) ||
                    (clickSulphite && path.Contains("DelveMineral")) ||
+                   (clickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
                    (clickAzurite && path.Contains("AzuriteEncounterController")) ||
                    (clickCrafting && path.Contains("CraftingUnlocks")) ||
                    (clickBreach && path.Contains(Brequel)) ||
-                   (clickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth)));
+                   (clickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth) || path.Contains(Verisium)));
         }
 
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)

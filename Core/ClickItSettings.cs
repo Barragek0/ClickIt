@@ -76,11 +76,11 @@ namespace ClickIt
         [Menu("Breach Nodes", "Click breach nodes", 14, 3000)]
         public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
 
-        [Menu("Settlers Ore Deposits", "Click Settlers league ore deposits (CrimsonIron, Orichalcum, etc) - excludes Verisium", 15, 3000)]
+        [Menu("Settlers Ore Deposits", "Click Settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)", 15, 3000)]
         public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
 
-        [Menu("Verisium Nodes", "Click and hold Verisium nodes (requires holding hotkey, 10-second failsafe)", 16, 3000)]
-        public ToggleNode ClickVerisium { get; set; } = new ToggleNode(true);
+        [Menu("Alva Temple Doors", "Click Alva temple doors", 16, 3000)]
+        public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
 
         [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 17, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);

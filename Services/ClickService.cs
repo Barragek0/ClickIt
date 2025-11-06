@@ -117,7 +117,6 @@ namespace ClickIt.Services
         private bool ProcessSpecialCases(LabelOnGround nextLabel, Element labelElement, SharpDX.Vector2 windowTopLeft)
         {
             Entity item = nextLabel.ItemOnGround;
-            string path = item.Path ?? "";
             EntityType type = item.Type;
 
             // Handle essences
@@ -146,6 +145,14 @@ namespace ClickIt.Services
                     ProcessRegularClick(nextLabel, windowTopLeft);
                     return true;
                 }
+            }
+
+            // Handle Alva temple doors
+            if (settings.ClickAlvaTempleDoors && Services.ElementService.GetElementByString(labelElement, "ClosedDoorPast") != null)
+            {
+                logMessage("Found Alva temple door", 5);
+                ProcessRegularClick(nextLabel, windowTopLeft);
+                return true;
             }
 
             return false;
