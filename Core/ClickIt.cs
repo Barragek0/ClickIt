@@ -59,6 +59,8 @@ namespace ClickIt
         private Services.AltarService? altarService;
         private Services.LabelFilterService? labelFilterService;
         private Utils.InputHandler? inputHandler;
+        private Rendering.AltarRenderer? altarRenderer;
+        private Services.AltarWeightCalculator? altarWeightCalculator;
 
         private RectangleF FullScreenRectangle { get; set; }
         private RectangleF HealthAndFlaskRectangle { get; set; }
@@ -83,6 +85,8 @@ namespace ClickIt
             altarService = new Services.AltarService(Settings, CachedLabels);
             labelFilterService = new Services.LabelFilterService(Settings);
             inputHandler = new Utils.InputHandler(Settings);
+            altarWeightCalculator = new Services.AltarWeightCalculator(Settings);
+            altarRenderer = new Rendering.AltarRenderer(Graphics, Settings);
 
             // Initialize legacy rectangles for backward compatibility (to be removed)
             FullScreenRectangle = areaService.FullScreenRectangle;
@@ -116,12 +120,20 @@ namespace ClickIt
 
         public override void Render()
         {
+            // Always render debug frames if enabled
             RenderDebugFrames();
 
-            var altarComps = altarService?.GetAltarComponents() ?? new List<PrimaryAltarComponent>();
-            if (altarComps.Count == 0)
+            // Debug information to check plugin status
+            if (Settings.DebugMode && Settings.RenderDebug)
             {
-                return;
+                var altarComps = altarService?.GetAltarComponents() ?? new List<PrimaryAltarComponent>();
+                Graphics.DrawText($"ClickIt Plugin Status:", new Vector2(10, 80), Color.White, 16);
+                Graphics.DrawText($"Altar Components Count: {altarComps.Count}", new Vector2(10, 100), Color.White, 16);
+                Graphics.DrawText($"AltarRenderer: {(altarRenderer != null ? "Initialized" : "Null")}", new Vector2(10, 120), Color.White, 16);
+                Graphics.DrawText($"AltarService: {(altarService != null ? "Initialized" : "Null")}", new Vector2(10, 140), Color.White, 16);
+                Graphics.DrawText($"Plugin Enabled: {Settings.Enable}", new Vector2(10, 160), Color.White, 16);
+                Graphics.DrawText($"Debug Mode: {Settings.DebugMode}", new Vector2(10, 180), Color.White, 16);
+                Graphics.DrawText($"Render Debug: {Settings.RenderDebug}", new Vector2(10, 200), Color.White, 16);
             }
 
             RenderAltarComponents();
