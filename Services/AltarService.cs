@@ -13,6 +13,25 @@ using ClickIt.Components;
 namespace ClickIt.Services
 {
     /// <summary>
+    /// Debug information for AltarService operations
+    /// </summary>
+    public class AltarServiceDebugInfo
+    {
+        public int LastScanExarchLabels { get; set; } = 0;
+        public int LastScanEaterLabels { get; set; } = 0;
+        public int ElementsFound { get; set; } = 0;
+        public int ComponentsProcessed { get; set; } = 0;
+        public int ComponentsAdded { get; set; } = 0;
+        public int ComponentsDuplicated { get; set; } = 0;
+        public int ModsMatched { get; set; } = 0;
+        public int ModsUnmatched { get; set; } = 0;
+        public string LastProcessedAltarType { get; set; } = "";
+        public string LastError { get; set; } = "";
+        public DateTime LastScanTime { get; set; } = DateTime.MinValue;
+        public List<string> RecentUnmatchedMods { get; set; } = new();
+    }
+
+    /// <summary>
     /// Handles altar detection, processing, and decision-making logic
     /// </summary>
     public class AltarService
@@ -23,6 +42,9 @@ namespace ClickIt.Services
 
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
+
+        // Debug information tracking
+        public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
 
         public AltarService(ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
         {
@@ -84,11 +106,6 @@ namespace ClickIt.Services
             string negativeModType = "";
             List<string> mods = new();
 
-            if (_settings.DebugMode)
-            {
-                logMessage(element.GetText(512), 0);
-            }
-
             string altarMods = CleanAltarModsText(element.GetText(512));
             int lineCount = CountLines(element.GetText(512));
 
@@ -102,11 +119,6 @@ namespace ClickIt.Services
                 else if (line != null)
                 {
                     mods.Add(line);
-                }
-
-                if (_settings.DebugMode)
-                {
-                    logMessage("Altarmods (" + i + ") Added: " + line, 0);
                 }
             }
 
@@ -137,15 +149,26 @@ namespace ClickIt.Services
                     else
                         downsides.Add(matchedId);
 
+                    DebugInfo.ModsMatched++;
+                }
+                else
+                {
+                    DebugInfo.ModsUnmatched++;
+                    string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
+
+                    // Track recent unmatched mods for debugging
+                    string unmatchedInfo = $"{cleanedMod} ({negativeModType})";
+                    if (!DebugInfo.RecentUnmatchedMods.Contains(unmatchedInfo))
+                    {
+                        DebugInfo.RecentUnmatchedMods.Add(unmatchedInfo);
+                        if (DebugInfo.RecentUnmatchedMods.Count > 5) // Keep only last 5
+                            DebugInfo.RecentUnmatchedMods.RemoveAt(0);
+                    }
+
                     if (_settings.DebugMode)
                     {
-                        logMessage($"Added {(isUpside ? "upside" : "downside")}: {matchedId}", 0);
+                        logError($"Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{negativeModType}'", 10);
                     }
-                }
-                else if (_settings.DebugMode)
-                {
-                    string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
-                    logError($"updateComponentFromElementData: Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{negativeModType}'", 10);
                 }
             }
 
@@ -196,34 +219,16 @@ namespace ClickIt.Services
         private void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element element,
             List<string> upsides, List<string> downsides, Action<string, float> logMessage)
         {
-            if (_settings.DebugMode)
-            {
-                logMessage("Setting up altar component", 0);
-            }
-
             if (top)
             {
                 altarComponent.TopButton = new AltarButton(element.Parent);
                 altarComponent.TopMods = new SecondaryAltarComponent(element, upsides, downsides);
-                LogAltarComponentDetails("top", altarComponent.TopMods, logMessage);
             }
             else
             {
                 altarComponent.BottomButton = new AltarButton(element.Parent);
                 altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides);
-                LogAltarComponentDetails("bottom", altarComponent.BottomMods, logMessage);
             }
-        }
-
-        private void LogAltarComponentDetails(string position, SecondaryAltarComponent mods, Action<string, float> logMessage)
-        {
-            if (!_settings.DebugMode) return;
-
-            logMessage($"Updated {position} altar component: " + mods, 0);
-            logMessage("Upside1: " + mods.FirstUpside, 0);
-            logMessage("Upside2: " + mods.SecondUpside, 0);
-            logMessage("Downside1: " + mods.FirstDownside, 0);
-            logMessage("Downside2: " + mods.SecondDownside, 0);
         }
 
         private static string GetLine(string text, int lineNo)
@@ -240,6 +245,16 @@ namespace ClickIt.Services
 
         public void ProcessAltarScanningLogic(Action<string, float> logMessage, Action<string, float> logError)
         {
+            // Reset debug counters for this scan
+            DebugInfo.LastScanTime = DateTime.Now;
+            DebugInfo.ElementsFound = 0;
+            DebugInfo.ComponentsProcessed = 0;
+            DebugInfo.ComponentsAdded = 0;
+            DebugInfo.ComponentsDuplicated = 0;
+            DebugInfo.ModsMatched = 0;
+            DebugInfo.ModsUnmatched = 0;
+            DebugInfo.RecentUnmatchedMods.Clear();
+
             List<LabelOnGround> altarLabels = CollectAltarLabels();
 
             if (altarLabels.Count == 0)
@@ -258,6 +273,7 @@ namespace ClickIt.Services
             if (_settings.HighlightExarchAltars)
             {
                 List<LabelOnGround> exarchLabels = GetAltarLabels(ClickIt.AltarType.SearingExarch);
+                DebugInfo.LastScanExarchLabels = exarchLabels.Count;
                 if (exarchLabels.Count > 0)
                 {
                     altarLabels.AddRange(exarchLabels);
@@ -267,6 +283,7 @@ namespace ClickIt.Services
             if (_settings.HighlightEaterAltars)
             {
                 List<LabelOnGround> eaterLabels = GetAltarLabels(ClickIt.AltarType.EaterOfWorlds);
+                DebugInfo.LastScanEaterLabels = eaterLabels.Count;
                 if (eaterLabels.Count > 0)
                 {
                     altarLabels.AddRange(eaterLabels);
@@ -285,6 +302,7 @@ namespace ClickIt.Services
                 List<Element> elements = Services.ElementService.GetElementsByStringContains(label.Label, "valuedefault");
                 if (elements == null || elements.Count == 0) continue;
 
+                DebugInfo.ElementsFound += elements.Count;
                 string path = label.ItemOnGround?.Path ?? string.Empty;
                 ProcessElementsForLabel(elements, path, logMessage, logError);
             }
@@ -296,14 +314,18 @@ namespace ClickIt.Services
             {
                 if (!IsValidElement(element, logError)) continue;
 
-                LogAltarType(path, logMessage);
+                DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
                 ClickIt.AltarType altarType = DetermineAltarType(path);
                 PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType, logMessage, logError);
+                DebugInfo.ComponentsProcessed++;
 
                 if (IsValidAltarComponent(altarComponent, logError))
                 {
                     bool wasAdded = AddAltarComponent(altarComponent);
-                    LogAltarAddition(wasAdded, logMessage);
+                    if (wasAdded)
+                        DebugInfo.ComponentsAdded++;
+                    else
+                        DebugInfo.ComponentsDuplicated++;
                 }
             }
         }
@@ -312,27 +334,10 @@ namespace ClickIt.Services
         {
             if (element == null || !element.IsVisible)
             {
-                if (_settings.DebugMode)
-                {
-                    logError("Element is null", 10);
-                }
+                DebugInfo.LastError = "Element is null or not visible";
                 return false;
             }
             return true;
-        }
-
-        private void LogAltarType(string path, Action<string, float> logMessage)
-        {
-            if (!_settings.DebugMode) return;
-
-            if (path.Contains(CleansingFireAltar))
-            {
-                logMessage("CleansingFireAltar", 0);
-            }
-            else if (path.Contains(TangleAltar))
-            {
-                logMessage("TangleAltar", 0);
-            }
         }
 
         private static ClickIt.AltarType DetermineAltarType(string path)
@@ -373,24 +378,12 @@ namespace ClickIt.Services
             bool isValid = altarComponent.TopMods != null && altarComponent.TopButton != null &&
                           altarComponent.BottomMods != null && altarComponent.BottomButton != null;
 
-            if (!isValid && _settings.DebugMode)
+            if (!isValid)
             {
-                logError("Part of altarcomponent is null", 10);
-                logError("part1: " + altarComponent.TopMods, 10);
-                logError("part2: " + altarComponent.TopButton, 10);
-                logError("part3: " + altarComponent.BottomMods, 10);
-                logError("part4: " + altarComponent.BottomButton, 10);
+                DebugInfo.LastError = "Invalid altar component - missing parts";
             }
 
             return isValid;
-        }
-
-        private void LogAltarAddition(bool wasAdded, Action<string, float> logMessage)
-        {
-            if (_settings.DebugMode)
-            {
-                logMessage(wasAdded ? "New altar added to altarcomponents list" : "Altar already added to altarcomponents list", 0);
-            }
         }
 
         private static string BuildAltarKey(PrimaryAltarComponent comp)
