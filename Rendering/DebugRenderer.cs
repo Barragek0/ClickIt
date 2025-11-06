@@ -1,4 +1,6 @@
 ﻿using ExileCore;
+using ExileCore.Shared.Cache;
+using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using System;
 using System.Collections.Generic;
@@ -26,46 +28,132 @@ namespace ClickIt.Rendering
         }
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"ClickIt Plugin Status:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _graphics.DrawText($"--- ClickIt Status ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             var gameController = _plugin.GameController;
             bool inGame = gameController?.InGame == true;
             Color gameColor = inGame ? Color.LightGreen : Color.Red;
-            _graphics.DrawText($"  In Game: {inGame}", new Vector2(xPos, yPos), gameColor, 16);
+            _graphics.DrawText($"In Game: {inGame}", new Vector2(xPos, yPos), gameColor, 16);
             yPos += lineHeight;
             bool entityListValid = gameController?.EntityListWrapper?.ValidEntitiesByType != null;
             Color entityColor = entityListValid ? Color.LightGreen : Color.Red;
-            _graphics.DrawText($"  Entity List Valid: {entityListValid}", new Vector2(xPos, yPos), entityColor, 16);
+            _graphics.DrawText($"Entity List Valid: {entityListValid}", new Vector2(xPos, yPos), entityColor, 16);
             yPos += lineHeight;
             bool playerValid = gameController?.Player != null;
             Color playerColor = playerValid ? Color.LightGreen : Color.Red;
-            _graphics.DrawText($"  Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
+            _graphics.DrawText($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
             yPos += lineHeight;
+
+            // Show plugin settings state
+            _graphics.DrawText($"Plugin Enabled: {_plugin.Settings.Enable.Value}", new Vector2(xPos, yPos),
+                _plugin.Settings.Enable.Value ? Color.LightGreen : Color.Red, 16);
+            yPos += lineHeight;
+            _graphics.DrawText($"Debug Mode: {_plugin.Settings.DebugMode.Value}", new Vector2(xPos, yPos),
+                _plugin.Settings.DebugMode.Value ? Color.Yellow : Color.Gray, 16);
+            yPos += lineHeight;
+            _graphics.DrawText($"Click Items: {_plugin.Settings.ClickItems.Value}", new Vector2(xPos, yPos),
+                _plugin.Settings.ClickItems.Value ? Color.LightGreen : Color.Gray, 16);
+            yPos += lineHeight;
+            _graphics.DrawText($"Click Exarch: {_plugin.Settings.ClickExarchAltars.Value}", new Vector2(xPos, yPos),
+                _plugin.Settings.ClickExarchAltars.Value ? Color.LightGreen : Color.Gray, 16);
+            yPos += lineHeight;
+            _graphics.DrawText($"Click Eater: {_plugin.Settings.ClickEaterAltars.Value}", new Vector2(xPos, yPos),
+                _plugin.Settings.ClickEaterAltars.Value ? Color.LightGreen : Color.Gray, 16);
+            yPos += lineHeight;
+
             return yPos;
         }
         public int RenderInputDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"Input Debug:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _graphics.DrawText($"--- Input State ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             bool hotkeyPressed = Input.GetKeyState(_plugin.Settings.ClickLabelKey);
             Color hotkeyColor = hotkeyPressed ? Color.LightGreen : Color.Gray;
-            _graphics.DrawText($"  Hotkey Pressed: {hotkeyPressed}", new Vector2(xPos, yPos), hotkeyColor, 16);
+            _graphics.DrawText($"Hotkey ({_plugin.Settings.ClickLabelKey.Value}): {hotkeyPressed}", new Vector2(xPos, yPos), hotkeyColor, 16);
             yPos += lineHeight;
+
+            // Show input blocking state
+            if (_plugin is ClickIt clickItPlugin)
+            {
+                try
+                {
+                    var inputBlockedField = typeof(ClickIt).GetField("isInputCurrentlyBlocked",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (inputBlockedField?.GetValue(clickItPlugin) is bool isBlocked)
+                    {
+                        Color blockedColor = isBlocked ? Color.Red : Color.LightGreen;
+                        _graphics.DrawText($"Input Blocked: {isBlocked}", new Vector2(xPos, yPos), blockedColor, 16);
+                        yPos += lineHeight;
+                    }
+
+                    var lastHotkeyTimerField = typeof(ClickIt).GetField("lastHotkeyReleaseTimer",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (lastHotkeyTimerField?.GetValue(clickItPlugin) is Stopwatch hotkeyTimer)
+                    {
+                        _graphics.DrawText($"Hotkey Release Timer: {hotkeyTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                        yPos += lineHeight;
+                    }
+                }
+                catch
+                {
+                    _graphics.DrawText($"Input State Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    yPos += lineHeight;
+                }
+            }
+
             return yPos;
         }
         public int RenderGameStateDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"Game State:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _graphics.DrawText($"--- Game State ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             var gameController = _plugin.GameController;
             var currentArea = gameController?.Area?.CurrentArea;
             string areaName = currentArea?.DisplayName ?? "Unknown";
-            _graphics.DrawText($"  Area: {areaName}", new Vector2(xPos, yPos), Color.White, 16);
+            _graphics.DrawText($"Current Area: {areaName}", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
+
             bool hasItems = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.Count > 0;
             Color itemColor = hasItems ? Color.LightGreen : Color.Gray;
-            _graphics.DrawText($"  Items on Ground: {hasItems}", new Vector2(xPos, yPos), itemColor, 16);
+            int itemCount = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.Count ?? 0;
+            _graphics.DrawText($"Items on Ground: {itemCount}", new Vector2(xPos, yPos), itemColor, 16);
             yPos += lineHeight;
+
+            // Show cached labels information
+            if (_plugin is ClickIt clickItPlugin)
+            {
+                try
+                {
+                    var cachedLabelsField = typeof(ClickIt).GetProperty("CachedLabels",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (cachedLabelsField?.GetValue(clickItPlugin) is TimeCache<List<LabelOnGround>> cachedLabels)
+                    {
+                        var labels = cachedLabels.Value;
+                        int cachedCount = labels?.Count ?? 0;
+                        _graphics.DrawText($"Cached Labels: {cachedCount}", new Vector2(xPos, yPos), Color.White, 16);
+                        yPos += lineHeight;
+                    }
+                }
+                catch
+                {
+                    _graphics.DrawText($"Cache Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    yPos += lineHeight;
+                }
+            }
+
+            // Show player state
+            bool playerValid = gameController?.Player != null;
+            Color playerColor = playerValid ? Color.LightGreen : Color.Red;
+            _graphics.DrawText($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
+            yPos += lineHeight;
+
+            if (playerValid && gameController?.Player != null)
+            {
+                var playerPos = gameController.Player.Pos;
+                _graphics.DrawText($"Player Pos: ({playerPos.X:F1}, {playerPos.Y:F1})", new Vector2(xPos, yPos), Color.White, 14);
+                yPos += lineHeight;
+            }
+
             return yPos;
         }
         public int RenderAltarDebug(int xPos, int yPos, int lineHeight)
@@ -148,8 +236,47 @@ namespace ClickIt.Rendering
         }
         public int RenderAltarServiceDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"Altar Service Debug:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _graphics.DrawText($"--- Altar Service ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
+
+            var debugInfo = _altarService?.DebugInfo;
+            if (debugInfo != null)
+            {
+                _graphics.DrawText($"Last Scan Exarch: {debugInfo.LastScanExarchLabels}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Last Scan Eater: {debugInfo.LastScanEaterLabels}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Elements Found: {debugInfo.ElementsFound}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Components Processed: {debugInfo.ComponentsProcessed}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Components Added: {debugInfo.ComponentsAdded}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Components Duplicated: {debugInfo.ComponentsDuplicated}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Mods Matched: {debugInfo.ModsMatched}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Mods Unmatched: {debugInfo.ModsUnmatched}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                _graphics.DrawText($"Last Altar Type: {debugInfo.LastProcessedAltarType}", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+                if (!string.IsNullOrEmpty(debugInfo.LastError))
+                {
+                    _graphics.DrawText($"Last Error: {debugInfo.LastError}", new Vector2(xPos, yPos), Color.Red, 16);
+                    yPos += lineHeight;
+                }
+                if (debugInfo.LastScanTime != DateTime.MinValue)
+                {
+                    _graphics.DrawText($"Last Scan: {debugInfo.LastScanTime:HH:mm:ss}", new Vector2(xPos, yPos), Color.White, 16);
+                    yPos += lineHeight;
+                }
+            }
+            else
+            {
+                _graphics.DrawText($"  Altar Service: NULL", new Vector2(xPos, yPos), Color.Red, 16);
+                yPos += lineHeight;
+            }
+
             return yPos;
         }
         public int RenderLabelsDebug(int xPos, int yPos, int lineHeight)
@@ -181,11 +308,11 @@ namespace ClickIt.Rendering
         }
         public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"Performance Debug:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _graphics.DrawText($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             var process = Process.GetCurrentProcess();
             long memoryUsage = process.WorkingSet64 / 1024 / 1024;
-            _graphics.DrawText($"  Memory: {memoryUsage} MB", new Vector2(xPos, yPos), Color.White, 16);
+            _graphics.DrawText($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
             double cpuUsage = 0;
             try
@@ -196,16 +323,92 @@ namespace ClickIt.Rendering
             {
                 cpuUsage = 0;
             }
-            _graphics.DrawText($"  CPU Time: {cpuUsage:F2} ms", new Vector2(xPos, yPos), Color.White, 16);
+            _graphics.DrawText($"CPU Time: {cpuUsage:F2} ms", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
+
+            // Access timing information from the main plugin class via reflection
+            if (_plugin is ClickIt clickItPlugin)
+            {
+                try
+                {
+                    var renderTimerField = typeof(ClickIt).GetField("renderTimer",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var altarCoroutineTimerField = typeof(ClickIt).GetField("altarCoroutineTimer",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var clickCoroutineTimerField = typeof(ClickIt).GetField("clickCoroutineTimer",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    if (renderTimerField?.GetValue(clickItPlugin) is Stopwatch renderTimer)
+                    {
+                        _graphics.DrawText($"Render Time: {renderTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                        yPos += lineHeight;
+                    }
+
+                    if (altarCoroutineTimerField?.GetValue(clickItPlugin) is Stopwatch altarTimer)
+                    {
+                        _graphics.DrawText($"Altar Coroutine: {altarTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                        yPos += lineHeight;
+                    }
+
+                    if (clickCoroutineTimerField?.GetValue(clickItPlugin) is Stopwatch clickTimer)
+                    {
+                        _graphics.DrawText($"Click Coroutine: {clickTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                        yPos += lineHeight;
+                    }
+                }
+                catch
+                {
+                    _graphics.DrawText($"Timing Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    yPos += lineHeight;
+                }
+            }
+
             return yPos;
         }
         public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"Errors Debug:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _graphics.DrawText($"--- Recent Errors ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
-            _graphics.DrawText($"  No Error Tracking Available", new Vector2(xPos, yPos), Color.Gray, 16);
-            yPos += lineHeight;
+
+            // Access recent errors from the main plugin class
+            if (_plugin is ClickIt clickItPlugin)
+            {
+                var recentErrorsField = typeof(ClickIt).GetField("recentErrors",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (recentErrorsField?.GetValue(clickItPlugin) is List<string> recentErrors)
+                {
+                    if (recentErrors.Count > 0)
+                    {
+                        _graphics.DrawText($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
+                        yPos += lineHeight;
+
+                        for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
+                        {
+                            string error = recentErrors[i];
+                            if (error.Length > 50)
+                                error = error.Substring(0, 47) + "...";
+                            _graphics.DrawText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14);
+                            yPos += lineHeight;
+                        }
+                    }
+                    else
+                    {
+                        _graphics.DrawText($"No Recent Errors", new Vector2(xPos, yPos), Color.LightGreen, 16);
+                        yPos += lineHeight;
+                    }
+                }
+                else
+                {
+                    _graphics.DrawText($"  Error Tracking Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    yPos += lineHeight;
+                }
+            }
+            else
+            {
+                _graphics.DrawText($"  Plugin Instance Error", new Vector2(xPos, yPos), Color.Red, 16);
+                yPos += lineHeight;
+            }
+
             return yPos;
         }
     }

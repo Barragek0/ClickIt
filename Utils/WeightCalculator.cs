@@ -61,19 +61,19 @@ namespace ClickIt.Utils
     }
     public struct AltarWeights
     {
-        public decimal TopUpsideWeight;
-        public decimal TopDownsideWeight;
-        public decimal BottomUpsideWeight;
-        public decimal BottomDownsideWeight;
-        public decimal TopDownside1Weight;
-        public decimal TopDownside2Weight;
-        public decimal BottomDownside1Weight;
-        public decimal BottomDownside2Weight;
-        public decimal TopUpside1Weight;
-        public decimal TopUpside2Weight;
-        public decimal BottomUpside1Weight;
-        public decimal BottomUpside2Weight;
-        public decimal TopWeight;
-        public decimal BottomWeight;
+        public decimal TopUpsideWeight { get; set; }
+        public decimal TopDownsideWeight { get; set; }
+        public decimal BottomUpsideWeight { get; set; }
+        public decimal BottomDownsideWeight { get; set; }
+        public decimal TopDownside1Weight { get; set; }
+        public decimal TopDownside2Weight { get; set; }
+        public decimal BottomDownside1Weight { get; set; }
+        public decimal BottomDownside2Weight { get; set; }
+        public decimal TopUpside1Weight { get; set; }
+        public decimal TopUpside2Weight { get; set; }
+        public decimal BottomUpside1Weight { get; set; }
+        public decimal BottomUpside2Weight { get; set; }
+        public decimal TopWeight { get; set; }
+        public decimal BottomWeight { get; set; }
     }
 }

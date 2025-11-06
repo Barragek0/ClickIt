@@ -149,17 +149,11 @@ namespace ClickIt.Services
                 return false;
             if (!ignoreUniques)
                 return true;
-            try
-            {
-                WorldItem? worldItemComp = item.GetComponent<WorldItem>();
-                Entity? itemEntity = worldItemComp?.ItemEntity;
-                Mods? mods = itemEntity?.GetComponent<Mods>();
-                if (mods?.ItemRarity == ItemRarity.Unique && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/") ?? false))
-                    return false;
-            }
-            catch (Exception)
-            {
-            }
+            WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+            Entity? itemEntity = worldItemComp?.ItemEntity;
+            Mods? mods = itemEntity?.GetComponent<Mods>();
+            if (mods?.ItemRarity == ItemRarity.Unique && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/") ?? false))
+                return false;
             return true;
         }
         private static bool ShouldClickChest(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)

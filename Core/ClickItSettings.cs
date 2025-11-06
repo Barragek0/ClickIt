@@ -186,7 +186,7 @@ namespace ClickIt
         private static void SetupModTableColumns()
         {
             ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 800);
+            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 925);
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 75);
             ImGui.TableHeadersRow();
         }
@@ -210,7 +210,7 @@ namespace ClickIt
         {
             return defaultWeight switch
             {
-                100 => "Common Build Bricking Modifiers",
+                100 => "Build Bricking Modifiers",
                 >= 70 => "Very Dangerous Modifiers",
                 >= 40 => "Dangerous Modifiers",
                 >= 2 => "Ok Modifiers",

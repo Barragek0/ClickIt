@@ -59,13 +59,7 @@ namespace ClickIt
             }
             catch (Exception ex)
             {
-                try
-                {
-                    Mouse.blockInput(false);
-                }
-                catch (Exception)
-                {
-                }
+                Mouse.blockInput(false);
                 LogError($"Error during plugin shutdown: {ex.Message}");
             }
             base.OnClose();
@@ -432,7 +426,7 @@ namespace ClickIt
         }
         private IEnumerator ClickLabel(Element? altar = null)
         {
-            if (Timer.ElapsedMilliseconds < 60 + Random.Next(0, 10) || !canClick())
+            if (Timer.ElapsedMilliseconds < 30 + Random.Next(0, 20) || !canClick())
             {
                 workFinished = true;
                 yield break;
@@ -527,44 +521,73 @@ namespace ClickIt
             bool clickEater = Settings.ClickEaterAltars;
             bool clickExarch = Settings.ClickExarchAltars;
             bool leftHanded = Settings.LeftHanded;
+
             foreach (PrimaryAltarComponent altar in altarSnapshot)
             {
-                if (!((altar.AltarType == AltarType.EaterOfWorlds && clickEater) ||
-                      (altar.AltarType == AltarType.SearingExarch && clickExarch)))
+                if (!ShouldClickAltar(altar, clickEater, clickExarch))
                 {
                     continue;
                 }
-                var altarWeights = weightCalculator?.CalculateAltarWeights(altar) ?? new Utils.AltarWeights();
-                RectangleF topModsRect = altar.TopMods.Element.GetClientRect();
-                RectangleF bottomModsRect = altar.BottomMods.Element.GetClientRect();
-                Vector2 topModsTopLeft = topModsRect.TopLeft;
-                Element? boxToClick = altarDisplayRenderer?.DetermineAltarChoice(altar, altarWeights, topModsRect, bottomModsRect, topModsTopLeft);
-                if (boxToClick != null &&
-                    PointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) &&
-                    boxToClick.IsVisible)
+
+                Element? boxToClick = GetAltarElementToClick(altar);
+                if (boxToClick != null)
                 {
-                    RectangleF windowArea = GameController.Window.GetWindowRectangleTimeCache;
-                    Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-                    Vector2 clickPos = boxToClick.GetClientRect().Center + windowTopLeft;
-                    if (Settings.BlockUserInput.Value)
-                    {
-                        SafeBlockInput(true);
-                    }
-                    ExileCore.Input.SetCursorPos(clickPos);
-                    yield return new WaitTime(20);
-                    if (leftHanded)
-                    {
-                        Mouse.RightClick();
-                    }
-                    else
-                    {
-                        Mouse.LeftClick();
-                    }
-                    SafeBlockInput(false);
-                    yield return new WaitTime(Random.Next(200, 300));
+                    yield return ClickAltarElement(boxToClick, leftHanded);
                     yield break;
                 }
             }
+        }
+
+        private bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
+        {
+            return (altar.AltarType == AltarType.EaterOfWorlds && clickEater) ||
+                   (altar.AltarType == AltarType.SearingExarch && clickExarch);
+        }
+
+        private Element? GetAltarElementToClick(PrimaryAltarComponent altar)
+        {
+            var altarWeights = weightCalculator?.CalculateAltarWeights(altar) ?? new Utils.AltarWeights();
+            RectangleF topModsRect = altar.TopMods.Element.GetClientRect();
+            RectangleF bottomModsRect = altar.BottomMods.Element.GetClientRect();
+            Vector2 topModsTopLeft = topModsRect.TopLeft;
+
+            Element? boxToClick = altarDisplayRenderer?.DetermineAltarChoice(altar, altarWeights, topModsRect, bottomModsRect, topModsTopLeft);
+
+            if (boxToClick != null &&
+                PointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) &&
+                boxToClick.IsVisible)
+            {
+                return boxToClick;
+            }
+
+            return null;
+        }
+
+        private IEnumerator ClickAltarElement(Element element, bool leftHanded)
+        {
+            RectangleF windowArea = GameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            Vector2 clickPos = element.GetClientRect().Center + windowTopLeft;
+
+            if (Settings.BlockUserInput.Value)
+            {
+                SafeBlockInput(true);
+            }
+
+            ExileCore.Input.SetCursorPos(clickPos);
+            yield return new WaitTime(20);
+
+            if (leftHanded)
+            {
+                Mouse.RightClick();
+            }
+            else
+            {
+                Mouse.LeftClick();
+            }
+
+            SafeBlockInput(false);
+            yield return new WaitTime(Random.Next(200, 300));
         }
         public static Element? GetElementByString(Element? root, string str)
         {
