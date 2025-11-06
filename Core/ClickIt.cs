@@ -31,6 +31,7 @@ namespace ClickIt
         private const string PetrifiedWood = "PetrifiedWood";
         private const string Bismuth = "Bismuth";
         private const string Verisium = "Verisium";
+        private const string ClosedDoorPast = "ClosedDoorPast";
         private const string ReportBugMessage = "\nPlease report this as a bug on github";
 
         private Stopwatch Timer { get; } = new Stopwatch();
@@ -1303,7 +1304,8 @@ namespace ClickIt
                     path.Contains(CopperAltar) ||
                     path.Contains(PetrifiedWood) ||
                     path.Contains(Bismuth) ||
-                    path.Contains(Verisium));
+                    path.Contains(Verisium) ||
+                    path.Contains(ClosedDoorPast));
 
                 if (isValidType || isValidPath || GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null)
                 {
