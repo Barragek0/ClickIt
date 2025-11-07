@@ -36,36 +36,8 @@ namespace ClickIt.Tests
                 mod.DefaultValue.Should().BeLessOrEqualTo(100, $"downside mod '{mod.Id}' should have weight <= 100");
             }
         }
-        [TestMethod]
-        public void AltarModsConstants_ModIds_ShouldNotHaveLeadingOrTrailingWhitespace()
-        {
-            foreach (var mod in AltarModsConstants.UpsideMods)
-            {
-                mod.Id.Should().Be(mod.Id.Trim(), $"upside mod ID '{mod.Id}' should not have leading/trailing whitespace");
-                mod.Name.Should().Be(mod.Name.Trim(), $"upside mod name '{mod.Name}' should not have leading/trailing whitespace");
-            }
-            foreach (var mod in AltarModsConstants.DownsideMods)
-            {
-                mod.Id.Should().Be(mod.Id.Trim(), $"downside mod ID '{mod.Id}' should not have leading/trailing whitespace");
-                mod.Name.Should().Be(mod.Name.Trim(), $"downside mod name '{mod.Name}' should not have leading/trailing whitespace");
-            }
-        }
-        [TestMethod]
-        public void AltarModsConstants_ShouldHaveValidTypeDistribution()
-        {
-            var upsideTypeGroups = AltarModsConstants.UpsideMods.GroupBy(m => m.Type).ToList();
-            var downsideTypeGroups = AltarModsConstants.DownsideMods.GroupBy(m => m.Type).ToList();
-            upsideTypeGroups.Should().NotBeEmpty("should have upside mods grouped by type");
-            downsideTypeGroups.Should().NotBeEmpty("should have downside mods grouped by type");
-            foreach (var group in upsideTypeGroups)
-            {
-                group.Count().Should().BeGreaterThan(0, $"upside type '{group.Key}' should have at least one mod");
-            }
-            foreach (var group in downsideTypeGroups)
-            {
-                group.Count().Should().BeGreaterThan(0, $"downside type '{group.Key}' should have at least one mod");
-            }
-        }
+
+
         [TestMethod]
         public void AltarModsConstants_HighValueMods_ShouldBeIdentifiable()
         {

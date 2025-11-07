@@ -23,6 +23,9 @@ if %errorlevel% neq 0 (
 
 echo.
 echo Running unit tests...
+REM Delete existing results file to prevent overwrite warning
+if exist "%TEST_RESULTS_DIR%\ClickIt.Tests.trx" del "%TEST_RESULTS_DIR%\ClickIt.Tests.trx" >nul 2>&1
+
 dotnet test "%TEST_PROJECT_DIR%\ClickIt.Tests.csproj" ^
     --configuration Debug ^
     --no-build ^
