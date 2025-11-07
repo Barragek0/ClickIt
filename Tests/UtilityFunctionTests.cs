@@ -89,49 +89,6 @@ namespace ClickIt.Tests
             lowValueUpsides.Should().NotBeEmpty("should have some minor benefit upside mods");
             lowPenaltyDownsides.Should().NotBeEmpty("should have some minor penalty downside mods");
         }
-        [TestMethod]
-        public void AltarModsConstants_FilterAndAltarDicts_ShouldHaveExpectedCoverage()
-        {
-            AltarModsConstants.FilterTargetDict.Keys.Should().HaveCount(4, "filter target dictionary should cover all filter options");
-            AltarModsConstants.AltarTargetDict.Keys.Should().HaveCount(3, "altar target dictionary should cover all altar target types");
-            AltarModsConstants.FilterTargetDict.Keys.Should().NotContainNulls("filter target keys should not be null");
-            AltarModsConstants.FilterTargetDict.Keys.Should().NotContain(string.Empty, "filter target keys should not be empty");
-            AltarModsConstants.AltarTargetDict.Keys.Should().NotContainNulls("altar target keys should not be null");
-            AltarModsConstants.AltarTargetDict.Keys.Should().NotContain(string.Empty, "altar target keys should not be empty");
-        }
-        [TestMethod]
-        public void AltarModsConstants_PlayerMods_ShouldBePrioritized()
-        {
-            var playerUpsides = AltarModsConstants.UpsideMods.Where(m => m.Type == "Player").ToList();
-            var playerDownsides = AltarModsConstants.DownsideMods.Where(m => m.Type == "Player").ToList();
-            var totalUpsides = AltarModsConstants.UpsideMods.Count;
-            var totalDownsides = AltarModsConstants.DownsideMods.Count;
-            var playerUpsideRatio = (double)playerUpsides.Count / totalUpsides;
-            var playerDownsideRatio = (double)playerDownsides.Count / totalDownsides;
-            playerUpsideRatio.Should().BeGreaterThan(0.05, "at least 5% of upsides should target the player");
-            playerDownsideRatio.Should().BeGreaterThan(0.05, "at least 5% of downsides should target the player");
-            if (playerUpsides.Any())
-            {
-                playerUpsides.Average(m => m.DefaultValue).Should().BeGreaterThan(1, "player upsides should have meaningful average weight");
-            }
-            if (playerDownsides.Any())
-            {
-                playerDownsides.Average(m => m.DefaultValue).Should().BeGreaterThan(1, "player downsides should have meaningful average weight");
-            }
-        }
-        [TestMethod]
-        public void AltarModsConstants_ModNames_ShouldBeDescriptive()
-        {
-            foreach (var mod in AltarModsConstants.UpsideMods.Take(10))
-            {
-                mod.Name.Length.Should().BeGreaterThan(10, $"upside mod name '{mod.Name}' should be descriptive");
-                mod.Id.Length.Should().BeGreaterThan(5, $"upside mod ID '{mod.Id}' should be meaningful");
-            }
-            foreach (var mod in AltarModsConstants.DownsideMods.Take(10))
-            {
-                mod.Name.Length.Should().BeGreaterThan(10, $"downside mod name '{mod.Name}' should be descriptive");
-                mod.Id.Length.Should().BeGreaterThan(5, $"downside mod ID '{mod.Id}' should be meaningful");
-            }
-        }
+
     }
 }

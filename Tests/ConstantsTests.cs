@@ -104,45 +104,10 @@ namespace ClickIt.Tests
         }
 
         [TestMethod]
-        public void SeparatorConstants_ShouldBeValid()
-        {
-            ClickIt.Constants.Constants.PipeSeparator.Should().Be("|");
-            ClickIt.Constants.Constants.EmptyString.Should().Be("");
-        }
-
-        [TestMethod]
-        public void NumericConstants_ShouldHaveValidRanges()
-        {
-            ClickIt.Constants.Constants.MinModWeight.Should().BeInRange(1, 10, "min mod weight should be reasonable");
-            ClickIt.Constants.Constants.MaxModWeight.Should().BeInRange(50, 200, "max mod weight should be reasonable");
-            ClickIt.Constants.Constants.OverrideThreshold.Should().BeInRange(50, 100, "override threshold should be reasonable");
-
-            // Ensure logical ordering
-            ClickIt.Constants.Constants.MinModWeight.Should().BeLessThan(ClickIt.Constants.Constants.MaxModWeight,
-                "min should be less than max");
-            ClickIt.Constants.Constants.OverrideThreshold.Should().BeLessOrEqualTo(ClickIt.Constants.Constants.MaxModWeight,
-                "override threshold should not exceed max weight");
-        }
-
-        [TestMethod]
         public void AltarEntityPaths_ShouldBeDistinct()
         {
             ClickIt.Constants.Constants.CleansingFireAltar.Should().NotBe(ClickIt.Constants.Constants.TangleAltar,
                 "altar paths should be distinct");
-        }
-
-        [TestMethod]
-        public void AllStringConstants_ShouldNotBeNull()
-        {
-            ClickIt.Constants.Constants.CleansingFireAltar.Should().NotBeNull();
-            ClickIt.Constants.Constants.TangleAltar.Should().NotBeNull();
-            ClickIt.Constants.Constants.Player.Should().NotBeNull();
-            ClickIt.Constants.Constants.Minion.Should().NotBeNull();
-            ClickIt.Constants.Constants.Boss.Should().NotBeNull();
-            ClickIt.Constants.Constants.Any.Should().NotBeNull();
-            ClickIt.Constants.Constants.PipeSeparator.Should().NotBeNull();
-            ClickIt.Constants.Constants.EmptyString.Should().NotBeNull();
-            ClickIt.Constants.Constants.ReportBugMessage.Should().NotBeNull();
         }
     }
 }

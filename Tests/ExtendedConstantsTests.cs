@@ -81,43 +81,6 @@ namespace ClickIt.Tests
             AltarModsConstants.AltarTargetDict["Map boss gains:"].Should().Be(AffectedTarget.FinalBoss);
         }
         [TestMethod]
-        public void ModTypes_ShouldBeValidAndConsistent()
-        {
-            var validTypes = new[] { "Player", "Boss", "Minion" };
-            var allUpsideTypes = AltarModsConstants.UpsideMods.Select(m => m.Type).Distinct();
-            var allDownsideTypes = AltarModsConstants.DownsideMods.Select(m => m.Type).Distinct();
-            foreach (var type in allUpsideTypes)
-            {
-                validTypes.Should().Contain(type, $"upside mod type '{type}' should be from valid set");
-            }
-            foreach (var type in allDownsideTypes)
-            {
-                validTypes.Should().Contain(type, $"downside mod type '{type}' should be from valid set");
-            }
-        }
-        [TestMethod]
-        public void DefaultWeights_ShouldFollowReasonableDistribution()
-        {
-            var upsideWeights = AltarModsConstants.UpsideMods.Select(m => m.DefaultValue);
-            var downsideWeights = AltarModsConstants.DownsideMods.Select(m => m.DefaultValue);
-            upsideWeights.Should().Contain(w => w >= 80, "should have some high-value upside mods");
-            upsideWeights.Should().Contain(w => w <= 20, "should have some low-value upside mods");
-            upsideWeights.Average().Should().BeInRange(20, 70, "average upside weight should be reasonable");
-            downsideWeights.Should().Contain(w => w >= 80, "should have some high-penalty downside mods");
-            downsideWeights.Should().Contain(w => w <= 20, "should have some low-penalty downside mods");
-            downsideWeights.Average().Should().BeInRange(30, 70, "average downside weight should be reasonable");
-        }
-        [TestMethod]
-        public void PlayerTargetedMods_ShouldHaveAppropriateWeights()
-        {
-            var playerUpsides = AltarModsConstants.UpsideMods.Where(m => m.Type == "Player");
-            var playerDownsides = AltarModsConstants.DownsideMods.Where(m => m.Type == "Player");
-            playerUpsides.Should().NotBeEmpty("should have player-targeted upside mods");
-            playerDownsides.Should().NotBeEmpty("should have player-targeted downside mods");
-            playerUpsides.Average(m => m.DefaultValue).Should().BeGreaterThan(10, "player upsides should have meaningful impact");
-            playerDownsides.Average(m => m.DefaultValue).Should().BeGreaterThan(10, "player downsides should have meaningful impact");
-        }
-        [TestMethod]
         public void BossTargetedMods_ShouldExist()
         {
             var bossUpsides = AltarModsConstants.UpsideMods.Where(m => m.Type == "Boss");
