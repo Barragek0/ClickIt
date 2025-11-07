@@ -93,6 +93,7 @@ namespace ClickIt.Constants
             ("+#% chance to Suppress Spell Damage", "+100%% chance to Suppress Spell Damage", Boss, 10),
             ("Prevent +#% of Suppressed Spell Damage", "Prevent +(20-30)%% of Suppressed Spell Damage", Boss, 10),
             ("Inflict # Grasping Vine on Hit", "Inflict 1 Grasping Vine on Hit", Minion, 10),
+            ("+# to Armour", "+(1600-3200) to Armour", Minion, 8),
             ("+# to Armour", "+50000 to Armour", Boss, 8),
             ("#% increased Armour", "(100-200)%% increased Armour", Boss, 5),
             ("#% increased Evasion Rating", "(100-200)%% increased Evasion Rating", Boss, 5),
