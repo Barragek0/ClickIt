@@ -471,7 +471,7 @@ namespace ClickIt.Tests
             confidenceRange.Should().BeLessOrEqualTo(5, "confidence values should be consistent for identical inputs");
 
             var topScores = decisions.Select(d => d.WeightCalculation.TopScore).ToList();
-            topScores.Should().AllBeEquivalentTo(topScores.First(), "weight calculations should be deterministic");
+            topScores.Should().AllBeEquivalentTo(topScores[0], "weight calculations should be deterministic");
         }
 
         [TestMethod]

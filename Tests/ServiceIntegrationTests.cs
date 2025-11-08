@@ -146,12 +146,9 @@ namespace ClickIt.Tests
             var filteredLabels = new List<MockLabel>();
             foreach (var label in labelsInVariousAreas)
             {
-                if (areaService.PointIsInClickableArea(label.Position))
+                if (areaService.PointIsInClickableArea(label.Position) && labelFilterService.ShouldClickLabel(label))
                 {
-                    if (labelFilterService.ShouldClickLabel(label))
-                    {
-                        filteredLabels.Add(label);
-                    }
+                    filteredLabels.Add(label);
                 }
             }
 
@@ -339,12 +336,9 @@ namespace ClickIt.Tests
             var filteredLabels = new List<MockLabel>();
             foreach (var label in labelsAtVariousDistances)
             {
-                if (labelFilterService.IsWithinClickDistance(label))
+                if (labelFilterService.IsWithinClickDistance(label) && inputHandler.CanPerformClickOn(label))
                 {
-                    if (inputHandler.CanPerformClickOn(label))
-                    {
-                        filteredLabels.Add(label);
-                    }
+                    filteredLabels.Add(label);
                 }
             }
 
@@ -377,12 +371,9 @@ namespace ClickIt.Tests
             foreach (var element in elementsInVariousAreas)
             {
                 var elementCenter = MockElementService.GetElementCenter(element);
-                if (areaService.PointIsInClickableArea(elementCenter))
+                if (areaService.PointIsInClickableArea(elementCenter) && MockElementService.IsElementVisible(element))
                 {
-                    if (MockElementService.IsElementVisible(element))
-                    {
-                        validElements.Add(element);
-                    }
+                    validElements.Add(element);
                 }
             }
 

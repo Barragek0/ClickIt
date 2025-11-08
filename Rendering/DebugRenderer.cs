@@ -63,6 +63,8 @@ namespace ClickIt.Rendering
 
             return yPos;
         }
+
+        [Obsolete]
         public int RenderInputDebug(int xPos, int yPos, int lineHeight)
         {
             _graphics.DrawText($"--- Input State ---", new Vector2(xPos, yPos), Color.Orange, 16);

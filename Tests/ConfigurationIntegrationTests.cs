@@ -167,7 +167,6 @@ namespace ClickIt.Tests
         public void Settings_ShouldValidateModWeightRanges()
         {
             // Arrange
-            var settings = new MockClickItSettings();
             var validator = new MockModWeightValidator();
 
             var testWeights = new Dictionary<string, int>
@@ -289,7 +288,6 @@ namespace ClickIt.Tests
         {
             // Arrange
             var keyBindValidator = new MockKeyBindValidator();
-            var settings = new MockClickItSettings();
 
             // Simulate other applications or game bindings
             var existingBindings = new Dictionary<MockKeys, string>
@@ -326,7 +324,6 @@ namespace ClickIt.Tests
         {
             // Arrange
             var helpProvider = new MockSettingsHelpProvider();
-            var settings = new MockClickItSettings();
 
             var settingProperties = new[]
             {
@@ -631,10 +628,9 @@ namespace ClickIt.Tests
             {
                 element.Value = newValue;
                 // Simulate updating the bound setting
-                if (element.Label == "Click Label Key")
+                if (element.Label == "Click Label Key" && _boundSettings != null)
                 {
-                    if (_boundSettings != null)
-                        _boundSettings.ClickLabelKey = (MockKeys)newValue;
+                    _boundSettings.ClickLabelKey = (MockKeys)newValue;
                 }
             }
 

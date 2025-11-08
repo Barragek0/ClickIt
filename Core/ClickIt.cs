@@ -64,7 +64,7 @@ namespace ClickIt
             CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             areaService = new Services.AreaService();
             areaService.UpdateScreenAreas(GameController);
-            altarService = new Services.AltarService(Settings, CachedLabels);
+            altarService = new Services.AltarService(this, Settings, CachedLabels);
             labelFilterService = new Services.LabelFilterService(Settings);
             inputHandler = new Utils.InputHandler(Settings);
             debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService);
@@ -84,7 +84,7 @@ namespace ClickIt
             clickLabelCoroutine.Priority = CoroutinePriority.High;
             var inputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), this, "ClickIt.InputSafety");
             _ = Core.ParallelRunner.Run(inputSafetyCoroutine);
-            inputSafetyCoroutine.Priority = CoroutinePriority.Critical;
+            inputSafetyCoroutine.Priority = CoroutinePriority.High;
 
             Settings.EnsureAllModsHaveWeights();
 
@@ -276,7 +276,7 @@ namespace ClickIt
         private IEnumerator ScanForAltarsLogic()
         {
             altarCoroutineTimer.Restart();
-            altarService?.ProcessAltarScanningLogic(LogMessage, LogError);
+            altarService?.ProcessAltarScanningLogic();
             altarCoroutineTimer.Stop();
             altarCoroutine?.Pause();
             yield break;
@@ -475,7 +475,6 @@ namespace ClickIt
                 if (boxToClick != null)
                 {
                     yield return ClickAltarElement(boxToClick, leftHanded);
-                    //yield break;
                 }
             }
         }

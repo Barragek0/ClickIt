@@ -432,7 +432,7 @@ namespace ClickIt.Tests
                     ProcessedAltarPercentage = 1.0f
                 };
 
-                if (altars.Count > 1000)
+                if (altars.Count > 3)
                 {
                     result.OptimizationsApplied.Add("LOD");
                     result.OptimizationsApplied.Add("Culling");

@@ -27,14 +27,16 @@ namespace ClickIt.Services
     }
     public class AltarService
     {
+        private readonly ClickIt _clickIt;
         private readonly ClickItSettings _settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels;
         private readonly List<PrimaryAltarComponent> _altarComponents = new();
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
-        public AltarService(ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
+        public AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
         {
+            _clickIt = clickIt;
             _settings = settings;
             _cachedLabels = cachedLabels;
         }
@@ -69,13 +71,13 @@ namespace ClickIt.Services
             return false;
         }
         public void UpdateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
-            Element ElementToExtractDataFrom, ClickIt.AltarType altarType, Action<string, float> logMessage, Action<string, float> logError)
+            Element ElementToExtractDataFrom, ClickIt.AltarType altarType)
         {
-            var (negativeModType, mods) = ExtractModsFromElement(ElementToExtractDataFrom, logMessage);
-            var (upsides, downsides, hasUnmatchedMods) = ProcessMods(mods, negativeModType, logMessage, logError);
-            UpdateAltarComponent(top, altarComponent, ElementToExtractDataFrom, upsides, downsides, hasUnmatchedMods, logMessage);
+            var (negativeModType, mods) = ExtractModsFromElement(ElementToExtractDataFrom);
+            var (upsides, downsides, hasUnmatchedMods) = ProcessMods(mods, negativeModType);
+            UpdateAltarComponent(top, altarComponent, ElementToExtractDataFrom, upsides, downsides, hasUnmatchedMods);
         }
-        private (string negativeModType, List<string> mods) ExtractModsFromElement(Element element, Action<string, float> logMessage)
+        private (string negativeModType, List<string> mods) ExtractModsFromElement(Element element)
         {
             string negativeModType = "";
             List<string> mods = new();
@@ -102,8 +104,7 @@ namespace ClickIt.Services
                 .Replace("gain:", "").Replace("gains:", "");
             return Regex.Replace(cleaned, @"<rgb\(\d+,\d+,\d+\)>", "");
         }
-        private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType,
-            Action<string, float> logMessage, Action<string, float> logError)
+        private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {
             List<string> upsides = new();
             List<string> downsides = new();
@@ -132,7 +133,7 @@ namespace ClickIt.Services
                     }
                     if (_settings.DebugMode)
                     {
-                        logError($"Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{negativeModType}'", 10);
+                        _clickIt.LogError($"Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{negativeModType}'", 10);
                     }
                 }
             }
@@ -174,7 +175,7 @@ namespace ClickIt.Services
             return "";
         }
         private void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element element,
-            List<string> upsides, List<string> downsides, bool hasUnmatchedMods, Action<string, float> logMessage)
+            List<string> upsides, List<string> downsides, bool hasUnmatchedMods)
         {
             if (top)
             {
@@ -197,7 +198,7 @@ namespace ClickIt.Services
             string[] lines = text.Replace("\r", "").Split('\n');
             return lines.Length;
         }
-        public void ProcessAltarScanningLogic(Action<string, float> logMessage, Action<string, float> logError)
+        public void ProcessAltarScanningLogic()
         {
             DebugInfo.LastScanTime = DateTime.Now;
             DebugInfo.ElementsFound = 0;
@@ -213,7 +214,7 @@ namespace ClickIt.Services
                 ClearAltarComponents();
                 return;
             }
-            ProcessAltarLabels(altarLabels, logMessage, logError);
+            ProcessAltarLabels(altarLabels);
         }
         private List<LabelOnGround> CollectAltarLabels()
         {
@@ -238,7 +239,7 @@ namespace ClickIt.Services
             }
             return altarLabels;
         }
-        private void ProcessAltarLabels(List<LabelOnGround> altarLabels, Action<string, float> logMessage, Action<string, float> logError)
+        private void ProcessAltarLabels(List<LabelOnGround> altarLabels)
         {
             foreach (LabelOnGround label in altarLabels)
             {
@@ -247,19 +248,19 @@ namespace ClickIt.Services
                 if (elements == null || elements.Count == 0) continue;
                 DebugInfo.ElementsFound += elements.Count;
                 string path = label.ItemOnGround?.Path ?? string.Empty;
-                ProcessElementsForLabel(elements, path, logMessage, logError);
+                ProcessElementsForLabel(elements, path);
             }
         }
-        private void ProcessElementsForLabel(List<Element> elements, string path, Action<string, float> logMessage, Action<string, float> logError)
+        private void ProcessElementsForLabel(List<Element> elements, string path)
         {
             foreach (Element element in elements)
             {
-                if (!IsValidElement(element, logError)) continue;
+                if (!IsValidElement(element)) continue;
                 DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
                 ClickIt.AltarType altarType = DetermineAltarType(path);
-                PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType, logMessage, logError);
+                PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
                 DebugInfo.ComponentsProcessed++;
-                if (IsValidAltarComponent(altarComponent, logError))
+                if (IsValidAltarComponent(altarComponent))
                 {
                     bool wasAdded = AddAltarComponent(altarComponent);
                     if (wasAdded)
@@ -269,7 +270,7 @@ namespace ClickIt.Services
                 }
             }
         }
-        private bool IsValidElement(Element element, Action<string, float> logError)
+        private bool IsValidElement(Element element)
         {
             if (element == null || !element.IsVisible)
             {
@@ -287,7 +288,7 @@ namespace ClickIt.Services
             else
                 return ClickIt.AltarType.Unknown;
         }
-        private PrimaryAltarComponent CreateAltarComponent(Element element, ClickIt.AltarType altarType, Action<string, float> logMessage, Action<string, float> logError)
+        private PrimaryAltarComponent CreateAltarComponent(Element element, ClickIt.AltarType altarType)
         {
             PrimaryAltarComponent altarComponent = new(altarType,
                 new SecondaryAltarComponent(new Element(), new List<string>(), new List<string>()), new AltarButton(new Element()),
@@ -297,15 +298,15 @@ namespace ClickIt.Services
             Element? bottomAltarElement = altarParent.GetChildFromIndices(1, 1);
             if (topAltarElement != null)
             {
-                UpdateComponentFromElementData(true, altarParent, altarComponent, topAltarElement, altarType, logMessage, logError);
+                UpdateComponentFromElementData(true, altarParent, altarComponent, topAltarElement, altarType);
             }
             if (bottomAltarElement != null)
             {
-                UpdateComponentFromElementData(false, altarParent, altarComponent, bottomAltarElement, altarType, logMessage, logError);
+                UpdateComponentFromElementData(false, altarParent, altarComponent, bottomAltarElement, altarType);
             }
             return altarComponent;
         }
-        private bool IsValidAltarComponent(PrimaryAltarComponent altarComponent, Action<string, float> logError)
+        private bool IsValidAltarComponent(PrimaryAltarComponent altarComponent)
         {
             bool isValid = altarComponent.TopMods != null && altarComponent.TopButton != null &&
                           altarComponent.BottomMods != null && altarComponent.BottomButton != null;
