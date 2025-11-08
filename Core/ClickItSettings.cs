@@ -65,7 +65,7 @@ namespace ClickIt
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
         [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.", 19, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
-        [Menu("Hide / Show Items occasionally", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 20, 3000)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 20, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
         [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 21, 3000)]
         [System.Obsolete("Can be safely ignored for now.")]

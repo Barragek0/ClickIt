@@ -138,6 +138,7 @@ namespace ClickIt.Services
             }
             SharpDX.Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
             inputHandler.PerformClick(clickPos);
+            inputHandler.TriggerToggleItems();
         }
     }
 }
