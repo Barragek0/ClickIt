@@ -43,11 +43,11 @@ namespace ClickIt.Utils
         }
         public void TriggerToggleItems()
         {
-            if (_settings.ToggleItems.Value && _random.Next(0, 30) == 0)
+            if (_settings.ToggleItems.Value && _random.Next(0, 20) == 0)
             {
 #pragma warning disable CS0618
-                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 5);
-                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 5);
+                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 10);
+                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 10);
 #pragma warning restore CS0618
             }
         }
