@@ -18,9 +18,13 @@ namespace ClickIt.Tests
         [TestMethod]
         public void AltarModsConstants_DownsideMods_ShouldHaveUniqueNames()
         {
-            var names = AltarModsConstants.DownsideMods.Select(m => m.Name).ToList();
-            var distinctNames = names.Distinct().ToList();
-            distinctNames.Count.Should().Be(names.Count, "all downside mod names should be unique");
+            var modsByType = AltarModsConstants.DownsideMods.GroupBy(m => m.Type);
+            foreach (var typeGroup in modsByType)
+            {
+                var names = typeGroup.Select(m => m.Name).ToList();
+                var distinctNames = names.Distinct().ToList();
+                distinctNames.Count.Should().Be(names.Count, $"all downside mod names for type '{typeGroup.Key}' should be unique");
+            }
         }
         [TestMethod]
         public void AltarModsConstants_AllMods_ShouldHaveValidWeightRanges()

@@ -15,7 +15,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 namespace ClickIt
 {
 #nullable enable
@@ -32,6 +31,8 @@ namespace ClickIt
         private Coroutine? clickLabelCoroutine;
         private bool isInputCurrentlyBlocked = false;
         private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
+        private readonly Stopwatch lastRenderTimer = new Stopwatch();
+        private readonly Stopwatch lastTickTimer = new Stopwatch();
         private const int HOTKEY_RELEASE_FAILSAFE_MS = 5000;
         private bool lastHotkeyState = false;
         private Services.AreaService? areaService;
@@ -60,8 +61,9 @@ namespace ClickIt
             catch (Exception ex)
             {
                 Mouse.blockInput(false);
-                LogError($"Error during plugin shutdown: {ex.Message}");
+                LogError($"Error during plugin shutdown: {ex.Message}", 10);
             }
+
             base.OnClose();
         }
         public override bool Initialise()
@@ -91,7 +93,13 @@ namespace ClickIt
             var inputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), this, "ClickIt.InputSafety");
             _ = Core.ParallelRunner.Run(inputSafetyCoroutine);
             inputSafetyCoroutine.Priority = CoroutinePriority.Critical;
+
             Settings.EnsureAllModsHaveWeights();
+
+            // Start monitoring timers
+            lastRenderTimer.Start();
+            lastTickTimer.Start();
+
             return true;
         }
         private bool PointIsInClickableArea(Vector2 point, string? path = null)
@@ -101,6 +109,9 @@ namespace ClickIt
         }
         public override void Render()
         {
+            // Reset render timer to track this render cycle
+            lastRenderTimer.Restart();
+
             renderTimer.Restart();
             RenderDebugFrames();
             if (Settings.DebugMode && Settings.RenderDebug)
@@ -108,6 +119,7 @@ namespace ClickIt
                 RenderDetailedDebugInfo();
             }
             RenderAltarComponents();
+
             renderTimer.Stop();
         }
         private void RenderDetailedDebugInfo()
@@ -194,17 +206,11 @@ namespace ClickIt
         }
         private void TrackError(string errorMessage)
         {
-            try
+            string timestampedError = $"[{DateTime.Now:HH:mm:ss}] {errorMessage}";
+            recentErrors.Add(timestampedError);
+            if (recentErrors.Count > MAX_ERRORS_TO_TRACK)
             {
-                string timestampedError = $"[{DateTime.Now:HH:mm:ss}] {errorMessage}";
-                recentErrors.Add(timestampedError);
-                if (recentErrors.Count > MAX_ERRORS_TO_TRACK)
-                {
-                    recentErrors.RemoveAt(0);
-                }
-            }
-            catch (Exception)
-            {
+                recentErrors.RemoveAt(0);
             }
         }
         private bool canClick()
@@ -243,11 +249,11 @@ namespace ClickIt
             {
                 Mouse.blockInput(false);
                 isInputCurrentlyBlocked = false;
-                LogError($"EMERGENCY INPUT UNBLOCK: {reason} at {DateTime.Now:HH:mm:ss.fff}", 1);
+
             }
             catch (Exception ex)
             {
-                LogError($"CRITICAL: Failed to force unblock input: {ex.Message}", 1);
+                LogError($"CRITICAL: Failed to force unblock input: {ex.Message}", 10);
             }
         }
         private IEnumerator InputSafetyCoroutine()
@@ -327,9 +333,12 @@ namespace ClickIt
         private bool workFinished;
         public override Job? Tick()
         {
+
 #pragma warning disable CS0618
-            if (ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value))
+            bool hotkeyPressed = ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
 #pragma warning restore CS0618
+
+            if (hotkeyPressed)
             {
                 if (clickLabelCoroutine?.IsDone == true)
                 {
@@ -546,6 +555,19 @@ namespace ClickIt
 
         private Element? GetAltarElementToClick(PrimaryAltarComponent altar)
         {
+            // Validate altar components before proceeding
+            if (altar?.TopMods?.Element == null || altar?.BottomMods?.Element == null)
+            {
+                LogError("CRITICAL: Invalid altar elements - TopMods or BottomMods Element is null", 10);
+                return null;
+            }
+
+            if (!altar.TopMods.Element.IsValid || !altar.BottomMods.Element.IsValid)
+            {
+                LogError("CRITICAL: Invalid altar elements - Elements are not valid", 10);
+                return null;
+            }
+
             var altarWeights = weightCalculator?.CalculateAltarWeights(altar) ?? new Utils.AltarWeights();
             RectangleF topModsRect = altar.TopMods.Element.GetClientRect();
             RectangleF bottomModsRect = altar.BottomMods.Element.GetClientRect();

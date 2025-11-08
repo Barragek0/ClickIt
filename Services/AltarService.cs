@@ -72,8 +72,8 @@ namespace ClickIt.Services
             Element ElementToExtractDataFrom, ClickIt.AltarType altarType, Action<string, float> logMessage, Action<string, float> logError)
         {
             var (negativeModType, mods) = ExtractModsFromElement(ElementToExtractDataFrom, logMessage);
-            var (upsides, downsides) = ProcessMods(mods, negativeModType, logMessage, logError);
-            UpdateAltarComponent(top, altarComponent, ElementToExtractDataFrom, upsides, downsides, logMessage);
+            var (upsides, downsides, hasUnmatchedMods) = ProcessMods(mods, negativeModType, logMessage, logError);
+            UpdateAltarComponent(top, altarComponent, ElementToExtractDataFrom, upsides, downsides, hasUnmatchedMods, logMessage);
         }
         private (string negativeModType, List<string> mods) ExtractModsFromElement(Element element, Action<string, float> logMessage)
         {
@@ -102,11 +102,12 @@ namespace ClickIt.Services
                 .Replace("gain:", "").Replace("gains:", "");
             return Regex.Replace(cleaned, @"<rgb\(\d+,\d+,\d+\)>", "");
         }
-        private (List<string> upsides, List<string> downsides) ProcessMods(List<string> mods, string negativeModType,
+        private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType,
             Action<string, float> logMessage, Action<string, float> logError)
         {
             List<string> upsides = new();
             List<string> downsides = new();
+            bool hasUnmatchedMods = false;
             foreach (string mod in mods)
             {
                 if (TryMatchMod(mod, negativeModType, out bool isUpside, out string matchedId))
@@ -119,6 +120,7 @@ namespace ClickIt.Services
                 }
                 else
                 {
+                    hasUnmatchedMods = true;
                     DebugInfo.ModsUnmatched++;
                     string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
                     string unmatchedInfo = $"{cleanedMod} ({negativeModType})";
@@ -134,7 +136,7 @@ namespace ClickIt.Services
                     }
                 }
             }
-            return (upsides, downsides);
+            return (upsides, downsides, hasUnmatchedMods);
         }
         private static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
@@ -172,17 +174,17 @@ namespace ClickIt.Services
             return "";
         }
         private void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element element,
-            List<string> upsides, List<string> downsides, Action<string, float> logMessage)
+            List<string> upsides, List<string> downsides, bool hasUnmatchedMods, Action<string, float> logMessage)
         {
             if (top)
             {
                 altarComponent.TopButton = new AltarButton(element.Parent);
-                altarComponent.TopMods = new SecondaryAltarComponent(element, upsides, downsides);
+                altarComponent.TopMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
             }
             else
             {
                 altarComponent.BottomButton = new AltarButton(element.Parent);
-                altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides);
+                altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
             }
         }
         private static string GetLine(string text, int lineNo)

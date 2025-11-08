@@ -22,6 +22,22 @@ namespace ClickIt.Rendering
         {
             Vector2 offset120_Minus60 = new(120, -70);
             Vector2 offset120_Minus25 = new(120, -25);
+
+            // Validate rectangles before proceeding
+            if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect))
+            {
+                _graphics?.DrawText("Invalid altar rectangles detected", topModsTopLeft + offset120_Minus60, Color.Red, 30);
+                return null;
+            }
+
+            // Check for unmatched mods first
+            if (altar.TopMods.HasUnmatchedMods || altar.BottomMods.HasUnmatchedMods)
+            {
+                DrawFailedToMatchModText(topModsTopLeft + offset120_Minus60);
+                DrawRedFrames(topModsRect, bottomModsRect);
+                return null;
+            }
+
             if (weights.TopUpsideWeight <= 0)
             {
                 DrawUnrecognizedWeightText("Top upside", altar.TopMods.FirstUpside, altar.TopMods.SecondUpside, topModsTopLeft + offset120_Minus60);
@@ -103,12 +119,31 @@ namespace ClickIt.Rendering
         }
         private void DrawUnrecognizedWeightText(string weightType, string mod1, string mod2, Vector2 position)
         {
+            if (_graphics == null) return;
             _ = _graphics.DrawText($"{weightType} weights couldn't be recognised\n1:{mod1}\n2:{mod2}\nPlease report this as a bug on github", position, Color.Orange, 30);
+        }
+        private void DrawFailedToMatchModText(Vector2 position)
+        {
+            if (_graphics == null) return;
+            _ = _graphics.DrawText("Failed to match mod - unable to determine best choice.\nPlease report this as a bug on github", position, Color.Red, 30);
+        }
+        private void DrawRedFrames(RectangleF topModsRect, RectangleF bottomModsRect)
+        {
+            if (_graphics == null) return;
+            if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect)) return;
+            _graphics.DrawFrame(topModsRect, Color.Red, 2);
+            _graphics.DrawFrame(bottomModsRect, Color.Red, 2);
         }
         private void DrawYellowFrames(RectangleF topModsRect, RectangleF bottomModsRect)
         {
+            if (_graphics == null) return;
+            if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect)) return;
             _graphics.DrawFrame(topModsRect, Color.Yellow, 2);
             _graphics.DrawFrame(bottomModsRect, Color.Yellow, 2);
+        }
+        private static bool IsValidRectangle(RectangleF rect)
+        {
+            return rect.Width > 0 && rect.Height > 0 && !float.IsNaN(rect.X) && !float.IsNaN(rect.Y) && !float.IsNaN(rect.Width) && !float.IsNaN(rect.Height);
         }
         public void DrawWeightTexts(AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
