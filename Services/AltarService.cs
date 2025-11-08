@@ -41,7 +41,16 @@ namespace ClickIt.Services
             _cachedLabels = cachedLabels;
         }
         public List<PrimaryAltarComponent> GetAltarComponents() => _altarComponents.ToList();
-        public void ClearAltarComponents() => _altarComponents.Clear();
+        public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarComponents;
+        public void ClearAltarComponents()
+        {
+            // Invalidate caches when clearing components
+            foreach (var component in _altarComponents)
+            {
+                component.InvalidateCache();
+            }
+            _altarComponents.Clear();
+        }
         public List<LabelOnGround> GetAltarLabels(ClickIt.AltarType type)
         {
             List<LabelOnGround> result = new();
@@ -241,33 +250,113 @@ namespace ClickIt.Services
         }
         private void ProcessAltarLabels(List<LabelOnGround> altarLabels)
         {
+            // Pre-allocate capacity to avoid list resizing
+            var elementsToProcess = new List<(Element element, string path)>(altarLabels.Count * 2);
+
+            // Collect all elements first to avoid nested loops
             foreach (LabelOnGround label in altarLabels)
             {
                 if (label == null) continue;
                 List<Element> elements = Services.ElementService.GetElementsByStringContains(label.Label, "valuedefault");
                 if (elements == null || elements.Count == 0) continue;
-                DebugInfo.ElementsFound += elements.Count;
                 string path = label.ItemOnGround?.Path ?? string.Empty;
-                ProcessElementsForLabel(elements, path);
+                DebugInfo.ElementsFound += elements.Count;
+
+                foreach (Element element in elements.Where(IsValidElement))
+                {
+                    elementsToProcess.Add((element, path));
+                }
+            }
+
+            // Remove invalid altars before processing new ones
+            CleanupInvalidAltars();
+
+            // Process elements in a single pass
+            foreach (var (element, path) in elementsToProcess)
+            {
+                try
+                {
+                    DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
+                    ClickIt.AltarType altarType = DetermineAltarType(path);
+                    PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
+                    DebugInfo.ComponentsProcessed++;
+
+                    if (IsValidAltarComponent(altarComponent))
+                    {
+                        // Pre-cache all data during scanning to avoid render loop memory access
+                        PreCacheAltarData(altarComponent);
+
+                        bool wasAdded = AddAltarComponent(altarComponent);
+                        if (wasAdded)
+                            DebugInfo.ComponentsAdded++;
+                        else
+                            DebugInfo.ComponentsDuplicated++;
+                    }
+                }
+                catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
+                {
+                    DebugInfo.LastError = $"Error processing altar: {ex.Message}";
+                    if (_settings.DebugMode)
+                    {
+                        _clickIt.LogError($"Error processing altar: {ex.Message}", 3);
+                    }
+                }
             }
         }
-        private void ProcessElementsForLabel(List<Element> elements, string path)
+
+        private void CleanupInvalidAltars()
         {
-            foreach (Element element in elements)
+            // Remove altars with invalid elements to prevent memory access errors
+            try
             {
-                if (!IsValidElement(element)) continue;
-                DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
-                ClickIt.AltarType altarType = DetermineAltarType(path);
-                PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
-                DebugInfo.ComponentsProcessed++;
-                if (IsValidAltarComponent(altarComponent))
+                _altarComponents.RemoveAll(altar =>
                 {
-                    bool wasAdded = AddAltarComponent(altarComponent);
-                    if (wasAdded)
-                        DebugInfo.ComponentsAdded++;
-                    else
-                        DebugInfo.ComponentsDuplicated++;
-                }
+                    try
+                    {
+                        // Check if core elements are still valid
+                        bool isInvalid = altar.TopMods?.Element == null ||
+                                        altar.BottomMods?.Element == null ||
+                                        !altar.TopMods.Element.IsValid ||
+                                        !altar.BottomMods.Element.IsValid;
+
+                        if (isInvalid)
+                        {
+                            // Invalidate cache when removing
+                            altar.InvalidateCache();
+                        }
+
+                        return isInvalid;
+                    }
+                    catch (Exception)
+                    {
+                        // If checking validity throws, the altar is definitely invalid
+                        altar.InvalidateCache();
+                        return true;
+                    }
+                });
+            }
+            catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
+            {
+                DebugInfo.LastError = $"Error during cleanup: {ex.Message}";
+            }
+        }
+
+        private void PreCacheAltarData(PrimaryAltarComponent altar)
+        {
+            // Pre-calculate and cache all data that render loop and click logic will need
+            try
+            {
+                // Trigger caching of validation state
+                _ = altar.IsValidCached();
+
+                // Trigger caching of rectangles
+                _ = altar.GetCachedRects();
+
+                // Note: Weights are cached lazily when first accessed since they need the calculator
+            }
+            catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
+            {
+                DebugInfo.LastError = $"Error pre-caching altar data: {ex.Message}";
             }
         }
         private bool IsValidElement(Element element)

@@ -37,6 +37,7 @@ namespace ClickIt.Constants
             ("Nearby Enemies Gain #% of their Physical Damage as Extra Chaos Damage", "Nearby Enemies Gain 100%% of their Physical Damage as Extra Chaos Damage", Player, 75),
             ("Gain # Grasping Vines per second while Stationary", "Gain 1 Grasping Vines per second while Stationary", Player, 70),
             ("Gain #% of Physical Damage as Extra Chaos Damage", "Gain (70-130)%% of Physical Damage as Extra Chaos Damage", Boss, 60),
+            ("Gain #% of Physical Damage as Extra Chaos Damage", "Gain (70-130)%% of Physical Damage as Extra Chaos Damage", Minion, 60),
             ("-#% to Fire Resistance", "(-60--40)%% to Fire Resistance", Player, 60),
             ("-#% to Cold Resistance", "(-60--40)%% to Cold Resistance", Player, 60),
             ("-#% to Lightning Resistance", "(-60--40)%% to Lightning Resistance", Player, 60),

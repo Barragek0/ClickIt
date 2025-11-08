@@ -19,6 +19,7 @@ namespace ClickIt.Tests
             ClickIt.Constants.Constants.Bismuth.Should().NotBeNullOrWhiteSpace();
             ClickIt.Constants.Constants.Verisium.Should().NotBeNullOrWhiteSpace();
             ClickIt.Constants.Constants.ClosedDoorPast.Should().NotBeNullOrWhiteSpace();
+            ClickIt.Constants.Constants.LegionInitiator.Should().NotBeNullOrWhiteSpace();
         }
 
         [TestMethod]

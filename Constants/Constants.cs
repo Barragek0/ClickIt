@@ -13,6 +13,7 @@ namespace ClickIt.Constants
         public const string Bismuth = "Bismuth";
         public const string Verisium = "Verisium";
         public const string ClosedDoorPast = "ClosedDoorPast";
+        public const string LegionInitiator = "LegionInitiator";
         #endregion
         #region Target Type Strings
         public const string Player = "Player";

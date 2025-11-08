@@ -20,6 +20,7 @@ namespace ClickIt.Services
         private const string Bismuth = "Bismuth";
         private const string Verisium = "Verisium";
         private const string ClosedDoorPast = "ClosedDoorPast";
+        private const string LegionInitiator = "LegionInitiator";
         public LabelFilterService(ClickItSettings settings)
         {
             _settings = settings;
@@ -99,6 +100,7 @@ namespace ClickIt.Services
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = s.ClickSettlersOre.Value,
                 ClickAlvaTempleDoors = s.ClickAlvaTempleDoors.Value,
+                ClickLegionPillars = s.ClickLegionPillars.Value,
             };
         }
         private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
@@ -133,6 +135,7 @@ namespace ClickIt.Services
             public bool NearestHarvest { get; set; }
             public bool ClickSulphite { get; set; }
             public bool ClickAlvaTempleDoors { get; set; }
+            public bool ClickLegionPillars { get; set; }
             public bool ClickAzurite { get; set; }
             public bool HighlightEater { get; set; }
             public bool HighlightExarch { get; set; }
@@ -170,6 +173,7 @@ namespace ClickIt.Services
             return (settings.NearestHarvest && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))) ||
                    (settings.ClickSulphite && path.Contains("DelveMineral")) ||
                    (settings.ClickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
+                   (settings.ClickLegionPillars && path.Contains(LegionInitiator)) ||
                    (settings.ClickAzurite && path.Contains("AzuriteEncounterController")) ||
                    (settings.ClickCrafting && path.Contains("CraftingUnlocks")) ||
                    (settings.ClickBreach && path.Contains(Brequel)) ||

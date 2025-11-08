@@ -40,25 +40,25 @@ namespace ClickIt.Rendering
 
             if (weights.TopUpsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Top upside", altar.TopMods.FirstUpside, altar.TopMods.SecondUpside, topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Top upside", altar.TopMods.FirstUpside, altar.TopMods.SecondUpside, altar.TopMods.ThirdUpside, altar.TopMods.FourthUpside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.TopDownsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Top downside", altar.TopMods.FirstDownside, altar.TopMods.SecondDownside, topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Top downside", altar.TopMods.FirstDownside, altar.TopMods.SecondDownside, altar.TopMods.ThirdDownside, altar.TopMods.FourthDownside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.BottomUpsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Bottom upside", altar.BottomMods.FirstUpside, altar.BottomMods.SecondUpside, topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Bottom upside", altar.BottomMods.FirstUpside, altar.BottomMods.SecondUpside, altar.BottomMods.ThirdUpside, altar.BottomMods.FourthUpside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.BottomDownsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Bottom downside", altar.BottomMods.FirstDownside, altar.BottomMods.SecondDownside, topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Bottom downside", altar.BottomMods.FirstDownside, altar.BottomMods.SecondDownside, altar.BottomMods.ThirdDownside, altar.BottomMods.FourthDownside, topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
@@ -66,35 +66,36 @@ namespace ClickIt.Rendering
         }
         private Element? EvaluateAltarWeights(AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
-            if ((weights.TopDownside1Weight >= 90 || weights.TopDownside2Weight >= 90) && (weights.BottomDownside1Weight >= 90 || weights.BottomDownside2Weight >= 90))
+            if ((weights.TopDownside1Weight >= 90 || weights.TopDownside2Weight >= 90 || weights.TopDownside3Weight >= 90 || weights.TopDownside4Weight >= 90) &&
+                (weights.BottomDownside1Weight >= 90 || weights.BottomDownside2Weight >= 90 || weights.BottomDownside3Weight >= 90 || weights.BottomDownside4Weight >= 90))
             {
                 _ = _graphics.DrawText("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.", textPos1, Color.Orange, 30);
                 _graphics.DrawFrame(topModsRect, Color.OrangeRed, 2);
                 _graphics.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
                 return null;
             }
-            if (weights.TopUpside1Weight >= 90 || weights.TopUpside2Weight >= 90)
+            if (weights.TopUpside1Weight >= 90 || weights.TopUpside2Weight >= 90 || weights.TopUpside3Weight >= 90 || weights.TopUpside4Weight >= 90)
             {
                 _ = _graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+", textPos1, Color.LawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, Color.LawnGreen, 3);
                 _graphics.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
                 return altar.TopButton.Element;
             }
-            if (weights.BottomUpside1Weight >= 90 || weights.BottomUpside2Weight >= 90)
+            if (weights.BottomUpside1Weight >= 90 || weights.BottomUpside2Weight >= 90 || weights.BottomUpside3Weight >= 90 || weights.BottomUpside4Weight >= 90)
             {
                 _ = _graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+", textPos1, Color.LawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, Color.OrangeRed, 2);
                 _graphics.DrawFrame(bottomModsRect, Color.LawnGreen, 3);
                 return altar.BottomButton.Element;
             }
-            if (weights.TopDownside1Weight >= 90 || weights.TopDownside2Weight >= 90)
+            if (weights.TopDownside1Weight >= 90 || weights.TopDownside2Weight >= 90 || weights.TopDownside3Weight >= 90 || weights.TopDownside4Weight >= 90)
             {
                 _ = _graphics.DrawText("Weighting has been overridden\n\nBottom has been chosen because one of the top downsides has a weight of 90+", textPos1, Color.LawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, Color.OrangeRed, 3);
                 _graphics.DrawFrame(bottomModsRect, Color.LawnGreen, 2);
                 return altar.BottomButton.Element;
             }
-            if (weights.BottomDownside1Weight >= 90 || weights.BottomDownside2Weight >= 90)
+            if (weights.BottomDownside1Weight >= 90 || weights.BottomDownside2Weight >= 90 || weights.BottomDownside3Weight >= 90 || weights.BottomDownside4Weight >= 90)
             {
                 _ = _graphics.DrawText("Weighting has been overridden\n\nTop has been chosen because one of the bottom downsides has a weight of 90+", textPos1, Color.LawnGreen, 30);
                 _graphics.DrawFrame(topModsRect, Color.LawnGreen, 2);
@@ -117,10 +118,14 @@ namespace ClickIt.Rendering
             DrawYellowFrames(topModsRect, bottomModsRect);
             return null;
         }
-        private void DrawUnrecognizedWeightText(string weightType, string mod1, string mod2, Vector2 position)
+        private void DrawUnrecognizedWeightText(string weightType, string mod1, string mod2, string mod3, string mod4, Vector2 position)
         {
             if (_graphics == null) return;
-            _ = _graphics.DrawText($"{weightType} weights couldn't be recognised\n1:{mod1}\n2:{mod2}\nPlease report this as a bug on github", position, Color.Orange, 30);
+            string modsText = $"1:{mod1}";
+            if (!string.IsNullOrEmpty(mod2)) modsText += $"\n2:{mod2}";
+            if (!string.IsNullOrEmpty(mod3)) modsText += $"\n3:{mod3}";
+            if (!string.IsNullOrEmpty(mod4)) modsText += $"\n4:{mod4}";
+            _ = _graphics.DrawText($"{weightType} weights couldn't be recognised\n{modsText}\nPlease report this as a bug on github", position, Color.Orange, 30);
         }
         private void DrawFailedToMatchModText(Vector2 position)
         {

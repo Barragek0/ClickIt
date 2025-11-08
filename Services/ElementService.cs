@@ -2,22 +2,36 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 #nullable enable
 namespace ClickIt.Services
 {
     public static class ElementService
     {
-        private static readonly List<Element> ElementsByStringContainsList = new();
+        // THREAD-SAFETY FIX: Use ThreadLocal to prevent race conditions with CanUseMultiThreading = true
+        [ThreadStatic]
+        private static List<Element>? _threadLocalList;
+
+        private static List<Element> GetThreadLocalList()
+        {
+            if (_threadLocalList == null)
+            {
+                _threadLocalList = new List<Element>();
+            }
+            return _threadLocalList;
+        }
+
         public static List<Element> GetElementsByStringContains(Element? label, string str)
         {
-            ElementsByStringContainsList.Clear();
+            var elementsList = GetThreadLocalList();
+            elementsList.Clear();
             if (label == null)
-                return ElementsByStringContainsList;
+                return elementsList;
             try
             {
                 string rootText = label.GetText(512);
                 if (!string.IsNullOrEmpty(rootText) && rootText.Contains(str))
-                    ElementsByStringContainsList.Add(label);
+                    elementsList.Add(label);
                 for (int containerIndex = 0; containerIndex <= 1; containerIndex++)
                 {
                     try
@@ -35,7 +49,7 @@ namespace ClickIt.Services
                                 continue;
                             string childText = child.GetText(512);
                             if (!string.IsNullOrEmpty(childText) && childText.Contains(str))
-                                ElementsByStringContainsList.Add(child);
+                                elementsList.Add(child);
                         }
                     }
                     catch (Exception)
@@ -46,7 +60,7 @@ namespace ClickIt.Services
             catch (Exception)
             {
             }
-            return ElementsByStringContainsList;
+            return elementsList;
         }
         public static Element? GetElementByString(Element? root, string str)
         {

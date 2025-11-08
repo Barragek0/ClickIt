@@ -123,6 +123,12 @@ namespace ClickIt.Services
                 ProcessRegularClick(nextLabel, windowTopLeft);
                 return true;
             }
+            if (settings.ClickLegionPillars && Services.ElementService.GetElementByString(labelElement, "LegionInitiator") != null)
+            {
+                logMessage("Found Legion pillar", 5);
+                ProcessRegularClick(nextLabel, windowTopLeft);
+                return true;
+            }
             return false;
         }
         private void ProcessEssence(LabelOnGround nextLabel, SharpDX.Vector2 windowTopLeft)
