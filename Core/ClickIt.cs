@@ -54,15 +54,7 @@ namespace ClickIt
         }
         public override void OnClose()
         {
-            try
-            {
-                ForceUnblockInput("Plugin closing");
-            }
-            catch (Exception ex)
-            {
-                Mouse.blockInput(false);
-                LogError($"Error during plugin shutdown: {ex.Message}", 10);
-            }
+            ForceUnblockInput("Plugin closing");
 
             base.OnClose();
         }
@@ -219,65 +211,37 @@ namespace ClickIt
         }
         private void SafeBlockInput(bool block)
         {
-            try
+            if (block)
             {
-                if (block)
+                if (!isInputCurrentlyBlocked)
                 {
-                    if (!isInputCurrentlyBlocked)
-                    {
-                        Mouse.blockInput(true);
-                        isInputCurrentlyBlocked = true;
-                    }
-                }
-                else
-                {
-                    if (isInputCurrentlyBlocked)
-                    {
-                        Mouse.blockInput(false);
-                        isInputCurrentlyBlocked = false;
-                    }
+                    Mouse.blockInput(true);
+                    isInputCurrentlyBlocked = true;
                 }
             }
-            catch (Exception ex)
+            else
             {
-                ForceUnblockInput($"SafeBlockInput exception: {ex.Message}");
+                if (isInputCurrentlyBlocked)
+                {
+                    Mouse.blockInput(false);
+                    isInputCurrentlyBlocked = false;
+                }
             }
         }
+
         private void ForceUnblockInput(string reason)
         {
-            try
-            {
-                Mouse.blockInput(false);
-                isInputCurrentlyBlocked = false;
-
-            }
-            catch (Exception ex)
-            {
-                LogError($"CRITICAL: Failed to force unblock input: {ex.Message}", 10);
-            }
+            Mouse.blockInput(false);
+            isInputCurrentlyBlocked = false;
+            LogError($"CRITICAL: Input forcibly unblocked. Reason: {reason}", 10);
         }
+
         private IEnumerator InputSafetyCoroutine()
         {
             while (Settings.Enable)
             {
-                bool shouldWaitLong = false;
-                try
-                {
-                    PerformSafetyChecks();
-                }
-                catch (Exception ex)
-                {
-                    ForceUnblockInput($"InputSafetyCoroutine exception: {ex.Message}");
-                    shouldWaitLong = true;
-                }
-                if (shouldWaitLong)
-                {
-                    yield return new WaitTime(1000);
-                }
-                else
-                {
-                    yield return new WaitTime(100);
-                }
+                PerformSafetyChecks();
+                yield return new WaitTime(100);
             }
             ForceUnblockInput("Plugin disabled - cleanup");
         }
@@ -442,42 +406,11 @@ namespace ClickIt
             }
             Timer.Restart();
             clickCoroutineTimer.Restart();
-            if (altar != null)
-            {
-                yield return ProcessAltarClickSimple(altar);
-            }
-            else
-            {
-                yield return ProcessRegularClickSimple();
-            }
+            yield return ProcessRegularClickSimple();
             clickCoroutineTimer.Stop();
             workFinished = true;
         }
-        private IEnumerator ProcessAltarClickSimple(Element altar)
-        {
-            if (!(inputHandler?.CanClick(GameController) ?? false))
-            {
-                yield break;
-            }
-            RectangleF windowArea = GameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            Vector2 clickPos = altar.GetClientRect().Center + windowTopLeft;
-            if (Settings.BlockUserInput.Value)
-            {
-                SafeBlockInput(true);
-            }
-            ExileCore.Input.SetCursorPos(clickPos);
-            if (Settings.LeftHanded.Value)
-            {
-                Mouse.RightClick();
-            }
-            else
-            {
-                Mouse.LeftClick();
-            }
-            SafeBlockInput(false);
-            yield return new WaitTime(Random.Next(50, 60));
-        }
+
         private IEnumerator ProcessRegularClickSimple()
         {
             if (!(inputHandler?.CanClick(GameController) ?? false))
@@ -542,51 +475,95 @@ namespace ClickIt
                 if (boxToClick != null)
                 {
                     yield return ClickAltarElement(boxToClick, leftHanded);
-                    yield break;
+                    //yield break;
                 }
             }
         }
 
         private bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
         {
-            return (altar.AltarType == AltarType.EaterOfWorlds && clickEater) ||
-                   (altar.AltarType == AltarType.SearingExarch && clickExarch);
-        }
+            // First check if altar type is enabled
+            bool isEnabledType = (altar.AltarType == AltarType.EaterOfWorlds && clickEater) ||
+                                (altar.AltarType == AltarType.SearingExarch && clickExarch);
 
-        private Element? GetAltarElementToClick(PrimaryAltarComponent altar)
-        {
-            // Validate altar components before proceeding
+            if (!isEnabledType)
+                return false;
+
+            // Validate altar components before proceeding with weight calculation
             if (altar?.TopMods?.Element == null || altar?.BottomMods?.Element == null)
             {
-                LogError("CRITICAL: Invalid altar elements - TopMods or BottomMods Element is null", 10);
-                return null;
+                LogMessage("Skipping altar - TopMods or BottomMods Element is null", 5);
+                return false;
             }
 
             if (!altar.TopMods.Element.IsValid || !altar.BottomMods.Element.IsValid)
             {
-                LogError("CRITICAL: Invalid altar elements - Elements are not valid", 10);
-                return null;
+                LogMessage("Skipping altar - Elements are not valid", 5);
+                return false;
             }
 
+            if (altar.TopMods.HasUnmatchedMods || altar.BottomMods.HasUnmatchedMods)
+            {
+                LogMessage("Skipping altar - Unmatched mods present", 5);
+                return false;
+            }
+
+            // Calculate weights and check if we can make a decision
+            var altarWeights = weightCalculator?.CalculateAltarWeights(altar);
+            if (altarWeights == null)
+            {
+                LogMessage("Skipping altar - Weight calculation failed", 5);
+                return false;
+            }
+
+            // Get rectangles for choice determination
+            RectangleF topModsRect = altar.TopMods.Element.GetClientRect();
+            RectangleF bottomModsRect = altar.BottomMods.Element.GetClientRect();
+            Vector2 topModsTopLeft = topModsRect.TopLeft;
+
+            // Check if we can determine a valid choice
+            Element? boxToClick = altarDisplayRenderer?.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
+
+            if (boxToClick == null)
+            {
+                LogMessage("Skipping altar - No valid choice could be determined", 5);
+                return false;
+            }
+
+            // Final check: ensure the choice is clickable
+            if (!PointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) ||
+                !boxToClick.IsVisible)
+            {
+                LogMessage("Skipping altar - Choice is not clickable or visible", 5);
+                return false;
+            }
+
+            return true;
+        }
+
+        private Element? GetAltarElementToClick(PrimaryAltarComponent altar)
+        {
+            // All validation is now done in ShouldClickAltar, so we can proceed directly
             var altarWeights = weightCalculator?.CalculateAltarWeights(altar) ?? new Utils.AltarWeights();
             RectangleF topModsRect = altar.TopMods.Element.GetClientRect();
             RectangleF bottomModsRect = altar.BottomMods.Element.GetClientRect();
             Vector2 topModsTopLeft = topModsRect.TopLeft;
 
+            // We know this will succeed since ShouldClickAltar already validated it
             Element? boxToClick = altarDisplayRenderer?.DetermineAltarChoice(altar, altarWeights, topModsRect, bottomModsRect, topModsTopLeft);
 
-            if (boxToClick != null &&
-                PointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) &&
-                boxToClick.IsVisible)
-            {
-                return boxToClick;
-            }
-
-            return null;
+            return boxToClick;
         }
 
         private IEnumerator ClickAltarElement(Element element, bool leftHanded)
         {
+            // Validate element before proceeding
+            if (element == null || !element.IsValid)
+            {
+                LogError("CRITICAL: Invalid altar element in ClickAltarElement", 10);
+                yield break;
+            }
+
             RectangleF windowArea = GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 clickPos = element.GetClientRect().Center + windowTopLeft;
@@ -598,6 +575,14 @@ namespace ClickIt
 
             ExileCore.Input.SetCursorPos(clickPos);
             yield return new WaitTime(20);
+
+            // Re-validate element after wait
+            if (!element.IsValid)
+            {
+                LogError("CRITICAL: Altar element became invalid during click delay", 10);
+                SafeBlockInput(false);
+                yield break;
+            }
 
             if (leftHanded)
             {
