@@ -348,13 +348,37 @@ namespace ClickIt.Rendering
 
                     if (altarCoroutineTimerField?.GetValue(clickItPlugin) is Stopwatch altarTimer)
                     {
-                        _graphics.DrawText($"Altar Coroutine: {altarTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                        // Get the timings queue for averaging
+                        var altarTimingsField = typeof(ClickIt).GetField("altarCoroutineTimings",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                        string displayText = $"Altar Coroutine: {altarTimer.ElapsedMilliseconds} ms";
+
+                        if (altarTimingsField?.GetValue(clickItPlugin) is Queue<long> altarTimings && altarTimings.Count > 0)
+                        {
+                            double average = altarTimings.Average();
+                            displayText += $" (avg: {average:F1} ms)";
+                        }
+
+                        _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
                         yPos += lineHeight;
                     }
 
                     if (clickCoroutineTimerField?.GetValue(clickItPlugin) is Stopwatch clickTimer)
                     {
-                        _graphics.DrawText($"Click Coroutine: {clickTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                        // Get the timings queue for averaging
+                        var clickTimingsField = typeof(ClickIt).GetField("clickCoroutineTimings",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                        string displayText = $"Click Coroutine: {clickTimer.ElapsedMilliseconds} ms";
+
+                        if (clickTimingsField?.GetValue(clickItPlugin) is Queue<long> clickTimings && clickTimings.Count > 0)
+                        {
+                            double average = clickTimings.Average();
+                            displayText += $" (avg: {average:F1} ms)";
+                        }
+
+                        _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
                         yPos += lineHeight;
                     }
                 }
@@ -387,10 +411,7 @@ namespace ClickIt.Rendering
                         for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
                         {
                             string error = recentErrors[i];
-                            if (error.Length > 50)
-                                error = error.Substring(0, 47) + "...";
-                            _graphics.DrawText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14);
-                            yPos += lineHeight;
+                            yPos = RenderWrappedText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14, lineHeight, 50);
                         }
                     }
                     else

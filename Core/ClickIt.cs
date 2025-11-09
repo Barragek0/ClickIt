@@ -27,6 +27,8 @@ namespace ClickIt
         private readonly Stopwatch renderTimer = new Stopwatch();
         private readonly Stopwatch altarCoroutineTimer = new Stopwatch();
         private readonly Stopwatch clickCoroutineTimer = new Stopwatch();
+        private readonly Queue<long> clickCoroutineTimings = new Queue<long>(10);
+        private readonly Queue<long> altarCoroutineTimings = new Queue<long>(10);
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
         private bool isInputCurrentlyBlocked = false;
@@ -231,7 +233,7 @@ namespace ClickIt
         {
             if (Settings.DebugMode)
             {
-                base.LogError(message, frame);
+                LogErrorWithWrapping(message, frame);
                 TrackError(message);
             }
         }
@@ -239,8 +241,59 @@ namespace ClickIt
         {
             if (localDebug && Settings.DebugMode)
             {
-                base.LogError(message, frame);
+                LogErrorWithWrapping(message, frame);
                 TrackError(message);
+            }
+        }
+        private void LogErrorWithWrapping(string message, int frame = 0)
+        {
+            const int maxLineLength = 100; // Maximum characters per line to avoid going off screen
+
+            if (message.Length <= maxLineLength)
+            {
+                base.LogError(message, frame);
+                return;
+            }
+
+            // Split long message into multiple lines
+            int startIndex = 0;
+            int lineNumber = 1;
+
+            while (startIndex < message.Length)
+            {
+                int remainingLength = message.Length - startIndex;
+                int currentLineLength = Math.Min(maxLineLength, remainingLength);
+
+                // Try to break at a space to avoid splitting words
+                if (currentLineLength < remainingLength)
+                {
+                    int lastSpaceIndex = message.LastIndexOf(' ', startIndex + currentLineLength, currentLineLength);
+                    if (lastSpaceIndex > startIndex)
+                    {
+                        currentLineLength = lastSpaceIndex - startIndex;
+                    }
+                }
+
+                string line = message.Substring(startIndex, currentLineLength).TrimEnd();
+
+                // Add line number prefix for continuation lines
+                if (lineNumber == 1)
+                {
+                    base.LogError(line, frame);
+                }
+                else
+                {
+                    base.LogError($"  [{lineNumber}] {line}", frame);
+                }
+
+                startIndex += currentLineLength;
+                // Skip leading spaces on continuation lines
+                while (startIndex < message.Length && message[startIndex] == ' ')
+                {
+                    startIndex++;
+                }
+
+                lineNumber++;
             }
         }
         private void TrackError(string errorMessage)
@@ -325,6 +378,14 @@ namespace ClickIt
             altarCoroutineTimer.Restart();
             altarService?.ProcessAltarScanningLogic();
             altarCoroutineTimer.Stop();
+
+            // Track timing for averaging
+            altarCoroutineTimings.Enqueue(altarCoroutineTimer.ElapsedMilliseconds);
+            if (altarCoroutineTimings.Count > 10)
+            {
+                altarCoroutineTimings.Dequeue();
+            }
+
             altarCoroutine?.Pause();
             yield break;
         }
@@ -460,6 +521,14 @@ namespace ClickIt
             clickCoroutineTimer.Restart();
             yield return ProcessRegularClick();
             clickCoroutineTimer.Stop();
+
+            // Track timing for averaging
+            clickCoroutineTimings.Enqueue(clickCoroutineTimer.ElapsedMilliseconds);
+            if (clickCoroutineTimings.Count > 10)
+            {
+                clickCoroutineTimings.Dequeue();
+            }
+
             workFinished = true;
         }
 

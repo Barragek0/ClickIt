@@ -46,8 +46,8 @@ namespace ClickIt.Utils
             if (_settings.ToggleItems.Value && _random.Next(0, 20) == 0)
             {
 #pragma warning disable CS0618
-                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 10);
-                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 10);
+                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
+                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
 #pragma warning restore CS0618
             }
         }
