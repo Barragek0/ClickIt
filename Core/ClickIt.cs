@@ -546,7 +546,7 @@ namespace ClickIt
 
         private IEnumerator ProcessRegularClick()
         {
-            // Input validation already done in ClickLabel(), skip redundant check
+            inputHandler?.TriggerToggleItems();
             if (clickService != null)
             {
                 yield return clickService.ProcessAltarClicking();
