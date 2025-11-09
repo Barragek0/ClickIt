@@ -44,6 +44,7 @@ namespace ClickIt
         private Rendering.DebugRenderer? debugRenderer;
         private Utils.WeightCalculator? weightCalculator;
         private Rendering.AltarDisplayRenderer? altarDisplayRenderer;
+        private Services.ClickService? clickService;
         private RectangleF FullScreenRectangle { get; set; }
         private RectangleF HealthAndFlaskRectangle { get; set; }
         private RectangleF ManaAndSkillsRectangle { get; set; }
@@ -72,6 +73,17 @@ namespace ClickIt
             debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService);
             weightCalculator = new Utils.WeightCalculator(Settings);
             altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings);
+            clickService = new Services.ClickService(
+                Settings,
+                GameController,
+                LogMessage,
+                LogError,
+                altarService,
+                weightCalculator,
+                altarDisplayRenderer,
+                Random,
+                PointIsInClickableArea,
+                SafeBlockInput);
             FullScreenRectangle = areaService.FullScreenRectangle;
             HealthAndFlaskRectangle = areaService.HealthAndFlaskRectangle;
             ManaAndSkillsRectangle = areaService.ManaAndSkillsRectangle;
@@ -535,7 +547,10 @@ namespace ClickIt
         private IEnumerator ProcessRegularClick()
         {
             // Input validation already done in ClickLabel(), skip redundant check
-            yield return ProcessAltarClicking();
+            if (clickService != null)
+            {
+                yield return clickService.ProcessAltarClicking();
+            }
 
             if (!GroundItemsVisible())
             {
@@ -577,142 +592,6 @@ namespace ClickIt
 
             SafeBlockInput(false);
             yield return 0;
-        }
-        private IEnumerator ProcessAltarClicking()
-        {
-            var altarSnapshot = altarService?.GetAltarComponentsReadOnly() ?? new List<PrimaryAltarComponent>();
-            if (altarSnapshot.Count == 0)
-            {
-                yield break;
-            }
-
-            bool clickEater = Settings.ClickEaterAltars;
-            bool clickExarch = Settings.ClickExarchAltars;
-            bool leftHanded = Settings.LeftHanded;
-
-            // Pre-filter altars to avoid repeated checks
-            var altarsToClick = altarSnapshot.Where(altar => ShouldClickAltar(altar, clickEater, clickExarch)).ToList();
-
-            foreach (PrimaryAltarComponent altar in altarsToClick)
-            {
-                Element? boxToClick = GetAltarElementToClick(altar);
-                if (boxToClick != null)
-                {
-                    yield return ClickAltarElement(boxToClick, leftHanded);
-                }
-            }
-        }
-
-        private bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
-        {
-            // First check if altar type is enabled
-            bool isEnabledType = (altar.AltarType == AltarType.EaterOfWorlds && clickEater) ||
-                                (altar.AltarType == AltarType.SearingExarch && clickExarch);
-
-            if (!isEnabledType)
-                return false;
-
-            // Use cached validation
-            if (!altar.IsValidCached())
-            {
-                LogMessage("Skipping altar - Validation failed", 5);
-                return false;
-            }
-
-            if (!altar.TopMods.Element.IsValid || !altar.BottomMods.Element.IsValid)
-            {
-                LogMessage("Skipping altar - Elements are not valid", 5);
-                return false;
-            }
-
-            // Check for unmatched mods
-            if (altar.TopMods.HasUnmatchedMods || altar.BottomMods.HasUnmatchedMods)
-            {
-                LogMessage("Skipping altar - Unmatched mods present", 5);
-                return false;
-            }
-
-            // Use cached weights
-            var altarWeights = altar.GetCachedWeights(pc => weightCalculator?.CalculateAltarWeights(pc) ?? new Utils.AltarWeights());
-            if (!altarWeights.HasValue)
-            {
-                LogMessage("Skipping altar - Weight calculation failed", 5);
-                return false;
-            }
-
-            // Use cached rectangles
-            var (topModsRect, bottomModsRect) = altar.GetCachedRects();
-            Vector2 topModsTopLeft = topModsRect.TopLeft;
-
-            // Check if we can determine a valid choice
-            Element? boxToClick = altarDisplayRenderer?.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
-
-            if (boxToClick == null)
-            {
-                LogMessage("Skipping altar - No valid choice could be determined", 5);
-                return false;
-            }
-
-            // Final check: ensure the choice is clickable
-            if (!PointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) ||
-                !boxToClick.IsVisible)
-            {
-                LogMessage("Skipping altar - Choice is not clickable or visible", 5);
-                return false;
-            }
-
-            return true;
-        }
-
-        private Element? GetAltarElementToClick(PrimaryAltarComponent altar)
-        {
-            // All validation is now done in ShouldClickAltar, so we can proceed directly
-            var altarWeights = altar.GetCachedWeights(pc => weightCalculator?.CalculateAltarWeights(pc) ?? new Utils.AltarWeights());
-            if (!altarWeights.HasValue) return null;
-
-            var (topModsRect, bottomModsRect) = altar.GetCachedRects();
-            Vector2 topModsTopLeft = topModsRect.TopLeft;
-
-            // We know this will succeed since ShouldClickAltar already validated it
-            Element? boxToClick = altarDisplayRenderer?.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
-
-            return boxToClick;
-        }
-
-        private IEnumerator ClickAltarElement(Element element, bool leftHanded)
-        {
-            // Element validation already done in ShouldClickAltar, skip redundant check
-            RectangleF windowArea = GameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            Vector2 clickPos = element.GetClientRect().Center + windowTopLeft;
-
-            if (Settings.BlockUserInput.Value)
-            {
-                SafeBlockInput(true);
-            }
-
-            ExileCore.Input.SetCursorPos(clickPos);
-            yield return new WaitTime(20);
-
-            // Quick final validation before click
-            if (!element.IsValid)
-            {
-                LogError("CRITICAL: Altar element became invalid during click delay", 10);
-                SafeBlockInput(false);
-                yield break;
-            }
-
-            if (leftHanded)
-            {
-                Mouse.RightClick();
-            }
-            else
-            {
-                Mouse.LeftClick();
-            }
-
-            SafeBlockInput(false);
-            yield return new WaitTime(Random.Next(50, 60));
         }
         public static Element? GetElementByString(Element? root, string str)
         {
