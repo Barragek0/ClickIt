@@ -312,41 +312,49 @@ namespace ClickIt.Rendering
         {
             _graphics.DrawText($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
+
+            // FPS Display
+            if (_plugin is ClickIt clickItPlugin)
+            {
+                double fps = clickItPlugin.CurrentFPS;
+                Color fpsColor = fps >= 144 ? Color.LawnGreen : (fps >= 60 ? Color.Yellow : Color.Red);
+                _graphics.DrawText($"FPS: {fps:F1}", new Vector2(xPos, yPos), fpsColor, 16);
+                yPos += lineHeight;
+
+                // Render time
+                var renderTimings = clickItPlugin.RenderTimings;
+                if (renderTimings != null && renderTimings.Count > 0)
+                {
+                    long lastRenderTime = renderTimings.Last();
+                    double avgRenderTime = renderTimings.Average();
+                    double maxRenderTime = renderTimings.Max();
+
+                    Color renderColor = avgRenderTime <= 6.94 ? Color.LawnGreen : (avgRenderTime <= 16.67 ? Color.Yellow : Color.Red);
+                    _graphics.DrawText($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
+                    yPos += lineHeight;
+
+                    // Show target frame time for 144 FPS
+                    _graphics.DrawText($"Target: 6.94 ms/frame (144 FPS)", new Vector2(xPos, yPos), Color.Cyan, 14);
+                    yPos += lineHeight;
+                }
+            }
+
             var process = Process.GetCurrentProcess();
             long memoryUsage = process.WorkingSet64 / 1024 / 1024;
             _graphics.DrawText($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
-            double cpuUsage = 0;
-            try
-            {
-                cpuUsage = process.TotalProcessorTime.TotalMilliseconds;
-            }
-            catch
-            {
-                cpuUsage = 0;
-            }
-            _graphics.DrawText($"CPU Time: {cpuUsage:F2} ms", new Vector2(xPos, yPos), Color.White, 16);
-            yPos += lineHeight;
 
             // Access timing information from the main plugin class via reflection
-            if (_plugin is ClickIt clickItPlugin)
+            if (_plugin is ClickIt clickItPlugin2)
             {
                 try
                 {
-                    var renderTimerField = typeof(ClickIt).GetField("renderTimer",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     var altarCoroutineTimerField = typeof(ClickIt).GetField("altarCoroutineTimer",
                         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     var clickCoroutineTimerField = typeof(ClickIt).GetField("clickCoroutineTimer",
                         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-                    if (renderTimerField?.GetValue(clickItPlugin) is Stopwatch renderTimer)
-                    {
-                        _graphics.DrawText($"Render Time: {renderTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
-                        yPos += lineHeight;
-                    }
-
-                    if (altarCoroutineTimerField?.GetValue(clickItPlugin) is Stopwatch altarTimer)
+                    if (altarCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch altarTimer)
                     {
                         // Get the timings queue for averaging
                         var altarTimingsField = typeof(ClickIt).GetField("altarCoroutineTimings",
@@ -354,7 +362,7 @@ namespace ClickIt.Rendering
 
                         string displayText = $"Altar Coroutine: {altarTimer.ElapsedMilliseconds} ms";
 
-                        if (altarTimingsField?.GetValue(clickItPlugin) is Queue<long> altarTimings && altarTimings.Count > 0)
+                        if (altarTimingsField?.GetValue(clickItPlugin2) is Queue<long> altarTimings && altarTimings.Count > 0)
                         {
                             double average = altarTimings.Average();
                             displayText += $" (avg: {average:F1} ms)";
@@ -364,7 +372,7 @@ namespace ClickIt.Rendering
                         yPos += lineHeight;
                     }
 
-                    if (clickCoroutineTimerField?.GetValue(clickItPlugin) is Stopwatch clickTimer)
+                    if (clickCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch clickTimer)
                     {
                         // Get the timings queue for averaging
                         var clickTimingsField = typeof(ClickIt).GetField("clickCoroutineTimings",
@@ -372,7 +380,7 @@ namespace ClickIt.Rendering
 
                         string displayText = $"Click Coroutine: {clickTimer.ElapsedMilliseconds} ms";
 
-                        if (clickTimingsField?.GetValue(clickItPlugin) is Queue<long> clickTimings && clickTimings.Count > 0)
+                        if (clickTimingsField?.GetValue(clickItPlugin2) is Queue<long> clickTimings && clickTimings.Count > 0)
                         {
                             double average = clickTimings.Average();
                             displayText += $" (avg: {average:F1} ms)";

@@ -29,6 +29,10 @@ namespace ClickIt
         private readonly Stopwatch clickCoroutineTimer = new Stopwatch();
         private readonly Queue<long> clickCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> altarCoroutineTimings = new Queue<long>(10);
+        private readonly Queue<long> renderTimings = new Queue<long>(60);
+        private readonly Stopwatch fpsTimer = new Stopwatch();
+        private int frameCount = 0;
+        private double currentFPS = 0;
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
         private bool isInputCurrentlyBlocked = false;
@@ -51,6 +55,10 @@ namespace ClickIt
         private RectangleF BuffsAndDebuffsRectangle { get; set; }
         private readonly List<string> recentErrors = new List<string>();
         private const int MAX_ERRORS_TO_TRACK = 10;
+
+        // Public accessors for performance metrics
+        public double CurrentFPS => currentFPS;
+        public Queue<long> RenderTimings => renderTimings;
         public override void OnLoad()
         {
             CanUseMultiThreading = true;
@@ -119,14 +127,48 @@ namespace ClickIt
             lastRenderTimer.Restart();
 
             renderTimer.Restart();
-            RenderDebugFrames();
-            if (Settings.DebugMode && Settings.RenderDebug)
+
+            // Track FPS
+            frameCount++;
+            if (!fpsTimer.IsRunning)
             {
+                fpsTimer.Start();
+            }
+
+            if (fpsTimer.ElapsedMilliseconds >= 1000)
+            {
+                currentFPS = frameCount / (fpsTimer.ElapsedMilliseconds / 1000.0);
+                frameCount = 0;
+                fpsTimer.Restart();
+            }
+
+            // Early exit if debug rendering is disabled and no altars present
+            bool hasDebugRendering = Settings.DebugMode && Settings.RenderDebug;
+            bool hasAltars = (altarService?.GetAltarComponents()?.Count ?? 0) > 0;
+
+            if (!hasDebugRendering && !hasAltars)
+            {
+                renderTimer.Stop();
+                renderTimings.Enqueue(renderTimer.ElapsedMilliseconds);
+                if (renderTimings.Count > 60) renderTimings.Dequeue();
+                return;
+            }
+
+            // Render only what's necessary
+            if (hasDebugRendering)
+            {
+                RenderDebugFrames();
                 RenderDetailedDebugInfo();
             }
-            RenderAltarComponents();
+
+            if (hasAltars)
+            {
+                RenderAltarComponents();
+            }
 
             renderTimer.Stop();
+            renderTimings.Enqueue(renderTimer.ElapsedMilliseconds);
+            if (renderTimings.Count > 60) renderTimings.Dequeue();
         }
         private void RenderDetailedDebugInfo()
         {
@@ -161,10 +203,14 @@ namespace ClickIt
         private void RenderAltarComponents()
         {
             List<PrimaryAltarComponent> altarSnapshot = altarService?.GetAltarComponents() ?? new List<PrimaryAltarComponent>();
+            if (altarSnapshot.Count == 0) return;
+
+            // Cache frequently accessed settings
             bool clickEater = Settings.ClickEaterAltars;
             bool clickExarch = Settings.ClickExarchAltars;
             bool leftHanded = Settings.LeftHanded;
             Vector2 windowTopLeft = GameController.Window.GetWindowRectangleTimeCache.TopLeft;
+
             foreach (PrimaryAltarComponent altar in altarSnapshot)
             {
                 RenderSingleAltar(altar, clickEater, clickExarch, leftHanded, windowTopLeft);
