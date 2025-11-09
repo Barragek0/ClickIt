@@ -12,26 +12,13 @@ namespace ClickIt.Utils
     {
         private readonly ClickItSettings _settings;
         private readonly Random _random;
-        public InputHandler(ClickItSettings settings)
+        private readonly Action<bool>? _safeBlockInput;
+
+        public InputHandler(ClickItSettings settings, Action<bool>? safeBlockInput = null)
         {
             _settings = settings;
             _random = new Random();
-        }
-        public void PerformClick(Vector2 position, bool isEssenceCorruption = false)
-        {
-            if (_settings.BlockUserInput.Value)
-                Mouse.blockInput(true);
-            ExileCore.Input.SetCursorPos(position);
-            if (isEssenceCorruption)
-            {
-                Thread.Sleep(10 + _random.Next(0, 5));
-            }
-            if (_settings.LeftHanded.Value)
-                Mouse.RightClick();
-            else
-                Mouse.LeftClick();
-            if (_settings.BlockUserInput.Value)
-                Mouse.blockInput(false);
+            _safeBlockInput = safeBlockInput;
         }
         public Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
@@ -73,6 +60,27 @@ namespace ClickIt.Utils
         private static bool IsInTownOrHideout(GameController gameController)
         {
             return gameController.Area.CurrentArea.IsHideout || gameController.Area.CurrentArea.IsTown;
+        }
+
+        public void PerformClick(Vector2 position, bool isEssenceCorruption = false)
+        {
+            if (_settings.BlockUserInput.Value && _safeBlockInput != null)
+            {
+                _safeBlockInput(true);
+            }
+            ExileCore.Input.SetCursorPos(position);
+            if (isEssenceCorruption)
+            {
+                Thread.Sleep(10 + _random.Next(0, 5));
+            }
+            if (_settings.LeftHanded.Value)
+                Mouse.RightClick();
+            else
+                Mouse.LeftClick();
+            if (_settings.BlockUserInput.Value && _safeBlockInput != null)
+            {
+                _safeBlockInput(false);
+            }
         }
     }
 }

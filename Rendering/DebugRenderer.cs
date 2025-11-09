@@ -69,7 +69,7 @@ namespace ClickIt.Rendering
         {
             _graphics.DrawText($"--- Input State ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
-            bool hotkeyPressed = Input.GetKeyState(_plugin.Settings.ClickLabelKey);
+            bool hotkeyPressed = ExileCore.Input.GetKeyState(_plugin.Settings.ClickLabelKey.Value);
             Color hotkeyColor = hotkeyPressed ? Color.LightGreen : Color.Gray;
             _graphics.DrawText($"Hotkey ({_plugin.Settings.ClickLabelKey.Value}): {hotkeyPressed}", new Vector2(xPos, yPos), hotkeyColor, 16);
             yPos += lineHeight;

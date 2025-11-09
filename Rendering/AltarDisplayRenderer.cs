@@ -13,12 +13,37 @@ namespace ClickIt.Rendering
     public class AltarDisplayRenderer
     {
         private readonly ExileCore.Graphics _graphics;
+        private readonly object _renderLock = new object();
+        private bool _isRendering;
 
         public AltarDisplayRenderer(ExileCore.Graphics graphics, ClickItSettings settings)
         {
             _graphics = graphics;
+            _isRendering = false;
         }
         public Element? DetermineAltarChoice(PrimaryAltarComponent altar, Utils.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
+        {
+            // Prevent render deadlocks during input handling
+            if (_isRendering)
+            {
+                return null; // Skip rendering if already rendering to prevent deadlock
+            }
+
+            lock (_renderLock)
+            {
+                _isRendering = true;
+                try
+                {
+                    return DetermineAltarChoiceInternal(altar, weights, topModsRect, bottomModsRect, topModsTopLeft);
+                }
+                finally
+                {
+                    _isRendering = false;
+                }
+            }
+        }
+
+        private Element? DetermineAltarChoiceInternal(PrimaryAltarComponent altar, Utils.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
             Vector2 offset120_Minus60 = new(120, -70);
             Vector2 offset120_Minus25 = new(120, -25);
@@ -152,22 +177,25 @@ namespace ClickIt.Rendering
         }
         public void DrawWeightTexts(Utils.AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
-            Vector2 offset5_Minus32 = new(5, -32);
-            Vector2 offset5_Minus20 = new(5, -20);
-            Vector2 offset10_Minus32 = new(10, -32);
-            Vector2 offset10_Minus20 = new(10, -20);
-            Vector2 offset10_5 = new(10, 5);
-            Color colorLawnGreen = Color.LawnGreen;
-            Color colorOrangeRed = Color.OrangeRed;
-            Color colorYellow = Color.Yellow;
-            _ = _graphics.DrawText("Upside: " + weights.TopUpsideWeight, topModsTopLeft + offset5_Minus32, colorLawnGreen, 14);
-            _ = _graphics.DrawText("Downside: " + weights.TopDownsideWeight, topModsTopLeft + offset5_Minus20, colorOrangeRed, 14);
-            _ = _graphics.DrawText("Upside: " + weights.BottomUpsideWeight, bottomModsTopLeft + offset10_Minus32, colorLawnGreen, 14);
-            _ = _graphics.DrawText("Downside: " + weights.BottomDownsideWeight, bottomModsTopLeft + offset10_Minus20, colorOrangeRed, 14);
-            Color topWeightColor = GetWeightColor(weights.TopWeight, weights.BottomWeight, colorLawnGreen, colorOrangeRed, colorYellow);
-            Color bottomWeightColor = GetWeightColor(weights.BottomWeight, weights.TopWeight, colorLawnGreen, colorOrangeRed, colorYellow);
-            _ = _graphics.DrawText("" + weights.TopWeight, topModsTopLeft + offset10_5, topWeightColor, 18);
-            _ = _graphics.DrawText("" + weights.BottomWeight, bottomModsTopLeft + offset10_5, bottomWeightColor, 18);
+            lock (_renderLock)
+            {
+                Vector2 offset5_Minus32 = new(5, -32);
+                Vector2 offset5_Minus20 = new(5, -20);
+                Vector2 offset10_Minus32 = new(10, -32);
+                Vector2 offset10_Minus20 = new(10, -20);
+                Vector2 offset10_5 = new(10, 5);
+                Color colorLawnGreen = Color.LawnGreen;
+                Color colorOrangeRed = Color.OrangeRed;
+                Color colorYellow = Color.Yellow;
+                _ = _graphics?.DrawText("Upside: " + weights.TopUpsideWeight, topModsTopLeft + offset5_Minus32, colorLawnGreen, 14);
+                _ = _graphics?.DrawText("Downside: " + weights.TopDownsideWeight, topModsTopLeft + offset5_Minus20, colorOrangeRed, 14);
+                _ = _graphics?.DrawText("Upside: " + weights.BottomUpsideWeight, bottomModsTopLeft + offset10_Minus32, colorLawnGreen, 14);
+                _ = _graphics?.DrawText("Downside: " + weights.BottomDownsideWeight, bottomModsTopLeft + offset10_Minus20, colorOrangeRed, 14);
+                Color topWeightColor = GetWeightColor(weights.TopWeight, weights.BottomWeight, colorLawnGreen, colorOrangeRed, colorYellow);
+                Color bottomWeightColor = GetWeightColor(weights.BottomWeight, weights.TopWeight, colorLawnGreen, colorOrangeRed, colorYellow);
+                _ = _graphics?.DrawText("" + weights.TopWeight, topModsTopLeft + offset10_5, topWeightColor, 18);
+                _ = _graphics?.DrawText("" + weights.BottomWeight, bottomModsTopLeft + offset10_5, bottomWeightColor, 18);
+            }
         }
         private static Color GetWeightColor(decimal weight1, decimal weight2, Color winColor, Color loseColor, Color tieColor)
         {

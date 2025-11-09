@@ -217,7 +217,7 @@ public ClickService(
 3. **Integration**: Update `ClickService` to use new filters
 
 ### Modifying Decision Logic
-1. **Location**: `Services/AltarWeightCalculator.cs`
+1. **Location**: `Utils/WeightCalculator.cs`
 2. **Pattern**: Update `CalculateUpsideWeight` or `CalculateDownsideWeight` methods
 3. **Settings**: May need to add to `ModTiers` dictionary in settings
 
@@ -280,11 +280,5 @@ public ClickService(
 3. Input safety mechanisms preserved
 4. Cache invalidation patterns followed
 5. ThreadLocal pattern used where appropriate
-
-### After Implementation
-1. Enable debug mode and verify functionality
-2. Check debug renderer for performance metrics
-3. Test in Path of Exile (if available) 
-4. Monitor error log for exceptions
 
 **Remember**: This is a safety-critical automation plugin. Always prioritize user safety and game stability over feature completeness.

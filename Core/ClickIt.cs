@@ -77,7 +77,7 @@ namespace ClickIt
             areaService.UpdateScreenAreas(GameController);
             altarService = new Services.AltarService(this, Settings, CachedLabels);
             labelFilterService = new Services.LabelFilterService(Settings);
-            inputHandler = new Utils.InputHandler(Settings);
+            inputHandler = new Utils.InputHandler(Settings, SafeBlockInput);
             debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService);
             weightCalculator = new Utils.WeightCalculator(Settings);
             altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings);
@@ -123,12 +123,21 @@ namespace ClickIt
         }
         public override void Render()
         {
-            // Reset render timer to track this render cycle
-            lastRenderTimer.Restart();
+            bool debugMode = Settings.DebugMode;
+            bool renderDebug = Settings.RenderDebug;
+            bool hasDebugRendering = debugMode && renderDebug;
 
+            int altarCount = altarService?.GetAltarComponents()?.Count ?? 0;
+            bool hasAltars = altarCount > 0;
+
+            if (!hasDebugRendering && !hasAltars)
+            {
+                return; // Skip all timer operations for no-op renders
+            }
+
+            // Start timing only when actually rendering
             renderTimer.Restart();
 
-            // Track FPS
             frameCount++;
             if (!fpsTimer.IsRunning)
             {
@@ -142,19 +151,6 @@ namespace ClickIt
                 fpsTimer.Restart();
             }
 
-            // Early exit if debug rendering is disabled and no altars present
-            bool hasDebugRendering = Settings.DebugMode && Settings.RenderDebug;
-            bool hasAltars = (altarService?.GetAltarComponents()?.Count ?? 0) > 0;
-
-            if (!hasDebugRendering && !hasAltars)
-            {
-                renderTimer.Stop();
-                renderTimings.Enqueue(renderTimer.ElapsedMilliseconds);
-                if (renderTimings.Count > 60) renderTimings.Dequeue();
-                return;
-            }
-
-            // Render only what's necessary
             if (hasDebugRendering)
             {
                 RenderDebugFrames();
@@ -168,37 +164,40 @@ namespace ClickIt
 
             renderTimer.Stop();
             renderTimings.Enqueue(renderTimer.ElapsedMilliseconds);
-            if (renderTimings.Count > 60) renderTimings.Dequeue();
+            if (renderTimings.Count > 60)
+            {
+                renderTimings.Dequeue();
+            }
         }
         private void RenderDetailedDebugInfo()
         {
+            var renderer = debugRenderer;
+            if (renderer == null) return;
+
             int startY = 120;
             int lineHeight = 18;
             int columnWidth = 300;
             int col1X = 10;
             int yPos = startY;
-            yPos = debugRenderer?.RenderPluginStatusDebug(col1X, yPos, lineHeight) ?? yPos;
-            yPos = debugRenderer?.RenderPerformanceDebug(col1X, yPos, lineHeight) ?? yPos;
-            yPos = debugRenderer?.RenderInputDebug(col1X, yPos, lineHeight) ?? yPos;
-            yPos = debugRenderer?.RenderGameStateDebug(col1X, yPos, lineHeight) ?? yPos;
-            debugRenderer?.RenderAltarServiceDebug(col1X, yPos, lineHeight);
+
+            yPos = renderer.RenderPluginStatusDebug(col1X, yPos, lineHeight);
+            yPos = renderer.RenderPerformanceDebug(col1X, yPos, lineHeight);
+            yPos = renderer.RenderInputDebug(col1X, yPos, lineHeight);
+            yPos = renderer.RenderGameStateDebug(col1X, yPos, lineHeight);
+            renderer.RenderAltarServiceDebug(col1X, yPos, lineHeight);
+
             int col2X = col1X + columnWidth;
             yPos = startY;
-            yPos = debugRenderer?.RenderAltarDebug(col2X, yPos, lineHeight) ?? yPos;
-            yPos = debugRenderer?.RenderLabelsDebug(col2X, yPos, lineHeight) ?? yPos;
-            debugRenderer?.RenderErrorsDebug(col2X, yPos, lineHeight);
+            yPos = renderer.RenderAltarDebug(col2X, yPos, lineHeight);
+            yPos = renderer.RenderLabelsDebug(col2X, yPos, lineHeight);
+            renderer.RenderErrorsDebug(col2X, yPos, lineHeight);
         }
         private void RenderDebugFrames()
         {
-            bool debugMode = Settings.DebugMode;
-            bool renderDebug = Settings.RenderDebug;
-            if (debugMode && renderDebug)
-            {
-                Graphics.DrawFrame(FullScreenRectangle, Color.Green, 1);
-                Graphics.DrawFrame(HealthAndFlaskRectangle, Color.Orange, 1);
-                Graphics.DrawFrame(ManaAndSkillsRectangle, Color.Cyan, 1);
-                Graphics.DrawFrame(BuffsAndDebuffsRectangle, Color.Yellow, 1);
-            }
+            Graphics.DrawFrame(FullScreenRectangle, Color.Green, 1);
+            Graphics.DrawFrame(HealthAndFlaskRectangle, Color.Orange, 1);
+            Graphics.DrawFrame(ManaAndSkillsRectangle, Color.Cyan, 1);
+            Graphics.DrawFrame(BuffsAndDebuffsRectangle, Color.Yellow, 1);
         }
         private void RenderAltarComponents()
         {
