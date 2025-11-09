@@ -114,6 +114,7 @@ namespace ClickIt.Constants
             ("#% increased Evasion Rating", "(250-500)%% increased Evasion Rating", Minion, 5),
             ("#% increased Blind Effect", "(100-200)%% increased Blind Effect", Boss, 5),
             ("Enemies lose # Flask Charges every # seconds and cannot gain Flask Charges for # seconds after being Hit", "Enemies lose 6 Flask Charges every 3 seconds and cannot gain Flask Charges for 6 seconds after being Hit", Boss, 3),
+            ("Enemies lose # Flask Charges every # seconds and cannot gain Flask Charges for # seconds after being Hit", "Enemies lose 6 Flask Charges every 3 seconds and cannot gain Flask Charges for 6 seconds after being Hit", Minion, 3),
             ("Drops Burning Ground on Death, lasting # seconds", "Drops Burning Ground on Death, lasting 3 seconds", Minion, 1),
             ("Drops Chilled Ground on Death, lasting # seconds", "Drops Chilled Ground on Death, lasting 3 seconds", Minion, 1),
             ("#% chance to create Shocked Ground on Death, lasting # seconds", "100%% chance to create Shocked Ground on Death, lasting 3 seconds", Minion, 1),
