@@ -185,7 +185,7 @@ namespace ClickIt.Services
             }
 
             safeBlockInput(false);
-            yield return new WaitTime(random.Next(50, 60));
+            yield return new WaitTime(random.Next(60, 70));
         }
     }
 }
