@@ -18,7 +18,7 @@ namespace ClickIt.Rendering
         {
             _graphics = graphics;
         }
-        public Element? DetermineAltarChoice(PrimaryAltarComponent altar, AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
+        public Element? DetermineAltarChoice(PrimaryAltarComponent altar, Utils.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
             Vector2 offset120_Minus60 = new(120, -70);
             Vector2 offset120_Minus25 = new(120, -25);
@@ -64,7 +64,7 @@ namespace ClickIt.Rendering
             }
             return EvaluateAltarWeights(weights, altar, topModsRect, bottomModsRect, topModsTopLeft + offset120_Minus60, topModsTopLeft + offset120_Minus25);
         }
-        private Element? EvaluateAltarWeights(AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
+        private Element? EvaluateAltarWeights(Utils.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
             if ((weights.TopDownside1Weight >= 90 || weights.TopDownside2Weight >= 90 || weights.TopDownside3Weight >= 90 || weights.TopDownside4Weight >= 90) &&
                 (weights.BottomDownside1Weight >= 90 || weights.BottomDownside2Weight >= 90 || weights.BottomDownside3Weight >= 90 || weights.BottomDownside4Weight >= 90))
@@ -150,7 +150,7 @@ namespace ClickIt.Rendering
         {
             return rect.Width > 0 && rect.Height > 0 && !float.IsNaN(rect.X) && !float.IsNaN(rect.Y) && !float.IsNaN(rect.Width) && !float.IsNaN(rect.Height);
         }
-        public void DrawWeightTexts(AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
+        public void DrawWeightTexts(Utils.AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
             Vector2 offset5_Minus32 = new(5, -32);
             Vector2 offset5_Minus20 = new(5, -20);

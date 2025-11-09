@@ -3,6 +3,7 @@ using ExileCore.PoEMemory;
 using SharpDX;
 using System.Collections.Generic;
 using ClickIt.Components;
+using ClickIt.Utils;
 #nullable enable
 namespace ClickIt.Rendering
 {
@@ -25,15 +26,22 @@ namespace ClickIt.Rendering
         }
         private void RenderSingleAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch, bool leftHanded, Vector2 windowTopLeft, Services.AltarWeightCalculator calculator)
         {
-            var altarWeights = calculator.CalculateAltarWeights(altar);
-            RectangleF topModsRect = altar.TopMods.Element.GetClientRect();
-            RectangleF bottomModsRect = altar.BottomMods.Element.GetClientRect();
+            // Use cached weights instead of recalculating
+            var altarWeights = altar.GetCachedWeights(pc => calculator.CalculateAltarWeights(pc));
+            if (!altarWeights.HasValue)
+            {
+                return; // Skip rendering if weights can't be calculated
+            }
+
+            // Use cached rectangles instead of fetching from elements
+            var (topModsRect, bottomModsRect) = altar.GetCachedRects();
             Vector2 topModsTopLeft = topModsRect.TopLeft;
             Vector2 bottomModsTopLeft = bottomModsRect.TopLeft;
-            DetermineAltarChoice(altar, altarWeights, topModsRect, bottomModsRect, topModsTopLeft);
-            DrawWeightTexts(altarWeights, topModsTopLeft, bottomModsTopLeft);
+
+            DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
+            DrawWeightTexts(altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
         }
-        private void DetermineAltarChoice(PrimaryAltarComponent altar, Services.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
+        private void DetermineAltarChoice(PrimaryAltarComponent altar, Utils.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
             Vector2 offset120_Minus60 = new(120, -70);
             Vector2 offset120_Minus25 = new(120, -25);
@@ -63,7 +71,7 @@ namespace ClickIt.Rendering
             }
             EvaluateAltarWeights(weights, altar, topModsRect, bottomModsRect, topModsTopLeft + offset120_Minus60, topModsTopLeft + offset120_Minus25);
         }
-        private void EvaluateAltarWeights(Services.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
+        private void EvaluateAltarWeights(Utils.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
             Color colorOrange = Color.Orange;
             Color colorLawnGreen = Color.LawnGreen;
@@ -127,7 +135,7 @@ namespace ClickIt.Rendering
             _graphics.DrawFrame(topModsRect, Color.Yellow, 2);
             _graphics.DrawFrame(bottomModsRect, Color.Yellow, 2);
         }
-        private void DrawWeightTexts(Services.AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
+        private void DrawWeightTexts(Utils.AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
             Vector2 offset5_Minus32 = new(5, -32);
             Vector2 offset5_Minus20 = new(5, -20);

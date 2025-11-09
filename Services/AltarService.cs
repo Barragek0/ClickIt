@@ -34,6 +34,15 @@ namespace ClickIt.Services
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
+
+        // Performance: Cache mod matching results to avoid repeated regex and string operations
+        private readonly Dictionary<string, (bool isUpside, string matchedId)> _modMatchCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _textCleanCache = new(StringComparer.Ordinal);
+
+        // Performance: Pre-compiled regex pattern for better performance
+        private static readonly System.Text.RegularExpressions.Regex RgbRegex = new System.Text.RegularExpressions.Regex(
+            @"<rgb\(\d+,\d+,\d+\)>",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
         public AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
         {
             _clickIt = clickIt;
@@ -106,12 +115,26 @@ namespace ClickIt.Services
             }
             return (negativeModType, mods);
         }
-        private static string CleanAltarModsText(string text)
+        private string CleanAltarModsText(string text)
         {
+            // Check cache first
+            if (_textCleanCache.TryGetValue(text, out string? cached))
+            {
+                return cached;
+            }
+
             string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
                 .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
                 .Replace("gain:", "").Replace("gains:", "");
-            return Regex.Replace(cleaned, @"<rgb\(\d+,\d+,\d+\)>", "");
+            cleaned = RgbRegex.Replace(cleaned, "");
+
+            // Cache the result (limit cache size to prevent memory bloat)
+            if (_textCleanCache.Count < 1000)
+            {
+                _textCleanCache[text] = cleaned;
+            }
+
+            return cleaned;
         }
         private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {
@@ -120,7 +143,7 @@ namespace ClickIt.Services
             bool hasUnmatchedMods = false;
             foreach (string mod in mods)
             {
-                if (TryMatchMod(mod, negativeModType, out bool isUpside, out string matchedId))
+                if (TryMatchModCached(mod, negativeModType, out bool isUpside, out string matchedId))
                 {
                     if (isUpside)
                         upsides.Add(matchedId);
@@ -148,6 +171,32 @@ namespace ClickIt.Services
             }
             return (upsides, downsides, hasUnmatchedMods);
         }
+
+        private bool TryMatchModCached(string mod, string negativeModType, out bool isUpside, out string matchedId)
+        {
+            // Create a cache key that includes both mod and negative mod type
+            string cacheKey = $"{mod}|{negativeModType}";
+
+            // Check cache first
+            if (_modMatchCache.TryGetValue(cacheKey, out var cachedResult))
+            {
+                isUpside = cachedResult.isUpside;
+                matchedId = cachedResult.matchedId;
+                return !string.IsNullOrEmpty(matchedId);
+            }
+
+            // If not in cache, perform the match
+            bool matched = TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
+
+            // Cache the result (limit cache size to prevent memory bloat)
+            if (_modMatchCache.Count < 5000)
+            {
+                _modMatchCache[cacheKey] = (isUpside, matchedId);
+            }
+
+            return matched;
+        }
+
         private static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
             isUpside = false;

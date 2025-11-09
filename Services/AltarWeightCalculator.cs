@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using ClickIt.Components;
+using ClickIt.Utils;
+
 namespace ClickIt.Services
 {
     public class AltarWeightCalculator
@@ -10,13 +12,13 @@ namespace ClickIt.Services
         {
             _settings = settings;
         }
-        public AltarWeights CalculateAltarWeights(PrimaryAltarComponent altar)
+        public Utils.AltarWeights CalculateAltarWeights(PrimaryAltarComponent altar)
         {
             decimal topUpsideWeight = CalculateUpsideWeight(altar.TopMods.Upsides);
             decimal topDownsideWeight = CalculateDownsideWeight(altar.TopMods.Downsides);
             decimal bottomUpsideWeight = CalculateUpsideWeight(altar.BottomMods.Upsides);
             decimal bottomDownsideWeight = CalculateDownsideWeight(altar.BottomMods.Downsides);
-            return new AltarWeights
+            return new Utils.AltarWeights
             {
                 TopUpsideWeight = topUpsideWeight,
                 TopDownsideWeight = topDownsideWeight,
@@ -24,12 +26,20 @@ namespace ClickIt.Services
                 BottomDownsideWeight = bottomDownsideWeight,
                 TopDownside1Weight = CalculateDownsideWeight(new List<string> { altar.TopMods.FirstDownside }),
                 TopDownside2Weight = CalculateDownsideWeight(new List<string> { altar.TopMods.SecondDownside }),
+                TopDownside3Weight = CalculateDownsideWeight(new List<string> { altar.TopMods.ThirdDownside }),
+                TopDownside4Weight = CalculateDownsideWeight(new List<string> { altar.TopMods.FourthDownside }),
                 BottomDownside1Weight = CalculateDownsideWeight(new List<string> { altar.BottomMods.FirstDownside }),
                 BottomDownside2Weight = CalculateDownsideWeight(new List<string> { altar.BottomMods.SecondDownside }),
+                BottomDownside3Weight = CalculateDownsideWeight(new List<string> { altar.BottomMods.ThirdDownside }),
+                BottomDownside4Weight = CalculateDownsideWeight(new List<string> { altar.BottomMods.FourthDownside }),
                 TopUpside1Weight = CalculateUpsideWeight(new List<string> { altar.TopMods.FirstUpside }),
                 TopUpside2Weight = CalculateUpsideWeight(new List<string> { altar.TopMods.SecondUpside }),
+                TopUpside3Weight = CalculateUpsideWeight(new List<string> { altar.TopMods.ThirdUpside }),
+                TopUpside4Weight = CalculateUpsideWeight(new List<string> { altar.TopMods.FourthUpside }),
                 BottomUpside1Weight = CalculateUpsideWeight(new List<string> { altar.BottomMods.FirstUpside }),
                 BottomUpside2Weight = CalculateUpsideWeight(new List<string> { altar.BottomMods.SecondUpside }),
+                BottomUpside3Weight = CalculateUpsideWeight(new List<string> { altar.BottomMods.ThirdUpside }),
+                BottomUpside4Weight = CalculateUpsideWeight(new List<string> { altar.BottomMods.FourthUpside }),
                 TopWeight = System.Math.Round(topUpsideWeight / topDownsideWeight, 2),
                 BottomWeight = System.Math.Round(bottomUpsideWeight / bottomDownsideWeight, 2)
             };
@@ -56,22 +66,5 @@ namespace ClickIt.Services
             }
             return totalWeight;
         }
-    }
-    public struct AltarWeights
-    {
-        public decimal TopUpsideWeight { get; set; }
-        public decimal TopDownsideWeight { get; set; }
-        public decimal BottomUpsideWeight { get; set; }
-        public decimal BottomDownsideWeight { get; set; }
-        public decimal TopDownside1Weight { get; set; }
-        public decimal TopDownside2Weight { get; set; }
-        public decimal BottomDownside1Weight { get; set; }
-        public decimal BottomDownside2Weight { get; set; }
-        public decimal TopUpside1Weight { get; set; }
-        public decimal TopUpside2Weight { get; set; }
-        public decimal BottomUpside1Weight { get; set; }
-        public decimal BottomUpside2Weight { get; set; }
-        public decimal TopWeight { get; set; }
-        public decimal BottomWeight { get; set; }
     }
 }
