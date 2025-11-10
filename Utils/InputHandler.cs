@@ -62,17 +62,13 @@ namespace ClickIt.Utils
             return gameController.Area.CurrentArea.IsHideout || gameController.Area.CurrentArea.IsTown;
         }
 
-        public void PerformClick(Vector2 position, bool isEssenceCorruption = false)
+        public void PerformClick(Vector2 position)
         {
             if (_settings.BlockUserInput.Value && _safeBlockInput != null)
             {
                 _safeBlockInput(true);
             }
-            ExileCore.Input.SetCursorPos(position);
-            if (isEssenceCorruption)
-            {
-                Thread.Sleep(10 + _random.Next(0, 5));
-            }
+            Input.SetCursorPos(position);
             if (_settings.LeftHanded.Value)
                 Mouse.RightClick();
             else

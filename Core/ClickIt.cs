@@ -35,6 +35,7 @@ namespace ClickIt
         private double currentFPS = 0;
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
+        private Coroutine? shrineCoroutine;
         private bool isInputCurrentlyBlocked = false;
         private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
         private readonly Stopwatch lastRenderTimer = new Stopwatch();
@@ -44,11 +45,12 @@ namespace ClickIt
         private Services.AreaService? areaService;
         private Services.AltarService? altarService;
         private Services.LabelFilterService? labelFilterService;
+        private Services.ShrineService? shrineService;
         private Utils.InputHandler? inputHandler;
         private Rendering.DebugRenderer? debugRenderer;
 
         private Rendering.AltarDisplayRenderer? altarDisplayRenderer;
-        private Services.ClickService? clickService;
+        private Services.ClickService clickService = null!;
         private RectangleF FullScreenRectangle { get; set; }
         private RectangleF HealthAndFlaskRectangle { get; set; }
         private RectangleF ManaAndSkillsRectangle { get; set; }
@@ -56,9 +58,12 @@ namespace ClickIt
         private readonly List<string> recentErrors = new List<string>();
         private const int MAX_ERRORS_TO_TRACK = 10;
 
-        // Public accessors for performance metrics
         public double CurrentFPS => currentFPS;
+        public Services.ShrineService? ShrineService => shrineService;
         public Queue<long> RenderTimings => renderTimings;
+
+        private Camera? camera;
+
         public override void OnLoad()
         {
             CanUseMultiThreading = true;
@@ -75,8 +80,10 @@ namespace ClickIt
             CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             areaService = new Services.AreaService();
             areaService.UpdateScreenAreas(GameController);
+            camera = GameController?.Game?.IngameState?.Camera;
             altarService = new Services.AltarService(this, Settings, CachedLabels);
-            labelFilterService = new Services.LabelFilterService(Settings);
+            labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
+            shrineService = new Services.ShrineService(GameController, camera);
             inputHandler = new Utils.InputHandler(Settings, SafeBlockInput);
             debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService, areaService);
             var weightCalculator = new Utils.WeightCalculator(Settings);
@@ -91,7 +98,6 @@ namespace ClickIt
                 altarDisplayRenderer,
                 Random,
                 PointIsInClickableArea,
-                SafeBlockInput,
                 inputHandler,
                 labelFilterService,
                 GroundItemsVisible,
@@ -108,6 +114,9 @@ namespace ClickIt
             clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic", false);
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
             clickLabelCoroutine.Priority = CoroutinePriority.High;
+            shrineCoroutine = new Coroutine(MainShrineCoroutine(), this, "ClickIt.ShrineLogic", true);
+            _ = Core.ParallelRunner.Run(shrineCoroutine);
+            shrineCoroutine.Priority = CoroutinePriority.High;
             var inputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), this, "ClickIt.InputSafety");
             _ = Core.ParallelRunner.Run(inputSafetyCoroutine);
             inputSafetyCoroutine.Priority = CoroutinePriority.High;
@@ -357,7 +366,7 @@ namespace ClickIt
             var cachedValue = CachedLabels?.Value;
             if (cachedValue == null || cachedValue.Count < 1)
             {
-                LogMessage("(ClickIt) No ground items found");
+                LogMessage("(ClickIt) No ground items found", 5);
                 return false;
             }
             return true;
@@ -408,6 +417,15 @@ namespace ClickIt
                 yield return ClickLabel();
             }
         }
+
+        private IEnumerator MainShrineCoroutine()
+        {
+            while (Settings.Enable)
+            {
+                yield return HandleShrine();
+            }
+        }
+
         private IEnumerator MainScanForAltarsLogic()
         {
             while (Settings.Enable)
@@ -427,7 +445,7 @@ namespace ClickIt
             for (int i = 0; i < groundLabels.Count; i++)
             {
                 LabelOnGround label = groundLabels[i];
-                if (label == null || label.ItemOnGround?.Path == null ||
+                if (label == null || label.ItemOnGround == null ||
                     !label.IsVisible || !label.Label.IsVisible)
                 {
                     continue;
@@ -439,10 +457,13 @@ namespace ClickIt
                 }
                 Entity item = label.ItemOnGround;
                 EntityType type = item.Type;
-                string path = item.Path;
+                string path = item.Path ?? "";
+
                 bool isValidType = type == EntityType.WorldItem ||
                                  (type == EntityType.Chest && !item.GetComponent<Chest>().OpenOnDamage) ||
-                                 type == EntityType.AreaTransition;
+                                 type == EntityType.AreaTransition ||
+                                 GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
+
                 bool isValidPath = !string.IsNullOrEmpty(path) && (
                     path.Contains("DelveMineral") ||
                     path.Contains("AzuriteEncounterController") ||
@@ -458,8 +479,10 @@ namespace ClickIt
                     path.Contains("Bismuth") ||
                     path.Contains("Verisium") ||
                     path.Contains("ClosedDoorPast") ||
-                    path.Contains("LegionInitiator"));
-                if (isValidType || isValidPath || GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null)
+                    path.Contains("LegionInitiator") ||
+                    path.Contains("DarkShrine"));
+
+                if (isValidType || isValidPath)
                 {
                     result.Add(label);
                 }
@@ -472,18 +495,41 @@ namespace ClickIt
         }
         private IEnumerator ClickLabel()
         {
-            if (Timer.ElapsedMilliseconds < 60 + Random.Next(0, 11) || !canClick())
+            if (Settings.ClickShrines.Value && shrineService != null && shrineService.AreShrinesPresentInClickableArea((pos) => PointIsInClickableArea(pos)))
             {
+                yield return new WaitTime(25);
+                yield break;
+            }
+
+            // Debug logging to identify the issue
+            bool canClickResult = canClick();
+            if (Settings.DebugMode.Value)
+            {
+                LogMessage($"Click attempt - Timer: {Timer.ElapsedMilliseconds}ms, CanClick: {canClickResult}, GroundItemsVisible: {GroundItemsVisible()}", 5);
+            }
+
+            // self adjusting delay based on average click time
+            // clicks will consistently aim for 60ms intervals
+            if (Timer.ElapsedMilliseconds < 60 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !canClickResult)
+            {
+                if (Settings.DebugMode.Value)
+                {
+                    double avgTiming = clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0;
+                    int timingThreshold = 60 - (int)avgTiming + Random.Next(0, 6);
+                    LogMessage($"Click blocked - Timer: {Timer.ElapsedMilliseconds}ms, Threshold: {timingThreshold}ms, CanClick: {canClickResult}", 5);
+                }
                 workFinished = true;
                 yield break;
             }
 
+            if (Settings.DebugMode.Value)
+            {
+                LogMessage($"Starting click process...", 1);
+            }
+
             Timer.Restart();
             clickCoroutineTimer.Restart();
-            if (clickService != null)
-            {
-                yield return clickService.ProcessRegularClick();
-            }
+            yield return clickService.ProcessRegularClick();
             clickCoroutineTimer.Stop();
 
             // Track timing for averaging
@@ -494,6 +540,50 @@ namespace ClickIt
             }
 
             workFinished = true;
+        }
+        private IEnumerator HandleShrine()
+        {
+            LogMessage($"HandleShrine called", 5);
+            if (!Settings.ClickShrines.Value || shrineService == null)
+            {
+                LogMessage($"Shrine clicking disabled", 5);
+                yield return new WaitTime(500); // Check less frequently when disabled
+                yield break;
+            }
+
+            yield return ProcessShrineClicking();
+        }
+
+        private IEnumerator ProcessShrineClicking()
+        {
+            if (shrineService == null || inputHandler == null)
+            {
+                yield break;
+            }
+
+            var nearestShrine = shrineService.GetNearestShrineInRange(Settings.ClickDistance.Value);
+            if (nearestShrine == null)
+            {
+                yield break;
+            }
+
+            if (!inputHandler.CanClick(GameController))
+            {
+                yield break;
+            }
+
+            LogMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}", 5);
+
+            if (camera == null)
+            {
+                yield break;
+            }
+
+            Vector2 clickPos = new Vector2(camera.WorldToScreen(nearestShrine.PosNum).X, camera.WorldToScreen(nearestShrine.PosNum).Y);
+
+            inputHandler.PerformClick(clickPos);
+
+            yield return new WaitTime(60 + Random.Next(0, 6));
         }
         public static Element? GetElementByString(Element? root, string str)
         {

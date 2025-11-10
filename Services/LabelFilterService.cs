@@ -11,6 +11,7 @@ namespace ClickIt.Services
     public class LabelFilterService
     {
         private readonly ClickItSettings _settings;
+        private readonly EssenceService _essenceService;
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
@@ -21,9 +22,11 @@ namespace ClickIt.Services
         private const string Verisium = "Verisium";
         private const string ClosedDoorPast = "ClosedDoorPast";
         private const string LegionInitiator = "LegionInitiator";
-        public LabelFilterService(ClickItSettings settings)
+
+        public LabelFilterService(ClickItSettings settings, EssenceService essenceService)
         {
             _settings = settings;
+            _essenceService = essenceService;
         }
         public bool HasVerisiumOnScreen(List<LabelOnGround> allLabels)
         {
@@ -65,6 +68,7 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0)
                 return null;
             var clickSettings = CreateClickSettings();
+            
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
@@ -87,7 +91,6 @@ namespace ClickIt.Services
                 ClickBasicChests = s.ClickBasicChests.Value,
                 ClickLeagueChests = s.ClickLeagueChests.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
-                ClickShrines = s.ClickShrines.Value,
                 NearestHarvest = s.NearestHarvest.Value,
                 ClickSulphite = s.ClickSulphiteVeins.Value,
                 ClickAzurite = s.ClickAzuriteVeins.Value,
@@ -113,8 +116,7 @@ namespace ClickIt.Services
                 return true;
             if (settings.ClickAreaTransitions && type == EntityType.AreaTransition)
                 return true;
-            if (settings.ClickShrines && type == EntityType.Shrine)
-                return true;
+            // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround
             if (ShouldClickSpecialPath(settings, path))
                 return true;
             if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
@@ -131,7 +133,6 @@ namespace ClickIt.Services
             public bool ClickBasicChests { get; set; }
             public bool ClickLeagueChests { get; set; }
             public bool ClickAreaTransitions { get; set; }
-            public bool ClickShrines { get; set; }
             public bool NearestHarvest { get; set; }
             public bool ClickSulphite { get; set; }
             public bool ClickAlvaTempleDoors { get; set; }
@@ -192,6 +193,20 @@ namespace ClickIt.Services
                 return false;
             return ElementService.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
         }
+
+        public bool ShouldCorruptEssence(LabelOnGround label)
+        {
+            return _essenceService.ShouldCorruptEssence(label.Label);
+        }
+
+        public Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
+        {
+            return _essenceService.GetCorruptionClickPosition(label, windowTopLeft);
+        }
+
+
+
+
         private static bool IsBasicChest(LabelOnGround label)
         {
             return label.ItemOnGround.RenderName.ToLower() switch

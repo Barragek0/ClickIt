@@ -114,6 +114,7 @@
     <Compile Include="Services\EssenceService.cs" />
     <Compile Include="Services\AreaService.cs" />
     <Compile Include="Services\ClickService.cs" />
+    <Compile Include="Services\ShrineService.cs" />
     
     <!-- Rendering -->
     <Compile Include="Rendering\DebugRenderer.cs" />

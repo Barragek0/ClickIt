@@ -197,13 +197,11 @@ namespace ClickIt.Rendering
 
         public void RenderSingleAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch, bool leftHanded, Vector2 windowTopLeft)
         {
-            // Validate altar before accessing any elements
             if (!altar.IsValidCached())
             {
                 return;
             }
 
-            // Use cached weights - no direct calculation in render loop
             var altarWeights = altar.GetCachedWeights(pc =>
             {
                 try
@@ -222,10 +220,8 @@ namespace ClickIt.Rendering
                 return;
             }
 
-            // Use cached rectangles - no GetClientRect() calls in render loop
             var (topModsRect, bottomModsRect) = altar.GetCachedRects();
 
-            // Validate rectangles before rendering
             if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect))
             {
                 return;

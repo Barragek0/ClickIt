@@ -27,7 +27,6 @@ namespace ClickIt.Services
         private readonly Rendering.AltarDisplayRenderer altarDisplayRenderer;
         private readonly Random random;
         private readonly Func<Vector2, string?, bool> pointIsInClickableArea;
-        private readonly Action<bool> safeBlockInput;
         private readonly InputHandler inputHandler;
         private readonly LabelFilterService labelFilterService;
         private readonly Func<bool> groundItemsVisible;
@@ -43,7 +42,6 @@ namespace ClickIt.Services
             Rendering.AltarDisplayRenderer altarDisplayRenderer,
             Random random,
             Func<Vector2, string?, bool> pointIsInClickableArea,
-            Action<bool> safeBlockInput,
             InputHandler inputHandler,
             LabelFilterService labelFilterService,
             Func<bool> groundItemsVisible,
@@ -58,7 +56,6 @@ namespace ClickIt.Services
             this.altarDisplayRenderer = altarDisplayRenderer ?? throw new ArgumentNullException(nameof(altarDisplayRenderer));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             this.pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
-            this.safeBlockInput = safeBlockInput ?? throw new ArgumentNullException(nameof(safeBlockInput));
             this.inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
             this.labelFilterService = labelFilterService ?? throw new ArgumentNullException(nameof(labelFilterService));
             this.groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
@@ -173,31 +170,14 @@ namespace ClickIt.Services
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 clickPos = element.GetClientRect().Center + windowTopLeft;
 
-            if (settings.BlockUserInput.Value)
-            {
-                safeBlockInput(true);
-            }
-
-            Input.SetCursorPos(clickPos);
-
             // Quick final validation before click
             if (!element.IsValid)
             {
                 logError("CRITICAL: Altar element became invalid during click delay", 10);
-                safeBlockInput(false);
                 yield break;
             }
 
-            if (leftHanded)
-            {
-                Mouse.RightClick();
-            }
-            else
-            {
-                Mouse.LeftClick();
-            }
-
-            safeBlockInput(false);
+            inputHandler.PerformClick(clickPos);
             yield return 0;
         }
 
@@ -211,7 +191,8 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            LabelOnGround? nextLabel = labelFilterService.GetNextLabelToClick(cachedLabels?.Value ?? new List<LabelOnGround>());
+            var allLabels = cachedLabels?.Value ?? new List<LabelOnGround>();
+            LabelOnGround? nextLabel = labelFilterService.GetNextLabelToClick(allLabels);
             if (nextLabel == null)
             {
                 yield break;
@@ -224,27 +205,24 @@ namespace ClickIt.Services
             {
                 yield break;
             }
+
             RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+
+            // Handle essence corruption
+            if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(nextLabel))
+            {
+                Vector2? corruptionPos = labelFilterService.GetCorruptionClickPosition(nextLabel, windowTopLeft);
+                if (corruptionPos.HasValue)
+                {
+                    inputHandler.PerformClick(corruptionPos.Value);
+                    yield break;
+                }
+            }
+
             Vector2 clickPos = nextLabel.Label.GetClientRect().Center + windowTopLeft;
 
-            if (settings.BlockUserInput.Value)
-            {
-                safeBlockInput(true);
-            }
-
-            Input.SetCursorPos(clickPos);
-
-            if (settings.LeftHanded.Value)
-            {
-                Mouse.RightClick();
-            }
-            else
-            {
-                Mouse.LeftClick();
-            }
-
-            safeBlockInput(false);
+            inputHandler.PerformClick(clickPos);
             yield return 0;
         }
     }
