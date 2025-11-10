@@ -138,8 +138,8 @@ namespace ClickIt.Services
         }
         private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {
-            List<string> upsides = new();
-            List<string> downsides = new();
+            List<string> upsides = [];
+            List<string> downsides = [];
             bool hasUnmatchedMods = false;
             foreach (string mod in mods)
             {

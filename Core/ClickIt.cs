@@ -46,7 +46,7 @@ namespace ClickIt
         private Services.LabelFilterService? labelFilterService;
         private Utils.InputHandler? inputHandler;
         private Rendering.DebugRenderer? debugRenderer;
-        private Utils.WeightCalculator? weightCalculator;
+
         private Rendering.AltarDisplayRenderer? altarDisplayRenderer;
         private Services.ClickService? clickService;
         private RectangleF FullScreenRectangle { get; set; }
@@ -78,9 +78,9 @@ namespace ClickIt
             altarService = new Services.AltarService(this, Settings, CachedLabels);
             labelFilterService = new Services.LabelFilterService(Settings);
             inputHandler = new Utils.InputHandler(Settings, SafeBlockInput);
-            debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService);
-            weightCalculator = new Utils.WeightCalculator(Settings);
-            altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings);
+            debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService, areaService);
+            var weightCalculator = new Utils.WeightCalculator(Settings);
+            altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController, weightCalculator, altarService, LogError);
             clickService = new Services.ClickService(
                 Settings,
                 GameController,
@@ -91,7 +91,11 @@ namespace ClickIt
                 altarDisplayRenderer,
                 Random,
                 PointIsInClickableArea,
-                SafeBlockInput);
+                SafeBlockInput,
+                inputHandler,
+                labelFilterService,
+                GroundItemsVisible,
+                CachedLabels);
             FullScreenRectangle = areaService.FullScreenRectangle;
             HealthAndFlaskRectangle = areaService.HealthAndFlaskRectangle;
             ManaAndSkillsRectangle = areaService.ManaAndSkillsRectangle;
@@ -153,8 +157,8 @@ namespace ClickIt
 
             if (hasDebugRendering)
             {
-                RenderDebugFrames();
-                RenderDetailedDebugInfo();
+                debugRenderer?.RenderDebugFrames(Settings);
+                debugRenderer?.RenderDetailedDebugInfo(Settings, renderTimer);
             }
 
             if (hasAltars)
@@ -169,108 +173,9 @@ namespace ClickIt
                 renderTimings.Dequeue();
             }
         }
-        private void RenderDetailedDebugInfo()
-        {
-            var renderer = debugRenderer;
-            if (renderer == null) return;
-
-            int startY = 120;
-            int lineHeight = 18;
-            int columnWidth = 300;
-            int col1X = 10;
-            int yPos = startY;
-
-            yPos = renderer.RenderPluginStatusDebug(col1X, yPos, lineHeight);
-            yPos = renderer.RenderPerformanceDebug(col1X, yPos, lineHeight);
-            yPos = renderer.RenderInputDebug(col1X, yPos, lineHeight);
-            yPos = renderer.RenderGameStateDebug(col1X, yPos, lineHeight);
-            renderer.RenderAltarServiceDebug(col1X, yPos, lineHeight);
-
-            int col2X = col1X + columnWidth;
-            yPos = startY;
-            yPos = renderer.RenderAltarDebug(col2X, yPos, lineHeight);
-            yPos = renderer.RenderLabelsDebug(col2X, yPos, lineHeight);
-            renderer.RenderErrorsDebug(col2X, yPos, lineHeight);
-        }
-        private void RenderDebugFrames()
-        {
-            Graphics.DrawFrame(FullScreenRectangle, Color.Green, 1);
-            Graphics.DrawFrame(HealthAndFlaskRectangle, Color.Orange, 1);
-            Graphics.DrawFrame(ManaAndSkillsRectangle, Color.Cyan, 1);
-            Graphics.DrawFrame(BuffsAndDebuffsRectangle, Color.Yellow, 1);
-        }
         private void RenderAltarComponents()
         {
-            List<PrimaryAltarComponent> altarSnapshot = altarService?.GetAltarComponents() ?? new List<PrimaryAltarComponent>();
-            if (altarSnapshot.Count == 0) return;
-
-            // Cache frequently accessed settings
-            bool clickEater = Settings.ClickEaterAltars;
-            bool clickExarch = Settings.ClickExarchAltars;
-            bool leftHanded = Settings.LeftHanded;
-            Vector2 windowTopLeft = GameController.Window.GetWindowRectangleTimeCache.TopLeft;
-
-            foreach (PrimaryAltarComponent altar in altarSnapshot)
-            {
-                RenderSingleAltar(altar, clickEater, clickExarch, leftHanded, windowTopLeft);
-            }
-        }
-        private void RenderSingleAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch, bool leftHanded, Vector2 windowTopLeft)
-        {
-            // CRITICAL FIX: Use cached data only in render loop to prevent game memory access freezes
-            try
-            {
-                // Validate altar before accessing any elements
-                if (!altar.IsValidCached())
-                {
-                    return;
-                }
-
-                // Use cached weights - no direct calculation in render loop
-                var altarWeights = altar.GetCachedWeights(pc =>
-                {
-                    try
-                    {
-                        return weightCalculator?.CalculateAltarWeights(pc) ?? new Utils.AltarWeights();
-                    }
-                    catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
-                    {
-                        LogError($"Error calculating weights in render: {ex.Message}", 3);
-                        return new Utils.AltarWeights();
-                    }
-                });
-
-                if (!altarWeights.HasValue)
-                {
-                    return;
-                }
-
-                // Use cached rectangles - no GetClientRect() calls in render loop
-                var (topModsRect, bottomModsRect) = altar.GetCachedRects();
-
-                // Validate rectangles before rendering
-                if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect))
-                {
-                    return;
-                }
-
-                Vector2 topModsTopLeft = topModsRect.TopLeft;
-                Vector2 bottomModsTopLeft = bottomModsRect.TopLeft;
-
-                altarDisplayRenderer?.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
-                altarDisplayRenderer?.DrawWeightTexts(altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
-            }
-            catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
-            {
-                LogError($"Error rendering altar: {ex.Message}", 3);
-            }
-        }
-
-        private static bool IsValidRectangle(RectangleF rect)
-        {
-            return rect.Width > 0 && rect.Height > 0 &&
-                   !float.IsNaN(rect.X) && !float.IsNaN(rect.Y) &&
-                   !float.IsInfinity(rect.X) && !float.IsInfinity(rect.Y);
+            altarDisplayRenderer?.RenderAltarComponents();
         }
         public void LogMessage(string message, int frame = 0)
         {
@@ -567,8 +472,7 @@ namespace ClickIt
         }
         private IEnumerator ClickLabel()
         {
-            // Use a more efficient timing check - avoid Random.Next() call on every frame
-            if (Timer.ElapsedMilliseconds < 60 || !canClick())
+            if (Timer.ElapsedMilliseconds < 60 + Random.Next(0, 11) || !canClick())
             {
                 workFinished = true;
                 yield break;
@@ -576,7 +480,10 @@ namespace ClickIt
 
             Timer.Restart();
             clickCoroutineTimer.Restart();
-            yield return ProcessRegularClick();
+            if (clickService != null)
+            {
+                yield return clickService.ProcessRegularClick();
+            }
             clickCoroutineTimer.Stop();
 
             // Track timing for averaging
@@ -587,56 +494,6 @@ namespace ClickIt
             }
 
             workFinished = true;
-        }
-
-        private IEnumerator ProcessRegularClick()
-        {
-            inputHandler?.TriggerToggleItems();
-            if (clickService != null)
-            {
-                yield return clickService.ProcessAltarClicking();
-            }
-
-            if (!GroundItemsVisible())
-            {
-                yield break;
-            }
-
-            LabelOnGround? nextLabel = labelFilterService?.GetNextLabelToClick(CachedLabels?.Value ?? new List<LabelOnGround>());
-            if (nextLabel == null)
-            {
-                yield break;
-            }
-
-            Entity item = nextLabel.ItemOnGround;
-            string path = item.Path ?? "";
-            bool isAltar = path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
-            if (isAltar)
-            {
-                yield break;
-            }
-            RectangleF windowArea = GameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            Vector2 clickPos = nextLabel.Label.GetClientRect().Center + windowTopLeft;
-
-            if (Settings.BlockUserInput.Value)
-            {
-                SafeBlockInput(true);
-            }
-
-            ExileCore.Input.SetCursorPos(clickPos);
-
-            if (Settings.LeftHanded.Value)
-            {
-                Mouse.RightClick();
-            }
-            else
-            {
-                Mouse.LeftClick();
-            }
-
-            SafeBlockInput(false);
-            yield return 0;
         }
         public static Element? GetElementByString(Element? root, string str)
         {

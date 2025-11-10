@@ -19,13 +19,82 @@ namespace ClickIt.Rendering
         private readonly BaseSettingsPlugin<ClickItSettings> _plugin;
         private readonly Graphics _graphics;
         private readonly AltarService? _altarService;
+        private readonly AreaService? _areaService;
 
-        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null)
+        private readonly Stopwatch _debugRenderTimer = new Stopwatch();
+        private readonly Queue<long> _debugRenderTimings = new Queue<long>(60);
+        private long _lastDebugRenderTime = 0;
+        private readonly object _timingLock = new object();
+
+        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null)
         {
             _plugin = plugin;
             _graphics = graphics;
             _altarService = altarService;
+            _areaService = areaService;
         }
+
+        public void RenderDebugFrames(ClickItSettings settings)
+        {
+            if (_areaService == null) return;
+
+            if (settings.DebugShowFrames)
+            {
+                _graphics.DrawFrame(_areaService.FullScreenRectangle, Color.Green, 1);
+                _graphics.DrawFrame(_areaService.HealthAndFlaskRectangle, Color.Orange, 1);
+                _graphics.DrawFrame(_areaService.ManaAndSkillsRectangle, Color.Cyan, 1);
+                _graphics.DrawFrame(_areaService.BuffsAndDebuffsRectangle, Color.Yellow, 1);
+            }
+        }
+
+        public void RenderDetailedDebugInfo(ClickItSettings settings, Stopwatch renderTimer)
+        {
+            if (settings == null) return;
+
+            // Start timing for debug render
+            renderTimer.Restart();
+
+            int startY = 120;
+            int lineHeight = 18;
+            int columnWidth = 300;
+            int col1X = 10;
+            int yPos = startY;
+
+            // Column 1: Plugin status, performance, and game state
+            if (settings.DebugShowStatus)
+            {
+                yPos = RenderPluginStatusDebug(col1X, yPos, lineHeight);
+            }
+            if (settings.DebugShowPerformance)
+            {
+                yPos = RenderPerformanceDebug(col1X, yPos, lineHeight);
+            }
+            if (settings.DebugShowGameState)
+            {
+                yPos = RenderGameStateDebug(col1X, yPos, lineHeight);
+            }
+            if (settings.DebugShowAltarService)
+            {
+                RenderAltarServiceDebug(col1X, yPos, lineHeight);
+            }
+
+            // Column 2: Altar detection, labels, and errors
+            int col2X = col1X + columnWidth;
+            yPos = startY;
+            if (settings.DebugShowAltarDetection)
+            {
+                yPos = RenderAltarDebug(col2X, yPos, lineHeight);
+            }
+            if (settings.DebugShowLabels)
+            {
+                yPos = RenderLabelsDebug(col2X, yPos, lineHeight);
+            }
+            if (settings.DebugShowRecentErrors)
+            {
+                RenderErrorsDebug(col2X, yPos, lineHeight);
+            }
+        }
+
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)
         {
             _graphics.DrawText($"--- ClickIt Status ---", new Vector2(xPos, yPos), Color.Orange, 16);
@@ -42,23 +111,6 @@ namespace ClickIt.Rendering
             bool playerValid = gameController?.Player != null;
             Color playerColor = playerValid ? Color.LightGreen : Color.Red;
             _graphics.DrawText($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
-            yPos += lineHeight;
-
-            // Show plugin settings state
-            _graphics.DrawText($"Plugin Enabled: {_plugin.Settings.Enable.Value}", new Vector2(xPos, yPos),
-                _plugin.Settings.Enable.Value ? Color.LightGreen : Color.Red, 16);
-            yPos += lineHeight;
-            _graphics.DrawText($"Debug Mode: {_plugin.Settings.DebugMode.Value}", new Vector2(xPos, yPos),
-                _plugin.Settings.DebugMode.Value ? Color.Yellow : Color.Gray, 16);
-            yPos += lineHeight;
-            _graphics.DrawText($"Click Items: {_plugin.Settings.ClickItems.Value}", new Vector2(xPos, yPos),
-                _plugin.Settings.ClickItems.Value ? Color.LightGreen : Color.Gray, 16);
-            yPos += lineHeight;
-            _graphics.DrawText($"Click Exarch: {_plugin.Settings.ClickExarchAltars.Value}", new Vector2(xPos, yPos),
-                _plugin.Settings.ClickExarchAltars.Value ? Color.LightGreen : Color.Gray, 16);
-            yPos += lineHeight;
-            _graphics.DrawText($"Click Eater: {_plugin.Settings.ClickEaterAltars.Value}", new Vector2(xPos, yPos),
-                _plugin.Settings.ClickEaterAltars.Value ? Color.LightGreen : Color.Gray, 16);
             yPos += lineHeight;
 
             return yPos;
@@ -331,10 +383,6 @@ namespace ClickIt.Rendering
 
                     Color renderColor = avgRenderTime <= 6.94 ? Color.LawnGreen : (avgRenderTime <= 16.67 ? Color.Yellow : Color.Red);
                     _graphics.DrawText($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
-                    yPos += lineHeight;
-
-                    // Show target frame time for 144 FPS
-                    _graphics.DrawText($"Target: 6.94 ms/frame (144 FPS)", new Vector2(xPos, yPos), Color.Cyan, 14);
                     yPos += lineHeight;
                 }
             }

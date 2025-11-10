@@ -3,12 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ExileCore;
-using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared;
+using ExileCore.Shared.Cache;
 using ClickIt.Components;
 using ClickIt.Utils;
 using SharpDX;
 using ExileCore.PoEMemory;
+using ExileCore.PoEMemory.Elements;
+using ExileCore.PoEMemory.MemoryObjects;
 
 #nullable enable
 
@@ -26,6 +28,10 @@ namespace ClickIt.Services
         private readonly Random random;
         private readonly Func<Vector2, string?, bool> pointIsInClickableArea;
         private readonly Action<bool> safeBlockInput;
+        private readonly InputHandler inputHandler;
+        private readonly LabelFilterService labelFilterService;
+        private readonly Func<bool> groundItemsVisible;
+        private readonly TimeCache<List<LabelOnGround>>? cachedLabels;
 
         public ClickService(
             ClickItSettings settings,
@@ -37,7 +43,11 @@ namespace ClickIt.Services
             Rendering.AltarDisplayRenderer altarDisplayRenderer,
             Random random,
             Func<Vector2, string?, bool> pointIsInClickableArea,
-            Action<bool> safeBlockInput)
+            Action<bool> safeBlockInput,
+            InputHandler inputHandler,
+            LabelFilterService labelFilterService,
+            Func<bool> groundItemsVisible,
+            TimeCache<List<LabelOnGround>>? cachedLabels)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
@@ -49,6 +59,10 @@ namespace ClickIt.Services
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             this.pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
             this.safeBlockInput = safeBlockInput ?? throw new ArgumentNullException(nameof(safeBlockInput));
+            this.inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
+            this.labelFilterService = labelFilterService ?? throw new ArgumentNullException(nameof(labelFilterService));
+            this.groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
+            this.cachedLabels = cachedLabels;
         }
 
         public IEnumerator ProcessAltarClicking()
@@ -164,8 +178,7 @@ namespace ClickIt.Services
                 safeBlockInput(true);
             }
 
-            ExileCore.Input.SetCursorPos(clickPos);
-            yield return new WaitTime(20);
+            Input.SetCursorPos(clickPos);
 
             // Quick final validation before click
             if (!element.IsValid)
@@ -185,7 +198,54 @@ namespace ClickIt.Services
             }
 
             safeBlockInput(false);
-            yield return new WaitTime(random.Next(60, 70));
+            yield return 0;
+        }
+
+        public IEnumerator ProcessRegularClick()
+        {
+            inputHandler.TriggerToggleItems();
+            yield return ProcessAltarClicking();
+
+            if (!groundItemsVisible())
+            {
+                yield break;
+            }
+
+            LabelOnGround? nextLabel = labelFilterService.GetNextLabelToClick(cachedLabels?.Value ?? new List<LabelOnGround>());
+            if (nextLabel == null)
+            {
+                yield break;
+            }
+
+            Entity item = nextLabel.ItemOnGround;
+            string path = item.Path ?? "";
+            bool isAltar = path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
+            if (isAltar)
+            {
+                yield break;
+            }
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            Vector2 clickPos = nextLabel.Label.GetClientRect().Center + windowTopLeft;
+
+            if (settings.BlockUserInput.Value)
+            {
+                safeBlockInput(true);
+            }
+
+            Input.SetCursorPos(clickPos);
+
+            if (settings.LeftHanded.Value)
+            {
+                Mouse.RightClick();
+            }
+            else
+            {
+                Mouse.LeftClick();
+            }
+
+            safeBlockInput(false);
+            yield return 0;
         }
     }
 }

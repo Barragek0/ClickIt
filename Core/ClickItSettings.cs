@@ -19,6 +19,30 @@ namespace ClickIt
         public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
         [Menu("Additional Debug Information - Render", "Provides more debug text related to rendering the overlay. ", 2, 900)]
         public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Status", "Show/hide the Status debug section", 1, 2)]
+        public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Performance", "Show/hide the Performance debug section", 2, 2)]
+        public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Game State", "Show/hide the Game State debug section", 3, 2)]
+        public ToggleNode DebugShowGameState { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Altar Service", "Show/hide the Altar Service debug section", 4, 2)]
+        public ToggleNode DebugShowAltarService { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Altar Detection", "Show/hide the Altar Detection debug section", 5, 2)]
+        public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Labels", "Show/hide the Labels debug section", 6, 2)]
+        public ToggleNode DebugShowLabels { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Recent Errors", "Show/hide the Recent Errors debug section", 7, 2)]
+        public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("    Debug Frames", "Show/hide the debug screen area frames", 8, 2)]
+        public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 3, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
         [Menu("Accessibility", 1000)]
