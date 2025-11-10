@@ -501,23 +501,10 @@ namespace ClickIt
                 yield break;
             }
 
-            // Debug logging to identify the issue
-            bool canClickResult = canClick();
-            if (Settings.DebugMode.Value)
-            {
-                LogMessage($"Click attempt - Timer: {Timer.ElapsedMilliseconds}ms, CanClick: {canClickResult}, GroundItemsVisible: {GroundItemsVisible()}", 5);
-            }
-
             // self adjusting delay based on average click time
             // clicks will consistently aim for 60ms intervals
-            if (Timer.ElapsedMilliseconds < 60 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !canClickResult)
+            if (Timer.ElapsedMilliseconds < 60 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !canClick())
             {
-                if (Settings.DebugMode.Value)
-                {
-                    double avgTiming = clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0;
-                    int timingThreshold = 60 - (int)avgTiming + Random.Next(0, 6);
-                    LogMessage($"Click blocked - Timer: {Timer.ElapsedMilliseconds}ms, Threshold: {timingThreshold}ms, CanClick: {canClickResult}", 5);
-                }
                 workFinished = true;
                 yield break;
             }
