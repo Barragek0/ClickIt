@@ -25,21 +25,27 @@ namespace ClickIt.Services
         public DateTime LastScanTime { get; set; } = DateTime.MinValue;
         public List<string> RecentUnmatchedMods { get; set; } = new();
     }
+
     public class AltarService
     {
         private readonly ClickIt _clickIt;
         private readonly ClickItSettings _settings;
-        private readonly TimeCache<List<LabelOnGround>>? _cachedLabels;
+        private readonly TimeCache<List<LabelOnGround>> _cachedLabels;
         private readonly List<PrimaryAltarComponent> _altarComponents = new();
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
+
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
 
-        // Performance: Cache mod matching results to avoid repeated regex and string operations
         private readonly Dictionary<string, (bool isUpside, string matchedId)> _modMatchCache = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> _textCleanCache = new(StringComparer.Ordinal);
 
-        // Performance: Pre-compiled regex pattern for better performance
+        // Thread safety locks for cache dictionaries and shared collections
+        private readonly object _modMatchCacheLock = new object();
+        private readonly object _textCleanCacheLock = new object();
+        private readonly object _altarComponentsLock = new object();
+        private readonly object _debugInfoLock = new object();
+
         private static readonly System.Text.RegularExpressions.Regex RgbRegex = new System.Text.RegularExpressions.Regex(
             @"<rgb\(\d+,\d+,\d+\)>",
             System.Text.RegularExpressions.RegexOptions.Compiled);
@@ -53,12 +59,26 @@ namespace ClickIt.Services
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarComponents;
         public void ClearAltarComponents()
         {
-            // Invalidate caches when clearing components
-            foreach (var component in _altarComponents)
+            var gm = global::ClickIt.Utils.LockManager.Instance;
+            if (gm != null)
             {
-                component.InvalidateCache();
+                using (gm.Acquire(_altarComponentsLock))
+                {
+                    foreach (var component in _altarComponents)
+                    {
+                        component.InvalidateCache();
+                    }
+                    _altarComponents.Clear();
+                }
             }
-            _altarComponents.Clear();
+            else
+            {
+                foreach (var component in _altarComponents)
+                {
+                    component.InvalidateCache();
+                }
+                _altarComponents.Clear();
+            }
         }
         public List<LabelOnGround> GetAltarLabels(ClickIt.AltarType type)
         {
@@ -79,14 +99,32 @@ namespace ClickIt.Services
         }
         public bool AddAltarComponent(PrimaryAltarComponent component)
         {
-            string newKey = BuildAltarKey(component);
-            bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
-            if (!exists)
+            var gm = global::ClickIt.Utils.LockManager.Instance;
+            if (gm != null)
             {
-                _altarComponents.Add(component);
-                return true;
+                using (gm.Acquire(_altarComponentsLock))
+                {
+                    string newKey = BuildAltarKey(component);
+                    bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
+                    if (!exists)
+                    {
+                        _altarComponents.Add(component);
+                        return true;
+                    }
+                    return false;
+                }
             }
-            return false;
+            else
+            {
+                string newKey = BuildAltarKey(component);
+                bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
+                if (!exists)
+                {
+                    _altarComponents.Add(component);
+                    return true;
+                }
+                return false;
+            }
         }
         public void UpdateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
             Element ElementToExtractDataFrom, ClickIt.AltarType altarType)
@@ -117,24 +155,48 @@ namespace ClickIt.Services
         }
         private string CleanAltarModsText(string text)
         {
-            // Check cache first
-            if (_textCleanCache.TryGetValue(text, out string? cached))
+            var gm = global::ClickIt.Utils.LockManager.Instance;
+            if (gm != null)
             {
-                return cached;
+                using (gm.Acquire(_textCleanCacheLock))
+                {
+                    if (_textCleanCache.TryGetValue(text, out string? cached))
+                    {
+                        return cached;
+                    }
+
+                    string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
+                        .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
+                        .Replace("gain:", "").Replace("gains:", "");
+                    cleaned = RgbRegex.Replace(cleaned, "");
+
+                    if (_textCleanCache.Count < 1000)
+                    {
+                        _textCleanCache[text] = cleaned;
+                    }
+
+                    return cleaned;
+                }
             }
-
-            string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
-                .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
-                .Replace("gain:", "").Replace("gains:", "");
-            cleaned = RgbRegex.Replace(cleaned, "");
-
-            // Cache the result (limit cache size to prevent memory bloat)
-            if (_textCleanCache.Count < 1000)
+            else
             {
-                _textCleanCache[text] = cleaned;
-            }
+                if (_textCleanCache.TryGetValue(text, out string? cached))
+                {
+                    return cached;
+                }
 
-            return cleaned;
+                string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
+                    .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
+                    .Replace("gain:", "").Replace("gains:", "");
+                cleaned = RgbRegex.Replace(cleaned, "");
+
+                if (_textCleanCache.Count < 1000)
+                {
+                    _textCleanCache[text] = cleaned;
+                }
+
+                return cleaned;
+            }
         }
         private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {
@@ -174,27 +236,48 @@ namespace ClickIt.Services
 
         private bool TryMatchModCached(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
-            // Create a cache key that includes both mod and negative mod type
             string cacheKey = $"{mod}|{negativeModType}";
 
-            // Check cache first
-            if (_modMatchCache.TryGetValue(cacheKey, out var cachedResult))
+            var gm = global::ClickIt.Utils.LockManager.Instance;
+            if (gm != null)
             {
-                isUpside = cachedResult.isUpside;
-                matchedId = cachedResult.matchedId;
-                return !string.IsNullOrEmpty(matchedId);
+                using (gm.Acquire(_modMatchCacheLock))
+                {
+                    if (_modMatchCache.TryGetValue(cacheKey, out var cachedResult))
+                    {
+                        isUpside = cachedResult.isUpside;
+                        matchedId = cachedResult.matchedId;
+                        return !string.IsNullOrEmpty(matchedId);
+                    }
+
+                    bool matched = TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
+
+                    if (_modMatchCache.Count < 5000)
+                    {
+                        _modMatchCache[cacheKey] = (isUpside, matchedId);
+                    }
+
+                    return matched;
+                }
             }
-
-            // If not in cache, perform the match
-            bool matched = TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
-
-            // Cache the result (limit cache size to prevent memory bloat)
-            if (_modMatchCache.Count < 5000)
+            else
             {
-                _modMatchCache[cacheKey] = (isUpside, matchedId);
-            }
+                if (_modMatchCache.TryGetValue(cacheKey, out var cachedResult))
+                {
+                    isUpside = cachedResult.isUpside;
+                    matchedId = cachedResult.matchedId;
+                    return !string.IsNullOrEmpty(matchedId);
+                }
 
-            return matched;
+                bool matched = TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
+
+                if (_modMatchCache.Count < 5000)
+                {
+                    _modMatchCache[cacheKey] = (isUpside, matchedId);
+                }
+
+                return matched;
+            }
         }
 
         private static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
@@ -299,10 +382,8 @@ namespace ClickIt.Services
         }
         private void ProcessAltarLabels(List<LabelOnGround> altarLabels)
         {
-            // Pre-allocate capacity to avoid list resizing
             var elementsToProcess = new List<(Element element, string path)>(altarLabels.Count * 2);
 
-            // Collect all elements first to avoid nested loops
             foreach (LabelOnGround label in altarLabels)
             {
                 if (label == null) continue;
@@ -323,90 +404,54 @@ namespace ClickIt.Services
             // Process elements in a single pass
             foreach (var (element, path) in elementsToProcess)
             {
-                try
-                {
-                    DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
-                    ClickIt.AltarType altarType = DetermineAltarType(path);
-                    PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
-                    DebugInfo.ComponentsProcessed++;
+                DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
+                ClickIt.AltarType altarType = DetermineAltarType(path);
+                PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
+                DebugInfo.ComponentsProcessed++;
 
-                    if (IsValidAltarComponent(altarComponent))
-                    {
-                        // Pre-cache all data during scanning to avoid render loop memory access
-                        PreCacheAltarData(altarComponent);
-
-                        bool wasAdded = AddAltarComponent(altarComponent);
-                        if (wasAdded)
-                            DebugInfo.ComponentsAdded++;
-                        else
-                            DebugInfo.ComponentsDuplicated++;
-                    }
-                }
-                catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
+                if (IsValidAltarComponent(altarComponent))
                 {
-                    DebugInfo.LastError = $"Error processing altar: {ex.Message}";
-                    if (_settings.DebugMode)
-                    {
-                        _clickIt.LogError($"Error processing altar: {ex.Message}", 3);
-                    }
+                    PreCacheAltarData(altarComponent);
+
+                    bool wasAdded = AddAltarComponent(altarComponent);
+                    if (wasAdded)
+                        DebugInfo.ComponentsAdded++;
+                    else
+                        DebugInfo.ComponentsDuplicated++;
                 }
             }
         }
 
         private void CleanupInvalidAltars()
         {
-            // Remove altars with invalid elements to prevent memory access errors
-            try
+            _altarComponents.RemoveAll(altar =>
             {
-                _altarComponents.RemoveAll(altar =>
+                bool isInvalid = altar.TopMods?.Element == null ||
+                                altar.BottomMods?.Element == null ||
+                                !altar.TopMods.Element.IsValid ||
+                                !altar.BottomMods.Element.IsValid;
+
+                if (isInvalid)
                 {
-                    try
-                    {
-                        // Check if core elements are still valid
-                        bool isInvalid = altar.TopMods?.Element == null ||
-                                        altar.BottomMods?.Element == null ||
-                                        !altar.TopMods.Element.IsValid ||
-                                        !altar.BottomMods.Element.IsValid;
+                    // Invalidate cache when removing
+                    altar.InvalidateCache();
+                }
 
-                        if (isInvalid)
-                        {
-                            // Invalidate cache when removing
-                            altar.InvalidateCache();
-                        }
-
-                        return isInvalid;
-                    }
-                    catch (Exception)
-                    {
-                        // If checking validity throws, the altar is definitely invalid
-                        altar.InvalidateCache();
-                        return true;
-                    }
-                });
-            }
-            catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
-            {
-                DebugInfo.LastError = $"Error during cleanup: {ex.Message}";
-            }
+                return isInvalid;
+            });
         }
 
         private void PreCacheAltarData(PrimaryAltarComponent altar)
         {
             // Pre-calculate and cache all data that render loop and click logic will need
-            try
-            {
-                // Trigger caching of validation state
-                _ = altar.IsValidCached();
+            // Trigger caching of validation state
+            _ = altar.IsValidCached();
 
-                // Trigger caching of rectangles
-                _ = altar.GetCachedRects();
+            // Pre-calculate rectangles (no longer cached)
+            _ = altar.GetTopModsRect();
+            _ = altar.GetBottomModsRect();
 
-                // Note: Weights are cached lazily when first accessed since they need the calculator
-            }
-            catch (Exception ex) when (!(ex is OutOfMemoryException || ex is StackOverflowException))
-            {
-                DebugInfo.LastError = $"Error pre-caching altar data: {ex.Message}";
-            }
+            // Note: Weights are cached lazily when first accessed since they need the calculator
         }
         private bool IsValidElement(Element element)
         {
@@ -428,12 +473,27 @@ namespace ClickIt.Services
         }
         private PrimaryAltarComponent CreateAltarComponent(Element element, ClickIt.AltarType altarType)
         {
-            PrimaryAltarComponent altarComponent = new(altarType,
-                new SecondaryAltarComponent(new Element(), new List<string>(), new List<string>()), new AltarButton(new Element()),
-                new SecondaryAltarComponent(new Element(), new List<string>(), new List<string>()), new AltarButton(new Element()));
             Element altarParent = element.Parent.Parent;
             Element? topAltarElement = altarParent.GetChildFromIndices(0, 1);
             Element? bottomAltarElement = altarParent.GetChildFromIndices(1, 1);
+
+            // Create altar component with proper validation
+            var topMods = topAltarElement != null ?
+                new SecondaryAltarComponent(topAltarElement, new List<string>(), new List<string>()) :
+                null;
+            var bottomMods = bottomAltarElement != null ?
+                new SecondaryAltarComponent(bottomAltarElement, new List<string>(), new List<string>()) :
+                null;
+            var topButton = topAltarElement != null ? new AltarButton(topAltarElement.Parent) : null;
+            var bottomButton = bottomAltarElement != null ? new AltarButton(bottomAltarElement.Parent) : null;
+
+            if (topMods == null || bottomMods == null || topButton == null || bottomButton == null)
+            {
+                throw new InvalidOperationException("Failed to create valid altar component - missing required elements");
+            }
+
+            PrimaryAltarComponent altarComponent = new(altarType, topMods, topButton, bottomMods, bottomButton);
+
             if (topAltarElement != null)
             {
                 UpdateComponentFromElementData(true, altarParent, altarComponent, topAltarElement, altarType);
@@ -456,15 +516,49 @@ namespace ClickIt.Services
         }
         private static string BuildAltarKey(PrimaryAltarComponent comp)
         {
-            string t1 = comp.TopMods?.FirstUpside ?? string.Empty;
-            string t2 = comp.TopMods?.SecondUpside ?? string.Empty;
-            string td1 = comp.TopMods?.FirstDownside ?? string.Empty;
-            string td2 = comp.TopMods?.SecondDownside ?? string.Empty;
-            string b1 = comp.BottomMods?.FirstUpside ?? string.Empty;
-            string b2 = comp.BottomMods?.SecondUpside ?? string.Empty;
-            string bd1 = comp.BottomMods?.FirstDownside ?? string.Empty;
-            string bd2 = comp.BottomMods?.SecondDownside ?? string.Empty;
-            return string.Concat(t1, "|", t2, "|", td1, "|", td2, "|", b1, "|", b2, "|", bd1, "|", bd2);
+            // Support for 8 mods on top and bottom - build key from all available mods
+            // Much cleaner approach using array concatenation
+            var topUpside = GetModStrings(comp.TopMods, false);
+            var topDownside = GetModStrings(comp.TopMods, true);
+            var bottomUpside = GetModStrings(comp.BottomMods, false);
+            var bottomDownside = GetModStrings(comp.BottomMods, true);
+
+            // Join all mods with separator to create unique key
+            var allMods = topUpside.Concat(topDownside)
+                                  .Concat(bottomUpside)
+                                  .Concat(bottomDownside);
+
+            return string.Join("|", allMods);
+        }
+
+        // Helper method to extract mod strings for key building
+        private static string[] GetModStrings(SecondaryAltarComponent? component, bool isDownside)
+        {
+            if (component == null)
+            {
+                return new string[8]; // Return empty array if no component
+            }
+
+            if (isDownside)
+            {
+                // Get all 8 downside mods (supporting up to 8 mods)
+                var downsideMods = new string[8];
+                for (int i = 0; i < 8; i++)
+                {
+                    downsideMods[i] = component.GetDownsideByIndex(i);
+                }
+                return downsideMods;
+            }
+            else
+            {
+                // Get all 8 upside mods (supporting up to 8 mods)
+                var upsideMods = new string[8];
+                for (int i = 0; i < 8; i++)
+                {
+                    upsideMods[i] = component.GetUpsideByIndex(i);
+                }
+                return upsideMods;
+            }
         }
     }
 }

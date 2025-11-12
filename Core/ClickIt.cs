@@ -13,6 +13,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Linq;
 using System.Runtime.InteropServices;
 namespace ClickIt
@@ -66,6 +67,54 @@ namespace ClickIt
 
         public override void OnLoad()
         {
+            // Register global error handlers with instance context
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                try
+                {
+                    if (e.ExceptionObject is Exception ex)
+                    {
+                        LogError($"Unhandled exception ({ex.GetType().Name}): {ex.Message}", 10);
+                        LogError($"Stack: {ex.StackTrace}", 10);
+                    }
+                    LogError($"UnhandledException Event: IsTerminating={e.IsTerminating}", 5);
+
+                    // Attempt a safe cleanup action: unblock input to avoid leaving user's input stuck
+                    try
+                    {
+                        ForceUnblockInput("Unhandled exception");
+                    }
+                    catch { /* swallow to avoid cascading failures */ }
+                }
+                catch (Exception exc)
+                {
+                    // Keep this as last-resort logging to console
+                    try { Console.WriteLine($"Error in global exception handler: {exc.Message}"); } catch { }
+                }
+            };
+
+            // Catch unobserved task exceptions so they don't get lost
+            TaskScheduler.UnobservedTaskException += (s, evt) =>
+            {
+                try
+                {
+                    evt.SetObserved();
+                    var ex = evt.Exception;
+                    if (ex != null)
+                    {
+                        LogError($"Unobserved Task Exception: {ex.GetType().Name}: {ex.Message}", 10);
+                        LogError($"Stack: {ex.StackTrace}", 10);
+                    }
+
+                    try
+                    {
+                        ForceUnblockInput("Unobserved task exception");
+                    }
+                    catch { }
+                }
+                catch { }
+            };
+
             CanUseMultiThreading = true;
         }
         public override void OnClose()
@@ -84,19 +133,20 @@ namespace ClickIt
             altarService = new Services.AltarService(this, Settings, CachedLabels);
             labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
             shrineService = new Services.ShrineService(GameController, camera);
-            inputHandler = new Utils.InputHandler(Settings, SafeBlockInput);
-            debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService, areaService);
+            inputHandler = new Utils.InputHandler(Settings, SafeBlockInput, (msg, f) => LogMessage(true, msg, f));
             var weightCalculator = new Utils.WeightCalculator(Settings);
-            altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController, weightCalculator, altarService, LogError);
+            debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService, areaService, weightCalculator);
+            altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController, weightCalculator, altarService, LogMessage);
+            // Initialize global lock manager (locks are disabled by default via settings)
+            LockManager.Instance = new Utils.LockManager(Settings);
             clickService = new Services.ClickService(
                 Settings,
                 GameController,
-                LogMessage,
+                msg => LogMessage(msg),
                 LogError,
                 altarService,
                 weightCalculator,
                 altarDisplayRenderer,
-                Random,
                 PointIsInClickableArea,
                 inputHandler,
                 labelFilterService,
@@ -117,6 +167,8 @@ namespace ClickIt
             shrineCoroutine = new Coroutine(MainShrineCoroutine(), this, "ClickIt.ShrineLogic", true);
             _ = Core.ParallelRunner.Run(shrineCoroutine);
             shrineCoroutine.Priority = CoroutinePriority.High;
+
+            // Start input safety coroutine to enforce unblock failsafes
             var inputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), this, "ClickIt.InputSafety");
             _ = Core.ParallelRunner.Run(inputSafetyCoroutine);
             inputSafetyCoroutine.Priority = CoroutinePriority.High;
@@ -188,14 +240,14 @@ namespace ClickIt
         }
         public void LogMessage(string message, int frame = 0)
         {
-            if (Settings.DebugMode)
+            if (Settings.DebugMode && Settings.LogMessages)
             {
                 base.LogMessage(message, frame);
             }
         }
         public void LogMessage(bool localDebug, string message, int frame = 0)
         {
-            if (localDebug && Settings.DebugMode)
+            if (localDebug && Settings.DebugMode && Settings.LogMessages)
             {
                 base.LogMessage(message, frame);
             }
@@ -203,14 +255,6 @@ namespace ClickIt
         public void LogError(string message, int frame = 0)
         {
             if (Settings.DebugMode)
-            {
-                LogErrorWithWrapping(message, frame);
-                TrackError(message);
-            }
-        }
-        public void LogError(bool localDebug, string message, int frame = 0)
-        {
-            if (localDebug && Settings.DebugMode)
             {
                 LogErrorWithWrapping(message, frame);
                 TrackError(message);
@@ -282,21 +326,42 @@ namespace ClickIt
         }
         private void SafeBlockInput(bool block)
         {
-            if (block)
+            try
             {
-                if (!isInputCurrentlyBlocked)
+                if (block)
                 {
-                    Mouse.blockInput(true);
-                    isInputCurrentlyBlocked = true;
+                    if (!isInputCurrentlyBlocked)
+                    {
+                        bool result = false;
+                        try { result = Mouse.blockInput(true); } catch (Exception ex) { LogError($"SafeBlockInput: BlockInput(true) threw: {ex.Message}", 10); }
+                        if (!result)
+                        {
+                            LogError("SafeBlockInput: BlockInput(true) returned false - input may not be blocked", 10);
+                        }
+                        isInputCurrentlyBlocked = true;
+                        LogMessage(true, "SafeBlockInput: input blocked", 5);
+                    }
+                }
+                else
+                {
+                    if (isInputCurrentlyBlocked)
+                    {
+                        bool result = false;
+                        try { result = Mouse.blockInput(false); } catch (Exception ex) { LogError($"SafeBlockInput: BlockInput(false) threw: {ex.Message}", 10); }
+                        if (!result)
+                        {
+                            LogError("SafeBlockInput: BlockInput(false) returned false - input may still be blocked", 10);
+                        }
+                        isInputCurrentlyBlocked = false;
+                        LogMessage(true, "SafeBlockInput: input unblocked", 5);
+                    }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                if (isInputCurrentlyBlocked)
-                {
-                    Mouse.blockInput(false);
-                    isInputCurrentlyBlocked = false;
-                }
+                LogError($"SafeBlockInput: unexpected exception: {ex.Message}", 10);
+                try { Mouse.blockInput(false); } catch { }
+                isInputCurrentlyBlocked = false;
             }
         }
 
@@ -366,7 +431,7 @@ namespace ClickIt
             var cachedValue = CachedLabels?.Value;
             if (cachedValue == null || cachedValue.Count < 1)
             {
-                LogMessage("(ClickIt) No ground items found", 5);
+                LogMessage("(ClickIt) No ground items found");
                 return false;
             }
             return true;
@@ -378,37 +443,64 @@ namespace ClickIt
         private bool workFinished;
         public override Job? Tick()
         {
-
-#pragma warning disable CS0618
-            bool hotkeyPressed = ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
-#pragma warning restore CS0618
+            bool hotkeyPressed = IsClickHotkeyPressed();
 
             if (hotkeyPressed)
             {
-                if (clickLabelCoroutine?.IsDone == true)
-                {
-                    Coroutine firstOrDefault = Core.ParallelRunner.Coroutines.FirstOrDefault(x => x.Name == "ClickIt.ClickLogic");
-                    if (firstOrDefault != null)
-                    {
-                        clickLabelCoroutine = firstOrDefault;
-                    }
-                }
-                clickLabelCoroutine?.Resume();
-                workFinished = false;
+                HandleHotkeyPressed();
             }
             else
             {
-                if (workFinished)
-                {
-                    clickLabelCoroutine?.Pause();
-                }
+                HandleHotkeyReleased();
             }
+
+            ResumeAltarScanningIfDue();
+
+            return null;
+        }
+
+        private bool IsClickHotkeyPressed()
+        {
+#pragma warning disable CS0618
+            return ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
+#pragma warning restore CS0618
+        }
+
+        private void HandleHotkeyPressed()
+        {
+            if (clickLabelCoroutine?.IsDone == true)
+            {
+                clickLabelCoroutine = FindExistingClickLogicCoroutine();
+            }
+
+            clickLabelCoroutine?.Resume();
+            workFinished = false;
+        }
+
+        private void HandleHotkeyReleased()
+        {
+            if (workFinished)
+            {
+                clickLabelCoroutine?.Pause();
+            }
+        }
+
+        private Coroutine FindExistingClickLogicCoroutine()
+        {
+            return Core.ParallelRunner.Coroutines.FirstOrDefault(x => x.Name == "ClickIt.ClickLogic");
+        }
+
+        /// <summary>
+        /// Resumes altar scanning coroutine if sufficient time has elapsed.
+        /// Implements a throttling mechanism to prevent excessive scanning.
+        /// </summary>
+        private void ResumeAltarScanningIfDue()
+        {
             if (SecondTimer.ElapsedMilliseconds > 200)
             {
                 altarCoroutine?.Resume();
                 SecondTimer.Restart();
             }
-            return null;
         }
         private IEnumerator MainClickLabelCoroutine()
         {
@@ -433,66 +525,241 @@ namespace ClickIt
                 yield return ScanForAltarsLogic();
             }
         }
+        /// <summary>
+        /// Updates and filters the list of ground labels to find valid clickable items.
+        /// Filters by visibility, position, entity type, and path patterns to identify
+        /// items that should be processed for clicking.
+        /// </summary>
+        /// <returns>Filtered and sorted list of valid ground labels</returns>
         private List<LabelOnGround> UpdateLabelComponent()
         {
-            List<LabelOnGround> result = [];
             IList<LabelOnGround>? groundLabels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabels;
-            if (groundLabels == null)
+
+            if (groundLabels == null || groundLabels.Count == 0)
             {
-                return result;
+                return new List<LabelOnGround>();
             }
-            result.Capacity = Math.Min(groundLabels.Count, 1000);
-            for (int i = 0; i < groundLabels.Count; i++)
+
+            // Traditional loop for better performance - no LINQ overhead
+            List<LabelOnGround> validLabels = new List<LabelOnGround>(Math.Min(groundLabels.Count, 1000));
+
+            // Filter valid labels
+            for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
             {
                 LabelOnGround label = groundLabels[i];
-                if (label == null || label.ItemOnGround == null ||
-                    !label.IsVisible || !label.Label.IsVisible)
+                if (IsValidClickableLabel(label))
                 {
-                    continue;
-                }
-                Vector2 labelCenter = label.Label.GetClientRect().Center;
-                if (!PointIsInClickableArea(labelCenter))
-                {
-                    continue;
-                }
-                Entity item = label.ItemOnGround;
-                EntityType type = item.Type;
-                string path = item.Path ?? "";
-
-                bool isValidType = type == EntityType.WorldItem ||
-                                 (type == EntityType.Chest && !item.GetComponent<Chest>().OpenOnDamage) ||
-                                 type == EntityType.AreaTransition ||
-                                 GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
-
-                bool isValidPath = !string.IsNullOrEmpty(path) && (
-                    path.Contains("DelveMineral") ||
-                    path.Contains("AzuriteEncounterController") ||
-                    path.Contains("Harvest/Irrigator") ||
-                    path.Contains("Harvest/Extractor") ||
-                    path.Contains("CleansingFireAltar") ||
-                    path.Contains("TangleAltar") ||
-                    path.Contains("CraftingUnlocks") ||
-                    path.Contains("Brequel") ||
-                    path.Contains("CrimsonIron") ||
-                    path.Contains("copper_altar") ||
-                    path.Contains("PetrifiedWood") ||
-                    path.Contains("Bismuth") ||
-                    path.Contains("Verisium") ||
-                    path.Contains("ClosedDoorPast") ||
-                    path.Contains("LegionInitiator") ||
-                    path.Contains("DarkShrine"));
-
-                if (isValidType || isValidPath)
-                {
-                    result.Add(label);
+                    validLabels.Add(label);
                 }
             }
-            if (result.Count > 1)
-            {
-                result.Sort((a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
-            }
-            return result;
+
+            // Sort by distance using insertion sort for small lists, quicksort for larger ones
+            SortLabelsByDistance(validLabels);
+
+            return validLabels;
         }
+
+        /// <summary>
+        /// Sorts labels by distance to player using efficient sorting algorithm
+        /// </summary>
+        /// <param name="labels">List of labels to sort</param>
+        private void SortLabelsByDistance(List<LabelOnGround> labels)
+        {
+            int n = labels.Count;
+            if (n <= 1) return;
+
+            // Use insertion sort for small arrays, quicksort approach for larger
+            if (n <= 50)
+            {
+                InsertionSortByDistance(labels, n);
+            }
+            else
+            {
+                QuickSortByDistance(labels, 0, n - 1);
+            }
+        }
+
+        /// <summary>
+        /// Efficient insertion sort for small lists
+        /// </summary>
+        private void InsertionSortByDistance(List<LabelOnGround> labels, int n)
+        {
+            for (int i = 1; i < n; i++)
+            {
+                LabelOnGround key = labels[i];
+                int j = i - 1;
+
+                // Move elements that are farther than key one position ahead
+                while (j >= 0 && labels[j].ItemOnGround.DistancePlayer > key.ItemOnGround.DistancePlayer)
+                {
+                    labels[j + 1] = labels[j];
+                    j--;
+                }
+                labels[j + 1] = key;
+            }
+        }
+
+        /// <summary>
+        /// Quick sort implementation for larger lists
+        /// </summary>
+        private void QuickSortByDistance(List<LabelOnGround> labels, int low, int high)
+        {
+            if (low < high)
+            {
+                int pivotIndex = PartitionByDistance(labels, low, high);
+                QuickSortByDistance(labels, low, pivotIndex - 1);
+                QuickSortByDistance(labels, pivotIndex + 1, high);
+            }
+        }
+
+        private int PartitionByDistance(List<LabelOnGround> labels, int low, int high)
+        {
+            Entity pivot = labels[high].ItemOnGround;
+            int i = low - 1;
+
+            for (int j = low; j < high; j++)
+            {
+                if (labels[j].ItemOnGround.DistancePlayer <= pivot.DistancePlayer)
+                {
+                    i++;
+                    SwapLabels(labels, i, j);
+                }
+            }
+            SwapLabels(labels, i + 1, high);
+            return i + 1;
+        }
+
+        private void SwapLabels(List<LabelOnGround> labels, int i, int j)
+        {
+            if (i != j)
+            {
+                LabelOnGround temp = labels[i];
+                labels[i] = labels[j];
+                labels[j] = temp;
+            }
+        }
+
+        /// <summary>
+        /// Validates if a ground label is suitable for clicking based on multiple criteria.
+        /// Checks visibility, validity, position, and type/path matching.
+        /// </summary>
+        /// <param name="label">The ground label to validate</param>
+        /// <returns>True if the label is valid for clicking, false otherwise</returns>
+        private bool IsValidClickableLabel(LabelOnGround label)
+        {
+            // Basic null and visibility checks
+            if (label == null || label.ItemOnGround == null ||
+                !label.IsVisible || !IsLabelElementValid(label))
+            {
+                return false;
+            }
+
+            // Position validation
+            if (!IsLabelInClickableArea(label))
+            {
+                return false;
+            }
+
+            // Entity validation
+            return IsValidEntityType(label.ItemOnGround) || IsValidEntityPath(label.ItemOnGround) || HasEssenceImprisonmentText(label);
+        }
+
+        /// <summary>
+        /// Checks if the label's UI element is valid and accessible.
+        /// Uses null-conditional operators to prevent memory access violations.
+        /// </summary>
+        /// <param name="label">The ground label to check</param>
+        /// <returns>True if the label element is valid</returns>
+        private bool IsLabelElementValid(LabelOnGround label)
+        {
+            RectangleF? labelRect = label.Label?.GetClientRect();
+            return labelRect is RectangleF rect &&
+                   label.Label?.IsValid == true &&
+                   label.Label?.IsVisible == true &&
+                   PointIsInClickableArea(rect.Center);
+        }
+
+        /// <summary>
+        /// Validates if a label is positioned within clickable areas of the screen.
+        /// </summary>
+        /// <param name="label">The ground label to check</param>
+        /// <returns>True if the label is in a clickable area</returns>
+        private bool IsLabelInClickableArea(LabelOnGround label)
+        {
+            RectangleF? labelRect = label.Label?.GetClientRect();
+            return labelRect is RectangleF rect && PointIsInClickableArea(rect.Center);
+        }
+
+        /// <summary>
+        /// Checks if an entity matches valid types for clicking.
+        /// Includes world items, chests, area transitions, and essence-encased monsters.
+        /// </summary>
+        /// <param name="item">The entity to check</param>
+        /// <returns>True if the entity type is valid for clicking</returns>
+        private bool IsValidEntityType(Entity item)
+        {
+            EntityType type = item.Type;
+
+            return type == EntityType.WorldItem ||
+                   type == EntityType.AreaTransition ||
+                   (type == EntityType.Chest && !item.GetComponent<Chest>().OpenOnDamage);
+        }
+
+        /// <summary>
+        /// Checks if an entity matches valid path patterns for clicking.
+        /// Includes various game objects like altars, harvest nodes, ores, and shrines.
+        /// </summary>
+        /// <param name="item">The entity to check</param>
+        /// <returns>True if the entity path matches valid patterns</returns>
+        private bool IsValidEntityPath(Entity item)
+        {
+            string path = item.Path ?? "";
+
+            if (string.IsNullOrEmpty(path))
+            {
+                return false;
+            }
+
+            return IsPathForClickableObject(path);
+        }
+
+        /// <summary>
+        /// Checks if a path string matches any of the known clickable object patterns.
+        /// </summary>
+        /// <param name="path">The entity path to check</param>
+        /// <returns>True if the path matches a clickable object pattern</returns>
+        private bool IsPathForClickableObject(string path)
+        {
+            return path.Contains("DelveMineral") ||
+                   path.Contains("AzuriteEncounterController") ||
+                   path.Contains("Harvest/Irrigator") ||
+                   path.Contains("Harvest/Extractor") ||
+                   path.Contains("CleansingFireAltar") ||
+                   path.Contains("TangleAltar") ||
+                   path.Contains("CraftingUnlocks") ||
+                   path.Contains("Brequel") ||
+                   path.Contains("CrimsonIron") ||
+                   path.Contains("copper_altar") ||
+                   path.Contains("PetrifiedWood") ||
+                   path.Contains("Bismuth") ||
+                   path.Contains("Verisium") ||
+                   path.Contains("ClosedDoorPast") ||
+                   path.Contains("LegionInitiator") ||
+                   path.Contains("DarkShrine");
+        }
+
+        /// <summary>
+        /// Checks if a ground label has essence imprisonment text.
+        /// This is the proper way to detect essence-encased monsters.
+        /// </summary>
+        /// <param name="label">The ground label to check</param>
+        /// <returns>True if the label contains essence imprisonment text</returns>
+        private bool HasEssenceImprisonmentText(LabelOnGround label)
+        {
+            // Check for the specific essence imprisonment text using GetElementByString
+            return GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
+        }
+
         private IEnumerator ClickLabel()
         {
             if (Settings.ClickShrines.Value && shrineService != null && shrineService.AreShrinesPresentInClickableArea((pos) => PointIsInClickableArea(pos)))
@@ -502,8 +769,8 @@ namespace ClickIt
             }
 
             // self adjusting delay based on average click time
-            // clicks will consistently aim for 60ms intervals
-            if (Timer.ElapsedMilliseconds < 60 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !canClick())
+            // clicks will consistently aim for 70ms intervals
+            if (Timer.ElapsedMilliseconds < 70 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !canClick())
             {
                 workFinished = true;
                 yield break;
@@ -511,7 +778,7 @@ namespace ClickIt
 
             if (Settings.DebugMode.Value)
             {
-                LogMessage($"Starting click process...", 1);
+                LogMessage($"Starting click process...");
             }
 
             Timer.Restart();
@@ -530,10 +797,8 @@ namespace ClickIt
         }
         private IEnumerator HandleShrine()
         {
-            LogMessage($"HandleShrine called", 5);
             if (!Settings.ClickShrines.Value || shrineService == null)
             {
-                LogMessage($"Shrine clicking disabled", 5);
                 yield return new WaitTime(500); // Check less frequently when disabled
                 yield break;
             }
@@ -548,7 +813,7 @@ namespace ClickIt
                 yield break;
             }
 
-            var nearestShrine = shrineService.GetNearestShrineInRange(Settings.ClickDistance.Value);
+            var nearestShrine = shrineService.GetNearestShrineInRange(Settings.ClickDistance.Value, point => PointIsInClickableArea(point));
             if (nearestShrine == null)
             {
                 yield break;
@@ -559,7 +824,7 @@ namespace ClickIt
                 yield break;
             }
 
-            LogMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}", 5);
+            LogMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}");
 
             if (camera == null)
             {
@@ -568,7 +833,19 @@ namespace ClickIt
 
             Vector2 clickPos = new Vector2(camera.WorldToScreen(nearestShrine.PosNum).X, camera.WorldToScreen(nearestShrine.PosNum).Y);
 
-            inputHandler.PerformClick(clickPos);
+            // Thread-safe locking to prevent race conditions with other clicking
+            var gm = global::ClickIt.Utils.LockManager.Instance;
+            if (gm != null)
+            {
+                using (gm.Acquire(clickService.GetElementAccessLock()))
+                {
+                    inputHandler.PerformClick(clickPos);
+                }
+            }
+            else
+            {
+                inputHandler.PerformClick(clickPos);
+            }
 
             yield return new WaitTime(60 + Random.Next(0, 6));
         }

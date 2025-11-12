@@ -1,49 +1,57 @@
 ﻿using ExileCore.PoEMemory;
 using System.Collections.Generic;
+using ClickIt.Utils;
 namespace ClickIt.Components
 {
+#nullable enable
     public class SecondaryAltarComponent
     {
-        public SecondaryAltarComponent(Element element, List<string> upsides, List<string> downsides, bool hasUnmatchedMods = false)
+        public SecondaryAltarComponent(Element? element, List<string> upsides, List<string> downsides, bool hasUnmatchedMods = false)
         {
             this.Element = element;
-            this.Upsides = upsides;
-            this.Downsides = downsides;
+            this.Upsides = upsides ?? new List<string>();
+            this.Downsides = downsides ?? new List<string>();
             this.HasUnmatchedMods = hasUnmatchedMods;
 
-            // Pre-cache upside/downside strings to avoid repeated list access
-            _firstUpside = Upsides.Count > 0 ? Upsides[0] : "";
-            _secondUpside = Upsides.Count > 1 ? Upsides[1] : "";
-            _thirdUpside = Upsides.Count > 2 ? Upsides[2] : "";
-            _fourthUpside = Upsides.Count > 3 ? Upsides[3] : "";
-            _firstDownside = Downsides.Count > 0 ? Downsides[0] : "";
-            _secondDownside = Downsides.Count > 1 ? Downsides[1] : "";
-            _thirdDownside = Downsides.Count > 2 ? Downsides[2] : "";
-            _fourthDownside = Downsides.Count > 3 ? Downsides[3] : "";
+            _upsides = new string[8];
+            _downsides = new string[8];
+
+            for (int i = 0; i < 8; i++)
+            {
+                _upsides[i] = Upsides.Count > i ? Upsides[i] : "";
+                _downsides[i] = Downsides.Count > i ? Downsides[i] : "";
+            }
         }
 
-        public Element Element { get; set; }
+        public Element? Element { get; set; }
         public List<string> Upsides { get; set; }
         public List<string> Downsides { get; set; }
         public bool HasUnmatchedMods { get; set; }
 
-        // Cached values for performance
-        private readonly string _firstUpside;
-        private readonly string _secondUpside;
-        private readonly string _thirdUpside;
-        private readonly string _fourthUpside;
-        private readonly string _firstDownside;
-        private readonly string _secondDownside;
-        private readonly string _thirdDownside;
-        private readonly string _fourthDownside;
+        private readonly string[] _upsides;
+        private readonly string[] _downsides;
 
-        public string FirstUpside => _firstUpside;
-        public string SecondUpside => _secondUpside;
-        public string ThirdUpside => _thirdUpside;
-        public string FourthUpside => _fourthUpside;
-        public string FirstDownside => _firstDownside;
-        public string SecondDownside => _secondDownside;
-        public string ThirdDownside => _thirdDownside;
-        public string FourthDownside => _fourthDownside;
+        public string this[int index] => GetModByIndex(index);
+
+        public string GetModByIndex(int index)
+        {
+            if (index < 0 || index >= 8) return "";
+            return index < 4 ? _upsides[index] : _downsides[index - 4];
+        }
+
+        public string GetUpsideByIndex(int index)
+        {
+            if (index < 0 || index >= 8) return "";
+            return _upsides[index];
+        }
+
+        public string GetDownsideByIndex(int index)
+        {
+            if (index < 0 || index >= 8) return "";
+            return _downsides[index];
+        }
+
+        public string[] GetAllUpsides() => _upsides;
+        public string[] GetAllDownsides() => _downsides;
     }
 }

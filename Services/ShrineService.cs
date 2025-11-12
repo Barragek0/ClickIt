@@ -104,7 +104,7 @@ namespace ClickIt.Services
             return shrines;
         }
 
-        public Entity GetNearestShrineInRange(int clickDistance)
+        public Entity GetNearestShrineInRange(int clickDistance, Func<Vector2, bool>? isInClickableArea = null)
         {
             Entity nearestShrine = null;
             float minDistance = float.MaxValue;
@@ -118,6 +118,16 @@ namespace ClickIt.Services
                 float distance = shrine.DistancePlayer;
                 if (distance <= clickDistance && distance < minDistance)
                 {
+                    // If a clickable area checker is provided, ensure the shrine is on screen
+                    if (isInClickableArea != null && _camera != null)
+                    {
+                        Vector2 screenPos = new Vector2(_camera.WorldToScreen(shrine.PosNum).X, _camera.WorldToScreen(shrine.PosNum).Y);
+                        if (!isInClickableArea(screenPos))
+                        {
+                            continue; // Skip shrines that aren't in the clickable area
+                        }
+                    }
+
                     minDistance = distance;
                     nearestShrine = shrine;
                 }
