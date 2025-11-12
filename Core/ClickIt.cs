@@ -70,49 +70,26 @@ namespace ClickIt
             // Register global error handlers with instance context
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
-                try
+                if (e.ExceptionObject is Exception ex)
                 {
-                    if (e.ExceptionObject is Exception ex)
-                    {
-                        LogError($"Unhandled exception ({ex.GetType().Name}): {ex.Message}", 10);
-                        LogError($"Stack: {ex.StackTrace}", 10);
-                    }
-                    LogError($"UnhandledException Event: IsTerminating={e.IsTerminating}", 5);
-
-                    // Attempt a safe cleanup action: unblock input to avoid leaving user's input stuck
-                    try
-                    {
-                        ForceUnblockInput("Unhandled exception");
-                    }
-                    catch { /* swallow to avoid cascading failures */ }
+                    LogError($"Unhandled exception ({ex.GetType().Name}): {ex.Message}", 10);
+                    LogError($"Stack: {ex.StackTrace}", 10);
                 }
-                catch (Exception exc)
-                {
-                    // Keep this as last-resort logging to console
-                    try { Console.WriteLine($"Error in global exception handler: {exc.Message}"); } catch { }
-                }
+                LogError($"UnhandledException Event: IsTerminating={e.IsTerminating}", 5);
+                ForceUnblockInput("Unhandled exception");
             };
 
             // Catch unobserved task exceptions so they don't get lost
             TaskScheduler.UnobservedTaskException += (s, evt) =>
             {
-                try
+                evt.SetObserved();
+                var ex = evt.Exception;
+                if (ex != null)
                 {
-                    evt.SetObserved();
-                    var ex = evt.Exception;
-                    if (ex != null)
-                    {
-                        LogError($"Unobserved Task Exception: {ex.GetType().Name}: {ex.Message}", 10);
-                        LogError($"Stack: {ex.StackTrace}", 10);
-                    }
-
-                    try
-                    {
-                        ForceUnblockInput("Unobserved task exception");
-                    }
-                    catch { }
+                    LogError($"Unobserved Task Exception: {ex.GetType().Name}: {ex.Message}", 10);
+                    LogError($"Stack: {ex.StackTrace}", 10);
                 }
-                catch { }
+                ForceUnblockInput("Unobserved task exception");
             };
 
             CanUseMultiThreading = true;
@@ -326,42 +303,33 @@ namespace ClickIt
         }
         private void SafeBlockInput(bool block)
         {
-            try
+            if (block)
             {
-                if (block)
+                if (!isInputCurrentlyBlocked)
                 {
-                    if (!isInputCurrentlyBlocked)
+                    bool result = false;
+                    result = Mouse.blockInput(true);
+                    if (!result)
                     {
-                        bool result = false;
-                        try { result = Mouse.blockInput(true); } catch (Exception ex) { LogError($"SafeBlockInput: BlockInput(true) threw: {ex.Message}", 10); }
-                        if (!result)
-                        {
-                            LogError("SafeBlockInput: BlockInput(true) returned false - input may not be blocked", 10);
-                        }
-                        isInputCurrentlyBlocked = true;
-                        LogMessage(true, "SafeBlockInput: input blocked", 5);
+                        LogMessage("SafeBlockInput: BlockInput(true) returned false - input may not be blocked", 10);
                     }
-                }
-                else
-                {
-                    if (isInputCurrentlyBlocked)
-                    {
-                        bool result = false;
-                        try { result = Mouse.blockInput(false); } catch (Exception ex) { LogError($"SafeBlockInput: BlockInput(false) threw: {ex.Message}", 10); }
-                        if (!result)
-                        {
-                            LogError("SafeBlockInput: BlockInput(false) returned false - input may still be blocked", 10);
-                        }
-                        isInputCurrentlyBlocked = false;
-                        LogMessage(true, "SafeBlockInput: input unblocked", 5);
-                    }
+                    isInputCurrentlyBlocked = true;
+                    LogMessage(true, "SafeBlockInput: input blocked", 5);
                 }
             }
-            catch (Exception ex)
+            else
             {
-                LogError($"SafeBlockInput: unexpected exception: {ex.Message}", 10);
-                try { Mouse.blockInput(false); } catch { }
-                isInputCurrentlyBlocked = false;
+                if (isInputCurrentlyBlocked)
+                {
+                    bool result = false;
+                    result = Mouse.blockInput(false);
+                    if (!result)
+                    {
+                        LogMessage("SafeBlockInput: BlockInput(false) returned false - input may still be blocked", 10);
+                    }
+                    isInputCurrentlyBlocked = false;
+                    LogMessage(true, "SafeBlockInput: input unblocked", 5);
+                }
             }
         }
 
