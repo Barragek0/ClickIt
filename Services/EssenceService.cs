@@ -1,6 +1,7 @@
 ﻿using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
+using System;
 #nullable enable
 namespace ClickIt.Services
 {
@@ -49,7 +50,7 @@ namespace ClickIt.Services
         }
         public Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
-            Element? corruptElement = label.Label.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);
+            Element? corruptElement = label.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);
             if (corruptElement == null)
                 return null;
             var random = new System.Random();

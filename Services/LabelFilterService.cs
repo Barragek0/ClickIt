@@ -53,7 +53,7 @@ namespace ClickIt.Services
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
-                if (label.ItemOnGround?.Path == null || !isInClickableArea(label.Label.GetClientRect().Center))
+                if (label.ItemOnGround?.Path == null || label.Label?.GetClientRect() is not RectangleF rect || label.Label?.IsValid != true || !isInClickableArea(rect.Center))
                     continue;
                 string path = label.ItemOnGround.Path;
                 if (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))
@@ -68,7 +68,7 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0)
                 return null;
             var clickSettings = CreateClickSettings();
-            
+
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
