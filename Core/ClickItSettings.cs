@@ -43,7 +43,11 @@ namespace ClickIt
         [ConditionalDisplay("RenderDebug")]
         [Menu("    Debug Frames", "Show/hide the debug screen area frames", 8, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
-        [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 3, 900)]
+        [Menu("Log messages", "This will flood your log with debug information. You should only enable this if you want to report a bug.", 3, 3000)]
+        public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
+        [Menu("Enable internal locking", "Enable internal locking for thread-safety. Disable to turn locks into no-ops for testing/debugging.", 4, 3000)]
+        public ToggleNode UseLocking { get; set; } = new ToggleNode(true);
+        [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 5, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
         [Menu("Accessibility", 1000)]
         public EmptyNode EmptyAccessibility { get; set; } = new EmptyNode();
