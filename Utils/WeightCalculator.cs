@@ -109,8 +109,20 @@ namespace ClickIt.Utils
             foreach (string upside in upsides)
             {
                 if (string.IsNullOrEmpty(upside)) continue;
-                int weight = _settings.GetModTier(upside);
-                totalWeight += weight;
+                // Upside may be stored as composite "Type|Id" (new format) or legacy id-only.
+                if (upside.Contains('|'))
+                {
+                    var parts = upside.Split(new[] { '|' }, 2);
+                    string type = parts[0];
+                    string id = parts.Length > 1 ? parts[1] : parts[0];
+                    int weight = _settings.GetModTier(id, type);
+                    totalWeight += weight;
+                }
+                else
+                {
+                    int weight = _settings.GetModTier(upside);
+                    totalWeight += weight;
+                }
             }
             return totalWeight - 1;  // Subtract the initial 1 to maintain consistency
         }
@@ -121,8 +133,19 @@ namespace ClickIt.Utils
             foreach (string downside in downsides)
             {
                 if (string.IsNullOrEmpty(downside)) continue;
-                int weight = _settings.GetModTier(downside);
-                totalWeight += weight;
+                if (downside.Contains('|'))
+                {
+                    var parts = downside.Split(new[] { '|' }, 2);
+                    string type = parts[0];
+                    string id = parts.Length > 1 ? parts[1] : parts[0];
+                    int weight = _settings.GetModTier(id, type);
+                    totalWeight += weight;
+                }
+                else
+                {
+                    int weight = _settings.GetModTier(downside);
+                    totalWeight += weight;
+                }
             }
             return totalWeight - 1;  // Subtract the initial 1 to fix +8 issue
         }

@@ -43,9 +43,9 @@ namespace ClickIt
         [ConditionalDisplay("RenderDebug")]
         [Menu("    Debug Frames", "Show/hide the debug screen area frames", 8, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
-        [Menu("Log messages", "This will flood your log with debug information. You should only enable this if you want to report a bug.", 3, 3000)]
+        [Menu("Log messages", "This will flood your log with debug information. You should only enable this if you want to report a bug.", 3, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
-        [Menu("Enable internal locking", "Enable internal locking for thread-safety. Disable to turn locks into no-ops for testing/debugging.", 4, 3000)]
+        [Menu("Enable internal locking", "Enable internal locking for thread-safety. Disable to turn locks into no-ops for testing/debugging.", 4, 900)]
         public ToggleNode UseLocking { get; set; } = new ToggleNode(true);
         [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 5, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
@@ -215,8 +215,8 @@ namespace ClickIt
         }
         private static void SetupModTableColumns()
         {
-            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 925);
+            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 125);
+            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 900);
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 75);
             ImGui.TableHeadersRow();
         }
@@ -297,14 +297,14 @@ namespace ClickIt
         }
         private void DrawUpsideModRow(string id, string name, string type)
         {
-            ImGui.PushID($"upside_{id}");
+            ImGui.PushID($"upside_{type}_{id}");
             ImGui.TableNextRow(ImGuiTableRowFlags.None);
             _ = ImGui.TableNextColumn();
-            ImGui.SetNextItemWidth(100);
-            int currentValue = GetModTier(id);
+            ImGui.SetNextItemWidth(125);
+            int currentValue = GetModTier(id, type);
             if (ImGui.SliderInt($"", ref currentValue, 1, 100))
             {
-                ModTiers[id] = currentValue;
+                ModTiers[BuildCompositeKey(type, id)] = currentValue;
             }
             ImGui.SetNextItemWidth(1000);
             _ = ImGui.TableNextColumn();
@@ -322,14 +322,14 @@ namespace ClickIt
         }
         private void DrawDownsideModRow(string id, string name, string type, string sectionHeader)
         {
-            ImGui.PushID($"downside_{id}");
+            ImGui.PushID($"downside_{type}_{id}");
             ImGui.TableNextRow(ImGuiTableRowFlags.None);
             _ = ImGui.TableNextColumn();
-            ImGui.SetNextItemWidth(100);
-            int currentValue = GetModTier(id);
+            ImGui.SetNextItemWidth(125);
+            int currentValue = GetModTier(id, type);
             if (ImGui.SliderInt($"", ref currentValue, 1, 100))
             {
-                ModTiers[id] = currentValue;
+                ModTiers[BuildCompositeKey(type, id)] = currentValue;
             }
             ImGui.SetNextItemWidth(1000);
             _ = ImGui.TableNextColumn();
@@ -349,28 +349,49 @@ namespace ClickIt
         }
         internal void InitializeDefaultWeights()
         {
-            foreach ((string id, _, _, int defaultValue) in AltarModsConstants.UpsideMods)
+            // Initialize composite (type|id) defaults only. Do NOT migrate or remove legacy id-only keys.
+            foreach ((string id, _, string type, int defaultValue) in AltarModsConstants.UpsideMods)
             {
-                if (!ModTiers.ContainsKey(id))
-                {
-                    ModTiers[id] = defaultValue;
-                }
+                string compositeKey = BuildCompositeKey(type, id);
+                if (ModTiers.ContainsKey(compositeKey))
+                    continue;
+
+                ModTiers[compositeKey] = defaultValue;
             }
-            foreach ((string id, _, _, int defaultValue) in AltarModsConstants.DownsideMods)
+
+            foreach ((string id, _, string type, int defaultValue) in AltarModsConstants.DownsideMods)
             {
-                if (!ModTiers.ContainsKey(id))
-                {
-                    ModTiers[id] = defaultValue;
-                }
+                string compositeKey = BuildCompositeKey(type, id);
+                if (ModTiers.ContainsKey(compositeKey))
+                    continue;
+
+                ModTiers[compositeKey] = defaultValue;
             }
+        }
+
+        private static string BuildCompositeKey(string type, string id)
+        {
+            return $"{type}|{id}";
         }
         public void EnsureAllModsHaveWeights()
         {
             InitializeDefaultWeights();
         }
+        // Backward compatible single-argument lookup (tries id-only then returns 1)
         public int GetModTier(string modId)
         {
-            return ModTiers.TryGetValue(modId ?? "", out int value) ? value : 1;
+            if (string.IsNullOrEmpty(modId)) return 1;
+            return ModTiers.TryGetValue(modId, out int value) ? value : 1;
+        }
+
+        // New getter that queries by both type and id. Does NOT fall back to id-only lookup
+        // to ensure per-type weights are independent. Returns 1 if composite key not present.
+        public int GetModTier(string modId, string type)
+        {
+            if (string.IsNullOrEmpty(modId)) return 1;
+            string compositeKey = BuildCompositeKey(type, modId);
+            if (ModTiers.TryGetValue(compositeKey, out int value)) return value;
+            return 1;
         }
         public Dictionary<string, int> ModTiers { get; set; } = new Dictionary<string, int>();
         private static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)

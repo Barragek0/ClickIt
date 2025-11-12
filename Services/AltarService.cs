@@ -247,6 +247,16 @@ namespace ClickIt.Services
                     {
                         isUpside = cachedResult.isUpside;
                         matchedId = cachedResult.matchedId;
+                        // Normalize legacy cached matchedId (id-only) to composite "Type|Id" using negativeModType
+                        if (!string.IsNullOrEmpty(matchedId) && !matchedId.Contains('|'))
+                        {
+                            string cleanedNegative = new string(negativeModType.Where(char.IsLetter).ToArray());
+                            string modTarget = GetModTarget(cleanedNegative);
+                            if (!string.IsNullOrEmpty(modTarget))
+                            {
+                                matchedId = $"{modTarget}|{matchedId}";
+                            }
+                        }
                         return !string.IsNullOrEmpty(matchedId);
                     }
 
@@ -301,7 +311,7 @@ namespace ClickIt.Services
                         Type.Equals(modTarget, StringComparison.OrdinalIgnoreCase))
                     {
                         isUpside = searchList.IsUpside;
-                        matchedId = Id;
+                        matchedId = $"{Type}|{Id}";
                         return true;
                     }
                 }
