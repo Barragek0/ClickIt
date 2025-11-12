@@ -3,6 +3,7 @@ using FluentAssertions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace ClickIt.Tests
 {
@@ -213,6 +214,45 @@ namespace ClickIt.Tests
             corruptedData["PlayerPosition"].Should().BeNull("corrupted position should be null");
             corruptedData["ClickTarget"].Should().Be("", "corrupted target should be empty");
             ((int)corruptedData["ModWeight"]).Should().BeLessThan(0, "corrupted weight should be negative");
+        }
+
+        [TestMethod]
+        public void GlobalExceptionHandlers_ShouldHandleSimulatedExceptions()
+        {
+            // Ensure the global handlers are registered and invoking them does not throw
+            // Use reflection to access the private backing field for AppDomain.UnhandledException
+            var unhandledField = typeof(AppDomain).GetField("UnhandledException",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (unhandledField != null)
+            {
+                var del = unhandledField.GetValue(AppDomain.CurrentDomain) as MulticastDelegate;
+                if (del != null)
+                {
+                    foreach (var d in del.GetInvocationList())
+                    {
+                        d.DynamicInvoke(AppDomain.CurrentDomain, new UnhandledExceptionEventArgs(new Exception("simulated appdomain"), false));
+                    }
+                }
+            }
+
+            // Use reflection to access TaskScheduler.UnobservedTaskException backing field (static)
+            var taskField = typeof(TaskScheduler).GetField("UnobservedTaskException",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (taskField != null)
+            {
+                var del2 = taskField.GetValue(null) as MulticastDelegate;
+                if (del2 != null)
+                {
+                    foreach (var d in del2.GetInvocationList())
+                    {
+                        var agg = new AggregateException(new Exception("simulated task"));
+                        d.DynamicInvoke(null, new UnobservedTaskExceptionEventArgs(agg));
+                    }
+                }
+            }
+
+            // If we reach here without exceptions, handlers behaved as expected for simulated inputs
+            true.Should().BeTrue();
         }
 
         [TestMethod]

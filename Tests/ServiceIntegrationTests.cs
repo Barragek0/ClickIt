@@ -506,6 +506,7 @@ namespace ClickIt.Tests
             public bool CorruptAllEssences { get; set; } = false;
             public int ClickDistance { get; set; } = 95;
             private readonly Dictionary<string, int> _modWeights = new Dictionary<string, int>();
+            public Dictionary<string, int> ModTiers => _modWeights;
 
             public void SetModWeight(string modId, int weight) => _modWeights[modId] = weight;
             public int GetModTier(string modId) => _modWeights.TryGetValue(modId, out int value) ? value : 50;
@@ -597,25 +598,30 @@ namespace ClickIt.Tests
                     TopDownsideWeight = topDownsideWeight,
                     BottomUpsideWeight = bottomUpsideWeight,
                     BottomDownsideWeight = bottomDownsideWeight,
-                    TopUpside1Weight = altar.TopMods.Upsides.Any() ? _settings.GetModTier(altar.TopMods.Upsides[0]) : 0,
-                    TopDownside1Weight = altar.TopMods.Downsides.Any() ? _settings.GetModTier(altar.TopMods.Downsides[0]) : 0,
-                    BottomUpside1Weight = altar.BottomMods.Upsides.Any() ? _settings.GetModTier(altar.BottomMods.Upsides[0]) : 0,
-                    BottomDownside1Weight = altar.BottomMods.Downsides.Any() ? _settings.GetModTier(altar.BottomMods.Downsides[0]) : 0,
-                    TopUpside2Weight = altar.TopMods.Upsides.Count > 1 ? _settings.GetModTier(altar.TopMods.Upsides[1]) : 0,
-                    TopDownside2Weight = altar.TopMods.Downsides.Count > 1 ? _settings.GetModTier(altar.TopMods.Downsides[1]) : 0,
-                    BottomUpside2Weight = altar.BottomMods.Upsides.Count > 1 ? _settings.GetModTier(altar.BottomMods.Upsides[1]) : 0,
-                    BottomDownside2Weight = altar.BottomMods.Downsides.Count > 1 ? _settings.GetModTier(altar.BottomMods.Downsides[1]) : 0,
-                    TopUpside3Weight = altar.TopMods.Upsides.Count > 2 ? _settings.GetModTier(altar.TopMods.Upsides[2]) : 0,
-                    TopDownside3Weight = altar.TopMods.Downsides.Count > 2 ? _settings.GetModTier(altar.TopMods.Downsides[2]) : 0,
-                    BottomUpside3Weight = altar.BottomMods.Upsides.Count > 2 ? _settings.GetModTier(altar.BottomMods.Upsides[2]) : 0,
-                    BottomDownside3Weight = altar.BottomMods.Downsides.Count > 2 ? _settings.GetModTier(altar.BottomMods.Downsides[2]) : 0,
-                    TopUpside4Weight = altar.TopMods.Upsides.Count > 3 ? _settings.GetModTier(altar.TopMods.Upsides[3]) : 0,
-                    TopDownside4Weight = altar.TopMods.Downsides.Count > 3 ? _settings.GetModTier(altar.TopMods.Downsides[3]) : 0,
-                    BottomUpside4Weight = altar.BottomMods.Upsides.Count > 3 ? _settings.GetModTier(altar.BottomMods.Upsides[3]) : 0,
-                    BottomDownside4Weight = altar.BottomMods.Downsides.Count > 3 ? _settings.GetModTier(altar.BottomMods.Downsides[3]) : 0,
+                    TopUpside1Weight = GetModWeightSafely(altar.TopMods.Upsides, 0),
+                    TopDownside1Weight = GetModWeightSafely(altar.TopMods.Downsides, 0),
+                    BottomUpside1Weight = GetModWeightSafely(altar.BottomMods.Upsides, 0),
+                    BottomDownside1Weight = GetModWeightSafely(altar.BottomMods.Downsides, 0),
+                    TopUpside2Weight = GetModWeightSafely(altar.TopMods.Upsides, 1),
+                    TopDownside2Weight = GetModWeightSafely(altar.TopMods.Downsides, 1),
+                    BottomUpside2Weight = GetModWeightSafely(altar.BottomMods.Upsides, 1),
+                    BottomDownside2Weight = GetModWeightSafely(altar.BottomMods.Downsides, 1),
+                    TopUpside3Weight = GetModWeightSafely(altar.TopMods.Upsides, 2),
+                    TopDownside3Weight = GetModWeightSafely(altar.TopMods.Downsides, 2),
+                    BottomUpside3Weight = GetModWeightSafely(altar.BottomMods.Upsides, 2),
+                    BottomDownside3Weight = GetModWeightSafely(altar.BottomMods.Downsides, 2),
+                    TopUpside4Weight = GetModWeightSafely(altar.TopMods.Upsides, 3),
+                    TopDownside4Weight = GetModWeightSafely(altar.TopMods.Downsides, 3),
+                    BottomUpside4Weight = GetModWeightSafely(altar.BottomMods.Upsides, 3),
+                    BottomDownside4Weight = GetModWeightSafely(altar.BottomMods.Downsides, 3),
                     TopWeight = topDownsideWeight > 0 ? System.Math.Round(topUpsideWeight / topDownsideWeight, 2) : 0,
                     BottomWeight = bottomDownsideWeight > 0 ? System.Math.Round(bottomUpsideWeight / bottomDownsideWeight, 2) : 0
                 };
+            }
+
+            private int GetModWeightSafely(List<string> mods, int index)
+            {
+                return mods.Count > index ? _settings.GetModTier(mods[index]) : 0;
             }
 
             public bool HasWeightOverrides(MockAltarWeights weights)
@@ -816,22 +822,40 @@ namespace ClickIt.Tests
             public decimal TopDownsideWeight { get; set; }
             public decimal BottomUpsideWeight { get; set; }
             public decimal BottomDownsideWeight { get; set; }
-            public decimal TopUpside1Weight { get; set; }
+            // Support for 8 mods on top and bottom (downsides)
             public decimal TopDownside1Weight { get; set; }
-            public decimal BottomUpside1Weight { get; set; }
-            public decimal BottomDownside1Weight { get; set; }
-            public decimal TopUpside2Weight { get; set; }
             public decimal TopDownside2Weight { get; set; }
-            public decimal BottomUpside2Weight { get; set; }
-            public decimal BottomDownside2Weight { get; set; }
-            public decimal TopUpside3Weight { get; set; }
             public decimal TopDownside3Weight { get; set; }
-            public decimal BottomUpside3Weight { get; set; }
-            public decimal BottomDownside3Weight { get; set; }
-            public decimal TopUpside4Weight { get; set; }
             public decimal TopDownside4Weight { get; set; }
-            public decimal BottomUpside4Weight { get; set; }
+            public decimal TopDownside5Weight { get; set; }
+            public decimal TopDownside6Weight { get; set; }
+            public decimal TopDownside7Weight { get; set; }
+            public decimal TopDownside8Weight { get; set; }
+            public decimal BottomDownside1Weight { get; set; }
+            public decimal BottomDownside2Weight { get; set; }
+            public decimal BottomDownside3Weight { get; set; }
             public decimal BottomDownside4Weight { get; set; }
+            public decimal BottomDownside5Weight { get; set; }
+            public decimal BottomDownside6Weight { get; set; }
+            public decimal BottomDownside7Weight { get; set; }
+            public decimal BottomDownside8Weight { get; set; }
+            // Support for 8 mods on top and bottom (upsides)
+            public decimal TopUpside1Weight { get; set; }
+            public decimal TopUpside2Weight { get; set; }
+            public decimal TopUpside3Weight { get; set; }
+            public decimal TopUpside4Weight { get; set; }
+            public decimal TopUpside5Weight { get; set; }
+            public decimal TopUpside6Weight { get; set; }
+            public decimal TopUpside7Weight { get; set; }
+            public decimal TopUpside8Weight { get; set; }
+            public decimal BottomUpside1Weight { get; set; }
+            public decimal BottomUpside2Weight { get; set; }
+            public decimal BottomUpside3Weight { get; set; }
+            public decimal BottomUpside4Weight { get; set; }
+            public decimal BottomUpside5Weight { get; set; }
+            public decimal BottomUpside6Weight { get; set; }
+            public decimal BottomUpside7Weight { get; set; }
+            public decimal BottomUpside8Weight { get; set; }
             public decimal TopWeight { get; set; }
             public decimal BottomWeight { get; set; }
         }
@@ -846,14 +870,37 @@ namespace ClickIt.Tests
         {
             public List<string> Upsides { get; set; } = new List<string>();
             public List<string> Downsides { get; set; } = new List<string>();
-            public string FirstUpside => Upsides.Count > 0 ? Upsides[0] : "";
-            public string SecondUpside => Upsides.Count > 1 ? Upsides[1] : "";
-            public string ThirdUpside => Upsides.Count > 2 ? Upsides[2] : "";
-            public string FourthUpside => Upsides.Count > 3 ? Upsides[3] : "";
-            public string FirstDownside => Downsides.Count > 0 ? Downsides[0] : "";
-            public string SecondDownside => Downsides.Count > 1 ? Downsides[1] : "";
-            public string ThirdDownside => Downsides.Count > 2 ? Downsides[2] : "";
-            public string FourthDownside => Downsides.Count > 3 ? Downsides[3] : "";
+
+            // Clean method to get mod by index with bounds checking (matching the refactored SecondaryAltarComponent)
+            public string GetUpsideByIndex(int index)
+            {
+                if (index < 0 || index >= 4) return "";
+                return Upsides.Count > index ? Upsides[index] : "";
+            }
+
+            public string GetDownsideByIndex(int index)
+            {
+                if (index < 0 || index >= 4) return "";
+                return Downsides.Count > index ? Downsides[index] : "";
+            }
+
+            // Backward compatibility properties for existing test code
+            public string FirstUpside => GetUpsideByIndex(0);
+            public string SecondUpside => GetUpsideByIndex(1);
+            public string ThirdUpside => GetUpsideByIndex(2);
+            public string FourthUpside => GetUpsideByIndex(3);
+            public string FifthUpside => GetUpsideByIndex(4);
+            public string SixthUpside => GetUpsideByIndex(5);
+            public string SeventhUpside => GetUpsideByIndex(6);
+            public string EighthUpside => GetUpsideByIndex(7);
+            public string FirstDownside => GetDownsideByIndex(0);
+            public string SecondDownside => GetDownsideByIndex(1);
+            public string ThirdDownside => GetDownsideByIndex(2);
+            public string FourthDownside => GetDownsideByIndex(3);
+            public string FifthDownside => GetDownsideByIndex(4);
+            public string SixthDownside => GetDownsideByIndex(5);
+            public string SeventhDownside => GetDownsideByIndex(6);
+            public string EighthDownside => GetDownsideByIndex(7);
         }
 
         public class MockLabel

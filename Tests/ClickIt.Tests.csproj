@@ -6,6 +6,9 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,12 +19,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\Constants\AltarModsConstants.cs">
-      <Link>Shared\AltarModsConstants.cs</Link>
-    </Compile>
-    <Compile Include="..\Constants\Constants.cs">
-      <Link>Shared\Constants.cs</Link>
-    </Compile>
+    <!-- Include Constants files directly to avoid build dependencies -->
+    <Compile Include="..\Constants\AltarModsConstants.cs" />
+    <Compile Include="..\Constants\Constants.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy constants to output for tests -->
+    <None Include="..\Constants\AltarModsConstants.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Constants\Constants.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
