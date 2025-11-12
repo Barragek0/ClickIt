@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using ClickIt.Components;
 using ClickIt.Services;
+using ClickIt.Utils;
 using System.Linq;
 using ClickIt.Properties;
 
@@ -20,18 +21,20 @@ namespace ClickIt.Rendering
         private readonly Graphics _graphics;
         private readonly AltarService? _altarService;
         private readonly AreaService? _areaService;
+        private readonly WeightCalculator? _weightCalculator;
 
         private readonly Stopwatch _debugRenderTimer = new Stopwatch();
         private readonly Queue<long> _debugRenderTimings = new Queue<long>(60);
         private long _lastDebugRenderTime = 0;
         private readonly object _timingLock = new object();
 
-        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null)
+        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null)
         {
             _plugin = plugin;
             _graphics = graphics;
             _altarService = altarService;
             _areaService = areaService;
+            _weightCalculator = weightCalculator;
         }
 
         public void RenderDebugFrames(ClickItSettings settings)
@@ -129,30 +132,25 @@ namespace ClickIt.Rendering
             // Show input blocking state
             if (_plugin is ClickIt clickItPlugin)
             {
-                try
+                var inputBlockedField = typeof(ClickIt).GetField("isInputCurrentlyBlocked",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (inputBlockedField?.GetValue(clickItPlugin) is bool isBlocked)
                 {
-                    var inputBlockedField = typeof(ClickIt).GetField("isInputCurrentlyBlocked",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (inputBlockedField?.GetValue(clickItPlugin) is bool isBlocked)
-                    {
-                        Color blockedColor = isBlocked ? Color.Red : Color.LightGreen;
-                        _graphics.DrawText($"Input Blocked: {isBlocked}", new Vector2(xPos, yPos), blockedColor, 16);
-                        yPos += lineHeight;
-                    }
-
-                    var lastHotkeyTimerField = typeof(ClickIt).GetField("lastHotkeyReleaseTimer",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (lastHotkeyTimerField?.GetValue(clickItPlugin) is Stopwatch hotkeyTimer)
-                    {
-                        _graphics.DrawText($"Hotkey Release Timer: {hotkeyTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
-                        yPos += lineHeight;
-                    }
-                }
-                catch
-                {
-                    _graphics.DrawText($"Input State Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    Color blockedColor = isBlocked ? Color.Red : Color.LightGreen;
+                    _graphics.DrawText($"Input Blocked: {isBlocked}", new Vector2(xPos, yPos), blockedColor, 16);
                     yPos += lineHeight;
                 }
+
+                var lastHotkeyTimerField = typeof(ClickIt).GetField("lastHotkeyReleaseTimer",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (lastHotkeyTimerField?.GetValue(clickItPlugin) is Stopwatch hotkeyTimer)
+                {
+                    _graphics.DrawText($"Hotkey Release Timer: {hotkeyTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                    yPos += lineHeight;
+                }
+
+                _graphics.DrawText($"Input State Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                yPos += lineHeight;
             }
 
             return yPos;
@@ -176,23 +174,18 @@ namespace ClickIt.Rendering
             // Show cached labels information
             if (_plugin is ClickIt clickItPlugin)
             {
-                try
+                var cachedLabelsField = typeof(ClickIt).GetProperty("CachedLabels",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (cachedLabelsField?.GetValue(clickItPlugin) is TimeCache<List<LabelOnGround>> cachedLabels)
                 {
-                    var cachedLabelsField = typeof(ClickIt).GetProperty("CachedLabels",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (cachedLabelsField?.GetValue(clickItPlugin) is TimeCache<List<LabelOnGround>> cachedLabels)
-                    {
-                        var labels = cachedLabels.Value;
-                        int cachedCount = labels?.Count ?? 0;
-                        _graphics.DrawText($"Cached Labels: {cachedCount}", new Vector2(xPos, yPos), Color.White, 16);
-                        yPos += lineHeight;
-                    }
-                }
-                catch
-                {
-                    _graphics.DrawText($"Cache Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    var labels = cachedLabels.Value;
+                    int cachedCount = labels?.Count ?? 0;
+                    _graphics.DrawText($"Cached Labels: {cachedCount}", new Vector2(xPos, yPos), Color.White, 16);
                     yPos += lineHeight;
                 }
+
+                _graphics.DrawText($"Cache Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                yPos += lineHeight;
             }
 
             // Show player state
@@ -234,31 +227,163 @@ namespace ClickIt.Rendering
         {
             _graphics.DrawText($"Altar {altarNumber}:", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            if (altar?.TopMods?.Upsides != null && altar.TopMods.Upsides.Count > 0)
+
+            // Calculate weights if WeightCalculator is available
+            Utils.AltarWeights? weights = null;
+            if (_weightCalculator != null)
             {
-                _graphics.DrawText($"  Top Mods ({altar.TopMods.Upsides.Count}):", new Vector2(xPos, yPos), Color.White, 14);
-                yPos += lineHeight;
-                for (int i = 0; i < altar.TopMods.Upsides.Count && i < 3; i++)
-                {
-                    string mod = altar.TopMods.Upsides[i];
-                    Color color = Color.LightBlue;
-                    string prefix = $"Mod{i + 1}";
-                    yPos = RenderWrappedText($"      {prefix}: {mod}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
-                }
+                weights = _weightCalculator.CalculateAltarWeights(altar);
             }
-            if (altar?.BottomMods?.Downsides != null && altar.BottomMods.Downsides.Count > 0)
+
+            // Top Mods: Show both upsides and downsides
+            if (altar?.TopMods != null)
             {
-                _graphics.DrawText($"  Bottom Mods ({altar.BottomMods.Downsides.Count}):", new Vector2(xPos, yPos), Color.White, 14);
-                yPos += lineHeight;
-                for (int i = 0; i < altar.BottomMods.Downsides.Count && i < 3; i++)
-                {
-                    string mod = altar.BottomMods.Downsides[i];
-                    Color color = Color.LightCoral;
-                    string prefix = $"Mod{i + 1}";
-                    yPos = RenderWrappedText($"      {prefix}: {mod}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
-                }
+                yPos = RenderTopModsSection(xPos, yPos, lineHeight, altar.TopMods, weights);
             }
+
+            // Bottom Mods: Show both upsides and downsides
+            if (altar?.BottomMods != null)
+            {
+                yPos = RenderBottomModsSection(xPos, yPos, lineHeight, altar.BottomMods, weights);
+            }
+
             return yPos;
+        }
+
+        private int RenderTopModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent topMods, Utils.AltarWeights? weights)
+        {
+            int topUpsidesCount = topMods.Upsides?.Count ?? 0;
+            int topDownsidesCount = topMods.Downsides?.Count ?? 0;
+            _graphics.DrawText($"  Top Mods (Upsides: {topUpsidesCount}, Downsides: {topDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
+            yPos += lineHeight;
+
+            // Show top mod upsides
+            for (int i = 0; i < topUpsidesCount && i < 8; i++)
+            {
+                string mod = topMods.Upsides?[i] ?? "";
+                if (!string.IsNullOrEmpty(mod))
+                {
+                    Color color = Color.LightBlue;
+                    string prefix = $"{i + 1}";
+                    string weightText = weights.HasValue ? $" ({GetTopUpsideWeight(weights.Value, i)})" : "";
+                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
+                }
+            }
+
+            // Show top mod downsides
+            for (int i = 0; i < topDownsidesCount && i < 8; i++)
+            {
+                string mod = topMods.Downsides?[i] ?? "";
+                if (!string.IsNullOrEmpty(mod))
+                {
+                    Color color = Color.LightCoral;
+                    string prefix = $"{i + 1}";
+                    string weightText = weights.HasValue ? $" ({GetTopDownsideWeight(weights.Value, i)})" : "";
+                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
+                }
+            }
+
+            return yPos;
+        }
+
+        private int RenderBottomModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent bottomMods, Utils.AltarWeights? weights)
+        {
+            int bottomUpsidesCount = bottomMods.Upsides?.Count ?? 0;
+            int bottomDownsidesCount = bottomMods.Downsides?.Count ?? 0;
+            _graphics.DrawText($"  Bottom Mods (Upsides: {bottomUpsidesCount}, Downsides: {bottomDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
+            yPos += lineHeight;
+
+            // Show bottom mod upsides
+            for (int i = 0; i < bottomUpsidesCount && i < 8; i++)
+            {
+                string mod = bottomMods.Upsides?[i] ?? "";
+                if (!string.IsNullOrEmpty(mod))
+                {
+                    Color color = Color.LightBlue;
+                    string prefix = $"{i + 1}";
+                    string weightText = weights.HasValue ? $" ({GetBottomUpsideWeight(weights.Value, i)})" : "";
+                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
+                }
+            }
+
+            // Show bottom mod downsides
+            for (int i = 0; i < bottomDownsidesCount && i < 8; i++)
+            {
+                string mod = bottomMods.Downsides?[i] ?? "";
+                if (!string.IsNullOrEmpty(mod))
+                {
+                    Color color = Color.LightCoral;
+                    string prefix = $"{i + 1}";
+                    string weightText = weights.HasValue ? $" ({GetBottomDownsideWeight(weights.Value, i)})" : "";
+                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
+                }
+            }
+
+            return yPos;
+        }
+
+        private decimal GetTopUpsideWeight(Utils.AltarWeights weights, int index)
+        {
+            return index switch
+            {
+                0 => weights.TopUpside1Weight,
+                1 => weights.TopUpside2Weight,
+                2 => weights.TopUpside3Weight,
+                3 => weights.TopUpside4Weight,
+                4 => weights.TopUpside5Weight,
+                5 => weights.TopUpside6Weight,
+                6 => weights.TopUpside7Weight,
+                7 => weights.TopUpside8Weight,
+                _ => 0
+            };
+        }
+
+        private decimal GetTopDownsideWeight(Utils.AltarWeights weights, int index)
+        {
+            return index switch
+            {
+                0 => weights.TopDownside1Weight,
+                1 => weights.TopDownside2Weight,
+                2 => weights.TopDownside3Weight,
+                3 => weights.TopDownside4Weight,
+                4 => weights.TopDownside5Weight,
+                5 => weights.TopDownside6Weight,
+                6 => weights.TopDownside7Weight,
+                7 => weights.TopDownside8Weight,
+                _ => 0
+            };
+        }
+
+        private decimal GetBottomUpsideWeight(Utils.AltarWeights weights, int index)
+        {
+            return index switch
+            {
+                0 => weights.BottomUpside1Weight,
+                1 => weights.BottomUpside2Weight,
+                2 => weights.BottomUpside3Weight,
+                3 => weights.BottomUpside4Weight,
+                4 => weights.BottomUpside5Weight,
+                5 => weights.BottomUpside6Weight,
+                6 => weights.BottomUpside7Weight,
+                7 => weights.BottomUpside8Weight,
+                _ => 0
+            };
+        }
+
+        private decimal GetBottomDownsideWeight(Utils.AltarWeights weights, int index)
+        {
+            return index switch
+            {
+                0 => weights.BottomDownside1Weight,
+                1 => weights.BottomDownside2Weight,
+                2 => weights.BottomDownside3Weight,
+                3 => weights.BottomDownside4Weight,
+                4 => weights.BottomDownside5Weight,
+                5 => weights.BottomDownside6Weight,
+                6 => weights.BottomDownside7Weight,
+                7 => weights.BottomDownside8Weight,
+                _ => 0
+            };
         }
         public int RenderWrappedText(string text, Vector2 position, Color color, int fontSize, int lineHeight, int maxCharsPerLine)
         {
@@ -266,22 +391,33 @@ namespace ClickIt.Rendering
                 return (int)(position.Y + lineHeight);
             int currentY = (int)position.Y;
             int startIndex = 0;
-            while (startIndex < text.Length)
+
+            // Count leading spaces to preserve indentation
+            int leadingSpaces = 0;
+            while (leadingSpaces < text.Length && text[leadingSpaces] == ' ')
             {
-                int endIndex = Math.Min(startIndex + maxCharsPerLine, text.Length);
-                if (endIndex < text.Length)
+                leadingSpaces++;
+            }
+            string indentation = new string(' ', leadingSpaces);
+            string content = text.Substring(leadingSpaces);
+
+            while (startIndex < content.Length)
+            {
+                int endIndex = Math.Min(startIndex + maxCharsPerLine, content.Length);
+                if (endIndex < content.Length)
                 {
-                    int lastSpaceIndex = text.LastIndexOf(' ', endIndex - 1, Math.Min(maxCharsPerLine, endIndex - startIndex));
+                    int lastSpaceIndex = content.LastIndexOf(' ', endIndex - 1, Math.Min(maxCharsPerLine, endIndex - startIndex));
                     if (lastSpaceIndex > startIndex)
                     {
                         endIndex = lastSpaceIndex;
                     }
                 }
-                string line = text.Substring(startIndex, endIndex - startIndex).TrimStart();
-                _graphics.DrawText(line, new Vector2(position.X, currentY), color, fontSize);
+                string line = content.Substring(startIndex, endIndex - startIndex).TrimEnd();
+                // Add back the indentation
+                _graphics.DrawText(indentation + line, new Vector2(position.X, currentY), color, fontSize);
                 currentY += lineHeight;
                 startIndex = endIndex;
-                if (startIndex < text.Length && text[startIndex] == ' ')
+                if (startIndex < content.Length && content[startIndex] == ' ')
                 {
                     startIndex++;
                 }
@@ -395,54 +531,49 @@ namespace ClickIt.Rendering
             // Access timing information from the main plugin class via reflection
             if (_plugin is ClickIt clickItPlugin2)
             {
-                try
+                var altarCoroutineTimerField = typeof(ClickIt).GetField("altarCoroutineTimer",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var clickCoroutineTimerField = typeof(ClickIt).GetField("clickCoroutineTimer",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (altarCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch altarTimer)
                 {
-                    var altarCoroutineTimerField = typeof(ClickIt).GetField("altarCoroutineTimer",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    var clickCoroutineTimerField = typeof(ClickIt).GetField("clickCoroutineTimer",
+                    // Get the timings queue for averaging
+                    var altarTimingsField = typeof(ClickIt).GetField("altarCoroutineTimings",
                         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-                    if (altarCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch altarTimer)
+                    string displayText = $"Altar Coroutine: {altarTimer.ElapsedMilliseconds} ms";
+
+                    if (altarTimingsField?.GetValue(clickItPlugin2) is Queue<long> altarTimings && altarTimings.Count > 0)
                     {
-                        // Get the timings queue for averaging
-                        var altarTimingsField = typeof(ClickIt).GetField("altarCoroutineTimings",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                        string displayText = $"Altar Coroutine: {altarTimer.ElapsedMilliseconds} ms";
-
-                        if (altarTimingsField?.GetValue(clickItPlugin2) is Queue<long> altarTimings && altarTimings.Count > 0)
-                        {
-                            double average = altarTimings.Average();
-                            displayText += $" (avg: {average:F1} ms)";
-                        }
-
-                        _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
-                        yPos += lineHeight;
+                        double average = altarTimings.Average();
+                        displayText += $" (avg: {average:F1} ms)";
                     }
 
-                    if (clickCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch clickTimer)
-                    {
-                        // Get the timings queue for averaging
-                        var clickTimingsField = typeof(ClickIt).GetField("clickCoroutineTimings",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                        string displayText = $"Click Coroutine: {clickTimer.ElapsedMilliseconds} ms";
-
-                        if (clickTimingsField?.GetValue(clickItPlugin2) is Queue<long> clickTimings && clickTimings.Count > 0)
-                        {
-                            double average = clickTimings.Average();
-                            displayText += $" (avg: {average:F1} ms)";
-                        }
-
-                        _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
-                        yPos += lineHeight;
-                    }
-                }
-                catch
-                {
-                    _graphics.DrawText($"Timing Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
                     yPos += lineHeight;
                 }
+
+                if (clickCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch clickTimer)
+                {
+                    // Get the timings queue for averaging
+                    var clickTimingsField = typeof(ClickIt).GetField("clickCoroutineTimings",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    string displayText = $"Click Coroutine: {clickTimer.ElapsedMilliseconds} ms";
+
+                    if (clickTimingsField?.GetValue(clickItPlugin2) is Queue<long> clickTimings && clickTimings.Count > 0)
+                    {
+                        double average = clickTimings.Average();
+                        displayText += $" (avg: {average:F1} ms)";
+                    }
+
+                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
+                    yPos += lineHeight;
+                }
+
+                _graphics.DrawText($"Timing Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                yPos += lineHeight;
             }
 
             return yPos;
