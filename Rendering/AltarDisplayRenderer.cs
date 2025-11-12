@@ -174,16 +174,16 @@ namespace ClickIt.Rendering
             // Dangerous downsides: prefer the other option
             if (topHasDangerousDownside)
             {
-                _deferredTextQueue.Enqueue("CRITICAL: Weighting overridden\n\nBottom chosen due to top downside 90+", textPos1, Color.Red, 30);
-                _graphics?.DrawFrame(topModsRect, Color.Red, 3);
-                _graphics?.DrawFrame(bottomModsRect, Color.Green, 2);
+                _deferredTextQueue.Enqueue("Weighting overridden\n\nBottom chosen due to top downside 90+", textPos1, Color.Red, 30);
+                _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 3);
+                _graphics?.DrawFrame(bottomModsRect, Color.LawnGreen, 2);
                 return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
             }
             if (bottomHasDangerousDownside)
             {
-                _deferredTextQueue.Enqueue("CRITICAL: Weighting overridden\n\nTop chosen due to bottom downside 90+", textPos1, Color.Red, 30);
-                _graphics?.DrawFrame(topModsRect, Color.Green, 2);
-                _graphics?.DrawFrame(bottomModsRect, Color.Red, 3);
+                _deferredTextQueue.Enqueue("Weighting overridden\n\nTop chosen due to bottom downside 90+", textPos1, Color.Red, 30);
+                _graphics?.DrawFrame(topModsRect, Color.LawnGreen, 2);
+                _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 3);
                 return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
             }
 

@@ -75,7 +75,7 @@ namespace ClickIt
                     LogError($"Unhandled exception ({ex.GetType().Name}): {ex.Message}", 10);
                     LogError($"Stack: {ex.StackTrace}", 10);
                 }
-                LogError($"UnhandledException Event: IsTerminating={e.IsTerminating}", 5);
+                LogError($"UnhandledException Event: IsTerminating={e.IsTerminating}", 10);
                 ForceUnblockInput("Unhandled exception");
             };
 
