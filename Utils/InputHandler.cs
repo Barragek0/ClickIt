@@ -97,155 +97,64 @@ namespace ClickIt.Utils
 
         public void PerformClick(Vector2 position)
         {
-            try
+            _logMessage?.Invoke("InputHandler: PerformClick - entering", 5);
+
+            if (_settings.BlockUserInput.Value && _safeBlockInput != null)
             {
-                _logMessage?.Invoke("InputHandler: PerformClick - entering", 5);
-                // Write a small diagnostic entry for this click attempt to a temp log file.
-                try
-                {
-                    var diag = new StringBuilder();
-                    diag.AppendLine($"--- ClickIt Diagnostic {DateTime.UtcNow:O} ---");
-                    diag.AppendLine($"Position: {position}");
-                    diag.AppendLine($"ThreadId: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
-                    diag.AppendLine($"StackTrace:\n{Environment.StackTrace}");
-                    try
-                    {
-                        var fg = GetActiveWindowTitle();
-                        diag.AppendLine($"ForegroundWindow: {fg}");
-                    }
-                    catch (Exception ex)
-                    {
-                        diag.AppendLine($"ForegroundWindow: (failed to read) {ex.Message}");
-                    }
-                    try
-                    {
-                        var before = Mouse.GetCursorPosition();
-                        diag.AppendLine($"CursorBefore: {before}");
-                    }
-                    catch { }
-                    diag.AppendLine($"BlockUserInputSetting: {_settings.BlockUserInput.Value}");
-                    var diagFile = Path.Combine(Path.GetTempPath(), "ClickIt_ClickDiagnostics.log");
-                    File.AppendAllText(diagFile, diag.ToString());
-                }
-                catch { }
+                _logMessage?.Invoke("InputHandler: Requesting system input block", 5);
+                _safeBlockInput(true);
+                _logMessage?.Invoke("InputHandler: System input block requested", 5);
+            }
+
+            _logMessage?.Invoke($"InputHandler: Setting cursor pos to {position}", 5);
+            var swTotal = Stopwatch.StartNew();
+            var before = Mouse.GetCursorPosition();
+            _logMessage?.Invoke($"InputHandler: Cursor before move: {before}", 5);
+
+            var sw = Stopwatch.StartNew();
+            Input.SetCursorPos(position);
+            sw.Stop();
+            _logMessage?.Invoke($"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
+
+            var after = Mouse.GetCursorPosition();
+            _logMessage?.Invoke($"InputHandler: Cursor after move: {after}", 5);
+
+            // Small delay to ensure cursor movement has taken effect before click
+            Thread.Sleep(15);
+
+            sw.Restart();
+            if (_settings.LeftHanded.Value)
+            {
+                _logMessage?.Invoke("InputHandler: Performing right click (left-handed)", 5);
+                Mouse.RightClick();
+            }
+            else
+            {
+                _logMessage?.Invoke("InputHandler: Performing left click", 5);
+                Mouse.LeftClick();
+            }
+            sw.Stop();
+            _logMessage?.Invoke($"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
+
+            swTotal.Stop();
+            // If the whole operation took too long, attempt to clear any stuck input block and log
+            if (swTotal.ElapsedMilliseconds > 500)
+            {
+                _logMessage?.Invoke($"InputHandler: WARNING - PerformClick took {swTotal.ElapsedMilliseconds} ms, attempting to release input block", 10);
                 if (_settings.BlockUserInput.Value && _safeBlockInput != null)
                 {
-                    _logMessage?.Invoke("InputHandler: Requesting system input block", 5);
-                    _safeBlockInput(true);
-                    _logMessage?.Invoke("InputHandler: System input block requested", 5);
-                }
-
-                _logMessage?.Invoke($"InputHandler: Setting cursor pos to {position}", 5);
-                var swTotal = Stopwatch.StartNew();
-                try
-                {
-                    var before = Mouse.GetCursorPosition();
-                    _logMessage?.Invoke($"InputHandler: Cursor before move: {before}", 5);
-                }
-                catch { }
-
-                var sw = Stopwatch.StartNew();
-                Input.SetCursorPos(position);
-                sw.Stop();
-                _logMessage?.Invoke($"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
-
-                // Append post-move diagnostic info
-                try
-                {
-                    var diag = new StringBuilder();
-                    diag.AppendLine($"SetCursorPosDurationMs: {sw.ElapsedMilliseconds}");
-                    try
-                    {
-                        var after = Mouse.GetCursorPosition();
-                        diag.AppendLine($"CursorAfter: {after}");
-                    }
-                    catch { }
-                    var diagFile = Path.Combine(Path.GetTempPath(), "ClickIt_ClickDiagnostics.log");
-                    File.AppendAllText(diagFile, diag.ToString());
-                }
-                catch { }
-
-                try
-                {
-                    var after = Mouse.GetCursorPosition();
-                    _logMessage?.Invoke($"InputHandler: Cursor after move: {after}", 5);
-                }
-                catch { }
-
-                // Small delay to ensure cursor movement has taken effect before click
-                try { Thread.Sleep(15); } catch { }
-
-                sw.Restart();
-                if (_settings.LeftHanded.Value)
-                {
-                    _logMessage?.Invoke("InputHandler: Performing right click (left-handed)", 5);
-                    Mouse.RightClick();
-                }
-                else
-                {
-                    _logMessage?.Invoke("InputHandler: Performing left click", 5);
-                    Mouse.LeftClick();
-                }
-                sw.Stop();
-                _logMessage?.Invoke($"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
-
-                // Append post-click diagnostic info
-                try
-                {
-                    var diag = new StringBuilder();
-                    diag.AppendLine($"ClickDurationMs: {sw.ElapsedMilliseconds}");
-                    diag.AppendLine($"TotalDurationMs: {swTotal.ElapsedMilliseconds}");
-                    try
-                    {
-                        var after = Mouse.GetCursorPosition();
-                        diag.AppendLine($"CursorAfterClick: {after}");
-                    }
-                    catch { }
-                    var diagFile = Path.Combine(Path.GetTempPath(), "ClickIt_ClickDiagnostics.log");
-                    File.AppendAllText(diagFile, diag.ToString());
-                }
-                catch { }
-
-                swTotal.Stop();
-                // If the whole operation took too long, attempt to clear any stuck input block and log
-                if (swTotal.ElapsedMilliseconds > 500)
-                {
-                    _logMessage?.Invoke($"InputHandler: WARNING - PerformClick took {swTotal.ElapsedMilliseconds} ms, attempting to release input block", 10);
-                    try
-                    {
-                        if (_settings.BlockUserInput.Value && _safeBlockInput != null)
-                        {
-                            _safeBlockInput(false);
-                            _logMessage?.Invoke("InputHandler: Watchdog released system input block", 10);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logMessage?.Invoke($"InputHandler: Watchdog failed to release input block: {ex.Message}", 10);
-                    }
-                }
-
-                if (_settings.BlockUserInput.Value && _safeBlockInput != null)
-                {
-                    _logMessage?.Invoke("InputHandler: Releasing system input block", 5);
                     _safeBlockInput(false);
-                    _logMessage?.Invoke("InputHandler: System input block released", 5);
+                    _logMessage?.Invoke("InputHandler: Watchdog released system input block", 10);
                 }
-                _logMessage?.Invoke("InputHandler: PerformClick - exiting", 5);
             }
-            catch (Exception ex)
+
+            if (_settings.BlockUserInput.Value && _safeBlockInput != null)
             {
-                _logMessage?.Invoke($"InputHandler: Exception during PerformClick: {ex.Message}", 10);
-                try
-                {
-                    if (_settings.BlockUserInput.Value && _safeBlockInput != null)
-                    {
-                        _logMessage?.Invoke("InputHandler: Exception cleanup - attempting to release input block", 10);
-                        _safeBlockInput(false);
-                    }
-                }
-                catch { }
+                _logMessage?.Invoke("InputHandler: Releasing system input block", 5);
+                _safeBlockInput(false);
+                _logMessage?.Invoke("InputHandler: System input block released", 5);
             }
+            _logMessage?.Invoke("InputHandler: PerformClick - exiting", 5);
         }
     }
 }
