@@ -60,6 +60,7 @@ namespace ClickIt.Constants
             ("Gain #% of Maximum Life as Extra Maximum Energy Shield", "Gain (50-70)%% of Maximum Life as Extra Maximum Energy Shield", Boss, 40),
             ("Hits have #% chance to ignore Enemy Physical Damage Reduction", "Hits have (50-80)%% chance to ignore Enemy Physical Damage Reduction", Minion, 40),
             ("#% additional Physical Damage Reduction", "(50-70)%% additional Physical Damage Reduction", Boss, 35),
+            ("#% additional Physical Damage Reduction", "(50-70)%% additional Physical Damage Reduction", Minion, 35),
             ("Inflict Fire, Cold, and Lightning Exposure on Hit", "Inflict Fire, Cold, and Lightning Exposure on Hit", Minion, 35),
             ("+#% to maximum Fire Resistance", "+10%% to maximum Fire Resistance", Boss, 30),
             ("+#% to maximum Cold Resistance", "+10%% to maximum Cold Resistance", Boss, 30),
