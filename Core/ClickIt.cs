@@ -238,7 +238,7 @@ namespace ClickIt
         {
             altarDisplayRenderer?.RenderAltarComponents();
         }
-        public void LogMessage(string message, int frame = 0)
+        public void LogMessage(string message, int frame = 5)
         {
             if (Settings.DebugMode && Settings.LogMessages)
             {
