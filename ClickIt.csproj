@@ -125,6 +125,8 @@
     <Compile Include="Utils\Keyboard.cs" />
     <Compile Include="Utils\WeightCalculator.cs" />
     <Compile Include="Utils\InputHandler.cs" />
+    <Compile Include="Utils\LockManager.cs" />
+    <Compile Include="Utils\DeferredTextQueue.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />

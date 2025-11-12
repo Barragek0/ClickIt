@@ -37,6 +37,15 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug
 - **Element Validation**: `IsValid` verification + null checks
 - **Emergency**: `ForceUnblockInput()` for stuck input
 
+### Global Exception Handling (new)
+- The plugin now registers global handlers to improve crash visibility and safe cleanup:
+    - `AppDomain.CurrentDomain.UnhandledException` — logs unhandled exceptions and whether the runtime is terminating; attempts a minimal safe cleanup (calls `ForceUnblockInput`) to avoid leaving input blocked.
+    - `TaskScheduler.UnobservedTaskException` — marks unobserved task exceptions as observed and logs them; also tries to unblock input.
+- Note: These handlers are for logging and light cleanup only. They don't guarantee the process will continue after fatal CLR-level crashes (e.g., StackOverflowException, severe OutOfMemory, or native crashes).
+- ExileCore itself also has its own error-handling paths and will log many errors originating from game memory access — the plugin-level handlers complement but do not replace ExileCore's internal logging.
+
+- Quick note: ExileCore already provides built-in error handling and logging; the plugin-level global handlers are intentionally small and complementary — they add plugin-specific context and attempt minimal, safety-critical cleanup (for example, unblocking input).
+
 ---
 
 ## Development Workflow for AI Agents
