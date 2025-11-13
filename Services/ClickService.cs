@@ -228,7 +228,7 @@ namespace ClickIt.Services
             Vector2 clickPosUsed = clickPos;
 
             // Perform the click while holding the element access lock to avoid races
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_elementAccessLock))
@@ -353,7 +353,7 @@ namespace ClickIt.Services
                 {
                     logMessage("[ProcessRegularClick] === ACQUIRING LOCK FOR CORRUPTION CLICK ===");
                     // Thread-safe locking to prevent race conditions with altar clicking
-                    var gm = global::ClickIt.Utils.LockManager.Instance;
+                    var gm = LockManager.Instance;
                     if (gm != null)
                     {
                         using (gm.Acquire(_elementAccessLock))
@@ -380,7 +380,7 @@ namespace ClickIt.Services
 
             logMessage("[ProcessRegularClick] === ACQUIRING LOCK FOR REGULAR CLICK ===");
             // Thread-safe locking to prevent race conditions with altar clicking
-            var gm2 = global::ClickIt.Utils.LockManager.Instance;
+            var gm2 = LockManager.Instance;
             if (gm2 != null)
             {
                 using (gm2.Acquire(_elementAccessLock))
