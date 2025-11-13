@@ -342,7 +342,9 @@ namespace ClickIt.Services
         private static string GetLine(string text, int lineNo)
         {
             string[] lines = text.Replace("\r", "").Split('\n');
-            return lines.Length >= lineNo ? lines[lineNo] : "ERROR: Could not read line.";
+            if (lineNo >= 0 && lineNo < lines.Length)
+                return lines[lineNo];
+            return string.Empty;
         }
         private static int CountLines(string text)
         {

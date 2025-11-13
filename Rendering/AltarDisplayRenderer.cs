@@ -97,7 +97,7 @@ namespace ClickIt.Rendering
             const string BOTTOM_BUTTON_NAME = "BottomButton";
             Element? GetValidatedButtonElement(AltarButton? button, string buttonName)
             {
-                var gm = global::ClickIt.Utils.LockManager.Instance;
+                var gm = LockManager.Instance;
                 if (gm != null)
                 {
                     using (gm.Acquire(ElementAccessLock))

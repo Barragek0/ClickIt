@@ -2,6 +2,7 @@
 using SharpDX;
 using System;
 using System.Diagnostics;
+using ClickIt.Utils;
 namespace ClickIt.Components
 {
 #nullable enable
@@ -73,7 +74,7 @@ namespace ClickIt.Components
 
         public Utils.AltarWeights? GetCachedWeights(Func<PrimaryAltarComponent, Utils.AltarWeights> weightCalculator)
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_cacheLock))
@@ -143,7 +144,7 @@ namespace ClickIt.Components
 
         public void InvalidateCache()
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_cacheLock))

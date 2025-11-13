@@ -108,9 +108,6 @@ namespace ClickIt
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
         [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 4, 3500)]
         public ToggleNode CorruptMEDSEssences { get; set; } = new ToggleNode(true);
-        [Menu("Corrupt Essences which don't contain a shrieking essence", "Corrupt any essences that don't have a shrieking essence on them.\n\n" +
-            "This is for if you use the 'Crystal Resonance' atlas passive, which duplicates monsters when they contain a shrieking essence.", 6, 3500)]
-        public ToggleNode CorruptAnyNonShrieking { get; set; } = new ToggleNode(true);
         [Menu("Searing Exarch", 4000)]
         public EmptyNode ExarchAltar { get; set; } = new EmptyNode();
         [Menu("Click recommended option",

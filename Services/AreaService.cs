@@ -1,4 +1,5 @@
-﻿using ExileCore;
+﻿using ClickIt.Utils;
+using ExileCore;
 using ExileCore.Shared.Helpers;
 using SharpDX;
 namespace ClickIt.Services
@@ -18,7 +19,7 @@ namespace ClickIt.Services
         public RectangleF BuffsAndDebuffsRectangle => _buffsAndDebuffsRectangle;
         public void UpdateScreenAreas(GameController gameController)
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_screenAreasLock))
@@ -72,7 +73,7 @@ namespace ClickIt.Services
         }
         public bool PointIsInClickableArea(Vector2 point)
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_screenAreasLock))

@@ -802,7 +802,7 @@ namespace ClickIt
             Vector2 clickPos = new Vector2(camera.WorldToScreen(nearestShrine.PosNum).X, camera.WorldToScreen(nearestShrine.PosNum).Y);
 
             // Thread-safe locking to prevent race conditions with other clicking
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(clickService.GetElementAccessLock()))

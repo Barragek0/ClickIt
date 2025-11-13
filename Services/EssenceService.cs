@@ -30,23 +30,7 @@ namespace ClickIt.Services
                 };
                 return ElementService.ElementContainsAnyStrings(label, meds);
             }
-            if (_settings.CorruptAnyNonShrieking.Value)
-                return !CheckForAnyShriekingEssence(label);
             return false;
-        }
-        private static bool CheckForAnyShriekingEssence(Element label)
-        {
-            string[] shrieking = new[]
-            {
-                "Shrieking Essence of Greed", "Shrieking Essence of Contempt", "Shrieking Essence of Hatred",
-                "Shrieking Essence of Woe", "Shrieking Essence of Fear", "Shrieking Essence of Anger",
-                "Shrieking Essence of Torment", "Shrieking Essence of Sorrow", "Shrieking Essence of Rage",
-                "Shrieking Essence of Suffering", "Shrieking Essence of Wrath", "Shrieking Essence of Doubt",
-                "Shrieking Essence of Loathing", "Shrieking Essence of Zeal", "Shrieking Essence of Anguish",
-                "Shrieking Essence of Spite", "Shrieking Essence of Scorn", "Shrieking Essence of Envy",
-                "Shrieking Essence of Misery", "Shrieking Essence of Dread"
-            };
-            return ElementService.ElementContainsAnyStrings(label, shrieking);
         }
         public Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
