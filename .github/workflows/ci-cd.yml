@@ -61,13 +61,17 @@ jobs:
     - name: Copy ClickIt stub into test output folder
       run: |
         pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') | Out-Null"
+        pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug') | Out-Null"
         pwsh -Command "Write-Host 'CI stub exists:'; Test-Path .github\\ci-stubs\\out\\ClickIt.dll; if (Test-Path .github\\ci-stubs\\out\\ClickIt.dll) { Get-Item .github\\ci-stubs\\out\\ClickIt.dll | Select-Object FullName,Length | Format-List }"
         pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
+        pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\ClickIt.dll') -Force"
 
     - name: Diagnostic: list test output (after copy)
       run: |
         echo "Listing Tests/bin/Debug/net48 after copy:" 
         pwsh -Command "Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') -Recurse | Select-Object FullName,Length" || true
+        echo "Listing Tests/bin/Debug after copy:" 
+        pwsh -Command "Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug') -Recurse | Select-Object FullName,Length" || true
 
     - name: Run tests
       run: |
