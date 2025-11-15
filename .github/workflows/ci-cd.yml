@@ -53,23 +53,16 @@ jobs:
     - name: Build test project (MSBuild)
       run: |
         msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
+    - name: Copy ClickIt stub into test output folder
+      run: |
+        pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') | Out-Null"
+        pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
+
     - name: Run tests
       run: |
-        - name: Copy ClickIt stub into test output folder
-          run: |
-            pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') | Out-Null"
-            pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
-
         echo "Listing Tests/bin/Debug before test run:" 
         pwsh -Command "Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug') -Recurse | Select-Object FullName,Length" || true
-        dotnet test Tests\ClickIt.Tests.csproj `
-          --configuration ${{ env.BUILD_CONFIGURATION }} `
-          --no-restore `
-          --no-build `
-          -p:IncludeIntegrationTests=false `
-          --verbosity normal `
-          --logger "trx;LogFileName=ClickIt.Tests.trx" `
-          --results-directory TestResults
+        dotnet test Tests\ClickIt.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore --no-build -p:IncludeIntegrationTests=false --verbosity normal --logger "trx;LogFileName=ClickIt.Tests.trx" --results-directory TestResults
       
     - name: Upload test results
       uses: actions/upload-artifact@v4
