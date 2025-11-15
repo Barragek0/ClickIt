@@ -140,10 +140,12 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="AfterBuild">
     <Copy SourceFiles="$(ProjectDir)$(OutputPath)ClickIt.dll" DestinationFolder="C:\1.Path stuff\PoeHelper\net48\Plugins\Compiled\ClickIt" />
-    
-    <!-- Run automated tests after successful build (if test project exists) -->
+
+    <!-- Run automated tests after successful build (if test project exists)
+         This Exec can be skipped by setting the MSBuild property SkipRunTests=true.
+         CI should set SkipRunTests=true to avoid running tests from the project AfterBuild. -->
     <Exec Command="&quot;$(ProjectDir)run-tests.bat&quot;" 
-          Condition="Exists('$(ProjectDir)Tests\ClickIt.Tests.csproj') and '$(Configuration)' == 'Debug'" 
+          Condition="Exists('$(ProjectDir)Tests\ClickIt.Tests.csproj') and '$(Configuration)' == 'Debug' and '$(SkipRunTests)' != 'true'" 
           ContinueOnError="false" 
           WorkingDirectory="$(ProjectDir)" />
   </Target>
