@@ -47,7 +47,7 @@ jobs:
       
     - name: Build ClickIt project (skip its post-build test runner)
       run: |
-        msbuild ClickIt.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /p:SkipRunTests=true
+        msbuild ClickIt.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:SkipRunTests=true
 
     - name: Copy ClickIt.dll into test output folder
       run: |
@@ -56,7 +56,7 @@ jobs:
       
     - name: Build test project (MSBuild)
       run: |
-        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /p:IncludeIntegrationTests=false
+        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
       
     - name: Run tests
       run: |
@@ -110,7 +110,7 @@ jobs:
       
     - name: Run code analysis on test project (MSBuild)
       run: |
-        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /v:normal
+        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /v:normal
           
     - name: Upload test artifacts
       uses: actions/upload-artifact@v4
