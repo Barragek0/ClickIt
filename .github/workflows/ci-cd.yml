@@ -5,6 +5,8 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  # Allow manual runs for gated jobs like integration tests
+  workflow_dispatch:
 
 env:
   BUILD_CONFIGURATION: 'Debug'
@@ -102,3 +104,4 @@ jobs:
           Tests/bin/Debug/net48/ClickIt.Tests.dll
           Tests/bin/Debug/net48/ClickIt.Tests.pdb
         retention-days: 7
+

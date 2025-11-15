@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿#if false
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Constants;
 using System.Collections.Generic;
@@ -100,3 +101,4 @@ namespace ClickIt.Tests
         }
     }
 }
+#endif

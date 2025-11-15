@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using ClickIt;
+#nullable enable
 
 namespace ClickIt.Utils
 {

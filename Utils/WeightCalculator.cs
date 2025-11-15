@@ -1,4 +1,5 @@
 ﻿using ClickIt.Components;
+using ClickIt;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,10 +39,16 @@ namespace ClickIt.Utils
 
             for (int i = 0; i < 8; i++)
             {
-                topDownsideWeights[i] = CalculateDownsideWeight([GetModString(altar.TopMods, i, true)]);
-                bottomDownsideWeights[i] = CalculateDownsideWeight([GetModString(altar.BottomMods, i, true)]);
-                topUpsideWeights[i] = CalculateUpsideWeight([GetModString(altar.TopMods, i, false)]);
-                bottomUpsideWeights[i] = CalculateUpsideWeight([GetModString(altar.BottomMods, i, false)]);
+                // Get the single mod string for this slot and wrap it in a list for the calculators
+                var topDownMod = GetModString(altar.TopMods, i, true);
+                var bottomDownMod = GetModString(altar.BottomMods, i, true);
+                var topUpMod = GetModString(altar.TopMods, i, false);
+                var bottomUpMod = GetModString(altar.BottomMods, i, false);
+
+                topDownsideWeights[i] = CalculateDownsideWeight(new System.Collections.Generic.List<string> { topDownMod });
+                bottomDownsideWeights[i] = CalculateDownsideWeight(new System.Collections.Generic.List<string> { bottomDownMod });
+                topUpsideWeights[i] = CalculateUpsideWeight(new System.Collections.Generic.List<string> { topUpMod });
+                bottomUpsideWeights[i] = CalculateUpsideWeight(new System.Collections.Generic.List<string> { bottomUpMod });
             }
 
             decimal topUpsideWeight = topUpsideWeights.Sum();
@@ -89,8 +96,9 @@ namespace ClickIt.Utils
                 BottomUpside6Weight = bottomUpsideWeights[5],
                 BottomUpside7Weight = bottomUpsideWeights[6],
                 BottomUpside8Weight = bottomUpsideWeights[7],
-                TopWeight = Math.Round(topUpsideWeight / topDownsideWeight, 2),
-                BottomWeight = Math.Round(bottomUpsideWeight / bottomDownsideWeight, 2)
+                // Avoid divide-by-zero when there are no downside weights; default to zero ratio in that case
+                TopWeight = topDownsideWeight == 0 ? 0 : Math.Round(topUpsideWeight / topDownsideWeight, 2),
+                BottomWeight = bottomDownsideWeight == 0 ? 0 : Math.Round(bottomUpsideWeight / bottomDownsideWeight, 2)
             };
         }
 
