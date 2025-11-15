@@ -58,6 +58,10 @@ jobs:
     - name: Build test project (MSBuild)
       run: |
         msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
+    - name: Normalize test output folder
+      run: |
+        echo "Ensure test assembly is present at Tests/bin/Debug for dotnet test --no-build"
+        pwsh -Command "if (Test-Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.Tests.dll')) { New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug') | Out-Null; Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.Tests.dll') -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\ClickIt.Tests.dll') -Force; if (Test-Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.Tests.pdb')) { Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.Tests.pdb') -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\ClickIt.Tests.pdb') -Force } } else { Write-Host 'No net48 test assembly found; skipping copy.' }"
     - name: Copy ClickIt stub into test output folder
       run: |
         pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') | Out-Null"
