@@ -50,13 +50,24 @@ jobs:
         dotnet restore .github\ci-stubs\ClickItStub.csproj
         dotnet build .github\ci-stubs\ClickItStub.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore -o .github\ci-stubs\out
 
+    - name: Diagnostic: list built CI stubs
+      run: |
+        echo "Listing .github/ci-stubs/out:" 
+        pwsh -Command "Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE '.github\\ci-stubs\\out') -Recurse | Select-Object FullName,Length" || true
+
     - name: Build test project (MSBuild)
       run: |
         msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
     - name: Copy ClickIt stub into test output folder
       run: |
         pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') | Out-Null"
+        pwsh -Command "Write-Host 'CI stub exists:'; Test-Path .github\\ci-stubs\\out\\ClickIt.dll; if (Test-Path .github\\ci-stubs\\out\\ClickIt.dll) { Get-Item .github\\ci-stubs\\out\\ClickIt.dll | Select-Object FullName,Length | Format-List }"
         pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
+
+    - name: Diagnostic: list test output (after copy)
+      run: |
+        echo "Listing Tests/bin/Debug/net48 after copy:" 
+        pwsh -Command "Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') -Recurse | Select-Object FullName,Length" || true
 
     - name: Run tests
       run: |
