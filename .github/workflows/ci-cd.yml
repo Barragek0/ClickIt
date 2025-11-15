@@ -53,8 +53,7 @@ jobs:
       run: |
         dotnet test Tests\ClickIt.Tests.csproj `
           --configuration ${{ env.BUILD_CONFIGURATION }} `
-          --no-restore `
-          -p:IncludeIntegrationTests=false `
+          --no-build `
           --verbosity normal `
           --logger "trx;LogFileName=ClickIt.Tests.trx" `
           --results-directory TestResults
@@ -109,7 +108,7 @@ jobs:
       with:
         name: test-artifacts
         path: |
-          Tests/bin/Debug/**/ClickIt.Tests.dll
-          Tests/bin/Debug/**/ClickIt.Tests.pdb
+          Tests/bin/Debug/net48/ClickIt.Tests.dll
+          Tests/bin/Debug/net48/ClickIt.Tests.pdb
         retention-days: 7
 
