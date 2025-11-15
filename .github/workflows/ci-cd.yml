@@ -36,8 +36,9 @@ jobs:
     - name: Restore test project dependencies  
       run: dotnet restore Tests\ClickIt.Tests.csproj
       
-    - name: Build test project
-      run: dotnet build Tests\ClickIt.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+    - name: Build test project (MSBuild)
+      run: |
+        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU"
       
     - name: Run tests
       run: |
@@ -89,12 +90,9 @@ jobs:
     - name: Restore test project dependencies  
       run: dotnet restore Tests\ClickIt.Tests.csproj
       
-    - name: Run code analysis on test project
+    - name: Run code analysis on test project (MSBuild)
       run: |
-        dotnet build Tests\ClickIt.Tests.csproj `
-          --configuration ${{ env.BUILD_CONFIGURATION }} `
-          --verbosity:normal `
-          --no-restore
+        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /v:normal
           
     - name: Upload test artifacts
       uses: actions/upload-artifact@v4
