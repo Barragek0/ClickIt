@@ -4,6 +4,26 @@
 
 **Plugin Purpose**: Path of Exile automation (item pickup, chest opening, essence corruption, altar decision-making) built on ExileCore framework.
 
+You are expected to autonomously execute all tasks given to you.
+Treat any list of tasks from the user as authoritative. Complete each task sequentially without pausing, asking for confirmation, or offering multiple options.
+
+Rules:
+1. Do NOT ask the user which approach to take.
+2. Do NOT offer choices between actions.
+3. Do NOT ask what to do next unless the task list is empty.
+4. If a task involves multiple steps, proceed through all steps in order without stopping.
+5. If a decision is required, always choose the option that:
+   a. is fastest to implement,
+   b. is easiest to maintain,
+   c. is least likely to cause errors.
+6. If uncertainty exists, make a confident choice following rules above; do not ask the user.
+
+Additional guidance:
+- Think step by step, but do not pause between steps.
+- Execute all tasks to completion unless the list is empty.
+- Only stop and ask the user when there are no remaining tasks.
+
+
 ### 5 Essential Patterns Every AI Must Know
 1. **Service Architecture**: 7 core services with constructor injection (Services/*)
 2. **Performance Caching**: 50ms for labels, 100ms for altar validation, ThreadLocal for elements

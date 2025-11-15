@@ -36,7 +36,6 @@ namespace ClickIt
         private double currentFPS = 0;
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
-        private Coroutine? shrineCoroutine;
         private bool isInputCurrentlyBlocked = false;
         private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
         private readonly Stopwatch lastRenderTimer = new Stopwatch();
@@ -45,7 +44,6 @@ namespace ClickIt
         private bool lastHotkeyState = false;
         private Services.AreaService? areaService;
         private Services.AltarService? altarService;
-        private Services.LabelFilterService? labelFilterService;
         private Services.ShrineService? shrineService;
         private Utils.InputHandler? inputHandler;
         private Rendering.DebugRenderer? debugRenderer;
@@ -108,13 +106,12 @@ namespace ClickIt
             areaService.UpdateScreenAreas(GameController);
             camera = GameController?.Game?.IngameState?.Camera;
             altarService = new Services.AltarService(this, Settings, CachedLabels);
-            labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
+            var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
             shrineService = new Services.ShrineService(GameController, camera);
             inputHandler = new Utils.InputHandler(Settings, SafeBlockInput, (msg, f) => LogMessage(true, msg, f));
             var weightCalculator = new Utils.WeightCalculator(Settings);
             debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService, areaService, weightCalculator);
-            altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController, weightCalculator, altarService, LogMessage);
-            // Initialize global lock manager (locks are disabled by default via settings)
+            altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, altarService, LogMessage);
             LockManager.Instance = new Utils.LockManager(Settings);
             clickService = new Services.ClickService(
                 Settings,
@@ -135,13 +132,16 @@ namespace ClickIt
             BuffsAndDebuffsRectangle = areaService.BuffsAndDebuffsRectangle;
             Timer.Start();
             SecondTimer.Start();
+
             altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic", false);
             _ = Core.ParallelRunner.Run(altarCoroutine);
             altarCoroutine.Priority = CoroutinePriority.High;
+
             clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic", false);
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
             clickLabelCoroutine.Priority = CoroutinePriority.High;
-            shrineCoroutine = new Coroutine(MainShrineCoroutine(), this, "ClickIt.ShrineLogic", true);
+
+            var shrineCoroutine = new Coroutine(MainShrineCoroutine(), this, "ClickIt.ShrineLogic", true);
             _ = Core.ParallelRunner.Run(shrineCoroutine);
             shrineCoroutine.Priority = CoroutinePriority.High;
 
@@ -205,11 +205,7 @@ namespace ClickIt
             }
 
             renderTimer.Stop();
-            renderTimings.Enqueue(renderTimer.ElapsedMilliseconds);
-            if (renderTimings.Count > 60)
-            {
-                renderTimings.Dequeue();
-            }
+            EnqueueTiming(renderTimings, renderTimer.ElapsedMilliseconds, 60);
         }
         private void RenderAltarComponents()
         {
@@ -217,17 +213,12 @@ namespace ClickIt
         }
         public void LogMessage(string message, int frame = 5)
         {
-            if (Settings.DebugMode && Settings.LogMessages)
-            {
-                base.LogMessage(message, frame);
-            }
+            LogMessage(false, true, message, frame);
         }
+
         public void LogMessage(bool localDebug, string message, int frame = 0)
         {
-            if (localDebug && Settings.DebugMode && Settings.LogMessages)
-            {
-                base.LogMessage(message, frame);
-            }
+            LogMessage(true, localDebug, message, frame);
         }
         public void LogError(string message, int frame = 0)
         {
@@ -297,7 +288,53 @@ namespace ClickIt
                 recentErrors.RemoveAt(0);
             }
         }
-        private bool canClick()
+
+        private void LogMessage(bool requireLocalDebug, bool localDebugFlag, string message, int frame)
+        {
+            if (requireLocalDebug)
+            {
+                if (localDebugFlag && Settings.DebugMode && Settings.LogMessages)
+                {
+                    base.LogMessage(message, frame);
+                }
+            }
+            else
+            {
+                if (Settings.DebugMode && Settings.LogMessages)
+                {
+                    base.LogMessage(message, frame);
+                }
+            }
+        }
+
+
+        // Helper to enqueue timing measurements and keep a fixed-length queue
+        private void EnqueueTiming(Queue<long> queue, long value, int maxLength)
+        {
+            queue.Enqueue(value);
+            if (queue.Count > maxLength)
+            {
+                queue.Dequeue();
+            }
+        }
+
+        // Helper to execute an action while holding the click-element access lock (if LockManager enabled)
+        private void ExecuteWithElementAccessLock(Action action)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null)
+            {
+                using (gm.Acquire(clickService.GetElementAccessLock()))
+                {
+                    action();
+                }
+            }
+            else
+            {
+                action();
+            }
+        }
+        private bool CanClick()
         {
             return inputHandler?.CanClick(GameController) ?? false;
         }
@@ -321,8 +358,7 @@ namespace ClickIt
             {
                 if (isInputCurrentlyBlocked)
                 {
-                    bool result = false;
-                    result = Mouse.blockInput(false);
+                    bool result = Mouse.blockInput(false);
                     if (!result)
                     {
                         LogMessage("SafeBlockInput: BlockInput(false) returned false - input may still be blocked", 10);
@@ -351,9 +387,7 @@ namespace ClickIt
         }
         private void PerformSafetyChecks()
         {
-#pragma warning disable CS0618
-            bool currentHotkeyState = ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
-#pragma warning restore CS0618
+            bool currentHotkeyState = IsClickHotkeyPressed();
             if (currentHotkeyState != lastHotkeyState)
             {
                 if (!currentHotkeyState)
@@ -384,11 +418,7 @@ namespace ClickIt
             altarCoroutineTimer.Stop();
 
             // Track timing for averaging
-            altarCoroutineTimings.Enqueue(altarCoroutineTimer.ElapsedMilliseconds);
-            if (altarCoroutineTimings.Count > 10)
-            {
-                altarCoroutineTimings.Dequeue();
-            }
+            EnqueueTiming(altarCoroutineTimings, altarCoroutineTimer.ElapsedMilliseconds, 10);
 
             altarCoroutine?.Pause();
             yield break;
@@ -406,7 +436,7 @@ namespace ClickIt
         }
         public static List<Element> GetElementsByStringContains(Element label, string str)
         {
-            return Services.ElementService.GetElementsByStringContains(label, str);
+            return LabelUtils.GetElementsByStringContains(label, str);
         }
         private bool workFinished;
         public override Job? Tick()
@@ -430,7 +460,7 @@ namespace ClickIt
         private bool IsClickHotkeyPressed()
         {
 #pragma warning disable CS0618
-            return ExileCore.Input.GetKeyState(Settings.ClickLabelKey.Value);
+            return Input.GetKeyState(Settings.ClickLabelKey.Value);
 #pragma warning restore CS0618
         }
 
@@ -515,14 +545,14 @@ namespace ClickIt
             for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
             {
                 LabelOnGround label = groundLabels[i];
-                if (IsValidClickableLabel(label))
+                if (LabelUtils.IsValidClickableLabel(label, point => PointIsInClickableArea(point)))
                 {
                     validLabels.Add(label);
                 }
             }
 
             // Sort by distance using insertion sort for small lists, quicksort for larger ones
-            SortLabelsByDistance(validLabels);
+            LabelUtils.SortLabelsByDistance(validLabels);
 
             return validLabels;
         }
@@ -530,203 +560,7 @@ namespace ClickIt
         /// <summary>
         /// Sorts labels by distance to player using efficient sorting algorithm
         /// </summary>
-        /// <param name="labels">List of labels to sort</param>
-        private void SortLabelsByDistance(List<LabelOnGround> labels)
-        {
-            int n = labels.Count;
-            if (n <= 1) return;
-
-            // Use insertion sort for small arrays, quicksort approach for larger
-            if (n <= 50)
-            {
-                InsertionSortByDistance(labels, n);
-            }
-            else
-            {
-                QuickSortByDistance(labels, 0, n - 1);
-            }
-        }
-
-        /// <summary>
-        /// Efficient insertion sort for small lists
-        /// </summary>
-        private void InsertionSortByDistance(List<LabelOnGround> labels, int n)
-        {
-            for (int i = 1; i < n; i++)
-            {
-                LabelOnGround key = labels[i];
-                int j = i - 1;
-
-                // Move elements that are farther than key one position ahead
-                while (j >= 0 && labels[j].ItemOnGround.DistancePlayer > key.ItemOnGround.DistancePlayer)
-                {
-                    labels[j + 1] = labels[j];
-                    j--;
-                }
-                labels[j + 1] = key;
-            }
-        }
-
-        /// <summary>
-        /// Quick sort implementation for larger lists
-        /// </summary>
-        private void QuickSortByDistance(List<LabelOnGround> labels, int low, int high)
-        {
-            if (low < high)
-            {
-                int pivotIndex = PartitionByDistance(labels, low, high);
-                QuickSortByDistance(labels, low, pivotIndex - 1);
-                QuickSortByDistance(labels, pivotIndex + 1, high);
-            }
-        }
-
-        private int PartitionByDistance(List<LabelOnGround> labels, int low, int high)
-        {
-            Entity pivot = labels[high].ItemOnGround;
-            int i = low - 1;
-
-            for (int j = low; j < high; j++)
-            {
-                if (labels[j].ItemOnGround.DistancePlayer <= pivot.DistancePlayer)
-                {
-                    i++;
-                    SwapLabels(labels, i, j);
-                }
-            }
-            SwapLabels(labels, i + 1, high);
-            return i + 1;
-        }
-
-        private void SwapLabels(List<LabelOnGround> labels, int i, int j)
-        {
-            if (i != j)
-            {
-                LabelOnGround temp = labels[i];
-                labels[i] = labels[j];
-                labels[j] = temp;
-            }
-        }
-
-        /// <summary>
-        /// Validates if a ground label is suitable for clicking based on multiple criteria.
-        /// Checks visibility, validity, position, and type/path matching.
-        /// </summary>
-        /// <param name="label">The ground label to validate</param>
-        /// <returns>True if the label is valid for clicking, false otherwise</returns>
-        private bool IsValidClickableLabel(LabelOnGround label)
-        {
-            // Basic null and visibility checks
-            if (label == null || label.ItemOnGround == null ||
-                !label.IsVisible || !IsLabelElementValid(label))
-            {
-                return false;
-            }
-
-            // Position validation
-            if (!IsLabelInClickableArea(label))
-            {
-                return false;
-            }
-
-            // Entity validation
-            return IsValidEntityType(label.ItemOnGround) || IsValidEntityPath(label.ItemOnGround) || HasEssenceImprisonmentText(label);
-        }
-
-        /// <summary>
-        /// Checks if the label's UI element is valid and accessible.
-        /// Uses null-conditional operators to prevent memory access violations.
-        /// </summary>
-        /// <param name="label">The ground label to check</param>
-        /// <returns>True if the label element is valid</returns>
-        private bool IsLabelElementValid(LabelOnGround label)
-        {
-            RectangleF? labelRect = label.Label?.GetClientRect();
-            return labelRect is RectangleF rect &&
-                   label.Label?.IsValid == true &&
-                   label.Label?.IsVisible == true &&
-                   PointIsInClickableArea(rect.Center);
-        }
-
-        /// <summary>
-        /// Validates if a label is positioned within clickable areas of the screen.
-        /// </summary>
-        /// <param name="label">The ground label to check</param>
-        /// <returns>True if the label is in a clickable area</returns>
-        private bool IsLabelInClickableArea(LabelOnGround label)
-        {
-            RectangleF? labelRect = label.Label?.GetClientRect();
-            return labelRect is RectangleF rect && PointIsInClickableArea(rect.Center);
-        }
-
-        /// <summary>
-        /// Checks if an entity matches valid types for clicking.
-        /// Includes world items, chests, area transitions, and essence-encased monsters.
-        /// </summary>
-        /// <param name="item">The entity to check</param>
-        /// <returns>True if the entity type is valid for clicking</returns>
-        private bool IsValidEntityType(Entity item)
-        {
-            EntityType type = item.Type;
-
-            return type == EntityType.WorldItem ||
-                   type == EntityType.AreaTransition ||
-                   (type == EntityType.Chest && !item.GetComponent<Chest>().OpenOnDamage);
-        }
-
-        /// <summary>
-        /// Checks if an entity matches valid path patterns for clicking.
-        /// Includes various game objects like altars, harvest nodes, ores, and shrines.
-        /// </summary>
-        /// <param name="item">The entity to check</param>
-        /// <returns>True if the entity path matches valid patterns</returns>
-        private bool IsValidEntityPath(Entity item)
-        {
-            string path = item.Path ?? "";
-
-            if (string.IsNullOrEmpty(path))
-            {
-                return false;
-            }
-
-            return IsPathForClickableObject(path);
-        }
-
-        /// <summary>
-        /// Checks if a path string matches any of the known clickable object patterns.
-        /// </summary>
-        /// <param name="path">The entity path to check</param>
-        /// <returns>True if the path matches a clickable object pattern</returns>
-        private bool IsPathForClickableObject(string path)
-        {
-            return path.Contains("DelveMineral") ||
-                   path.Contains("AzuriteEncounterController") ||
-                   path.Contains("Harvest/Irrigator") ||
-                   path.Contains("Harvest/Extractor") ||
-                   path.Contains("CleansingFireAltar") ||
-                   path.Contains("TangleAltar") ||
-                   path.Contains("CraftingUnlocks") ||
-                   path.Contains("Brequel") ||
-                   path.Contains("CrimsonIron") ||
-                   path.Contains("copper_altar") ||
-                   path.Contains("PetrifiedWood") ||
-                   path.Contains("Bismuth") ||
-                   path.Contains("Verisium") ||
-                   path.Contains("ClosedDoorPast") ||
-                   path.Contains("LegionInitiator") ||
-                   path.Contains("DarkShrine");
-        }
-
-        /// <summary>
-        /// Checks if a ground label has essence imprisonment text.
-        /// This is the proper way to detect essence-encased monsters.
-        /// </summary>
-        /// <param name="label">The ground label to check</param>
-        /// <returns>True if the label contains essence imprisonment text</returns>
-        private bool HasEssenceImprisonmentText(LabelOnGround label)
-        {
-            // Check for the specific essence imprisonment text using GetElementByString
-            return GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
-        }
+        // Label helpers and path checks were moved to ClickIt.Utils.LabelUtils to keep ClickIt.cs focused.
 
         private IEnumerator ClickLabel()
         {
@@ -738,7 +572,7 @@ namespace ClickIt
 
             // self adjusting delay based on average click time
             // clicks will consistently aim for 70ms intervals
-            if (Timer.ElapsedMilliseconds < 70 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !canClick())
+            if (Timer.ElapsedMilliseconds < 70 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !CanClick())
             {
                 workFinished = true;
                 yield break;
@@ -755,11 +589,7 @@ namespace ClickIt
             clickCoroutineTimer.Stop();
 
             // Track timing for averaging
-            clickCoroutineTimings.Enqueue(clickCoroutineTimer.ElapsedMilliseconds);
-            if (clickCoroutineTimings.Count > 10)
-            {
-                clickCoroutineTimings.Dequeue();
-            }
+            EnqueueTiming(clickCoroutineTimings, clickCoroutineTimer.ElapsedMilliseconds, 10);
 
             workFinished = true;
         }
@@ -799,27 +629,13 @@ namespace ClickIt
                 yield break;
             }
 
-            Vector2 clickPos = new Vector2(camera.WorldToScreen(nearestShrine.PosNum).X, camera.WorldToScreen(nearestShrine.PosNum).Y);
+            var screen = camera.WorldToScreen(nearestShrine.PosNum);
+            Vector2 clickPos = new Vector2(screen.X, screen.Y);
 
-            // Thread-safe locking to prevent race conditions with other clicking
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (gm.Acquire(clickService.GetElementAccessLock()))
-                {
-                    inputHandler.PerformClick(clickPos);
-                }
-            }
-            else
-            {
-                inputHandler.PerformClick(clickPos);
-            }
+            // Thread-safe clicking via helper that acquires the click element access lock when LockManager enabled
+            ExecuteWithElementAccessLock(() => inputHandler.PerformClick(clickPos));
 
             yield return new WaitTime(60 + Random.Next(0, 6));
-        }
-        public static Element? GetElementByString(Element? root, string str)
-        {
-            return Services.ElementService.GetElementByString(root, str);
         }
         public enum AltarType
         {

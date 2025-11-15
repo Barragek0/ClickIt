@@ -3,6 +3,7 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using SharpDX;
+using ClickIt.Utils;
 using System;
 using System.Collections.Generic;
 #nullable enable
@@ -191,7 +192,7 @@ namespace ClickIt.Services
         {
             if (!clickEssences)
                 return false;
-            return ElementService.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
+            return LabelUtils.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
         }
 
         public bool ShouldCorruptEssence(LabelOnGround label)

@@ -1,0 +1,17 @@
+// Archived: Constants/MergedConstantsTests.cs
+// Reason: Duplicate merged checks; consolidated under Tests/Constants/AltarModsConstantsIntegrityTests.cs and Tests/Constants/ConstantsIntegrityTests.cs
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using FluentAssertions;
+using ClickIt.Constants;
+using System.Linq;
+using System;
+
+namespace ClickIt.Tests.Constants
+{
+    [TestClass]
+    public class MergedConstantsTests
+    {
+        // Original file archived. See canonical tests in Tests/Constants/.
+    }
+}

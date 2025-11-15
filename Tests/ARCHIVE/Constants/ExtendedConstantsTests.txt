@@ -1,0 +1,4 @@
+// Archived: ExtendedConstantsTests.cs
+// Reason: Legacy, previously disabled tests archived to reduce noise.
+
+// Original file was disabled via #if false and contained extended smoke checks for constants.

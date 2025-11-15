@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using ClickIt.Constants;
 using ClickIt.Components;
+using ClickIt.Utils;
 #nullable enable
 namespace ClickIt.Services
 {
@@ -48,7 +49,7 @@ namespace ClickIt.Services
 
         private static readonly System.Text.RegularExpressions.Regex RgbRegex = new System.Text.RegularExpressions.Regex(
             @"<rgb\(\d+,\d+,\d+\)>",
-            System.Text.RegularExpressions.RegexOptions.Compiled);
+            RegexOptions.Compiled);
         public AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
         {
             _clickIt = clickIt;
@@ -59,7 +60,7 @@ namespace ClickIt.Services
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarComponents;
         public void ClearAltarComponents()
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_altarComponentsLock))
@@ -99,7 +100,7 @@ namespace ClickIt.Services
         }
         public bool AddAltarComponent(PrimaryAltarComponent component)
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_altarComponentsLock))
@@ -155,7 +156,7 @@ namespace ClickIt.Services
         }
         private string CleanAltarModsText(string text)
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_textCleanCacheLock))
@@ -238,7 +239,7 @@ namespace ClickIt.Services
         {
             string cacheKey = $"{mod}|{negativeModType}";
 
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_modMatchCacheLock))
@@ -399,7 +400,7 @@ namespace ClickIt.Services
             foreach (LabelOnGround label in altarLabels)
             {
                 if (label == null) continue;
-                List<Element> elements = Services.ElementService.GetElementsByStringContains(label.Label, "valuedefault");
+                List<Element> elements = LabelUtils.GetElementsByStringContains(label.Label, "valuedefault");
                 if (elements == null || elements.Count == 0) continue;
                 string path = label.ItemOnGround?.Path ?? string.Empty;
                 DebugInfo.ElementsFound += elements.Count;
@@ -476,12 +477,20 @@ namespace ClickIt.Services
         }
         private static ClickIt.AltarType DetermineAltarType(string path)
         {
-            if (path.Contains(CleansingFireAltar))
+            if (string.IsNullOrEmpty(path)) return ClickIt.AltarType.Unknown;
+
+            // Use OrdinalIgnoreCase for robust, culture-insensitive matching
+            if (path.IndexOf(CleansingFireAltar, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
                 return ClickIt.AltarType.SearingExarch;
-            else if (path.Contains(TangleAltar))
+            }
+
+            if (path.IndexOf(TangleAltar, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
                 return ClickIt.AltarType.EaterOfWorlds;
-            else
-                return ClickIt.AltarType.Unknown;
+            }
+
+            return ClickIt.AltarType.Unknown;
         }
         private PrimaryAltarComponent CreateAltarComponent(Element element, ClickIt.AltarType altarType)
         {

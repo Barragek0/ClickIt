@@ -1,0 +1,16 @@
+// Archived copy of Tests/Services/GlobalLockManagerTests.cs
+// This file was disabled/merged; kept here for history.
+
+#if false
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using FluentAssertions;
+
+namespace ClickIt.Tests.Services
+{
+    [TestClass]
+    public class GlobalLockManagerTests
+    {
+        // archived
+    }
+}
+#endif

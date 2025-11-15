@@ -102,14 +102,16 @@ namespace ClickIt.Tests
                 "Settings Validation",
                 "Resource Cleanup"
             };
+            // Use a deterministic random for reproducible tests
+            var deterministicRandom = new System.Random(0);
 
             foreach (var operation in criticalOperations)
             {
                 // Test that operations have proper error handling patterns
                 try
                 {
-                    // Simulate operation that might throw
-                    if (operation.Contains("Initialization") && new Random().Next(100) > 95)
+                    // Simulate operation that might throw (deterministic)
+                    if (operation.Contains("Initialization") && deterministicRandom.Next(100) > 95)
                     {
                         throw new InvalidOperationException($"Simulated {operation} failure");
                     }

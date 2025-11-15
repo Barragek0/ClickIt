@@ -12,7 +12,7 @@ namespace ClickIt.Utils
     [DllImport("user32.dll")]
     private static extern bool BlockInput(bool block);
     // Return the underlying BlockInput result so callers can log failures
-    public static bool blockInput(bool block) => Mouse.BlockInput(block);
+    public static bool blockInput(bool block) => BlockInput(block);
         public const int MOUSEEVENTF_LEFTDOWN = 0x02;
         public const int MOUSEEVENTF_LEFTUP = 0x04;
         public const int MOUSEEVENTF_MIDDOWN = 0x0020;

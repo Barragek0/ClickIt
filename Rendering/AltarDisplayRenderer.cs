@@ -82,7 +82,6 @@ namespace ClickIt.Rendering
         }
         private Element? EvaluateAltarWeights(Utils.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
-            // Decision thresholds
             const int DANGEROUS_THRESHOLD = 90;
             const int HIGH_VALUE_THRESHOLD = 90;
 
@@ -91,120 +90,137 @@ namespace ClickIt.Rendering
             bool topHasHighValueUpside = HasAnyWeightOverThreshold(weights, true, true, HIGH_VALUE_THRESHOLD);
             bool bottomHasHighValueUpside = HasAnyWeightOverThreshold(weights, false, true, HIGH_VALUE_THRESHOLD);
 
-            // Helper to validate and return a button's element safely (under optional global lock).
-            // Keep only vital failure logs; successful validations remain quiet.
-            const string TOP_BUTTON_NAME = "TopButton";
-            const string BOTTOM_BUTTON_NAME = "BottomButton";
-            Element? GetValidatedButtonElement(AltarButton? button, string buttonName)
-            {
-                var gm = LockManager.Instance;
-                if (gm != null)
-                {
-                    using (gm.Acquire(ElementAccessLock))
-                    {
-                        if (button == null)
-                        {
-                            _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
-                            return null;
-                        }
-                        Element el = button.Element;
-                        if (el == null)
-                        {
-                            _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
-                            return null;
-                        }
-                        if (!el.IsValid)
-                        {
-                            _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is not valid", 10);
-                            return null;
-                        }
-                        return el;
-                    }
-                }
-
-                if (button == null)
-                {
-                    _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
-                    return null;
-                }
-                Element elNoLock = button.Element;
-                if (elNoLock == null)
-                {
-                    _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
-                    return null;
-                }
-                if (!elNoLock.IsValid)
-                {
-                    _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is not valid", 10);
-                    return null;
-                }
-                return elNoLock;
-            }
-
-            // Both sides are dangerous -> highlight and log diagnostics, but do not auto-click
             if (topHasDangerousDownside && bottomHasDangerousDownside)
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.", textPos1, Color.Orange, 30);
-                _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 2);
-                _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
-
-                // Additional diagnostics: both sides are over the threshold. Only failures are logged by validator.
-                _logMessage?.Invoke("[EvaluateAltarWeights] BOTH DANGEROUS CASE - both sides >= threshold", 10);
-                GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
-                GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
-                return null;
+                return HandleBothDangerousCase(altar, topModsRect, bottomModsRect, textPos1);
             }
 
-            // High-value upsides override normal weighting
-            if (topHasHighValueUpside)
+            if (topHasHighValueUpside || bottomHasHighValueUpside)
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+", textPos1, Color.LawnGreen, 30);
+                return HandleHighValueOverride(topHasHighValueUpside, altar, topModsRect, bottomModsRect, textPos1);
+            }
+
+            if (topHasDangerousDownside || bottomHasDangerousDownside)
+            {
+                return HandleDangerousDownside(topHasDangerousDownside, altar, topModsRect, bottomModsRect, textPos1);
+            }
+
+            return HandleNormalWeight(weights, altar, topModsRect, bottomModsRect, textPos2);
+        }
+
+        private Element? HandleBothDangerousCase(PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        {
+            _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.", textPos, Color.Orange, 30);
+            _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 2);
+            _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
+            _logMessage?.Invoke("[EvaluateAltarWeights] BOTH DANGEROUS CASE - both sides >= threshold", 10);
+            // Validate so diagnostics are logged if buttons are missing/invalid
+            _ = GetValidatedButtonElement(altar.TopButton, "TopButton");
+            _ = GetValidatedButtonElement(altar.BottomButton, "BottomButton");
+            return null;
+        }
+
+        private Element? HandleHighValueOverride(bool topChosen, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        {
+            if (topChosen)
+            {
+                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+", textPos, Color.LawnGreen, 30);
                 _graphics?.DrawFrame(topModsRect, Color.LawnGreen, 3);
                 _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
-                return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
+                return GetValidatedButtonElement(altar.TopButton, "TopButton");
             }
-            if (bottomHasHighValueUpside)
+            else
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+", textPos1, Color.LawnGreen, 30);
+                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+", textPos, Color.LawnGreen, 30);
                 _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 2);
                 _graphics?.DrawFrame(bottomModsRect, Color.LawnGreen, 3);
-                return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
+                return GetValidatedButtonElement(altar.BottomButton, "BottomButton");
             }
+        }
 
-            // Dangerous downsides: prefer the other option
-            if (topHasDangerousDownside)
+        private Element? HandleDangerousDownside(bool topHasDanger, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        {
+            if (topHasDanger)
             {
-                _deferredTextQueue.Enqueue("Weighting overridden\n\nBottom chosen due to top downside 90+", textPos1, Color.LawnGreen, 30);
+                _deferredTextQueue.Enqueue("Weighting overridden\n\nBottom chosen due to top downside 90+", textPos, Color.LawnGreen, 30);
                 _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 3);
                 _graphics?.DrawFrame(bottomModsRect, Color.LawnGreen, 2);
-                return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
+                return GetValidatedButtonElement(altar.BottomButton, "BottomButton");
             }
-            if (bottomHasDangerousDownside)
+            else
             {
-                _deferredTextQueue.Enqueue("Weighting overridden\n\nTop chosen due to bottom downside 90+", textPos1, Color.LawnGreen, 30);
+                _deferredTextQueue.Enqueue("Weighting overridden\n\nTop chosen due to bottom downside 90+", textPos, Color.LawnGreen, 30);
                 _graphics?.DrawFrame(topModsRect, Color.LawnGreen, 2);
                 _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 3);
-                return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
+                return GetValidatedButtonElement(altar.TopButton, "TopButton");
             }
+        }
 
-            // Normal weighting
+        private Element? HandleNormalWeight(Utils.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 tieTextPos)
+        {
             if (weights.TopWeight > weights.BottomWeight)
             {
                 _graphics?.DrawFrame(topModsRect, Color.LawnGreen, 3);
                 _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
-                return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME) ?? altar.TopButton?.Element;
+                return GetValidatedButtonElement(altar.TopButton, "TopButton") ?? altar.TopButton?.Element;
             }
             if (weights.BottomWeight > weights.TopWeight)
             {
                 _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 2);
                 _graphics?.DrawFrame(bottomModsRect, Color.LawnGreen, 3);
-                return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME) ?? altar.BottomButton?.Element;
+                return GetValidatedButtonElement(altar.BottomButton, "BottomButton") ?? altar.BottomButton?.Element;
             }
 
             // Tie - leave choice to user
-            _deferredTextQueue.Enqueue("Mods have equal weight, you should choose.", textPos2, Color.Orange, 30);
+            _deferredTextQueue.Enqueue("Mods have equal weight, you should choose.", tieTextPos, Color.Orange, 30);
             DrawYellowFrames(topModsRect, bottomModsRect);
             return null;
+        }
+
+        private Element? GetValidatedButtonElement(AltarButton? button, string buttonName)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null)
+            {
+                using (gm.Acquire(ElementAccessLock))
+                {
+                    if (button == null)
+                    {
+                        _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
+                        return null;
+                    }
+                    Element el = button.Element;
+                    if (el == null)
+                    {
+                        _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
+                        return null;
+                    }
+                    if (!el.IsValid)
+                    {
+                        _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is not valid", 10);
+                        return null;
+                    }
+                    return el;
+                }
+            }
+
+            if (button == null)
+            {
+                _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
+                return null;
+            }
+            Element elNoLock = button.Element;
+            if (elNoLock == null)
+            {
+                _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
+                return null;
+            }
+            if (!elNoLock.IsValid)
+            {
+                _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is not valid", 10);
+                return null;
+            }
+            return elNoLock;
         }
 
         // Flush deferred texts through the shared DeferredTextQueue
@@ -219,21 +235,14 @@ namespace ClickIt.Rendering
 
         private decimal[] GetWeightArray(Utils.AltarWeights weights, bool isTop, bool isUpside)
         {
+            // Prefer direct array accessors on AltarWeights to reduce duplicated property usage
             if (isUpside)
             {
-                return isTop ?
-                    new[] { weights.TopUpside1Weight, weights.TopUpside2Weight, weights.TopUpside3Weight, weights.TopUpside4Weight,
-                            weights.TopUpside5Weight, weights.TopUpside6Weight, weights.TopUpside7Weight, weights.TopUpside8Weight } :
-                    new[] { weights.BottomUpside1Weight, weights.BottomUpside2Weight, weights.BottomUpside3Weight, weights.BottomUpside4Weight,
-                            weights.BottomUpside5Weight, weights.BottomUpside6Weight, weights.BottomUpside7Weight, weights.BottomUpside8Weight };
+                return isTop ? weights.GetTopUpsideWeights() : weights.GetBottomUpsideWeights();
             }
             else
             {
-                return isTop ?
-                    new[] { weights.TopDownside1Weight, weights.TopDownside2Weight, weights.TopDownside3Weight, weights.TopDownside4Weight,
-                            weights.TopDownside5Weight, weights.TopDownside6Weight, weights.TopDownside7Weight, weights.TopDownside8Weight } :
-                    new[] { weights.BottomDownside1Weight, weights.BottomDownside2Weight, weights.BottomDownside3Weight, weights.BottomDownside4Weight,
-                            weights.BottomDownside5Weight, weights.BottomDownside6Weight, weights.BottomDownside7Weight, weights.BottomDownside8Weight };
+                return isTop ? weights.GetTopDownsideWeights() : weights.GetBottomDownsideWeights();
             }
         }
         private void DrawUnrecognizedWeightText(string weightType, string[] mods, Vector2 position)

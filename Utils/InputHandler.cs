@@ -74,7 +74,7 @@ namespace ClickIt.Utils
         public bool CanClick(GameController gameController)
         {
 #pragma warning disable CS0618
-            return ExileCore.Input.GetKeyState(_settings.ClickLabelKey.Value) &&
+            return Input.GetKeyState(_settings.ClickLabelKey.Value) &&
 #pragma warning restore CS0618
                    IsPOEActive(gameController) &&
                    (!_settings.BlockOnOpenLeftRightPanel || !IsPanelOpen(gameController)) &&

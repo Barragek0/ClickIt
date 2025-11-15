@@ -1,4 +1,5 @@
-﻿using ExileCore.PoEMemory;
+﻿using ClickIt.Utils;
+using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using System;
@@ -16,7 +17,7 @@ namespace ClickIt.Services
         {
             if (label == null)
                 return false;
-            if (ElementService.ElementContainsAnyStrings(label, ["Corrupted"]))
+            if (LabelUtils.ElementContainsAnyStrings(label, ["Corrupted"]))
                 return false;
             if (_settings.CorruptAllEssences.Value)
                 return true;
@@ -28,7 +29,7 @@ namespace ClickIt.Services
                     "Shrieking Essence of Misery", "Shrieking Essence of Envy", "Shrieking Essence of Dread", "Shrieking Essence of Scorn",
                     "Deafening Essence of Misery", "Deafening Essence of Envy", "Deafening Essence of Dread", "Deafening Essence of Scorn"
                 };
-                return ElementService.ElementContainsAnyStrings(label, meds);
+                return LabelUtils.ElementContainsAnyStrings(label, meds);
             }
             return false;
         }

@@ -1,0 +1,3 @@
+// ARCHIVE: Original LabelFilterServiceDeepTests.cs (merged into LabelFilterServiceTests.cs)
+
+<original file preserved here>

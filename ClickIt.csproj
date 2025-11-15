@@ -88,6 +88,7 @@
     <!-- Core Classes -->
     <Compile Include="Core\ClickIt.cs" />
     <Compile Include="Core\ClickItSettings.cs" />
+    <Compile Include="Core\ClickIt.AltarType.cs" />
     
     <!-- Constants -->
     <Compile Include="Constants\AltarModsConstants.cs" />
@@ -97,7 +98,6 @@
     <Compile Include="Components\AltarButton.cs" />
     <Compile Include="Components\PrimaryAltarComponent.cs" />
     <Compile Include="Components\SecondaryAltarComponent.cs" />
-    <Compile Include="Components\CustomItem.cs" />
     
     <!-- Properties -->
     <Compile Include="Properties\Settings.Designer.cs">
@@ -110,7 +110,6 @@
     <!-- Services -->
     <Compile Include="Services\AltarService.cs" />
     <Compile Include="Services\LabelFilterService.cs" />
-    <Compile Include="Services\ElementService.cs" />
     <Compile Include="Services\EssenceService.cs" />
     <Compile Include="Services\AreaService.cs" />
     <Compile Include="Services\ClickService.cs" />
@@ -127,6 +126,7 @@
     <Compile Include="Utils\InputHandler.cs" />
     <Compile Include="Utils\LockManager.cs" />
     <Compile Include="Utils\DeferredTextQueue.cs" />
+    <Compile Include="Utils\LabelUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />

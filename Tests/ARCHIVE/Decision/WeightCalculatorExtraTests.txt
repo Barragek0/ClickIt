@@ -1,0 +1,2 @@
+// ARCHIVE: Original WeightCalculatorExtraTests.cs (merged into Decision/WeightCalculatorTests.cs)
+<content preserved in archive>

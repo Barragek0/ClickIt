@@ -23,11 +23,6 @@ namespace ClickIt.Rendering
         private readonly AreaService? _areaService;
         private readonly WeightCalculator? _weightCalculator;
 
-        private readonly Stopwatch _debugRenderTimer = new Stopwatch();
-        private readonly Queue<long> _debugRenderTimings = new Queue<long>(60);
-        private long _lastDebugRenderTime = 0;
-        private readonly object _timingLock = new object();
-
         public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null)
         {
             _plugin = plugin;
@@ -124,7 +119,7 @@ namespace ClickIt.Rendering
         {
             _graphics.DrawText($"--- Input State ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
-            bool hotkeyPressed = ExileCore.Input.GetKeyState(_plugin.Settings.ClickLabelKey.Value);
+            bool hotkeyPressed = Input.GetKeyState(_plugin.Settings.ClickLabelKey.Value);
             Color hotkeyColor = hotkeyPressed ? Color.LightGreen : Color.Gray;
             _graphics.DrawText($"Hotkey ({_plugin.Settings.ClickLabelKey.Value}): {hotkeyPressed}", new Vector2(xPos, yPos), hotkeyColor, 16);
             yPos += lineHeight;
@@ -132,6 +127,7 @@ namespace ClickIt.Rendering
             // Show input blocking state
             if (_plugin is ClickIt clickItPlugin)
             {
+                // Reflection used for debug display only; safe because it is read-only and only in debug UI.
                 var inputBlockedField = typeof(ClickIt).GetField("isInputCurrentlyBlocked",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (inputBlockedField?.GetValue(clickItPlugin) is bool isBlocked)
@@ -324,66 +320,26 @@ namespace ClickIt.Rendering
 
         private decimal GetTopUpsideWeight(Utils.AltarWeights weights, int index)
         {
-            return index switch
-            {
-                0 => weights.TopUpside1Weight,
-                1 => weights.TopUpside2Weight,
-                2 => weights.TopUpside3Weight,
-                3 => weights.TopUpside4Weight,
-                4 => weights.TopUpside5Weight,
-                5 => weights.TopUpside6Weight,
-                6 => weights.TopUpside7Weight,
-                7 => weights.TopUpside8Weight,
-                _ => 0
-            };
+            var arr = weights.GetTopUpsideWeights();
+            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
         private decimal GetTopDownsideWeight(Utils.AltarWeights weights, int index)
         {
-            return index switch
-            {
-                0 => weights.TopDownside1Weight,
-                1 => weights.TopDownside2Weight,
-                2 => weights.TopDownside3Weight,
-                3 => weights.TopDownside4Weight,
-                4 => weights.TopDownside5Weight,
-                5 => weights.TopDownside6Weight,
-                6 => weights.TopDownside7Weight,
-                7 => weights.TopDownside8Weight,
-                _ => 0
-            };
+            var arr = weights.GetTopDownsideWeights();
+            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
         private decimal GetBottomUpsideWeight(Utils.AltarWeights weights, int index)
         {
-            return index switch
-            {
-                0 => weights.BottomUpside1Weight,
-                1 => weights.BottomUpside2Weight,
-                2 => weights.BottomUpside3Weight,
-                3 => weights.BottomUpside4Weight,
-                4 => weights.BottomUpside5Weight,
-                5 => weights.BottomUpside6Weight,
-                6 => weights.BottomUpside7Weight,
-                7 => weights.BottomUpside8Weight,
-                _ => 0
-            };
+            var arr = weights.GetBottomUpsideWeights();
+            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
         private decimal GetBottomDownsideWeight(Utils.AltarWeights weights, int index)
         {
-            return index switch
-            {
-                0 => weights.BottomDownside1Weight,
-                1 => weights.BottomDownside2Weight,
-                2 => weights.BottomDownside3Weight,
-                3 => weights.BottomDownside4Weight,
-                4 => weights.BottomDownside5Weight,
-                5 => weights.BottomDownside6Weight,
-                6 => weights.BottomDownside7Weight,
-                7 => weights.BottomDownside8Weight,
-                _ => 0
-            };
+            var arr = weights.GetBottomDownsideWeights();
+            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
         public int RenderWrappedText(string text, Vector2 position, Color color, int fontSize, int lineHeight, int maxCharsPerLine)
         {
@@ -517,7 +473,14 @@ namespace ClickIt.Rendering
                     double avgRenderTime = renderTimings.Average();
                     double maxRenderTime = renderTimings.Max();
 
-                    Color renderColor = avgRenderTime <= 6.94 ? Color.LawnGreen : (avgRenderTime <= 16.67 ? Color.Yellow : Color.Red);
+                    Color renderColor;
+                    if (avgRenderTime <= 6.94)
+                        renderColor = Color.LawnGreen;
+                    else if (avgRenderTime <= 16.67)
+                        renderColor = Color.Yellow;
+                    else
+                        renderColor = Color.Red;
+
                     _graphics.DrawText($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
                     yPos += lineHeight;
                 }

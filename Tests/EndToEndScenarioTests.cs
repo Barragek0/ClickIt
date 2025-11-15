@@ -76,7 +76,6 @@ namespace ClickIt.Tests
         {
             // Arrange: Create a plugin instance
             var clickIt = CreateClickItInstance();
-            clickIt.Settings.Enable = true;
 
             // Act: Go through complete lifecycle
             bool initialized = clickIt.InitializePlugin();
@@ -86,7 +85,6 @@ namespace ClickIt.Tests
             clickIt.PerformWorkCycle();
 
             // Disable plugin
-            clickIt.Settings.Enable = false;
             clickIt.CleanupPlugin();
 
             // Assert: Resources cleaned up properly
@@ -179,11 +177,10 @@ namespace ClickIt.Tests
             };
         }
 
-        private static MockClickItSettings CreateTestSettings()
+        private static Tests.MockClickItSettings CreateTestSettings()
         {
-            return new MockClickItSettings
+            return new Tests.MockClickItSettings
             {
-                Enable = true,
                 ClickDistance = 95
             };
         }
@@ -238,7 +235,7 @@ namespace ClickIt.Tests
             public int ElementCount { get; set; }
             public int ConcurrentOperations { get; set; }
             public bool IsHighLoad { get; set; }
-            public MockClickItSettings Settings { get; set; }
+            public Tests.MockClickItSettings Settings { get; set; }
             public bool IsInitialized { get; set; }
             public bool IsDisposed { get; set; }
             public int ActiveCoroutinesCount { get; } = 0; // Read-only property with default value
@@ -271,11 +268,7 @@ namespace ClickIt.Tests
             public int Timestamp { get; set; }
         }
 
-        private class MockClickItSettings
-        {
-            public bool Enable { get; set; }
-            public int ClickDistance { get; set; }
-        }
+        // Using shared Tests.MockClickItSettings from Tests/Shared/TestUtilities.cs - no local subclass needed
 
         private class LoadTestScenario
         {

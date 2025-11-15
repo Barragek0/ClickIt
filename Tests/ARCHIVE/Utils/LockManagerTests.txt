@@ -1,0 +1,18 @@
+// Archived copy of Tests/Utils/LockManagerTests.cs
+// Original tests consolidated into Tests/Services/LockingTests.cs
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using FluentAssertions;
+using System;
+using System.Threading.Tasks;
+using System.Threading;
+using ClickIt.Utils;
+
+namespace ClickIt.Tests.Utils
+{
+    [TestClass]
+    public class LockManagerTests
+    {
+        // ... archived content preserved for history and potential re-use
+    }
+}

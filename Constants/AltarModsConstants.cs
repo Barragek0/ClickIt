@@ -8,6 +8,7 @@ namespace ClickIt.Constants
         private const string Minion = "Minion";
         private const string Boss = "Boss";
         #endregion
+        
         #region Lookup Dictionaries
         public static Dictionary<string, AffectedTarget> FilterTargetDict { get; } = new Dictionary<string, AffectedTarget>
         {
