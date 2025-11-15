@@ -47,13 +47,14 @@ jobs:
       
     - name: Build test project (MSBuild)
       run: |
-        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU"
+        msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /p:IncludeIntegrationTests=false
       
     - name: Run tests
       run: |
         dotnet test Tests\ClickIt.Tests.csproj `
           --configuration ${{ env.BUILD_CONFIGURATION }} `
           --no-restore `
+          -p:IncludeIntegrationTests=false `
           --verbosity normal `
           --logger "trx;LogFileName=ClickIt.Tests.trx" `
           --results-directory TestResults

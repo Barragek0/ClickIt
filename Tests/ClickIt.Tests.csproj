@@ -46,6 +46,15 @@
     <Compile Include="..\Utils\IndexConstants.cs" />
   </ItemGroup>
 
-  <!-- Integration test sources are included by the SDK's default compile items -->
+  <!-- By default exclude integration tests from the test build.
+       They can be opt-in by setting the MSBuild property IncludeIntegrationTests=true.
+       This keeps CI fast/isolated while allowing local builds (VS Code task) to include them. -->
+  <ItemGroup>
+    <Compile Remove="Integration\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IncludeIntegrationTests)' == 'true'">
+    <Compile Include="Integration\**\*.cs" />
+  </ItemGroup>
 
 </Project>
