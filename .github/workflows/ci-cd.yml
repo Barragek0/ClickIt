@@ -61,9 +61,12 @@ jobs:
       
     - name: Run tests
       run: |
+        echo "Listing Tests/bin/Debug before test run:" 
+        pwsh -Command "Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug') -Recurse | Select-Object FullName,Length" || true
         dotnet test Tests\ClickIt.Tests.csproj `
           --configuration ${{ env.BUILD_CONFIGURATION }} `
-          --no-build `
+          --no-restore `
+          -p:IncludeIntegrationTests=false `
           --verbosity normal `
           --logger "trx;LogFileName=ClickIt.Tests.trx" `
           --results-directory TestResults
