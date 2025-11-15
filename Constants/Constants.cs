@@ -15,6 +15,7 @@ namespace ClickIt.Constants
         public const string ClosedDoorPast = "ClosedDoorPast";
         public const string LegionInitiator = "LegionInitiator";
         #endregion
+
         #region Target Type Strings
         public const string Player = "Player";
         public const string Minion = "Minion";
@@ -29,9 +30,11 @@ namespace ClickIt.Constants
         public const string MapBossGains = "Map boss gains:";
         public const string MapBoss = "Mapboss";
         #endregion
+
         #region Messages
         public const string ReportBugMessage = "\nPlease report this as a bug on github";
         #endregion
+
         #region Timing Constants
         public const int VerisiumHoldFailsafeMs = 10000;
         public const int MouseMovementDelay = 10;
@@ -39,6 +42,7 @@ namespace ClickIt.Constants
         public const int HotkeyReleaseFailsafeMs = 5000;
         public const int MaxErrorsToTrack = 10;
         #endregion
+
         #region Mouse Event Constants
         public const int MouseEventLeftDown = 0x02;
         public const int MouseEventLeftUp = 0x04;
@@ -48,12 +52,14 @@ namespace ClickIt.Constants
         public const int MouseEventRightUp = 0x0010;
         public const int MouseEventWheel = 0x800;
         #endregion
+
         #region Keyboard Event Constants
         public const int KeyEventExtendedKey = 0x0001;
         public const int KeyEventKeyUp = 0x0002;
         public const int KeyPressed = 0x8000;
         public const int KeyToggled = 0x0001;
         #endregion
+
         #region UI Colors
         public static readonly Vector4 PlayerColor = new Vector4(0.4f, 0.7f, 0.9f, 1.0f);
         public static readonly Vector4 MinionColor = new Vector4(0.4f, 0.9f, 0.4f, 1.0f);
@@ -63,10 +69,12 @@ namespace ClickIt.Constants
         public static readonly Vector4 PlayerBackgroundColor = new Vector4(0.2f, 0.4f, 0.6f, 0.3f);
         public static readonly Vector4 MinionBackgroundColor = new Vector4(0.2f, 0.6f, 0.2f, 0.3f);
         #endregion
+
         #region Separator Constants
         public const string PipeSeparator = "|";
         public const string EmptyString = "";
         #endregion
+        
         #region Numeric Constants
         public const int MinModWeight = 1;
         public const int MaxModWeight = 100;

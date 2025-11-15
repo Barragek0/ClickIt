@@ -39,16 +39,15 @@ namespace ClickIt.Utils
 
             for (int i = 0; i < 8; i++)
             {
-                // Get the single mod string for this slot and wrap it in a list for the calculators
-                var topDownMod = GetModString(altar.TopMods, i, true);
-                var bottomDownMod = GetModString(altar.BottomMods, i, true);
-                var topUpMod = GetModString(altar.TopMods, i, false);
-                var bottomUpMod = GetModString(altar.BottomMods, i, false);
+                string topDownMod = GetModString(altar.TopMods, i, true);
+                string bottomDownMod = GetModString(altar.BottomMods, i, true);
+                string topUpMod = GetModString(altar.TopMods, i, false);
+                string bottomUpMod = GetModString(altar.BottomMods, i, false);
 
-                topDownsideWeights[i] = CalculateDownsideWeight(new System.Collections.Generic.List<string> { topDownMod });
-                bottomDownsideWeights[i] = CalculateDownsideWeight(new System.Collections.Generic.List<string> { bottomDownMod });
-                topUpsideWeights[i] = CalculateUpsideWeight(new System.Collections.Generic.List<string> { topUpMod });
-                bottomUpsideWeights[i] = CalculateUpsideWeight(new System.Collections.Generic.List<string> { bottomUpMod });
+                topDownsideWeights[i] = GetModWeightFromString(topDownMod);
+                bottomDownsideWeights[i] = GetModWeightFromString(bottomDownMod);
+                topUpsideWeights[i] = GetModWeightFromString(topUpMod);
+                bottomUpsideWeights[i] = GetModWeightFromString(bottomUpMod);
             }
 
             decimal topUpsideWeight = topUpsideWeights.Sum();
@@ -56,106 +55,59 @@ namespace ClickIt.Utils
             decimal bottomUpsideWeight = bottomUpsideWeights.Sum();
             decimal bottomDownsideWeight = bottomDownsideWeights.Sum();
 
-            return new AltarWeights
-            {
-                TopUpsideWeight = topUpsideWeight,
-                TopDownsideWeight = topDownsideWeight,
-                BottomUpsideWeight = bottomUpsideWeight,
-                BottomDownsideWeight = bottomDownsideWeight,
-                // Support for 8 mods on top and bottom (downsides) - now much cleaner
-                TopDownside1Weight = topDownsideWeights[0],
-                TopDownside2Weight = topDownsideWeights[1],
-                TopDownside3Weight = topDownsideWeights[2],
-                TopDownside4Weight = topDownsideWeights[3],
-                TopDownside5Weight = topDownsideWeights[4],
-                TopDownside6Weight = topDownsideWeights[5],
-                TopDownside7Weight = topDownsideWeights[6],
-                TopDownside8Weight = topDownsideWeights[7],
-                BottomDownside1Weight = bottomDownsideWeights[0],
-                BottomDownside2Weight = bottomDownsideWeights[1],
-                BottomDownside3Weight = bottomDownsideWeights[2],
-                BottomDownside4Weight = bottomDownsideWeights[3],
-                BottomDownside5Weight = bottomDownsideWeights[4],
-                BottomDownside6Weight = bottomDownsideWeights[5],
-                BottomDownside7Weight = bottomDownsideWeights[6],
-                BottomDownside8Weight = bottomDownsideWeights[7],
-                // Support for 8 mods on top and bottom (upsides) - now much cleaner
-                TopUpside1Weight = topUpsideWeights[0],
-                TopUpside2Weight = topUpsideWeights[1],
-                TopUpside3Weight = topUpsideWeights[2],
-                TopUpside4Weight = topUpsideWeights[3],
-                TopUpside5Weight = topUpsideWeights[4],
-                TopUpside6Weight = topUpsideWeights[5],
-                TopUpside7Weight = topUpsideWeights[6],
-                TopUpside8Weight = topUpsideWeights[7],
-                BottomUpside1Weight = bottomUpsideWeights[0],
-                BottomUpside2Weight = bottomUpsideWeights[1],
-                BottomUpside3Weight = bottomUpsideWeights[2],
-                BottomUpside4Weight = bottomUpsideWeights[3],
-                BottomUpside5Weight = bottomUpsideWeights[4],
-                BottomUpside6Weight = bottomUpsideWeights[5],
-                BottomUpside7Weight = bottomUpsideWeights[6],
-                BottomUpside8Weight = bottomUpsideWeights[7],
-                // Avoid divide-by-zero when there are no downside weights; default to zero ratio in that case
-                TopWeight = topDownsideWeight == 0 ? 0 : Math.Round(topUpsideWeight / topDownsideWeight, 2),
-                BottomWeight = bottomDownsideWeight == 0 ? 0 : Math.Round(bottomUpsideWeight / bottomDownsideWeight, 2)
-            };
+            var result = new AltarWeights();
+            result.InitializeFromArrays(topDownsideWeights, bottomDownsideWeights, topUpsideWeights, bottomUpsideWeights);
+            result.TopUpsideWeight = topUpsideWeight;
+            result.TopDownsideWeight = topDownsideWeight;
+            result.BottomUpsideWeight = bottomUpsideWeight;
+            result.BottomDownsideWeight = bottomDownsideWeight;
+
+            // Safe division: avoid divide-by-zero
+            result.TopWeight = Math.Round(topDownsideWeight == 0 ? 0 : topUpsideWeight / topDownsideWeight, 2);
+            result.BottomWeight = Math.Round(bottomDownsideWeight == 0 ? 0 : bottomUpsideWeight / bottomDownsideWeight, 2);
+            return result;
         }
 
         private string GetModString(SecondaryAltarComponent component, int index, bool isDownside)
         {
-            if (component == null) return "";
+            if (component == null)
+                return "";
 
-            // For downsides, indices 0-3 map to component.GetDownsideByIndex(0-3)
-            // For upsides, indices 0-3 map to component.GetUpsideByIndex(0-3)
             return isDownside ? component.GetDownsideByIndex(index) : component.GetUpsideByIndex(index);
         }
         public decimal CalculateUpsideWeight(List<string> upsides)
         {
-            decimal totalWeight = 1;  // Start with 1 to avoid division by zero
-            if (upsides == null) return 0;
-            foreach (string upside in upsides)
-            {
-                if (string.IsNullOrEmpty(upside)) continue;
-                // Upside may be stored as composite "Type|Id" (new format) or legacy id-only.
-                if (upside.Contains('|'))
-                {
-                    var parts = upside.Split(new[] { '|' }, 2);
-                    string type = parts[0];
-                    string id = parts.Length > 1 ? parts[1] : parts[0];
-                    int weight = _settings.GetModTier(id, type);
-                    totalWeight += weight;
-                }
-                else
-                {
-                    int weight = _settings.GetModTier(upside);
-                    totalWeight += weight;
-                }
-            }
-            return totalWeight - 1;  // Subtract the initial 1 to maintain consistency
+            return CalculateWeightFromList(upsides);
         }
+
         public decimal CalculateDownsideWeight(List<string> downsides)
         {
-            decimal totalWeight = 1;  // Start with 1 to avoid division by zero
-            if (downsides == null) return 0;
-            foreach (string downside in downsides)
+            return CalculateWeightFromList(downsides);
+        }
+
+        private decimal CalculateWeightFromList(List<string> mods)
+        {
+            if (mods == null) return 0m;
+            decimal total = 0m;
+            foreach (var mod in mods)
             {
-                if (string.IsNullOrEmpty(downside)) continue;
-                if (downside.Contains('|'))
-                {
-                    var parts = downside.Split(new[] { '|' }, 2);
-                    string type = parts[0];
-                    string id = parts.Length > 1 ? parts[1] : parts[0];
-                    int weight = _settings.GetModTier(id, type);
-                    totalWeight += weight;
-                }
-                else
-                {
-                    int weight = _settings.GetModTier(downside);
-                    totalWeight += weight;
-                }
+                if (string.IsNullOrEmpty(mod)) continue;
+                total += GetModWeightFromString(mod);
             }
-            return totalWeight - 1;  // Subtract the initial 1 to fix +8 issue
+            return total;
+        }
+
+        private decimal GetModWeightFromString(string mod)
+        {
+            if (string.IsNullOrEmpty(mod)) return 0m;
+            if (mod.Contains('|'))
+            {
+                var parts = mod.Split(new[] { '|' }, 2);
+                string type = parts[0];
+                string id = parts.Length > 1 ? parts[1] : parts[0];
+                return _settings.GetModTier(id, type);
+            }
+            return _settings.GetModTier(mod);
         }
     }
     public struct AltarWeights
@@ -191,123 +143,48 @@ namespace ClickIt.Utils
         {
             get
             {
-                var gm = global::ClickIt.Utils.LockManager.Instance;
-                if (gm != null)
-                {
-                    using (gm.Acquire(_weightsLock))
-                    {
-                        return weightType.ToLower() switch
-                        {
-                            WeightTypeConstants.TopDownside => _topDownsideWeights?[index] ?? 0,
-                            WeightTypeConstants.BottomDownside => _bottomDownsideWeights?[index] ?? 0,
-                            WeightTypeConstants.TopUpside => _topUpsideWeights?[index] ?? 0,
-                            WeightTypeConstants.BottomUpside => _bottomUpsideWeights?[index] ?? 0,
-                            _ => 0
-                        };
-                    }
-                }
-                return weightType.ToLower() switch
-                {
-                    WeightTypeConstants.TopDownside => _topDownsideWeights?[index] ?? 0,
-                    WeightTypeConstants.BottomDownside => _bottomDownsideWeights?[index] ?? 0,
-                    WeightTypeConstants.TopUpside => _topUpsideWeights?[index] ?? 0,
-                    WeightTypeConstants.BottomUpside => _bottomUpsideWeights?[index] ?? 0,
-                    _ => 0
-                };
+                var self = this;
+                return WithWeightsLock(() => self.GetArrayElement(weightType, index));
             }
             set
             {
-                var gm = global::ClickIt.Utils.LockManager.Instance;
-                if (gm != null)
-                {
-                    using (gm.Acquire(_weightsLock))
-                    {
-                        switch (weightType.ToLower())
-                        {
-                            case WeightTypeConstants.TopDownside:
-                                if (_topDownsideWeights == null) _topDownsideWeights = new decimal[8];
-                                _topDownsideWeights[index] = value;
-                                break;
-                            case WeightTypeConstants.BottomDownside:
-                                if (_bottomDownsideWeights == null) _bottomDownsideWeights = new decimal[8];
-                                _bottomDownsideWeights[index] = value;
-                                break;
-                            case WeightTypeConstants.TopUpside:
-                                if (_topUpsideWeights == null) _topUpsideWeights = new decimal[8];
-                                _topUpsideWeights[index] = value;
-                                break;
-                            case WeightTypeConstants.BottomUpside:
-                                if (_bottomUpsideWeights == null) _bottomUpsideWeights = new decimal[8];
-                                _bottomUpsideWeights[index] = value;
-                                break;
-                        }
-                    }
-                    return;
-                }
-
-                switch (weightType.ToLower())
-                {
-                    case WeightTypeConstants.TopDownside:
-                        if (_topDownsideWeights == null) _topDownsideWeights = new decimal[8];
-                        _topDownsideWeights[index] = value;
-                        break;
-                    case WeightTypeConstants.BottomDownside:
-                        if (_bottomDownsideWeights == null) _bottomDownsideWeights = new decimal[8];
-                        _bottomDownsideWeights[index] = value;
-                        break;
-                    case WeightTypeConstants.TopUpside:
-                        if (_topUpsideWeights == null) _topUpsideWeights = new decimal[8];
-                        _topUpsideWeights[index] = value;
-                        break;
-                    case WeightTypeConstants.BottomUpside:
-                        if (_bottomUpsideWeights == null) _bottomUpsideWeights = new decimal[8];
-                        _bottomUpsideWeights[index] = value;
-                        break;
-                }
+                var self = this;
+                WithWeightsLock(() => self.SetArrayElement(weightType, index, value));
             }
         }
 
-        // Backward compatibility properties - delegate to arrays using constants
-        public decimal TopDownside1Weight { get => _topDownsideWeights?[0] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 0, value); }
-        public decimal TopDownside2Weight { get => _topDownsideWeights?[1] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 1, value); }
-        public decimal TopDownside3Weight { get => _topDownsideWeights?[2] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 2, value); }
-        public decimal TopDownside4Weight { get => _topDownsideWeights?[3] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 3, value); }
-        public decimal TopDownside5Weight { get => _topDownsideWeights?[4] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 4, value); }
-        public decimal TopDownside6Weight { get => _topDownsideWeights?[5] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 5, value); }
-        public decimal TopDownside7Weight { get => _topDownsideWeights?[6] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 6, value); }
-        public decimal TopDownside8Weight { get => _topDownsideWeights?[7] ?? 0; set => SetWeight(WeightTypeConstants.TopDownside, 7, value); }
+        // Helper to centralize LockManager usage for weight array operations
+        private readonly T WithWeightsLock<T>(Func<T> func)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null)
+            {
+                using (gm.Acquire(_weightsLock))
+                {
+                    return func();
+                }
+            }
+            return func();
+        }
 
-        public decimal BottomDownside1Weight { get => _bottomDownsideWeights?[0] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 0, value); }
-        public decimal BottomDownside2Weight { get => _bottomDownsideWeights?[1] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 1, value); }
-        public decimal BottomDownside3Weight { get => _bottomDownsideWeights?[2] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 2, value); }
-        public decimal BottomDownside4Weight { get => _bottomDownsideWeights?[3] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 3, value); }
-        public decimal BottomDownside5Weight { get => _bottomDownsideWeights?[4] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 4, value); }
-        public decimal BottomDownside6Weight { get => _bottomDownsideWeights?[5] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 5, value); }
-        public decimal BottomDownside7Weight { get => _bottomDownsideWeights?[6] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 6, value); }
-        public decimal BottomDownside8Weight { get => _bottomDownsideWeights?[7] ?? 0; set => SetWeight(WeightTypeConstants.BottomDownside, 7, value); }
-
-        public decimal TopUpside1Weight { get => _topUpsideWeights?[0] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 0, value); }
-        public decimal TopUpside2Weight { get => _topUpsideWeights?[1] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 1, value); }
-        public decimal TopUpside3Weight { get => _topUpsideWeights?[2] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 2, value); }
-        public decimal TopUpside4Weight { get => _topUpsideWeights?[3] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 3, value); }
-        public decimal TopUpside5Weight { get => _topUpsideWeights?[4] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 4, value); }
-        public decimal TopUpside6Weight { get => _topUpsideWeights?[5] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 5, value); }
-        public decimal TopUpside7Weight { get => _topUpsideWeights?[6] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 6, value); }
-        public decimal TopUpside8Weight { get => _topUpsideWeights?[7] ?? 0; set => SetWeight(WeightTypeConstants.TopUpside, 7, value); }
-
-        public decimal BottomUpside1Weight { get => _bottomUpsideWeights?[0] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 0, value); }
-        public decimal BottomUpside2Weight { get => _bottomUpsideWeights?[1] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 1, value); }
-        public decimal BottomUpside3Weight { get => _bottomUpsideWeights?[2] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 2, value); }
-        public decimal BottomUpside4Weight { get => _bottomUpsideWeights?[3] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 3, value); }
-        public decimal BottomUpside5Weight { get => _bottomUpsideWeights?[4] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 4, value); }
-        public decimal BottomUpside6Weight { get => _bottomUpsideWeights?[5] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 5, value); }
-        public decimal BottomUpside7Weight { get => _bottomUpsideWeights?[6] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 6, value); }
-        public decimal BottomUpside8Weight { get => _bottomUpsideWeights?[7] ?? 0; set => SetWeight(WeightTypeConstants.BottomUpside, 7, value); }
+        private readonly void WithWeightsLock(Action action)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null)
+            {
+                using (gm.Acquire(_weightsLock))
+                {
+                    action();
+                }
+                return;
+            }
+            action();
+        }
 
         // Helper methods for cleaner access
-        public decimal[] GetTopDownsideWeights()
+        public readonly decimal[] GetTopDownsideWeights()
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_weightsLock))
@@ -317,9 +194,9 @@ namespace ClickIt.Utils
             }
             return _topDownsideWeights ?? new decimal[8];
         }
-        public decimal[] GetBottomDownsideWeights()
+        public readonly decimal[] GetBottomDownsideWeights()
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_weightsLock))
@@ -329,9 +206,9 @@ namespace ClickIt.Utils
             }
             return _bottomDownsideWeights ?? new decimal[8];
         }
-        public decimal[] GetTopUpsideWeights()
+        public readonly decimal[] GetTopUpsideWeights()
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_weightsLock))
@@ -341,9 +218,9 @@ namespace ClickIt.Utils
             }
             return _topUpsideWeights ?? new decimal[8];
         }
-        public decimal[] GetBottomUpsideWeights()
+        public readonly decimal[] GetBottomUpsideWeights()
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_weightsLock))
@@ -354,16 +231,10 @@ namespace ClickIt.Utils
             return _bottomUpsideWeights ?? new decimal[8];
         }
 
-        // Set weight helper method
-        private void SetWeight(string type, int index, decimal value)
-        {
-            this[type, index] = value;
-        }
-
         // Method to initialize all weights from arrays (for cleaner construction)
         public void InitializeFromArrays(decimal[] topDownside, decimal[] bottomDownside, decimal[] topUpside, decimal[] bottomUpside)
         {
-            var gm = global::ClickIt.Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_weightsLock))
@@ -380,6 +251,43 @@ namespace ClickIt.Utils
                 _bottomDownsideWeights = bottomDownside ?? new decimal[8];
                 _topUpsideWeights = topUpside ?? new decimal[8];
                 _bottomUpsideWeights = bottomUpside ?? new decimal[8];
+            }
+        }
+
+        private readonly decimal GetArrayElement(string weightType, int index)
+        {
+            string key = (weightType ?? string.Empty).ToLower();
+            return key switch
+            {
+                WeightTypeConstants.TopDownside => _topDownsideWeights?[index] ?? 0,
+                WeightTypeConstants.BottomDownside => _bottomDownsideWeights?[index] ?? 0,
+                WeightTypeConstants.TopUpside => _topUpsideWeights?[index] ?? 0,
+                WeightTypeConstants.BottomUpside => _bottomUpsideWeights?[index] ?? 0,
+                _ => 0
+            };
+        }
+
+        private void SetArrayElement(string weightType, int index, decimal value)
+        {
+            string key = (weightType ?? string.Empty).ToLower();
+            switch (key)
+            {
+                case WeightTypeConstants.TopDownside:
+                    if (_topDownsideWeights == null) _topDownsideWeights = new decimal[8];
+                    _topDownsideWeights[index] = value;
+                    break;
+                case WeightTypeConstants.BottomDownside:
+                    if (_bottomDownsideWeights == null) _bottomDownsideWeights = new decimal[8];
+                    _bottomDownsideWeights[index] = value;
+                    break;
+                case WeightTypeConstants.TopUpside:
+                    if (_topUpsideWeights == null) _topUpsideWeights = new decimal[8];
+                    _topUpsideWeights[index] = value;
+                    break;
+                case WeightTypeConstants.BottomUpside:
+                    if (_bottomUpsideWeights == null) _bottomUpsideWeights = new decimal[8];
+                    _bottomUpsideWeights[index] = value;
+                    break;
             }
         }
     }

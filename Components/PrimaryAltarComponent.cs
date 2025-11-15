@@ -8,7 +8,7 @@ namespace ClickIt.Components
 #nullable enable
     public class PrimaryAltarComponent
     {
-        public PrimaryAltarComponent(AltarType AltarType, SecondaryAltarComponent? TopMods, AltarButton? TopButton, SecondaryAltarComponent? BottomMods, AltarButton? BottomButton)
+        public PrimaryAltarComponent(AltarType AltarType, SecondaryAltarComponent TopMods, AltarButton TopButton, SecondaryAltarComponent BottomMods, AltarButton BottomButton)
         {
             this.AltarType = AltarType;
             this.TopMods = TopMods;
@@ -18,44 +18,57 @@ namespace ClickIt.Components
             _cacheTimer = new Stopwatch();
             _cacheTimer.Start();
         }
-        public AltarType? AltarType { get; set; }
-        public SecondaryAltarComponent? TopMods { get; set; }
-        public AltarButton? TopButton { get; set; }
-        public SecondaryAltarComponent? BottomMods { get; set; }
-        public AltarButton? BottomButton { get; set; }
+        public AltarType AltarType { get; set; }
+        public SecondaryAltarComponent TopMods { get; set; }
+        public AltarButton TopButton { get; set; }
+        public SecondaryAltarComponent BottomMods { get; set; }
+        public AltarButton BottomButton { get; set; }
 
         private bool? _isValidCache;
         private long _lastValidationTime;
         private Utils.AltarWeights? _cachedWeights;
         private long _lastWeightCalculationTime;
         private readonly Stopwatch _cacheTimer;
-        private const long CACHE_DURATION_MS = 100;
+        private const long CACHE_DURATION_MS = 1000;
 
         // Thread safety lock for cache operations
         private readonly object _cacheLock = new object();
 
-        public bool IsValidCached()
+        // Helper to execute a Func<T> under the configured LockManager if present
+        private T WithCacheLock<T>(Func<T> func)
         {
-            var gm = Utils.LockManager.Instance;
+            var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_cacheLock))
                 {
-                    long currentTime = _cacheTimer.ElapsedMilliseconds;
-                    if (_isValidCache.HasValue && (currentTime - _lastValidationTime) < CACHE_DURATION_MS)
-                    {
-                        return _isValidCache.Value;
-                    }
+                    return func();
+                }
+            }
 
-                    bool isValid = TopMods?.Element?.IsValid == true && BottomMods?.Element?.IsValid == true &&
-                                  !TopMods.HasUnmatchedMods && !BottomMods.HasUnmatchedMods;
+            return func();
+        }
 
-                    _isValidCache = isValid;
-                    _lastValidationTime = currentTime;
-                    return isValid;
+        // Helper to execute an Action under the configured LockManager if present
+        private void WithCacheLock(Action action)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null)
+            {
+                using (gm.Acquire(_cacheLock))
+                {
+                    action();
                 }
             }
             else
+            {
+                action();
+            }
+        }
+
+        public bool IsValidCached()
+        {
+            return WithCacheLock(() =>
             {
                 long currentTime = _cacheTimer.ElapsedMilliseconds;
                 if (_isValidCache.HasValue && (currentTime - _lastValidationTime) < CACHE_DURATION_MS)
@@ -69,29 +82,12 @@ namespace ClickIt.Components
                 _isValidCache = isValid;
                 _lastValidationTime = currentTime;
                 return isValid;
-            }
+            });
         }
 
         public Utils.AltarWeights? GetCachedWeights(Func<PrimaryAltarComponent, Utils.AltarWeights> weightCalculator)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (gm.Acquire(_cacheLock))
-                {
-                    long currentTime = _cacheTimer.ElapsedMilliseconds;
-                    if (_cachedWeights.HasValue && (currentTime - _lastWeightCalculationTime) < CACHE_DURATION_MS)
-                    {
-                        return _cachedWeights.Value;
-                    }
-
-                    var weights = weightCalculator(this);
-                    _cachedWeights = weights;
-                    _lastWeightCalculationTime = currentTime;
-                    return weights;
-                }
-            }
-            else
+            return WithCacheLock(() =>
             {
                 long currentTime = _cacheTimer.ElapsedMilliseconds;
                 if (_cachedWeights.HasValue && (currentTime - _lastWeightCalculationTime) < CACHE_DURATION_MS)
@@ -103,61 +99,35 @@ namespace ClickIt.Components
                 _cachedWeights = weights;
                 _lastWeightCalculationTime = currentTime;
                 return weights;
-            }
+            });
         }
 
-        public RectangleF GetTopModsRect()
+        private RectangleF GetModsRect(SecondaryAltarComponent? mods, string name)
         {
-            if (TopMods?.Element == null)
+            if (mods?.Element == null)
             {
-                throw new InvalidOperationException("Cannot get top mods rect - element is null");
+                throw new InvalidOperationException($"Cannot get {name} mods rect - element is null");
             }
 
-            if (!TopMods.Element.IsValid)
+            if (!mods.Element.IsValid)
             {
-                throw new InvalidOperationException("Cannot get top mods rect - element is not valid");
+                throw new InvalidOperationException($"Cannot get {name} mods rect - element is not valid");
             }
 
-            return TopMods.Element.GetClientRect();
+            return mods.Element.GetClientRect();
         }
 
-        public RectangleF GetBottomModsRect()
-        {
-            if (BottomMods?.Element == null)
-            {
-                throw new InvalidOperationException("Cannot get bottom mods rect - element is null");
-            }
+        public RectangleF GetTopModsRect() => GetModsRect(TopMods, "top");
 
-            if (!BottomMods.Element.IsValid)
-            {
-                throw new InvalidOperationException("Cannot get bottom mods rect - element is not valid");
-            }
-
-            return BottomMods.Element.GetClientRect();
-        }
-
-        // Legacy method that now directly returns rectangles without caching
-        public (RectangleF topRect, RectangleF bottomRect) GetCachedRects()
-        {
-            return (GetTopModsRect(), GetBottomModsRect());
-        }
+        public RectangleF GetBottomModsRect() => GetModsRect(BottomMods, "bottom");
 
         public void InvalidateCache()
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (gm.Acquire(_cacheLock))
-                {
-                    _isValidCache = null;
-                    _cachedWeights = null;
-                }
-            }
-            else
+            WithCacheLock(() =>
             {
                 _isValidCache = null;
                 _cachedWeights = null;
-            }
+            });
         }
     }
 }
