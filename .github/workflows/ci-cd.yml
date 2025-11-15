@@ -81,7 +81,8 @@ jobs:
       run: |
         echo "Listing Tests/bin/Debug before test run:" 
         pwsh -Command "Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug') -Recurse | Select-Object FullName,Length" || true
-        dotnet test Tests\ClickIt.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore --no-build -p:IncludeIntegrationTests=false --verbosity normal --logger "trx;LogFileName=ClickIt.Tests.trx" --results-directory TestResults
+        # Run tests and let dotnet build when necessary to ensure the test assembly exists in the expected folder.
+        dotnet test Tests\ClickIt.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} -p:IncludeIntegrationTests=false --verbosity normal --logger "trx;LogFileName=ClickIt.Tests.trx" --results-directory TestResults
       
     - name: Upload test results
       uses: actions/upload-artifact@v4
