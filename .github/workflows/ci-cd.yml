@@ -36,6 +36,15 @@ jobs:
     - name: Restore test project dependencies  
       run: dotnet restore Tests\ClickIt.Tests.csproj
       
+    - name: Build CI ExileCore stubs
+      run: |
+        dotnet restore .github\ci-stubs\ExileCoreStubs.csproj
+        dotnet build .github\ci-stubs\ExileCoreStubs.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore -o .github\ci-stubs\out
+        pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE '..\\..\\PoeHelper\\net48') | Out-Null"
+        pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ExileCore.dll -Destination (Join-Path $env:GITHUB_WORKSPACE '..\\..\\PoeHelper\\net48\\ExileCore.dll') -Force"
+        pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ExileCore.dll -Destination (Join-Path $env:GITHUB_WORKSPACE '..\\..\\PoeHelper\\net48\\GameOffsets.dll') -Force"
+        pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ExileCore.dll -Destination (Join-Path $env:GITHUB_WORKSPACE '..\\..\\PoeHelper\\net48\\ProcessMemoryUtilities.dll') -Force"
+      
     - name: Build test project (MSBuild)
       run: |
         msbuild Tests\ClickIt.Tests.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU"
