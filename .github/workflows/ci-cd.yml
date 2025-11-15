@@ -51,7 +51,7 @@ jobs:
 
     - name: Build ClickIt solution (skip its post-build test runner)
       run: |
-        msbuild ClickIt.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:SkipRunTests=true
+        msbuild ClickIt.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU" /p:SkipRunTests=true
 
     - name: Locate and copy ClickIt.dll into test output folder
       run: |
