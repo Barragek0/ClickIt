@@ -45,14 +45,18 @@ jobs:
         pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ExileCore.dll -Destination (Join-Path $env:GITHUB_WORKSPACE '..\\..\\PoeHelper\\net48\\GameOffsets.dll') -Force"
         pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ExileCore.dll -Destination (Join-Path $env:GITHUB_WORKSPACE '..\\..\\PoeHelper\\net48\\ProcessMemoryUtilities.dll') -Force"
       
-    - name: Build ClickIt project (skip its post-build test runner)
+    - name: Restore solution NuGet packages
       run: |
-        msbuild ClickIt.csproj /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:SkipRunTests=true
+        nuget restore ClickIt.sln
 
-    - name: Copy ClickIt.dll into test output folder
+    - name: Build ClickIt solution (skip its post-build test runner)
+      run: |
+        msbuild ClickIt.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=AnyCPU /p:SkipRunTests=true
+
+    - name: Locate and copy ClickIt.dll into test output folder
       run: |
         pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48') | Out-Null"
-        pwsh -Command "Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'ClickIt\\obj\\Debug\\ClickIt.dll') -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
+        pwsh -Command "$dll = Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'ClickIt') -Recurse -Filter 'ClickIt.dll' | Select-Object -First 1; if (-not $dll) { Write-Error 'ClickIt.dll not found'; exit 1 } ; Copy-Item -Path $dll.FullName -Destination (Join-Path $env:GITHUB_WORKSPACE 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
       
     - name: Build test project (MSBuild)
       run: |
