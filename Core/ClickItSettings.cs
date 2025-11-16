@@ -45,8 +45,6 @@ namespace ClickIt
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [Menu("Log messages", "This will flood your log with debug information. You should only enable this if you want to report a bug.", 3, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
-        [Menu("Enable internal locking", "Enable internal locking for thread-safety. Disable to turn locks into no-ops for testing/debugging.", 4, 900)]
-        public ToggleNode UseLocking { get; set; } = new ToggleNode(true);
         [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 5, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
         [Menu("Accessibility", 1000)]
@@ -58,46 +56,52 @@ namespace ClickIt
         [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
         [System.Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
-        [Menu("Search Radius", "Radius the plugin will search in for interactable objects.", 1, 3000)]
-        public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(95, 0, 300);
-        [Menu("Items", "Click items", 2, 3000)]
+        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 1, 3000)]
+        public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
+        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 2, 3000)]
+        public RangeNode<int> ClickFrequencyTarget { get; set; } = new RangeNode<int>(80, 80, 250);
+        [Menu("Items", "Click items", 3, 3000)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("Ignore Unique Items", "Ignore unique items", 3, 3000)]
+        [Menu("Ignore Unique Items", "Ignore unique items", 4, 3000)]
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Basic Chests", "Click normal (non-league related) chests", 6, 3000)]
+        [Menu("Basic Chests", "Click normal (non-league related) chests", 7, 3000)]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
-        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 7, 3000)]
+        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 8, 3000)]
         public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
-        [Menu("Shrines", "Click shrines", 8, 3000)]
+        [Menu("Shrines", "Click shrines", 9, 3000)]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Nearest Harvest", "Click nearest harvest", 9, 3000)]
+        [Menu("Strongboxes", "Click strongboxes", 10, 3000)]
+        public ToggleNode ClickStrongboxes { get; set; } = new ToggleNode(true);
+        [Menu("Nearest Harvest", "Click nearest harvest", 11, 3000)]
         public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click area transitions", 10, 3000)]
+        [Menu("Area Transitions", "Click area transitions", 12, 3000)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
-        [Menu("Sulphite Veins", "Click sulphite veins", 11, 3000)]
+        [Menu("Sulphite Veins", "Click sulphite veins", 13, 3000)]
         public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 12, 3000)]
+        [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 14, 3000)]
         public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Crafting Recipes", "Click crafting recipes", 13, 3000)]
+        [Menu("Crafting Recipes", "Click crafting recipes", 15, 3000)]
         public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
-        [Menu("Breach Nodes", "Click breach nodes", 14, 3000)]
+        [Menu("Breach Nodes", "Click breach nodes", 16, 3000)]
         public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
-        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)", 15, 3000)]
+        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)", 17, 3000)]
         public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
-        [Menu("Alva Temple Doors", "Click alva temple doors", 16, 3000)]
+        [Menu("Alva Temple Doors", "Click alva temple doors", 18, 3000)]
         public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
-        [Menu("Legion Encounters", "Click legion encounter pillars", 17, 3000)]
+        [Menu("Legion Encounters", "Click legion encounter pillars", 19, 3000)]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 18, 3000)]
+        [Menu("Sanctum", "Click sanctum related stuff", 20, 3000)]
+        public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 22, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 19, 3000)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 23, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
-        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.", 20, 3000)]
+        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.", 24, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 21, 3000)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 25, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 22, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 26, 3000)]
         [System.Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
         [Menu("Essences", 3500)]

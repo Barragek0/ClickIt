@@ -12,7 +12,7 @@ namespace ClickIt.Services
         private RectangleF _buffsAndDebuffsRectangle;
 
         // Thread safety lock for screen area updates
-        private readonly object _screenAreasLock = new object();
+        private readonly object _screenAreasLock = new();
         public RectangleF FullScreenRectangle => _fullScreenRectangle;
         public RectangleF HealthAndFlaskRectangle => _healthAndFlaskRectangle;
         public RectangleF ManaAndSkillsRectangle => _manaAndSkillsRectangle;

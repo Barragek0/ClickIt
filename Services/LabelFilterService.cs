@@ -46,7 +46,7 @@ namespace ClickIt.Services
             }
             return false;
         }
-        public static List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, System.Func<Vector2, bool> isInClickableArea)
+        public static List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = new();
             if (allLabels == null)
@@ -103,28 +103,11 @@ namespace ClickIt.Services
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = s.ClickSettlersOre.Value,
+                ClickStrongboxes = s.ClickStrongboxes.Value,
+                ClickSanctum = s.ClickSanctum.Value,
                 ClickAlvaTempleDoors = s.ClickAlvaTempleDoors.Value,
                 ClickLegionPillars = s.ClickLegionPillars.Value,
             };
-        }
-        private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
-        {
-            string path = item.Path;
-            EntityType type = item.Type;
-            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, type, item))
-                return true;
-            if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
-                return true;
-            if (settings.ClickAreaTransitions && type == EntityType.AreaTransition)
-                return true;
-            // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround
-            if (ShouldClickSpecialPath(settings, path))
-                return true;
-            if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
-                return true;
-            if (ShouldClickEssence(settings.ClickEssences, label))
-                return true;
-            return false;
         }
         private struct ClickSettings
         {
@@ -147,10 +130,35 @@ namespace ClickIt.Services
             public bool ClickCrafting { get; set; }
             public bool ClickBreach { get; set; }
             public bool ClickSettlersOre { get; set; }
+            public bool ClickStrongboxes { get; set; }
+            public bool ClickSanctum { get; set; }
+        }
+
+        private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
+        {
+            string path = item.Path;
+            EntityType type = item.Type;
+            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, type, item))
+                return true;
+            if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
+                return true;
+            if (settings.ClickAreaTransitions && (type == EntityType.AreaTransition || path.Contains("AreaTransition")))
+                return true;
+            // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround
+            if (ShouldClickSpecialPath(settings, path))
+                return true;
+            if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
+                return true;
+            if (ShouldClickEssence(settings.ClickEssences, label))
+                return true;
+            return false;
         }
         private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, EntityType type, Entity item)
         {
             if (!clickItems || type != EntityType.WorldItem)
+                return false;
+            // Prevent strongboxes from being clicked as items
+            if (!string.IsNullOrEmpty(item.Path) && item.Path.Contains("Strongbox"))
                 return false;
             if (!ignoreUniques)
                 return true;
@@ -174,6 +182,8 @@ namespace ClickIt.Services
                 return false;
             return (settings.NearestHarvest && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))) ||
                    (settings.ClickSulphite && path.Contains("DelveMineral")) ||
+                   (settings.ClickStrongboxes && path.Contains("Strongbox")) ||
+                   (settings.ClickSanctum && path.Contains("Sanctum")) ||
                    (settings.ClickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
                    (settings.ClickLegionPillars && path.Contains(LegionInitiator)) ||
                    (settings.ClickAzurite && path.Contains("AzuriteEncounterController")) ||
@@ -212,7 +222,7 @@ namespace ClickIt.Services
         {
             return label.ItemOnGround.RenderName.ToLower() switch
             {
-                "chest" or "tribal chest" or "golden chest" or "cocoon" or "weapon rack" or "armour rack" or "trunk" => true,
+                "chest" or "tribal chest" or "golden chest" or "cocoon" or "weapon rack" or "armour rack" or "trunk" or "rotted cocoon" => true,
                 _ => false,
             };
         }

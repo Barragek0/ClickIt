@@ -38,7 +38,7 @@ namespace ClickIt.Services
             Element? corruptElement = label.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);
             if (corruptElement == null)
                 return null;
-            var random = new System.Random();
+            var random = new Random();
             Vector2 offset = new(random.Next(0, 2), random.Next(0, 2));
             return corruptElement.GetClientRect().Center + windowTopLeft + offset;
         }

@@ -8,16 +8,10 @@ using System.Collections.Generic;
 
 namespace ClickIt.Services
 {
-    public class ShrineService
+    public class ShrineService(GameController gameController, Camera camera)
     {
-        private readonly GameController _gameController;
-        private readonly Camera _camera;
-
-        public ShrineService(GameController gameController, Camera camera)
-        {
-            _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-            _camera = camera ?? throw new ArgumentNullException(nameof(camera));
-        }
+        private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
+        private readonly Camera _camera = camera ?? throw new ArgumentNullException(nameof(camera));
 
         public static bool IsShrine(Entity item)
         {
@@ -104,7 +98,7 @@ namespace ClickIt.Services
             return shrines;
         }
 
-        public Entity GetNearestShrineInRange(int clickDistance, Func<Vector2, bool>? isInClickableArea = null)
+        public Entity GetNearestShrineInRange(int clickDistance, Func<Vector2, bool> isInClickableArea = null)
         {
             Entity nearestShrine = null;
             float minDistance = float.MaxValue;

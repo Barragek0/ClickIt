@@ -13,6 +13,7 @@ using SharpDX;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
+using Serilog;
 
 #nullable enable
 
@@ -71,46 +72,44 @@ namespace ClickIt.Services
             this.cachedLabels = cachedLabels;
         }
 
+        // Helper to avoid allocating debug message strings when debug logging is disabled
+        private void DebugLog(Func<string> messageFactory)
+        {
+            try
+            {
+                if (settings.DebugMode?.Value == true)
+                {
+                    logMessage(messageFactory());
+                }
+            }
+            catch
+            {
+                // Swallow any logging-related exceptions to avoid affecting runtime
+            }
+        }
+
         public IEnumerator ProcessAltarClicking()
         {
-            logMessage("[ProcessAltarClicking] Starting altar clicking process...");
-
             var altarSnapshot = altarService.GetAltarComponentsReadOnly();
-            logMessage($"[ProcessAltarClicking] Retrieved {altarSnapshot.Count} altar snapshots");
-
             if (altarSnapshot.Count == 0)
-            {
-                logMessage("[ProcessAltarClicking] No altars found, breaking");
                 yield break;
-            }
 
             bool clickEater = settings.ClickEaterAltars;
             bool clickExarch = settings.ClickExarchAltars;
             bool leftHanded = settings.LeftHanded;
 
-            logMessage($"[ProcessAltarClicking] Settings - Eater: {clickEater}, Exarch: {clickExarch}, LeftHanded: {leftHanded}");
-
             var altarsToClick = altarSnapshot.Where(altar => ShouldClickAltar(altar, clickEater, clickExarch)).ToList();
-            logMessage($"[ProcessAltarClicking] Found {altarsToClick.Count} altars to click");
+            if (altarsToClick.Count == 0)
+                yield break;
 
             foreach (PrimaryAltarComponent altar in altarsToClick)
             {
-                logMessage($"[ProcessAltarClicking] Processing altar: {altar.AltarType}");
-
                 Element boxToClick = GetAltarElementToClick(altar);
                 if (boxToClick != null)
                 {
-                    logMessage($"[ProcessAltarClicking] Clicking altar element, type: {altar.AltarType}");
                     yield return ClickAltarElement(boxToClick, leftHanded);
-                    logMessage($"[ProcessAltarClicking] Finished clicking altar: {altar.AltarType}");
-                }
-                else
-                {
-                    logMessage($"[ProcessAltarClicking] No clickable element found for altar: {altar.AltarType}");
                 }
             }
-
-            logMessage("[ProcessAltarClicking] Completed altar clicking process");
         }
 
         public bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
@@ -124,27 +123,27 @@ namespace ClickIt.Services
 
             if (!altar.IsValidCached())
             {
-                logMessage("Skipping altar - Validation failed");
+                DebugLog(() => "Skipping altar - Validation failed");
                 return false;
             }
 
             if ((altar.TopMods?.Element?.IsValid != true) || (altar.BottomMods?.Element?.IsValid != true))
             {
-                logMessage("Skipping altar - Elements are not valid");
+                DebugLog(() => "Skipping altar - Elements are not valid");
                 return false;
             }
 
             // Check for unmatched mods
             if ((altar.TopMods?.HasUnmatchedMods == true) || (altar.BottomMods?.HasUnmatchedMods == true))
             {
-                logMessage("Skipping altar - Unmatched mods present");
+                DebugLog(() => "Skipping altar - Unmatched mods present");
                 return false;
             }
 
             var altarWeights = altar.GetCachedWeights(pc => weightCalculator.CalculateAltarWeights(pc));
             if (!altarWeights.HasValue)
             {
-                logMessage("Skipping altar - Weight calculation failed");
+                DebugLog(() => "Skipping altar - Weight calculation failed");
                 return false;
             }
 
@@ -157,7 +156,7 @@ namespace ClickIt.Services
 
             if (boxToClick == null)
             {
-                logMessage("Skipping altar - No valid choice could be determined");
+                DebugLog(() => "Skipping altar - No valid choice could be determined");
                 return false;
             }
 
@@ -165,7 +164,7 @@ namespace ClickIt.Services
             if (!pointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) ||
                 !boxToClick.IsVisible)
             {
-                logMessage("Skipping altar - Choice is not clickable or visible");
+                DebugLog(() => "Skipping altar - Choice is not clickable or visible");
                 return false;
             }
 
@@ -191,7 +190,7 @@ namespace ClickIt.Services
 
         private IEnumerator ClickAltarElement(Element element, bool leftHanded)
         {
-            logMessage("[ClickAltarElement] === STARTING ALTAR CLICK PROCESS ===");
+            DebugLog(() => "[ClickAltarElement] === STARTING ALTAR CLICK PROCESS ===");
 
             if (element == null)
             {
@@ -199,7 +198,7 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            logMessage("[ClickAltarElement] Element validation starting...");
+            DebugLog(() => "[ClickAltarElement] Element validation starting...");
             if (!element.IsValid)
             {
                 logError("CRITICAL: Altar element is not valid", 10);
@@ -211,18 +210,18 @@ namespace ClickIt.Services
                 logError("CRITICAL: Altar element is not visible", 10);
                 yield break;
             }
-            logMessage("[ClickAltarElement] Element validation completed successfully");
+            DebugLog(() => "[ClickAltarElement] Element validation completed successfully");
 
-            logMessage("[ClickAltarElement] Getting window rectangle...");
+            DebugLog(() => "[ClickAltarElement] Getting window rectangle...");
             RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            logMessage($"[ClickAltarElement] Window rectangle: {windowArea}");
+            DebugLog(() => $"[ClickAltarElement] Window rectangle: {windowArea}");
 
             // Calculate initial click position
-            logMessage("[ClickAltarElement] Calculating click position...");
+            DebugLog(() => "[ClickAltarElement] Calculating click position...");
             RectangleF elementRect = element.GetClientRect();
             Vector2 clickPos = elementRect.Center + windowTopLeft;
-            logMessage($"[ClickAltarElement] Click position calculated: {clickPos}");
+            DebugLog(() => $"[ClickAltarElement] Click position calculated: {clickPos}");
 
             bool didClick = false;
             Vector2 clickPosUsed = clickPos;
@@ -233,10 +232,10 @@ namespace ClickIt.Services
             {
                 using (gm.Acquire(_elementAccessLock))
                 {
-                    logMessage("[ClickAltarElement] Lock acquired, performing click...");
+                    DebugLog(() => "[ClickAltarElement] Lock acquired, performing click...");
                     try
                     {
-                        logMessage("[ClickAltarElement] Re-validating element inside lock before click...");
+                        DebugLog(() => "[ClickAltarElement] Re-validating element inside lock before click...");
                         if (!element.IsValid || !element.IsVisible)
                         {
                             logError("[ClickAltarElement] Element became invalid or invisible before click", 10);
@@ -245,11 +244,11 @@ namespace ClickIt.Services
                         {
                             RectangleF elementRectInside = element.GetClientRect();
                             clickPosUsed = elementRectInside.Center + windowTopLeft;
-                            logMessage($"[ClickAltarElement] Recomputed click pos: {clickPosUsed}");
+                            DebugLog(() => $"[ClickAltarElement] Recomputed click pos: {clickPosUsed}");
 
-                            logMessage("[ClickAltarElement] === ABOUT TO PERFORM CLICK - THIS IS WHERE FREEZE MAY OCCUR ===");
+                            DebugLog(() => "[ClickAltarElement] === ABOUT TO PERFORM CLICK - THIS IS WHERE FREEZE MAY OCCUR ===");
                             inputHandler.PerformClick(clickPosUsed);
-                            logMessage("[ClickAltarElement] Click performed successfully");
+                            DebugLog(() => "[ClickAltarElement] Click performed successfully");
                             didClick = true;
                         }
                     }
@@ -263,10 +262,10 @@ namespace ClickIt.Services
             else
             {
                 // Locking disabled - perform click without synchronization
-                logMessage("[ClickAltarElement] Locking disabled, performing click without lock...");
+                DebugLog(() => "[ClickAltarElement] Locking disabled, performing click without lock...");
                 try
                 {
-                    logMessage("[ClickAltarElement] Re-validating element before click...");
+                    DebugLog(() => "[ClickAltarElement] Re-validating element before click...");
                     if (!element.IsValid || !element.IsVisible)
                     {
                         logError("[ClickAltarElement] Element became invalid or invisible before click", 10);
@@ -275,11 +274,11 @@ namespace ClickIt.Services
                     {
                         RectangleF elementRectInside = element.GetClientRect();
                         clickPosUsed = elementRectInside.Center + windowTopLeft;
-                        logMessage($"[ClickAltarElement] Recomputed click pos: {clickPosUsed}");
+                        DebugLog(() => $"[ClickAltarElement] Recomputed click pos: {clickPosUsed}");
 
-                        logMessage("[ClickAltarElement] === ABOUT TO PERFORM CLICK - THIS IS WHERE FREEZE MAY OCCUR ===");
+                        DebugLog(() => "[ClickAltarElement] === ABOUT TO PERFORM CLICK - THIS IS WHERE FREEZE MAY OCCUR ===");
                         inputHandler.PerformClick(clickPosUsed);
-                        logMessage("[ClickAltarElement] Click performed successfully");
+                        DebugLog(() => "[ClickAltarElement] Click performed successfully");
                         didClick = true;
                     }
                 }
@@ -292,119 +291,135 @@ namespace ClickIt.Services
 
             if (didClick)
             {
-                logMessage("[ClickAltarElement] === CLICK COMPLETED - ADDING DELAY TO PREVENT INTERFERENCE ===");
+                DebugLog(() => "[ClickAltarElement] === CLICK COMPLETED - ADDING DELAY TO PREVENT INTERFERENCE ===");
                 yield return new WaitTime(70);
-                logMessage("[ClickAltarElement] Delay completed after altar click");
+                DebugLog(() => "[ClickAltarElement] Delay completed after altar click");
             }
 
-            logMessage("[ClickAltarElement] Yield completed");
+            DebugLog(() => "[ClickAltarElement] Yield completed");
         }
 
         public IEnumerator ProcessRegularClick()
         {
-            logMessage("[ProcessRegularClick] ==================== STARTING REGULAR CLICK PROCESS ====================");
+            DebugLog(() => "[ProcessRegularClick] ==================== STARTING REGULAR CLICK PROCESS ====================");
 
-            // Process altar clicking first
-            logMessage("[ProcessRegularClick] Processing altar clicking...");
             yield return ProcessAltarClicking();
-            logMessage("[ProcessRegularClick] Altar clicking completed");
-            logMessage("[ProcessRegularClick] Back from altar clicking, continuing with regular items...");
             if (!groundItemsVisible())
             {
-                logMessage("[ProcessRegularClick] Ground items not visible, breaking");
+                DebugLog(() => "[ProcessRegularClick] Ground items not visible, breaking");
                 yield break;
             }
 
-            logMessage("[ProcessRegularClick] Getting cached labels...");
             var allLabels = cachedLabels?.Value ?? new List<LabelOnGround>();
-            logMessage($"[ProcessRegularClick] Retrieved {allLabels.Count} cached labels");
-
-            logMessage("[ProcessRegularClick] Getting next label to click...");
-            LabelOnGround? nextLabel = labelFilterService.GetNextLabelToClick(allLabels);
+            LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
 
             if (nextLabel == null)
             {
-                logMessage("[ProcessRegularClick] No label to click found, breaking");
+                DebugLog(() => "[ProcessRegularClick] No label to click found, breaking");
                 yield break;
             }
-            logMessage("[ProcessRegularClick] Found label to click");
 
-            Entity item = nextLabel.ItemOnGround;
-            string path = item.Path ?? "";
-            bool isAltar = path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
-
-            if (isAltar)
+            if (IsAltarLabel(nextLabel))
             {
-                logMessage("[ProcessRegularClick] Item is an altar, breaking");
+                DebugLog(() => "[ProcessRegularClick] Item is an altar, breaking");
                 yield break;
             }
 
-            logMessage("[ProcessRegularClick] Getting window rectangle...");
             RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            logMessage($"[ProcessRegularClick] Window rectangle: {windowArea}");
 
-            // Handle essence corruption
-            if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(nextLabel))
+            if (TryCorruptEssence(nextLabel, windowTopLeft))
+                yield break;
+
+            Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
+            PerformLabelClick(clickPos);
+
+            DebugLog(() => $"[ProcessRegularClick] Clicked label at distance {nextLabel.ItemOnGround.DistancePlayer:F1}");
+
+            if (inputHandler.TriggerToggleItems())
             {
-                logMessage("[ProcessRegularClick] Handling essence corruption...");
-                Vector2? corruptionPos = labelFilterService.GetCorruptionClickPosition(nextLabel, windowTopLeft);
+                yield return new WaitTime(20);
+            }
+        }
+
+        private LabelOnGround? FindNextLabelToClick(List<LabelOnGround> allLabels)
+        {
+            if (allLabels.Count == 0) return null;
+            int[] caps = new int[] { 1, 5, 25, 100 };
+            foreach (int cap in caps)
+            {
+                int take = Math.Min(cap, allLabels.Count);
+                var slice = (take == allLabels.Count) ? allLabels : allLabels.GetRange(0, take);
+                for (int i = 0; i < slice.Count; i++)
+                {
+                    var it = slice[i].ItemOnGround;
+                    string path = it?.Path ?? string.Empty;
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        float dist = it?.DistancePlayer ?? 0f;
+                        DebugLog(() => $"[LabelPaths] {path} (dist={dist:F1})");
+                    }
+                    else
+                    {
+                        DebugLog(() => $"[LabelPaths] <no path> (dist={it?.DistancePlayer ?? 0f:F1})");
+                    }
+                }
+
+                var label = labelFilterService.GetNextLabelToClick(slice);
+                if (label != null)
+                    return label;
+            }
+            // Fallback to full scan (rare)
+            return labelFilterService.GetNextLabelToClick(allLabels);
+        }
+
+        private bool IsAltarLabel(LabelOnGround label)
+        {
+            var item = label.ItemOnGround;
+            string path = item.Path ?? "";
+            return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
+        }
+
+        private bool TryCorruptEssence(LabelOnGround label, Vector2 windowTopLeft)
+        {
+            if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(label))
+            {
+                Vector2? corruptionPos = labelFilterService.GetCorruptionClickPosition(label, windowTopLeft);
                 if (corruptionPos.HasValue)
                 {
-                    logMessage("[ProcessRegularClick] === ACQUIRING LOCK FOR CORRUPTION CLICK ===");
-                    // Thread-safe locking to prevent race conditions with altar clicking
+                    DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");
                     var gm = LockManager.Instance;
                     if (gm != null)
                     {
                         using (gm.Acquire(_elementAccessLock))
                         {
-                            logMessage($"[ProcessRegularClick] Performing corruption click at {corruptionPos.Value}");
                             inputHandler.PerformClick(corruptionPos.Value);
-                            logMessage("[ProcessRegularClick] Corruption click performed successfully");
                         }
                     }
                     else
                     {
-                        logMessage($"[ProcessRegularClick] Performing corruption click at {corruptionPos.Value}");
                         inputHandler.PerformClick(corruptionPos.Value);
-                        logMessage("[ProcessRegularClick] Corruption click performed successfully");
                     }
-                    yield break;
+                    return true;
                 }
             }
+            return false;
+        }
 
-            // Use proper click position calculation (includes chest height offset)
-            logMessage("[ProcessRegularClick] Calculating click position...");
-            Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
-            logMessage($"[ProcessRegularClick] Click position calculated: {clickPos}");
-
-            logMessage("[ProcessRegularClick] === ACQUIRING LOCK FOR REGULAR CLICK ===");
-            // Thread-safe locking to prevent race conditions with altar clicking
-            var gm2 = LockManager.Instance;
-            if (gm2 != null)
+        private void PerformLabelClick(Vector2 clickPos)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null)
             {
-                using (gm2.Acquire(_elementAccessLock))
+                using (gm.Acquire(_elementAccessLock))
                 {
-                    logMessage("[ProcessRegularClick] Lock acquired, performing regular click...");
                     inputHandler.PerformClick(clickPos);
-                    logMessage("[ProcessRegularClick] Click performed successfully");
                 }
             }
             else
             {
-                logMessage("[ProcessRegularClick] Locking disabled, performing regular click without lock...");
                 inputHandler.PerformClick(clickPos);
-                logMessage("[ProcessRegularClick] Click performed successfully");
             }
-
-            if (inputHandler.TriggerToggleItems())
-            {
-                logMessage("[ProcessRegularClick] Triggering toggle items...");
-                yield return new WaitTime(20);
-                logMessage("[ProcessRegularClick] Toggle items completed");
-            }
-
-            logMessage("[ProcessRegularClick] Regular click process completed");
         }
     }
 }

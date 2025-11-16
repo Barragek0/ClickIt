@@ -36,7 +36,7 @@ namespace ClickIt.Rendering
             _logMessage = logMessage ?? ((msg, frame) => { });
         }
 
-        public Element? DetermineAltarChoice(PrimaryAltarComponent altar, Utils.AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
+        public Element? DetermineAltarChoice(PrimaryAltarComponent altar, AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
             Vector2 offset120_Minus60 = new(120, -80);
             Vector2 offset120_Minus25 = new(120, -25);
@@ -80,7 +80,7 @@ namespace ClickIt.Rendering
             }
             return EvaluateAltarWeights(weights, altar, topModsRect, bottomModsRect, topModsTopLeft + offset120_Minus60, topModsTopLeft + offset120_Minus25);
         }
-        private Element? EvaluateAltarWeights(Utils.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
+        private Element? EvaluateAltarWeights(AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
             const int DANGEROUS_THRESHOLD = 90;
             const int HIGH_VALUE_THRESHOLD = 90;
@@ -156,7 +156,7 @@ namespace ClickIt.Rendering
             }
         }
 
-        private Element? HandleNormalWeight(Utils.AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 tieTextPos)
+        private Element? HandleNormalWeight(AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 tieTextPos)
         {
             if (weights.TopWeight > weights.BottomWeight)
             {
@@ -226,14 +226,14 @@ namespace ClickIt.Rendering
         // Flush deferred texts through the shared DeferredTextQueue
         // (callers must provide the Graphics instance and a logger via constructor)
 
-        private bool HasAnyWeightOverThreshold(Utils.AltarWeights weights, bool isTop, bool isUpside, int threshold)
+        private bool HasAnyWeightOverThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
         {
             // Create a collection of the relevant weights and check if any exceed threshold
             var weightArray = GetWeightArray(weights, isTop, isUpside);
             return weightArray.Any(w => w >= threshold);
         }
 
-        private decimal[] GetWeightArray(Utils.AltarWeights weights, bool isTop, bool isUpside)
+        private decimal[] GetWeightArray(AltarWeights weights, bool isTop, bool isUpside)
         {
             // Prefer direct array accessors on AltarWeights to reduce duplicated property usage
             if (isUpside)
@@ -286,7 +286,7 @@ namespace ClickIt.Rendering
             _graphics.DrawFrame(topModsRect, Color.Yellow, 2);
             _graphics.DrawFrame(bottomModsRect, Color.Yellow, 2);
         }
-        public void DrawWeightTexts(Utils.AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
+        public void DrawWeightTexts(AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
             Vector2 offset5_Minus32 = new(5, -32);
             Vector2 offset5_Minus20 = new(5, -20);

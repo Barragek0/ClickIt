@@ -225,7 +225,7 @@ namespace ClickIt.Rendering
             yPos += lineHeight;
 
             // Calculate weights if WeightCalculator is available
-            Utils.AltarWeights? weights = null;
+            AltarWeights? weights = null;
             if (_weightCalculator != null)
             {
                 weights = _weightCalculator.CalculateAltarWeights(altar);
@@ -246,7 +246,7 @@ namespace ClickIt.Rendering
             return yPos;
         }
 
-        private int RenderTopModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent topMods, Utils.AltarWeights? weights)
+        private int RenderTopModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent topMods, AltarWeights? weights)
         {
             int topUpsidesCount = topMods.Upsides?.Count ?? 0;
             int topDownsidesCount = topMods.Downsides?.Count ?? 0;
@@ -282,7 +282,7 @@ namespace ClickIt.Rendering
             return yPos;
         }
 
-        private int RenderBottomModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent bottomMods, Utils.AltarWeights? weights)
+        private int RenderBottomModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent bottomMods, AltarWeights? weights)
         {
             int bottomUpsidesCount = bottomMods.Upsides?.Count ?? 0;
             int bottomDownsidesCount = bottomMods.Downsides?.Count ?? 0;
@@ -318,25 +318,25 @@ namespace ClickIt.Rendering
             return yPos;
         }
 
-        private decimal GetTopUpsideWeight(Utils.AltarWeights weights, int index)
+        private decimal GetTopUpsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetTopUpsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
-        private decimal GetTopDownsideWeight(Utils.AltarWeights weights, int index)
+        private decimal GetTopDownsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetTopDownsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
-        private decimal GetBottomUpsideWeight(Utils.AltarWeights weights, int index)
+        private decimal GetBottomUpsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetBottomUpsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
-        private decimal GetBottomDownsideWeight(Utils.AltarWeights weights, int index)
+        private decimal GetBottomDownsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetBottomDownsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;

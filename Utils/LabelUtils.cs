@@ -116,9 +116,9 @@ namespace ClickIt.Utils
         public static bool IsValidEntityType(Entity item)
         {
             EntityType type = item.Type;
-
+            string path = item.Path ?? "";
             return type == EntityType.WorldItem ||
-                   type == EntityType.AreaTransition ||
+                   type == EntityType.AreaTransition || path.Contains("AreaTransition") ||
                    (type == EntityType.Chest && !item.GetComponent<Chest>().OpenOnDamage);
         }
 
@@ -146,7 +146,8 @@ namespace ClickIt.Utils
                    path.Contains("Verisium") ||
                    path.Contains("ClosedDoorPast") ||
                    path.Contains("LegionInitiator") ||
-                   path.Contains("DarkShrine");
+                   path.Contains("DarkShrine") ||
+                   path.Contains("Sanctum");
         }
 
         public static bool HasEssenceImprisonmentText(LabelOnGround label)

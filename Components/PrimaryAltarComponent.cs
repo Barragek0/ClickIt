@@ -26,7 +26,7 @@ namespace ClickIt.Components
 
         private bool? _isValidCache;
         private long _lastValidationTime;
-        private Utils.AltarWeights? _cachedWeights;
+        private AltarWeights? _cachedWeights;
         private long _lastWeightCalculationTime;
         private readonly Stopwatch _cacheTimer;
         private const long CACHE_DURATION_MS = 1000;
@@ -85,7 +85,7 @@ namespace ClickIt.Components
             });
         }
 
-        public Utils.AltarWeights? GetCachedWeights(Func<PrimaryAltarComponent, Utils.AltarWeights> weightCalculator)
+        public AltarWeights? GetCachedWeights(Func<PrimaryAltarComponent, AltarWeights> weightCalculator)
         {
             return WithCacheLock(() =>
             {

@@ -32,12 +32,12 @@ namespace ClickIt.Utils
         }
 
         /// <summary>
-        /// Acquire a lock for the provided object. If locking is disabled in settings, returns a noop disposable.
+        /// Acquire a lock for the provided object. If locking failed to initialize, returns a noop disposable.
         /// Use with 'using(var d = LockManager.Acquire(obj)) { ... }'
         /// </summary>
         public IDisposable Acquire(object lockObj)
         {
-            if (!_settings.UseLocking.Value || lockObj == null)
+            if (lockObj == null)
             {
                 return NoopReleaser.Instance;
             }

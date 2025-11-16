@@ -47,7 +47,7 @@ namespace ClickIt.Services
         private readonly object _altarComponentsLock = new object();
         private readonly object _debugInfoLock = new object();
 
-        private static readonly System.Text.RegularExpressions.Regex RgbRegex = new System.Text.RegularExpressions.Regex(
+        private static readonly Regex RgbRegex = new Regex(
             @"<rgb\(\d+,\d+,\d+\)>",
             RegexOptions.Compiled);
         public AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
