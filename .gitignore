@@ -114,3 +114,18 @@ Icon?
 
 # Plugin specific output directories
 debug/
+
+# Test and coverage artifacts
+TestResults/
+Tests/bin/
+Coverage/
+CoverageReport*/
+
+# Local build artifacts and logs
+build.log
+
+# Local CI stubs / workflows (if present)
+.github/ci-stubs/
+
+# Local assistant / continuation state
+.continue/
