@@ -10,11 +10,35 @@
         "/p:Configuration=Debug",
         "/p:IncludeIntegrationTests=true"
       ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Run Tests (dotnet test)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "Tests\\ClickIt.Tests.csproj",
+        "-c",
+        "Debug"
+      ],
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build and Test",
+      "dependsOn": [
+        "Build ClickIt",
+        "Run Tests (dotnet test)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
       "group": {
         "kind": "build",
         "isDefault": true
-      },
-      "problemMatcher": "$msCompile"
+      }
     }
   ]
 }
