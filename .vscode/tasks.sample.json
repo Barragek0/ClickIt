@@ -20,7 +20,8 @@
         "test",
         "Tests\\ClickIt.Tests.csproj",
         "-c",
-        "Debug"
+        "Debug",
+        "-p:IncludeIntegrationTests=true"
       ],
       "presentation": {
         "reveal": "always"
