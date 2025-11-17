@@ -1,0 +1,41 @@
+name: ClickIt CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore test project dependencies
+        run: dotnet restore Tests\ClickIt.Tests.csproj
+
+      - name: Build test project (MSBuild)
+        run: |
+          msbuild Tests\ClickIt.Tests.csproj /p:Configuration=Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
+
+      - name: Run tests (no build)
+        run: |
+          dotnet test Tests\ClickIt.Tests.csproj --configuration Debug --no-build --logger "trx;LogFileName=ClickIt.Tests.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+          retention-days: 30
