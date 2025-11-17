@@ -1,6 +1,27 @@
 using System;
 using System.Collections.Generic;
-using SharpDX;
+
+// Provide minimal SharpDX-like types so CI doesn't need the SharpDX package
+namespace SharpDX
+{
+    public struct Vector2
+    {
+        public float X;
+        public float Y;
+        public Vector2(float x, float y) { X = x; Y = y; }
+        public static Vector2 Zero => new Vector2(0, 0);
+    }
+
+    public struct RectangleF
+    {
+        public float X;
+        public float Y;
+        public float Width;
+        public float Height;
+        public RectangleF(float x, float y, float w, float h) { X = x; Y = y; Width = w; Height = h; }
+        public Vector2 Center => new Vector2(X + Width / 2f, Y + Height / 2f);
+    }
+}
 
 namespace ExileCore
 {

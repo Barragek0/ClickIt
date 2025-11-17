@@ -1,18 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <OutputPath>out</OutputPath>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="ClickItStub.cs" />
-  </ItemGroup>
-</Project>
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
     <AssemblyName>ClickIt</AssemblyName>
+    <OutputPath>out</OutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <!-- Disable SDK default compile include so we only compile the explicit stub file(s) -->
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -21,5 +11,4 @@
   <ItemGroup>
     <Compile Include="ClickItStub.cs" />
   </ItemGroup>
-
 </Project>
