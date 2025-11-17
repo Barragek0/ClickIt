@@ -33,7 +33,9 @@ jobs:
 
       - name: Copy ClickIt stub into test output folder
         run: |
+          pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\\bin\\Debug') | Out-Null"
           pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\\bin\\Debug\\net48') | Out-Null"
+          pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $PWD 'Tests\\bin\\Debug\\ClickIt.dll') -Force"
           pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $PWD 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
 
       - name: Build test project (MSBuild)
