@@ -24,6 +24,18 @@ jobs:
       - name: Restore test project dependencies
         run: dotnet restore Tests\ClickIt.Tests.csproj
 
+      - name: Restore and build CI stubs
+        run: |
+          dotnet restore .github\ci-stubs\ExileCoreStubs.csproj
+          dotnet build .github\ci-stubs\ExileCoreStubs.csproj --configuration Debug --no-restore -o .github\ci-stubs\out
+          dotnet restore .github\ci-stubs\ClickItStub.csproj
+          dotnet build .github\ci-stubs\ClickItStub.csproj --configuration Debug --no-restore -o .github\ci-stubs\out
+
+      - name: Copy ClickIt stub into test output folder
+        run: |
+          pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\\bin\\Debug\\net48') | Out-Null"
+          pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $PWD 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
+
       - name: Build test project (MSBuild)
         run: |
           msbuild Tests\ClickIt.Tests.csproj /p:Configuration=Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
