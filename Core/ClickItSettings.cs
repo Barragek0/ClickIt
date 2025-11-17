@@ -20,28 +20,28 @@ namespace ClickIt
         [Menu("Additional Debug Information - Render", "Provides more debug text related to rendering the overlay. ", 2, 900)]
         public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Status", "Show/hide the Status debug section", 1, 2)]
+        [Menu("Status", "Show/hide the Status debug section", 1, 2)]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Performance", "Show/hide the Performance debug section", 2, 2)]
+        [Menu("Performance", "Show/hide the Performance debug section", 2, 2)]
         public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Game State", "Show/hide the Game State debug section", 3, 2)]
+        [Menu("Game State", "Show/hide the Game State debug section", 3, 2)]
         public ToggleNode DebugShowGameState { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Altar Service", "Show/hide the Altar Service debug section", 4, 2)]
+        [Menu("Altar Service", "Show/hide the Altar Service debug section", 4, 2)]
         public ToggleNode DebugShowAltarService { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Altar Detection", "Show/hide the Altar Detection debug section", 5, 2)]
+        [Menu("Altar Detection", "Show/hide the Altar Detection debug section", 5, 2)]
         public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Labels", "Show/hide the Labels debug section", 6, 2)]
+        [Menu("Labels", "Show/hide the Labels debug section", 6, 2)]
         public ToggleNode DebugShowLabels { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Recent Errors", "Show/hide the Recent Errors debug section", 7, 2)]
+        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 7, 2)]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("    Debug Frames", "Show/hide the debug screen area frames", 8, 2)]
+        [Menu("Debug Frames", "Show/hide the debug screen area frames", 8, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [Menu("Log messages", "This will flood your log with debug information. You should only enable this if you want to report a bug.", 3, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
@@ -72,6 +72,42 @@ namespace ClickIt
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
         [Menu("Strongboxes", "Click strongboxes", 10, 3000)]
         public ToggleNode ClickStrongboxes { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Regular Strongbox", "Click normal strongboxes", 1, 2)]//StrongBoxes/Strongbox
+        public ToggleNode RegularStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Arcanists' Strongbox (currency drops)", "Click arcanists' strongboxes.", 1, 2)]//StrongBoxes/Arcanist
+        public ToggleNode ArcanistStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Armourers' Strongbox (armour drops)", "Click armourers' strongboxes", 2, 2)]//StrongBoxes/Armory
+        public ToggleNode ArmourerStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Artisans' Strongbox (quality currency drops)", "Click artisans' strongboxes", 3, 2)]//StrongBoxes/
+        public ToggleNode ArtisanStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Blacksmiths' Strongbox (weapon drops)", "Click blacksmiths' strongboxes", 4, 2)]//StrongBoxes/
+        public ToggleNode BlacksmithStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Cartographers' Strongbox (map drops)", "Click cartographers' strongboxes", 5, 2)]//StrongBoxes/
+        public ToggleNode CartographerStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Diviners' Strongbox (divination card drops)", "Click diviners' strongboxes", 6, 2)]//StrongBoxes/
+        public ToggleNode DivinerStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Gemcutters' Strongbox (gem drops)", "Click gemcutters' strongboxes", 7, 2)]//StrongBoxes/Gemcutter
+        public ToggleNode GemcutterStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Jewellers' Strongbox (jewellery drops)", "Click jewellers' strongboxes", 8, 2)]//StrongBoxes/Jeweller
+        public ToggleNode JewellerStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Large Strongbox (+ quantity)", "Click large strongboxes", 9, 2)]//StrongBoxes/Large
+        public ToggleNode LargeStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Ornate Strongbox (+ rarity)", "Click ornate strongboxes", 10, 2)]//StrongBoxes/Ornate
+        public ToggleNode OrnateStrongbox { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("ClickStrongboxes")]
+        [Menu("Unique Strongbox", "Click unique strongboxes", 11, 2)]//StrongBoxes/
+        public ToggleNode UniqueStrongbox { get; set; } = new ToggleNode(true);
         [Menu("Nearest Harvest", "Click nearest harvest", 11, 3000)]
         public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
         [Menu("Area Transitions", "Click area transitions", 12, 3000)]
@@ -94,6 +130,8 @@ namespace ClickIt
         public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
         [Menu("Betrayal", "Click betrayal labels", 21, 3000)]
         public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(true);
+        [Menu("Blight", "Click blight pumps", 29, 3000)]
+        public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
         [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 22, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
