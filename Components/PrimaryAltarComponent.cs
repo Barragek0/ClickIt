@@ -3,6 +3,7 @@ using SharpDX;
 using System;
 using System.Diagnostics;
 using ClickIt.Utils;
+using RectangleF = SharpDX.RectangleF;
 namespace ClickIt.Components
 {
 #nullable enable

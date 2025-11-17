@@ -1,77 +1,45 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{57675CB8-F97E-443B-A870-BDF4128B9EC5}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ClickIt</RootNamespace>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>ClickIt</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
+    <RootNamespace>ClickIt</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
+    <!-- Prevent SDK from generating assembly attributes (we have Properties/AssemblyInfo.cs) -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Disable implicit compile include because we explicitly list source files -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>obj\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x64</PlatformTarget>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <ExcludeGeneratedDebugSymbol>False</ExcludeGeneratedDebugSymbol>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+
+  <PropertyGroup Condition=" '$(Configuration)' == '' ">
+    <Configuration>Debug</Configuration>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>obj\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x64</PlatformTarget>
-    <ExcludeGeneratedDebugSymbol>False</ExcludeGeneratedDebugSymbol>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-  </PropertyGroup>
+
+  <!-- External ExileCore DLLs are provided by host; pass their folder with /p:exapiPackage=... -->
   <ItemGroup>
-    <!-- ExileCore and Essential Plugin References -->
     <Reference Include="ExileCore">
-      <HintPath>..\..\PoeHelper\net48\ExileCore.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(exapiPackage)\ExileCore.dll</HintPath>
+      <Private>false</Private>
     </Reference>
     <Reference Include="GameOffsets">
-      <HintPath>..\..\PoeHelper\net48\GameOffsets.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(exapiPackage)\GameOffsets.dll</HintPath>
+      <Private>false</Private>
     </Reference>
     <Reference Include="ProcessMemoryUtilities">
-      <HintPath>..\..\PoeHelper\net48\ProcessMemoryUtilities.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(exapiPackage)\ProcessMemoryUtilities.dll</HintPath>
+      <Private>false</Private>
     </Reference>
-
-    
-    <!-- System References -->
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System" />
-    <Reference Include="System.ComponentModel.Composition" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.IO.Log" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
+
   <ItemGroup>
-    <!-- NuGet Package References -->
+    <!-- NuGet packages (kept from original project) -->
     <PackageReference Include="ImGui.NET" Version="1.89.7.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Serilog" Version="3.1.1" />
@@ -84,20 +52,22 @@
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
     <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
   </ItemGroup>
+
+  <!-- Explicit compile list (mirrors original) to avoid auto-including Tests/ -->
   <ItemGroup>
     <!-- Core Classes -->
     <Compile Include="Core\ClickIt.cs" />
     <Compile Include="Core\ClickItSettings.cs" />
-    
+
     <!-- Constants -->
     <Compile Include="Constants\AltarModsConstants.cs" />
     <Compile Include="Constants\Constants.cs" />
-    
+
     <!-- Components -->
     <Compile Include="Components\AltarButton.cs" />
     <Compile Include="Components\PrimaryAltarComponent.cs" />
     <Compile Include="Components\SecondaryAltarComponent.cs" />
-    
+
     <!-- Properties -->
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -105,7 +75,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    
+
     <!-- Services -->
     <Compile Include="Services\AltarService.cs" />
     <Compile Include="Services\LabelFilterService.cs" />
@@ -113,11 +83,11 @@
     <Compile Include="Services\AreaService.cs" />
     <Compile Include="Services\ClickService.cs" />
     <Compile Include="Services\ShrineService.cs" />
-    
+
     <!-- Rendering -->
     <Compile Include="Rendering\DebugRenderer.cs" />
     <Compile Include="Rendering\AltarDisplayRenderer.cs" />
-    
+
     <!-- Utils -->
     <Compile Include="Utils\Mouse.cs" />
     <Compile Include="Utils\Keyboard.cs" />
@@ -127,6 +97,7 @@
     <Compile Include="Utils\DeferredTextQueue.cs" />
     <Compile Include="Utils\LabelUtils.cs" />
   </ItemGroup>
+
   <ItemGroup>
     <None Include=".editorconfig" />
     <None Include="app.config" />
@@ -136,17 +107,10 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
-  <!-- NuGet packages removed - using ExileCore provided DLLs instead -->
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="AfterBuild">
-    <Copy SourceFiles="$(ProjectDir)$(OutputPath)ClickIt.dll" DestinationFolder="C:\1.Path stuff\PoeHelper\net48\Plugins\Compiled\ClickIt" />
 
-    <!-- Run automated tests after successful build (if test project exists)
-         This Exec can be skipped by setting the MSBuild property SkipRunTests=true.
-         CI should set SkipRunTests=true to avoid running tests from the project AfterBuild. -->
-    <Exec Command="&quot;$(ProjectDir)run-tests.bat&quot;" 
-          Condition="Exists('$(ProjectDir)Tests\ClickIt.Tests.csproj') and '$(Configuration)' == 'Debug' and '$(SkipRunTests)' != 'true'" 
-          ContinueOnError="false" 
-          WorkingDirectory="$(ProjectDir)" />
+  <Target Name="AfterBuild">
+    <Copy SourceFiles="$(ProjectDir)$(OutputPath)ClickIt.dll" DestinationFolder="C:\1.Path stuff\PoeHelper\net48\Plugins\Compiled\ClickIt" ContinueOnError="true" />
+    <Exec Command="&quot;$(ProjectDir)run-tests.bat&quot;" Condition="Exists('$(ProjectDir)Tests\ClickIt.Tests.csproj') and '$(Configuration)' == 'Debug' and '$(SkipRunTests)' != 'true'" ContinueOnError="false" WorkingDirectory="$(ProjectDir)" />
   </Target>
+
 </Project>

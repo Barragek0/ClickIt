@@ -7,6 +7,7 @@ using System.Text;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Enums;
 using SharpDX;
+using RectangleF = SharpDX.RectangleF;
 using System;
 using System.Threading;
 #nullable enable

@@ -2,6 +2,7 @@
 using ExileCore;
 using ExileCore.Shared.Helpers;
 using SharpDX;
+using RectangleF = SharpDX.RectangleF;
 namespace ClickIt.Services
 {
     public class AreaService

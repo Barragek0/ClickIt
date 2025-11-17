@@ -2,3 +2,6 @@
 
 # CS0612: Type or member is obsolete
 dotnet_diagnostic.CS0612.severity = suggestion
+
+# CA1416: Validate platform compatibility
+dotnet_diagnostic.CA1416.severity = none

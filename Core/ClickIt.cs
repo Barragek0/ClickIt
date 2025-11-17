@@ -16,6 +16,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Runtime.InteropServices;
+using RectangleF = SharpDX.RectangleF;
 namespace ClickIt
 {
 #nullable enable
