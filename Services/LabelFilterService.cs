@@ -105,6 +105,17 @@ namespace ClickIt.Services
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = s.ClickSettlersOre.Value,
                 ClickStrongboxes = s.ClickStrongboxes.Value,
+                RegularStrongbox = s.RegularStrongbox.Value,
+                ArcanistStrongbox = s.ArcanistStrongbox.Value,
+                ArmourerStrongbox = s.ArmourerStrongbox.Value,
+                ArtisanStrongbox = s.ArtisanStrongbox.Value,
+                BlacksmithStrongbox = s.BlacksmithStrongbox.Value,
+                CartographerStrongbox = s.CartographerStrongbox.Value,
+                DivinerStrongbox = s.DivinerStrongbox.Value,
+                GemcutterStrongbox = s.GemcutterStrongbox.Value,
+                JewellerStrongbox = s.JewellerStrongbox.Value,
+                LargeStrongbox = s.LargeStrongbox.Value,
+                OrnateStrongbox = s.OrnateStrongbox.Value,
                 ClickSanctum = s.ClickSanctum.Value,
                 ClickBetrayal = s.ClickBetrayal.Value,
                 ClickBlight = s.ClickBlight.Value,
@@ -134,6 +145,17 @@ namespace ClickIt.Services
             public bool ClickBreach { get; set; }
             public bool ClickSettlersOre { get; set; }
             public bool ClickStrongboxes { get; set; }
+            public bool RegularStrongbox { get; set; }
+            public bool ArcanistStrongbox { get; set; }
+            public bool ArmourerStrongbox { get; set; }
+            public bool ArtisanStrongbox { get; set; }
+            public bool BlacksmithStrongbox { get; set; }
+            public bool CartographerStrongbox { get; set; }
+            public bool DivinerStrongbox { get; set; }
+            public bool GemcutterStrongbox { get; set; }
+            public bool JewellerStrongbox { get; set; }
+            public bool LargeStrongbox { get; set; }
+            public bool OrnateStrongbox { get; set; }
             public bool ClickSanctum { get; set; }
             public bool ClickBetrayal { get; set; }
             public bool ClickBlight { get; set; }
@@ -187,7 +209,7 @@ namespace ClickIt.Services
                 return false;
             return (settings.NearestHarvest && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))) ||
                    (settings.ClickSulphite && path.Contains("DelveMineral")) ||
-                   (settings.ClickStrongboxes && path.Contains("Strongbox")) ||
+                   ShouldClickStrongbox(settings, path) ||
                    (settings.ClickSanctum && path.Contains("Sanctum")) ||
                    (settings.ClickBetrayal && path.Contains("BetrayalMakeChoice")) ||
                    (settings.ClickBlight && path.Contains("BlightPump")) ||
@@ -210,6 +232,25 @@ namespace ClickIt.Services
             if (!clickEssences)
                 return false;
             return LabelUtils.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
+        }
+
+        private static bool ShouldClickStrongbox(ClickSettings settings, string path)
+        {
+            if (!settings.ClickStrongboxes || string.IsNullOrEmpty(path))
+                return false;
+
+            // Require both global ClickStrongboxes and the specific strongbox setting
+            return (settings.RegularStrongbox && path.Contains("StrongBoxes/Strongbox")) ||
+                   (settings.ArcanistStrongbox && path.Contains("StrongBoxes/Arcanist")) ||
+                   (settings.ArmourerStrongbox && path.Contains("StrongBoxes/Armory")) ||
+                   (settings.ArtisanStrongbox && path.Contains("StrongBoxes/Artisan")) ||
+                   (settings.BlacksmithStrongbox && path.Contains("StrongBoxes/Arsenal")) ||
+                   (settings.CartographerStrongbox && path.Contains("StrongBoxes/CartographerEndMaps")) ||
+                   (settings.DivinerStrongbox && path.Contains("StrongBoxes/StrongboxDivination")) ||
+                   (settings.GemcutterStrongbox && path.Contains("StrongBoxes/Gemcutter")) ||
+                   (settings.JewellerStrongbox && path.Contains("StrongBoxes/Jeweller")) ||
+                   (settings.LargeStrongbox && path.Contains("StrongBoxes/Large")) ||
+                   (settings.OrnateStrongbox && path.Contains("StrongBoxes/Ornate"));
         }
 
         public bool ShouldCorruptEssence(LabelOnGround label)

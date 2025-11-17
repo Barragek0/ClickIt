@@ -82,16 +82,16 @@ namespace ClickIt
         [Menu("Armourers' Strongbox (armour drops)", "Click armourers' strongboxes", 2, 2)]//StrongBoxes/Armory
         public ToggleNode ArmourerStrongbox { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Artisans' Strongbox (quality currency drops)", "Click artisans' strongboxes", 3, 2)]//StrongBoxes/
+        [Menu("Artisans' Strongbox (quality currency drops)", "Click artisans' strongboxes", 3, 2)]//StrongBoxes/Artisan
         public ToggleNode ArtisanStrongbox { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Blacksmiths' Strongbox (weapon drops)", "Click blacksmiths' strongboxes", 4, 2)]//StrongBoxes/
+        [Menu("Blacksmiths' Strongbox (weapon drops)", "Click blacksmiths' strongboxes", 4, 2)]//StrongBoxes/Arsenal
         public ToggleNode BlacksmithStrongbox { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Cartographers' Strongbox (map drops)", "Click cartographers' strongboxes", 5, 2)]//StrongBoxes/
+        [Menu("Cartographers' Strongbox (map drops)", "Click cartographers' strongboxes", 5, 2)]//StrongBoxes/CartographerEndMaps
         public ToggleNode CartographerStrongbox { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Diviners' Strongbox (divination card drops)", "Click diviners' strongboxes", 6, 2)]//StrongBoxes/
+        [Menu("Diviners' Strongbox (divination card drops)", "Click diviners' strongboxes", 6, 2)]//StrongBoxes/StrongboxDivination
         public ToggleNode DivinerStrongbox { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("ClickStrongboxes")]
         [Menu("Gemcutters' Strongbox (gem drops)", "Click gemcutters' strongboxes", 7, 2)]//StrongBoxes/Gemcutter
@@ -105,9 +105,6 @@ namespace ClickIt
         [ConditionalDisplay("ClickStrongboxes")]
         [Menu("Ornate Strongbox (+ rarity)", "Click ornate strongboxes", 10, 2)]//StrongBoxes/Ornate
         public ToggleNode OrnateStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Unique Strongbox", "Click unique strongboxes", 11, 2)]//StrongBoxes/
-        public ToggleNode UniqueStrongbox { get; set; } = new ToggleNode(true);
         [Menu("Nearest Harvest", "Click nearest harvest", 11, 3000)]
         public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
         [Menu("Area Transitions", "Click area transitions", 12, 3000)]
