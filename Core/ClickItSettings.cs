@@ -14,10 +14,9 @@ namespace ClickIt
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
         [Menu("Enable these if you run into a bug", 900)]
         public EmptyNode EmptyTesting { get; set; } = new EmptyNode();
-        [Menu("Debug Mode", "You should only use this if you encounter an issue with the plugin. " +
-            "It will flood your screen with debug information that you can provide on the plugin thread to help narrow down the issue.", 1, 900)]
+        [Menu("Debug Mode", "Enables debug mode to help with troubleshooting issues.", 1, 900)]
         public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
-        [Menu("Additional Debug Information - Render", "Provides more debug text related to rendering the overlay. ", 2, 900)]
+        [Menu("Additional Debug Information", "Provides more debug text related to rendering the overlay. ", 2, 900)]
         public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
         [ConditionalDisplay("RenderDebug")]
         [Menu("Status", "Show/hide the Status debug section", 1, 2)]
@@ -47,103 +46,75 @@ namespace ClickIt
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
         [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 5, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
-        [Menu("Accessibility", 1000)]
-        public EmptyNode EmptyAccessibility { get; set; } = new EmptyNode();
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 1, 1000)]
-        public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
+
+        // ----- General -----
         [Menu("General", 3000)]
         public EmptyNode Click { get; set; } = new EmptyNode();
-        [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
+        [Menu("Items", "Click items", 1, 3000)]
+        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
+        [Menu("Hotkey", "Held hotkey to start clicking", 2, 3000)]
         [System.Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
-        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 1, 3000)]
+        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 3, 3000)]
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
-        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 2, 3000)]
+        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 4, 3000)]
         public RangeNode<int> ClickFrequencyTarget { get; set; } = new RangeNode<int>(80, 80, 250);
-        [Menu("Items", "Click items", 3, 3000)]
-        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("Ignore Unique Items", "Ignore unique items", 4, 3000)]
+        [Menu("Ignore Unique Items", "Ignore unique items", 5, 3000)]
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Basic Chests", "Click normal (non-league related) chests", 7, 3000)]
+        [Menu("Basic Chests", "Click normal (non-league related) chests", 6, 3000)]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
-        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 8, 3000)]
+        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 7, 3000)]
         public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
-        [Menu("Shrines", "Click shrines", 9, 3000)]
+        [Menu("Shrines", "Click shrines", 8, 3000)]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Strongboxes", "Click strongboxes", 10, 3000)]
-        public ToggleNode ClickStrongboxes { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Regular Strongbox", "Click normal strongboxes", 1, 2)]//StrongBoxes/Strongbox
-        public ToggleNode RegularStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Arcanists' Strongbox (currency drops)", "Click arcanists' strongboxes.", 1, 2)]//StrongBoxes/Arcanist
-        public ToggleNode ArcanistStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Armourers' Strongbox (armour drops)", "Click armourers' strongboxes", 2, 2)]//StrongBoxes/Armory
-        public ToggleNode ArmourerStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Artisans' Strongbox (quality currency drops)", "Click artisans' strongboxes", 3, 2)]//StrongBoxes/Artisan
-        public ToggleNode ArtisanStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Blacksmiths' Strongbox (weapon drops)", "Click blacksmiths' strongboxes", 4, 2)]//StrongBoxes/Arsenal
-        public ToggleNode BlacksmithStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Cartographers' Strongbox (map drops)", "Click cartographers' strongboxes", 5, 2)]//StrongBoxes/CartographerEndMaps
-        public ToggleNode CartographerStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Diviners' Strongbox (divination card drops)", "Click diviners' strongboxes", 6, 2)]//StrongBoxes/StrongboxDivination
-        public ToggleNode DivinerStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Gemcutters' Strongbox (gem drops)", "Click gemcutters' strongboxes", 7, 2)]//StrongBoxes/Gemcutter
-        public ToggleNode GemcutterStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Jewellers' Strongbox (jewellery drops)", "Click jewellers' strongboxes", 8, 2)]//StrongBoxes/Jeweller
-        public ToggleNode JewellerStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Large Strongbox (+ quantity)", "Click large strongboxes", 9, 2)]//StrongBoxes/Large
-        public ToggleNode LargeStrongbox { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("ClickStrongboxes")]
-        [Menu("Ornate Strongbox (+ rarity)", "Click ornate strongboxes", 10, 2)]//StrongBoxes/Ornate
-        public ToggleNode OrnateStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Nearest Harvest", "Click nearest harvest", 11, 3000)]
-        public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click area transitions", 12, 3000)]
-        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
-        [Menu("Sulphite Veins", "Click sulphite veins", 13, 3000)]
-        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 14, 3000)]
-        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Crafting Recipes", "Click crafting recipes", 15, 3000)]
-        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
-        [Menu("Breach Nodes", "Click breach nodes", 16, 3000)]
-        public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
-        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)", 17, 3000)]
-        public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
-        [Menu("Alva Temple Doors", "Click alva temple doors", 18, 3000)]
-        public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
-        [Menu("Legion Encounters", "Click legion encounter pillars", 19, 3000)]
-        public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Sanctum", "Click sanctum related stuff", 20, 3000)]
-        public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
-        [Menu("Betrayal", "Click betrayal labels", 21, 3000)]
-        public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(true);
-        [Menu("Blight", "Click blight pumps", 29, 3000)]
-        public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 22, 3000)]
+
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 9, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
+        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 10, 3000)]
+        public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 23, 3000)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 11, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
-        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.\n\nYou must run ExileAPI as Administrator for this to function.", 24, 3000)]
+        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.\n\nYou must run ExileAPI as Administrator for this to function.", 12, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
-        [Menu("Lazy Mode (not recommended)", "Will automatically click everything for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n-> This will take control away from you at crucial moments, its therefore not recommended for most players.\n-> The plugin cannot detect if a strongbox has been activated, so it will repeatedly try to click on it.\n   This is a limitation with exileapi and / or the game memory and not the plugin.\n\nBehaviour of the 'Hotkey' will be inverted:\n-> When the hotkey is released, the plugin will be allowed to click.\n-> When the hotkey is held, the plugin will not be allowed to click.", 25, 3000)]
+        [Menu("Lazy Mode (not recommended)", "Will automatically click everything for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n-> This will take control away from you at crucial moments, its therefore not recommended for most players.\n-> The plugin cannot detect if a strongbox has been activated, so it will repeatedly try to click on it.\n   This is a limitation with exileapi and / or the game memory and not the plugin.\n\nBehaviour of the 'Hotkey' will be inverted:\n-> When the hotkey is released, the plugin will be allowed to click.\n-> When the hotkey is held, the plugin will not be allowed to click.", 13, 3000)]
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
-        [Menu("Lazy Mode Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 26, 3000)]
+        [Menu("Lazy Mode Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 14, 3000)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 250, 1000);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 27, 3000)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 15, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 28, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 16, 3000)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
+
+        // ----- Mechanics -----
+        [Menu("Mechanics", 3100)]
+        public EmptyNode Mechanics { get; set; } = new EmptyNode();
+        [Menu("Harvest", "Click nearest harvest", 11, 3100)]
+        public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
+        [Menu("Area Transitions", "Click area transitions", 12, 3100)]
+        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
+        [Menu("Sulphite Veins", "Click sulphite veins", 13, 3100)]
+        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
+        [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 14, 3100)]
+        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
+        [Menu("Crafting Recipes", "Click crafting recipes", 15, 3100)]
+        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
+        [Menu("Breach Nodes", "Click breach nodes", 16, 3100)]
+        public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
+        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)", 17, 3100)]
+        public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
+        [Menu("Alva Temple Doors", "Click alva temple doors", 18, 3100)]
+        public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
+        [Menu("Legion Encounters", "Click legion encounter pillars", 19, 3100)]
+        public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
+        [Menu("Sanctum", "Click sanctum related stuff", 20, 3100)]
+        public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
+        [Menu("Betrayal", "Click betrayal labels", 21, 3100)]
+        public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(true);
+        [Menu("Blight", "Click blight pumps", 29, 3100)]
+        public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
+
+        // ----- Essences -----
         [Menu("Essences", 3500)]
         public EmptyNode Essences { get; set; } = new EmptyNode();
         [Menu("Essences", "Click essences", 1, 3500)]
@@ -152,6 +123,32 @@ namespace ClickIt
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
         [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 4, 3500)]
         public ToggleNode CorruptMEDSEssences { get; set; } = new ToggleNode(true);
+
+        // ----- Strongboxes -----
+        [Menu("Strongboxes", 3510)]
+        public EmptyNode Strongboxes { get; set; } = new EmptyNode();
+        [Menu("Regular Strongbox", "Click regular strongboxes", 1, 3510)]
+        public ToggleNode RegularStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Arcanist Strongbox (currency)", "Click arcanist strongboxes", 2, 3510)]
+        public ToggleNode ArcanistStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Armourer Strongbox (armour)", "Click armourer strongboxes", 3, 3510)]
+        public ToggleNode ArmourerStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Artisan Strongbox (quality currency)", "Click artisan strongboxes", 4, 3510)]
+        public ToggleNode ArtisanStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Blacksmith Strongbox (weapons)", "Click blacksmith strongboxes", 5, 3510)]
+        public ToggleNode BlacksmithStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Cartographer Strongbox (maps)", "Click cartographer strongboxes", 6, 3510)]
+        public ToggleNode CartographerStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Diviner Strongbox (divination cards)", "Click diviner strongboxes", 7, 3510)]
+        public ToggleNode DivinerStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Gemcutter Strongbox (gems)", "Click gemcutter strongboxes", 8, 3510)]
+        public ToggleNode GemcutterStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Jeweller Strongbox (jewellery)", "Click jeweller strongboxes", 9, 3510)]
+        public ToggleNode JewellerStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Large Strongbox (+ quantity)", "Click large strongboxes", 10, 3510)]
+        public ToggleNode LargeStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Ornate Strongbox (+ rarity)", "Click ornate strongboxes", 11, 3510)]
+        public ToggleNode OrnateStrongbox { get; set; } = new ToggleNode(true);
         [Menu("Searing Exarch", 4000)]
         public EmptyNode ExarchAltar { get; set; } = new EmptyNode();
         [Menu("Click recommended option",

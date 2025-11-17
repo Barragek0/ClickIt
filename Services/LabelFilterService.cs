@@ -104,7 +104,6 @@ namespace ClickIt.Services
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = s.ClickSettlersOre.Value,
-                ClickStrongboxes = s.ClickStrongboxes.Value,
                 RegularStrongbox = s.RegularStrongbox.Value,
                 ArcanistStrongbox = s.ArcanistStrongbox.Value,
                 ArmourerStrongbox = s.ArmourerStrongbox.Value,
@@ -144,7 +143,6 @@ namespace ClickIt.Services
             public bool ClickCrafting { get; set; }
             public bool ClickBreach { get; set; }
             public bool ClickSettlersOre { get; set; }
-            public bool ClickStrongboxes { get; set; }
             public bool RegularStrongbox { get; set; }
             public bool ArcanistStrongbox { get; set; }
             public bool ArmourerStrongbox { get; set; }
@@ -185,7 +183,8 @@ namespace ClickIt.Services
             if (!clickItems || type != EntityType.WorldItem)
                 return false;
             // Prevent strongboxes from being clicked as items
-            if (!string.IsNullOrEmpty(item.Path) && item.Path.Contains("Strongbox"))
+            string? itemPath = item.Path;
+            if (!string.IsNullOrEmpty(itemPath) && itemPath.ToLowerInvariant().Contains("strongbox"))
                 return false;
             if (!ignoreUniques)
                 return true;
@@ -199,6 +198,10 @@ namespace ClickIt.Services
         private static bool ShouldClickChest(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)
         {
             if (type != EntityType.Chest)
+                return false;
+            // Avoid treating strongboxes as generic chests; strongboxes have their own settings
+            string? path = label.ItemOnGround?.Path;
+            if (!string.IsNullOrEmpty(path) && path.ToLowerInvariant().Contains("strongbox"))
                 return false;
             bool isBasicChest = IsBasicChest(label);
             return (clickBasicChests && isBasicChest) || (clickLeagueChests && !isBasicChest);
@@ -236,7 +239,7 @@ namespace ClickIt.Services
 
         private static bool ShouldClickStrongbox(ClickSettings settings, string path)
         {
-            if (!settings.ClickStrongboxes || string.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(path))
                 return false;
 
             // Require both global ClickStrongboxes and the specific strongbox setting
