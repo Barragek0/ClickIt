@@ -106,6 +106,7 @@ namespace ClickIt.Services
                 ClickSettlersOre = s.ClickSettlersOre.Value,
                 ClickStrongboxes = s.ClickStrongboxes.Value,
                 ClickSanctum = s.ClickSanctum.Value,
+                ClickBetrayal = s.ClickBetrayal.Value,
                 ClickAlvaTempleDoors = s.ClickAlvaTempleDoors.Value,
                 ClickLegionPillars = s.ClickLegionPillars.Value,
             };
@@ -133,6 +134,7 @@ namespace ClickIt.Services
             public bool ClickSettlersOre { get; set; }
             public bool ClickStrongboxes { get; set; }
             public bool ClickSanctum { get; set; }
+            public bool ClickBetrayal { get; set; }
         }
 
         private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
@@ -185,6 +187,7 @@ namespace ClickIt.Services
                    (settings.ClickSulphite && path.Contains("DelveMineral")) ||
                    (settings.ClickStrongboxes && path.Contains("Strongbox")) ||
                    (settings.ClickSanctum && path.Contains("Sanctum")) ||
+                   (settings.ClickBetrayal && path.Contains("BetrayalMakeChoice")) ||
                    (settings.ClickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
                    (settings.ClickLegionPillars && path.Contains(LegionInitiator)) ||
                    (settings.ClickAzurite && path.Contains("AzuriteEncounterController")) ||

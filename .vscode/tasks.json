@@ -20,7 +20,22 @@
         "test",
         "Tests\\ClickIt.Tests.csproj",
         "-c",
-        "Debug"
+        "Debug",
+        "-p:IncludeIntegrationTests=true"
+      ],
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Copy Compiled DLL",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { $src = Join-Path $pwd 'bin\\Debug\\net8.0-windows\\win-x64\\ClickIt.dll'; if (-not (Test-Path $src)) { Write-Error \"Compiled DLL not found at $src\"; exit 1 }; $dest = 'C:\\1.Path stuff\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt'; if(-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; Copy-Item -Path $src -Destination $dest -Force; Write-Output \"Copied $src to $dest\" }"
       ],
       "presentation": {
         "reveal": "always"
@@ -31,7 +46,8 @@
       "label": "Build and Test",
       "dependsOn": [
         "Build ClickIt",
-        "Run Tests (dotnet test)"
+        "Run Tests (dotnet test)",
+        "Copy Compiled DLL"
       ],
       "dependsOrder": "sequence",
       "problemMatcher": [],

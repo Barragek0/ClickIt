@@ -19,6 +19,8 @@ namespace ClickIt.Utils
         private readonly Random _random;
         private readonly Action<bool>? _safeBlockInput;
         private readonly Action<string, int>? _logMessage;
+        // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
+        private long _lastClickTimestampMs = 0;
 
         public InputHandler(ClickItSettings settings, Action<bool>? safeBlockInput = null, Action<string, int>? logMessage = null)
         {
@@ -74,13 +76,17 @@ namespace ClickIt.Utils
         }
         public bool CanClick(GameController gameController)
         {
-#pragma warning disable CS0618
-            return Input.GetKeyState(_settings.ClickLabelKey.Value) &&
-#pragma warning restore CS0618
-                   IsPOEActive(gameController) &&
-                   (!_settings.BlockOnOpenLeftRightPanel || !IsPanelOpen(gameController)) &&
-                   !IsInTownOrHideout(gameController) &&
-                   !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
+            if (gameController == null) return false;
+            bool keyState = Input.GetKeyState(_settings.ClickLabelKey.Value);
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            {
+                keyState = !keyState;
+            }
+            return keyState &&
+                IsPOEActive(gameController) &&
+                (!_settings.BlockOnOpenLeftRightPanel!.Value || !IsPanelOpen(gameController)) &&
+                !IsInTownOrHideout(gameController) &&
+                !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         }
         private static bool IsPOEActive(GameController gameController)
         {
@@ -88,19 +94,27 @@ namespace ClickIt.Utils
         }
         private static bool IsPanelOpen(GameController gameController)
         {
-            return gameController.IngameState.IngameUi.OpenLeftPanel.Address != 0 ||
-                   gameController.IngameState.IngameUi.OpenRightPanel.Address != 0;
+            if (gameController == null) return false;
+            var ui = gameController.IngameState?.IngameUi;
+            if (ui == null) return false;
+            return ui.OpenLeftPanel.Address != 0 || ui.OpenRightPanel.Address != 0;
         }
         private static bool IsInTownOrHideout(GameController gameController)
         {
-            return gameController.Area.CurrentArea.IsHideout || gameController.Area.CurrentArea.IsTown;
+            if (gameController == null) return false;
+            var area = gameController.Area?.CurrentArea;
+            if (area == null) return false;
+            return area.IsHideout || area.IsTown;
         }
 
         public void PerformClick(Vector2 position)
         {
+            if (!TryConsumeLazyModeLimiter())
+                return;
+
             _logMessage?.Invoke("InputHandler: PerformClick - entering", 5);
 
-            if (_settings.BlockUserInput.Value && _safeBlockInput != null)
+            if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
             {
                 _logMessage?.Invoke("InputHandler: Requesting system input block", 5);
                 _safeBlockInput(true);
@@ -137,25 +151,63 @@ namespace ClickIt.Utils
             sw.Stop();
             _logMessage?.Invoke($"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
 
+            RestoreCursorIfLazyMode(before);
+
             swTotal.Stop();
             // If the whole operation took too long, attempt to clear any stuck input block and log
             if (swTotal.ElapsedMilliseconds > 500)
             {
                 _logMessage?.Invoke($"InputHandler: WARNING - PerformClick took {swTotal.ElapsedMilliseconds} ms, attempting to release input block", 10);
-                if (_settings.BlockUserInput.Value && _safeBlockInput != null)
+                if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
                 {
                     _safeBlockInput(false);
                     _logMessage?.Invoke("InputHandler: Watchdog released system input block", 10);
                 }
             }
 
-            if (_settings.BlockUserInput.Value && _safeBlockInput != null)
+            if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
             {
                 _logMessage?.Invoke("InputHandler: Releasing system input block", 5);
                 _safeBlockInput(false);
                 _logMessage?.Invoke("InputHandler: System input block released", 5);
             }
             _logMessage?.Invoke("InputHandler: PerformClick - exiting", 5);
+        }
+
+        private bool TryConsumeLazyModeLimiter()
+        {
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            {
+                int limiterMs = _settings?.LazyModeClickLimiting?.Value ?? 250;
+                long now = Environment.TickCount64;
+                long elapsed = now - _lastClickTimestampMs;
+                if (_lastClickTimestampMs != 0 && elapsed < limiterMs)
+                {
+                    _logMessage?.Invoke($"InputHandler: Skipping click due to LazyMode limiter ({elapsed}ms < {limiterMs}ms)", 5);
+                    return false;
+                }
+                _lastClickTimestampMs = now;
+            }
+            return true;
+        }
+
+        private void RestoreCursorIfLazyMode(System.Drawing.Point before)
+        {
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            {
+                try
+                {
+                    var beforeVec = new Vector2(before.X, before.Y);
+                    Input.SetCursorPos(beforeVec);
+                    // Small delay to let the OS update cursor position
+                    Thread.Sleep(8);
+                    _logMessage?.Invoke($"InputHandler: Restored cursor to {before}", 5);
+                }
+                catch (Exception ex)
+                {
+                    _logMessage?.Invoke($"InputHandler: Failed to restore cursor position: {ex.Message}", 10);
+                }
+            }
         }
     }
 }

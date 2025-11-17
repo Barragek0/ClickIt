@@ -148,7 +148,8 @@ namespace ClickIt.Utils
                    path.Contains("ClosedDoorPast") ||
                    path.Contains("LegionInitiator") ||
                    path.Contains("DarkShrine") ||
-                   path.Contains("Sanctum");
+                   path.Contains("Sanctum") ||
+                   path.Contains("BetrayalMakeChoice");
         }
 
         public static bool HasEssenceImprisonmentText(LabelOnGround label)

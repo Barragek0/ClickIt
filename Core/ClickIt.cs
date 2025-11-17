@@ -102,7 +102,7 @@ namespace ClickIt
         public override bool Initialise()
         {
             Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
-            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
+            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 70);
             areaService = new Services.AreaService();
             areaService.UpdateScreenAreas(GameController);
             camera = GameController?.Game?.IngameState?.Camera;
@@ -460,9 +460,13 @@ namespace ClickIt
 
         private bool IsClickHotkeyPressed()
         {
-#pragma warning disable CS0618
-            return Input.GetKeyState(Settings.ClickLabelKey.Value);
-#pragma warning restore CS0618
+            bool actual = Input.GetKeyState(Settings.ClickLabelKey.Value);
+            if (Settings?.LazyMode != null && Settings.LazyMode.Value)
+            {
+                // In lazy mode, invert hotkey behaviour: released -> active, held -> inactive
+                return !actual;
+            }
+            return actual;
         }
 
         private void HandleHotkeyPressed()

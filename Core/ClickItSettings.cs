@@ -92,17 +92,22 @@ namespace ClickIt
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
         [Menu("Sanctum", "Click sanctum related stuff", 20, 3000)]
         public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
+        [Menu("Betrayal", "Click betrayal labels", 21, 3000)]
+        public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(true);
         [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 22, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
             "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 23, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
-        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.", 24, 3000)]
+        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues, including completely locking your input.\n\nYou must run ExileAPI as Administrator for this to function.", 24, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 25, 3000)]
+        [Menu("Lazy Mode (not recommended)", "Will automatically click everything for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n-> This will take control away from you at crucial moments, its therefore not recommended for most players.\n-> The plugin cannot detect if a strongbox has been activated, so it will repeatedly try to click on it.\n   This is a limitation with exileapi and / or the game memory and not the plugin.\n\nBehaviour of the 'Hotkey' will be inverted:\n-> When the hotkey is released, the plugin will be allowed to click.\n-> When the hotkey is held, the plugin will not be allowed to click.", 25, 3000)]
+        public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
+        [Menu("Lazy Mode Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 26, 3000)]
+        public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 250, 1000);
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 27, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 26, 3000)]
-        [System.Obsolete("Can be safely ignored for now.")]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 28, 3000)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
         [Menu("Essences", 3500)]
         public EmptyNode Essences { get; set; } = new EmptyNode();
