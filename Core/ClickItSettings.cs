@@ -43,7 +43,7 @@ namespace ClickIt
         [ConditionalDisplay("RenderDebug")]
         [Menu("Debug Frames", "Show/hide the debug screen area frames", 8, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
-        [Menu("Log messages", "This will flood your log with debug information. You should only enable this if you want to report a bug.", 3, 900)]
+        [Menu("Log messages", "This will flood your log and screen with debug text.", 3, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
         [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 5, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
@@ -89,10 +89,10 @@ namespace ClickIt
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
         [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 18, 3000)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
-        [Menu("Lazy Mode (not recommended)", "Will automatically click everything for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n-> This will take control away from you at crucial moments, its therefore not recommended for most players.\n-> The plugin cannot detect if a strongbox has been activated, so it will repeatedly try to click on it.\n   This is a limitation with exileapi and / or the game memory and not the plugin.\n\nBehaviour of the 'Hotkey' will be inverted:\n-> When the hotkey is released, the plugin will be allowed to click.\n-> When the hotkey is held, the plugin will not be allowed to click.", 19, 3000)]
+        [Menu("Lazy Mode (not recommended, make sure you read the tooltip for this setting before enabling it) ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n-> This will take control away from you at crucial moments, potentially causing you to die.\n-> The plugin cannot detect if a strongbox has been activated, if a chest is locked, or if a settlers tree\n   has been activated. This is a limitation with exileapi and not the plugin and for this reason, Lazy Mode\n   is not allowed to click strongboxes, chests or the settlers tree. When one of these is on-screen,\n   Lazy Mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\nBehaviour of the 'Hotkey' will be inverted:\n-> When the hotkey is released, the plugin will be allowed to click.\n-> When the hotkey is held, the plugin will not be allowed to click.", 19, 3000)]
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
         [Menu("Lazy Mode Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 20, 3000)]
-        public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 250, 1000);
+        public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(150, 80, 1000);
         // ----- Mechanics -----
         [Menu("Mechanics", 3100)]
         public EmptyNode Mechanics { get; set; } = new EmptyNode();

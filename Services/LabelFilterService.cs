@@ -47,6 +47,33 @@ namespace ClickIt.Services
             }
             return false;
         }
+
+        public bool HasLazyModeRestrictedItemsOnScreen(List<LabelOnGround> allLabels)
+        {
+            if (allLabels == null)
+                return false;
+            
+            for (int i = 0; i < allLabels.Count; i++)
+            {
+                LabelOnGround label = allLabels[i];
+                Entity item = label.ItemOnGround;
+                if (item != null && item.DistancePlayer <= _settings.ClickDistance.Value)
+                {
+                    string path = item.Path;
+                    if (string.IsNullOrEmpty(path))
+                        continue;
+                    
+                    // Check for restricted items: strongboxes, league chests (not basic chests), settlers trees
+                    if (path.ToLowerInvariant().Contains("strongbox") || 
+                        (item.Type == EntityType.Chest && !IsBasicChest(label)) || 
+                        path.Contains(PetrifiedWood))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
         public static List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = new();
@@ -69,7 +96,7 @@ namespace ClickIt.Services
         {
             if (allLabels == null || allLabels.Count == 0)
                 return null;
-            var clickSettings = CreateClickSettings();
+            var clickSettings = CreateClickSettings(allLabels);
 
             for (int i = 0; i < allLabels.Count; i++)
             {
@@ -82,16 +109,20 @@ namespace ClickIt.Services
             }
             return null;
         }
-        private ClickSettings CreateClickSettings()
+        private ClickSettings CreateClickSettings(List<LabelOnGround> allLabels)
         {
             var s = _settings;
+            
+            // Check if lazy mode restrictions should be applied
+            bool applyLazyModeRestrictions = s.LazyMode.Value && !HasLazyModeRestrictedItemsOnScreen(allLabels);
+            
             return new ClickSettings
             {
                 ClickDistance = s.ClickDistance.Value,
                 ClickItems = s.ClickItems.Value,
                 IgnoreUniques = s.IgnoreUniques.Value,
                 ClickBasicChests = s.ClickBasicChests.Value,
-                ClickLeagueChests = s.ClickLeagueChests.Value,
+                ClickLeagueChests = !applyLazyModeRestrictions && s.ClickLeagueChests.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
                 NearestHarvest = s.NearestHarvest.Value,
                 ClickSulphite = s.ClickSulphiteVeins.Value,
@@ -104,18 +135,18 @@ namespace ClickIt.Services
                 ClickEssences = s.ClickEssences.Value,
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
-                ClickSettlersOre = s.ClickSettlersOre.Value,
-                RegularStrongbox = s.RegularStrongbox.Value,
-                ArcanistStrongbox = s.ArcanistStrongbox.Value,
-                ArmourerStrongbox = s.ArmourerStrongbox.Value,
-                ArtisanStrongbox = s.ArtisanStrongbox.Value,
-                BlacksmithStrongbox = s.BlacksmithStrongbox.Value,
-                CartographerStrongbox = s.CartographerStrongbox.Value,
-                DivinerStrongbox = s.DivinerStrongbox.Value,
-                GemcutterStrongbox = s.GemcutterStrongbox.Value,
-                JewellerStrongbox = s.JewellerStrongbox.Value,
-                LargeStrongbox = s.LargeStrongbox.Value,
-                OrnateStrongbox = s.OrnateStrongbox.Value,
+                ClickSettlersOre = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
+                RegularStrongbox = !applyLazyModeRestrictions && s.RegularStrongbox.Value,
+                ArcanistStrongbox = !applyLazyModeRestrictions && s.ArcanistStrongbox.Value,
+                ArmourerStrongbox = !applyLazyModeRestrictions && s.ArmourerStrongbox.Value,
+                ArtisanStrongbox = !applyLazyModeRestrictions && s.ArtisanStrongbox.Value,
+                BlacksmithStrongbox = !applyLazyModeRestrictions && s.BlacksmithStrongbox.Value,
+                CartographerStrongbox = !applyLazyModeRestrictions && s.CartographerStrongbox.Value,
+                DivinerStrongbox = !applyLazyModeRestrictions && s.DivinerStrongbox.Value,
+                GemcutterStrongbox = !applyLazyModeRestrictions && s.GemcutterStrongbox.Value,
+                JewellerStrongbox = !applyLazyModeRestrictions && s.JewellerStrongbox.Value,
+                LargeStrongbox = !applyLazyModeRestrictions && s.LargeStrongbox.Value,
+                OrnateStrongbox = !applyLazyModeRestrictions && s.OrnateStrongbox.Value,
                 ClickSanctum = s.ClickSanctum.Value,
                 ClickBetrayal = s.ClickBetrayal.Value,
                 ClickBlight = s.ClickBlight.Value,
