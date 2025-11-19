@@ -5,6 +5,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using ExileCore;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using ClickIt.Components;
@@ -103,13 +109,16 @@ namespace ClickIt.Services
             if (altarsToClick.Count == 0)
                 yield break;
 
-            foreach (PrimaryAltarComponent altar in altarsToClick)
+            foreach (PrimaryAltarComponent altar in altarSnapshot)
             {
-                Element boxToClick = GetAltarElementToClick(altar);
-                if (boxToClick != null)
-                {
-                    yield return ClickAltarElement(boxToClick, leftHanded);
-                }
+                if (!ShouldClickAltar(altar, clickEater, clickExarch))
+                    continue;
+
+                Element? boxToClick = GetAltarElementToClick(altar);
+                if (boxToClick == null)
+                    continue;
+
+                yield return ClickAltarElement(boxToClick, leftHanded);
             }
         }
 
@@ -172,7 +181,7 @@ namespace ClickIt.Services
             return true;
         }
 
-        public Element GetAltarElementToClick(PrimaryAltarComponent altar)
+        public Element? GetAltarElementToClick(PrimaryAltarComponent altar)
         {
             // All validation is now done in ShouldClickAltar, so we can proceed directly
             var altarWeights = altar.GetCachedWeights(pc => weightCalculator.CalculateAltarWeights(pc));
@@ -186,12 +195,12 @@ namespace ClickIt.Services
             // We know this will succeed since ShouldClickAltar already validated it
             Element? boxToClick = altarDisplayRenderer.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
 
-            return boxToClick ?? throw new InvalidOperationException("Altar choice should not be null when ShouldClickAltar returns true");
+            return boxToClick;
         }
 
         private IEnumerator ClickAltarElement(Element element, bool leftHanded)
         {
-            DebugLog(() => "[ClickAltarElement] === STARTING ALTAR CLICK PROCESS ===");
+            DebugLog(() => "[ClickAltarElement] Starting");
 
             if (element == null)
             {
@@ -199,110 +208,103 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            DebugLog(() => "[ClickAltarElement] Element validation starting...");
-            if (!element.IsValid)
+            if (!IsValidVisible(element))
             {
-                logError("CRITICAL: Altar element is not valid", 10);
+                logError("CRITICAL: Altar element invalid or not visible before click", 10);
                 yield break;
             }
 
-            if (!element.IsVisible)
-            {
-                logError("CRITICAL: Altar element is not visible", 10);
-                yield break;
-            }
-            DebugLog(() => "[ClickAltarElement] Element validation completed successfully");
-
-            DebugLog(() => "[ClickAltarElement] Getting window rectangle...");
             RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            DebugLog(() => $"[ClickAltarElement] Window rectangle: {windowArea}");
 
-            // Calculate initial click position
-            DebugLog(() => "[ClickAltarElement] Calculating click position...");
-            RectangleF elementRect = element.GetClientRect();
-            Vector2 clickPos = elementRect.Center + windowTopLeft;
-            DebugLog(() => $"[ClickAltarElement] Click position calculated: {clickPos}");
+            bool clicked = false;
+            try
+            {
+                clicked = TryPerformClick(element, windowTopLeft);
+            }
+            catch (Exception ex)
+            {
+                logError($"[ClickAltarElement] Exception during click: {ex.GetType().Name}: {ex.Message}", 10);
+            }
 
-            bool didClick = false;
-            Vector2 clickPosUsed = clickPos;
+            if (clicked)
+            {
+                yield return new WaitTime(70);
 
-            // Perform the click while holding the element access lock to avoid races
+                bool stillVisible = IsValidVisibleUnderLock(element);
+                if (!stillVisible)
+                {
+                    try
+                    {
+                        altarService.RemoveAltarComponentsByElement(element);
+                        DebugLog(() => "[ClickAltarElement] Removed clicked altar from tracking (no longer visible)");
+                    }
+                    catch (Exception ex)
+                    {
+                        logError($"[ClickAltarElement] Error removing altar component: {ex.Message}", 10);
+                    }
+                }
+                else
+                {
+                    DebugLog(() => "[ClickAltarElement] Altar still visible after click; not removing (possible missclick)");
+                }
+            }
+        }
+
+        private static bool IsValidVisible(Element el)
+        {
+            return el != null && el.IsValid && el.IsVisible;
+        }
+
+        private bool IsValidVisibleUnderLock(Element el)
+        {
             var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_elementAccessLock))
                 {
-                    DebugLog(() => "[ClickAltarElement] Lock acquired, performing click...");
-                    try
-                    {
-                        DebugLog(() => "[ClickAltarElement] Re-validating element inside lock before click...");
-                        if (!element.IsValid || !element.IsVisible)
-                        {
-                            logError("[ClickAltarElement] Element became invalid or invisible before click", 10);
-                        }
-                        else
-                        {
-                            RectangleF elementRectInside = element.GetClientRect();
-                            clickPosUsed = elementRectInside.Center + windowTopLeft;
-                            DebugLog(() => $"[ClickAltarElement] Recomputed click pos: {clickPosUsed}");
-
-                            DebugLog(() => "[ClickAltarElement] === ABOUT TO PERFORM CLICK - THIS IS WHERE FREEZE MAY OCCUR ===");
-                            inputHandler.PerformClick(clickPosUsed);
-                            DebugLog(() => "[ClickAltarElement] Click performed successfully");
-                            didClick = true;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        logError($"[ClickAltarElement] Exception during click: {ex.GetType().Name}: {ex.Message}", 10);
-                        try { logError($"[ClickAltarElement] Stack: {ex.StackTrace}", 10); } catch { }
-                    }
+                    return el != null && el.IsValid && el.IsVisible;
                 }
             }
-            else
+            return el != null && el.IsValid && el.IsVisible;
+        }
+
+        private bool TryPerformClick(Element el, Vector2 windowTopLeft)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null)
             {
-                // Locking disabled - perform click without synchronization
-                DebugLog(() => "[ClickAltarElement] Locking disabled, performing click without lock...");
-                try
+                using (gm.Acquire(_elementAccessLock))
                 {
-                    DebugLog(() => "[ClickAltarElement] Re-validating element before click...");
-                    if (!element.IsValid || !element.IsVisible)
+                    if (!IsValidVisible(el))
                     {
                         logError("[ClickAltarElement] Element became invalid or invisible before click", 10);
+                        return false;
                     }
-                    else
-                    {
-                        RectangleF elementRectInside = element.GetClientRect();
-                        clickPosUsed = elementRectInside.Center + windowTopLeft;
-                        DebugLog(() => $"[ClickAltarElement] Recomputed click pos: {clickPosUsed}");
-
-                        DebugLog(() => "[ClickAltarElement] === ABOUT TO PERFORM CLICK - THIS IS WHERE FREEZE MAY OCCUR ===");
-                        inputHandler.PerformClick(clickPosUsed);
-                        DebugLog(() => "[ClickAltarElement] Click performed successfully");
-                        didClick = true;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logError($"[ClickAltarElement] Exception during click: {ex.GetType().Name}: {ex.Message}", 10);
-                    try { logError($"[ClickAltarElement] Stack: {ex.StackTrace}", 10); } catch { }
+                    RectangleF r = el.GetClientRect();
+                    Vector2 clickPos = r.Center + windowTopLeft;
+                    inputHandler.PerformClick(clickPos);
+                    DebugLog(() => "[ClickAltarElement] Click performed");
+                    return true;
                 }
             }
 
-            if (didClick)
+            // No lock path
+            if (!IsValidVisible(el))
             {
-                DebugLog(() => "[ClickAltarElement] === CLICK COMPLETED - ADDING DELAY TO PREVENT INTERFERENCE ===");
-                yield return new WaitTime(70);
-                DebugLog(() => "[ClickAltarElement] Delay completed after altar click");
+                logError("[ClickAltarElement] Element became invalid or invisible before click", 10);
+                return false;
             }
-
-            DebugLog(() => "[ClickAltarElement] Yield completed");
+            RectangleF rect = el.GetClientRect();
+            Vector2 pos = rect.Center + windowTopLeft;
+            inputHandler.PerformClick(pos);
+            DebugLog(() => "[ClickAltarElement] Click performed");
+            return true;
         }
 
         public IEnumerator ProcessRegularClick()
         {
-            DebugLog(() => "[ProcessRegularClick] ==================== STARTING REGULAR CLICK PROCESS ====================");
+            DebugLog(() => "[ProcessRegularClick] Starting process regular click");
 
             yield return ProcessAltarClicking();
             if (!groundItemsVisible())
@@ -346,30 +348,32 @@ namespace ClickIt.Services
         private LabelOnGround? FindNextLabelToClick(List<LabelOnGround> allLabels)
         {
             if (allLabels.Count == 0) return null;
-            int[] caps = new int[] { 1, 5, 25, 100 };
+
+            int[] caps = [1, 5, 25, 100];
             foreach (int cap in caps)
             {
-                int take = Math.Min(cap, allLabels.Count);
-                var slice = (take == allLabels.Count) ? allLabels : allLabels.GetRange(0, take);
-                for (int i = 0; i < slice.Count; i++)
+                int limit = Math.Min(cap, allLabels.Count);
+                for (int i = 0; i < limit; i++)
                 {
-                    var it = slice[i].ItemOnGround;
+                    var it = allLabels[i].ItemOnGround;
                     string path = it?.Path ?? string.Empty;
                     if (!string.IsNullOrEmpty(path))
                     {
                         float dist = it?.DistancePlayer ?? 0f;
-                        DebugLog(() => $"[LabelPaths] {path} (dist={dist:F1})");
+                        DebugLog(() => $"[LabelPaths{cap}] {path} (dist={dist:F1})");
                     }
                     else
                     {
-                        DebugLog(() => $"[LabelPaths] <no path> (dist={it?.DistancePlayer ?? 0f:F1})");
+                        DebugLog(() => $"[LabelPaths{cap}] <no path> (dist={it?.DistancePlayer ?? 0f:F1})");
                     }
                 }
 
+                var slice = allLabels.GetRange(0, limit);
                 var label = labelFilterService.GetNextLabelToClick(slice);
                 if (label != null)
                     return label;
             }
+
             // Fallback to full scan (rare)
             return labelFilterService.GetNextLabelToClick(allLabels);
         }
