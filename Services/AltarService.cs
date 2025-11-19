@@ -81,6 +81,62 @@ namespace ClickIt.Services
                 _altarComponents.Clear();
             }
         }
+        public void RemoveAltarComponentsByElement(Element element)
+        {
+            if (element == null) return;
+            var gm = LockManager.Instance;
+            if (gm != null)
+            {
+                using (gm.Acquire(_altarComponentsLock))
+                {
+                    _altarComponents.RemoveAll(altar =>
+                    {
+                        bool match = false;
+                        try
+                        {
+                            match = ReferenceEquals(altar.TopButton?.Element, element) ||
+                                    ReferenceEquals(altar.BottomButton?.Element, element) ||
+                                    ReferenceEquals(altar.TopMods?.Element, element) ||
+                                    ReferenceEquals(altar.BottomMods?.Element, element) ||
+                                    ReferenceEquals(altar.TopButton?.Element?.Parent, element) ||
+                                    ReferenceEquals(altar.BottomButton?.Element?.Parent, element);
+                        }
+                        catch { }
+
+                        if (match)
+                        {
+                            altar.InvalidateCache();
+                        }
+
+                        return match;
+                    });
+                }
+            }
+            else
+            {
+                _altarComponents.RemoveAll(altar =>
+                {
+                    bool match = false;
+                    try
+                    {
+                        match = ReferenceEquals(altar.TopButton?.Element, element) ||
+                                ReferenceEquals(altar.BottomButton?.Element, element) ||
+                                ReferenceEquals(altar.TopMods?.Element, element) ||
+                                ReferenceEquals(altar.BottomMods?.Element, element) ||
+                                ReferenceEquals(altar.TopButton?.Element?.Parent, element) ||
+                                ReferenceEquals(altar.BottomButton?.Element?.Parent, element);
+                    }
+                    catch { }
+
+                    if (match)
+                    {
+                        altar.InvalidateCache();
+                    }
+
+                    return match;
+                });
+            }
+        }
         public List<LabelOnGround> GetAltarLabels(ClickIt.AltarType type)
         {
             List<LabelOnGround> result = new();
