@@ -26,8 +26,6 @@ jobs:
 
       - name: Restore and build CI stubs
         run: |
-          dotnet restore .github\ci-stubs\ExileCoreStubs.csproj
-          dotnet build .github\ci-stubs\ExileCoreStubs.csproj --configuration Debug --no-restore -o .github\ci-stubs\out
           dotnet restore .github\ci-stubs\ClickItStub.csproj
           dotnet build .github\ci-stubs\ClickItStub.csproj --configuration Debug --no-restore -o .github\ci-stubs\out
 
