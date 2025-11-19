@@ -52,6 +52,7 @@ namespace ExileCore.Shared.Enums
 
 namespace ExileCore.PoEMemory
 {
+    using SharpDX;
     public class Element
     {
         public bool IsValid { get; set; }
