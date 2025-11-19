@@ -5,6 +5,7 @@
 *.sln.docstates
 .vs/
 .vscode/
+!.vscode/tasks.sample.json
 
 # Build results
 [Dd]ebug/
