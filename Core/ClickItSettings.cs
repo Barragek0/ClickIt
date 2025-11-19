@@ -122,12 +122,16 @@ namespace ClickIt
         public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
         [Menu("Spawners", "Click spawners", 3, 3200)]
         public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
-        [Menu("Flares", "Use flares when reaching x debuff stacks", 4, 3200)]
+        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 3200)]
         public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
-        [Menu("Flare Hotkey", "Hotkey to use flares", 5, 3200)]
+        [Menu("Flare Hotkey", "Set this to your in-game keybind for flares, the plugin will press this button to use a flare", 5, 3200)]
         public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
-        [Menu("Darkness Debuff Stacks", "Minimum darkness debuff stacks before using a flare", 6, 3200)]
+        [Menu("Darkness Debuff Stacks", 6, 3200)]
         public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
+        [Menu("Flare Health %", 7, 3200)]
+        public RangeNode<int> DelveFlareHealthThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
+        [Menu("Flare Energy Shield %", 8, 3200)]
+        public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
 
         // ----- Essences -----
         [Menu("Essences", 3500)]

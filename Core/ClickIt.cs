@@ -657,12 +657,19 @@ namespace ClickIt
                     var delveBuff = GameController.Player.Buffs.FirstOrDefault(b => b.Name == "delve_degen_buff");
                     if (delveBuff != null && delveBuff.Charges >= Settings.DarknessDebuffStacks.Value)
                     {
+                        // Check health and energy shield thresholds
+                        float healthPercent = GetPlayerHealthPercent();
+                        float energyShieldPercent = GetPlayerEnergyShieldPercent();
 
-                        Keyboard.KeyPress(Settings.DelveFlareHotkey.Value, 50);
+                        if (healthPercent <= Settings.DelveFlareHealthThreshold.Value &&
+                            energyShieldPercent <= Settings.DelveFlareEnergyShieldThreshold.Value)
+                        {
+                            Keyboard.KeyPress(Settings.DelveFlareHotkey.Value, 50);
 
-                        LogMessage($"Used delve flare (buff charges: {delveBuff.Charges})");
+                            LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)");
 
-                        yield return new WaitTime(1000);
+                            yield return new WaitTime(1000);
+                        }
                     }
                 }
 
@@ -673,6 +680,30 @@ namespace ClickIt
 
                 yield return new WaitTime(100);
             }
+        }
+
+        private float GetPlayerHealthPercent()
+        {
+#if RUNTIME_EXILECORE
+            if (GameController?.Player == null) return 100f;
+            var life = GameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+            if (life == null || life.Health.Max == 0) return 100f;
+            return (float)life.Health.Current / life.Health.Max * 100f;
+#else
+            return 100f;
+#endif
+        }
+
+        private float GetPlayerEnergyShieldPercent()
+        {
+#if RUNTIME_EXILECORE
+            if (GameController?.Player == null) return 100f;
+            var life = GameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+            if (life == null || life.EnergyShield.Max == 0) return 100f;
+            return (float)life.EnergyShield.Current / life.EnergyShield.Max * 100f;
+#else
+            return 100f;
+#endif
         }
 
         public enum AltarType
