@@ -1,21 +1,15 @@
 ﻿using ClickIt.Utils;
-using ClickIt.Components;
 using ExileCore;
 using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using ExileCore.Shared.Enums;
+using ExileCore.Shared.Helpers;
 using SharpDX;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Runtime.InteropServices;
 using RectangleF = SharpDX.RectangleF;
 namespace ClickIt
 {
@@ -29,14 +23,19 @@ namespace ClickIt
         private readonly Stopwatch renderTimer = new Stopwatch();
         private readonly Stopwatch altarCoroutineTimer = new Stopwatch();
         private readonly Stopwatch clickCoroutineTimer = new Stopwatch();
+        private readonly Stopwatch delveFlareCoroutineTimer = new Stopwatch();
+        private readonly Stopwatch shrineCoroutineTimer = new Stopwatch();
         private readonly Queue<long> clickCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> altarCoroutineTimings = new Queue<long>(10);
+        private readonly Queue<long> delveFlareCoroutineTimings = new Queue<long>(10);
+        private readonly Queue<long> shrineCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> renderTimings = new Queue<long>(60);
         private readonly Stopwatch fpsTimer = new Stopwatch();
         private int frameCount = 0;
         private double currentFPS = 0;
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
+        private Coroutine? delveFlareCoroutine;
         private bool isInputCurrentlyBlocked = false;
         private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
         private readonly Stopwatch lastRenderTimer = new Stopwatch();
@@ -51,11 +50,7 @@ namespace ClickIt
 
         private Rendering.AltarDisplayRenderer? altarDisplayRenderer;
         private Services.ClickService clickService = null!;
-        private RectangleF FullScreenRectangle { get; set; }
-        private RectangleF HealthAndFlaskRectangle { get; set; }
-        private RectangleF ManaAndSkillsRectangle { get; set; }
-        private RectangleF BuffsAndDebuffsRectangle { get; set; }
-        private readonly List<string> recentErrors = new List<string>();
+        private readonly List<string> recentErrors = [];
         private const int MAX_ERRORS_TO_TRACK = 10;
 
         public double CurrentFPS => currentFPS;
@@ -102,7 +97,7 @@ namespace ClickIt
         public override bool Initialise()
         {
             Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
-            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 70);
+            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             areaService = new Services.AreaService();
             areaService.UpdateScreenAreas(GameController);
             camera = GameController?.Game?.IngameState?.Camera;
@@ -127,16 +122,12 @@ namespace ClickIt
                 labelFilterService,
                 GroundItemsVisible,
                 CachedLabels);
-            FullScreenRectangle = areaService.FullScreenRectangle;
-            HealthAndFlaskRectangle = areaService.HealthAndFlaskRectangle;
-            ManaAndSkillsRectangle = areaService.ManaAndSkillsRectangle;
-            BuffsAndDebuffsRectangle = areaService.BuffsAndDebuffsRectangle;
             Timer.Start();
             SecondTimer.Start();
 
             altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic", false);
             _ = Core.ParallelRunner.Run(altarCoroutine);
-            altarCoroutine.Priority = CoroutinePriority.High;
+            altarCoroutine.Priority = CoroutinePriority.Normal;
 
             clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic", false);
             _ = Core.ParallelRunner.Run(clickLabelCoroutine);
@@ -150,6 +141,10 @@ namespace ClickIt
             var inputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), this, "ClickIt.InputSafety");
             _ = Core.ParallelRunner.Run(inputSafetyCoroutine);
             inputSafetyCoroutine.Priority = CoroutinePriority.High;
+
+            delveFlareCoroutine = new Coroutine(DelveFlareCoroutine(), this, "ClickIt.DelveFlareLogic", true);
+            _ = Core.ParallelRunner.Run(delveFlareCoroutine);
+            delveFlareCoroutine.Priority = CoroutinePriority.Normal;
 
             Settings.EnsureAllModsHaveWeights();
 
@@ -435,6 +430,7 @@ namespace ClickIt
             }
             return true;
         }
+
         public static List<Element> GetElementsByStringContains(Element label, string str)
         {
             return LabelUtils.GetElementsByStringContains(label, str);
@@ -517,7 +513,14 @@ namespace ClickIt
         {
             while (Settings.Enable)
             {
+                shrineCoroutineTimer.Restart();
+
                 yield return HandleShrine();
+
+                shrineCoroutineTimer.Stop();
+
+                // Track timing for averaging
+                EnqueueTiming(shrineCoroutineTimings, shrineCoroutineTimer.ElapsedMilliseconds, 10);
             }
         }
 
@@ -536,7 +539,7 @@ namespace ClickIt
         /// <returns>Filtered and sorted list of valid ground labels</returns>
         private List<LabelOnGround> UpdateLabelComponent()
         {
-            IList<LabelOnGround>? groundLabels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabels;
+            IList<LabelOnGround>? groundLabels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible;
 
             if (groundLabels == null || groundLabels.Count == 0)
             {
@@ -640,8 +643,38 @@ namespace ClickIt
             // Thread-safe clicking via helper that acquires the click element access lock when LockManager enabled
             ExecuteWithElementAccessLock(() => inputHandler.PerformClick(clickPos));
 
-            yield return new WaitTime(60 + Random.Next(0, 6));
+            yield return new WaitTime(70 + Random.Next(0, 6));
         }
+
+        private IEnumerator DelveFlareCoroutine()
+        {
+            while (Settings.Enable)
+            {
+                delveFlareCoroutineTimer.Restart();
+
+                if (Settings.ClickDelveFlares && GameController?.Player?.Buffs != null)
+                {
+                    var delveBuff = GameController.Player.Buffs.FirstOrDefault(b => b.Name == "delve_degen_buff");
+                    if (delveBuff != null && delveBuff.Charges >= Settings.DarknessDebuffStacks.Value)
+                    {
+
+                        Keyboard.KeyPress(Settings.DelveFlareHotkey.Value, 50);
+
+                        LogMessage($"Used delve flare (buff charges: {delveBuff.Charges})");
+
+                        yield return new WaitTime(1000);
+                    }
+                }
+
+                delveFlareCoroutineTimer.Stop();
+
+                // Track timing for averaging
+                EnqueueTiming(delveFlareCoroutineTimings, delveFlareCoroutineTimer.ElapsedMilliseconds, 10);
+
+                yield return new WaitTime(100);
+            }
+        }
+
         public enum AltarType
         {
             SearingExarch,

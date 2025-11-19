@@ -182,8 +182,10 @@ namespace ClickIt.Rendering
                     _graphics.DrawText($"Cached Labels: {cachedCount}", new Vector2(xPos, yPos), Color.White, 16);
                     yPos += lineHeight;
                 }
-
-                _graphics.DrawText($"Cache Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                else
+                {
+                    _graphics.DrawText($"Cache Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                }
                 yPos += lineHeight;
             }
 
@@ -538,7 +540,47 @@ namespace ClickIt.Rendering
                     yPos += lineHeight;
                 }
 
-                _graphics.DrawText($"Timing Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                var delveFlareCoroutineTimerField = typeof(ClickIt).GetField("delveFlareCoroutineTimer",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (delveFlareCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch delveFlareTimer)
+                {
+                    // Get the timings queue for averaging
+                    var delveFlareTimingsField = typeof(ClickIt).GetField("delveFlareCoroutineTimings",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    string displayText = $"Delve Flare Coroutine: {delveFlareTimer.ElapsedMilliseconds} ms";
+
+                    if (delveFlareTimingsField?.GetValue(clickItPlugin2) is Queue<long> delveFlareTimings && delveFlareTimings.Count > 0)
+                    {
+                        double average = delveFlareTimings.Average();
+                        displayText += $" (avg: {average:F1} ms)";
+                    }
+
+                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
+                    yPos += lineHeight;
+                }
+
+                var shrineCoroutineTimerField = typeof(ClickIt).GetField("shrineCoroutineTimer",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (shrineCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch shrineTimer)
+                {
+                    // Get the timings queue for averaging
+                    var shrineTimingsField = typeof(ClickIt).GetField("shrineCoroutineTimings",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    string displayText = $"Shrine Coroutine: {shrineTimer.ElapsedMilliseconds} ms";
+
+                    if (shrineTimingsField?.GetValue(clickItPlugin2) is Queue<long> shrineTimings && shrineTimings.Count > 0)
+                    {
+                        double average = shrineTimings.Average();
+                        displayText += $" (avg: {average:F1} ms)";
+                    }
+
+                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
+                    yPos += lineHeight;
+                }
                 yPos += lineHeight;
             }
 

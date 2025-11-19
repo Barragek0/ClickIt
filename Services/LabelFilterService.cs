@@ -96,6 +96,7 @@ namespace ClickIt.Services
                 NearestHarvest = s.NearestHarvest.Value,
                 ClickSulphite = s.ClickSulphiteVeins.Value,
                 ClickAzurite = s.ClickAzuriteVeins.Value,
+                ClickDelveSpawners = s.ClickDelveSpawners.Value,
                 HighlightEater = s.HighlightEaterAltars.Value,
                 HighlightExarch = s.HighlightExarchAltars.Value,
                 ClickEater = s.ClickEaterAltars.Value,
@@ -135,6 +136,7 @@ namespace ClickIt.Services
             public bool ClickAlvaTempleDoors { get; set; }
             public bool ClickLegionPillars { get; set; }
             public bool ClickAzurite { get; set; }
+            public bool ClickDelveSpawners { get; set; }
             public bool HighlightEater { get; set; }
             public bool HighlightExarch { get; set; }
             public bool ClickEater { get; set; }
@@ -219,6 +221,7 @@ namespace ClickIt.Services
                    (settings.ClickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
                    (settings.ClickLegionPillars && path.Contains(LegionInitiator)) ||
                    (settings.ClickAzurite && path.Contains("AzuriteEncounterController")) ||
+                   (settings.ClickDelveSpawners && path.Contains("Delve/Objects/Encounter")) ||
                    (settings.ClickCrafting && path.Contains("CraftingUnlocks")) ||
                    (settings.ClickBreach && path.Contains(Brequel)) ||
                    (settings.ClickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth) || path.Contains(Verisium)));

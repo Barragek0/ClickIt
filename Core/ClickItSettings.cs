@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Windows.Forms;
 using ClickIt.Constants;
+
 namespace ClickIt
 {
     public class ClickItSettings : ISettings
@@ -50,69 +51,83 @@ namespace ClickIt
         // ----- General -----
         [Menu("General", 3000)]
         public EmptyNode Click { get; set; } = new EmptyNode();
-        [Menu("Items", "Click items", 1, 3000)]
-        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("Hotkey", "Held hotkey to start clicking", 2, 3000)]
+        [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
         [System.Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
-        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 3, 3000)]
+        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 2, 3000)]
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
-        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 4, 3000)]
+        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 3, 3000)]
         public RangeNode<int> ClickFrequencyTarget { get; set; } = new RangeNode<int>(80, 80, 250);
-        [Menu("Ignore Unique Items", "Ignore unique items", 5, 3000)]
-        public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Basic Chests", "Click normal (non-league related) chests", 6, 3000)]
-        public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
-        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 7, 3000)]
-        public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
-        [Menu("Shrines", "Click shrines", 8, 3000)]
-        public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 9, 3000)]
-        public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 10, 3000)]
-        public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 11, 3000)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 4, 3000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
-        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.\n\nYou must run ExileAPI as Administrator for this to function.", 12, 3000)]
+        [Menu("---", 5, 3000)]
+        public EmptyNode GeneralSeparator1 { get; set; } = new EmptyNode();
+        [Menu("Items", "Click items", 6, 3000)]
+        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
+        [Menu("Ignore Unique Items", "Ignore unique items", 7, 3000)]
+        public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
+        [Menu("Basic Chests", "Click normal (non-league related) chests", 8, 3000)]
+        public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
+        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 9, 3000)]
+        public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
+        [Menu("Shrines", "Click shrines", 10, 3000)]
+        public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
+        [Menu("Area Transitions", "Click area transitions", 11, 3000)]
+        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
+        [Menu("Crafting Recipes", "Click crafting recipes", 12, 3000)]
+        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
+        [Menu("---", 13, 3000)]
+        public EmptyNode GeneralSeparator2 { get; set; } = new EmptyNode();
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 14, 3000)]
+        public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
+        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 15, 3000)]
+        public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
+        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.\n\nYou must run ExileAPI as Administrator for this to function.", 16, 3000)]
         public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
-        [Menu("Lazy Mode (not recommended)", "Will automatically click everything for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n-> This will take control away from you at crucial moments, its therefore not recommended for most players.\n-> The plugin cannot detect if a strongbox has been activated, so it will repeatedly try to click on it.\n   This is a limitation with exileapi and / or the game memory and not the plugin.\n\nBehaviour of the 'Hotkey' will be inverted:\n-> When the hotkey is released, the plugin will be allowed to click.\n-> When the hotkey is held, the plugin will not be allowed to click.", 13, 3000)]
-        public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
-        [Menu("Lazy Mode Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 14, 3000)]
-        public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 250, 1000);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 15, 3000)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 17, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 16, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 18, 3000)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
-
+        [Menu("Lazy Mode (not recommended)", "Will automatically click everything for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n-> This will take control away from you at crucial moments, its therefore not recommended for most players.\n-> The plugin cannot detect if a strongbox has been activated, so it will repeatedly try to click on it.\n   This is a limitation with exileapi and / or the game memory and not the plugin.\n\nBehaviour of the 'Hotkey' will be inverted:\n-> When the hotkey is released, the plugin will be allowed to click.\n-> When the hotkey is held, the plugin will not be allowed to click.", 19, 3000)]
+        public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
+        [Menu("Lazy Mode Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 20, 3000)]
+        public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 250, 1000);
         // ----- Mechanics -----
         [Menu("Mechanics", 3100)]
         public EmptyNode Mechanics { get; set; } = new EmptyNode();
-        [Menu("Harvest", "Click nearest harvest", 11, 3100)]
-        public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click area transitions", 12, 3100)]
-        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
-        [Menu("Sulphite Veins", "Click sulphite veins", 13, 3100)]
-        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Azurite in Delve", "Click pure living azurite in the delve mechanic", 14, 3100)]
-        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Crafting Recipes", "Click crafting recipes", 15, 3100)]
-        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
-        [Menu("Breach Nodes", "Click breach nodes", 16, 3100)]
-        public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
-        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)", 17, 3100)]
-        public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
-        [Menu("Alva Temple Doors", "Click alva temple doors", 18, 3100)]
+        [Menu("Alva Temple Doors", "Click alva temple doors", 11, 3100)]
         public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
-        [Menu("Legion Encounters", "Click legion encounter pillars", 19, 3100)]
-        public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Sanctum", "Click sanctum related stuff", 20, 3100)]
-        public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
-        [Menu("Betrayal", "Click betrayal labels", 21, 3100)]
+        [Menu("Betrayal", "Click betrayal labels", 12, 3100)]
         public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(true);
-        [Menu("Blight", "Click blight pumps", 29, 3100)]
+        [Menu("Blight", "Click blight pumps", 13, 3100)]
         public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
+        [Menu("Breach Nodes", "Click breach nodes", 14, 3100)]
+        public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
+        [Menu("Harvest", "Click nearest harvest", 15, 3100)]
+        public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
+        [Menu("Legion Encounters", "Click legion encounter pillars", 16, 3100)]
+        public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
+        [Menu("Sanctum", "Click sanctum related stuff", 17, 3100)]
+        public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
+        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 18, 3100)]
+        public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
+
+        // ----- Delve -----
+        [Menu("Delve", 3200)]
+        public EmptyNode Delve { get; set; } = new EmptyNode();
+        [Menu("Azurite Veins", "Click azurite veins", 1, 3200)]
+        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
+        [Menu("Sulphite Veins", "Click sulphite veins", 2, 3200)]
+        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
+        [Menu("Spawners", "Click spawners", 3, 3200)]
+        public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
+        [Menu("Flares", "Use flares when reaching x debuff stacks", 4, 3200)]
+        public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
+        [Menu("Flare Hotkey", "Hotkey to use flares", 5, 3200)]
+        public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
+        [Menu("Darkness Debuff Stacks", "Minimum darkness debuff stacks before using a flare", 6, 3200)]
+        public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
 
         // ----- Essences -----
         [Menu("Essences", 3500)]

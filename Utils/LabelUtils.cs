@@ -133,6 +133,7 @@ namespace ClickIt.Utils
         public static bool IsPathForClickableObject(string path)
         {
             return path.Contains("DelveMineral") ||
+                   path.Contains("Delve/Objects/Encounter") ||
                    path.Contains("AzuriteEncounterController") ||
                    path.Contains("Harvest/Irrigator") ||
                    path.Contains("Harvest/Extractor") ||
