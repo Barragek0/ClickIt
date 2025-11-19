@@ -12,6 +12,8 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
+    <!-- Define runtime symbol for ExileCore integration -->
+    <DefineConstants>RUNTIME_EXILECORE</DefineConstants>
     <!-- Prevent SDK from generating assembly attributes (we have Properties/AssemblyInfo.cs) -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <!-- Disable implicit compile include because we explicitly list source files -->

@@ -580,7 +580,8 @@ namespace ClickIt
 
             // self adjusting delay based on average click time
             // clicks will consistently aim for 70ms intervals
-            if (Timer.ElapsedMilliseconds < 70 - (clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.Average() : 0) + Random.Next(0, 6) || !CanClick())
+            double avgClickTime = clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.ToArray().Average() : 0;
+            if (Timer.ElapsedMilliseconds < 70 - avgClickTime + Random.Next(0, 6) || !CanClick())
             {
                 workFinished = true;
                 yield break;

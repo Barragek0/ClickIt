@@ -474,9 +474,11 @@ namespace ClickIt.Rendering
                 var renderTimings = clickItPlugin.RenderTimings;
                 if (renderTimings != null && renderTimings.Count > 0)
                 {
-                    long lastRenderTime = renderTimings.Last();
-                    double avgRenderTime = renderTimings.Average();
-                    double maxRenderTime = renderTimings.Max();
+                    // Create snapshot to avoid enumeration modification errors
+                    var renderTimingsSnapshot = renderTimings.ToArray();
+                    long lastRenderTime = renderTimingsSnapshot[renderTimingsSnapshot.Length - 1];
+                    double avgRenderTime = renderTimingsSnapshot.Average();
+                    double maxRenderTime = renderTimingsSnapshot.Max();
 
                     Color renderColor;
                     if (avgRenderTime <= 6.94)
@@ -514,7 +516,9 @@ namespace ClickIt.Rendering
 
                     if (altarTimingsField?.GetValue(clickItPlugin2) is Queue<long> altarTimings && altarTimings.Count > 0)
                     {
-                        double average = altarTimings.Average();
+                        // Create snapshot to avoid enumeration modification errors
+                        var altarTimingsSnapshot = altarTimings.ToArray();
+                        double average = altarTimingsSnapshot.Average();
                         displayText += $" (avg: {average:F1} ms)";
                     }
 
@@ -532,7 +536,9 @@ namespace ClickIt.Rendering
 
                     if (clickTimingsField?.GetValue(clickItPlugin2) is Queue<long> clickTimings && clickTimings.Count > 0)
                     {
-                        double average = clickTimings.Average();
+                        // Create snapshot to avoid enumeration modification errors
+                        var clickTimingsSnapshot = clickTimings.ToArray();
+                        double average = clickTimingsSnapshot.Average();
                         displayText += $" (avg: {average:F1} ms)";
                     }
 
@@ -553,7 +559,9 @@ namespace ClickIt.Rendering
 
                     if (delveFlareTimingsField?.GetValue(clickItPlugin2) is Queue<long> delveFlareTimings && delveFlareTimings.Count > 0)
                     {
-                        double average = delveFlareTimings.Average();
+                        // Create snapshot to avoid enumeration modification errors
+                        var delveFlareTimingsSnapshot = delveFlareTimings.ToArray();
+                        double average = delveFlareTimingsSnapshot.Average();
                         displayText += $" (avg: {average:F1} ms)";
                     }
 
@@ -574,7 +582,9 @@ namespace ClickIt.Rendering
 
                     if (shrineTimingsField?.GetValue(clickItPlugin2) is Queue<long> shrineTimings && shrineTimings.Count > 0)
                     {
-                        double average = shrineTimings.Average();
+                        // Create snapshot to avoid enumeration modification errors
+                        var shrineTimingsSnapshot = shrineTimings.ToArray();
+                        double average = shrineTimingsSnapshot.Average();
                         displayText += $" (avg: {average:F1} ms)";
                     }
 
