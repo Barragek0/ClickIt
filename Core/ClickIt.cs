@@ -16,23 +16,9 @@ namespace ClickIt
 #nullable enable
     public class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
-        private Stopwatch Timer { get; } = new Stopwatch();
-        private Stopwatch SecondTimer { get; } = new Stopwatch();
+        private readonly Utils.PerformanceMonitor _performanceMonitor = new Utils.PerformanceMonitor();
         private Random Random { get; } = new Random();
         private TimeCache<List<LabelOnGround>>? CachedLabels { get; set; }
-        private readonly Stopwatch renderTimer = new Stopwatch();
-        private readonly Stopwatch altarCoroutineTimer = new Stopwatch();
-        private readonly Stopwatch clickCoroutineTimer = new Stopwatch();
-        private readonly Stopwatch delveFlareCoroutineTimer = new Stopwatch();
-        private readonly Stopwatch shrineCoroutineTimer = new Stopwatch();
-        private readonly Queue<long> clickCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> altarCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> delveFlareCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> shrineCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> renderTimings = new Queue<long>(60);
-        private readonly Stopwatch fpsTimer = new Stopwatch();
-        private int frameCount = 0;
-        private double currentFPS = 0;
         private Coroutine? altarCoroutine;
         private Coroutine? clickLabelCoroutine;
         private Coroutine? delveFlareCoroutine;
@@ -40,6 +26,8 @@ namespace ClickIt
         private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
         private readonly Stopwatch lastRenderTimer = new Stopwatch();
         private readonly Stopwatch lastTickTimer = new Stopwatch();
+        private readonly Stopwatch Timer = new Stopwatch();
+        private readonly Stopwatch SecondTimer = new Stopwatch();
         private const int HOTKEY_RELEASE_FAILSAFE_MS = 5000;
         private bool lastHotkeyState = false;
         private Services.AreaService? areaService;
@@ -53,9 +41,9 @@ namespace ClickIt
         private readonly List<string> recentErrors = [];
         private const int MAX_ERRORS_TO_TRACK = 10;
 
-        public double CurrentFPS => currentFPS;
+        public double CurrentFPS => _performanceMonitor.CurrentFPS;
         public Services.ShrineService? ShrineService => shrineService;
-        public Queue<long> RenderTimings => renderTimings;
+        public Queue<long> RenderTimings => _performanceMonitor.RenderTimings;
 
         private Camera? camera;
 
@@ -122,8 +110,7 @@ namespace ClickIt
                 labelFilterService,
                 GroundItemsVisible,
                 CachedLabels);
-            Timer.Start();
-            SecondTimer.Start();
+            _performanceMonitor.Start();
 
             altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic", false);
             _ = Core.ParallelRunner.Run(altarCoroutine);
@@ -151,6 +138,8 @@ namespace ClickIt
             // Start monitoring timers
             lastRenderTimer.Start();
             lastTickTimer.Start();
+            Timer.Start();
+            SecondTimer.Start();
 
             return true;
         }
@@ -174,25 +163,13 @@ namespace ClickIt
             }
 
             // Start timing only when actually rendering
-            renderTimer.Restart();
-
-            frameCount++;
-            if (!fpsTimer.IsRunning)
-            {
-                fpsTimer.Start();
-            }
-
-            if (fpsTimer.ElapsedMilliseconds >= 1000)
-            {
-                currentFPS = frameCount / (fpsTimer.ElapsedMilliseconds / 1000.0);
-                frameCount = 0;
-                fpsTimer.Restart();
-            }
+            _performanceMonitor.StartRenderTiming();
+            _performanceMonitor.UpdateFPS();
 
             if (hasDebugRendering)
             {
                 debugRenderer?.RenderDebugFrames(Settings);
-                debugRenderer?.RenderDetailedDebugInfo(Settings, renderTimer);
+                debugRenderer?.RenderDetailedDebugInfo(Settings, _performanceMonitor);
             }
 
             if (hasAltars)
@@ -200,8 +177,7 @@ namespace ClickIt
                 RenderAltarComponents();
             }
 
-            renderTimer.Stop();
-            EnqueueTiming(renderTimings, renderTimer.ElapsedMilliseconds, 60);
+            _performanceMonitor.StopRenderTiming();
         }
         private void RenderAltarComponents()
         {
@@ -304,15 +280,7 @@ namespace ClickIt
         }
 
 
-        // Helper to enqueue timing measurements and keep a fixed-length queue
-        private void EnqueueTiming(Queue<long> queue, long value, int maxLength)
-        {
-            queue.Enqueue(value);
-            if (queue.Count > maxLength)
-            {
-                queue.Dequeue();
-            }
-        }
+
 
         // Helper to execute an action while holding the click-element access lock (if LockManager enabled)
         private void ExecuteWithElementAccessLock(Action action)
@@ -409,12 +377,9 @@ namespace ClickIt
         }
         private IEnumerator ScanForAltarsLogic()
         {
-            altarCoroutineTimer.Restart();
+            _performanceMonitor.StartCoroutineTiming("altar");
             altarService?.ProcessAltarScanningLogic();
-            altarCoroutineTimer.Stop();
-
-            // Track timing for averaging
-            EnqueueTiming(altarCoroutineTimings, altarCoroutineTimer.ElapsedMilliseconds, 10);
+            _performanceMonitor.StopCoroutineTiming("altar");
 
             altarCoroutine?.Pause();
             yield break;
@@ -513,14 +478,11 @@ namespace ClickIt
         {
             while (Settings.Enable)
             {
-                shrineCoroutineTimer.Restart();
+                _performanceMonitor.StartCoroutineTiming("shrine");
 
                 yield return HandleShrine();
 
-                shrineCoroutineTimer.Stop();
-
-                // Track timing for averaging
-                EnqueueTiming(shrineCoroutineTimings, shrineCoroutineTimer.ElapsedMilliseconds, 10);
+                _performanceMonitor.StopCoroutineTiming("shrine");
             }
         }
 
@@ -580,7 +542,7 @@ namespace ClickIt
 
             // self adjusting delay based on average click time
             // clicks will consistently aim for 70ms intervals
-            double avgClickTime = clickCoroutineTimings.Count > 0 ? clickCoroutineTimings.ToArray().Average() : 0;
+            double avgClickTime = _performanceMonitor.GetAverageTiming("click");
             if (Timer.ElapsedMilliseconds < 70 - avgClickTime + Random.Next(0, 6) || !CanClick())
             {
                 workFinished = true;
@@ -593,12 +555,9 @@ namespace ClickIt
             }
 
             Timer.Restart();
-            clickCoroutineTimer.Restart();
+            _performanceMonitor.StartCoroutineTiming("click");
             yield return clickService.ProcessRegularClick();
-            clickCoroutineTimer.Stop();
-
-            // Track timing for averaging
-            EnqueueTiming(clickCoroutineTimings, clickCoroutineTimer.ElapsedMilliseconds, 10);
+            _performanceMonitor.StopCoroutineTiming("click");
 
             workFinished = true;
         }
@@ -651,7 +610,7 @@ namespace ClickIt
         {
             while (Settings.Enable)
             {
-                delveFlareCoroutineTimer.Restart();
+                _performanceMonitor.StartCoroutineTiming("delveFlare");
 
                 if (Settings.ClickDelveFlares && GameController?.Player?.Buffs != null)
                 {
@@ -674,10 +633,7 @@ namespace ClickIt
                     }
                 }
 
-                delveFlareCoroutineTimer.Stop();
-
-                // Track timing for averaging
-                EnqueueTiming(delveFlareCoroutineTimings, delveFlareCoroutineTimer.ElapsedMilliseconds, 10);
+                _performanceMonitor.StopCoroutineTiming("delveFlare");
 
                 yield return new WaitTime(100);
             }

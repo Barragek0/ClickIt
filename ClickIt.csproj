@@ -40,6 +40,22 @@
     </Reference>
   </ItemGroup>
 
+  <!-- Fallback references for development when exapiPackage is not set -->
+  <ItemGroup Condition="'$(exapiPackage)' == ''">
+    <Reference Include="ExileCore">
+      <HintPath>..\..\PoeHelper\net48\ExileCore.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GameOffsets">
+      <HintPath>..\..\PoeHelper\net48\GameOffsets.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ProcessMemoryUtilities">
+      <HintPath>..\..\PoeHelper\net48\ProcessMemoryUtilities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <!-- NuGet packages (kept from original project) -->
     <PackageReference Include="ImGui.NET" Version="1.89.7.1" />
@@ -98,6 +114,7 @@
     <Compile Include="Utils\LockManager.cs" />
     <Compile Include="Utils\DeferredTextQueue.cs" />
     <Compile Include="Utils\LabelUtils.cs" />
+    <Compile Include="Utils\PerformanceMonitor.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -48,12 +48,9 @@ namespace ClickIt.Rendering
             }
         }
 
-        public void RenderDetailedDebugInfo(ClickItSettings settings, Stopwatch renderTimer)
+        public void RenderDetailedDebugInfo(ClickItSettings settings, Utils.PerformanceMonitor performanceMonitor)
         {
-            if (settings == null) return;
-
-            // Start timing for debug render
-            renderTimer.Restart();
+            if (settings == null || performanceMonitor == null) return;
 
             int startY = 120;
             int lineHeight = 18;
@@ -68,7 +65,7 @@ namespace ClickIt.Rendering
             }
             if (settings.DebugShowPerformance)
             {
-                yPos = RenderPerformanceDebug(col1X, yPos, lineHeight);
+                yPos = RenderPerformanceDebug(col1X, yPos, lineHeight, performanceMonitor);
             }
             if (settings.DebugShowGameState)
             {
@@ -457,40 +454,37 @@ namespace ClickIt.Rendering
             }
             return yPos;
         }
-        public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight)
+        public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
         {
             _graphics.DrawText($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
             // FPS Display
-            if (_plugin is ClickIt clickItPlugin)
+            double fps = performanceMonitor.CurrentFPS;
+            Color fpsColor = fps >= 144 ? Color.LawnGreen : (fps >= 60 ? Color.Yellow : Color.Red);
+            _graphics.DrawText($"FPS: {fps:F1}", new Vector2(xPos, yPos), fpsColor, 16);
+            yPos += lineHeight;
+
+            // Render time
+            var renderTimings = performanceMonitor.RenderTimings;
+            if (renderTimings != null && renderTimings.Count > 0)
             {
-                double fps = clickItPlugin.CurrentFPS;
-                Color fpsColor = fps >= 144 ? Color.LawnGreen : (fps >= 60 ? Color.Yellow : Color.Red);
-                _graphics.DrawText($"FPS: {fps:F1}", new Vector2(xPos, yPos), fpsColor, 16);
+                // Create snapshot to avoid enumeration modification errors
+                var renderTimingsSnapshot = renderTimings.ToArray();
+                long lastRenderTime = renderTimingsSnapshot[renderTimingsSnapshot.Length - 1];
+                double avgRenderTime = renderTimingsSnapshot.Average();
+                double maxRenderTime = renderTimingsSnapshot.Max();
+
+                Color renderColor;
+                if (avgRenderTime <= 6.94)
+                    renderColor = Color.LawnGreen;
+                else if (avgRenderTime <= 16.67)
+                    renderColor = Color.Yellow;
+                else
+                    renderColor = Color.Red;
+
+                _graphics.DrawText($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
                 yPos += lineHeight;
-
-                // Render time
-                var renderTimings = clickItPlugin.RenderTimings;
-                if (renderTimings != null && renderTimings.Count > 0)
-                {
-                    // Create snapshot to avoid enumeration modification errors
-                    var renderTimingsSnapshot = renderTimings.ToArray();
-                    long lastRenderTime = renderTimingsSnapshot[renderTimingsSnapshot.Length - 1];
-                    double avgRenderTime = renderTimingsSnapshot.Average();
-                    double maxRenderTime = renderTimingsSnapshot.Max();
-
-                    Color renderColor;
-                    if (avgRenderTime <= 6.94)
-                        renderColor = Color.LawnGreen;
-                    else if (avgRenderTime <= 16.67)
-                        renderColor = Color.Yellow;
-                    else
-                        renderColor = Color.Red;
-
-                    _graphics.DrawText($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
-                    yPos += lineHeight;
-                }
             }
 
             var process = Process.GetCurrentProcess();
@@ -498,99 +492,32 @@ namespace ClickIt.Rendering
             _graphics.DrawText($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
 
-            // Access timing information from the main plugin class via reflection
-            if (_plugin is ClickIt clickItPlugin2)
+            // Display coroutine timing averages
+            double altarAvg = performanceMonitor.GetAverageTiming("altar");
+            if (altarAvg > 0)
             {
-                var altarCoroutineTimerField = typeof(ClickIt).GetField("altarCoroutineTimer",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var clickCoroutineTimerField = typeof(ClickIt).GetField("clickCoroutineTimer",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                _graphics.DrawText($"Altar Coroutine: (avg: {altarAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+            }
 
-                if (altarCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch altarTimer)
-                {
-                    // Get the timings queue for averaging
-                    var altarTimingsField = typeof(ClickIt).GetField("altarCoroutineTimings",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            double clickAvg = performanceMonitor.GetAverageTiming("click");
+            if (clickAvg > 0)
+            {
+                _graphics.DrawText($"Click Coroutine: (avg: {clickAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+            }
 
-                    string displayText = $"Altar Coroutine: {altarTimer.ElapsedMilliseconds} ms";
+            double delveFlareAvg = performanceMonitor.GetAverageTiming("delveFlare");
+            if (delveFlareAvg > 0)
+            {
+                _graphics.DrawText($"Delve Flare Coroutine: (avg: {delveFlareAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
+                yPos += lineHeight;
+            }
 
-                    if (altarTimingsField?.GetValue(clickItPlugin2) is Queue<long> altarTimings && altarTimings.Count > 0)
-                    {
-                        // Create snapshot to avoid enumeration modification errors
-                        var altarTimingsSnapshot = altarTimings.ToArray();
-                        double average = altarTimingsSnapshot.Average();
-                        displayText += $" (avg: {average:F1} ms)";
-                    }
-
-                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
-                    yPos += lineHeight;
-                }
-
-                if (clickCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch clickTimer)
-                {
-                    // Get the timings queue for averaging
-                    var clickTimingsField = typeof(ClickIt).GetField("clickCoroutineTimings",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                    string displayText = $"Click Coroutine: {clickTimer.ElapsedMilliseconds} ms";
-
-                    if (clickTimingsField?.GetValue(clickItPlugin2) is Queue<long> clickTimings && clickTimings.Count > 0)
-                    {
-                        // Create snapshot to avoid enumeration modification errors
-                        var clickTimingsSnapshot = clickTimings.ToArray();
-                        double average = clickTimingsSnapshot.Average();
-                        displayText += $" (avg: {average:F1} ms)";
-                    }
-
-                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
-                    yPos += lineHeight;
-                }
-
-                var delveFlareCoroutineTimerField = typeof(ClickIt).GetField("delveFlareCoroutineTimer",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                if (delveFlareCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch delveFlareTimer)
-                {
-                    // Get the timings queue for averaging
-                    var delveFlareTimingsField = typeof(ClickIt).GetField("delveFlareCoroutineTimings",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                    string displayText = $"Delve Flare Coroutine: {delveFlareTimer.ElapsedMilliseconds} ms";
-
-                    if (delveFlareTimingsField?.GetValue(clickItPlugin2) is Queue<long> delveFlareTimings && delveFlareTimings.Count > 0)
-                    {
-                        // Create snapshot to avoid enumeration modification errors
-                        var delveFlareTimingsSnapshot = delveFlareTimings.ToArray();
-                        double average = delveFlareTimingsSnapshot.Average();
-                        displayText += $" (avg: {average:F1} ms)";
-                    }
-
-                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
-                    yPos += lineHeight;
-                }
-
-                var shrineCoroutineTimerField = typeof(ClickIt).GetField("shrineCoroutineTimer",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                if (shrineCoroutineTimerField?.GetValue(clickItPlugin2) is Stopwatch shrineTimer)
-                {
-                    // Get the timings queue for averaging
-                    var shrineTimingsField = typeof(ClickIt).GetField("shrineCoroutineTimings",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                    string displayText = $"Shrine Coroutine: {shrineTimer.ElapsedMilliseconds} ms";
-
-                    if (shrineTimingsField?.GetValue(clickItPlugin2) is Queue<long> shrineTimings && shrineTimings.Count > 0)
-                    {
-                        // Create snapshot to avoid enumeration modification errors
-                        var shrineTimingsSnapshot = shrineTimings.ToArray();
-                        double average = shrineTimingsSnapshot.Average();
-                        displayText += $" (avg: {average:F1} ms)";
-                    }
-
-                    _graphics.DrawText(displayText, new Vector2(xPos, yPos), Color.White, 16);
-                    yPos += lineHeight;
-                }
+            double shrineAvg = performanceMonitor.GetAverageTiming("shrine");
+            if (shrineAvg > 0)
+            {
+                _graphics.DrawText($"Shrine Coroutine: (avg: {shrineAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
             }
 
