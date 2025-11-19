@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build ClickIt",
+      "type": "process",
+      "command": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
+      "args": [
+        "ClickIt.sln",
+        "/p:Configuration=Debug",
+        "/p:IncludeIntegrationTests=true",
+        "/p:exapiPackage=..\\..\\PoeHelper\\net48\\"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Run Tests (dotnet test)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "Tests\\ClickIt.Tests.csproj",
+        "-c",
+        "Debug",
+        "-p:IncludeIntegrationTests=true"
+      ],
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Copy Compiled DLL",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { $src = Join-Path $pwd 'bin\\Debug\\net8.0-windows\\win-x64\\ClickIt.dll'; if (-not (Test-Path $src)) { Write-Error \"Compiled DLL not found at $src\"; exit 1 }; $dest = 'C:\\1.Path stuff\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt'; if(-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; Copy-Item -Path $src -Destination $dest -Force; Write-Output \"Copied $src to $dest\" }"
+      ],
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build and Test",
+      "dependsOn": [
+        "Build ClickIt",
+        "Run Tests (dotnet test)",
+        "Copy Compiled DLL"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

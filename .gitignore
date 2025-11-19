@@ -4,7 +4,7 @@
 *.userosscache
 *.sln.docstates
 .vs/
-.vscode/
+.vscode/*
 !.vscode/tasks.sample.json
 
 # Build results
