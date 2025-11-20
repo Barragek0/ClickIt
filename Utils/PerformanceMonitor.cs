@@ -11,6 +11,12 @@ namespace ClickIt.Utils
     /// </summary>
     public class PerformanceMonitor
     {
+        private readonly ClickItSettings _settings;
+
+        public PerformanceMonitor(ClickItSettings settings)
+        {
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        }
         // Primary timing controls
         private readonly Stopwatch _mainTimer = new Stopwatch();
         private readonly Stopwatch _secondTimer = new Stopwatch();
@@ -40,6 +46,19 @@ namespace ClickIt.Utils
         private readonly Stopwatch _fpsTimer = new Stopwatch();
         private int _frameCount = 0;
         private double _currentFps = 0;
+
+        // Last timing values for display
+        private long _lastAltarTiming = 0;
+        private long _lastClickTiming = 0;
+        private long _lastDelveFlareTiming = 0;
+        private long _lastShrineTiming = 0;
+        private long _lastRenderTiming = 0;
+
+        // Max timing values for display
+        private long _maxAltarTiming = 0;
+        private long _maxClickTiming = 0;
+        private long _maxDelveFlareTiming = 0;
+        private long _maxShrineTiming = 0;
 
         // Input safety timing
         private readonly Stopwatch _lastHotkeyReleaseTimer = new Stopwatch();
@@ -81,7 +100,9 @@ namespace ClickIt.Utils
         public void StopRenderTiming()
         {
             _renderTimer.Stop();
-            EnqueueTiming(_renderTimings, _renderTimer.ElapsedMilliseconds, 60, _renderTimingsLock);
+            long timing = _renderTimer.ElapsedMilliseconds;
+            _lastRenderTiming = timing;
+            EnqueueTiming(_renderTimings, timing, 60, _renderTimingsLock);
         }
 
         public void StartCoroutineTiming(string coroutineName)
@@ -109,20 +130,51 @@ namespace ClickIt.Utils
             {
                 case "altar":
                     _altarCoroutineTimer.Stop();
-                    EnqueueTiming(_altarCoroutineTimings, _altarCoroutineTimer.ElapsedMilliseconds, 10, _altarTimingsLock);
+                    long altarTiming = _altarCoroutineTimer.ElapsedMilliseconds;
+                    _lastAltarTiming = altarTiming;
+                    _maxAltarTiming = Math.Max(_maxAltarTiming, altarTiming);
+                    EnqueueTiming(_altarCoroutineTimings, altarTiming, 10, _altarTimingsLock);
                     break;
                 case "click":
                     _clickCoroutineTimer.Stop();
-                    EnqueueTiming(_clickCoroutineTimings, _clickCoroutineTimer.ElapsedMilliseconds, 10, _clickTimingsLock);
+                    long clickTiming = _clickCoroutineTimer.ElapsedMilliseconds;
+                    _lastClickTiming = clickTiming;
+                    _maxClickTiming = Math.Max(_maxClickTiming, clickTiming);
+                    EnqueueTiming(_clickCoroutineTimings, clickTiming, 10, _clickTimingsLock);
                     break;
                 case "delveFlare":
                     _delveFlareCoroutineTimer.Stop();
-                    EnqueueTiming(_delveFlareCoroutineTimings, _delveFlareCoroutineTimer.ElapsedMilliseconds, 10, _delveFlareTimingsLock);
+                    long delveFlareTiming = _delveFlareCoroutineTimer.ElapsedMilliseconds;
+                    _lastDelveFlareTiming = delveFlareTiming;
+                    _maxDelveFlareTiming = Math.Max(_maxDelveFlareTiming, delveFlareTiming);
+                    EnqueueTiming(_delveFlareCoroutineTimings, delveFlareTiming, 10, _delveFlareTimingsLock);
                     break;
                 case "shrine":
                     _shrineCoroutineTimer.Stop();
-                    EnqueueTiming(_shrineCoroutineTimings, _shrineCoroutineTimer.ElapsedMilliseconds, 10, _shrineTimingsLock);
+                    long shrineTiming = _shrineCoroutineTimer.ElapsedMilliseconds;
+                    _lastShrineTiming = shrineTiming;
+                    _maxShrineTiming = Math.Max(_maxShrineTiming, shrineTiming);
+                    EnqueueTiming(_shrineCoroutineTimings, shrineTiming, 10, _shrineTimingsLock);
                     break;
+            }
+        }
+
+        public double GetLastTiming(string timingType)
+        {
+            switch (timingType)
+            {
+                case "click":
+                    return _lastClickTiming;
+                case "altar":
+                    return _lastAltarTiming;
+                case "delveFlare":
+                    return _lastDelveFlareTiming;
+                case "shrine":
+                    return _lastShrineTiming;
+                case "render":
+                    return _lastRenderTiming;
+                default:
+                    return 0;
             }
         }
 
@@ -160,6 +212,28 @@ namespace ClickIt.Utils
             lock (lockObj)
             {
                 return queue.Count > 0 ? queue.Average() : 0;
+            }
+        }
+
+        public double GetClickTargetInterval()
+        {
+            return _settings.ClickFrequencyTarget.Value;
+        }
+
+        public double GetMaxTiming(string timingType)
+        {
+            switch (timingType)
+            {
+                case "click":
+                    return _maxClickTiming;
+                case "altar":
+                    return _maxAltarTiming;
+                case "delveFlare":
+                    return _maxDelveFlareTiming;
+                case "shrine":
+                    return _maxShrineTiming;
+                default:
+                    return 0;
             }
         }
 

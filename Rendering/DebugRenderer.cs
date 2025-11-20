@@ -489,37 +489,41 @@ namespace ClickIt.Rendering
 
             var process = Process.GetCurrentProcess();
             long memoryUsage = process.WorkingSet64 / 1024 / 1024;
-            _graphics.DrawText($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), Color.White, 16);
+            Color memoryColor = Color.Yellow;
+            _graphics.DrawText($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), memoryColor, 16);
             yPos += lineHeight;
 
             // Display coroutine timing averages
+            double altarCurrent = performanceMonitor.GetLastTiming("altar");
             double altarAvg = performanceMonitor.GetAverageTiming("altar");
-            if (altarAvg > 0)
-            {
-                _graphics.DrawText($"Altar Coroutine: (avg: {altarAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
-                yPos += lineHeight;
-            }
+            double altarMax = performanceMonitor.GetMaxTiming("altar");
+            Color altarColor = altarCurrent >= 10 ? Color.Red : (altarCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
+            _graphics.DrawText($"Altar Coroutine: {altarCurrent:F0} ms (avg: {altarAvg:F1}, max: {altarMax:F0})", new Vector2(xPos, yPos), altarColor, 16);
+            yPos += lineHeight;
 
+            double clickCurrent = performanceMonitor.GetLastTiming("click");
             double clickAvg = performanceMonitor.GetAverageTiming("click");
-            if (clickAvg > 0)
-            {
-                _graphics.DrawText($"Click Coroutine: (avg: {clickAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
-                yPos += lineHeight;
-            }
+            double clickMax = performanceMonitor.GetMaxTiming("click");
+            double clickTarget = performanceMonitor.GetClickTargetInterval();
+            double clickYellowThreshold = clickTarget * 0.25; // 25% of target
+            double clickRedThreshold = clickTarget; // Above target
+            Color clickColor = clickCurrent >= clickRedThreshold ? Color.Red : (clickCurrent >= clickYellowThreshold ? Color.Yellow : Color.LawnGreen);
+            _graphics.DrawText($"Click Coroutine: {clickCurrent:F0} ms (avg: {clickAvg:F1}, max: {clickMax:F0})", new Vector2(xPos, yPos), clickColor, 16);
+            yPos += lineHeight;
 
+            double delveFlareCurrent = performanceMonitor.GetLastTiming("delveFlare");
             double delveFlareAvg = performanceMonitor.GetAverageTiming("delveFlare");
-            if (delveFlareAvg > 0)
-            {
-                _graphics.DrawText($"Delve Flare Coroutine: (avg: {delveFlareAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
-                yPos += lineHeight;
-            }
+            double delveFlareMax = performanceMonitor.GetMaxTiming("delveFlare");
+            Color delveFlareColor = delveFlareCurrent >= 10 ? Color.Red : (delveFlareCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
+            _graphics.DrawText($"Delve Flare Coroutine: {delveFlareCurrent:F0} ms (avg: {delveFlareAvg:F1}, max: {delveFlareMax:F0})", new Vector2(xPos, yPos), delveFlareColor, 16);
+            yPos += lineHeight;
 
+            double shrineCurrent = performanceMonitor.GetLastTiming("shrine");
             double shrineAvg = performanceMonitor.GetAverageTiming("shrine");
-            if (shrineAvg > 0)
-            {
-                _graphics.DrawText($"Shrine Coroutine: (avg: {shrineAvg:F1} ms)", new Vector2(xPos, yPos), Color.White, 16);
-                yPos += lineHeight;
-            }
+            double shrineMax = performanceMonitor.GetMaxTiming("shrine");
+            Color shrineColor = shrineCurrent >= 10 ? Color.Red : (shrineCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
+            _graphics.DrawText($"Shrine Coroutine: {shrineCurrent:F0} ms (avg: {shrineAvg:F1}, max: {shrineMax:F0})", new Vector2(xPos, yPos), shrineColor, 16);
+            yPos += lineHeight;
 
             return yPos;
         }
@@ -531,37 +535,23 @@ namespace ClickIt.Rendering
             // Access recent errors from the main plugin class
             if (_plugin is ClickIt clickItPlugin)
             {
-                var recentErrorsField = typeof(ClickIt).GetField("recentErrors",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (recentErrorsField?.GetValue(clickItPlugin) is List<string> recentErrors)
+                var recentErrors = clickItPlugin.RecentErrors;
+                if (recentErrors.Count > 0)
                 {
-                    if (recentErrors.Count > 0)
-                    {
-                        _graphics.DrawText($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
-                        yPos += lineHeight;
+                    _graphics.DrawText($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
+                    yPos += lineHeight;
 
-                        for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
-                        {
-                            string error = recentErrors[i];
-                            yPos = RenderWrappedText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14, lineHeight, 50);
-                        }
-                    }
-                    else
+                    for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
                     {
-                        _graphics.DrawText($"No Recent Errors", new Vector2(xPos, yPos), Color.LightGreen, 16);
-                        yPos += lineHeight;
+                        string error = recentErrors[i];
+                        yPos = RenderWrappedText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14, lineHeight, 50);
                     }
                 }
                 else
                 {
-                    _graphics.DrawText($"  Error Tracking Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    _graphics.DrawText($"No Recent Errors", new Vector2(xPos, yPos), Color.LightGreen, 16);
                     yPos += lineHeight;
                 }
-            }
-            else
-            {
-                _graphics.DrawText($"  Plugin Instance Error", new Vector2(xPos, yPos), Color.Red, 16);
-                yPos += lineHeight;
             }
 
             return yPos;
