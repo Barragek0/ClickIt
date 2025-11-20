@@ -196,7 +196,8 @@ namespace ClickIt.Utils
             // Thread-safe clicking via helper that acquires the click element access lock when LockManager enabled
             ExecuteWithElementAccessLock(() => _state.InputHandler?.PerformClick(clickPos));
 
-            yield return new WaitTime(70 + _state.Random.Next(0, 6));
+            // Invalidate shrine cache since we clicked one
+            _state.ShrineService?.InvalidateCache();
         }
 
         private IEnumerator InputSafetyCoroutine()
