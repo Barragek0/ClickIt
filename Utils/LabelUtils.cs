@@ -151,7 +151,8 @@ namespace ClickIt.Utils
                    path.Contains("DarkShrine") ||
                    path.Contains("Sanctum") ||
                    path.Contains("BetrayalMakeChoice") ||
-                   path.Contains("BlightPump");
+                   path.Contains("BlightPump") ||
+                   path.Contains("Leagues/Ritual");
         }
 
         public static bool HasEssenceImprisonmentText(LabelOnGround label)
@@ -159,14 +160,19 @@ namespace ClickIt.Utils
             return GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
         }
 
-        [ThreadStatic]
-        private static List<Element>? _threadLocalElementsList;
+        private static readonly ThreadLocal<List<Element>> _threadLocalElementsList = new(() => new List<Element>());
 
         private static List<Element> GetThreadLocalElementsList()
         {
-            if (_threadLocalElementsList == null)
-                _threadLocalElementsList = new List<Element>();
-            return _threadLocalElementsList;
+            return _threadLocalElementsList.Value ?? new List<Element>();
+        }
+
+        /// <summary>
+        /// Clears the ThreadLocal storage to prevent issues during DLL reload.
+        /// </summary>
+        public static void ClearThreadLocalStorage()
+        {
+            _threadLocalElementsList.Value?.Clear();
         }
 
         public static List<Element> GetElementsByStringContains(Element? label, string str)

@@ -37,31 +37,48 @@ namespace ClickIt.Utils
         }
 
         /// <summary>
-        /// Registers global exception handlers for unhandled exceptions and unobserved task exceptions.
+        /// Registers global exception handlers to improve crash visibility and safe cleanup.
         /// </summary>
         public void RegisterGlobalExceptionHandlers()
         {
+            // Register global unhandled exception handler
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
-                if (e.ExceptionObject is Exception ex)
+                var exception = e.ExceptionObject as Exception;
+                string message = exception?.Message ?? "Unknown exception";
+                _logError($"[Global] Unhandled exception: {message}", 10);
+
+                if (e.IsTerminating)
                 {
-                    LogError($"Unhandled exception ({ex.GetType().Name}): {ex.Message}", 10);
-                    LogError($"Stack: {ex.StackTrace}", 10);
+                    _logError("[Global] Runtime is terminating", 10);
                 }
-                LogError($"UnhandledException Event: IsTerminating={e.IsTerminating}", 10);
-                _forceUnblockInput("Unhandled exception");
+
+                // Attempt safe cleanup
+                try
+                {
+                    _forceUnblockInput("Global exception handler");
+                }
+                catch
+                {
+                    // Ignore cleanup failures
+                }
             };
 
-            TaskScheduler.UnobservedTaskException += (s, evt) =>
+            // Register unobserved task exception handler
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
-                evt.SetObserved();
-                var ex = evt.Exception;
-                if (ex != null)
+                _logError($"[Global] Unobserved task exception: {e.Exception?.Message ?? "Unknown task exception"}", 10);
+                e.SetObserved(); // Mark as observed to prevent re-throwing
+
+                // Attempt safe cleanup
+                try
                 {
-                    LogError($"Unobserved Task Exception: {ex.GetType().Name}: {ex.Message}", 10);
-                    LogError($"Stack: {ex.StackTrace}", 10);
+                    _forceUnblockInput("Unobserved task exception handler");
                 }
-                _forceUnblockInput("Unobserved task exception");
+                catch
+                {
+                    // Ignore cleanup failures
+                }
             };
         }
 
