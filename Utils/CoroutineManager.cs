@@ -1,0 +1,309 @@
+using ExileCore;
+using ExileCore.PoEMemory;
+using ExileCore.Shared;
+using ExileCore.Shared.Cache;
+using ExileCore.Shared.Enums;
+using SharpDX;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using RectangleF = SharpDX.RectangleF;
+using ClickIt;
+
+namespace ClickIt.Utils
+{
+    public class CoroutineManager
+    {
+        private readonly PluginContext _state;
+        private readonly ClickItSettings _settings;
+        private readonly GameController _gameController;
+        private readonly Action<string, int> _logMessage;
+        private readonly Action<string> _forceUnblockInput;
+        private readonly Func<Vector2, bool> _pointIsInClickableArea;
+
+        public CoroutineManager(
+            PluginContext state,
+            ClickItSettings settings,
+            GameController gameController,
+            Action<string, int> logMessage,
+            Action<string> forceUnblockInput,
+            Func<Vector2, bool> pointIsInClickableArea)
+        {
+            _state = state ?? throw new ArgumentNullException(nameof(state));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
+            _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
+            _forceUnblockInput = forceUnblockInput ?? throw new ArgumentNullException(nameof(forceUnblockInput));
+            _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
+        }
+
+        /// <summary>
+        /// Helper to execute an action while holding the click-element access lock (if LockManager enabled)
+        /// </summary>
+        private void ExecuteWithElementAccessLock(Action action)
+        {
+            var gm = LockManager.Instance;
+            if (gm != null && _state.ClickService != null)
+            {
+                using (gm.Acquire(_state.ClickService.GetElementAccessLock()))
+                {
+                    action();
+                }
+            }
+            else
+            {
+                action();
+            }
+        }
+
+        public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
+        {
+            _state.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, "ClickIt.ScanForAltarsLogic", false);
+            _ = Core.ParallelRunner.Run(_state.AltarCoroutine);
+            _state.AltarCoroutine.Priority = CoroutinePriority.Normal;
+
+            _state.ClickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), plugin, "ClickIt.ClickLogic", false);
+            _ = Core.ParallelRunner.Run(_state.ClickLabelCoroutine);
+            _state.ClickLabelCoroutine.Priority = CoroutinePriority.High;
+
+            _state.ShrineCoroutine = new Coroutine(MainShrineCoroutine(), plugin, "ClickIt.ShrineLogic", true);
+            _ = Core.ParallelRunner.Run(_state.ShrineCoroutine);
+            _state.ShrineCoroutine.Priority = CoroutinePriority.High;
+
+            _state.InputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), plugin, "ClickIt.InputSafety");
+            _ = Core.ParallelRunner.Run(_state.InputSafetyCoroutine);
+            _state.InputSafetyCoroutine.Priority = CoroutinePriority.High;
+
+            _state.DelveFlareCoroutine = new Coroutine(DelveFlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
+            _ = Core.ParallelRunner.Run(_state.DelveFlareCoroutine);
+            _state.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
+        }
+
+        private IEnumerator MainScanForAltarsLogic()
+        {
+            while (_settings.Enable)
+            {
+                yield return ScanForAltarsLogic();
+            }
+        }
+
+        private IEnumerator ScanForAltarsLogic()
+        {
+            if (_state.PerformanceMonitor == null) yield break;
+
+            _state.PerformanceMonitor.StartCoroutineTiming("altar");
+            _state.AltarService?.ProcessAltarScanningLogic();
+            _state.PerformanceMonitor.StopCoroutineTiming("altar");
+
+            _state.AltarCoroutine?.Pause();
+        }
+
+        private IEnumerator MainClickLabelCoroutine()
+        {
+            while (_settings.Enable)
+            {
+                yield return ClickLabel();
+            }
+        }
+
+        private IEnumerator ClickLabel()
+        {
+            if (_settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea((pos) => _pointIsInClickableArea(pos)))
+            {
+                yield return new WaitTime(25);
+                yield break;
+            }
+
+            if (_state.PerformanceMonitor == null) yield break;
+            double avgClickTime = _state.PerformanceMonitor.GetAverageTiming("click");
+            if (_state.Timer.ElapsedMilliseconds < _settings.ClickFrequencyTarget.Value - avgClickTime + _state.Random.Next(0, 6) || _state.InputHandler?.CanClick(_gameController) != true)
+            {
+                _state.WorkFinished = true;
+                yield break;
+            }
+
+            if (_settings.DebugMode.Value)
+            {
+                _logMessage($"Starting click process...", 5);
+            }
+
+            _state.Timer.Restart();
+            _state.PerformanceMonitor.StartCoroutineTiming("click");
+            yield return _state.ClickService.ProcessRegularClick();
+            _state.PerformanceMonitor.StopCoroutineTiming("click");
+
+            _state.WorkFinished = true;
+        }
+
+        private IEnumerator MainShrineCoroutine()
+        {
+            if (_state.PerformanceMonitor == null) yield break;
+
+            while (_settings.Enable)
+            {
+                _state.PerformanceMonitor.StartCoroutineTiming("shrine");
+
+                yield return HandleShrine();
+
+                _state.PerformanceMonitor.StopCoroutineTiming("shrine");
+            }
+        }
+
+        private IEnumerator HandleShrine()
+        {
+            if (!_settings.ClickShrines.Value || _state.ShrineService == null)
+            {
+                yield return new WaitTime(500); // Check less frequently when disabled
+                yield break;
+            }
+
+            yield return ProcessShrineClicking();
+        }
+
+        private IEnumerator ProcessShrineClicking()
+        {
+            if (_state.ShrineService == null || _state.InputHandler == null)
+            {
+                yield break;
+            }
+
+            if (_state.PerformanceMonitor == null) yield break;
+            double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming("shrine");
+            if (_state.ShrineTimer.ElapsedMilliseconds < _settings.ClickFrequencyTarget.Value - avgShrineTime + _state.Random.Next(0, 6) || !_state.InputHandler.CanClick(_gameController))
+            {
+                yield break;
+            }
+
+            var nearestShrine = _state.ShrineService.GetNearestShrineInRange(_settings.ClickDistance.Value, point => _pointIsInClickableArea(point));
+            if (nearestShrine == null)
+            {
+                yield break;
+            }
+
+            _logMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}", 5);
+
+            if (_state.Camera == null)
+            {
+                yield break;
+            }
+
+            var screen = _state.Camera.WorldToScreen(nearestShrine.PosNum);
+            Vector2 clickPos = new Vector2(screen.X, screen.Y);
+
+            // Reset timer for next shrine click
+            _state.ShrineTimer.Restart();
+
+            // Thread-safe clicking via helper that acquires the click element access lock when LockManager enabled
+            ExecuteWithElementAccessLock(() => _state.InputHandler?.PerformClick(clickPos));
+
+            yield return new WaitTime(70 + _state.Random.Next(0, 6));
+        }
+
+        private IEnumerator InputSafetyCoroutine()
+        {
+            while (_settings.Enable)
+            {
+                PerformSafetyChecks();
+                yield return new WaitTime(1000);
+            }
+            _forceUnblockInput("Plugin disabled - cleanup");
+        }
+
+        private void PerformSafetyChecks()
+        {
+            bool currentHotkeyState = IsClickHotkeyPressed();
+            if (currentHotkeyState != _state.LastHotkeyState)
+            {
+                if (!currentHotkeyState)
+                {
+                    _state.LastHotkeyReleaseTimer.Restart();
+                }
+                else
+                {
+                    _state.LastHotkeyReleaseTimer.Stop();
+                }
+                _state.LastHotkeyState = currentHotkeyState;
+            }
+            if (!currentHotkeyState && _state.IsInputCurrentlyBlocked &&
+                _state.LastHotkeyReleaseTimer.IsRunning &&
+                _state.LastHotkeyReleaseTimer.ElapsedMilliseconds > PluginContext.HOTKEY_RELEASE_FAILSAFE_MS)
+            {
+                _forceUnblockInput($"Hotkey released for {_state.LastHotkeyReleaseTimer.ElapsedMilliseconds}ms");
+            }
+            if (_state.IsInputCurrentlyBlocked && _gameController?.Game?.IngameState?.InGame != true)
+            {
+                _forceUnblockInput("Not in game");
+            }
+        }
+
+        private bool IsClickHotkeyPressed()
+        {
+            bool actual = Input.GetKeyState(_settings.ClickLabelKey.Value);
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            {
+                // In lazy mode, invert hotkey behaviour: released -> active, held -> inactive
+                return !actual;
+            }
+            return actual;
+        }
+
+        private IEnumerator DelveFlareCoroutine()
+        {
+            if (_state.PerformanceMonitor == null) yield break;
+
+            while (_settings.Enable)
+            {
+                _state.PerformanceMonitor.StartCoroutineTiming("delveFlare");
+
+                if (_settings.ClickDelveFlares && _gameController?.Player?.Buffs != null)
+                {
+                    var delveBuff = _gameController.Player.Buffs.FirstOrDefault(b => b.Name == "delve_degen_buff");
+                    if (delveBuff != null && delveBuff.Charges >= _settings.DarknessDebuffStacks.Value)
+                    {
+                        // Check health and energy shield thresholds
+                        float healthPercent = GetPlayerHealthPercent();
+                        float energyShieldPercent = GetPlayerEnergyShieldPercent();
+
+                        if (healthPercent <= _settings.DelveFlareHealthThreshold.Value &&
+                            energyShieldPercent <= _settings.DelveFlareEnergyShieldThreshold.Value)
+                        {
+                            Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
+
+                            _logMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
+
+                            yield return new WaitTime(1000);
+                        }
+                    }
+                }
+
+                _state.PerformanceMonitor.StopCoroutineTiming("delveFlare");
+
+                yield return new WaitTime(100);
+            }
+        }
+
+        private float GetPlayerHealthPercent()
+        {
+#if RUNTIME_EXILECORE
+            if (_gameController?.Player == null) return 100f;
+            var life = _gameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+            if (life == null || life.Health.Max == 0) return 100f;
+            return (float)life.Health.Current / life.Health.Max * 100f;
+#else
+            return 100f;
+#endif
+        }
+
+        private float GetPlayerEnergyShieldPercent()
+        {
+#if RUNTIME_EXILECORE
+            if (_gameController?.Player == null) return 100f;
+            var life = _gameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+            if (life == null || life.EnergyShield.Max == 0) return 100f;
+            return (float)life.EnergyShield.Current / life.EnergyShield.Max * 100f;
+#else
+            return 100f;
+#endif
+        }
+    }
+}
