@@ -16,7 +16,8 @@ namespace ClickIt
 #nullable enable
     public class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
-        private readonly Utils.PerformanceMonitor _performanceMonitor = new Utils.PerformanceMonitor();
+        private Utils.PerformanceMonitor? _performanceMonitor;
+        private Utils.ErrorHandler? _errorHandler;
         private Random Random { get; } = new Random();
         private TimeCache<List<LabelOnGround>>? CachedLabels { get; set; }
         private Coroutine? altarCoroutine;
@@ -38,41 +39,18 @@ namespace ClickIt
 
         private Rendering.AltarDisplayRenderer? altarDisplayRenderer;
         private Services.ClickService clickService = null!;
-        private readonly List<string> recentErrors = [];
-        private const int MAX_ERRORS_TO_TRACK = 10;
 
-        public double CurrentFPS => _performanceMonitor.CurrentFPS;
+        public double CurrentFPS => _performanceMonitor?.CurrentFPS ?? 0;
         public Services.ShrineService? ShrineService => shrineService;
-        public Queue<long> RenderTimings => _performanceMonitor.RenderTimings;
+        public Queue<long> RenderTimings => _performanceMonitor?.RenderTimings ?? new Queue<long>();
+        public IReadOnlyList<string> RecentErrors => _errorHandler?.RecentErrors ?? new List<string>();
 
         private Camera? camera;
 
         public override void OnLoad()
         {
-            // Register global error handlers with instance context
-            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-            {
-                if (e.ExceptionObject is Exception ex)
-                {
-                    LogError($"Unhandled exception ({ex.GetType().Name}): {ex.Message}", 10);
-                    LogError($"Stack: {ex.StackTrace}", 10);
-                }
-                LogError($"UnhandledException Event: IsTerminating={e.IsTerminating}", 10);
-                ForceUnblockInput("Unhandled exception");
-            };
-
-            // Catch unobserved task exceptions so they don't get lost
-            TaskScheduler.UnobservedTaskException += (s, evt) =>
-            {
-                evt.SetObserved();
-                var ex = evt.Exception;
-                if (ex != null)
-                {
-                    LogError($"Unobserved Task Exception: {ex.GetType().Name}: {ex.Message}", 10);
-                    LogError($"Stack: {ex.StackTrace}", 10);
-                }
-                ForceUnblockInput("Unobserved task exception");
-            };
+            // Register global error handlers
+            _errorHandler?.RegisterGlobalExceptionHandlers();
 
             CanUseMultiThreading = true;
         }
@@ -85,6 +63,8 @@ namespace ClickIt
         public override bool Initialise()
         {
             Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
+            _performanceMonitor = new Utils.PerformanceMonitor(Settings);
+            _errorHandler = new Utils.ErrorHandler(Settings, LogError, LogMessage, SafeBlockInput, ForceUnblockInput);
             CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             areaService = new Services.AreaService();
             areaService.UpdateScreenAreas(GameController);
@@ -150,6 +130,8 @@ namespace ClickIt
         }
         public override void Render()
         {
+            if (_performanceMonitor == null) return; // Not initialized yet
+
             bool debugMode = Settings.DebugMode;
             bool renderDebug = Settings.RenderDebug;
             bool hasDebugRendering = debugMode && renderDebug;
@@ -185,98 +167,16 @@ namespace ClickIt
         }
         public void LogMessage(string message, int frame = 5)
         {
-            LogMessage(false, true, message, frame);
+            _errorHandler?.LogMessage(message, frame);
         }
 
         public void LogMessage(bool localDebug, string message, int frame = 0)
         {
-            LogMessage(true, localDebug, message, frame);
+            _errorHandler?.LogMessage(localDebug, message, frame);
         }
         public void LogError(string message, int frame = 0)
         {
-            if (Settings.DebugMode)
-            {
-                LogErrorWithWrapping(message, frame);
-                TrackError(message);
-            }
-        }
-        private void LogErrorWithWrapping(string message, int frame = 0)
-        {
-            const int maxLineLength = 100; // Maximum characters per line to avoid going off screen
-
-            if (message.Length <= maxLineLength)
-            {
-                base.LogError(message, frame);
-                return;
-            }
-
-            // Split long message into multiple lines
-            int startIndex = 0;
-            int lineNumber = 1;
-
-            while (startIndex < message.Length)
-            {
-                int remainingLength = message.Length - startIndex;
-                int currentLineLength = Math.Min(maxLineLength, remainingLength);
-
-                // Try to break at a space to avoid splitting words
-                if (currentLineLength < remainingLength)
-                {
-                    int lastSpaceIndex = message.LastIndexOf(' ', startIndex + currentLineLength, currentLineLength);
-                    if (lastSpaceIndex > startIndex)
-                    {
-                        currentLineLength = lastSpaceIndex - startIndex;
-                    }
-                }
-
-                string line = message.Substring(startIndex, currentLineLength).TrimEnd();
-
-                // Add line number prefix for continuation lines
-                if (lineNumber == 1)
-                {
-                    base.LogError(line, frame);
-                }
-                else
-                {
-                    base.LogError($"  [{lineNumber}] {line}", frame);
-                }
-
-                startIndex += currentLineLength;
-                // Skip leading spaces on continuation lines
-                while (startIndex < message.Length && message[startIndex] == ' ')
-                {
-                    startIndex++;
-                }
-
-                lineNumber++;
-            }
-        }
-        private void TrackError(string errorMessage)
-        {
-            string timestampedError = $"[{DateTime.Now:HH:mm:ss}] {errorMessage}";
-            recentErrors.Add(timestampedError);
-            if (recentErrors.Count > MAX_ERRORS_TO_TRACK)
-            {
-                recentErrors.RemoveAt(0);
-            }
-        }
-
-        private void LogMessage(bool requireLocalDebug, bool localDebugFlag, string message, int frame)
-        {
-            if (requireLocalDebug)
-            {
-                if (localDebugFlag && Settings.DebugMode && Settings.LogMessages)
-                {
-                    base.LogMessage(message, frame);
-                }
-            }
-            else
-            {
-                if (Settings.DebugMode && Settings.LogMessages)
-                {
-                    base.LogMessage(message, frame);
-                }
-            }
+            _errorHandler?.LogError(message, frame);
         }
 
 
@@ -377,6 +277,8 @@ namespace ClickIt
         }
         private IEnumerator ScanForAltarsLogic()
         {
+            if (_performanceMonitor == null) yield break;
+
             _performanceMonitor.StartCoroutineTiming("altar");
             altarService?.ProcessAltarScanningLogic();
             _performanceMonitor.StopCoroutineTiming("altar");
@@ -476,6 +378,8 @@ namespace ClickIt
 
         private IEnumerator MainShrineCoroutine()
         {
+            if (_performanceMonitor == null) yield break;
+
             while (Settings.Enable)
             {
                 _performanceMonitor.StartCoroutineTiming("shrine");
@@ -542,6 +446,7 @@ namespace ClickIt
 
             // self adjusting delay based on average click time
             // clicks will consistently aim for 70ms intervals
+            if (_performanceMonitor == null) yield break;
             double avgClickTime = _performanceMonitor.GetAverageTiming("click");
             if (Timer.ElapsedMilliseconds < 70 - avgClickTime + Random.Next(0, 6) || !CanClick())
             {
@@ -608,6 +513,8 @@ namespace ClickIt
 
         private IEnumerator DelveFlareCoroutine()
         {
+            if (_performanceMonitor == null) yield break;
+
             while (Settings.Enable)
             {
                 _performanceMonitor.StartCoroutineTiming("delveFlare");
