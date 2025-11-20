@@ -103,7 +103,8 @@ namespace ClickIt
                 State.InputHandler,
                 labelFilterService,
                 GroundItemsVisible,
-                State.CachedLabels);
+                State.CachedLabels,
+                State.PerformanceMonitor);
             State.PerformanceMonitor.Start();
 
             var coroutineManager = new Utils.CoroutineManager(

@@ -21,6 +21,9 @@ namespace ClickIt.Utils
         private readonly Stopwatch _mainTimer = new Stopwatch();
         private readonly Stopwatch _secondTimer = new Stopwatch();
 
+        // Dedicated click interval timer (resets between clicks)
+        private readonly Stopwatch _clickIntervalTimer = new Stopwatch();
+
         // Coroutine timing
         private readonly Stopwatch _renderTimer = new Stopwatch();
         private readonly Stopwatch _altarCoroutineTimer = new Stopwatch();
@@ -34,6 +37,7 @@ namespace ClickIt.Utils
         private readonly Queue<long> _delveFlareCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> _shrineCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> _renderTimings = new Queue<long>(60);
+        private readonly Queue<long> _clickIntervals = new Queue<long>(10);
 
         // Thread safety locks
         private readonly object _clickTimingsLock = new object();
@@ -41,6 +45,7 @@ namespace ClickIt.Utils
         private readonly object _delveFlareTimingsLock = new object();
         private readonly object _shrineTimingsLock = new object();
         private readonly object _renderTimingsLock = new object();
+        private readonly object _clickIntervalsLock = new object();
 
         // FPS calculation
         private readonly Stopwatch _fpsTimer = new Stopwatch();
@@ -271,6 +276,26 @@ namespace ClickIt.Utils
         {
             return !_lastHotkeyReleaseTimer.IsRunning ||
                    _lastHotkeyReleaseTimer.ElapsedMilliseconds > timeoutMs;
+        }
+
+        public void RecordClickInterval()
+        {
+            // Use dedicated click interval timer that only runs between clicks
+            if (_clickIntervalTimer.IsRunning)
+            {
+                long interval = _clickIntervalTimer.ElapsedMilliseconds;
+                EnqueueTiming(_clickIntervals, interval, 10, _clickIntervalsLock);
+            }
+            // Restart the timer for the next interval measurement
+            _clickIntervalTimer.Restart();
+        }
+
+        public double GetAverageClickInterval()
+        {
+            lock (_clickIntervalsLock)
+            {
+                return _clickIntervals.Count > 0 ? _clickIntervals.Average() : 0;
+            }
         }
 
         // Helper to enqueue timing measurements and keep a fixed-length queue

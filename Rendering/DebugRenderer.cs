@@ -507,7 +507,7 @@ namespace ClickIt.Rendering
             double clickAvg = performanceMonitor.GetAverageTiming("click");
             double clickMax = performanceMonitor.GetMaxTiming("click");
             double clickTarget = performanceMonitor.GetClickTargetInterval();
-            double clickYellowThreshold = clickTarget * 0.25; // 25% of target
+            double clickYellowThreshold = clickTarget * 0.75; // Yellow when within 25% of target (75% of target)
             double clickRedThreshold = clickTarget; // Above target
             Color clickColor = clickCurrent >= clickRedThreshold ? Color.Red : (clickCurrent >= clickYellowThreshold ? Color.Yellow : Color.LawnGreen);
             _deferredTextQueue.Enqueue($"Click Coroutine: {clickCurrent:F0} ms (avg: {clickAvg:F1}, max: {clickMax:F0})", new Vector2(xPos, yPos), clickColor, 16);
@@ -525,6 +525,20 @@ namespace ClickIt.Rendering
             double shrineMax = performanceMonitor.GetMaxTiming("shrine");
             Color shrineColor = shrineCurrent >= 10 ? Color.Red : (shrineCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
             _deferredTextQueue.Enqueue($"Shrine Coroutine: {shrineCurrent:F0} ms (avg: {shrineAvg:F1}, max: {shrineMax:F0})", new Vector2(xPos, yPos), shrineColor, 16);
+            yPos += lineHeight;
+
+            double clickIntervalAvg = performanceMonitor.GetAverageClickInterval();
+            double avgClickTime = performanceMonitor.GetAverageTiming("click");
+            double actualTarget = clickTarget - avgClickTime;
+            Color intervalColor;
+            double deviationPercent = Math.Abs(clickIntervalAvg - actualTarget) / Math.Max(actualTarget, 1);
+            if (deviationPercent <= 0.15)
+                intervalColor = Color.LawnGreen;  // Within 15% of target
+            else if (deviationPercent <= 0.30)
+                intervalColor = Color.Yellow;     // 15-30% deviation
+            else
+                intervalColor = Color.Red;        // More than 30% deviation
+            _deferredTextQueue.Enqueue($"Click Interval: {clickIntervalAvg:F0} ms (target: {actualTarget:F0})", new Vector2(xPos, yPos), intervalColor, 16);
             yPos += lineHeight;
 
             return yPos;

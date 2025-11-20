@@ -41,6 +41,7 @@ namespace ClickIt.Services
         private readonly LabelFilterService labelFilterService;
         private readonly Func<bool> groundItemsVisible;
         private readonly TimeCache<List<LabelOnGround>> cachedLabels;
+        private readonly Utils.PerformanceMonitor performanceMonitor;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new object();
@@ -63,7 +64,8 @@ namespace ClickIt.Services
             InputHandler inputHandler,
             LabelFilterService labelFilterService,
             Func<bool> groundItemsVisible,
-            TimeCache<List<LabelOnGround>> cachedLabels)
+            TimeCache<List<LabelOnGround>> cachedLabels,
+            Utils.PerformanceMonitor performanceMonitor)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
@@ -77,6 +79,7 @@ namespace ClickIt.Services
             this.labelFilterService = labelFilterService ?? throw new ArgumentNullException(nameof(labelFilterService));
             this.groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
             this.cachedLabels = cachedLabels;
+            this.performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
         }
 
         // Helper to avoid allocating debug message strings when debug logging is disabled
@@ -425,6 +428,10 @@ namespace ClickIt.Services
             {
                 inputHandler.PerformClick(clickPos);
             }
+            
+            // Record the click interval after the actual click
+            // This ensures we measure time between actual clicks, not between hotkey presses
+            performanceMonitor.RecordClickInterval();
         }
     }
 }
