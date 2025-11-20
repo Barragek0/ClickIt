@@ -26,15 +26,15 @@ namespace ClickIt.Rendering
         private readonly GameController _gameController;
         private readonly WeightCalculator _weightCalculator;
         private readonly Action<string, int> _logMessage;
-        // Deferred text rendering queue to avoid calling DrawText inside sensitive code paths
-        private readonly DeferredTextQueue _deferredTextQueue = new();
+        private readonly DeferredTextQueue _deferredTextQueue;
 
-        public AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, AltarService? altarService = null, Action<string, int>? logMessage = null)
+        public AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, DeferredTextQueue deferredTextQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
         {
             _graphics = graphics;
             _settings = settings;
             _gameController = gameController;
             _weightCalculator = weightCalculator;
+            _deferredTextQueue = deferredTextQueue ?? throw new ArgumentNullException(nameof(deferredTextQueue));
             _altarService = altarService;
             _logMessage = logMessage ?? ((msg, frame) => { });
         }
@@ -46,7 +46,7 @@ namespace ClickIt.Rendering
 
             if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect))
             {
-                _graphics?.DrawText("Invalid altar rectangles detected", topModsTopLeft + offset120_Minus60, Color.Red, 30);
+                _deferredTextQueue.Enqueue("Invalid altar rectangles detected", topModsTopLeft + offset120_Minus60, Color.Red, 30);
                 return null;
             }
 
@@ -267,13 +267,13 @@ namespace ClickIt.Rendering
 
             if (modsText.Length > 0)
             {
-                _ = _graphics.DrawText($"{weightType} weights couldn't be recognised\n{modsText}\nPlease report this as a bug on github", position, Color.Orange, 30);
+                _deferredTextQueue.Enqueue($"{weightType} weights couldn't be recognised\n{modsText}\nPlease report this as a bug on github", position, Color.Orange, 30);
             }
         }
         private void DrawFailedToMatchModText(Vector2 position)
         {
             if (_graphics == null) return;
-            _graphics.DrawText("Failed to match mod - unable to determine best choice.\nPlease report this as a bug on github", position, Color.Red, 30);
+            _deferredTextQueue.Enqueue("Failed to match mod - unable to determine best choice.\nPlease report this as a bug on github", position, Color.Red, 30);
         }
         private void DrawRedFrames(RectangleF topModsRect, RectangleF bottomModsRect)
         {
@@ -299,14 +299,14 @@ namespace ClickIt.Rendering
             Color colorLawnGreen = Color.LawnGreen;
             Color colorOrangeRed = Color.OrangeRed;
             Color colorYellow = Color.Yellow;
-            _ = _graphics?.DrawText("Upside: " + weights.TopUpsideWeight, topModsTopLeft + offset5_Minus32, colorLawnGreen, 14);
-            _ = _graphics?.DrawText("Downside: " + weights.TopDownsideWeight, topModsTopLeft + offset5_Minus20, colorOrangeRed, 14);
-            _ = _graphics?.DrawText("Upside: " + weights.BottomUpsideWeight, bottomModsTopLeft + offset10_Minus32, colorLawnGreen, 14);
-            _ = _graphics?.DrawText("Downside: " + weights.BottomDownsideWeight, bottomModsTopLeft + offset10_Minus20, colorOrangeRed, 14);
+            _deferredTextQueue.Enqueue("Upside: " + weights.TopUpsideWeight, topModsTopLeft + offset5_Minus32, colorLawnGreen, 14);
+            _deferredTextQueue.Enqueue("Downside: " + weights.TopDownsideWeight, topModsTopLeft + offset5_Minus20, colorOrangeRed, 14);
+            _deferredTextQueue.Enqueue("Upside: " + weights.BottomUpsideWeight, bottomModsTopLeft + offset10_Minus32, colorLawnGreen, 14);
+            _deferredTextQueue.Enqueue("Downside: " + weights.BottomDownsideWeight, bottomModsTopLeft + offset10_Minus20, colorOrangeRed, 14);
             Color topWeightColor = GetWeightColor(weights.TopWeight, weights.BottomWeight, colorLawnGreen, colorOrangeRed, colorYellow);
             Color bottomWeightColor = GetWeightColor(weights.BottomWeight, weights.TopWeight, colorLawnGreen, colorOrangeRed, colorYellow);
-            _ = _graphics?.DrawText("" + weights.TopWeight, topModsTopLeft + offset10_5, topWeightColor, 18);
-            _ = _graphics?.DrawText("" + weights.BottomWeight, bottomModsTopLeft + offset10_5, bottomWeightColor, 18);
+            _deferredTextQueue.Enqueue("" + weights.TopWeight, topModsTopLeft + offset10_5, topWeightColor, 18);
+            _deferredTextQueue.Enqueue("" + weights.BottomWeight, bottomModsTopLeft + offset10_5, bottomWeightColor, 18);
         }
 
         public void RenderAltarComponents()
@@ -353,8 +353,7 @@ namespace ClickIt.Rendering
 
             DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
             DrawWeightTexts(altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
-            // Flush any deferred DrawText calls queued during DetermineAltarChoice
-            _deferredTextQueue.Flush(_graphics, _logMessage);
+            // Deferred text rendering is flushed at the end of the main Render method
         }
 
         private static bool IsValidRectangle(RectangleF rect)

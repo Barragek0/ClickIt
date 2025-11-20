@@ -23,9 +23,14 @@ namespace ClickIt.Utils
         {
             if (graphics == null) return;
             if (_items.Count == 0) return;
+
+            // Create a snapshot to avoid issues if Enqueue is called during Flush 
+            var itemsSnapshot = _items.ToArray();
+            _items.Clear();
+
             try
             {
-                foreach (var entry in _items)
+                foreach (var entry in itemsSnapshot)
                 {
                     try
                     {
@@ -37,9 +42,9 @@ namespace ClickIt.Utils
                     }
                 }
             }
-            finally
+            catch (Exception ex)
             {
-                _items.Clear();
+                logMessage?.Invoke($"[DeferredTextQueue] Flush failed: {ex.Message}", 10);
             }
         }
     }

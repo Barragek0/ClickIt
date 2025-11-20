@@ -52,7 +52,7 @@ namespace ClickIt.Services
         {
             if (allLabels == null)
                 return false;
-            
+
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
@@ -62,10 +62,10 @@ namespace ClickIt.Services
                     string path = item.Path;
                     if (string.IsNullOrEmpty(path))
                         continue;
-                    
+
                     // Check for restricted items: strongboxes, league chests (not basic chests), settlers trees
-                    if (path.ToLowerInvariant().Contains("strongbox") || 
-                        (item.Type == EntityType.Chest && !IsBasicChest(label)) || 
+                    if (path.ToLowerInvariant().Contains("strongbox") ||
+                        (item.Type == EntityType.Chest && !IsBasicChest(label)) ||
                         path.Contains(PetrifiedWood))
                     {
                         return true;
@@ -112,10 +112,10 @@ namespace ClickIt.Services
         private ClickSettings CreateClickSettings(List<LabelOnGround> allLabels)
         {
             var s = _settings;
-            
+
             // Check if lazy mode restrictions should be applied
             bool applyLazyModeRestrictions = s.LazyMode.Value && !HasLazyModeRestrictedItemsOnScreen(allLabels);
-            
+
             return new ClickSettings
             {
                 ClickDistance = s.ClickDistance.Value,
@@ -152,6 +152,8 @@ namespace ClickIt.Services
                 ClickBlight = s.ClickBlight.Value,
                 ClickAlvaTempleDoors = s.ClickAlvaTempleDoors.Value,
                 ClickLegionPillars = s.ClickLegionPillars.Value,
+                ClickRitualInitiate = s.ClickRitualInitiate.Value,
+                ClickRitualCompleted = s.ClickRitualCompleted.Value,
             };
         }
         private struct ClickSettings
@@ -164,8 +166,11 @@ namespace ClickIt.Services
             public bool ClickAreaTransitions { get; set; }
             public bool NearestHarvest { get; set; }
             public bool ClickSulphite { get; set; }
+            public bool ClickBlight { get; set; }
             public bool ClickAlvaTempleDoors { get; set; }
             public bool ClickLegionPillars { get; set; }
+            public bool ClickRitualInitiate { get; set; }
+            public bool ClickRitualCompleted { get; set; }
             public bool ClickAzurite { get; set; }
             public bool ClickDelveSpawners { get; set; }
             public bool HighlightEater { get; set; }
@@ -189,7 +194,6 @@ namespace ClickIt.Services
             public bool OrnateStrongbox { get; set; }
             public bool ClickSanctum { get; set; }
             public bool ClickBetrayal { get; set; }
-            public bool ClickBlight { get; set; }
         }
 
         private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
@@ -208,6 +212,8 @@ namespace ClickIt.Services
             if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
                 return true;
             if (ShouldClickEssence(settings.ClickEssences, label))
+                return true;
+            if (ShouldClickRitual(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label))
                 return true;
             return false;
         }
@@ -269,6 +275,24 @@ namespace ClickIt.Services
             if (!clickEssences)
                 return false;
             return LabelUtils.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
+        }
+
+        private static bool ShouldClickRitual(bool clickRitualInitiate, bool clickRitualCompleted, string path, LabelOnGround label)
+        {
+            if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual"))
+                return false;
+
+            bool hasFavoursText = LabelUtils.GetElementByString(label.Label, "Interact to view Favours") != null;
+
+            // Click initiate altars (those without "Interact to view Favours" text)
+            if (clickRitualInitiate && !hasFavoursText)
+                return true;
+
+            // Click completed altars (those with "Interact to view Favours" text)
+            if (clickRitualCompleted && hasFavoursText)
+                return true;
+
+            return false;
         }
 
         private static bool ShouldClickStrongbox(ClickSettings settings, string path)

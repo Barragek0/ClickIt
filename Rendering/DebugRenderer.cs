@@ -25,14 +25,16 @@ namespace ClickIt.Rendering
         private readonly AltarService? _altarService;
         private readonly AreaService? _areaService;
         private readonly WeightCalculator? _weightCalculator;
+        private readonly Utils.DeferredTextQueue _deferredTextQueue;
 
-        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null)
+        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, Utils.DeferredTextQueue? deferredTextQueue = null)
         {
             _plugin = plugin;
             _graphics = graphics;
             _altarService = altarService;
             _areaService = areaService;
             _weightCalculator = weightCalculator;
+            _deferredTextQueue = deferredTextQueue ?? new Utils.DeferredTextQueue();
         }
 
         public void RenderDebugFrames(ClickItSettings settings)
@@ -95,20 +97,20 @@ namespace ClickIt.Rendering
 
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"--- ClickIt Status ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"--- ClickIt Status ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             var gameController = _plugin.GameController;
             bool inGame = gameController?.InGame == true;
             Color gameColor = inGame ? Color.LightGreen : Color.Red;
-            _graphics.DrawText($"In Game: {inGame}", new Vector2(xPos, yPos), gameColor, 16);
+            _deferredTextQueue.Enqueue($"In Game: {inGame}", new Vector2(xPos, yPos), gameColor, 16);
             yPos += lineHeight;
             bool entityListValid = gameController?.EntityListWrapper?.ValidEntitiesByType != null;
             Color entityColor = entityListValid ? Color.LightGreen : Color.Red;
-            _graphics.DrawText($"Entity List Valid: {entityListValid}", new Vector2(xPos, yPos), entityColor, 16);
+            _deferredTextQueue.Enqueue($"Entity List Valid: {entityListValid}", new Vector2(xPos, yPos), entityColor, 16);
             yPos += lineHeight;
             bool playerValid = gameController?.Player != null;
             Color playerColor = playerValid ? Color.LightGreen : Color.Red;
-            _graphics.DrawText($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
+            _deferredTextQueue.Enqueue($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
             yPos += lineHeight;
 
             return yPos;
@@ -117,11 +119,11 @@ namespace ClickIt.Rendering
         [Obsolete]
         public int RenderInputDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"--- Input State ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"--- Input State ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             bool hotkeyPressed = Input.GetKeyState(_plugin.Settings.ClickLabelKey.Value);
             Color hotkeyColor = hotkeyPressed ? Color.LightGreen : Color.Gray;
-            _graphics.DrawText($"Hotkey ({_plugin.Settings.ClickLabelKey.Value}): {hotkeyPressed}", new Vector2(xPos, yPos), hotkeyColor, 16);
+            _deferredTextQueue.Enqueue($"Hotkey ({_plugin.Settings.ClickLabelKey.Value}): {hotkeyPressed}", new Vector2(xPos, yPos), hotkeyColor, 16);
             yPos += lineHeight;
 
             // Show input blocking state
@@ -133,7 +135,7 @@ namespace ClickIt.Rendering
                 if (inputBlockedField?.GetValue(clickItPlugin) is bool isBlocked)
                 {
                     Color blockedColor = isBlocked ? Color.Red : Color.LightGreen;
-                    _graphics.DrawText($"Input Blocked: {isBlocked}", new Vector2(xPos, yPos), blockedColor, 16);
+                    _deferredTextQueue.Enqueue($"Input Blocked: {isBlocked}", new Vector2(xPos, yPos), blockedColor, 16);
                     yPos += lineHeight;
                 }
 
@@ -141,11 +143,11 @@ namespace ClickIt.Rendering
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (lastHotkeyTimerField?.GetValue(clickItPlugin) is Stopwatch hotkeyTimer)
                 {
-                    _graphics.DrawText($"Hotkey Release Timer: {hotkeyTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
+                    _deferredTextQueue.Enqueue($"Hotkey Release Timer: {hotkeyTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
                     yPos += lineHeight;
                 }
 
-                _graphics.DrawText($"Input State Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                _deferredTextQueue.Enqueue($"Input State Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
                 yPos += lineHeight;
             }
 
@@ -153,18 +155,18 @@ namespace ClickIt.Rendering
         }
         public int RenderGameStateDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"--- Game State ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"--- Game State ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             var gameController = _plugin.GameController;
             var currentArea = gameController?.Area?.CurrentArea;
             string areaName = currentArea?.DisplayName ?? "Unknown";
-            _graphics.DrawText($"Current Area: {areaName}", new Vector2(xPos, yPos), Color.White, 16);
+            _deferredTextQueue.Enqueue($"Current Area: {areaName}", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
 
             bool hasItems = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.Count > 0;
             Color itemColor = hasItems ? Color.LightGreen : Color.Gray;
             int itemCount = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.Count ?? 0;
-            _graphics.DrawText($"Items on Ground: {itemCount}", new Vector2(xPos, yPos), itemColor, 16);
+            _deferredTextQueue.Enqueue($"Items on Ground: {itemCount}", new Vector2(xPos, yPos), itemColor, 16);
             yPos += lineHeight;
 
             // Show cached labels information
@@ -176,12 +178,12 @@ namespace ClickIt.Rendering
                 {
                     var labels = cachedLabels.Value;
                     int cachedCount = labels?.Count ?? 0;
-                    _graphics.DrawText($"Cached Labels: {cachedCount}", new Vector2(xPos, yPos), Color.White, 16);
+                    _deferredTextQueue.Enqueue($"Cached Labels: {cachedCount}", new Vector2(xPos, yPos), Color.White, 16);
                     yPos += lineHeight;
                 }
                 else
                 {
-                    _graphics.DrawText($"Cache Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
+                    _deferredTextQueue.Enqueue($"Cache Info Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
                 }
                 yPos += lineHeight;
             }
@@ -189,13 +191,13 @@ namespace ClickIt.Rendering
             // Show player state
             bool playerValid = gameController?.Player != null;
             Color playerColor = playerValid ? Color.LightGreen : Color.Red;
-            _graphics.DrawText($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
+            _deferredTextQueue.Enqueue($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
             yPos += lineHeight;
 
             if (playerValid && gameController?.Player != null)
             {
                 var playerPos = gameController.Player.Pos;
-                _graphics.DrawText($"Player Pos: ({playerPos.X:F1}, {playerPos.Y:F1})", new Vector2(xPos, yPos), Color.White, 14);
+                _deferredTextQueue.Enqueue($"Player Pos: ({playerPos.X:F1}, {playerPos.Y:F1})", new Vector2(xPos, yPos), Color.White, 14);
                 yPos += lineHeight;
             }
 
@@ -203,15 +205,15 @@ namespace ClickIt.Rendering
         }
         public int RenderAltarDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText("--- Altar Detection ---", new Vector2(xPos, yPos), Color.Yellow, 16);
+            _deferredTextQueue.Enqueue("--- Altar Detection ---", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
             var altarComps = _altarService?.GetAltarComponents() ?? new List<PrimaryAltarComponent>();
             Color altarCountColor = altarComps.Count > 0 ? Color.LightGreen : Color.Gray;
-            _graphics.DrawText($"Altar Components: {altarComps.Count}", new Vector2(xPos, yPos), altarCountColor, 16);
+            _deferredTextQueue.Enqueue($"Altar Components: {altarComps.Count}", new Vector2(xPos, yPos), altarCountColor, 16);
             yPos += lineHeight;
             if (altarComps.Count > 0)
             {
-                _graphics.DrawText("Active Altars:", new Vector2(xPos, yPos), Color.Cyan, 16);
+                _deferredTextQueue.Enqueue("Active Altars:", new Vector2(xPos, yPos), Color.Cyan, 16);
                 yPos += lineHeight;
                 for (int i = 0; i < Math.Min(altarComps.Count, 2); i++)
                 {
@@ -223,7 +225,7 @@ namespace ClickIt.Rendering
         }
         public int RenderSingleAltarDebug(int xPos, int yPos, int lineHeight, PrimaryAltarComponent altar, int altarNumber)
         {
-            _graphics.DrawText($"Altar {altarNumber}:", new Vector2(xPos, yPos), Color.Yellow, 16);
+            _deferredTextQueue.Enqueue($"Altar {altarNumber}:", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
 
             // Calculate weights if WeightCalculator is available
@@ -252,7 +254,7 @@ namespace ClickIt.Rendering
         {
             int topUpsidesCount = topMods.Upsides?.Count ?? 0;
             int topDownsidesCount = topMods.Downsides?.Count ?? 0;
-            _graphics.DrawText($"  Top Mods (Upsides: {topUpsidesCount}, Downsides: {topDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
+            _deferredTextQueue.Enqueue($"  Top Mods (Upsides: {topUpsidesCount}, Downsides: {topDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
             // Show top mod upsides
@@ -288,7 +290,7 @@ namespace ClickIt.Rendering
         {
             int bottomUpsidesCount = bottomMods.Upsides?.Count ?? 0;
             int bottomDownsidesCount = bottomMods.Downsides?.Count ?? 0;
-            _graphics.DrawText($"  Bottom Mods (Upsides: {bottomUpsidesCount}, Downsides: {bottomDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
+            _deferredTextQueue.Enqueue($"  Bottom Mods (Upsides: {bottomUpsidesCount}, Downsides: {bottomDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
             // Show bottom mod upsides
@@ -372,7 +374,7 @@ namespace ClickIt.Rendering
                 }
                 string line = content.Substring(startIndex, endIndex - startIndex).TrimEnd();
                 // Add back the indentation
-                _graphics.DrawText(indentation + line, new Vector2(position.X, currentY), color, fontSize);
+                _deferredTextQueue.Enqueue(indentation + line, new Vector2(position.X, currentY), color, fontSize);
                 currentY += lineHeight;
                 startIndex = endIndex;
                 if (startIndex < content.Length && content[startIndex] == ' ')
@@ -384,44 +386,44 @@ namespace ClickIt.Rendering
         }
         public int RenderAltarServiceDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"--- Altar Service ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"--- Altar Service ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
             var debugInfo = _altarService?.DebugInfo;
             if (debugInfo != null)
             {
-                _graphics.DrawText($"Last Scan Exarch: {debugInfo.LastScanExarchLabels}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Last Scan Exarch: {debugInfo.LastScanExarchLabels}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Last Scan Eater: {debugInfo.LastScanEaterLabels}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Last Scan Eater: {debugInfo.LastScanEaterLabels}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Elements Found: {debugInfo.ElementsFound}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Elements Found: {debugInfo.ElementsFound}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Components Processed: {debugInfo.ComponentsProcessed}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Components Processed: {debugInfo.ComponentsProcessed}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Components Added: {debugInfo.ComponentsAdded}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Components Added: {debugInfo.ComponentsAdded}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Components Duplicated: {debugInfo.ComponentsDuplicated}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Components Duplicated: {debugInfo.ComponentsDuplicated}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Mods Matched: {debugInfo.ModsMatched}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Mods Matched: {debugInfo.ModsMatched}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Mods Unmatched: {debugInfo.ModsUnmatched}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Mods Unmatched: {debugInfo.ModsUnmatched}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
-                _graphics.DrawText($"Last Altar Type: {debugInfo.LastProcessedAltarType}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"Last Altar Type: {debugInfo.LastProcessedAltarType}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
                 if (!string.IsNullOrEmpty(debugInfo.LastError))
                 {
-                    _graphics.DrawText($"Last Error: {debugInfo.LastError}", new Vector2(xPos, yPos), Color.Red, 16);
+                    _deferredTextQueue.Enqueue($"Last Error: {debugInfo.LastError}", new Vector2(xPos, yPos), Color.Red, 16);
                     yPos += lineHeight;
                 }
                 if (debugInfo.LastScanTime != DateTime.MinValue)
                 {
-                    _graphics.DrawText($"Last Scan: {debugInfo.LastScanTime:HH:mm:ss}", new Vector2(xPos, yPos), Color.White, 16);
+                    _deferredTextQueue.Enqueue($"Last Scan: {debugInfo.LastScanTime:HH:mm:ss}", new Vector2(xPos, yPos), Color.White, 16);
                     yPos += lineHeight;
                 }
             }
             else
             {
-                _graphics.DrawText($"  Altar Service: NULL", new Vector2(xPos, yPos), Color.Red, 16);
+                _deferredTextQueue.Enqueue($"  Altar Service: NULL", new Vector2(xPos, yPos), Color.Red, 16);
                 yPos += lineHeight;
             }
 
@@ -429,14 +431,14 @@ namespace ClickIt.Rendering
         }
         public int RenderLabelsDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"Labels Debug:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"Labels Debug:", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
             var gameController = _plugin.GameController;
             var labelsCollection = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
             if (labelsCollection != null)
             {
                 int totalLabels = labelsCollection.Count;
-                _graphics.DrawText($"  Total Labels: {totalLabels}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"  Total Labels: {totalLabels}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
                 int validLabels = 0;
                 foreach (var label in labelsCollection)
@@ -444,25 +446,25 @@ namespace ClickIt.Rendering
                     if (label?.ItemOnGround?.Path != null)
                         validLabels++;
                 }
-                _graphics.DrawText($"  Valid Labels: {validLabels}", new Vector2(xPos, yPos), Color.White, 16);
+                _deferredTextQueue.Enqueue($"  Valid Labels: {validLabels}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
             }
             else
             {
-                _graphics.DrawText($"  Labels Collection: NULL", new Vector2(xPos, yPos), Color.Red, 16);
+                _deferredTextQueue.Enqueue($"  Labels Collection: NULL", new Vector2(xPos, yPos), Color.Red, 16);
                 yPos += lineHeight;
             }
             return yPos;
         }
         public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
         {
-            _graphics.DrawText($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
             // FPS Display
             double fps = performanceMonitor.CurrentFPS;
             Color fpsColor = fps >= 144 ? Color.LawnGreen : (fps >= 60 ? Color.Yellow : Color.Red);
-            _graphics.DrawText($"FPS: {fps:F1}", new Vector2(xPos, yPos), fpsColor, 16);
+            _deferredTextQueue.Enqueue($"FPS: {fps:F1}", new Vector2(xPos, yPos), fpsColor, 16);
             yPos += lineHeight;
 
             // Render time
@@ -483,14 +485,14 @@ namespace ClickIt.Rendering
                 else
                     renderColor = Color.Red;
 
-                _graphics.DrawText($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
+                _deferredTextQueue.Enqueue($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
                 yPos += lineHeight;
             }
 
             var process = Process.GetCurrentProcess();
             long memoryUsage = process.WorkingSet64 / 1024 / 1024;
             Color memoryColor = Color.Yellow;
-            _graphics.DrawText($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), memoryColor, 16);
+            _deferredTextQueue.Enqueue($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), memoryColor, 16);
             yPos += lineHeight;
 
             // Display coroutine timing averages
@@ -498,7 +500,7 @@ namespace ClickIt.Rendering
             double altarAvg = performanceMonitor.GetAverageTiming("altar");
             double altarMax = performanceMonitor.GetMaxTiming("altar");
             Color altarColor = altarCurrent >= 10 ? Color.Red : (altarCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
-            _graphics.DrawText($"Altar Coroutine: {altarCurrent:F0} ms (avg: {altarAvg:F1}, max: {altarMax:F0})", new Vector2(xPos, yPos), altarColor, 16);
+            _deferredTextQueue.Enqueue($"Altar Coroutine: {altarCurrent:F0} ms (avg: {altarAvg:F1}, max: {altarMax:F0})", new Vector2(xPos, yPos), altarColor, 16);
             yPos += lineHeight;
 
             double clickCurrent = performanceMonitor.GetLastTiming("click");
@@ -508,28 +510,28 @@ namespace ClickIt.Rendering
             double clickYellowThreshold = clickTarget * 0.25; // 25% of target
             double clickRedThreshold = clickTarget; // Above target
             Color clickColor = clickCurrent >= clickRedThreshold ? Color.Red : (clickCurrent >= clickYellowThreshold ? Color.Yellow : Color.LawnGreen);
-            _graphics.DrawText($"Click Coroutine: {clickCurrent:F0} ms (avg: {clickAvg:F1}, max: {clickMax:F0})", new Vector2(xPos, yPos), clickColor, 16);
+            _deferredTextQueue.Enqueue($"Click Coroutine: {clickCurrent:F0} ms (avg: {clickAvg:F1}, max: {clickMax:F0})", new Vector2(xPos, yPos), clickColor, 16);
             yPos += lineHeight;
 
             double delveFlareCurrent = performanceMonitor.GetLastTiming("delveFlare");
             double delveFlareAvg = performanceMonitor.GetAverageTiming("delveFlare");
             double delveFlareMax = performanceMonitor.GetMaxTiming("delveFlare");
             Color delveFlareColor = delveFlareCurrent >= 10 ? Color.Red : (delveFlareCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
-            _graphics.DrawText($"Delve Flare Coroutine: {delveFlareCurrent:F0} ms (avg: {delveFlareAvg:F1}, max: {delveFlareMax:F0})", new Vector2(xPos, yPos), delveFlareColor, 16);
+            _deferredTextQueue.Enqueue($"Delve Flare Coroutine: {delveFlareCurrent:F0} ms (avg: {delveFlareAvg:F1}, max: {delveFlareMax:F0})", new Vector2(xPos, yPos), delveFlareColor, 16);
             yPos += lineHeight;
 
             double shrineCurrent = performanceMonitor.GetLastTiming("shrine");
             double shrineAvg = performanceMonitor.GetAverageTiming("shrine");
             double shrineMax = performanceMonitor.GetMaxTiming("shrine");
             Color shrineColor = shrineCurrent >= 10 ? Color.Red : (shrineCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
-            _graphics.DrawText($"Shrine Coroutine: {shrineCurrent:F0} ms (avg: {shrineAvg:F1}, max: {shrineMax:F0})", new Vector2(xPos, yPos), shrineColor, 16);
+            _deferredTextQueue.Enqueue($"Shrine Coroutine: {shrineCurrent:F0} ms (avg: {shrineAvg:F1}, max: {shrineMax:F0})", new Vector2(xPos, yPos), shrineColor, 16);
             yPos += lineHeight;
 
             return yPos;
         }
         public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)
         {
-            _graphics.DrawText($"--- Recent Errors ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"--- Recent Errors ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
             // Access recent errors from the main plugin class
@@ -538,7 +540,7 @@ namespace ClickIt.Rendering
                 var recentErrors = clickItPlugin.RecentErrors;
                 if (recentErrors.Count > 0)
                 {
-                    _graphics.DrawText($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
+                    _deferredTextQueue.Enqueue($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
                     yPos += lineHeight;
 
                     for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
@@ -549,7 +551,7 @@ namespace ClickIt.Rendering
                 }
                 else
                 {
-                    _graphics.DrawText($"No Recent Errors", new Vector2(xPos, yPos), Color.LightGreen, 16);
+                    _deferredTextQueue.Enqueue($"No Recent Errors", new Vector2(xPos, yPos), Color.LightGreen, 16);
                     yPos += lineHeight;
                 }
             }

@@ -110,7 +110,7 @@ namespace ClickIt
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
         [Menu("Sanctum", "Click sanctum related stuff", 17, 3100)]
         public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
-        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 18, 3100)]
+        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 19, 3100)]
         public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
 
         // ----- Delve -----
@@ -142,6 +142,14 @@ namespace ClickIt
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
         [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 4, 3500)]
         public ToggleNode CorruptMEDSEssences { get; set; } = new ToggleNode(true);
+
+        // ----- Ritual -----
+        [Menu("Ritual", 3505)]
+        public EmptyNode Ritual { get; set; } = new EmptyNode();
+        [Menu("Initiate Ritual Altars", "Click ritual altars that have not been completed yet", 1, 3505)]
+        public ToggleNode ClickRitualInitiate { get; set; } = new ToggleNode(true);
+        [Menu("Completed Ritual Altars", "Click ritual altars that have been completed", 2, 3505)]
+        public ToggleNode ClickRitualCompleted { get; set; } = new ToggleNode(true);
 
         // ----- Strongboxes -----
         [Menu("Strongboxes", 3510)]
