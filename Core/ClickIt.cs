@@ -16,127 +16,130 @@ namespace ClickIt
 #nullable enable
     public class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
-        private Utils.PerformanceMonitor? _performanceMonitor;
-        private Utils.ErrorHandler? _errorHandler;
-        private Random Random { get; } = new Random();
-        private TimeCache<List<LabelOnGround>>? CachedLabels { get; set; }
-        private Coroutine? altarCoroutine;
-        private Coroutine? clickLabelCoroutine;
-        private Coroutine? delveFlareCoroutine;
-        private bool isInputCurrentlyBlocked = false;
-        private readonly Stopwatch lastHotkeyReleaseTimer = new Stopwatch();
-        private readonly Stopwatch lastRenderTimer = new Stopwatch();
-        private readonly Stopwatch lastTickTimer = new Stopwatch();
-        private readonly Stopwatch Timer = new Stopwatch();
-        private readonly Stopwatch SecondTimer = new Stopwatch();
-        private const int HOTKEY_RELEASE_FAILSAFE_MS = 5000;
-        private bool lastHotkeyState = false;
-        private Services.AreaService? areaService;
-        private Services.AltarService? altarService;
-        private Services.ShrineService? shrineService;
-        private Utils.InputHandler? inputHandler;
-        private Rendering.DebugRenderer? debugRenderer;
+        private PluginContext State { get; } = new PluginContext();
+        private Action? _reportBugHandler;
 
-        private Rendering.AltarDisplayRenderer? altarDisplayRenderer;
-        private Services.ClickService clickService = null!;
-
-        public double CurrentFPS => _performanceMonitor?.CurrentFPS ?? 0;
-        public Services.ShrineService? ShrineService => shrineService;
-        public Queue<long> RenderTimings => _performanceMonitor?.RenderTimings ?? new Queue<long>();
-        public IReadOnlyList<string> RecentErrors => _errorHandler?.RecentErrors ?? new List<string>();
-
-        private Camera? camera;
+        public double CurrentFPS => State.PerformanceMonitor?.CurrentFPS ?? 0;
+        public Services.ShrineService? ShrineService => State.ShrineService;
+        public Queue<long> RenderTimings => State.PerformanceMonitor?.RenderTimings ?? new Queue<long>();
+        public IReadOnlyList<string> RecentErrors => State.ErrorHandler?.RecentErrors ?? new List<string>();
 
         public override void OnLoad()
         {
             // Register global error handlers
-            _errorHandler?.RegisterGlobalExceptionHandlers();
+            State.ErrorHandler?.RegisterGlobalExceptionHandlers();
 
             CanUseMultiThreading = true;
         }
         public override void OnClose()
         {
-            ForceUnblockInput("Plugin closing");
+            // Remove event handlers to prevent issues during DLL reload
+            if (_reportBugHandler != null)
+            {
+                Settings.ReportBugButton.OnPressed -= _reportBugHandler;
+            }
+
+            // Clear static instances
+            Utils.LockManager.Instance = null;
+
+            // Clear ThreadLocal storage
+            Utils.LabelUtils.ClearThreadLocalStorage();
+
+            // Clear cached data
+            State.CachedLabels = null;
+
+            // Clear service references
+            State.PerformanceMonitor = null;
+            State.ErrorHandler = null;
+            State.InputSafetyManager = null;
+            State.AreaService = null;
+            State.AltarService = null;
+            State.ShrineService = null;
+            State.InputHandler = null;
+            State.DebugRenderer = null;
+            State.DeferredTextQueue = null;
+            State.AltarDisplayRenderer = null;
+
+            // Stop coroutines to prevent issues during DLL reload
+            State.AltarCoroutine?.Done();
+            State.ClickLabelCoroutine?.Done();
+            State.DelveFlareCoroutine?.Done();
+            State.ShrineCoroutine?.Done();
+            State.InputSafetyCoroutine?.Done();
+
+            State.InputSafetyManager?.ForceUnblockInput("Plugin closing");
 
             base.OnClose();
         }
         public override bool Initialise()
         {
-            Settings.ReportBugButton.OnPressed += () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
-            _performanceMonitor = new Utils.PerformanceMonitor(Settings);
-            _errorHandler = new Utils.ErrorHandler(Settings, LogError, LogMessage, SafeBlockInput, ForceUnblockInput);
-            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
-            areaService = new Services.AreaService();
-            areaService.UpdateScreenAreas(GameController);
-            camera = GameController?.Game?.IngameState?.Camera;
-            altarService = new Services.AltarService(this, Settings, CachedLabels);
+            _reportBugHandler = () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
+            Settings.ReportBugButton.OnPressed += _reportBugHandler;
+            State.PerformanceMonitor = new Utils.PerformanceMonitor(Settings);
+            State.ErrorHandler = new Utils.ErrorHandler(Settings, LogError, LogMessage, (block) => State.InputSafetyManager?.SafeBlockInput(block), (reason) => State.InputSafetyManager?.ForceUnblockInput(reason));
+            State.InputSafetyManager = new Utils.InputSafetyManager(Settings, State, (debug, msg, frame) => LogMessage(debug, msg, frame), LogError);
+            State.CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
+            State.AreaService = new Services.AreaService();
+            State.AreaService.UpdateScreenAreas(GameController);
+            State.Camera = GameController?.Game?.IngameState?.Camera;
+            State.AltarService = new Services.AltarService(this, Settings, State.CachedLabels);
             var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
-            shrineService = new Services.ShrineService(GameController, camera);
-            inputHandler = new Utils.InputHandler(Settings, SafeBlockInput, (msg, f) => LogMessage(true, msg, f));
+            State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
+            State.InputHandler = new Utils.InputHandler(Settings, (block) => State.InputSafetyManager?.SafeBlockInput(block), (msg, f) => LogMessage(true, msg, f));
             var weightCalculator = new Utils.WeightCalculator(Settings);
-            debugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, altarService, areaService, weightCalculator);
-            altarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, altarService, LogMessage);
+            State.DeferredTextQueue = new Utils.DeferredTextQueue();
+            State.DebugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, State.AltarService, State.AreaService, weightCalculator, State.DeferredTextQueue);
+            State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.AltarService, LogMessage);
             LockManager.Instance = new Utils.LockManager(Settings);
-            clickService = new Services.ClickService(
+            State.ClickService = new Services.ClickService(
                 Settings,
                 GameController,
                 msg => LogMessage(msg),
                 LogError,
-                altarService,
+                State.AltarService,
                 weightCalculator,
-                altarDisplayRenderer,
+                State.AltarDisplayRenderer,
                 PointIsInClickableArea,
-                inputHandler,
+                State.InputHandler,
                 labelFilterService,
                 GroundItemsVisible,
-                CachedLabels);
-            _performanceMonitor.Start();
+                State.CachedLabels);
+            State.PerformanceMonitor.Start();
 
-            altarCoroutine = new Coroutine(MainScanForAltarsLogic(), this, "ClickIt.ScanForAltarsLogic", false);
-            _ = Core.ParallelRunner.Run(altarCoroutine);
-            altarCoroutine.Priority = CoroutinePriority.Normal;
-
-            clickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), this, "ClickIt.ClickLogic", false);
-            _ = Core.ParallelRunner.Run(clickLabelCoroutine);
-            clickLabelCoroutine.Priority = CoroutinePriority.High;
-
-            var shrineCoroutine = new Coroutine(MainShrineCoroutine(), this, "ClickIt.ShrineLogic", true);
-            _ = Core.ParallelRunner.Run(shrineCoroutine);
-            shrineCoroutine.Priority = CoroutinePriority.High;
-
-            // Start input safety coroutine to enforce unblock failsafes
-            var inputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), this, "ClickIt.InputSafety");
-            _ = Core.ParallelRunner.Run(inputSafetyCoroutine);
-            inputSafetyCoroutine.Priority = CoroutinePriority.High;
-
-            delveFlareCoroutine = new Coroutine(DelveFlareCoroutine(), this, "ClickIt.DelveFlareLogic", true);
-            _ = Core.ParallelRunner.Run(delveFlareCoroutine);
-            delveFlareCoroutine.Priority = CoroutinePriority.Normal;
+            var coroutineManager = new Utils.CoroutineManager(
+                State,
+                Settings,
+                GameController,
+                (msg, frame) => LogMessage(msg, frame),
+                (reason) => State.InputSafetyManager?.ForceUnblockInput(reason),
+                point => PointIsInClickableArea(point));
+            coroutineManager.StartCoroutines(this);
 
             Settings.EnsureAllModsHaveWeights();
 
             // Start monitoring timers
-            lastRenderTimer.Start();
-            lastTickTimer.Start();
-            Timer.Start();
-            SecondTimer.Start();
+            State.LastRenderTimer.Start();
+            State.LastTickTimer.Start();
+            State.Timer.Start();
+            State.SecondTimer.Start();
+            State.ShrineTimer.Start();
 
             return true;
         }
         private bool PointIsInClickableArea(Vector2 point, string? path = null)
         {
-            areaService?.UpdateScreenAreas(GameController);
-            return areaService?.PointIsInClickableArea(point) ?? false;
+            State.AreaService?.UpdateScreenAreas(GameController);
+            return State.AreaService?.PointIsInClickableArea(point) ?? false;
         }
         public override void Render()
         {
-            if (_performanceMonitor == null) return; // Not initialized yet
+            if (State.PerformanceMonitor == null) return; // Not initialized yet
 
             bool debugMode = Settings.DebugMode;
             bool renderDebug = Settings.RenderDebug;
             bool hasDebugRendering = debugMode && renderDebug;
 
-            int altarCount = altarService?.GetAltarComponents()?.Count ?? 0;
+            int altarCount = State.AltarService?.GetAltarComponents()?.Count ?? 0;
             bool hasAltars = altarCount > 0;
 
             if (!hasDebugRendering && !hasAltars)
@@ -145,13 +148,13 @@ namespace ClickIt
             }
 
             // Start timing only when actually rendering
-            _performanceMonitor.StartRenderTiming();
-            _performanceMonitor.UpdateFPS();
+            State.PerformanceMonitor.StartRenderTiming();
+            State.PerformanceMonitor.UpdateFPS();
 
             if (hasDebugRendering)
             {
-                debugRenderer?.RenderDebugFrames(Settings);
-                debugRenderer?.RenderDetailedDebugInfo(Settings, _performanceMonitor);
+                State.DebugRenderer?.RenderDebugFrames(Settings);
+                State.DebugRenderer?.RenderDetailedDebugInfo(Settings, State.PerformanceMonitor);
             }
 
             if (hasAltars)
@@ -159,137 +162,36 @@ namespace ClickIt
                 RenderAltarComponents();
             }
 
-            _performanceMonitor.StopRenderTiming();
+            State.PerformanceMonitor.StopRenderTiming();
+
+            // Flush deferred text rendering to prevent freezes
+            State.DeferredTextQueue?.Flush(Graphics, LogError);
         }
         private void RenderAltarComponents()
         {
-            altarDisplayRenderer?.RenderAltarComponents();
+            State.AltarDisplayRenderer?.RenderAltarComponents();
         }
         public void LogMessage(string message, int frame = 5)
         {
-            _errorHandler?.LogMessage(message, frame);
+            State.ErrorHandler?.LogMessage(message, frame);
         }
 
         public void LogMessage(bool localDebug, string message, int frame = 0)
         {
-            _errorHandler?.LogMessage(localDebug, message, frame);
+            State.ErrorHandler?.LogMessage(localDebug, message, frame);
         }
         public void LogError(string message, int frame = 0)
         {
-            _errorHandler?.LogError(message, frame);
+            State.ErrorHandler?.LogError(message, frame);
         }
 
 
 
 
-        // Helper to execute an action while holding the click-element access lock (if LockManager enabled)
-        private void ExecuteWithElementAccessLock(Action action)
-        {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (gm.Acquire(clickService.GetElementAccessLock()))
-                {
-                    action();
-                }
-            }
-            else
-            {
-                action();
-            }
-        }
-        private bool CanClick()
-        {
-            return inputHandler?.CanClick(GameController) ?? false;
-        }
-        private void SafeBlockInput(bool block)
-        {
-            if (block)
-            {
-                if (!isInputCurrentlyBlocked)
-                {
-                    bool result = false;
-                    result = Mouse.blockInput(true);
-                    if (!result)
-                    {
-                        LogMessage("SafeBlockInput: BlockInput(true) returned false - input may not be blocked", 10);
-                    }
-                    isInputCurrentlyBlocked = true;
-                    LogMessage(true, "SafeBlockInput: input blocked", 5);
-                }
-            }
-            else
-            {
-                if (isInputCurrentlyBlocked)
-                {
-                    bool result = Mouse.blockInput(false);
-                    if (!result)
-                    {
-                        LogMessage("SafeBlockInput: BlockInput(false) returned false - input may still be blocked", 10);
-                    }
-                    isInputCurrentlyBlocked = false;
-                    LogMessage(true, "SafeBlockInput: input unblocked", 5);
-                }
-            }
-        }
-
-        private void ForceUnblockInput(string reason)
-        {
-            Mouse.blockInput(false);
-            isInputCurrentlyBlocked = false;
-            LogError($"CRITICAL: Input forcibly unblocked. Reason: {reason}", 10);
-        }
-
-        private IEnumerator InputSafetyCoroutine()
-        {
-            while (Settings.Enable)
-            {
-                PerformSafetyChecks();
-                yield return new WaitTime(1000);
-            }
-            ForceUnblockInput("Plugin disabled - cleanup");
-        }
-        private void PerformSafetyChecks()
-        {
-            bool currentHotkeyState = IsClickHotkeyPressed();
-            if (currentHotkeyState != lastHotkeyState)
-            {
-                if (!currentHotkeyState)
-                {
-                    lastHotkeyReleaseTimer.Restart();
-                }
-                else
-                {
-                    lastHotkeyReleaseTimer.Stop();
-                }
-                lastHotkeyState = currentHotkeyState;
-            }
-            if (!currentHotkeyState && isInputCurrentlyBlocked &&
-                lastHotkeyReleaseTimer.IsRunning &&
-                lastHotkeyReleaseTimer.ElapsedMilliseconds > HOTKEY_RELEASE_FAILSAFE_MS)
-            {
-                ForceUnblockInput($"Hotkey released for {lastHotkeyReleaseTimer.ElapsedMilliseconds}ms");
-            }
-            if (isInputCurrentlyBlocked && GameController?.Game?.IngameState?.InGame != true)
-            {
-                ForceUnblockInput("Not in game");
-            }
-        }
-        private IEnumerator ScanForAltarsLogic()
-        {
-            if (_performanceMonitor == null) yield break;
-
-            _performanceMonitor.StartCoroutineTiming("altar");
-            altarService?.ProcessAltarScanningLogic();
-            _performanceMonitor.StopCoroutineTiming("altar");
-
-            altarCoroutine?.Pause();
-            yield break;
-        }
         private bool GroundItemsVisible()
         {
             // Avoid triggering cache refresh if not necessary
-            var cachedValue = CachedLabels?.Value;
+            var cachedValue = State.CachedLabels?.Value;
             if (cachedValue == null || cachedValue.Count < 1)
             {
                 LogMessage("(ClickIt) No ground items found");
@@ -302,7 +204,6 @@ namespace ClickIt
         {
             return LabelUtils.GetElementsByStringContains(label, str);
         }
-        private bool workFinished;
         public override Job? Tick()
         {
             bool hotkeyPressed = IsClickHotkeyPressed();
@@ -334,24 +235,24 @@ namespace ClickIt
 
         private void HandleHotkeyPressed()
         {
-            if (clickLabelCoroutine?.IsDone == true)
+            if (State.ClickLabelCoroutine?.IsDone == true)
             {
-                clickLabelCoroutine = FindExistingClickLogicCoroutine();
+                State.ClickLabelCoroutine = FindExistingClickLogicCoroutine();
             }
 
-            clickLabelCoroutine?.Resume();
-            workFinished = false;
+            State.ClickLabelCoroutine?.Resume();
+            State.WorkFinished = false;
         }
 
         private void HandleHotkeyReleased()
         {
-            if (workFinished)
+            if (State.WorkFinished)
             {
-                clickLabelCoroutine?.Pause();
+                State.ClickLabelCoroutine?.Pause();
             }
         }
 
-        private Coroutine FindExistingClickLogicCoroutine()
+        private Coroutine? FindExistingClickLogicCoroutine()
         {
             return Core.ParallelRunner.Coroutines.FirstOrDefault(x => x.Name == "ClickIt.ClickLogic");
         }
@@ -362,39 +263,10 @@ namespace ClickIt
         /// </summary>
         private void ResumeAltarScanningIfDue()
         {
-            if (SecondTimer.ElapsedMilliseconds > 200)
+            if (State.SecondTimer.ElapsedMilliseconds > 200)
             {
-                altarCoroutine?.Resume();
-                SecondTimer.Restart();
-            }
-        }
-        private IEnumerator MainClickLabelCoroutine()
-        {
-            while (Settings.Enable)
-            {
-                yield return ClickLabel();
-            }
-        }
-
-        private IEnumerator MainShrineCoroutine()
-        {
-            if (_performanceMonitor == null) yield break;
-
-            while (Settings.Enable)
-            {
-                _performanceMonitor.StartCoroutineTiming("shrine");
-
-                yield return HandleShrine();
-
-                _performanceMonitor.StopCoroutineTiming("shrine");
-            }
-        }
-
-        private IEnumerator MainScanForAltarsLogic()
-        {
-            while (Settings.Enable)
-            {
-                yield return ScanForAltarsLogic();
+                State.AltarCoroutine?.Resume();
+                State.SecondTimer.Restart();
             }
         }
         /// <summary>
@@ -435,140 +307,6 @@ namespace ClickIt
         /// Sorts labels by distance to player using efficient sorting algorithm
         /// </summary>
         // Label helpers and path checks were moved to ClickIt.Utils.LabelUtils to keep ClickIt.cs focused.
-
-        private IEnumerator ClickLabel()
-        {
-            if (Settings.ClickShrines.Value && shrineService != null && shrineService.AreShrinesPresentInClickableArea((pos) => PointIsInClickableArea(pos)))
-            {
-                yield return new WaitTime(25);
-                yield break;
-            }
-
-            // self adjusting delay based on average click time
-            // clicks will consistently aim for 70ms intervals
-            if (_performanceMonitor == null) yield break;
-            double avgClickTime = _performanceMonitor.GetAverageTiming("click");
-            if (Timer.ElapsedMilliseconds < 70 - avgClickTime + Random.Next(0, 6) || !CanClick())
-            {
-                workFinished = true;
-                yield break;
-            }
-
-            if (Settings.DebugMode.Value)
-            {
-                LogMessage($"Starting click process...");
-            }
-
-            Timer.Restart();
-            _performanceMonitor.StartCoroutineTiming("click");
-            yield return clickService.ProcessRegularClick();
-            _performanceMonitor.StopCoroutineTiming("click");
-
-            workFinished = true;
-        }
-        private IEnumerator HandleShrine()
-        {
-            if (!Settings.ClickShrines.Value || shrineService == null)
-            {
-                yield return new WaitTime(500); // Check less frequently when disabled
-                yield break;
-            }
-
-            yield return ProcessShrineClicking();
-        }
-
-        private IEnumerator ProcessShrineClicking()
-        {
-            if (shrineService == null || inputHandler == null)
-            {
-                yield break;
-            }
-
-            var nearestShrine = shrineService.GetNearestShrineInRange(Settings.ClickDistance.Value, point => PointIsInClickableArea(point));
-            if (nearestShrine == null)
-            {
-                yield break;
-            }
-
-            if (!inputHandler.CanClick(GameController))
-            {
-                yield break;
-            }
-
-            LogMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}");
-
-            if (camera == null)
-            {
-                yield break;
-            }
-
-            var screen = camera.WorldToScreen(nearestShrine.PosNum);
-            Vector2 clickPos = new Vector2(screen.X, screen.Y);
-
-            // Thread-safe clicking via helper that acquires the click element access lock when LockManager enabled
-            ExecuteWithElementAccessLock(() => inputHandler.PerformClick(clickPos));
-
-            yield return new WaitTime(70 + Random.Next(0, 6));
-        }
-
-        private IEnumerator DelveFlareCoroutine()
-        {
-            if (_performanceMonitor == null) yield break;
-
-            while (Settings.Enable)
-            {
-                _performanceMonitor.StartCoroutineTiming("delveFlare");
-
-                if (Settings.ClickDelveFlares && GameController?.Player?.Buffs != null)
-                {
-                    var delveBuff = GameController.Player.Buffs.FirstOrDefault(b => b.Name == "delve_degen_buff");
-                    if (delveBuff != null && delveBuff.Charges >= Settings.DarknessDebuffStacks.Value)
-                    {
-                        // Check health and energy shield thresholds
-                        float healthPercent = GetPlayerHealthPercent();
-                        float energyShieldPercent = GetPlayerEnergyShieldPercent();
-
-                        if (healthPercent <= Settings.DelveFlareHealthThreshold.Value &&
-                            energyShieldPercent <= Settings.DelveFlareEnergyShieldThreshold.Value)
-                        {
-                            Keyboard.KeyPress(Settings.DelveFlareHotkey.Value, 50);
-
-                            LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)");
-
-                            yield return new WaitTime(1000);
-                        }
-                    }
-                }
-
-                _performanceMonitor.StopCoroutineTiming("delveFlare");
-
-                yield return new WaitTime(100);
-            }
-        }
-
-        private float GetPlayerHealthPercent()
-        {
-#if RUNTIME_EXILECORE
-            if (GameController?.Player == null) return 100f;
-            var life = GameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
-            if (life == null || life.Health.Max == 0) return 100f;
-            return (float)life.Health.Current / life.Health.Max * 100f;
-#else
-            return 100f;
-#endif
-        }
-
-        private float GetPlayerEnergyShieldPercent()
-        {
-#if RUNTIME_EXILECORE
-            if (GameController?.Player == null) return 100f;
-            var life = GameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
-            if (life == null || life.EnergyShield.Max == 0) return 100f;
-            return (float)life.EnergyShield.Current / life.EnergyShield.Max * 100f;
-#else
-            return 100f;
-#endif
-        }
 
         public enum AltarType
         {
