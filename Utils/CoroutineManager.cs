@@ -201,6 +201,23 @@ namespace ClickIt.Utils
             double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming("shrine");
             double baseTarget = _settings.ClickFrequencyTarget.Value - avgShrineTime;
             double targetTime = baseTarget + _state.Random.Next(0, 6);
+
+            // Check for lazy mode mouse button blocking (shrines should be blocked when skill mouse button is held in lazy mode)
+            if (_settings.LazyMode.Value)
+            {
+                bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+                if (!hasRestrictedItems)
+                {
+                    // In lazy mode with no restricted items, check if skill mouse button is held
+                    bool skillButtonHeld = _settings.LeftHanded.Value ?
+                        Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
+                    if (skillButtonHeld)
+                    {
+                        yield break; // Don't click shrines while skill mouse button is held in lazy mode
+                    }
+                }
+            }
+
             if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController, false))
             {
                 yield break;
