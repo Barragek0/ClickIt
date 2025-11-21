@@ -1,4 +1,4 @@
-﻿using ClickIt.Utils;
+using ClickIt.Utils;
 using ExileCore;
 using System.Diagnostics;
 using System.IO;
@@ -18,16 +18,16 @@ namespace ClickIt.Utils
         private readonly ClickItSettings _settings;
         private readonly Random _random;
         private readonly Action<bool>? _safeBlockInput;
-        private readonly Action<string, int>? _logMessage;
+        private readonly Utils.ErrorHandler? _errorHandler;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
 
-        public InputHandler(ClickItSettings settings, Action<bool>? safeBlockInput = null, Action<string, int>? logMessage = null)
+        public InputHandler(ClickItSettings settings, Action<bool>? safeBlockInput = null, Utils.ErrorHandler? errorHandler = null)
         {
             _settings = settings;
             _random = new Random();
             _safeBlockInput = safeBlockInput;
-            _logMessage = logMessage;
+            _errorHandler = errorHandler;
         }
 
         [DllImport("user32.dll")]
@@ -112,27 +112,27 @@ namespace ClickIt.Utils
             if (!TryConsumeLazyModeLimiter())
                 return;
 
-            _logMessage?.Invoke("InputHandler: PerformClick - entering", 5);
+            _errorHandler?.LogMessage(true, true, "InputHandler: PerformClick - entering", 5);
 
             if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
             {
-                _logMessage?.Invoke("InputHandler: Requesting system input block", 5);
+                _errorHandler?.LogMessage(true, true, "InputHandler: Requesting system input block", 5);
                 _safeBlockInput(true);
-                _logMessage?.Invoke("InputHandler: System input block requested", 5);
+                _errorHandler?.LogMessage(true, true, "InputHandler: System input block requested", 5);
             }
 
-            _logMessage?.Invoke($"InputHandler: Setting cursor pos to {position}", 5);
+            _errorHandler?.LogMessage(true, true, $"InputHandler: Setting cursor pos to {position}", 5);
             var swTotal = Stopwatch.StartNew();
             var before = Mouse.GetCursorPosition();
-            _logMessage?.Invoke($"InputHandler: Cursor before move: {before}", 5);
+            _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor before move: {before}", 5);
 
             var sw = Stopwatch.StartNew();
             Input.SetCursorPos(position);
             sw.Stop();
-            _logMessage?.Invoke($"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
+            _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
 
             var after = Mouse.GetCursorPosition();
-            _logMessage?.Invoke($"InputHandler: Cursor after move: {after}", 5);
+            _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor after move: {after}", 5);
 
             // Small delay to ensure cursor movement has taken effect before click
             Thread.Sleep(15);
@@ -140,16 +140,16 @@ namespace ClickIt.Utils
             sw.Restart();
             if (_settings.LeftHanded.Value)
             {
-                _logMessage?.Invoke("InputHandler: Performing right click (left-handed)", 5);
+                _errorHandler?.LogMessage(true, true, "InputHandler: Performing right click (left-handed)", 5);
                 Mouse.RightClick();
             }
             else
             {
-                _logMessage?.Invoke("InputHandler: Performing left click", 5);
+                _errorHandler?.LogMessage(true, true, "InputHandler: Performing left click", 5);
                 Mouse.LeftClick();
             }
             sw.Stop();
-            _logMessage?.Invoke($"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
+            _errorHandler?.LogMessage(true, true, $"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
 
             RestoreCursorIfLazyMode(before);
 
@@ -157,21 +157,21 @@ namespace ClickIt.Utils
             // If the whole operation took too long, attempt to clear any stuck input block and log
             if (swTotal.ElapsedMilliseconds > 500)
             {
-                _logMessage?.Invoke($"InputHandler: WARNING - PerformClick took {swTotal.ElapsedMilliseconds} ms, attempting to release input block", 10);
+                _errorHandler?.LogMessage(true, true, $"InputHandler: WARNING - PerformClick took {swTotal.ElapsedMilliseconds} ms, attempting to release input block", 10);
                 if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
                 {
                     _safeBlockInput(false);
-                    _logMessage?.Invoke("InputHandler: Watchdog released system input block", 10);
+                    _errorHandler?.LogMessage(true, true, "InputHandler: Watchdog released system input block", 10);
                 }
             }
 
             if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
             {
-                _logMessage?.Invoke("InputHandler: Releasing system input block", 5);
+                _errorHandler?.LogMessage(true, true, "InputHandler: Releasing system input block", 5);
                 _safeBlockInput(false);
-                _logMessage?.Invoke("InputHandler: System input block released", 5);
+                _errorHandler?.LogMessage(true, true, "InputHandler: System input block released", 5);
             }
-            _logMessage?.Invoke("InputHandler: PerformClick - exiting", 5);
+            _errorHandler?.LogMessage(true, true, "InputHandler: PerformClick - exiting", 5);
         }
 
         private bool TryConsumeLazyModeLimiter()
@@ -183,7 +183,7 @@ namespace ClickIt.Utils
                 long elapsed = now - _lastClickTimestampMs;
                 if (_lastClickTimestampMs != 0 && elapsed < limiterMs)
                 {
-                    _logMessage?.Invoke($"InputHandler: Skipping click due to LazyMode limiter ({elapsed}ms < {limiterMs}ms)", 5);
+                    _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping click due to LazyMode limiter ({elapsed}ms < {limiterMs}ms)", 5);
                     return false;
                 }
                 _lastClickTimestampMs = now;
@@ -201,11 +201,11 @@ namespace ClickIt.Utils
                     Input.SetCursorPos(beforeVec);
                     // Small delay to let the OS update cursor position
                     Thread.Sleep(8);
-                    _logMessage?.Invoke($"InputHandler: Restored cursor to {before}", 5);
+                    _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);
                 }
                 catch (Exception ex)
                 {
-                    _logMessage?.Invoke($"InputHandler: Failed to restore cursor position: {ex.Message}", 10);
+                    _errorHandler?.LogMessage(true, true, $"InputHandler: Failed to restore cursor position: {ex.Message}", 10);
                 }
             }
         }

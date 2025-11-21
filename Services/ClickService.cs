@@ -31,8 +31,7 @@ namespace ClickIt.Services
     {
         private readonly ClickItSettings settings;
         private readonly GameController gameController;
-        private readonly Action<string> logMessage;
-        private readonly Action<string, int> logError;
+        private readonly Utils.ErrorHandler errorHandler;
         private readonly AltarService altarService;
         private readonly WeightCalculator weightCalculator;
         private readonly Rendering.AltarDisplayRenderer altarDisplayRenderer;
@@ -55,8 +54,7 @@ namespace ClickIt.Services
         public ClickService(
             ClickItSettings settings,
             GameController gameController,
-            Action<string> logMessage,
-            Action<string, int> logError,
+            Utils.ErrorHandler errorHandler,
             AltarService altarService,
             WeightCalculator weightCalculator,
             Rendering.AltarDisplayRenderer altarDisplayRenderer,
@@ -69,8 +67,7 @@ namespace ClickIt.Services
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-            this.logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
-            this.logError = logError ?? throw new ArgumentNullException(nameof(logError));
+            this.errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
             this.altarService = altarService ?? throw new ArgumentNullException(nameof(altarService));
             this.weightCalculator = weightCalculator ?? throw new ArgumentNullException(nameof(weightCalculator));
             this.altarDisplayRenderer = altarDisplayRenderer ?? throw new ArgumentNullException(nameof(altarDisplayRenderer));
@@ -85,16 +82,9 @@ namespace ClickIt.Services
         // Helper to avoid allocating debug message strings when debug logging is disabled
         private void DebugLog(Func<string> messageFactory)
         {
-            try
+            if (settings.DebugMode?.Value == true)
             {
-                if (settings.DebugMode?.Value == true)
-                {
-                    logMessage(messageFactory());
-                }
-            }
-            catch
-            {
-                // Swallow any logging-related exceptions to avoid affecting runtime
+                errorHandler.LogMessage(messageFactory());
             }
         }
 
@@ -207,13 +197,13 @@ namespace ClickIt.Services
 
             if (element == null)
             {
-                logError("CRITICAL: Altar element is null", 10);
+                errorHandler.LogError("CRITICAL: Altar element is null", 10);
                 yield break;
             }
 
             if (!IsValidVisible(element))
             {
-                logError("CRITICAL: Altar element invalid or not visible before click", 10);
+                errorHandler.LogError("CRITICAL: Altar element invalid or not visible before click", 10);
                 yield break;
             }
 
@@ -221,14 +211,7 @@ namespace ClickIt.Services
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
 
             bool clicked = false;
-            try
-            {
-                clicked = TryPerformClick(element, windowTopLeft);
-            }
-            catch (Exception ex)
-            {
-                logError($"[ClickAltarElement] Exception during click: {ex.GetType().Name}: {ex.Message}", 10);
-            }
+            clicked = TryPerformClick(element, windowTopLeft);
 
             if (clicked)
             {
@@ -237,15 +220,8 @@ namespace ClickIt.Services
                 bool stillVisible = IsValidVisibleUnderLock(element);
                 if (!stillVisible)
                 {
-                    try
-                    {
-                        altarService.RemoveAltarComponentsByElement(element);
-                        DebugLog(() => "[ClickAltarElement] Removed clicked altar from tracking (no longer visible)");
-                    }
-                    catch (Exception ex)
-                    {
-                        logError($"[ClickAltarElement] Error removing altar component: {ex.Message}", 10);
-                    }
+                    altarService.RemoveAltarComponentsByElement(element);
+                    DebugLog(() => "[ClickAltarElement] Removed clicked altar from tracking (no longer visible)");
                 }
                 else
                 {
@@ -281,7 +257,7 @@ namespace ClickIt.Services
                 {
                     if (!IsValidVisible(el))
                     {
-                        logError("[ClickAltarElement] Element became invalid or invisible before click", 10);
+                        errorHandler.LogError("[ClickAltarElement] Element became invalid or invisible before click", 10);
                         return false;
                     }
                     RectangleF r = el.GetClientRect();
@@ -296,7 +272,7 @@ namespace ClickIt.Services
             // No lock path
             if (!IsValidVisible(el))
             {
-                logError("[ClickAltarElement] Element became invalid or invisible before click", 10);
+                errorHandler.LogError("[ClickAltarElement] Element became invalid or invisible before click", 10);
                 return false;
             }
             RectangleF rect = el.GetClientRect();
@@ -374,7 +350,7 @@ namespace ClickIt.Services
             foreach (int cap in caps)
             {
                 int limit = Math.Min(cap, allLabels.Count);
-                for (int i = 0; i < limit; i++)
+                /*for (int i = 0; i < limit; i++)
                 {
                     var it = allLabels[i].ItemOnGround;
                     string path = it?.Path ?? string.Empty;
@@ -387,7 +363,7 @@ namespace ClickIt.Services
                     {
                         DebugLog(() => $"[LabelPaths{cap}] <no path> (dist={it?.DistancePlayer ?? 0f:F1})");
                     }
-                }
+                }*/
 
                 var slice = allLabels.GetRange(0, limit);
                 var label = labelFilterService.GetNextLabelToClick(slice);

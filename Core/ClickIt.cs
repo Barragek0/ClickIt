@@ -78,7 +78,7 @@ namespace ClickIt
             Settings.ReportBugButton.OnPressed += _reportBugHandler;
             State.PerformanceMonitor = new Utils.PerformanceMonitor(Settings);
             State.ErrorHandler = new Utils.ErrorHandler(Settings, LogError, LogMessage, (block) => State.InputSafetyManager?.SafeBlockInput(block), (reason) => State.InputSafetyManager?.ForceUnblockInput(reason));
-            State.InputSafetyManager = new Utils.InputSafetyManager(Settings, State, (debug, msg, frame) => LogMessage(debug, msg, frame), LogError);
+            State.InputSafetyManager = new Utils.InputSafetyManager(Settings, State, State.ErrorHandler);
             State.CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             State.AreaService = new Services.AreaService();
             State.AreaService.UpdateScreenAreas(GameController);
@@ -87,7 +87,7 @@ namespace ClickIt
             var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
             State.LabelFilterService = labelFilterService;
             State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
-            State.InputHandler = new Utils.InputHandler(Settings, (block) => State.InputSafetyManager?.SafeBlockInput(block), (msg, f) => LogMessage(true, msg, f));
+            State.InputHandler = new Utils.InputHandler(Settings, (block) => State.InputSafetyManager?.SafeBlockInput(block), State.ErrorHandler);
             var weightCalculator = new Utils.WeightCalculator(Settings);
             State.DeferredTextQueue = new Utils.DeferredTextQueue();
             State.DeferredFrameQueue = new Utils.DeferredFrameQueue();
@@ -98,8 +98,7 @@ namespace ClickIt
             State.ClickService = new Services.ClickService(
                 Settings,
                 GameController,
-                msg => LogMessage(msg),
-                LogError,
+                State.ErrorHandler,
                 State.AltarService,
                 weightCalculator,
                 State.AltarDisplayRenderer,
@@ -115,7 +114,7 @@ namespace ClickIt
                 State,
                 Settings,
                 GameController,
-                (msg, frame) => LogMessage(msg, frame),
+                State.ErrorHandler,
                 (reason) => State.InputSafetyManager?.ForceUnblockInput(reason),
                 point => PointIsInClickableArea(point));
             coroutineManager.StartCoroutines(this);
@@ -213,20 +212,87 @@ namespace ClickIt
             var allLabels = State.CachedLabels?.Value ?? new List<LabelOnGround>();
             bool hasRestrictedItems = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
 
+            // Check if any mouse button is held (prevents lazy clicking)
+            bool leftButtonHeld = Input.GetKeyState(Keys.LButton);
+            bool rightButtonHeld = Input.GetKeyState(Keys.RButton);
+            bool mouseButtonHeld = leftButtonHeld || rightButtonHeld;
+
+            // Check if hotkey is currently held
+            bool hotkeyHeld = Input.GetKeyState(Settings.ClickLabelKey.Value);
+
             if (hasRestrictedItems)
+            {
+                if (hotkeyHeld)
+                {
+                    // Hotkey held: show green override message
+                    string lazyModeText = "Lazy Mode";
+                    State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.LawnGreen, 36, FontAlign.Center);
+
+                    float lineHeight = 36 * 1.2f;
+                    float secondLineY = topY + lineHeight;
+                    string firstExplanation = "Blocking overridden by hotkey.";
+                    State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.LawnGreen, 24, FontAlign.Center);
+
+                    float thirdLineY = secondLineY + lineHeight;
+                    string secondExplanation = "Clicking restricted items.";
+                    State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.LawnGreen, 24, FontAlign.Center);
+                }
+                else
+                {
+                    // Hotkey not held: show red blocking message
+                    string lazyModeText = "Lazy Mode";
+                    State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
+
+                    float lineHeight = 36 * 1.2f;
+                    float secondLineY = topY + lineHeight;
+                    string firstExplanation = "Strongbox, Chest or Tree detected.";
+                    State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+
+                    float thirdLineY = secondLineY + lineHeight;
+                    string hotkeyName = Settings.ClickLabelKey.Value.ToString();
+                    string secondExplanation = $"Hold {hotkeyName} to click them.";
+                    State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+                }
+            }
+            else if (!hasRestrictedItems && hotkeyHeld)
+            {
+                // Lazy mode active but hotkey held, making it inactive
+                string lazyModeText = "Lazy Mode";
+                State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
+
+                float lineHeight = 36 * 1.2f;
+                float secondLineY = topY + lineHeight;
+                string firstExplanation = "Hotkey held - clicking paused.";
+                State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+
+                float thirdLineY = secondLineY + lineHeight;
+                string secondExplanation = "Release to resume lazy clicking.";
+                State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+            }
+            else if (mouseButtonHeld)
             {
                 string lazyModeText = "Lazy Mode";
                 State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
 
                 float lineHeight = 36 * 1.2f;
                 float secondLineY = topY + lineHeight;
-                string firstExplanation = "Strongbox, Chest or Tree detected.";
-                State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
-
+                string buttonDescription;
+                if (leftButtonHeld && rightButtonHeld)
+                {
+                    buttonDescription = "Left and right mouse buttons held.";
+                }
+                else if (leftButtonHeld)
+                {
+                    buttonDescription = "Left mouse button held.";
+                }
+                else
+                {
+                    buttonDescription = "Right mouse button held.";
+                }
+                State.DeferredTextQueue.Enqueue(buttonDescription, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
 
                 float thirdLineY = secondLineY + lineHeight;
-                string hotkeyName = Settings.ClickLabelKey.Value.ToString();
-                string secondExplanation = $"Hold {hotkeyName} to click them.";
+                string secondExplanation = "Release to resume lazy clicking.";
                 State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
             }
             else
@@ -255,9 +321,6 @@ namespace ClickIt
             if (State.IsRendering) return;
             base.LogError(message, frame);
         }
-
-
-
 
         private bool GroundItemsVisible()
         {
@@ -298,8 +361,28 @@ namespace ClickIt
             bool actual = Input.GetKeyState(Settings.ClickLabelKey.Value);
             if (Settings?.LazyMode != null && Settings.LazyMode.Value)
             {
-                // In lazy mode, invert hotkey behaviour: released -> active, held -> inactive
-                return !actual;
+                // Check if restricted items are present
+                bool hasRestrictedItems = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(State.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+
+                if (hasRestrictedItems)
+                {
+                    // When restricted items are present in lazy mode, only activate when hotkey is held (normal behavior)
+                    return actual;
+                }
+                else
+                {
+                    // No restricted items, invert hotkey: released -> active
+                    bool inverted = !actual;
+                    if (inverted)
+                    {
+                        // Prevent lazy mode clicking if any mouse button is held
+                        if (Input.GetKeyState(Keys.LButton) || Input.GetKeyState(Keys.RButton))
+                        {
+                            return false; // Don't click while mouse button is held
+                        }
+                    }
+                    return inverted;
+                }
             }
             return actual;
         }

@@ -1,5 +1,6 @@
 using ExileCore;
 using ExileCore.PoEMemory;
+using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using ExileCore.Shared.Enums;
@@ -17,7 +18,7 @@ namespace ClickIt.Utils
         private readonly PluginContext _state;
         private readonly ClickItSettings _settings;
         private readonly GameController _gameController;
-        private readonly Action<string, int> _logMessage;
+        private readonly Utils.ErrorHandler _errorHandler;
         private readonly Action<string> _forceUnblockInput;
         private readonly Func<Vector2, bool> _pointIsInClickableArea;
 
@@ -25,14 +26,14 @@ namespace ClickIt.Utils
             PluginContext state,
             ClickItSettings settings,
             GameController gameController,
-            Action<string, int> logMessage,
+            Utils.ErrorHandler errorHandler,
             Action<string> forceUnblockInput,
             Func<Vector2, bool> pointIsInClickableArea)
         {
             _state = state ?? throw new ArgumentNullException(nameof(state));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-            _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
+            _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
             _forceUnblockInput = forceUnblockInput ?? throw new ArgumentNullException(nameof(forceUnblockInput));
             _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
         }
@@ -133,7 +134,14 @@ namespace ClickIt.Utils
 
             if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming("click");
-            double baseTarget = _settings.ClickFrequencyTarget.Value - avgClickTime;
+
+            // Determine if lazy mode is active (enabled and no restricted items on screen)
+            bool lazyModeActive = _settings.LazyMode.Value &&
+                !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false);
+
+            // Use lazy mode click limiting when lazy mode is active, otherwise use normal frequency target
+            double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
+            double baseTarget = frequencyTarget - avgClickTime;
             double targetTime = baseTarget + _state.Random.Next(0, 6);
             if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController) != true)
             {
@@ -143,7 +151,7 @@ namespace ClickIt.Utils
 
             if (_settings.DebugMode.Value)
             {
-                _logMessage($"Starting click process...", 5);
+                _errorHandler.LogMessage($"Starting click process...", 5);
             }
 
             _state.Timer.Restart();
@@ -218,7 +226,7 @@ namespace ClickIt.Utils
                 yield break;
             }
 
-            _logMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}", 5);
+            _errorHandler.LogMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}", 5);
 
             if (_state.Camera == null)
             {
@@ -311,7 +319,7 @@ namespace ClickIt.Utils
                         {
                             Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
 
-                            _logMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
+                            _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
 
                             yield return new WaitTime(1000);
                         }
