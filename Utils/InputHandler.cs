@@ -91,7 +91,10 @@ namespace ClickIt.Utils
                 (_settings.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
                 !IsInTownOrHideout(gameController) &&
                 !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible &&
-                !isRitualActive;
+                !isRitualActive &&
+                !gameController.Game.IsEscapeState &&
+                !gameController.IngameState.IngameUi.AtlasPanel.IsVisible &&
+                !gameController.IngameState.IngameUi.AtlasTreePanel.IsVisible;
         }
         private static bool IsPOEActive(GameController gameController)
         {
