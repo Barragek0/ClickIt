@@ -94,7 +94,8 @@ namespace ClickIt.Utils
                 !isRitualActive &&
                 !gameController.Game.IsEscapeState &&
                 !gameController.IngameState.IngameUi.AtlasPanel.IsVisible &&
-                !gameController.IngameState.IngameUi.AtlasTreePanel.IsVisible;
+                !gameController.IngameState.IngameUi.AtlasTreePanel.IsVisible &&
+                !gameController.IngameState.IngameUi.TreePanel.IsVisible;
         }
         private static bool IsPOEActive(GameController gameController)
         {

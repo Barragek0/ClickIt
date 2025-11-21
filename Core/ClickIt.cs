@@ -343,6 +343,9 @@ namespace ClickIt
             if (GameController?.IngameState?.IngameUi?.AtlasTreePanel?.IsVisible == true)
                 return "Atlas tree panel is open.";
 
+            if (GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true)
+                return "Passive tree panel is open.";
+
             if (GameController?.Game?.IsEscapeState == true)
                 return "In escape state.";
 
