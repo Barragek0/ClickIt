@@ -95,7 +95,17 @@ namespace ClickIt.Utils
                 !gameController.Game.IsEscapeState &&
                 !gameController.IngameState.IngameUi.AtlasPanel.IsVisible &&
                 !gameController.IngameState.IngameUi.AtlasTreePanel.IsVisible &&
-                !gameController.IngameState.IngameUi.TreePanel.IsVisible;
+                !gameController.IngameState.IngameUi.TreePanel.IsVisible &&
+                !gameController.IngameState.IngameUi.UltimatumPanel.IsVisible &&
+                !gameController.IngameState.IngameUi.BetrayalWindow.IsVisible &&
+                !gameController.IngameState.IngameUi.SyndicatePanel.IsVisible &&
+                !gameController.IngameState.IngameUi.SyndicateTree.IsVisible &&
+                !gameController.IngameState.IngameUi.IncursionWindow.IsVisible &&
+                !gameController.IngameState.IngameUi.RitualWindow.IsVisible &&
+                !gameController.IngameState.IngameUi.SanctumFloorWindow.IsVisible &&
+                !gameController.IngameState.IngameUi.SanctumRewardWindow.IsVisible &&
+                !gameController.IngameState.IngameUi.MicrotransactionShopWindow.IsVisible &&
+                !gameController.IngameState.IngameUi.ResurrectPanel.IsVisible;
         }
         private static bool IsPOEActive(GameController gameController)
         {

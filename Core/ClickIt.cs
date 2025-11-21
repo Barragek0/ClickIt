@@ -346,6 +346,36 @@ namespace ClickIt
             if (GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true)
                 return "Passive tree panel is open.";
 
+            if (GameController?.IngameState?.IngameUi?.UltimatumPanel?.IsVisible == true)
+                return "Ultimatum panel is open.";
+
+            if (GameController?.IngameState?.IngameUi?.BetrayalWindow?.IsVisible == true)
+                return "Betrayal window is open.";
+
+            if (GameController?.IngameState?.IngameUi?.SyndicatePanel?.IsVisible == true)
+                return "Syndicate panel is open.";
+
+            if (GameController?.IngameState?.IngameUi?.SyndicateTree?.IsVisible == true)
+                return "Syndicate tree panel is open.";
+
+            if (GameController?.IngameState?.IngameUi?.IncursionWindow?.IsVisible == true)
+                return "Incursion window is open.";
+
+            if (GameController?.IngameState?.IngameUi?.RitualWindow?.IsVisible == true)
+                return "Ritual window is open.";
+
+            if (GameController?.IngameState?.IngameUi?.SanctumFloorWindow?.IsVisible == true)
+                return "Sanctum floor window is open.";
+
+            if (GameController?.IngameState?.IngameUi?.SanctumRewardWindow?.IsVisible == true)
+                return "Sanctum reward window is open.";
+
+            if (GameController?.IngameState?.IngameUi?.MicrotransactionShopWindow?.IsVisible == true)
+                return "Microtransaction shop window is open.";
+
+            if (GameController?.IngameState?.IngameUi?.ResurrectPanel?.IsVisible == true)
+                return "Resurrect panel is open.";
+
             if (GameController?.Game?.IsEscapeState == true)
                 return "In escape state.";
 
