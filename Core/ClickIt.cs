@@ -320,9 +320,49 @@ namespace ClickIt
             }
             else
             {
-                // Green text for "Lazy Mode" centered at size 36
-                string text = "Lazy Mode";
-                State.DeferredTextQueue.Enqueue(text, new Vector2(centerX, topY), SharpDX.Color.LawnGreen, 36, FontAlign.Center);
+                // Check if CanClick would actually allow clicking
+                bool canActuallyClick = State.InputHandler?.CanClick(GameController, false, isRitualActive) ?? false;
+                
+                if (!canActuallyClick)
+                {
+                    // CanClick returns false: show red blocking message
+                    string lazyModeText = "Lazy Mode";
+                    State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
+
+                    float lineHeight = 36 * 1.2f;
+                    float secondLineY = topY + lineHeight;
+                    
+                    // Determine the reason CanClick is false
+                    string reason = "Clicking disabled.";
+                    if (GameController?.Window?.IsForeground() == false)
+                    {
+                        reason = "PoE not in focus.";
+                    }
+                    else if (Settings.BlockOnOpenLeftRightPanel.Value && (GameController?.IngameState?.IngameUi?.OpenLeftPanel?.Address != 0 || GameController?.IngameState?.IngameUi?.OpenRightPanel?.Address != 0))
+                    {
+                        reason = "Panel is open.";
+                    }
+                    else if (GameController?.Area?.CurrentArea?.IsTown == true || GameController?.Area?.CurrentArea?.IsHideout == true)
+                    {
+                        reason = "In town/hideout.";
+                    }
+                    else if (GameController?.IngameState?.IngameUi?.ChatTitlePanel?.IsVisible == true)
+                    {
+                        reason = "Chat is open.";
+                    }
+                    else if (GameController?.Game?.IsEscapeState == true)
+                    {
+                        reason = "In escape state.";
+                    }
+                    
+                    State.DeferredTextQueue.Enqueue(reason, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+                }
+                else
+                {
+                    // Green text for "Lazy Mode" centered at size 36
+                    string text = "Lazy Mode";
+                    State.DeferredTextQueue.Enqueue(text, new Vector2(centerX, topY), SharpDX.Color.LawnGreen, 36, FontAlign.Center);
+                }
             }
         }
         public void LogMessage(string message, int frame = 5)
