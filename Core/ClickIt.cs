@@ -58,6 +58,7 @@ namespace ClickIt
             State.InputHandler = null;
             State.DebugRenderer = null;
             State.DeferredTextQueue = null;
+            State.DeferredFrameQueue = null;
             State.AltarDisplayRenderer = null;
 
             // Stop coroutines to prevent issues during DLL reload
@@ -84,12 +85,14 @@ namespace ClickIt
             State.Camera = GameController?.Game?.IngameState?.Camera;
             State.AltarService = new Services.AltarService(this, Settings, State.CachedLabels);
             var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
+            State.LabelFilterService = labelFilterService;
             State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
             State.InputHandler = new Utils.InputHandler(Settings, (block) => State.InputSafetyManager?.SafeBlockInput(block), (msg, f) => LogMessage(true, msg, f));
             var weightCalculator = new Utils.WeightCalculator(Settings);
             State.DeferredTextQueue = new Utils.DeferredTextQueue();
-            State.DebugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, State.AltarService, State.AreaService, weightCalculator, State.DeferredTextQueue);
-            State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.AltarService, LogMessage);
+            State.DeferredFrameQueue = new Utils.DeferredFrameQueue();
+            State.DebugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, State.AltarService, State.AreaService, weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue);
+            State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, LogMessage);
             LockManager.Instance = new Utils.LockManager(Settings);
             State.ClickService = new Services.ClickService(
                 Settings,
@@ -143,7 +146,9 @@ namespace ClickIt
             int altarCount = State.AltarService?.GetAltarComponents()?.Count ?? 0;
             bool hasAltars = altarCount > 0;
 
-            if (!hasDebugRendering && !hasAltars)
+            bool hasLazyModeIndicator = Settings.LazyMode.Value;
+
+            if (!hasDebugRendering && !hasAltars && !hasLazyModeIndicator)
             {
                 return; // Skip all timer operations for no-op renders
             }
@@ -151,6 +156,12 @@ namespace ClickIt
             // Start timing only when actually rendering
             State.PerformanceMonitor.StartRenderTiming();
             State.PerformanceMonitor.UpdateFPS();
+
+            // Render lazy mode indicator if enabled
+            if (Settings.LazyMode.Value)
+            {
+                RenderLazyModeIndicator();
+            }
 
             if (hasDebugRendering)
             {
@@ -167,10 +178,47 @@ namespace ClickIt
 
             // Flush deferred text rendering to prevent freezes
             State.DeferredTextQueue?.Flush(Graphics, LogError);
+            State.DeferredFrameQueue?.Flush(Graphics, LogError);
         }
         private void RenderAltarComponents()
         {
             State.AltarDisplayRenderer?.RenderAltarComponents();
+        }
+        private void RenderLazyModeIndicator()
+        {
+            if (State.DeferredTextQueue == null) return;
+
+            // Get screen center position
+            var windowRect = GameController.Window.GetWindowRectangleTimeCache;
+            float centerX = windowRect.Width / 2f;
+            float topY = 60f; // Small margin from top
+
+            // Check if lazy mode is restricted
+            var allLabels = State.CachedLabels?.Value ?? new List<LabelOnGround>();
+            bool hasRestrictedItems = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
+
+            if (hasRestrictedItems)
+            {
+                string lazyModeText = "Lazy Mode";
+                State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
+
+                float lineHeight = 36 * 1.2f;
+                float secondLineY = topY + lineHeight;
+                string firstExplanation = "Strongbox, Chest or Tree detected.";
+                State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+
+
+                float thirdLineY = secondLineY + lineHeight;
+                string hotkeyName = Settings.ClickLabelKey.Value.ToString();
+                string secondExplanation = $"Hold {hotkeyName} to click them.";
+                State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+            }
+            else
+            {
+                // Green text for "Lazy Mode" centered at size 36
+                string text = "Lazy Mode";
+                State.DeferredTextQueue.Enqueue(text, new Vector2(centerX, topY), SharpDX.Color.LawnGreen, 36, FontAlign.Center);
+            }
         }
         public void LogMessage(string message, int frame = 5)
         {
@@ -251,6 +299,7 @@ namespace ClickIt
             {
                 State.ClickLabelCoroutine?.Pause();
             }
+            State.PerformanceMonitor?.ResetClickCount();
         }
 
         private Coroutine? FindExistingClickLogicCoroutine()

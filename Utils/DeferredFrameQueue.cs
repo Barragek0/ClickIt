@@ -1,22 +1,20 @@
 using SharpDX;
 using System;
 using System.Collections.Generic;
-using ExileCore;
-using ExileCore.Shared.Enums;
 
 namespace ClickIt.Utils
 {
-    // Small helper to centralize deferred DrawText rendering so other classes can enqueue texts
+    // Small helper to centralize deferred DrawFrame rendering so other classes can enqueue frames
     // and a single Flush call will draw them with a provided Graphics instance.
-    public class DeferredTextQueue
+    public class DeferredFrameQueue
     {
-        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = new();
+        private readonly List<(SharpDX.RectangleF Rectangle, SharpDX.Color Color, int Thickness)> _items = new();
 
-        public void Enqueue(string text, Vector2 pos, SharpDX.Color color, int size, FontAlign align = FontAlign.Left)
+        public void Enqueue(SharpDX.RectangleF rectangle, SharpDX.Color color, int thickness)
         {
             try
             {
-                _items.Add((text, pos, color, size, align));
+                _items.Add((rectangle, color, thickness));
             }
             catch { }
         }
@@ -26,7 +24,7 @@ namespace ClickIt.Utils
             if (graphics == null) return;
             if (_items.Count == 0) return;
 
-            // Create a snapshot to avoid issues if Enqueue is called during Flush 
+            // Create a snapshot to avoid issues if Enqueue is called during Flush
             var itemsSnapshot = _items.ToArray();
             _items.Clear();
 
@@ -36,17 +34,17 @@ namespace ClickIt.Utils
                 {
                     try
                     {
-                        graphics.DrawText(entry.Text, entry.Position, entry.Color, entry.Size, entry.Align);
+                        graphics.DrawFrame(entry.Rectangle, entry.Color, entry.Thickness);
                     }
                     catch (Exception ex)
                     {
-                        logMessage?.Invoke($"[DeferredTextQueue] DrawText failed: {ex.Message}", 10);
+                        logMessage?.Invoke($"[DeferredFrameQueue] DrawFrame failed: {ex.Message}", 10);
                     }
                 }
             }
             catch (Exception ex)
             {
-                logMessage?.Invoke($"[DeferredTextQueue] Flush failed: {ex.Message}", 10);
+                logMessage?.Invoke($"[DeferredFrameQueue] Flush failed: {ex.Message}", 10);
             }
         }
     }

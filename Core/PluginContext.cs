@@ -33,8 +33,10 @@ namespace ClickIt
         public Rendering.DebugRenderer? DebugRenderer { get; set; }
         public Rendering.AltarDisplayRenderer? AltarDisplayRenderer { get; set; }
         public Utils.DeferredTextQueue? DeferredTextQueue { get; set; }
+        public Utils.DeferredFrameQueue? DeferredFrameQueue { get; set; }
         public Utils.InputSafetyManager? InputSafetyManager { get; set; }
-        public Services.ClickService ClickService { get; set; } = null!;
+        public Services.LabelFilterService? LabelFilterService { get; set; }
+        public Services.ClickService? ClickService { get; set; }
         public Camera? Camera { get; set; }
         public bool WorkFinished { get; set; } = false;
     }

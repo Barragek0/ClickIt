@@ -114,6 +114,7 @@
     <Compile Include="Utils\InputHandler.cs" />
     <Compile Include="Utils\LockManager.cs" />
     <Compile Include="Utils\DeferredTextQueue.cs" />
+    <Compile Include="Utils\DeferredFrameQueue.cs" />
     <Compile Include="Utils\LabelUtils.cs" />
     <Compile Include="Utils\PerformanceMonitor.cs" />
     <Compile Include="Utils\ErrorHandler.cs" />

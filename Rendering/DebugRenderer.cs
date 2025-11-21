@@ -20,14 +20,26 @@ namespace ClickIt.Rendering
 {
     public class DebugRenderer
     {
+        private const double FPS_HIGH_THRESHOLD = 144;
+        private const double FPS_MEDIUM_THRESHOLD = 60;
+        private const double RENDER_TIME_LOW_THRESHOLD = 6.94;
+        private const double RENDER_TIME_MEDIUM_THRESHOLD = 16.67;
+        private const double COROUTINE_HIGH_THRESHOLD = 10;
+        private const double COROUTINE_MEDIUM_THRESHOLD = 5;
+        private const double TARGET_DEVIATION_LOW = 0.05;
+        private const double TARGET_DEVIATION_MEDIUM = 0.10;
+        private const double TARGET_DEVIATION_HIGH = 0.25;
+        private const double CLICK_TARGET_MULTIPLIER = 0.75;
+
         private readonly BaseSettingsPlugin<ClickItSettings> _plugin;
         private readonly Graphics _graphics;
         private readonly AltarService? _altarService;
         private readonly AreaService? _areaService;
         private readonly WeightCalculator? _weightCalculator;
         private readonly Utils.DeferredTextQueue _deferredTextQueue;
+        private readonly Utils.DeferredFrameQueue _deferredFrameQueue;
 
-        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, Utils.DeferredTextQueue? deferredTextQueue = null)
+        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, Utils.DeferredTextQueue? deferredTextQueue = null, Utils.DeferredFrameQueue? deferredFrameQueue = null)
         {
             _plugin = plugin;
             _graphics = graphics;
@@ -35,6 +47,7 @@ namespace ClickIt.Rendering
             _areaService = areaService;
             _weightCalculator = weightCalculator;
             _deferredTextQueue = deferredTextQueue ?? new Utils.DeferredTextQueue();
+            _deferredFrameQueue = deferredFrameQueue ?? new Utils.DeferredFrameQueue();
         }
 
         public void RenderDebugFrames(ClickItSettings settings)
@@ -43,10 +56,10 @@ namespace ClickIt.Rendering
 
             if (settings.DebugShowFrames)
             {
-                _graphics.DrawFrame(_areaService.FullScreenRectangle, Color.Green, 1);
-                _graphics.DrawFrame(_areaService.HealthAndFlaskRectangle, Color.Orange, 1);
-                _graphics.DrawFrame(_areaService.ManaAndSkillsRectangle, Color.Cyan, 1);
-                _graphics.DrawFrame(_areaService.BuffsAndDebuffsRectangle, Color.Yellow, 1);
+                _deferredFrameQueue.Enqueue(_areaService.FullScreenRectangle, Color.Green, 1);
+                _deferredFrameQueue.Enqueue(_areaService.HealthAndFlaskRectangle, Color.Orange, 1);
+                _deferredFrameQueue.Enqueue(_areaService.ManaAndSkillsRectangle, Color.Cyan, 1);
+                _deferredFrameQueue.Enqueue(_areaService.BuffsAndDebuffsRectangle, Color.Yellow, 1);
             }
         }
 
@@ -112,44 +125,6 @@ namespace ClickIt.Rendering
             Color playerColor = playerValid ? Color.LightGreen : Color.Red;
             _deferredTextQueue.Enqueue($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
             yPos += lineHeight;
-
-            return yPos;
-        }
-
-        [Obsolete]
-        public int RenderInputDebug(int xPos, int yPos, int lineHeight)
-        {
-            _deferredTextQueue.Enqueue($"--- Input State ---", new Vector2(xPos, yPos), Color.Orange, 16);
-            yPos += lineHeight;
-            bool hotkeyPressed = Input.GetKeyState(_plugin.Settings.ClickLabelKey.Value);
-            Color hotkeyColor = hotkeyPressed ? Color.LightGreen : Color.Gray;
-            _deferredTextQueue.Enqueue($"Hotkey ({_plugin.Settings.ClickLabelKey.Value}): {hotkeyPressed}", new Vector2(xPos, yPos), hotkeyColor, 16);
-            yPos += lineHeight;
-
-            // Show input blocking state
-            if (_plugin is ClickIt clickItPlugin)
-            {
-                // Reflection used for debug display only; safe because it is read-only and only in debug UI.
-                var inputBlockedField = typeof(ClickIt).GetField("isInputCurrentlyBlocked",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (inputBlockedField?.GetValue(clickItPlugin) is bool isBlocked)
-                {
-                    Color blockedColor = isBlocked ? Color.Red : Color.LightGreen;
-                    _deferredTextQueue.Enqueue($"Input Blocked: {isBlocked}", new Vector2(xPos, yPos), blockedColor, 16);
-                    yPos += lineHeight;
-                }
-
-                var lastHotkeyTimerField = typeof(ClickIt).GetField("lastHotkeyReleaseTimer",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (lastHotkeyTimerField?.GetValue(clickItPlugin) is Stopwatch hotkeyTimer)
-                {
-                    _deferredTextQueue.Enqueue($"Hotkey Release Timer: {hotkeyTimer.ElapsedMilliseconds} ms", new Vector2(xPos, yPos), Color.White, 16);
-                    yPos += lineHeight;
-                }
-
-                _deferredTextQueue.Enqueue($"Input State Unavailable", new Vector2(xPos, yPos), Color.Gray, 16);
-                yPos += lineHeight;
-            }
 
             return yPos;
         }
@@ -461,84 +436,92 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            // FPS Display
-            double fps = performanceMonitor.CurrentFPS;
-            Color fpsColor = fps >= 144 ? Color.LawnGreen : (fps >= 60 ? Color.Yellow : Color.Red);
+            yPos = RenderFps(xPos, yPos, lineHeight, performanceMonitor.CurrentFPS);
+            yPos = RenderMemory(xPos, yPos, lineHeight);
+            yPos = RenderRenderTime(xPos, yPos, lineHeight, performanceMonitor);
+            yPos = RenderCoroutineTimings(xPos, yPos, lineHeight, performanceMonitor);
+            yPos = RenderClickBreakdown(xPos, yPos, lineHeight, performanceMonitor);
+
+            return yPos;
+        }
+
+        private int RenderFps(int xPos, int yPos, int lineHeight, double fps)
+        {
+            Color fpsColor = fps >= FPS_HIGH_THRESHOLD ? Color.LawnGreen : (fps >= FPS_MEDIUM_THRESHOLD ? Color.Yellow : Color.Red);
             _deferredTextQueue.Enqueue($"FPS: {fps:F1}", new Vector2(xPos, yPos), fpsColor, 16);
-            yPos += lineHeight;
+            return yPos + lineHeight;
+        }
 
-            // Render time
-            var renderTimings = performanceMonitor.RenderTimings;
-            if (renderTimings != null && renderTimings.Count > 0)
-            {
-                // Create snapshot to avoid enumeration modification errors
-                var renderTimingsSnapshot = renderTimings.ToArray();
-                long lastRenderTime = renderTimingsSnapshot[renderTimingsSnapshot.Length - 1];
-                double avgRenderTime = renderTimingsSnapshot.Average();
-                double maxRenderTime = renderTimingsSnapshot.Max();
-
-                Color renderColor;
-                if (avgRenderTime <= 6.94)
-                    renderColor = Color.LawnGreen;
-                else if (avgRenderTime <= 16.67)
-                    renderColor = Color.Yellow;
-                else
-                    renderColor = Color.Red;
-
-                _deferredTextQueue.Enqueue($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
-                yPos += lineHeight;
-            }
-
+        private int RenderMemory(int xPos, int yPos, int lineHeight)
+        {
             var process = Process.GetCurrentProcess();
             long memoryUsage = process.WorkingSet64 / 1024 / 1024;
-            Color memoryColor = Color.Yellow;
-            _deferredTextQueue.Enqueue($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), memoryColor, 16);
-            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), Color.Yellow, 16);
+            return yPos + lineHeight;
+        }
 
-            // Display coroutine timing averages
-            double altarCurrent = performanceMonitor.GetLastTiming("altar");
-            double altarAvg = performanceMonitor.GetAverageTiming("altar");
-            double altarMax = performanceMonitor.GetMaxTiming("altar");
-            Color altarColor = altarCurrent >= 10 ? Color.Red : (altarCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
-            _deferredTextQueue.Enqueue($"Altar Coroutine: {altarCurrent:F0} ms (avg: {altarAvg:F1}, max: {altarMax:F0})", new Vector2(xPos, yPos), altarColor, 16);
-            yPos += lineHeight;
+        private int RenderRenderTime(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
+        {
+            var renderTimings = performanceMonitor.RenderTimings;
+            if (renderTimings == null || renderTimings.Count == 0)
+                return yPos;
 
-            double clickCurrent = performanceMonitor.GetLastTiming("click");
-            double clickAvg = performanceMonitor.GetAverageTiming("click");
-            double clickMax = performanceMonitor.GetMaxTiming("click");
-            double clickTarget = performanceMonitor.GetClickTargetInterval();
-            double clickYellowThreshold = clickTarget * 0.75; // Yellow when within 25% of target (75% of target)
-            double clickRedThreshold = clickTarget; // Above target
-            Color clickColor = clickCurrent >= clickRedThreshold ? Color.Red : (clickCurrent >= clickYellowThreshold ? Color.Yellow : Color.LawnGreen);
-            _deferredTextQueue.Enqueue($"Click Coroutine: {clickCurrent:F0} ms (avg: {clickAvg:F1}, max: {clickMax:F0})", new Vector2(xPos, yPos), clickColor, 16);
-            yPos += lineHeight;
+            var renderTimingsSnapshot = renderTimings.ToArray();
+            long lastRenderTime = renderTimingsSnapshot[^1];
+            double avgRenderTime = renderTimingsSnapshot.Average();
+            double maxRenderTime = renderTimingsSnapshot.Max();
 
-            double delveFlareCurrent = performanceMonitor.GetLastTiming("delveFlare");
-            double delveFlareAvg = performanceMonitor.GetAverageTiming("delveFlare");
-            double delveFlareMax = performanceMonitor.GetMaxTiming("delveFlare");
-            Color delveFlareColor = delveFlareCurrent >= 10 ? Color.Red : (delveFlareCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
-            _deferredTextQueue.Enqueue($"Delve Flare Coroutine: {delveFlareCurrent:F0} ms (avg: {delveFlareAvg:F1}, max: {delveFlareMax:F0})", new Vector2(xPos, yPos), delveFlareColor, 16);
-            yPos += lineHeight;
+            Color renderColor = avgRenderTime <= RENDER_TIME_LOW_THRESHOLD ? Color.LawnGreen :
+                               (avgRenderTime <= RENDER_TIME_MEDIUM_THRESHOLD ? Color.Yellow : Color.Red);
 
-            double shrineCurrent = performanceMonitor.GetLastTiming("shrine");
-            double shrineAvg = performanceMonitor.GetAverageTiming("shrine");
-            double shrineMax = performanceMonitor.GetMaxTiming("shrine");
-            Color shrineColor = shrineCurrent >= 10 ? Color.Red : (shrineCurrent >= 5 ? Color.Yellow : Color.LawnGreen);
-            _deferredTextQueue.Enqueue($"Shrine Coroutine: {shrineCurrent:F0} ms (avg: {shrineAvg:F1}, max: {shrineMax:F0})", new Vector2(xPos, yPos), shrineColor, 16);
-            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
+            return yPos + lineHeight;
+        }
 
-            double clickIntervalAvg = performanceMonitor.GetAverageClickInterval();
+        private int RenderCoroutineTimings(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
+        {
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "altar", "Altar Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "click", "Click Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "delveFlare", "Delve Flare Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "shrine", "Shrine Coroutine");
+            return yPos;
+        }
+
+        private int RenderCoroutineTiming(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor, string timingType, string label)
+        {
+            double current = performanceMonitor.GetLastTiming(timingType);
+            double avg = performanceMonitor.GetAverageTiming(timingType);
+            double max = performanceMonitor.GetMaxTiming(timingType);
+            Color color = current >= COROUTINE_HIGH_THRESHOLD ? Color.Red :
+                         (current >= COROUTINE_MEDIUM_THRESHOLD ? Color.Yellow : Color.LawnGreen);
+            _deferredTextQueue.Enqueue($"{label}: {current:F0} ms (avg: {avg:F1}, max: {max:F0})", new Vector2(xPos, yPos), color, 16);
+            return yPos + lineHeight;
+        }
+
+        private int RenderClickBreakdown(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
+        {
             double avgClickTime = performanceMonitor.GetAverageTiming("click");
-            double actualTarget = clickTarget - avgClickTime;
-            Color intervalColor;
-            double deviationPercent = Math.Abs(clickIntervalAvg - actualTarget) / Math.Max(actualTarget, 1);
-            if (deviationPercent <= 0.15)
-                intervalColor = Color.LawnGreen;  // Within 15% of target
-            else if (deviationPercent <= 0.30)
-                intervalColor = Color.Yellow;     // 15-30% deviation
-            else
-                intervalColor = Color.Red;        // More than 30% deviation
-            _deferredTextQueue.Enqueue($"Click Interval: {clickIntervalAvg:F0} ms (target: {actualTarget:F0})", new Vector2(xPos, yPos), intervalColor, 16);
+            double clickTarget = performanceMonitor.GetClickTargetInterval();
+            double effectiveDelay = clickTarget - avgClickTime;
+            double expectedTotal = effectiveDelay + avgClickTime;
+            double targetDeviation = (expectedTotal - clickTarget) / clickTarget;
+            string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM ? "meeting target" : "not meeting target";
+            Color targetLineColor = targetDeviation <= TARGET_DEVIATION_LOW ? Color.LawnGreen :
+                                  (targetDeviation <= TARGET_DEVIATION_MEDIUM ? Color.Yellow : Color.Red);
+
+            string delayStr = $"{effectiveDelay:F0}";
+            string procStr = $"{avgClickTime:F0}";
+            string targetStr = $"{expectedTotal:F0}";
+            string settingStr = $"{clickTarget:F0}";
+            int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
+
+            _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
             yPos += lineHeight;
 
             return yPos;

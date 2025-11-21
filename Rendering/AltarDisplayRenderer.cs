@@ -27,14 +27,16 @@ namespace ClickIt.Rendering
         private readonly WeightCalculator _weightCalculator;
         private readonly Action<string, int> _logMessage;
         private readonly DeferredTextQueue _deferredTextQueue;
+        private readonly DeferredFrameQueue _deferredFrameQueue;
 
-        public AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, DeferredTextQueue deferredTextQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
+        public AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, DeferredTextQueue deferredTextQueue, DeferredFrameQueue deferredFrameQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
         {
             _graphics = graphics;
             _settings = settings;
             _gameController = gameController;
             _weightCalculator = weightCalculator;
             _deferredTextQueue = deferredTextQueue ?? throw new ArgumentNullException(nameof(deferredTextQueue));
+            _deferredFrameQueue = deferredFrameQueue ?? throw new ArgumentNullException(nameof(deferredFrameQueue));
             _altarService = altarService;
             _logMessage = logMessage ?? ((msg, frame) => { });
         }
@@ -114,8 +116,8 @@ namespace ClickIt.Rendering
         private Element? HandleBothDangerousCase(PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
         {
             _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.", textPos, Color.Orange, 30);
-            _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 2);
-            _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
+            _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
+            _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
             _logMessage?.Invoke("[EvaluateAltarWeights] BOTH DANGEROUS CASE - both sides >= threshold", 10);
             // Validate so diagnostics are logged if buttons are missing/invalid
             _ = GetValidatedButtonElement(altar.TopButton, "TopButton");
@@ -128,15 +130,15 @@ namespace ClickIt.Rendering
             if (topChosen)
             {
                 _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+", textPos, Color.LawnGreen, 30);
-                _graphics?.DrawFrame(topModsRect, Color.LawnGreen, 3);
-                _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 3);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
                 return GetValidatedButtonElement(altar.TopButton, "TopButton");
             }
             else
             {
                 _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+", textPos, Color.LawnGreen, 30);
-                _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 2);
-                _graphics?.DrawFrame(bottomModsRect, Color.LawnGreen, 3);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 3);
                 return GetValidatedButtonElement(altar.BottomButton, "BottomButton");
             }
         }
@@ -146,15 +148,15 @@ namespace ClickIt.Rendering
             if (topHasDanger)
             {
                 _deferredTextQueue.Enqueue("Weighting overridden\n\nBottom chosen due to top downside 90+", textPos, Color.LawnGreen, 30);
-                _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 3);
-                _graphics?.DrawFrame(bottomModsRect, Color.LawnGreen, 2);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
                 return GetValidatedButtonElement(altar.BottomButton, "BottomButton");
             }
             else
             {
                 _deferredTextQueue.Enqueue("Weighting overridden\n\nTop chosen due to bottom downside 90+", textPos, Color.LawnGreen, 30);
-                _graphics?.DrawFrame(topModsRect, Color.LawnGreen, 2);
-                _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 3);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
                 return GetValidatedButtonElement(altar.TopButton, "TopButton");
             }
         }
@@ -163,14 +165,14 @@ namespace ClickIt.Rendering
         {
             if (weights.TopWeight > weights.BottomWeight)
             {
-                _graphics?.DrawFrame(topModsRect, Color.LawnGreen, 3);
-                _graphics?.DrawFrame(bottomModsRect, Color.OrangeRed, 2);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 3);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
                 return GetValidatedButtonElement(altar.TopButton, "TopButton") ?? altar.TopButton?.Element;
             }
             if (weights.BottomWeight > weights.TopWeight)
             {
-                _graphics?.DrawFrame(topModsRect, Color.OrangeRed, 2);
-                _graphics?.DrawFrame(bottomModsRect, Color.LawnGreen, 3);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 3);
                 return GetValidatedButtonElement(altar.BottomButton, "BottomButton") ?? altar.BottomButton?.Element;
             }
 
@@ -277,17 +279,15 @@ namespace ClickIt.Rendering
         }
         private void DrawRedFrames(RectangleF topModsRect, RectangleF bottomModsRect)
         {
-            if (_graphics == null) return;
             if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect)) return;
-            _graphics.DrawFrame(topModsRect, Color.Red, 2);
-            _graphics.DrawFrame(bottomModsRect, Color.Red, 2);
+            _deferredFrameQueue.Enqueue(topModsRect, Color.Red, 2);
+            _deferredFrameQueue.Enqueue(bottomModsRect, Color.Red, 2);
         }
         private void DrawYellowFrames(RectangleF topModsRect, RectangleF bottomModsRect)
         {
-            if (_graphics == null) return;
             if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect)) return;
-            _graphics.DrawFrame(topModsRect, Color.Yellow, 2);
-            _graphics.DrawFrame(bottomModsRect, Color.Yellow, 2);
+            _deferredFrameQueue.Enqueue(topModsRect, Color.Yellow, 2);
+            _deferredFrameQueue.Enqueue(bottomModsRect, Color.Yellow, 2);
         }
         public void DrawWeightTexts(AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
