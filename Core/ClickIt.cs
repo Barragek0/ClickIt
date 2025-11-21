@@ -239,84 +239,43 @@ namespace ClickIt
             // Check if hotkey is currently held
             bool hotkeyHeld = Input.GetKeyState(Settings.ClickLabelKey.Value);
 
+            // Determine display state and messages
+            SharpDX.Color textColor;
+            string line1 = "", line2 = "", line3 = "";
+
             if (isRitualActive)
             {
-                // Ritual active: show red blocking message
-                string lazyModeText = "Lazy Mode";
-                State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
-
-                float lineHeight = 36 * 1.2f;
-                float secondLineY = topY + lineHeight;
-                string firstExplanation = "Ritual in progress.";
-                State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
-
-                float thirdLineY = secondLineY + lineHeight;
-                string secondExplanation = "Clicking disabled.";
-                State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+                textColor = SharpDX.Color.Red;
+                line1 = "Ritual in progress.";
+                line2 = "Clicking disabled.";
             }
             else if (hasRestrictedItems)
             {
                 if (hotkeyHeld)
                 {
-                    // Hotkey held: show green override message
-                    string lazyModeText = "Lazy Mode";
-                    State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.LawnGreen, 36, FontAlign.Center);
-
-                    float lineHeight = 36 * 1.2f;
-                    float secondLineY = topY + lineHeight;
-                    string firstExplanation = "Blocking overridden by hotkey.";
-                    State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.LawnGreen, 24, FontAlign.Center);
-
-                    float thirdLineY = secondLineY + lineHeight;
-                    string secondExplanation = "Clicking restricted items.";
-                    State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.LawnGreen, 24, FontAlign.Center);
+                    textColor = SharpDX.Color.LawnGreen;
+                    line1 = "Blocking overridden by hotkey.";
+                    line2 = "Clicking restricted items.";
                 }
                 else
                 {
-                    // Hotkey not held: show red blocking message
-                    string lazyModeText = "Lazy Mode";
-                    State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
-
-                    float lineHeight = 36 * 1.2f;
-                    float secondLineY = topY + lineHeight;
-                    string firstExplanation = "Strongbox, Chest or Tree detected.";
-                    State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
-
-                    float thirdLineY = secondLineY + lineHeight;
+                    textColor = SharpDX.Color.Red;
+                    line1 = "Strongbox, Chest or Tree detected.";
                     string hotkeyName = Settings.ClickLabelKey.Value.ToString();
-                    string secondExplanation = $"Hold {hotkeyName} to click them.";
-                    State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+                    line2 = $"Hold {hotkeyName} to click them.";
                 }
             }
             else if (!hasRestrictedItems && hotkeyHeld)
             {
-                // Lazy mode active but hotkey held, making it inactive
-                string lazyModeText = "Lazy Mode";
-                State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
-
-                float lineHeight = 36 * 1.2f;
-                float secondLineY = topY + lineHeight;
-                string firstExplanation = "Hotkey held - clicking paused.";
-                State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
-
-                float thirdLineY = secondLineY + lineHeight;
-                string secondExplanation = "Release to resume lazy clicking.";
-                State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+                textColor = SharpDX.Color.Red;
+                line1 = "Hotkey held - clicking paused.";
+                line2 = "Release to resume lazy clicking.";
             }
             else if (skillButtonHeld)
             {
-                string lazyModeText = "Lazy Mode";
-                State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
-
-                float lineHeight = 36 * 1.2f;
-                float secondLineY = topY + lineHeight;
-                string buttonDescription = Settings.LeftHanded.Value ?
-                    "Left mouse button held." : "Right mouse button held.";
-                State.DeferredTextQueue.Enqueue(buttonDescription, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
-
-                float thirdLineY = secondLineY + lineHeight;
-                string secondExplanation = "Release to resume lazy clicking.";
-                State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+                textColor = SharpDX.Color.Red;
+                line1 = Settings.LeftHanded.Value ? "Left mouse button held." : "Right mouse button held.";
+                line2 = "Release to resume lazy clicking.";
             }
             else
             {
@@ -325,45 +284,69 @@ namespace ClickIt
 
                 if (!canActuallyClick)
                 {
-                    // CanClick returns false: show red blocking message
-                    string lazyModeText = "Lazy Mode";
-                    State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
-
-                    float lineHeight = 36 * 1.2f;
-                    float secondLineY = topY + lineHeight;
-
-                    // Determine the reason CanClick is false
-                    string reason = "Clicking disabled.";
-                    if (GameController?.Window?.IsForeground() == false)
-                    {
-                        reason = "PoE not in focus.";
-                    }
-                    else if (Settings.BlockOnOpenLeftRightPanel.Value && (GameController?.IngameState?.IngameUi?.OpenLeftPanel?.Address != 0 || GameController?.IngameState?.IngameUi?.OpenRightPanel?.Address != 0))
-                    {
-                        reason = "Panel is open.";
-                    }
-                    else if (GameController?.Area?.CurrentArea?.IsTown == true || GameController?.Area?.CurrentArea?.IsHideout == true)
-                    {
-                        reason = "In town/hideout.";
-                    }
-                    else if (GameController?.IngameState?.IngameUi?.ChatTitlePanel?.IsVisible == true)
-                    {
-                        reason = "Chat is open.";
-                    }
-                    else if (GameController?.Game?.IsEscapeState == true)
-                    {
-                        reason = "In escape state.";
-                    }
-
-                    State.DeferredTextQueue.Enqueue(reason, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+                    textColor = SharpDX.Color.Red;
+                    line1 = GetCanClickFailureReason();
                 }
                 else
                 {
-                    // Green text for "Lazy Mode" centered at size 36
-                    string text = "Lazy Mode";
-                    State.DeferredTextQueue.Enqueue(text, new Vector2(centerX, topY), SharpDX.Color.LawnGreen, 36, FontAlign.Center);
+                    textColor = SharpDX.Color.LawnGreen;
+                    // No additional lines for green state
                 }
             }
+
+            // Render the lazy mode indicator
+            RenderLazyModeText(centerX, topY, textColor, line1, line2, line3);
+        }
+
+        private void RenderLazyModeText(float centerX, float topY, SharpDX.Color color, string line1, string line2, string line3)
+        {
+            const string LAZY_MODE_TEXT = "Lazy Mode";
+            State.DeferredTextQueue?.Enqueue(LAZY_MODE_TEXT, new Vector2(centerX, topY), color, 36, FontAlign.Center);
+
+            if (string.IsNullOrEmpty(line1)) return;
+
+            float lineHeight = 36 * 1.2f;
+            float secondLineY = topY + lineHeight;
+            State.DeferredTextQueue?.Enqueue(line1, new Vector2(centerX, secondLineY), color, 24, FontAlign.Center);
+
+            if (string.IsNullOrEmpty(line2)) return;
+
+            float thirdLineY = secondLineY + lineHeight;
+            State.DeferredTextQueue?.Enqueue(line2, new Vector2(centerX, thirdLineY), color, 24, FontAlign.Center);
+
+            if (string.IsNullOrEmpty(line3)) return;
+
+            float fourthLineY = thirdLineY + lineHeight;
+            State.DeferredTextQueue?.Enqueue(line3, new Vector2(centerX, fourthLineY), color, 24, FontAlign.Center);
+        }
+
+        private string GetCanClickFailureReason()
+        {
+            if (GameController?.Window?.IsForeground() == false)
+                return "PoE not in focus.";
+
+            if (Settings.BlockOnOpenLeftRightPanel.Value &&
+                (GameController?.IngameState?.IngameUi?.OpenLeftPanel?.Address != 0 ||
+                 GameController?.IngameState?.IngameUi?.OpenRightPanel?.Address != 0))
+                return "Panel is open.";
+
+            if (GameController?.Area?.CurrentArea?.IsTown == true ||
+                GameController?.Area?.CurrentArea?.IsHideout == true)
+                return "In town/hideout.";
+
+            if (GameController?.IngameState?.IngameUi?.ChatTitlePanel?.IsVisible == true)
+                return "Chat is open.";
+
+            if (GameController?.IngameState?.IngameUi?.AtlasPanel?.IsVisible == true)
+                return "Atlas panel is open.";
+
+            if (GameController?.IngameState?.IngameUi?.AtlasTreePanel?.IsVisible == true)
+                return "Atlas tree panel is open.";
+
+            if (GameController?.Game?.IsEscapeState == true)
+                return "In escape state.";
+
+            return "Clicking disabled.";
         }
         public void LogMessage(string message, int frame = 5)
         {
