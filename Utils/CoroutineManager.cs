@@ -57,6 +57,24 @@ namespace ClickIt.Utils
             }
         }
 
+        /// <summary>
+        /// Check if a ritual is currently active by looking for RitualBlocker entities
+        /// </summary>
+        private bool IsRitualActive()
+        {
+            if (_gameController?.EntityListWrapper?.OnlyValidEntities == null)
+                return false;
+
+            foreach (var entity in _gameController.EntityListWrapper.OnlyValidEntities)
+            {
+                if (entity?.Path?.Contains("RitualBlocker") == true)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
         {
             _state.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, "ClickIt.ScanForAltarsLogic", false);
@@ -135,9 +153,11 @@ namespace ClickIt.Utils
             if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming("click");
 
-            // Determine if lazy mode is active (enabled and no restricted items on screen)
+            // Determine if lazy mode is active (enabled and no restricted items on screen and no ritual active)
+            bool isRitualActive = IsRitualActive();
             bool lazyModeActive = _settings.LazyMode.Value &&
-                !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false);
+                !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false) &&
+                !isRitualActive;
 
             // Check if there are lazy mode restricted items on screen
             bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
@@ -146,7 +166,7 @@ namespace ClickIt.Utils
             double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
             double baseTarget = frequencyTarget - avgClickTime;
             double targetTime = baseTarget + _state.Random.Next(0, 6);
-            if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen) != true)
+            if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive) != true)
             {
                 _state.WorkFinished = true;
                 yield break;
@@ -203,6 +223,7 @@ namespace ClickIt.Utils
             double targetTime = baseTarget + _state.Random.Next(0, 6);
 
             // Check for lazy mode mouse button blocking (shrines should be blocked when skill mouse button is held in lazy mode)
+            bool isRitualActive = IsRitualActive();
             if (_settings.LazyMode.Value)
             {
                 bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
@@ -218,7 +239,7 @@ namespace ClickIt.Utils
                 }
             }
 
-            if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController, false))
+            if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController, false, isRitualActive))
             {
                 yield break;
             }

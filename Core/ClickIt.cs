@@ -199,11 +199,27 @@ namespace ClickIt
         {
             State.AltarDisplayRenderer?.RenderAltarComponents();
         }
+        /// <summary>
+        /// Check if a ritual is currently active by looking for RitualBlocker entities
+        /// </summary>
+        private bool IsRitualActive()
+        {
+            if (GameController?.EntityListWrapper?.OnlyValidEntities == null)
+                return false;
+
+            foreach (var entity in GameController.EntityListWrapper.OnlyValidEntities)
+            {
+                if (entity?.Path?.Contains("RitualBlocker") == true)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void RenderLazyModeIndicator()
         {
             if (State.DeferredTextQueue == null) return;
-
-            // Get screen center position
             var windowRect = GameController.Window.GetWindowRectangleTimeCache;
             float centerX = windowRect.Width / 2f;
             float topY = 60f; // Small margin from top
@@ -211,6 +227,9 @@ namespace ClickIt
             // Check if lazy mode is restricted
             var allLabels = State.CachedLabels?.Value ?? new List<LabelOnGround>();
             bool hasRestrictedItems = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
+
+            // Check if a ritual is active
+            bool isRitualActive = IsRitualActive();
 
             // Check if primary mouse button is held (prevents lazy clicking)
             bool leftButtonHeld = Input.GetKeyState(Keys.LButton);
@@ -220,7 +239,22 @@ namespace ClickIt
             // Check if hotkey is currently held
             bool hotkeyHeld = Input.GetKeyState(Settings.ClickLabelKey.Value);
 
-            if (hasRestrictedItems)
+            if (isRitualActive)
+            {
+                // Ritual active: show red blocking message
+                string lazyModeText = "Lazy Mode";
+                State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
+
+                float lineHeight = 36 * 1.2f;
+                float secondLineY = topY + lineHeight;
+                string firstExplanation = "Ritual in progress.";
+                State.DeferredTextQueue.Enqueue(firstExplanation, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+
+                float thirdLineY = secondLineY + lineHeight;
+                string secondExplanation = "Clicking disabled.";
+                State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
+            }
+            else if (hasRestrictedItems)
             {
                 if (hotkeyHeld)
                 {

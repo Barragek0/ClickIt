@@ -74,7 +74,7 @@ namespace ClickIt.Utils
             }
             return false;
         }
-        public bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen = false)
+        public bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen = false, bool isRitualActive = false)
         {
             if (gameController == null) return false;
             bool keyState = Input.GetKeyState(_settings.ClickLabelKey.Value);
@@ -90,7 +90,8 @@ namespace ClickIt.Utils
                 IsPOEActive(gameController) &&
                 (_settings.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
                 !IsInTownOrHideout(gameController) &&
-                !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
+                !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible &&
+                !isRitualActive;
         }
         private static bool IsPOEActive(GameController gameController)
         {
