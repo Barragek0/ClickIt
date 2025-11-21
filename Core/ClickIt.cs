@@ -322,7 +322,7 @@ namespace ClickIt
             {
                 // Check if CanClick would actually allow clicking
                 bool canActuallyClick = State.InputHandler?.CanClick(GameController, false, isRitualActive) ?? false;
-                
+
                 if (!canActuallyClick)
                 {
                     // CanClick returns false: show red blocking message
@@ -331,7 +331,7 @@ namespace ClickIt
 
                     float lineHeight = 36 * 1.2f;
                     float secondLineY = topY + lineHeight;
-                    
+
                     // Determine the reason CanClick is false
                     string reason = "Clicking disabled.";
                     if (GameController?.Window?.IsForeground() == false)
@@ -354,7 +354,7 @@ namespace ClickIt
                     {
                         reason = "In escape state.";
                     }
-                    
+
                     State.DeferredTextQueue.Enqueue(reason, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
                 }
                 else
