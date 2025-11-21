@@ -139,11 +139,14 @@ namespace ClickIt.Utils
             bool lazyModeActive = _settings.LazyMode.Value &&
                 !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false);
 
+            // Check if there are lazy mode restricted items on screen
+            bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+
             // Use lazy mode click limiting when lazy mode is active, otherwise use normal frequency target
             double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
             double baseTarget = frequencyTarget - avgClickTime;
             double targetTime = baseTarget + _state.Random.Next(0, 6);
-            if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController) != true)
+            if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen) != true)
             {
                 _state.WorkFinished = true;
                 yield break;
@@ -198,7 +201,7 @@ namespace ClickIt.Utils
             double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming("shrine");
             double baseTarget = _settings.ClickFrequencyTarget.Value - avgShrineTime;
             double targetTime = baseTarget + _state.Random.Next(0, 6);
-            if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController))
+            if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController, false))
             {
                 yield break;
             }

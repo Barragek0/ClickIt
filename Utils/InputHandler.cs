@@ -74,17 +74,21 @@ namespace ClickIt.Utils
             }
             return false;
         }
-        public bool CanClick(GameController gameController)
+        public bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen = false)
         {
             if (gameController == null) return false;
             bool keyState = Input.GetKeyState(_settings.ClickLabelKey.Value);
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+
+            // Only invert key state if lazy mode is enabled AND currently active (no restricted items on screen)
+            // This allows the hotkey to override lazy mode restrictions when held
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value && !hasLazyModeRestrictedItemsOnScreen)
             {
                 keyState = !keyState;
             }
+
             return keyState &&
                 IsPOEActive(gameController) &&
-                (!_settings.BlockOnOpenLeftRightPanel!.Value || !IsPanelOpen(gameController)) &&
+                (_settings.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
                 !IsInTownOrHideout(gameController) &&
                 !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible;
         }
@@ -135,7 +139,7 @@ namespace ClickIt.Utils
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor after move: {after}", 5);
 
             // Small delay to ensure cursor movement has taken effect before click
-            Thread.Sleep(15);
+            Thread.Sleep(5);
 
             sw.Restart();
             if (_settings.LeftHanded.Value)
@@ -150,6 +154,8 @@ namespace ClickIt.Utils
             }
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
+
+            Thread.Sleep(5);
 
             RestoreCursorIfLazyMode(before);
 
@@ -200,7 +206,7 @@ namespace ClickIt.Utils
                     var beforeVec = new Vector2(before.X, before.Y);
                     Input.SetCursorPos(beforeVec);
                     // Small delay to let the OS update cursor position
-                    Thread.Sleep(8);
+                    Thread.Sleep(5);
                     _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);
                 }
                 catch (Exception ex)

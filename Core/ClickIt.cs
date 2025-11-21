@@ -212,10 +212,10 @@ namespace ClickIt
             var allLabels = State.CachedLabels?.Value ?? new List<LabelOnGround>();
             bool hasRestrictedItems = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
 
-            // Check if any mouse button is held (prevents lazy clicking)
+            // Check if primary mouse button is held (prevents lazy clicking)
             bool leftButtonHeld = Input.GetKeyState(Keys.LButton);
             bool rightButtonHeld = Input.GetKeyState(Keys.RButton);
-            bool mouseButtonHeld = leftButtonHeld || rightButtonHeld;
+            bool skillButtonHeld = Settings.LeftHanded.Value ? leftButtonHeld : rightButtonHeld;
 
             // Check if hotkey is currently held
             bool hotkeyHeld = Input.GetKeyState(Settings.ClickLabelKey.Value);
@@ -269,26 +269,15 @@ namespace ClickIt
                 string secondExplanation = "Release to resume lazy clicking.";
                 State.DeferredTextQueue.Enqueue(secondExplanation, new Vector2(centerX, thirdLineY), SharpDX.Color.Red, 24, FontAlign.Center);
             }
-            else if (mouseButtonHeld)
+            else if (skillButtonHeld)
             {
                 string lazyModeText = "Lazy Mode";
                 State.DeferredTextQueue.Enqueue(lazyModeText, new Vector2(centerX, topY), SharpDX.Color.Red, 36, FontAlign.Center);
 
                 float lineHeight = 36 * 1.2f;
                 float secondLineY = topY + lineHeight;
-                string buttonDescription;
-                if (leftButtonHeld && rightButtonHeld)
-                {
-                    buttonDescription = "Left and right mouse buttons held.";
-                }
-                else if (leftButtonHeld)
-                {
-                    buttonDescription = "Left mouse button held.";
-                }
-                else
-                {
-                    buttonDescription = "Right mouse button held.";
-                }
+                string buttonDescription = Settings.LeftHanded.Value ?
+                    "Left mouse button held." : "Right mouse button held.";
                 State.DeferredTextQueue.Enqueue(buttonDescription, new Vector2(centerX, secondLineY), SharpDX.Color.Red, 24, FontAlign.Center);
 
                 float thirdLineY = secondLineY + lineHeight;
@@ -375,10 +364,13 @@ namespace ClickIt
                     bool inverted = !actual;
                     if (inverted)
                     {
-                        // Prevent lazy mode clicking if any mouse button is held
-                        if (Input.GetKeyState(Keys.LButton) || Input.GetKeyState(Keys.RButton))
+                        // Prevent lazy mode clicking if the primary mouse button is held
+                        // Left-handed users use right click as primary, right-handed users use left click
+                        bool primaryButtonHeld = Settings.LeftHanded.Value ?
+                            Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
+                        if (primaryButtonHeld)
                         {
-                            return false; // Don't click while mouse button is held
+                            return false; // Don't click while primary mouse button is held
                         }
                     }
                     return inverted;
