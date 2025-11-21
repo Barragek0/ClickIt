@@ -16,6 +16,7 @@ namespace ClickIt.Tests
 
         // Basic UI/hotkey settings used by integration scenarios
         public MockKeys ClickLabelKey { get; set; } = MockKeys.F1;
+        public MockKeys LazyModeDisableKey { get; set; } = MockKeys.F2;
         public bool DebugMode { get; set; } = false;
 
         // Update handler / persistence hooks used in integration tests

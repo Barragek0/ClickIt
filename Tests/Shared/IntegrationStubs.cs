@@ -33,6 +33,7 @@ namespace ClickIt.Tests
             _stored.CorruptAllEssences = settings.CorruptAllEssences;
             _stored.DebugMode = settings.DebugMode;
             _stored.ClickLabelKey = settings.ClickLabelKey;
+            _stored.LazyModeDisableKey = settings.LazyModeDisableKey;
         }
 
         public void Load(MockClickItSettings settings)
@@ -42,6 +43,7 @@ namespace ClickIt.Tests
             settings.CorruptAllEssences = _stored.CorruptAllEssences;
             settings.DebugMode = _stored.DebugMode;
             settings.ClickLabelKey = _stored.ClickLabelKey;
+            settings.LazyModeDisableKey = _stored.LazyModeDisableKey;
             settings.ModWeights.Clear();
             foreach (var kv in _stored.ModWeights)
                 settings.ModWeights[kv.Key] = kv.Value;

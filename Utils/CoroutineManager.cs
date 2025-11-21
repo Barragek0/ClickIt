@@ -358,11 +358,15 @@ namespace ClickIt.Utils
                         if (healthPercent <= _settings.DelveFlareHealthThreshold.Value &&
                             energyShieldPercent <= _settings.DelveFlareEnergyShieldThreshold.Value)
                         {
-                            Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
+                            // Check if clicking is allowed before using flare
+                            if (_state.InputHandler?.CanClick(_gameController, false, IsRitualActive()) == true)
+                            {
+                                Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
 
-                            _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
+                                _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
 
-                            yield return new WaitTime(1000);
+                                yield return new WaitTime(1000);
+                            }
                         }
                     }
                 }

@@ -93,6 +93,8 @@ namespace ClickIt
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
         [Menu("Lazy Mode Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 20, 3000)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(150, 80, 1000);
+        [Menu("Lazy Mode Disable Hotkey", "When Lazy Mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.\nThe main hotkey will still work for manual clicking and other functions.", 21, 3000)]
+        public HotkeyNode LazyModeDisableKey { get; set; } = new HotkeyNode(Keys.F2);
         // ----- Mechanics -----
         [Menu("Mechanics", 3100)]
         public EmptyNode Mechanics { get; set; } = new EmptyNode();

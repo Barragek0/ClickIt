@@ -239,6 +239,9 @@ namespace ClickIt
             // Check if hotkey is currently held
             bool hotkeyHeld = Input.GetKeyState(Settings.ClickLabelKey.Value);
 
+            // Check if lazy mode disable key is currently held
+            bool lazyModeDisableHeld = Input.GetKeyState(Settings.LazyModeDisableKey.Value);
+
             // Determine display state and messages
             SharpDX.Color textColor;
             string line1 = "", line2 = "", line3 = "";
@@ -265,10 +268,10 @@ namespace ClickIt
                     line2 = $"Hold {hotkeyName} to click them.";
                 }
             }
-            else if (!hasRestrictedItems && hotkeyHeld)
+            else if (!hasRestrictedItems && lazyModeDisableHeld)
             {
                 textColor = SharpDX.Color.Red;
-                line1 = "Hotkey held - clicking paused.";
+                line1 = "Lazy mode disabled by hotkey.";
                 line2 = "Release to resume lazy clicking.";
             }
             else if (skillButtonHeld)
@@ -376,6 +379,12 @@ namespace ClickIt
             if (GameController?.IngameState?.IngameUi?.ResurrectPanel?.IsVisible == true)
                 return "Resurrect panel is open.";
 
+            if (GameController?.IngameState?.IngameUi?.NpcDialog?.IsVisible == true)
+                return "NPC dialog is open.";
+
+            if (GameController?.IngameState?.IngameUi?.KalandraTabletWindow?.IsVisible == true)
+                return "Kalandra tablet window is open.";
+
             if (GameController?.Game?.IsEscapeState == true)
                 return "In escape state.";
 
@@ -450,7 +459,15 @@ namespace ClickIt
                 }
                 else
                 {
-                    // No restricted items, invert hotkey: released -> active
+                    // No restricted items, check if lazy mode disable key is held
+                    bool lazyModeDisableHeld = Input.GetKeyState(Settings.LazyModeDisableKey.Value);
+                    if (lazyModeDisableHeld)
+                    {
+                        // Lazy mode disable key is held, don't allow clicking
+                        return false;
+                    }
+
+                    // No restricted items and disable key not held, invert hotkey: released -> active
                     bool inverted = !actual;
                     if (inverted)
                     {

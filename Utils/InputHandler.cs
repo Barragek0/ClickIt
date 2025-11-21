@@ -105,7 +105,9 @@ namespace ClickIt.Utils
                 !gameController.IngameState.IngameUi.SanctumFloorWindow.IsVisible &&
                 !gameController.IngameState.IngameUi.SanctumRewardWindow.IsVisible &&
                 !gameController.IngameState.IngameUi.MicrotransactionShopWindow.IsVisible &&
-                !gameController.IngameState.IngameUi.ResurrectPanel.IsVisible;
+                !gameController.IngameState.IngameUi.ResurrectPanel.IsVisible &&
+                !gameController.IngameState.IngameUi.NpcDialog.IsVisible &&
+                !gameController.IngameState.IngameUi.KalandraTabletWindow.IsVisible;
         }
         private static bool IsPOEActive(GameController gameController)
         {
