@@ -287,6 +287,7 @@ namespace ClickIt.Services
                     RectangleF r = el.GetClientRect();
                     Vector2 clickPos = r.Center + windowTopLeft;
                     inputHandler.PerformClick(clickPos);
+                    performanceMonitor.RecordClickInterval();
                     DebugLog(() => "[ClickAltarElement] Click performed");
                     return true;
                 }
@@ -301,6 +302,7 @@ namespace ClickIt.Services
             RectangleF rect = el.GetClientRect();
             Vector2 pos = rect.Center + windowTopLeft;
             inputHandler.PerformClick(pos);
+            performanceMonitor.RecordClickInterval();
             DebugLog(() => "[ClickAltarElement] Click performed");
             return true;
         }
@@ -309,7 +311,23 @@ namespace ClickIt.Services
         {
             DebugLog(() => "[ProcessRegularClick] Starting process regular click");
 
-            yield return ProcessAltarClicking();
+            // Check if there are clickable altars
+            var altarSnapshot = altarService.GetAltarComponentsReadOnly();
+            bool clickEater = settings.ClickEaterAltars;
+            bool clickExarch = settings.ClickExarchAltars;
+            bool hasClickableAltars = altarSnapshot.Any(altar => ShouldClickAltar(altar, clickEater, clickExarch));
+
+            if (hasClickableAltars)
+            {
+                // If altars are present and clickable, only do altar clicking
+                yield return ProcessAltarClicking();
+                yield break;
+            }
+
+            // No clickable altars, check for shrines
+            // Note: We can't access shrineService here, so this check is done in CoroutineManager
+
+            // No altars, proceed with item clicking
             if (!groundItemsVisible())
             {
                 DebugLog(() => "[ProcessRegularClick] Ground items not visible, breaking");
@@ -408,6 +426,7 @@ namespace ClickIt.Services
                     {
                         inputHandler.PerformClick(corruptionPos.Value);
                     }
+                    performanceMonitor.RecordClickInterval();
                     return true;
                 }
             }
@@ -428,7 +447,7 @@ namespace ClickIt.Services
             {
                 inputHandler.PerformClick(clickPos);
             }
-            
+
             // Record the click interval after the actual click
             // This ensures we measure time between actual clicks, not between hotkey presses
             performanceMonitor.RecordClickInterval();

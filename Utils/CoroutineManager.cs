@@ -108,15 +108,34 @@ namespace ClickIt.Utils
 
         private IEnumerator ClickLabel()
         {
-            if (_settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea((pos) => _pointIsInClickableArea(pos)))
+            // Check for clickable altars first (highest priority)
+            bool hasClickableAltars = false;
+            if (_state.AltarService != null && _state.ClickService != null)
             {
-                yield return new WaitTime(25);
-                yield break;
+                var altarSnapshot = _state.AltarService.GetAltarComponentsReadOnly();
+                if (altarSnapshot.Count > 0)
+                {
+                    bool clickEater = _settings.ClickEaterAltars;
+                    bool clickExarch = _settings.ClickExarchAltars;
+                    hasClickableAltars = altarSnapshot.Any(altar => _state.ClickService.ShouldClickAltar(altar, clickEater, clickExarch));
+                }
             }
 
-            if (_state.PerformanceMonitor == null) yield break;
+            if (!hasClickableAltars)
+            {
+                // No clickable altars, check for shrines
+                if (_settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea((pos) => _pointIsInClickableArea(pos)))
+                {
+                    yield return new WaitTime(25);
+                    yield break;
+                }
+            }
+
+            if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming("click");
-            if (_state.Timer.ElapsedMilliseconds < _settings.ClickFrequencyTarget.Value - avgClickTime + _state.Random.Next(0, 6) || _state.InputHandler?.CanClick(_gameController) != true)
+            double baseTarget = _settings.ClickFrequencyTarget.Value - avgClickTime;
+            double targetTime = baseTarget + _state.Random.Next(0, 6);
+            if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController) != true)
             {
                 _state.WorkFinished = true;
                 yield break;
@@ -169,9 +188,28 @@ namespace ClickIt.Utils
 
             if (_state.PerformanceMonitor == null) yield break;
             double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming("shrine");
-            if (_state.ShrineTimer.ElapsedMilliseconds < _settings.ClickFrequencyTarget.Value - avgShrineTime + _state.Random.Next(0, 6) || !_state.InputHandler.CanClick(_gameController))
+            double baseTarget = _settings.ClickFrequencyTarget.Value - avgShrineTime;
+            double targetTime = baseTarget + _state.Random.Next(0, 6);
+            if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController))
             {
                 yield break;
+            }
+
+            // Prioritize altars over shrines - check if altars are available for clicking
+            if (_state.AltarService != null && _state.ClickService != null)
+            {
+                var altarSnapshot = _state.AltarService.GetAltarComponentsReadOnly();
+                if (altarSnapshot.Count > 0)
+                {
+                    bool clickEater = _settings.ClickEaterAltars;
+                    bool clickExarch = _settings.ClickExarchAltars;
+                    bool hasClickableAltars = altarSnapshot.Any(altar => _state.ClickService.ShouldClickAltar(altar, clickEater, clickExarch));
+                    if (hasClickableAltars)
+                    {
+                        // Altars are available and enabled, skip shrine clicking this iteration
+                        yield break;
+                    }
+                }
             }
 
             var nearestShrine = _state.ShrineService.GetNearestShrineInRange(_settings.ClickDistance.Value, point => _pointIsInClickableArea(point));
@@ -195,6 +233,9 @@ namespace ClickIt.Utils
 
             // Thread-safe clicking via helper that acquires the click element access lock when LockManager enabled
             ExecuteWithElementAccessLock(() => _state.InputHandler?.PerformClick(clickPos));
+
+            // Record the click interval for shrine clicks
+            _state.PerformanceMonitor?.RecordClickInterval();
 
             // Invalidate shrine cache since we clicked one
             _state.ShrineService?.InvalidateCache();

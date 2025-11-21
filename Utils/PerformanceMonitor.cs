@@ -21,9 +21,6 @@ namespace ClickIt.Utils
         private readonly Stopwatch _mainTimer = new Stopwatch();
         private readonly Stopwatch _secondTimer = new Stopwatch();
 
-        // Dedicated click interval timer (resets between clicks)
-        private readonly Stopwatch _clickIntervalTimer = new Stopwatch();
-
         // Coroutine timing
         private readonly Stopwatch _renderTimer = new Stopwatch();
         private readonly Stopwatch _altarCoroutineTimer = new Stopwatch();
@@ -69,6 +66,10 @@ namespace ClickIt.Utils
         private readonly Stopwatch _lastHotkeyReleaseTimer = new Stopwatch();
         private readonly Stopwatch _lastRenderTimer = new Stopwatch();
         private readonly Stopwatch _lastTickTimer = new Stopwatch();
+
+        // Click interval tracking
+        private long _lastClickTime = 0;
+        private int _clickCount = 0;
 
         public double CurrentFPS => _currentFps;
         public Queue<long> RenderTimings => _renderTimings;
@@ -280,14 +281,18 @@ namespace ClickIt.Utils
 
         public void RecordClickInterval()
         {
-            // Use dedicated click interval timer that only runs between clicks
-            if (_clickIntervalTimer.IsRunning)
+            _clickCount++;
+            long currentTime = _mainTimer.ElapsedMilliseconds;
+            if (_lastClickTime != 0 && _clickCount > 3) // Skip the first few clicks to avoid irregular intervals
             {
-                long interval = _clickIntervalTimer.ElapsedMilliseconds;
-                EnqueueTiming(_clickIntervals, interval, 10, _clickIntervalsLock);
+                long interval = currentTime - _lastClickTime;
+                // Only record reasonable intervals (not too large, probably from stale timer state)
+                if (interval > 0 && interval < 10000) // Max 10 seconds to avoid stale data
+                {
+                    EnqueueTiming(_clickIntervals, interval, 10, _clickIntervalsLock);
+                }
             }
-            // Restart the timer for the next interval measurement
-            _clickIntervalTimer.Restart();
+            _lastClickTime = currentTime;
         }
 
         public double GetAverageClickInterval()
@@ -296,6 +301,11 @@ namespace ClickIt.Utils
             {
                 return _clickIntervals.Count > 0 ? _clickIntervals.Average() : 0;
             }
+        }
+
+        public void ResetClickCount()
+        {
+            _clickCount = 0;
         }
 
         // Helper to enqueue timing measurements and keep a fixed-length queue
