@@ -121,6 +121,7 @@ namespace ClickIt.Services
                 ClickDistance = s.ClickDistance.Value,
                 ClickItems = s.ClickItems.Value,
                 IgnoreUniques = s.IgnoreUniques.Value,
+                IgnoreHeistQuestContracts = s.IgnoreHeistQuestContracts.Value,
                 ClickBasicChests = s.ClickBasicChests.Value,
                 ClickLeagueChests = !applyLazyModeRestrictions && s.ClickLeagueChests.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
@@ -161,6 +162,7 @@ namespace ClickIt.Services
             public int ClickDistance { get; set; }
             public bool ClickItems { get; set; }
             public bool IgnoreUniques { get; set; }
+            public bool IgnoreHeistQuestContracts { get; set; }
             public bool ClickBasicChests { get; set; }
             public bool ClickLeagueChests { get; set; }
             public bool ClickAreaTransitions { get; set; }
@@ -200,7 +202,7 @@ namespace ClickIt.Services
         {
             string path = item.Path;
             EntityType type = item.Type;
-            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, type, item))
+            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, settings.IgnoreHeistQuestContracts, type, item))
                 return true;
             if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
                 return true;
@@ -217,7 +219,7 @@ namespace ClickIt.Services
                 return true;
             return false;
         }
-        private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, EntityType type, Entity item)
+        private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, EntityType type, Entity item)
         {
             if (!clickItems || type != EntityType.WorldItem)
                 return false;
@@ -232,6 +234,13 @@ namespace ClickIt.Services
             Mods? mods = itemEntity?.GetComponent<Mods>();
             if (mods?.ItemRarity == ItemRarity.Unique && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/") ?? false))
                 return false;
+            // Check for heist contracts
+            if (ignoreHeistQuestContracts && itemEntity?.GetComponent<Base>()?.Name != null)
+            {
+                string itemName = itemEntity.GetComponent<Base>().Name;
+                if (Constants.Constants.HeistQuestContractNames.Contains(itemName))
+                    return false;
+            }
             return true;
         }
         private static bool ShouldClickChest(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)

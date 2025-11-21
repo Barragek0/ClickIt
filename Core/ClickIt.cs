@@ -250,7 +250,7 @@ namespace ClickIt
             {
                 textColor = SharpDX.Color.Red;
                 line1 = "Ritual in progress.";
-                line2 = "Clicking disabled.";
+                line2 = "";
             }
             else if (hasRestrictedItems)
             {

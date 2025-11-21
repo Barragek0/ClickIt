@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Collections.Immutable;
 namespace ClickIt.Constants
 {
     public static class Constants
@@ -74,11 +75,43 @@ namespace ClickIt.Constants
         public const string PipeSeparator = "|";
         public const string EmptyString = "";
         #endregion
-        
+
         #region Numeric Constants
         public const int MinModWeight = 1;
         public const int MaxModWeight = 100;
         public const int OverrideThreshold = 90;
+        #endregion
+
+        #region Heist Contract Names
+        public static readonly ImmutableHashSet<string> HeistQuestContractNames = ImmutableHashSet.Create(
+            "Contract: Trial Run",
+            "Contract: Isla's Prototypes",
+            "Contract: Finding Opal",
+            "Contract: Stolen Lockpicks",
+            "Contract: Enoch's Whereabouts",
+            "Contract: Isla's Designs",
+            "Contract: Karst's Revenge",
+            "Contract: Opal's Jewels",
+            "Contract: The Wedding Dress",
+            "Contract: A Matter of Honour",
+            "Contract: Grocery List",
+            "Contract: Slaver's Revenge",
+            "Contract: The Admiral's Records",
+            "Contract: Credit Where Credit's Due",
+            "Contract: Disengagement",
+            "Contract: Enoch's Remains",
+            "Contract: Hyrri's Gift",
+            "Contract: Rational Tools",
+            "Contract: The Nameless Play",
+            "Contract: A Mundane Sample",
+            "Contract: Findings for Fidium",
+            "Contract: Flying False Colours",
+            "Contract: Follow the Paper Trail",
+            "Contract: The Negotiation",
+            "Contract: The Rescue",
+            "Contract: The Vinderi Bomb",
+            "Contract: The Finest Costumes"
+        );
         #endregion
     }
 }
