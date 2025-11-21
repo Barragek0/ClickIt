@@ -92,7 +92,8 @@ namespace ClickIt
             State.DeferredTextQueue = new Utils.DeferredTextQueue();
             State.DeferredFrameQueue = new Utils.DeferredFrameQueue();
             State.DebugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, State.AltarService, State.AreaService, weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue);
-            State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, LogMessage);
+            // Use no-op logger for AltarDisplayRenderer to prevent recursive logging during render loop
+            State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, (msg, frame) => { });
             LockManager.Instance = new Utils.LockManager(Settings);
             State.ClickService = new Services.ClickService(
                 Settings,
@@ -139,6 +140,20 @@ namespace ClickIt
         {
             if (State.PerformanceMonitor == null) return; // Not initialized yet
 
+            // Set flag to prevent logging during render loop
+            State.IsRendering = true;
+            try
+            {
+                RenderInternal();
+            }
+            finally
+            {
+                State.IsRendering = false;
+            }
+        }
+
+        private void RenderInternal()
+        {
             bool debugMode = Settings.DebugMode;
             bool renderDebug = Settings.RenderDebug;
             bool hasDebugRendering = debugMode && renderDebug;
@@ -177,8 +192,9 @@ namespace ClickIt
             State.PerformanceMonitor.StopRenderTiming();
 
             // Flush deferred text rendering to prevent freezes
-            State.DeferredTextQueue?.Flush(Graphics, LogError);
-            State.DeferredFrameQueue?.Flush(Graphics, LogError);
+            // Use no-op logger to prevent recursive logging during render loop
+            State.DeferredTextQueue?.Flush(Graphics, (msg, frame) => { });
+            State.DeferredFrameQueue?.Flush(Graphics, (msg, frame) => { });
         }
         private void RenderAltarComponents()
         {
@@ -222,16 +238,22 @@ namespace ClickIt
         }
         public void LogMessage(string message, int frame = 5)
         {
-            State.ErrorHandler?.LogMessage(message, frame);
+            // Skip logging during render loop to prevent crashes
+            if (State.IsRendering) return;
+            base.LogMessage(message, frame);
         }
 
         public void LogMessage(bool localDebug, string message, int frame = 0)
         {
-            State.ErrorHandler?.LogMessage(localDebug, message, frame);
+            // Skip logging during render loop to prevent crashes
+            if (State.IsRendering) return;
+            LogMessage(localDebug, message, frame);
         }
         public void LogError(string message, int frame = 0)
         {
-            State.ErrorHandler?.LogError(message, frame);
+            // Skip logging during render loop to prevent crashes
+            if (State.IsRendering) return;
+            base.LogError(message, frame);
         }
 
 

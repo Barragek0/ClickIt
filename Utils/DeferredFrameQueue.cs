@@ -12,11 +12,15 @@ namespace ClickIt.Utils
 
         public void Enqueue(SharpDX.RectangleF rectangle, SharpDX.Color color, int thickness)
         {
+            // Silently ignore errors to prevent logging during render
             try
             {
                 _items.Add((rectangle, color, thickness));
             }
-            catch { }
+            catch
+            {
+                // Intentionally empty - do not log during render operations
+            }
         }
 
         public void Flush(ExileCore.Graphics graphics, Action<string, int> logMessage)
@@ -28,6 +32,8 @@ namespace ClickIt.Utils
             var itemsSnapshot = _items.ToArray();
             _items.Clear();
 
+            // Silently handle errors to prevent logging during render loop
+            // which can cause recursive calls and freeze/crash ExileCore
             try
             {
                 foreach (var entry in itemsSnapshot)
@@ -36,15 +42,15 @@ namespace ClickIt.Utils
                     {
                         graphics.DrawFrame(entry.Rectangle, entry.Color, entry.Thickness);
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        logMessage?.Invoke($"[DeferredFrameQueue] DrawFrame failed: {ex.Message}", 10);
+                        // Intentionally empty - logging here causes recursive issues
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                logMessage?.Invoke($"[DeferredFrameQueue] Flush failed: {ex.Message}", 10);
+                // Intentionally empty - logging here causes recursive issues
             }
         }
     }
