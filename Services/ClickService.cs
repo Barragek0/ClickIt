@@ -262,7 +262,7 @@ namespace ClickIt.Services
                     }
                     RectangleF r = el.GetClientRect();
                     Vector2 clickPos = r.Center + windowTopLeft;
-                    inputHandler.PerformClick(clickPos);
+                    inputHandler.PerformClick(clickPos, el, gameController);
                     performanceMonitor.RecordClickInterval();
                     DebugLog(() => "[ClickAltarElement] Click performed");
                     return true;
@@ -277,7 +277,7 @@ namespace ClickIt.Services
             }
             RectangleF rect = el.GetClientRect();
             Vector2 pos = rect.Center + windowTopLeft;
-            inputHandler.PerformClick(pos);
+            inputHandler.PerformClick(pos, el, gameController);
             performanceMonitor.RecordClickInterval();
             DebugLog(() => "[ClickAltarElement] Click performed");
             return true;
@@ -332,7 +332,7 @@ namespace ClickIt.Services
                 yield break;
 
             Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
-            PerformLabelClick(clickPos);
+            PerformLabelClick(clickPos, nextLabel.Label, gameController);
 
             DebugLog(() => $"[ProcessRegularClick] Clicked label at distance {nextLabel.ItemOnGround.DistancePlayer:F1}");
 
@@ -409,19 +409,19 @@ namespace ClickIt.Services
             return false;
         }
 
-        private void PerformLabelClick(Vector2 clickPos)
+        private void PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? gameController)
         {
             var gm = LockManager.Instance;
             if (gm != null)
             {
                 using (gm.Acquire(_elementAccessLock))
                 {
-                    inputHandler.PerformClick(clickPos);
+                    inputHandler.PerformClick(clickPos, expectedElement, gameController);
                 }
             }
             else
             {
-                inputHandler.PerformClick(clickPos);
+                inputHandler.PerformClick(clickPos, expectedElement, gameController);
             }
 
             // Record the click interval after the actual click

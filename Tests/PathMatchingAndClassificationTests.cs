@@ -55,7 +55,6 @@ namespace ClickIt.Tests
             var orePaths = new[]
             {
                 "Metadata/Chests/CrimsonIron",
-                "Metadata/Chests/Verisium",
                 "Metadata/Chests/PetrifiedWood",
                 "Metadata/Chests/Bismuth",
                 "Metadata/Chests/copper_altar"
@@ -250,7 +249,6 @@ namespace ClickIt.Tests
             if (string.IsNullOrEmpty(path)) return false;
             var lowerPath = path.ToLowerInvariant();
             return lowerPath.Contains("crimsoniron") ||
-                   lowerPath.Contains("verisium") ||
                    lowerPath.Contains("petrifiedwood") ||
                    lowerPath.Contains("bismuth") ||
                    lowerPath.Contains("copper_altar");

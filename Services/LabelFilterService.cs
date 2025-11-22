@@ -270,7 +270,7 @@ namespace ClickIt.Services
                    (settings.ClickDelveSpawners && path.Contains("Delve/Objects/Encounter")) ||
                    (settings.ClickCrafting && path.Contains("CraftingUnlocks")) ||
                    (settings.ClickBreach && path.Contains(Brequel)) ||
-                   (settings.ClickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth) || path.Contains(Verisium)));
+                   (settings.ClickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth)));
         }
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {

@@ -103,18 +103,18 @@ namespace ClickIt
         [Menu("Alva Temple Doors", "Click alva temple doors", 11, 3100)]
         public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
         [Menu("Betrayal", "Click betrayal labels", 12, 3100)]
-        public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(true);
+        public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(false);
         [Menu("Blight", "Click blight pumps", 13, 3100)]
         public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
         [Menu("Breach Nodes", "Click breach nodes", 14, 3100)]
         public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
-        [Menu("Harvest", "Click nearest harvest", 15, 3100)]
-        public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
-        [Menu("Legion Encounters", "Click legion encounter pillars", 16, 3100)]
+        [Menu("Legion Encounters", "Click legion encounter pillars", 15, 3100)]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Sanctum", "Click sanctum related stuff", 17, 3100)]
+        [Menu("Nearest Harvest Plot", "Click nearest harvest plot", 16, 3100)]
+        public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
+        [Menu("Sanctum", "Click sanctum related stuff", 18, 3100)]
         public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
-        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, Verisium, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 19, 3100)]
+        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 19, 3100)]
         public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
 
         // ----- Delve -----

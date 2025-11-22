@@ -10,6 +10,7 @@ using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using System;
 using System.Threading;
+using ExileCore.PoEMemory;
 #nullable enable
 namespace ClickIt.Utils
 {
@@ -128,7 +129,7 @@ namespace ClickIt.Utils
             return area.IsHideout || area.IsTown;
         }
 
-        public void PerformClick(Vector2 position)
+        public void PerformClick(Vector2 position, Element? expectedElement = null, GameController? gameController = null)
         {
             if (!TryConsumeLazyModeLimiter())
                 return;
@@ -155,8 +156,32 @@ namespace ClickIt.Utils
             var after = Mouse.GetCursorPosition();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor after move: {after}", 5);
 
+            Thread.Sleep(10);
+
+            var uiHover = gameController?.IngameState?.UIHoverElement;
+
+            // Verify UIHover matches expected element in lazy mode to detect obscuring elements
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value && expectedElement != null && uiHover != null)
+            {
+                if (uiHover.Address != expectedElement?.Address)
+                {
+                    _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification failed - expected element is obscured. Skipping click.", 5);
+                    RestoreCursorIfLazyMode(before);
+                    return;
+                }
+                _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification passed", 5);
+            }
+            else if (uiHover == null)
+            {
+                _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification failed - UIHover is null", 5);
+            }
+            else if (expectedElement == null)
+            {
+                _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification skipped - expectedElement is null", 5);
+            }
+
             // Small delay to ensure cursor movement has taken effect before click
-            Thread.Sleep(5);
+            Thread.Sleep(10);
 
             sw.Restart();
             if (_settings.LeftHanded.Value)

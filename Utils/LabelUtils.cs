@@ -145,7 +145,6 @@ namespace ClickIt.Utils
                    path.Contains("copper_altar") ||
                    path.Contains("PetrifiedWood") ||
                    path.Contains("Bismuth") ||
-                   path.Contains("Verisium") ||
                    path.Contains("ClosedDoorPast") ||
                    path.Contains("LegionInitiator") ||
                    path.Contains("DarkShrine") ||
