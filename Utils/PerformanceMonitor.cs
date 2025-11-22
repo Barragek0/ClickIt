@@ -36,6 +36,7 @@ namespace ClickIt.Utils
         private readonly Queue<long> _shrineCoroutineTimings = new(10);
         private readonly Queue<long> _renderTimings = new(60);
         private readonly Queue<long> _clickIntervals = new(10);
+        private readonly Queue<long> _successfulClickTimings = new(10);
 
         // Thread safety locks
         private readonly object _clickTimingsLock = new();
@@ -44,6 +45,7 @@ namespace ClickIt.Utils
         private readonly object _shrineTimingsLock = new();
         private readonly object _renderTimingsLock = new();
         private readonly object _clickIntervalsLock = new();
+        private readonly object _successfulClickTimingsLock = new();
 
         // FPS calculation
         private readonly Stopwatch _fpsTimer = new();
@@ -307,6 +309,19 @@ namespace ClickIt.Utils
         public void ResetClickCount()
         {
             _clickCount = 0;
+        }
+
+        public void RecordSuccessfulClickTiming(long duration)
+        {
+            EnqueueTiming(_successfulClickTimings, duration, 10, _successfulClickTimingsLock);
+        }
+
+        public double GetAverageSuccessfulClickTiming()
+        {
+            lock (_successfulClickTimingsLock)
+            {
+                return _successfulClickTimings.Count > 0 ? _successfulClickTimings.Average() : 0;
+            }
         }
 
         // Helper to enqueue timing measurements and keep a fixed-length queue

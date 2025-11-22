@@ -571,7 +571,7 @@ namespace ClickIt.Rendering
                 var performanceMonitor = _plugin is ClickIt clickIt ? clickIt.PerformanceMonitor : null;
                 if (performanceMonitor != null)
                 {
-                    double avgClickTime = performanceMonitor.GetAverageTiming("click");
+                    double avgClickTime = performanceMonitor.GetAverageSuccessfulClickTiming();
                     double effectiveDelay = lazyModeTarget - avgClickTime;
                     double expectedTotal = effectiveDelay + avgClickTime;
                     double targetDeviation = (expectedTotal - lazyModeTarget) / lazyModeTarget;

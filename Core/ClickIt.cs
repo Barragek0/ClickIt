@@ -89,7 +89,7 @@ namespace ClickIt
             var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
             State.LabelFilterService = labelFilterService;
             State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
-            State.InputHandler = new InputHandler(Settings, (block) => State.InputSafetyManager?.SafeBlockInput(block), State.ErrorHandler);
+            State.InputHandler = new InputHandler(Settings, State.PerformanceMonitor, (block) => State.InputSafetyManager?.SafeBlockInput(block), State.ErrorHandler);
             var weightCalculator = new WeightCalculator(Settings);
             State.DeferredTextQueue = new DeferredTextQueue();
             State.DeferredFrameQueue = new DeferredFrameQueue();

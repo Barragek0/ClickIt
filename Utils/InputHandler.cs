@@ -20,12 +20,14 @@ namespace ClickIt.Utils
         private readonly Random _random;
         private readonly Action<bool>? _safeBlockInput;
         private readonly ErrorHandler? _errorHandler;
+        private readonly PerformanceMonitor _performanceMonitor;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
 
-        public InputHandler(ClickItSettings settings, Action<bool>? safeBlockInput = null, ErrorHandler? errorHandler = null)
+        public InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, Action<bool>? safeBlockInput = null, ErrorHandler? errorHandler = null)
         {
             _settings = settings;
+            _performanceMonitor = performanceMonitor;
             _random = new Random();
             _safeBlockInput = safeBlockInput;
             _errorHandler = errorHandler;
@@ -206,6 +208,7 @@ namespace ClickIt.Utils
             Thread.Sleep(10);
 
             RestoreCursorIfLazyMode(before);
+            _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
 
             swTotal.Stop();
             // If the whole operation took too long, attempt to clear any stuck input block and log
