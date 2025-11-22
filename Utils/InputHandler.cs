@@ -156,7 +156,8 @@ namespace ClickIt.Utils
             var after = Mouse.GetCursorPosition();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor after move: {after}", 5);
 
-            Thread.Sleep(10);
+            //UIHover needs time to update
+            Thread.Sleep(20);
 
             var uiHover = gameController?.IngameState?.UIHoverElement;
 
