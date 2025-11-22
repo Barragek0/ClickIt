@@ -240,7 +240,7 @@ namespace ClickIt
             if (!ImGui.TreeNode("Altar Upside Weights")) return;
             ImGui.Spacing();
             ImGui.Spacing();
-            ImGui.TextWrapped("Weight Scale:");
+            ImGui.TextWrapped("Weight Scale (Higher = More Valuable):");
             DrawWeightScale(bestAtHigh: true);
             ImGui.Spacing();
             ImGui.Spacing();

@@ -91,8 +91,8 @@ namespace ClickIt.Rendering
             bool bottomHasDangerousDownside = _settings.DangerousDownside.Value && HasAnyWeightOverThreshold(weights, false, false, _settings.DangerousDownsideThreshold.Value);
             bool topHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, true, true, _settings.ValuableUpsideThreshold.Value);
             bool bottomHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, false, true, _settings.ValuableUpsideThreshold.Value);
-            bool topHasLowValue = _settings.UnvaluableUpside.Value && (HasAnyWeightAtOrBelowThreshold(weights, true, true, _settings.UnvaluableUpsideThreshold.Value) || HasAnyWeightAtOrBelowThreshold(weights, true, false, _settings.UnvaluableUpsideThreshold.Value));
-            bool bottomHasLowValue = _settings.UnvaluableUpside.Value && (HasAnyWeightAtOrBelowThreshold(weights, false, true, _settings.UnvaluableUpsideThreshold.Value) || HasAnyWeightAtOrBelowThreshold(weights, false, false, _settings.UnvaluableUpsideThreshold.Value));
+            bool topHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, true, true, _settings.UnvaluableUpsideThreshold.Value);
+            bool bottomHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, false, true, _settings.UnvaluableUpsideThreshold.Value);
 
             if (topHasDangerousDownside && bottomHasDangerousDownside)
             {
@@ -152,21 +152,21 @@ namespace ClickIt.Rendering
             // If both sides have low value, treat as equal and let user choose
             if (topHasLowValue && bottomHasLowValue)
             {
-                _deferredTextQueue.Enqueue("Both options have low value modifiers (weight 1), you should choose.", textPos, Color.Orange, 30);
+                _deferredTextQueue.Enqueue("Both options have low value modifiers (weight < 1), you should choose.", textPos, Color.Orange, 30);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
 
             if (topHasLowValue)
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight 1", textPos, Color.Yellow, 30);
+                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight < 1", textPos, Color.Yellow, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
                 return GetValidatedButtonElement(altar.BottomButton, "BottomButton");
             }
             else
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight 1", textPos, Color.Yellow, 30);
+                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight < 1", textPos, Color.Yellow, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
                 return GetValidatedButtonElement(altar.TopButton, "TopButton");
@@ -272,7 +272,7 @@ namespace ClickIt.Rendering
         {
             // Create a collection of the relevant weights and check if any are at or below the threshold
             var weightArray = GetWeightArray(weights, isTop, isUpside);
-            return weightArray.Any(w => w <= threshold);
+            return weightArray.Any(w => w > 0 && w <= threshold);
         }
 
         private decimal[] GetWeightArray(AltarWeights weights, bool isTop, bool isUpside)
