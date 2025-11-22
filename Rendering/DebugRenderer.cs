@@ -531,11 +531,13 @@ namespace ClickIt.Rendering
             string settingStr = $"{clickTarget:F0}";
             int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
 
-            _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Yellow, 16);
+            Color procColor = avgClickTime > clickTarget ? Color.Red :
+                              avgClickTime >= clickTarget * 0.75 ? Color.Yellow : Color.LawnGreen;
+            _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
+            _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), Color.Yellow, 16);
+            _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
             yPos += lineHeight;
@@ -585,11 +587,13 @@ namespace ClickIt.Rendering
                     string settingStr = $"{lazyModeTarget:F0}";
                     int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
 
+                    Color procColor = avgClickTime > lazyModeTarget ? Color.Red :
+                                      avgClickTime >= lazyModeTarget * 0.75 ? Color.Yellow : Color.LawnGreen;
                     _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Yellow, 16);
                     yPos += lineHeight;
                     _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
                     yPos += lineHeight;
-                    _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), Color.Yellow, 16);
+                    _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
                     yPos += lineHeight;
                     _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
                     yPos += lineHeight;
