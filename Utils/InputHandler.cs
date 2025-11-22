@@ -161,7 +161,7 @@ namespace ClickIt.Utils
             //UIHover needs time to update so we sleep longer in lazy mode, we still sleep in normal mode to give cursor time to move
             if (_settings?.LazyMode != null && _settings.LazyMode.Value)
             {
-                Thread.Sleep(30);
+                Thread.Sleep(25);
             }
             else
             {
@@ -189,10 +189,6 @@ namespace ClickIt.Utils
             {
                 _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification skipped - expectedElement is null", 5);
             }
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
-            {
-                Thread.Sleep(20);
-            }
             sw.Restart();
             if (_settings.LeftHanded.Value)
             {
@@ -207,15 +203,7 @@ namespace ClickIt.Utils
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
 
-            // we sleep here to make sure the click has time to register before we move the cursor back in lazy mode
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
-            {
-                Thread.Sleep(20);
-            }
-            else
-            {
-                Thread.Sleep(10);
-            }
+            Thread.Sleep(10);
 
             RestoreCursorIfLazyMode(before);
 

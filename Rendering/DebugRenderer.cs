@@ -24,12 +24,10 @@ namespace ClickIt.Rendering
         private const double FPS_MEDIUM_THRESHOLD = 60;
         private const double RENDER_TIME_LOW_THRESHOLD = 6.94;
         private const double RENDER_TIME_MEDIUM_THRESHOLD = 16.67;
-        private const double COROUTINE_HIGH_THRESHOLD = 10;
-        private const double COROUTINE_MEDIUM_THRESHOLD = 5;
+        private const double COROUTINE_HIGH_THRESHOLD = 50;
+        private const double COROUTINE_MEDIUM_THRESHOLD = 25;
         private const double TARGET_DEVIATION_LOW = 0.05;
         private const double TARGET_DEVIATION_MEDIUM = 0.10;
-        private const double TARGET_DEVIATION_HIGH = 0.25;
-        private const double CLICK_TARGET_MULTIPLIER = 0.75;
 
         private readonly BaseSettingsPlugin<ClickItSettings> _plugin;
         private readonly Graphics _graphics;
