@@ -32,9 +32,6 @@ namespace ClickIt
         [Menu("Click Frequency Target", "Show/hide the Click Frequency Target debug section", 4, 2)]
         public ToggleNode DebugShowClickFrequencyTarget { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("Click Frequency Target (Lazy Mode)", "Show/hide the Click Frequency Target (Lazy Mode) debug section", 5, 2)]
-        public ToggleNode DebugShowClickFrequencyTargetLazy { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
         [Menu("Altar Detection", "Show/hide the Altar Detection debug section", 6, 2)]
         public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]

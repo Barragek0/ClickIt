@@ -89,13 +89,7 @@ namespace ClickIt.Rendering
             }
             if (settings.DebugShowClickFrequencyTarget)
             {
-                yPos = RenderClickFrequencyTargetDebug(col1X, yPos, lineHeight, performanceMonitor);
-                yPos += lineHeight;
-            }
-            if (settings.DebugShowClickFrequencyTargetLazy)
-            {
-                yPos = RenderClickFrequencyTargetLazyDebug(col1X, yPos, lineHeight);
-                yPos += lineHeight;
+                RenderClickFrequencyTargetDebug(col1X, yPos, lineHeight, performanceMonitor);
             }
 
             // Column 2: Altar detection, labels, altar service, and errors
@@ -516,39 +510,6 @@ namespace ClickIt.Rendering
         {
             _deferredTextQueue.Enqueue($"--- Click Frequency Target ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
-            double avgClickTime = performanceMonitor.GetAverageTiming("click");
-            double clickTarget = performanceMonitor.GetClickTargetInterval();
-            double effectiveDelay = clickTarget - avgClickTime;
-            double expectedTotal = effectiveDelay + avgClickTime;
-            double targetDeviation = (expectedTotal - clickTarget) / clickTarget;
-            string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM ? "meeting target" : "not meeting target";
-            Color targetLineColor = targetDeviation <= TARGET_DEVIATION_LOW ? Color.LawnGreen :
-                                  (targetDeviation <= TARGET_DEVIATION_MEDIUM ? Color.Yellow : Color.Red);
-
-            string delayStr = $"{effectiveDelay:F0}";
-            string procStr = $"{avgClickTime:F0}";
-            string targetStr = $"{expectedTotal:F0}";
-            string settingStr = $"{clickTarget:F0}";
-            int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
-
-            Color procColor = avgClickTime > clickTarget ? Color.Red :
-                              avgClickTime >= clickTarget * 0.75 ? Color.Yellow : Color.LawnGreen;
-            _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Orange, 16);
-            yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Orange, 16);
-            yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
-            yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
-            yPos += lineHeight;
-
-            return yPos;
-        }
-
-        private int RenderClickFrequencyTargetLazyDebug(int xPos, int yPos, int lineHeight)
-        {
-            _deferredTextQueue.Enqueue($"--- Click Frequency Target (Lazy Mode) ---", new Vector2(xPos, yPos), Color.Orange, 16);
-            yPos += lineHeight;
 
             var settings = _plugin.Settings;
             bool lazyModeEnabled = settings.LazyMode.Value;
@@ -564,47 +525,34 @@ namespace ClickIt.Rendering
                 hasRestrictedItems = clickItPlugin.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
             }
 
-            // Lazy mode is active when enabled, no disable key held, no restricted items, and PoE is active
-            bool lazyModeActive = lazyModeEnabled && !lazyModeDisableKeyHeld && !hasRestrictedItems;
+            bool poeActive = _plugin.GameController?.Window?.IsForeground() == true;
+            bool lazyModeActive = lazyModeEnabled && !lazyModeDisableKeyHeld && !hasRestrictedItems && poeActive;
 
-            if (lazyModeActive)
-            {
-                // Show the click breakdown using lazy mode target
-                var performanceMonitor = _plugin is ClickIt clickIt ? clickIt.PerformanceMonitor : null;
-                if (performanceMonitor != null)
-                {
-                    double avgClickTime = performanceMonitor.GetAverageSuccessfulClickTiming();
-                    double effectiveDelay = lazyModeTarget - avgClickTime;
-                    double expectedTotal = effectiveDelay + avgClickTime;
-                    double targetDeviation = (expectedTotal - lazyModeTarget) / lazyModeTarget;
-                    string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM ? "meeting target" : "not meeting target";
-                    Color targetLineColor = targetDeviation <= TARGET_DEVIATION_LOW ? Color.LawnGreen :
-                                          (targetDeviation <= TARGET_DEVIATION_MEDIUM ? Color.Yellow : Color.Red);
+            double clickTarget = lazyModeActive ? lazyModeTarget : performanceMonitor.GetClickTargetInterval();
+            double avgClickTime = performanceMonitor.GetAverageSuccessfulClickTiming();
+            double effectiveDelay = clickTarget - avgClickTime;
+            double expectedTotal = effectiveDelay + avgClickTime;
+            double targetDeviation = (expectedTotal - clickTarget) / clickTarget;
+            string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM ? "meeting target" : "not meeting target";
+            Color targetLineColor = targetDeviation <= TARGET_DEVIATION_LOW ? Color.LawnGreen :
+                                  (targetDeviation <= TARGET_DEVIATION_MEDIUM ? Color.Yellow : Color.Red);
 
-                    string delayStr = $"{effectiveDelay:F0}";
-                    string procStr = $"{avgClickTime:F0}";
-                    string targetStr = $"{expectedTotal:F0}";
-                    string settingStr = $"{lazyModeTarget:F0}";
-                    int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
+            string delayStr = $"{effectiveDelay:F0}";
+            string procStr = $"{avgClickTime:F0}";
+            string targetStr = $"{expectedTotal:F0}";
+            string settingStr = $"{clickTarget:F0}";
+            int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
 
-                    Color procColor = avgClickTime > lazyModeTarget ? Color.Red :
-                                      avgClickTime >= lazyModeTarget * 0.75 ? Color.Yellow : Color.LawnGreen;
-                    _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Yellow, 16);
-                    yPos += lineHeight;
-                    _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
-                    yPos += lineHeight;
-                    _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
-                    yPos += lineHeight;
-                    _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
-                    yPos += lineHeight;
-                }
-                else
-                {
-                    _deferredTextQueue.Enqueue($"Target: {lazyModeTarget} ms", new Vector2(xPos, yPos), Color.Orange, 16);
-                    yPos += lineHeight;
-                }
-
-            }
+            Color procColor = avgClickTime > clickTarget ? Color.Red :
+                              avgClickTime >= clickTarget * 0.75 ? Color.Yellow : Color.LawnGreen;
+            _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms {(lazyModeActive ? "(Lazy)" : "")}", new Vector2(xPos, yPos), Color.Yellow, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
+            yPos += lineHeight;
 
             return yPos;
         }
