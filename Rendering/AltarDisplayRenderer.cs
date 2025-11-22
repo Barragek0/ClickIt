@@ -94,6 +94,8 @@ namespace ClickIt.Rendering
             bool bottomHasDangerousDownside = HasAnyWeightOverThreshold(weights, false, false, DANGEROUS_THRESHOLD);
             bool topHasHighValueUpside = HasAnyWeightOverThreshold(weights, true, true, HIGH_VALUE_THRESHOLD);
             bool bottomHasHighValueUpside = HasAnyWeightOverThreshold(weights, false, true, HIGH_VALUE_THRESHOLD);
+            bool topHasLowValue = HasAnyWeightEqualTo(weights, true, true, 1) || HasAnyWeightEqualTo(weights, true, false, 1);
+            bool bottomHasLowValue = HasAnyWeightEqualTo(weights, false, true, 1) || HasAnyWeightEqualTo(weights, false, false, 1);
 
             if (topHasDangerousDownside && bottomHasDangerousDownside)
             {
@@ -103,6 +105,11 @@ namespace ClickIt.Rendering
             if (topHasHighValueUpside || bottomHasHighValueUpside)
             {
                 return HandleHighValueOverride(topHasHighValueUpside, altar, topModsRect, bottomModsRect, textPos1);
+            }
+
+            if (topHasLowValue || bottomHasLowValue)
+            {
+                return HandleLowValueOverride(topHasLowValue, bottomHasLowValue, altar, topModsRect, bottomModsRect, textPos1);
             }
 
             if (topHasDangerousDownside || bottomHasDangerousDownside)
@@ -140,6 +147,32 @@ namespace ClickIt.Rendering
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 3);
                 return GetValidatedButtonElement(altar.BottomButton, "BottomButton");
+            }
+        }
+
+        private Element? HandleLowValueOverride(bool topHasLowValue, bool bottomHasLowValue, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        {
+            // If both sides have low value, treat as equal and let user choose
+            if (topHasLowValue && bottomHasLowValue)
+            {
+                _deferredTextQueue.Enqueue("Both options have low value modifiers (weight 1), you should choose.", textPos, Color.Orange, 30);
+                DrawYellowFrames(topModsRect, bottomModsRect);
+                return null;
+            }
+
+            if (topHasLowValue)
+            {
+                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight 1", textPos, Color.Yellow, 30);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
+                return GetValidatedButtonElement(altar.BottomButton, "BottomButton");
+            }
+            else
+            {
+                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight 1", textPos, Color.Yellow, 30);
+                _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
+                _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
+                return GetValidatedButtonElement(altar.TopButton, "TopButton");
             }
         }
 
@@ -238,6 +271,13 @@ namespace ClickIt.Rendering
             return weightArray.Any(w => w >= threshold);
         }
 
+        private bool HasAnyWeightEqualTo(AltarWeights weights, bool isTop, bool isUpside, int value)
+        {
+            // Create a collection of the relevant weights and check if any equal the specified value
+            var weightArray = GetWeightArray(weights, isTop, isUpside);
+            return weightArray.Any(w => w == value);
+        }
+
         private decimal[] GetWeightArray(AltarWeights weights, bool isTop, bool isUpside)
         {
             // Prefer direct array accessors on AltarWeights to reduce duplicated property usage
@@ -289,6 +329,7 @@ namespace ClickIt.Rendering
             _deferredFrameQueue.Enqueue(topModsRect, Color.Yellow, 2);
             _deferredFrameQueue.Enqueue(bottomModsRect, Color.Yellow, 2);
         }
+
         public void DrawWeightTexts(AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
             Vector2 offset5_Minus32 = new(5, -32);
