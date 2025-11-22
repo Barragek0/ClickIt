@@ -18,7 +18,7 @@ namespace ClickIt.Utils
         private readonly PluginContext _state;
         private readonly ClickItSettings _settings;
         private readonly GameController _gameController;
-        private readonly Utils.ErrorHandler _errorHandler;
+        private readonly ErrorHandler _errorHandler;
         private readonly Action<string> _forceUnblockInput;
         private readonly Func<Vector2, bool> _pointIsInClickableArea;
 
@@ -26,7 +26,7 @@ namespace ClickIt.Utils
             PluginContext state,
             ClickItSettings settings,
             GameController gameController,
-            Utils.ErrorHandler errorHandler,
+            ErrorHandler errorHandler,
             Action<string> forceUnblockInput,
             Func<Vector2, bool> pointIsInClickableArea)
         {
@@ -93,7 +93,7 @@ namespace ClickIt.Utils
             _ = Core.ParallelRunner.Run(_state.InputSafetyCoroutine);
             _state.InputSafetyCoroutine.Priority = CoroutinePriority.High;
 
-            _state.DelveFlareCoroutine = new Coroutine(DelveFlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
+            _state.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
             _ = Core.ParallelRunner.Run(_state.DelveFlareCoroutine);
             _state.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
         }
@@ -338,13 +338,13 @@ namespace ClickIt.Utils
             return actual;
         }
 
-        private IEnumerator DelveFlareCoroutine()
+        private IEnumerator FlareCoroutine()
         {
             if (_state.PerformanceMonitor == null) yield break;
 
             while (_settings.Enable)
             {
-                _state.PerformanceMonitor.StartCoroutineTiming("delveFlare");
+                _state.PerformanceMonitor.StartCoroutineTiming("flare");
 
                 if (_settings.ClickDelveFlares && _gameController?.Player?.Buffs != null)
                 {
@@ -371,7 +371,7 @@ namespace ClickIt.Utils
                     }
                 }
 
-                _state.PerformanceMonitor.StopCoroutineTiming("delveFlare");
+                _state.PerformanceMonitor.StopCoroutineTiming("flare");
 
                 yield return new WaitTime(100);
             }

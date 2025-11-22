@@ -25,13 +25,13 @@ namespace ClickIt.Utils
         private readonly Stopwatch _renderTimer = new Stopwatch();
         private readonly Stopwatch _altarCoroutineTimer = new Stopwatch();
         private readonly Stopwatch _clickCoroutineTimer = new Stopwatch();
-        private readonly Stopwatch _delveFlareCoroutineTimer = new Stopwatch();
+        private readonly Stopwatch _flareCoroutineTimer = new Stopwatch();
         private readonly Stopwatch _shrineCoroutineTimer = new Stopwatch();
 
         // Performance tracking queues with thread-safe access
         private readonly Queue<long> _clickCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> _altarCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> _delveFlareCoroutineTimings = new Queue<long>(10);
+        private readonly Queue<long> _flareCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> _shrineCoroutineTimings = new Queue<long>(10);
         private readonly Queue<long> _renderTimings = new Queue<long>(60);
         private readonly Queue<long> _clickIntervals = new Queue<long>(10);
@@ -39,7 +39,7 @@ namespace ClickIt.Utils
         // Thread safety locks
         private readonly object _clickTimingsLock = new object();
         private readonly object _altarTimingsLock = new object();
-        private readonly object _delveFlareTimingsLock = new object();
+        private readonly object _flareTimingsLock = new object();
         private readonly object _shrineTimingsLock = new object();
         private readonly object _renderTimingsLock = new object();
         private readonly object _clickIntervalsLock = new object();
@@ -52,14 +52,14 @@ namespace ClickIt.Utils
         // Last timing values for display
         private long _lastAltarTiming = 0;
         private long _lastClickTiming = 0;
-        private long _lastDelveFlareTiming = 0;
+        private long _lastFlareTiming = 0;
         private long _lastShrineTiming = 0;
         private long _lastRenderTiming = 0;
 
         // Max timing values for display
         private long _maxAltarTiming = 0;
         private long _maxClickTiming = 0;
-        private long _maxDelveFlareTiming = 0;
+        private long _maxFlareTiming = 0;
         private long _maxShrineTiming = 0;
 
         // Input safety timing
@@ -121,8 +121,8 @@ namespace ClickIt.Utils
                 case "click":
                     _clickCoroutineTimer.Restart();
                     break;
-                case "delveFlare":
-                    _delveFlareCoroutineTimer.Restart();
+                case "flare":
+                    _flareCoroutineTimer.Restart();
                     break;
                 case "shrine":
                     _shrineCoroutineTimer.Restart();
@@ -148,12 +148,12 @@ namespace ClickIt.Utils
                     _maxClickTiming = Math.Max(_maxClickTiming, clickTiming);
                     EnqueueTiming(_clickCoroutineTimings, clickTiming, 10, _clickTimingsLock);
                     break;
-                case "delveFlare":
-                    _delveFlareCoroutineTimer.Stop();
-                    long delveFlareTiming = _delveFlareCoroutineTimer.ElapsedMilliseconds;
-                    _lastDelveFlareTiming = delveFlareTiming;
-                    _maxDelveFlareTiming = Math.Max(_maxDelveFlareTiming, delveFlareTiming);
-                    EnqueueTiming(_delveFlareCoroutineTimings, delveFlareTiming, 10, _delveFlareTimingsLock);
+                case "flare":
+                    _flareCoroutineTimer.Stop();
+                    long flareTiming = _flareCoroutineTimer.ElapsedMilliseconds;
+                    _lastFlareTiming = flareTiming;
+                    _maxFlareTiming = Math.Max(_maxFlareTiming, flareTiming);
+                    EnqueueTiming(_flareCoroutineTimings, flareTiming, 10, _flareTimingsLock);
                     break;
                 case "shrine":
                     _shrineCoroutineTimer.Stop();
@@ -173,8 +173,8 @@ namespace ClickIt.Utils
                     return _lastClickTiming;
                 case "altar":
                     return _lastAltarTiming;
-                case "delveFlare":
-                    return _lastDelveFlareTiming;
+                case "flare":
+                    return _lastFlareTiming;
                 case "shrine":
                     return _lastShrineTiming;
                 case "render":
@@ -199,9 +199,9 @@ namespace ClickIt.Utils
                     queue = _altarCoroutineTimings;
                     lockObj = _altarTimingsLock;
                     break;
-                case "delveFlare":
-                    queue = _delveFlareCoroutineTimings;
-                    lockObj = _delveFlareTimingsLock;
+                case "flare":
+                    queue = _flareCoroutineTimings;
+                    lockObj = _flareTimingsLock;
                     break;
                 case "shrine":
                     queue = _shrineCoroutineTimings;
@@ -234,8 +234,8 @@ namespace ClickIt.Utils
                     return _maxClickTiming;
                 case "altar":
                     return _maxAltarTiming;
-                case "delveFlare":
-                    return _maxDelveFlareTiming;
+                case "flare":
+                    return _maxFlareTiming;
                 case "shrine":
                     return _maxShrineTiming;
                 default:

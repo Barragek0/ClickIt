@@ -21,6 +21,8 @@ namespace ClickIt
 
         public double CurrentFPS => State.PerformanceMonitor?.CurrentFPS ?? 0;
         public Services.ShrineService? ShrineService => State.ShrineService;
+        public Services.LabelFilterService? LabelFilterService => State.LabelFilterService;
+        public PerformanceMonitor? PerformanceMonitor => State.PerformanceMonitor;
         public Queue<long> RenderTimings => State.PerformanceMonitor?.RenderTimings ?? new Queue<long>();
         public IReadOnlyList<string> RecentErrors => State.ErrorHandler?.RecentErrors ?? new List<string>();
 
@@ -76,9 +78,9 @@ namespace ClickIt
         {
             _reportBugHandler = () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
             Settings.ReportBugButton.OnPressed += _reportBugHandler;
-            State.PerformanceMonitor = new Utils.PerformanceMonitor(Settings);
-            State.ErrorHandler = new Utils.ErrorHandler(Settings, LogError, LogMessage, (block) => State.InputSafetyManager?.SafeBlockInput(block), (reason) => State.InputSafetyManager?.ForceUnblockInput(reason));
-            State.InputSafetyManager = new Utils.InputSafetyManager(Settings, State, State.ErrorHandler);
+            State.PerformanceMonitor = new PerformanceMonitor(Settings);
+            State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage, (block) => State.InputSafetyManager?.SafeBlockInput(block), (reason) => State.InputSafetyManager?.ForceUnblockInput(reason));
+            State.InputSafetyManager = new InputSafetyManager(Settings, State, State.ErrorHandler);
             State.CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             State.AreaService = new Services.AreaService();
             State.AreaService.UpdateScreenAreas(GameController);
@@ -87,14 +89,14 @@ namespace ClickIt
             var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings));
             State.LabelFilterService = labelFilterService;
             State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
-            State.InputHandler = new Utils.InputHandler(Settings, (block) => State.InputSafetyManager?.SafeBlockInput(block), State.ErrorHandler);
-            var weightCalculator = new Utils.WeightCalculator(Settings);
-            State.DeferredTextQueue = new Utils.DeferredTextQueue();
-            State.DeferredFrameQueue = new Utils.DeferredFrameQueue();
+            State.InputHandler = new InputHandler(Settings, (block) => State.InputSafetyManager?.SafeBlockInput(block), State.ErrorHandler);
+            var weightCalculator = new WeightCalculator(Settings);
+            State.DeferredTextQueue = new DeferredTextQueue();
+            State.DeferredFrameQueue = new DeferredFrameQueue();
             State.DebugRenderer = new Rendering.DebugRenderer(this, Graphics, Settings, State.AltarService, State.AreaService, weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue);
             // Use no-op logger for AltarDisplayRenderer to prevent recursive logging during render loop
             State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, (msg, frame) => { });
-            LockManager.Instance = new Utils.LockManager(Settings);
+            LockManager.Instance = new LockManager(Settings);
             State.ClickService = new Services.ClickService(
                 Settings,
                 GameController,
@@ -110,7 +112,7 @@ namespace ClickIt
                 State.PerformanceMonitor);
             State.PerformanceMonitor.Start();
 
-            var coroutineManager = new Utils.CoroutineManager(
+            var coroutineManager = new CoroutineManager(
                 State,
                 Settings,
                 GameController,

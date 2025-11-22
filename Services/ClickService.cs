@@ -31,7 +31,7 @@ namespace ClickIt.Services
     {
         private readonly ClickItSettings settings;
         private readonly GameController gameController;
-        private readonly Utils.ErrorHandler errorHandler;
+        private readonly ErrorHandler errorHandler;
         private readonly AltarService altarService;
         private readonly WeightCalculator weightCalculator;
         private readonly Rendering.AltarDisplayRenderer altarDisplayRenderer;
@@ -40,7 +40,7 @@ namespace ClickIt.Services
         private readonly LabelFilterService labelFilterService;
         private readonly Func<bool> groundItemsVisible;
         private readonly TimeCache<List<LabelOnGround>> cachedLabels;
-        private readonly Utils.PerformanceMonitor performanceMonitor;
+        private readonly PerformanceMonitor performanceMonitor;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new object();
@@ -54,7 +54,7 @@ namespace ClickIt.Services
         public ClickService(
             ClickItSettings settings,
             GameController gameController,
-            Utils.ErrorHandler errorHandler,
+            ErrorHandler errorHandler,
             AltarService altarService,
             WeightCalculator weightCalculator,
             Rendering.AltarDisplayRenderer altarDisplayRenderer,
@@ -63,7 +63,7 @@ namespace ClickIt.Services
             LabelFilterService labelFilterService,
             Func<bool> groundItemsVisible,
             TimeCache<List<LabelOnGround>> cachedLabels,
-            Utils.PerformanceMonitor performanceMonitor)
+            PerformanceMonitor performanceMonitor)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             this.gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));

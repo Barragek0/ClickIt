@@ -7,10 +7,10 @@ namespace ClickIt.Utils
     public class InputSafetyManager
     {
         private readonly ClickItSettings _settings;
-        private readonly Utils.ErrorHandler _errorHandler;
+        private readonly ErrorHandler _errorHandler;
         private readonly PluginContext _state;
 
-        public InputSafetyManager(ClickItSettings settings, PluginContext state, Utils.ErrorHandler errorHandler)
+        public InputSafetyManager(ClickItSettings settings, PluginContext state, ErrorHandler errorHandler)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _state = state ?? throw new ArgumentNullException(nameof(state));

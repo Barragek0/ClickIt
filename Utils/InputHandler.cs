@@ -19,11 +19,11 @@ namespace ClickIt.Utils
         private readonly ClickItSettings _settings;
         private readonly Random _random;
         private readonly Action<bool>? _safeBlockInput;
-        private readonly Utils.ErrorHandler? _errorHandler;
+        private readonly ErrorHandler? _errorHandler;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
 
-        public InputHandler(ClickItSettings settings, Action<bool>? safeBlockInput = null, Utils.ErrorHandler? errorHandler = null)
+        public InputHandler(ClickItSettings settings, Action<bool>? safeBlockInput = null, ErrorHandler? errorHandler = null)
         {
             _settings = settings;
             _random = new Random();

@@ -23,25 +23,31 @@ namespace ClickIt
         [Menu("Status", "Show/hide the Status debug section", 1, 2)]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("Performance", "Show/hide the Performance debug section", 2, 2)]
-        public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
-        [Menu("Game State", "Show/hide the Game State debug section", 3, 2)]
+        [Menu("Game State", "Show/hide the Game State debug section", 2, 2)]
         public ToggleNode DebugShowGameState { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("Altar Service", "Show/hide the Altar Service debug section", 4, 2)]
-        public ToggleNode DebugShowAltarService { get; set; } = new ToggleNode(true);
+        [Menu("Performance", "Show/hide the Performance debug section", 3, 2)]
+        public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("Altar Detection", "Show/hide the Altar Detection debug section", 5, 2)]
+        [Menu("Click Frequency Target", "Show/hide the Click Frequency Target debug section", 4, 2)]
+        public ToggleNode DebugShowClickFrequencyTarget { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("Click Frequency Target (Lazy Mode)", "Show/hide the Click Frequency Target (Lazy Mode) debug section", 5, 2)]
+        public ToggleNode DebugShowClickFrequencyTargetLazy { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("Altar Detection", "Show/hide the Altar Detection debug section", 6, 2)]
         public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("Labels", "Show/hide the Labels debug section", 6, 2)]
+        [Menu("Altar Service", "Show/hide the Altar Service debug section", 7, 2)]
+        public ToggleNode DebugShowAltarService { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay("RenderDebug")]
+        [Menu("Labels", "Show/hide the Labels debug section", 8, 2)]
         public ToggleNode DebugShowLabels { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 7, 2)]
+        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 9, 2)]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
         [ConditionalDisplay("RenderDebug")]
-        [Menu("Debug Frames", "Show/hide the debug screen area frames", 8, 2)]
+        [Menu("Debug Frames", "Show/hide the debug screen area frames", 10, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [Menu("Log messages", "This will flood your log and screen with debug text.", 3, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
@@ -52,7 +58,7 @@ namespace ClickIt
         [Menu("General", 3000)]
         public EmptyNode Click { get; set; } = new EmptyNode();
         [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
-        [System.Obsolete("Can be safely ignored for now.")]
+        [Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
         [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 2, 3000)]
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);

@@ -36,18 +36,18 @@ namespace ClickIt.Rendering
         private readonly AltarService? _altarService;
         private readonly AreaService? _areaService;
         private readonly WeightCalculator? _weightCalculator;
-        private readonly Utils.DeferredTextQueue _deferredTextQueue;
-        private readonly Utils.DeferredFrameQueue _deferredFrameQueue;
+        private readonly DeferredTextQueue _deferredTextQueue;
+        private readonly DeferredFrameQueue _deferredFrameQueue;
 
-        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, Utils.DeferredTextQueue? deferredTextQueue = null, Utils.DeferredFrameQueue? deferredFrameQueue = null)
+        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, DeferredTextQueue? deferredTextQueue = null, DeferredFrameQueue? deferredFrameQueue = null)
         {
             _plugin = plugin;
             _graphics = graphics;
             _altarService = altarService;
             _areaService = areaService;
             _weightCalculator = weightCalculator;
-            _deferredTextQueue = deferredTextQueue ?? new Utils.DeferredTextQueue();
-            _deferredFrameQueue = deferredFrameQueue ?? new Utils.DeferredFrameQueue();
+            _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
+            _deferredFrameQueue = deferredFrameQueue ?? new DeferredFrameQueue();
         }
 
         public void RenderDebugFrames(ClickItSettings settings)
@@ -63,48 +63,65 @@ namespace ClickIt.Rendering
             }
         }
 
-        public void RenderDetailedDebugInfo(ClickItSettings settings, Utils.PerformanceMonitor performanceMonitor)
+        public void RenderDetailedDebugInfo(ClickItSettings settings, PerformanceMonitor performanceMonitor)
         {
             if (settings == null || performanceMonitor == null) return;
 
             int startY = 120;
             int lineHeight = 18;
-            int columnWidth = 300;
+            int columnWidth = 380;
             int col1X = 10;
             int yPos = startY;
 
-            // Column 1: Plugin status, performance, and game state
+            // Column 1: Plugin status, game state, performance, and click frequency
             if (settings.DebugShowStatus)
             {
                 yPos = RenderPluginStatusDebug(col1X, yPos, lineHeight);
-            }
-            if (settings.DebugShowPerformance)
-            {
-                yPos = RenderPerformanceDebug(col1X, yPos, lineHeight, performanceMonitor);
+                yPos += lineHeight;
             }
             if (settings.DebugShowGameState)
             {
                 yPos = RenderGameStateDebug(col1X, yPos, lineHeight);
+                yPos += lineHeight;
             }
-            if (settings.DebugShowAltarService)
+            if (settings.DebugShowPerformance)
             {
-                RenderAltarServiceDebug(col1X, yPos, lineHeight);
+                yPos = RenderPerformanceDebug(col1X, yPos, lineHeight, performanceMonitor);
+                yPos += lineHeight;
+            }
+            if (settings.DebugShowClickFrequencyTarget)
+            {
+                yPos = RenderClickFrequencyTargetDebug(col1X, yPos, lineHeight, performanceMonitor);
+                yPos += lineHeight;
+            }
+            if (settings.DebugShowClickFrequencyTargetLazy)
+            {
+                yPos = RenderClickFrequencyTargetLazyDebug(col1X, yPos, lineHeight);
+                yPos += lineHeight;
             }
 
-            // Column 2: Altar detection, labels, and errors
+            // Column 2: Altar detection, labels, altar service, and errors
             int col2X = col1X + columnWidth;
             yPos = startY;
             if (settings.DebugShowAltarDetection)
             {
                 yPos = RenderAltarDebug(col2X, yPos, lineHeight);
+                yPos += lineHeight;
+            }
+            if (settings.DebugShowAltarService)
+            {
+                yPos = RenderAltarServiceDebug(col2X, yPos, lineHeight);
+                yPos += lineHeight;
             }
             if (settings.DebugShowLabels)
             {
                 yPos = RenderLabelsDebug(col2X, yPos, lineHeight);
+                yPos += lineHeight;
             }
             if (settings.DebugShowRecentErrors)
             {
-                RenderErrorsDebug(col2X, yPos, lineHeight);
+                yPos = RenderErrorsDebug(col2X, yPos, lineHeight);
+                // No line break needed after the last category
             }
         }
 
@@ -431,7 +448,7 @@ namespace ClickIt.Rendering
             }
             return yPos;
         }
-        public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
+        public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
             _deferredTextQueue.Enqueue($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
@@ -440,7 +457,6 @@ namespace ClickIt.Rendering
             yPos = RenderMemory(xPos, yPos, lineHeight);
             yPos = RenderRenderTime(xPos, yPos, lineHeight, performanceMonitor);
             yPos = RenderCoroutineTimings(xPos, yPos, lineHeight, performanceMonitor);
-            yPos = RenderClickBreakdown(xPos, yPos, lineHeight, performanceMonitor);
 
             return yPos;
         }
@@ -460,7 +476,7 @@ namespace ClickIt.Rendering
             return yPos + lineHeight;
         }
 
-        private int RenderRenderTime(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
+        private int RenderRenderTime(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
             var renderTimings = performanceMonitor.RenderTimings;
             if (renderTimings == null || renderTimings.Count == 0)
@@ -478,16 +494,16 @@ namespace ClickIt.Rendering
             return yPos + lineHeight;
         }
 
-        private int RenderCoroutineTimings(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
+        private int RenderCoroutineTimings(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
             yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "altar", "Altar Coroutine");
             yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "click", "Click Coroutine");
-            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "delveFlare", "Delve Flare Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "flare", "Flare Coroutine");
             yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "shrine", "Shrine Coroutine");
             return yPos;
         }
 
-        private int RenderCoroutineTiming(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor, string timingType, string label)
+        private int RenderCoroutineTiming(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor, string timingType, string label)
         {
             double current = performanceMonitor.GetLastTiming(timingType);
             double avg = performanceMonitor.GetAverageTiming(timingType);
@@ -498,8 +514,10 @@ namespace ClickIt.Rendering
             return yPos + lineHeight;
         }
 
-        private int RenderClickBreakdown(int xPos, int yPos, int lineHeight, Utils.PerformanceMonitor performanceMonitor)
+        private int RenderClickFrequencyTargetDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
+            _deferredTextQueue.Enqueue($"--- Click Frequency Target ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
             double avgClickTime = performanceMonitor.GetAverageTiming("click");
             double clickTarget = performanceMonitor.GetClickTargetInterval();
             double effectiveDelay = clickTarget - avgClickTime;
@@ -515,17 +533,80 @@ namespace ClickIt.Rendering
             string settingStr = $"{clickTarget:F0}";
             int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
 
-            _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
             yPos += lineHeight;
 
             return yPos;
         }
+
+        private int RenderClickFrequencyTargetLazyDebug(int xPos, int yPos, int lineHeight)
+        {
+            _deferredTextQueue.Enqueue($"--- Click Frequency Target (Lazy Mode) ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+
+            var settings = _plugin.Settings;
+            bool lazyModeEnabled = settings.LazyMode.Value;
+            int lazyModeTarget = settings.LazyModeClickLimiting.Value;
+            bool lazyModeDisableKeyHeld = Input.GetKeyState(settings.LazyModeDisableKey.Value);
+
+            // Check if there are restricted items on screen
+            bool hasRestrictedItems = false;
+            if (_plugin is ClickIt clickItPlugin)
+            {
+                var gameController = _plugin.GameController;
+                var allLabels = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.ToList() ?? new List<LabelOnGround>();
+                hasRestrictedItems = clickItPlugin.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
+            }
+
+            // Lazy mode is active when enabled, no disable key held, no restricted items, and PoE is active
+            bool lazyModeActive = lazyModeEnabled && !lazyModeDisableKeyHeld && !hasRestrictedItems;
+
+            if (lazyModeActive)
+            {
+                // Show the click breakdown using lazy mode target
+                var performanceMonitor = _plugin is ClickIt clickIt ? clickIt.PerformanceMonitor : null;
+                if (performanceMonitor != null)
+                {
+                    double avgClickTime = performanceMonitor.GetAverageTiming("click");
+                    double effectiveDelay = lazyModeTarget - avgClickTime;
+                    double expectedTotal = effectiveDelay + avgClickTime;
+                    double targetDeviation = (expectedTotal - lazyModeTarget) / lazyModeTarget;
+                    string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM ? "meeting target" : "not meeting target";
+                    Color targetLineColor = targetDeviation <= TARGET_DEVIATION_LOW ? Color.LawnGreen :
+                                          (targetDeviation <= TARGET_DEVIATION_MEDIUM ? Color.Yellow : Color.Red);
+
+                    string delayStr = $"{effectiveDelay:F0}";
+                    string procStr = $"{avgClickTime:F0}";
+                    string targetStr = $"{expectedTotal:F0}";
+                    string settingStr = $"{lazyModeTarget:F0}";
+                    int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
+
+                    _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), Color.Yellow, 16);
+                    yPos += lineHeight;
+                    _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
+                    yPos += lineHeight;
+                    _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), Color.Yellow, 16);
+                    yPos += lineHeight;
+                    _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
+                    yPos += lineHeight;
+                }
+                else
+                {
+                    _deferredTextQueue.Enqueue($"Target: {lazyModeTarget} ms", new Vector2(xPos, yPos), Color.Orange, 16);
+                    yPos += lineHeight;
+                }
+
+            }
+
+            return yPos;
+        }
+
         public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)
         {
             _deferredTextQueue.Enqueue($"--- Recent Errors ---", new Vector2(xPos, yPos), Color.Orange, 16);
