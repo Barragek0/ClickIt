@@ -386,7 +386,7 @@ namespace ClickIt
                 return "Kalandra tablet window is open.";
 
             if (GameController?.Game?.IsEscapeState == true)
-                return "In escape state.";
+                return "Escape menu is open.";
 
             return "Clicking disabled.";
         }

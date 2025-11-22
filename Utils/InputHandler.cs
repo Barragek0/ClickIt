@@ -78,14 +78,19 @@ namespace ClickIt.Utils
         public bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen = false, bool isRitualActive = false)
         {
             if (gameController == null) return false;
-            bool keyState = Input.GetKeyState(_settings.ClickLabelKey.Value);
 
-            // Only invert key state if lazy mode is enabled AND currently active (no restricted items on screen)
-            // This allows the hotkey to override lazy mode restrictions when held
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value && !hasLazyModeRestrictedItemsOnScreen)
-            {
-                keyState = !keyState;
-            }
+            // Lazy mode is active when:
+            // - Lazy mode is enabled
+            // - No restricted items are on screen  
+            // - Lazy mode disable hotkey is NOT being held
+            bool lazyModeActive = _settings?.LazyMode != null &&
+                                 _settings.LazyMode.Value &&
+                                 !hasLazyModeRestrictedItemsOnScreen &&
+                                 !Input.GetKeyState(_settings.LazyModeDisableKey.Value);
+
+            // In lazy mode, always allow clicking (ignore hotkey state)
+            // When not in lazy mode, check hotkey state normally
+            bool keyState = lazyModeActive || Input.GetKeyState(_settings.ClickLabelKey.Value);
 
             return keyState &&
                 IsPOEActive(gameController) &&
