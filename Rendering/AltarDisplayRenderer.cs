@@ -87,15 +87,12 @@ namespace ClickIt.Rendering
         }
         private Element? EvaluateAltarWeights(AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
-            const int DANGEROUS_THRESHOLD = 90;
-            const int HIGH_VALUE_THRESHOLD = 90;
-
-            bool topHasDangerousDownside = HasAnyWeightOverThreshold(weights, true, false, DANGEROUS_THRESHOLD);
-            bool bottomHasDangerousDownside = HasAnyWeightOverThreshold(weights, false, false, DANGEROUS_THRESHOLD);
-            bool topHasHighValueUpside = HasAnyWeightOverThreshold(weights, true, true, HIGH_VALUE_THRESHOLD);
-            bool bottomHasHighValueUpside = HasAnyWeightOverThreshold(weights, false, true, HIGH_VALUE_THRESHOLD);
-            bool topHasLowValue = HasAnyWeightEqualTo(weights, true, true, 1) || HasAnyWeightEqualTo(weights, true, false, 1);
-            bool bottomHasLowValue = HasAnyWeightEqualTo(weights, false, true, 1) || HasAnyWeightEqualTo(weights, false, false, 1);
+            bool topHasDangerousDownside = _settings.DangerousDownside.Value && HasAnyWeightOverThreshold(weights, true, false, _settings.DangerousDownsideThreshold.Value);
+            bool bottomHasDangerousDownside = _settings.DangerousDownside.Value && HasAnyWeightOverThreshold(weights, false, false, _settings.DangerousDownsideThreshold.Value);
+            bool topHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, true, true, _settings.ValuableUpsideThreshold.Value);
+            bool bottomHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, false, true, _settings.ValuableUpsideThreshold.Value);
+            bool topHasLowValue = _settings.UnvaluableUpside.Value && (HasAnyWeightAtOrBelowThreshold(weights, true, true, _settings.UnvaluableUpsideThreshold.Value) || HasAnyWeightAtOrBelowThreshold(weights, true, false, _settings.UnvaluableUpsideThreshold.Value));
+            bool bottomHasLowValue = _settings.UnvaluableUpside.Value && (HasAnyWeightAtOrBelowThreshold(weights, false, true, _settings.UnvaluableUpsideThreshold.Value) || HasAnyWeightAtOrBelowThreshold(weights, false, false, _settings.UnvaluableUpsideThreshold.Value));
 
             if (topHasDangerousDownside && bottomHasDangerousDownside)
             {
@@ -271,11 +268,11 @@ namespace ClickIt.Rendering
             return weightArray.Any(w => w >= threshold);
         }
 
-        private bool HasAnyWeightEqualTo(AltarWeights weights, bool isTop, bool isUpside, int value)
+        private bool HasAnyWeightAtOrBelowThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
         {
-            // Create a collection of the relevant weights and check if any equal the specified value
+            // Create a collection of the relevant weights and check if any are at or below the threshold
             var weightArray = GetWeightArray(weights, isTop, isUpside);
-            return weightArray.Any(w => w == value);
+            return weightArray.Any(w => w <= threshold);
         }
 
         private decimal[] GetWeightArray(AltarWeights weights, bool isTop, bool isUpside)

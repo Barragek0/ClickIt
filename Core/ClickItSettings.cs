@@ -198,6 +198,20 @@ namespace ClickIt
         [Menu("Highlight recommended option",
             "Highlights the recommended option for you to choose for eater of worlds altars, based on a decision tree created from your settings below.", 2, 4500)]
         public ToggleNode HighlightEaterAltars { get; set; } = new ToggleNode(true);
+        [Menu("Weight Overrides", 4600)]
+        public EmptyNode WeightOverrides { get; set; } = new EmptyNode();
+        [Menu("Valuable Upside", "When enabled, automatically chooses the altar option with modifiers that have weights above the threshold, even if the overall weight calculation would suggest otherwise.", 1, 4600)]
+        public ToggleNode ValuableUpside { get; set; } = new ToggleNode(true);
+        [Menu("Valuable Upside Threshold", "Minimum weight threshold for upside modifiers to trigger the high value override. Modifiers with weights at or above this value will cause the plugin to choose that altar option.", 2, 4600)]
+        public RangeNode<int> ValuableUpsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
+        [Menu("Unvaluable Upside", "When enabled, automatically chooses the opposite altar option when modifiers have weights at or below the threshold, avoiding potentially undesirable choices.", 3, 4600)]
+        public ToggleNode UnvaluableUpside { get; set; } = new ToggleNode(true);
+        [Menu("Unvaluable Threshold", "Weight threshold that triggers the low value override. When any modifier has a weight at or below this value, the plugin will choose the opposite altar option.", 4, 4600)]
+        public RangeNode<int> UnvaluableUpsideThreshold { get; set; } = new RangeNode<int>(1, 1, 100);
+        [Menu("Dangerous Downside", "When enabled, automatically avoids altar options with dangerous downside modifiers that have weights above the threshold.", 5, 4600)]
+        public ToggleNode DangerousDownside { get; set; } = new ToggleNode(true);
+        [Menu("Dangerous Downside Threshold", "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.", 6, 4600)]
+        public RangeNode<int> DangerousDownsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
         [JsonIgnore]
         public CustomNode AltarModWeights { get; }
         private string upsideSearchFilter = "";
@@ -205,7 +219,10 @@ namespace ClickIt
         public ClickItSettings()
         {
             InitializeDefaultWeights();
-            AltarModWeights = new CustomNode { DrawDelegate = DrawAltarModWeights };
+            AltarModWeights = new CustomNode
+            {
+                DrawDelegate = DrawAltarModWeights
+            };
         }
         private void DrawAltarModWeights()
         {
@@ -214,7 +231,7 @@ namespace ClickIt
         }
         private void DrawUpsideModsSection()
         {
-            if (!ImGui.TreeNode("Altar Upside Mods")) return;
+            if (!ImGui.TreeNode("Altar Upside Weights")) return;
             ImGui.Spacing();
             ImGui.Spacing();
             ImGui.TextWrapped("Weight Scale:");
@@ -228,7 +245,7 @@ namespace ClickIt
         }
         private void DrawDownsideModsSection()
         {
-            if (!ImGui.TreeNode("Altar Downside Mods")) return;
+            if (!ImGui.TreeNode("Altar Downside Weights")) return;
             ImGui.Spacing();
             ImGui.Spacing();
             ImGui.TextWrapped("Weight Scale (Higher = More Dangerous):");
