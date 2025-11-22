@@ -67,11 +67,9 @@ namespace ClickIt.Utils
         {
             if (_settings.ToggleItems.Value && _random.Next(0, 20) == 0)
             {
-#pragma warning disable CS0618
                 Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
                 Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
                 return true;
-#pragma warning restore CS0618
             }
             return false;
         }
@@ -160,9 +158,15 @@ namespace ClickIt.Utils
 
             var after = Mouse.GetCursorPosition();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor after move: {after}", 5);
-
-            //UIHover needs time to update
-            Thread.Sleep(20);
+            //UIHover needs time to update so we sleep longer in lazy mode, we still sleep in normal mode to give cursor time to move
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            {
+                Thread.Sleep(30);
+            }
+            else
+            {
+                Thread.Sleep(10);
+            }
 
             var uiHover = gameController?.IngameState?.UIHoverElement;
 
@@ -185,10 +189,10 @@ namespace ClickIt.Utils
             {
                 _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification skipped - expectedElement is null", 5);
             }
-
-            // Small delay to ensure cursor movement has taken effect before click
-            Thread.Sleep(10);
-
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            {
+                Thread.Sleep(20);
+            }
             sw.Restart();
             if (_settings.LeftHanded.Value)
             {
@@ -203,7 +207,15 @@ namespace ClickIt.Utils
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
 
-            Thread.Sleep(5);
+            // we sleep here to make sure the click has time to register before we move the cursor back in lazy mode
+            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            {
+                Thread.Sleep(20);
+            }
+            else
+            {
+                Thread.Sleep(10);
+            }
 
             RestoreCursorIfLazyMode(before);
 

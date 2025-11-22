@@ -35,18 +35,21 @@ Additional guidance:
 - **ClickService**: Orchestrates all clicking logic with safety checks
 - **AltarService**: Detects/parses altars with mod matching caches  
 - **AreaService**: Manages screen regions and clickable area calculations
-- **ElementService**: Thread-safe element traversal (ThreadLocal pattern)
 - **LabelFilterService**: Filters/prioritizes ground items
 - **EssenceService**: Corruption logic with MEDS/non-shrieking strategies
+- **ShrineService**: Shrine detection and clicking logic
 - **WeightCalculator**: Calculates weights for altar decisions
 
 ### Critical Commands
 ```powershell
 # Test (always run this first)
-dotnet test Tests\ClickIt.Tests.csproj --configuration Debug
+dotnet test Tests\ClickIt.Tests.csproj --logger "console;verbosity=normal"
 
 # Build main plugin (requires ExileCore dependencies)  
 & "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ClickIt.sln /p:Configuration=Debug
+
+# Full validation
+dotnet test Tests\ClickIt.Tests.csproj --configuration Debug; & "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ClickIt.sln /p:Configuration=Debug
 
 # Debug: Enable Settings.DebugMode + Settings.RenderDebug
 ```
@@ -117,6 +120,11 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug
 - **Game Freezing**: Eliminate direct memory access in render loops
 - **High CPU Usage**: Verify cache invalidation in altar service
 - **Memory Pressure**: Ensure `InvalidateCache()` called on state changes
+- **UIHover Slow**: `InputHandler.PerformClick`: Add timing around `gameController?.IngameState?.UIHoverElement`
+
+#### Altar Weight Issues
+- **Low Value False Positives**: `HasAnyWeightAtOrBelowThreshold`: Use `w > 0 && w <= threshold` to ignore empty slots (weight 0)
+- **Unknown Mods**: Default weight 1; customize in `ModTiers` dictionary
 
 #### Element Access Issues
 - **Null Reference**: Always check `element.IsValid` before access
@@ -250,6 +258,37 @@ public ClickService(
 2. **Pattern**: Update `CalculateUpsideWeight` or `CalculateDownsideWeight` methods
 3. **Settings**: May need to add to `ModTiers` dictionary in settings
 
+### Recent Patterns
+
+#### Lazy Mode Click Limiting (InputHandler.cs)
+```csharp
+private bool TryConsumeLazyModeLimiter()
+{
+    if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+    {
+        int limiterMs = _settings?.LazyModeClickLimiting?.Value ?? 250;
+        long now = Environment.TickCount64;
+        long elapsed = now - _lastClickTimestampMs;
+        if (_lastClickTimestampMs != 0 && elapsed < limiterMs)
+        {
+            return false;
+        }
+        _lastClickTimestampMs = now;
+    }
+    return true;
+}
+```
+
+#### Debug Categories (DebugRenderer.cs)
+- `RenderClickFrequencyTargetDebug()`: Regular click timing breakdown
+- `RenderClickFrequencyTargetLazyDebug()`: Lazy mode status + timing
+- Column layout with spacing: `yPos += lineHeight;` after each category
+
+#### Weight Overrides (ClickItSettings.cs)
+- `ModTiers` dictionary: `GetModTier(modId, type)` composite key lookup
+- Default: 1 for unknown mods
+- UI: CustomNode with ImGui.TreeNodeEx + DefaultOpen flag
+
 ---
 
 ## AI Safety Guidelines
@@ -276,10 +315,12 @@ public ClickService(
 
 ### Key Files for Immediate Reference
 - **Core Orchestration**: `Core/ClickIt.cs:87` (service creation order in `Initialise()`)
-- **Thread Safety**: `Services/ElementService.cs:9` (ThreadLocal pattern)
+- **Lazy Mode**: `Utils/InputHandler.cs:171` (UIHover timing, PerformClick sleeps)
+- **Altar Weights**: `Rendering/AltarDisplayRenderer.cs:94` (low-value logic, HasAnyWeightAtOrBelowThreshold)
 - **Performance Caching**: `Components/PrimaryAltarComponent.cs:36` (100ms cache pattern)
 - **Safety Mechanisms**: `Core/ClickIt.cs:120` (UI zone validation)
 - **Service Integration**: `Services/ClickService.cs:32` (constructor injection pattern)
+- **Debug Rendering**: `Rendering/DebugRenderer.cs:70` (column layout, category spacing)
 
 ### Settings Architecture (200+ settings)
 - **Location**: `Core/ClickItSettings.cs`
@@ -293,11 +334,14 @@ public ClickService(
 - **High Memory**: Invalidate caches, check for memory leaks in altar service
 
 ### Test Categories
-- **Weight Calculations**: `WeightCalculationTests.cs`
+- **Weight Calculations**: `WeightCalculationTests.cs`, `WeightCalculationEdgeCaseTests.cs`
 - **Settings Validation**: `SettingsValidationTests.cs` 
-- **Altar Logic**: `AltarDecisionLogicTests.cs`
+- **Altar Logic**: `AltarDecisionLogicTests.cs`, `AdvancedDecisionLogicTests.cs`
+- **Rendering/UI**: `RenderingAndUILogicTests.cs`
 - **Performance**: `PerformanceTimingTests.cs`
-- **Integration**: `ServiceIntegrationTests.cs`
+- **Integration**: `ServiceIntegrationTests.cs`, `ConfigurationIntegrationTests.cs`
+- **Input/Safety**: `InputSafetyAndValidationTests.cs`
+- **Full suite**: 292 tests across all categories
 
 ---
 
