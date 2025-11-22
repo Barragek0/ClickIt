@@ -16,7 +16,7 @@ namespace ClickIt.Services
 
         // Performance caching - shrines update less frequently than labels
         private const int SHRINE_CACHE_DURATION_MS = 200; // 200ms cache for shrines
-        private readonly Stopwatch _shrineCacheTimer = new Stopwatch();
+        private readonly Stopwatch _shrineCacheTimer = new();
         private List<Entity>? _cachedShrines;
         private long _lastShrineCacheTime;
 
@@ -104,7 +104,7 @@ namespace ClickIt.Services
                 if (shrine == null) continue;
 
                 // Check if the shrine is in a clickable area (on screen)
-                Vector2 clickPos = new Vector2(_camera.WorldToScreen(shrine.PosNum).X, _camera.WorldToScreen(shrine.PosNum).Y);
+                Vector2 clickPos = new(_camera.WorldToScreen(shrine.PosNum).X, _camera.WorldToScreen(shrine.PosNum).Y);
                 if (isInClickableArea(clickPos))
                     return true;
             }
@@ -138,7 +138,7 @@ namespace ClickIt.Services
                 // If a clickable area checker is provided, ensure the shrine is on screen
                 if (isInClickableArea != null && _camera != null)
                 {
-                    Vector2 screenPos = new Vector2(_camera.WorldToScreen(shrine.PosNum).X, _camera.WorldToScreen(shrine.PosNum).Y);
+                    Vector2 screenPos = new(_camera.WorldToScreen(shrine.PosNum).X, _camera.WorldToScreen(shrine.PosNum).Y);
                     if (!isInClickableArea(screenPos))
                     {
                         continue; // Skip shrines that aren't in the clickable area

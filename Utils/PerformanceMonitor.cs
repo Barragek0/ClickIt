@@ -17,35 +17,36 @@ namespace ClickIt.Utils
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
+
         // Primary timing controls
-        private readonly Stopwatch _mainTimer = new Stopwatch();
-        private readonly Stopwatch _secondTimer = new Stopwatch();
+        private readonly Stopwatch _mainTimer = new();
+        private readonly Stopwatch _secondTimer = new();
 
         // Coroutine timing
-        private readonly Stopwatch _renderTimer = new Stopwatch();
-        private readonly Stopwatch _altarCoroutineTimer = new Stopwatch();
-        private readonly Stopwatch _clickCoroutineTimer = new Stopwatch();
-        private readonly Stopwatch _flareCoroutineTimer = new Stopwatch();
-        private readonly Stopwatch _shrineCoroutineTimer = new Stopwatch();
+        private readonly Stopwatch _renderTimer = new();
+        private readonly Stopwatch _altarCoroutineTimer = new();
+        private readonly Stopwatch _clickCoroutineTimer = new();
+        private readonly Stopwatch _flareCoroutineTimer = new();
+        private readonly Stopwatch _shrineCoroutineTimer = new();
 
         // Performance tracking queues with thread-safe access
-        private readonly Queue<long> _clickCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> _altarCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> _flareCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> _shrineCoroutineTimings = new Queue<long>(10);
-        private readonly Queue<long> _renderTimings = new Queue<long>(60);
-        private readonly Queue<long> _clickIntervals = new Queue<long>(10);
+        private readonly Queue<long> _clickCoroutineTimings = new(10);
+        private readonly Queue<long> _altarCoroutineTimings = new(10);
+        private readonly Queue<long> _flareCoroutineTimings = new(10);
+        private readonly Queue<long> _shrineCoroutineTimings = new(10);
+        private readonly Queue<long> _renderTimings = new(60);
+        private readonly Queue<long> _clickIntervals = new(10);
 
         // Thread safety locks
-        private readonly object _clickTimingsLock = new object();
-        private readonly object _altarTimingsLock = new object();
-        private readonly object _flareTimingsLock = new object();
-        private readonly object _shrineTimingsLock = new object();
-        private readonly object _renderTimingsLock = new object();
-        private readonly object _clickIntervalsLock = new object();
+        private readonly object _clickTimingsLock = new();
+        private readonly object _altarTimingsLock = new();
+        private readonly object _flareTimingsLock = new();
+        private readonly object _shrineTimingsLock = new();
+        private readonly object _renderTimingsLock = new();
+        private readonly object _clickIntervalsLock = new();
 
         // FPS calculation
-        private readonly Stopwatch _fpsTimer = new Stopwatch();
+        private readonly Stopwatch _fpsTimer = new();
         private int _frameCount = 0;
         private double _currentFps = 0;
 
@@ -63,9 +64,9 @@ namespace ClickIt.Utils
         private long _maxShrineTiming = 0;
 
         // Input safety timing
-        private readonly Stopwatch _lastHotkeyReleaseTimer = new Stopwatch();
-        private readonly Stopwatch _lastRenderTimer = new Stopwatch();
-        private readonly Stopwatch _lastTickTimer = new Stopwatch();
+        private readonly Stopwatch _lastHotkeyReleaseTimer = new();
+        private readonly Stopwatch _lastRenderTimer = new();
+        private readonly Stopwatch _lastTickTimer = new();
 
         // Click interval tracking
         private long _lastClickTime = 0;

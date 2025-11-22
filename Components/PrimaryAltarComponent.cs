@@ -33,7 +33,7 @@ namespace ClickIt.Components
         private const long CACHE_DURATION_MS = 1000;
 
         // Thread safety lock for cache operations
-        private readonly object _cacheLock = new object();
+        private readonly object _cacheLock = new();
 
         // Helper to execute a Func<T> under the configured LockManager if present
         private T WithCacheLock<T>(Func<T> func)

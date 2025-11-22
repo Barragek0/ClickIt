@@ -62,13 +62,13 @@ namespace ClickIt.Constants
         #endregion
 
         #region UI Colors
-        public static readonly Vector4 PlayerColor = new Vector4(0.4f, 0.7f, 0.9f, 1.0f);
-        public static readonly Vector4 MinionColor = new Vector4(0.4f, 0.9f, 0.4f, 1.0f);
-        public static readonly Vector4 BossColor = new Vector4(0.8f, 0.4f, 0.4f, 1.0f);
-        public static readonly Vector4 DefaultColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-        public static readonly Vector4 BossBackgroundColor = new Vector4(0.6f, 0.2f, 0.2f, 0.3f);
-        public static readonly Vector4 PlayerBackgroundColor = new Vector4(0.2f, 0.4f, 0.6f, 0.3f);
-        public static readonly Vector4 MinionBackgroundColor = new Vector4(0.2f, 0.6f, 0.2f, 0.3f);
+        public static readonly Vector4 PlayerColor = new(0.4f, 0.7f, 0.9f, 1.0f);
+        public static readonly Vector4 MinionColor = new(0.4f, 0.9f, 0.4f, 1.0f);
+        public static readonly Vector4 BossColor = new(0.8f, 0.4f, 0.4f, 1.0f);
+        public static readonly Vector4 DefaultColor = new(1.0f, 1.0f, 1.0f, 1.0f);
+        public static readonly Vector4 BossBackgroundColor = new(0.6f, 0.2f, 0.2f, 0.3f);
+        public static readonly Vector4 PlayerBackgroundColor = new(0.2f, 0.4f, 0.6f, 0.3f);
+        public static readonly Vector4 MinionBackgroundColor = new(0.2f, 0.6f, 0.2f, 0.3f);
         #endregion
 
         #region Separator Constants

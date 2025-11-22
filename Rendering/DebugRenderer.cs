@@ -350,7 +350,7 @@ namespace ClickIt.Rendering
             {
                 leadingSpaces++;
             }
-            string indentation = new string(' ', leadingSpaces);
+            string indentation = new(' ', leadingSpaces);
             string content = text.Substring(leadingSpaces);
 
             while (startIndex < content.Length)

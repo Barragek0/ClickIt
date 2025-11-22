@@ -75,6 +75,25 @@ namespace ClickIt.Utils
             return false;
         }
 
+        private bool IsShrineClickBlockedInLazyMode()
+        {
+            if (!_settings.LazyMode.Value) return false;
+            bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+            if (hasRestrictedItems) return false;
+            bool skillButtonHeld = _settings.LeftHanded.Value ? Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
+            return skillButtonHeld;
+        }
+
+        private bool HasClickableAltars()
+        {
+            if (_state.AltarService == null || _state.ClickService == null) return false;
+            var altarSnapshot = _state.AltarService.GetAltarComponentsReadOnly();
+            if (altarSnapshot.Count == 0) return false;
+            bool clickEater = _settings.ClickEaterAltars;
+            bool clickExarch = _settings.ClickExarchAltars;
+            return altarSnapshot.Any(altar => _state.ClickService.ShouldClickAltar(altar, clickEater, clickExarch));
+        }
+
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
         {
             _state.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, "ClickIt.ScanForAltarsLogic", false);
@@ -222,21 +241,10 @@ namespace ClickIt.Utils
             double baseTarget = _settings.ClickFrequencyTarget.Value - avgShrineTime;
             double targetTime = baseTarget + _state.Random.Next(0, 6);
 
-            // Check for lazy mode mouse button blocking (shrines should be blocked when skill mouse button is held in lazy mode)
             bool isRitualActive = IsRitualActive();
-            if (_settings.LazyMode.Value)
+            if (IsShrineClickBlockedInLazyMode())
             {
-                bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
-                if (!hasRestrictedItems)
-                {
-                    // In lazy mode with no restricted items, check if skill mouse button is held
-                    bool skillButtonHeld = _settings.LeftHanded.Value ?
-                        Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
-                    if (skillButtonHeld)
-                    {
-                        yield break; // Don't click shrines while skill mouse button is held in lazy mode
-                    }
-                }
+                yield break;
             }
 
             if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController, false, isRitualActive))
@@ -244,21 +252,9 @@ namespace ClickIt.Utils
                 yield break;
             }
 
-            // Prioritize altars over shrines - check if altars are available for clicking
-            if (_state.AltarService != null && _state.ClickService != null)
+            if (HasClickableAltars())
             {
-                var altarSnapshot = _state.AltarService.GetAltarComponentsReadOnly();
-                if (altarSnapshot.Count > 0)
-                {
-                    bool clickEater = _settings.ClickEaterAltars;
-                    bool clickExarch = _settings.ClickExarchAltars;
-                    bool hasClickableAltars = altarSnapshot.Any(altar => _state.ClickService.ShouldClickAltar(altar, clickEater, clickExarch));
-                    if (hasClickableAltars)
-                    {
-                        // Altars are available and enabled, skip shrine clicking this iteration
-                        yield break;
-                    }
-                }
+                yield break;
             }
 
             var nearestShrine = _state.ShrineService.GetNearestShrineInRange(_settings.ClickDistance.Value, point => _pointIsInClickableArea(point));
@@ -275,18 +271,14 @@ namespace ClickIt.Utils
             }
 
             var screen = _state.Camera.WorldToScreen(nearestShrine.PosNum);
-            Vector2 clickPos = new Vector2(screen.X, screen.Y);
+            Vector2 clickPos = new(screen.X, screen.Y);
 
-            // Reset timer for next shrine click
             _state.ShrineTimer.Restart();
 
-            // Thread-safe clicking via helper that acquires the click element access lock when LockManager enabled
             ExecuteWithElementAccessLock(() => _state.InputHandler?.PerformClick(clickPos));
 
-            // Record the click interval for shrine clicks
             _state.PerformanceMonitor?.RecordClickInterval();
 
-            // Invalidate shrine cache since we clicked one
             _state.ShrineService?.InvalidateCache();
         }
 
@@ -346,35 +338,35 @@ namespace ClickIt.Utils
             {
                 _state.PerformanceMonitor.StartCoroutineTiming("flare");
 
-                if (_settings.ClickDelveFlares && _gameController?.Player?.Buffs != null)
-                {
-                    var delveBuff = _gameController.Player.Buffs.FirstOrDefault(b => b.Name == "delve_degen_buff");
-                    if (delveBuff != null && delveBuff.Charges >= _settings.DarknessDebuffStacks.Value)
-                    {
-                        // Check health and energy shield thresholds
-                        float healthPercent = GetPlayerHealthPercent();
-                        float energyShieldPercent = GetPlayerEnergyShieldPercent();
-
-                        if (healthPercent <= _settings.DelveFlareHealthThreshold.Value &&
-                            energyShieldPercent <= _settings.DelveFlareEnergyShieldThreshold.Value)
-                        {
-                            // Check if clicking is allowed before using flare
-                            if (_state.InputHandler?.CanClick(_gameController, false, IsRitualActive()) == true)
-                            {
-                                Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
-
-                                _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
-
-                                yield return new WaitTime(1000);
-                            }
-                        }
-                    }
-                }
+                yield return ProcessFlare();
 
                 _state.PerformanceMonitor.StopCoroutineTiming("flare");
 
                 yield return new WaitTime(100);
             }
+        }
+
+        private IEnumerator ProcessFlare()
+        {
+            if (!_settings.ClickDelveFlares || _gameController?.Player?.Buffs == null)
+                yield break;
+
+            var delveBuff = _gameController.Player.Buffs.FirstOrDefault(b => b.Name == "delve_degen_buff");
+            if (delveBuff == null || delveBuff.Charges < _settings.DarknessDebuffStacks.Value)
+                yield break;
+
+            float healthPercent = GetPlayerHealthPercent();
+            float energyShieldPercent = GetPlayerEnergyShieldPercent();
+            if (healthPercent > _settings.DelveFlareHealthThreshold.Value ||
+                energyShieldPercent > _settings.DelveFlareEnergyShieldThreshold.Value)
+                yield break;
+
+            if (_state.InputHandler?.CanClick(_gameController, false, IsRitualActive()) != true)
+                yield break;
+
+            Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
+            _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
+            yield return new WaitTime(1000);
         }
 
         private float GetPlayerHealthPercent()

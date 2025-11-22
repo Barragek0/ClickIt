@@ -17,7 +17,7 @@ namespace ClickIt.Utils
         private readonly Action<bool> _safeBlockInput;
         private readonly Action<string> _forceUnblockInput;
 
-        private readonly List<string> _recentErrors = new List<string>();
+        private readonly List<string> _recentErrors = new();
         private const int MAX_ERRORS_TO_TRACK = 10;
 
         public IReadOnlyList<string> RecentErrors => _recentErrors.AsReadOnly();

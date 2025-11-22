@@ -43,7 +43,7 @@ namespace ClickIt.Services
         private readonly PerformanceMonitor performanceMonitor;
 
         // Thread safety lock to prevent race conditions during element access
-        private readonly object _elementAccessLock = new object();
+        private readonly object _elementAccessLock = new();
         // Public method to expose the lock for external synchronization
         public object GetElementAccessLock()
         {

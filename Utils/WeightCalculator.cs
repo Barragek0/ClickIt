@@ -125,7 +125,7 @@ namespace ClickIt.Utils
         private decimal[] _bottomUpsideWeights;
 
         // Thread safety lock for weight array operations
-        private readonly object _weightsLock = new object();
+        private readonly object _weightsLock = new();
 
         public AltarWeights()
         {

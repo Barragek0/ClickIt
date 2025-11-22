@@ -541,7 +541,7 @@ namespace ClickIt
             }
 
             // Traditional loop for better performance - no LINQ overhead
-            List<LabelOnGround> validLabels = new List<LabelOnGround>(Math.Min(groundLabels.Count, 1000));
+            List<LabelOnGround> validLabels = new(Math.Min(groundLabels.Count, 1000));
 
             // Filter valid labels
             for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)

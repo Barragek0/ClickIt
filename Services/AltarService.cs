@@ -42,12 +42,12 @@ namespace ClickIt.Services
         private readonly Dictionary<string, string> _textCleanCache = new(StringComparer.Ordinal);
 
         // Thread safety locks for cache dictionaries and shared collections
-        private readonly object _modMatchCacheLock = new object();
-        private readonly object _textCleanCacheLock = new object();
-        private readonly object _altarComponentsLock = new object();
-        private readonly object _debugInfoLock = new object();
+        private readonly object _modMatchCacheLock = new();
+        private readonly object _textCleanCacheLock = new();
+        private readonly object _altarComponentsLock = new();
+        private readonly object _debugInfoLock = new();
 
-        private static readonly Regex RgbRegex = new Regex(
+        private static readonly Regex RgbRegex = new(
             @"<rgb\(\d+,\d+,\d+\)>",
             RegexOptions.Compiled);
         public AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
@@ -274,7 +274,7 @@ namespace ClickIt.Services
                 {
                     hasUnmatchedMods = true;
                     DebugInfo.ModsUnmatched++;
-                    string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
+                    string cleanedMod = new(mod.Where(char.IsLetter).ToArray());
                     string unmatchedInfo = $"{cleanedMod} ({negativeModType})";
                     if (!DebugInfo.RecentUnmatchedMods.Contains(unmatchedInfo))
                     {
@@ -307,7 +307,7 @@ namespace ClickIt.Services
                         // Normalize legacy cached matchedId (id-only) to composite "Type|Id" using negativeModType
                         if (!string.IsNullOrEmpty(matchedId) && !matchedId.Contains('|'))
                         {
-                            string cleanedNegative = new string(negativeModType.Where(char.IsLetter).ToArray());
+                            string cleanedNegative = new(negativeModType.Where(char.IsLetter).ToArray());
                             string modTarget = GetModTarget(cleanedNegative);
                             if (!string.IsNullOrEmpty(modTarget))
                             {
@@ -351,8 +351,8 @@ namespace ClickIt.Services
         {
             isUpside = false;
             matchedId = string.Empty;
-            string cleanedMod = new string(mod.Where(char.IsLetter).ToArray());
-            string cleanedNegativeModType = new string(negativeModType.Where(char.IsLetter).ToArray());
+            string cleanedMod = new(mod.Where(char.IsLetter).ToArray());
+            string cleanedNegativeModType = new(negativeModType.Where(char.IsLetter).ToArray());
             string modTarget = GetModTarget(cleanedNegativeModType);
             var searchLists = new[]
             {
@@ -363,7 +363,7 @@ namespace ClickIt.Services
             {
                 foreach (var (Id, _, Type, _) in searchList.List)
                 {
-                    string cleanedId = new string(Id.Where(char.IsLetter).ToArray());
+                    string cleanedId = new(Id.Where(char.IsLetter).ToArray());
                     if (cleanedId.Equals(cleanedMod, StringComparison.OrdinalIgnoreCase) &&
                         Type.Equals(modTarget, StringComparison.OrdinalIgnoreCase))
                     {

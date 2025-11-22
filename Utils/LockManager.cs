@@ -26,7 +26,7 @@ namespace ClickIt.Utils
 
         private class NoopReleaser : IDisposable
         {
-            public static readonly NoopReleaser Instance = new NoopReleaser();
+            public static readonly NoopReleaser Instance = new();
             private NoopReleaser() { }
             public void Dispose() { }
         }
