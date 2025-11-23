@@ -88,8 +88,6 @@ namespace ClickIt
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
         [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 15, 3000)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
-        [Menu("Block User Input", "Prevents mouse movement and clicks while the hotkey is held. Will help stop missclicking, but may cause issues.\n\nYou must run ExileAPI as Administrator for this to function.", 16, 3000)]
-        public ToggleNode BlockUserInput { get; set; } = new ToggleNode(false);
         [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 17, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
         [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 18, 3000)]

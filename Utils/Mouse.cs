@@ -11,10 +11,7 @@ namespace ClickIt.Utils
         public static extern bool SetCursorPos(int x, int y);
         [DllImport("user32.dll")]
         private static extern void mouse_event(int dwFlags, int dx, int dy, int cButtons, int dwExtraInfo);
-        [DllImport("user32.dll")]
-        private static extern bool BlockInput(bool block);
-        // Return the underlying BlockInput result so callers can log failures
-        public static bool blockInput(bool block) => BlockInput(block);
+
         public const int MOUSEEVENTF_LEFTDOWN = 0x02;
         public const int MOUSEEVENTF_LEFTUP = 0x04;
         public const int MOUSEEVENTF_MIDDOWN = 0x0020;

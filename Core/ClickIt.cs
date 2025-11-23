@@ -53,7 +53,6 @@ namespace ClickIt
             // Clear service references
             State.PerformanceMonitor = null;
             State.ErrorHandler = null;
-            State.InputSafetyManager = null;
             State.AreaService = null;
             State.AltarService = null;
             State.ShrineService = null;
@@ -68,9 +67,8 @@ namespace ClickIt
             State.ClickLabelCoroutine?.Done();
             State.DelveFlareCoroutine?.Done();
             State.ShrineCoroutine?.Done();
-            State.InputSafetyCoroutine?.Done();
 
-            State.InputSafetyManager?.ForceUnblockInput("Plugin closing");
+
 
             base.OnClose();
         }
@@ -79,8 +77,7 @@ namespace ClickIt
             _reportBugHandler = () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
             Settings.ReportBugButton.OnPressed += _reportBugHandler;
             State.PerformanceMonitor = new PerformanceMonitor(Settings);
-            State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage, (block) => State.InputSafetyManager?.SafeBlockInput(block), (reason) => State.InputSafetyManager?.ForceUnblockInput(reason));
-            State.InputSafetyManager = new InputSafetyManager(Settings, State, State.ErrorHandler);
+            State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage);
             State.CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
             State.AreaService = new Services.AreaService();
             State.AreaService.UpdateScreenAreas(GameController);
@@ -89,7 +86,7 @@ namespace ClickIt
             var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings), State.ErrorHandler);
             State.LabelFilterService = labelFilterService;
             State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
-            State.InputHandler = new InputHandler(Settings, State.PerformanceMonitor, (block) => State.InputSafetyManager?.SafeBlockInput(block), State.ErrorHandler);
+            State.InputHandler = new InputHandler(Settings, State.PerformanceMonitor, State.ErrorHandler);
             var weightCalculator = new WeightCalculator(Settings);
             State.DeferredTextQueue = new DeferredTextQueue();
             State.DeferredFrameQueue = new DeferredFrameQueue();
@@ -117,7 +114,6 @@ namespace ClickIt
                 Settings,
                 GameController,
                 State.ErrorHandler,
-                (reason) => State.InputSafetyManager?.ForceUnblockInput(reason),
                 point => PointIsInClickableArea(point));
             coroutineManager.StartCoroutines(this);
 

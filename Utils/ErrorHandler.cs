@@ -14,9 +14,6 @@ namespace ClickIt.Utils
         private readonly ClickItSettings _settings;
         private readonly Action<string, int> _logError;
         private readonly Action<string, int> _logMessage;
-        private readonly Action<bool> _safeBlockInput;
-        private readonly Action<string> _forceUnblockInput;
-
         private readonly List<string> _recentErrors = new();
         private const int MAX_ERRORS_TO_TRACK = 10;
 
@@ -25,15 +22,11 @@ namespace ClickIt.Utils
         public ErrorHandler(
             ClickItSettings settings,
             Action<string, int> logError,
-            Action<string, int> logMessage,
-            Action<bool> safeBlockInput,
-            Action<string> forceUnblockInput)
+            Action<string, int> logMessage)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _logError = logError ?? throw new ArgumentNullException(nameof(logError));
             _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
-            _safeBlockInput = safeBlockInput ?? throw new ArgumentNullException(nameof(safeBlockInput));
-            _forceUnblockInput = forceUnblockInput ?? throw new ArgumentNullException(nameof(forceUnblockInput));
         }
 
         /// <summary>
@@ -61,9 +54,6 @@ namespace ClickIt.Utils
                 string terminatingMessage = "[Global] Runtime is terminating";
                 LogWithFallback(terminatingMessage);
             }
-
-            // Attempt safe cleanup
-            SafeForceUnblockInput("Global exception handler");
         }
 
         private void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
@@ -71,9 +61,6 @@ namespace ClickIt.Utils
             string taskMessage = $"[Global] Unobserved task exception: {e.Exception?.Message ?? "Unknown task exception"}";
             LogWithFallback(taskMessage);
             e.SetObserved(); // Mark as observed to prevent re-throwing
-
-            // Attempt safe cleanup
-            SafeForceUnblockInput("Unobserved task exception handler");
         }
 
         private void LogWithFallback(string message)
@@ -90,18 +77,6 @@ namespace ClickIt.Utils
                     System.IO.File.AppendAllText("ClickIt_Crash.log", $"{DateTime.Now}: {message}\n");
                 }
                 catch { }
-            }
-        }
-
-        private void SafeForceUnblockInput(string reason)
-        {
-            try
-            {
-                _forceUnblockInput(reason);
-            }
-            catch
-            {
-                // Ignore cleanup failures
             }
         }
 
@@ -166,20 +141,5 @@ namespace ClickIt.Utils
             }
         }
 
-        /// <summary>
-        /// Handles input blocking with safety checks.
-        /// </summary>
-        public void SafeBlockInput(bool block)
-        {
-            _safeBlockInput(block);
-        }
-
-        /// <summary>
-        /// Forces input unblocking with logging.
-        /// </summary>
-        public void ForceUnblockInput(string reason)
-        {
-            _forceUnblockInput(reason);
-        }
     }
 }

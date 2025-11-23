@@ -19,7 +19,6 @@ namespace ClickIt.Utils
         private readonly ClickItSettings _settings;
         private readonly GameController _gameController;
         private readonly ErrorHandler _errorHandler;
-        private readonly Action<string> _forceUnblockInput;
         private readonly Func<Vector2, bool> _pointIsInClickableArea;
 
         public CoroutineManager(
@@ -27,14 +26,12 @@ namespace ClickIt.Utils
             ClickItSettings settings,
             GameController gameController,
             ErrorHandler errorHandler,
-            Action<string> forceUnblockInput,
             Func<Vector2, bool> pointIsInClickableArea)
         {
             _state = state ?? throw new ArgumentNullException(nameof(state));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
             _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
-            _forceUnblockInput = forceUnblockInput ?? throw new ArgumentNullException(nameof(forceUnblockInput));
             _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
         }
 
@@ -108,10 +105,6 @@ namespace ClickIt.Utils
             _state.ShrineCoroutine = new Coroutine(MainShrineCoroutine(), plugin, "ClickIt.ShrineLogic", true);
             _ = Core.ParallelRunner.Run(_state.ShrineCoroutine);
             _state.ShrineCoroutine.Priority = CoroutinePriority.High;
-
-            _state.InputSafetyCoroutine = new Coroutine(InputSafetyCoroutine(), plugin, "ClickIt.InputSafety");
-            _ = Core.ParallelRunner.Run(_state.InputSafetyCoroutine);
-            _state.InputSafetyCoroutine.Priority = CoroutinePriority.High;
 
             _state.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
             _ = Core.ParallelRunner.Run(_state.DelveFlareCoroutine);
@@ -281,43 +274,6 @@ namespace ClickIt.Utils
             _state.PerformanceMonitor?.RecordClickInterval();
 
             _state.ShrineService?.InvalidateCache();
-        }
-
-        private IEnumerator InputSafetyCoroutine()
-        {
-            while (_settings.Enable)
-            {
-                PerformSafetyChecks();
-                yield return new WaitTime(1000);
-            }
-            _forceUnblockInput("Plugin disabled - cleanup");
-        }
-
-        private void PerformSafetyChecks()
-        {
-            bool currentHotkeyState = IsClickHotkeyPressed();
-            if (currentHotkeyState != _state.LastHotkeyState)
-            {
-                if (!currentHotkeyState)
-                {
-                    _state.LastHotkeyReleaseTimer.Restart();
-                }
-                else
-                {
-                    _state.LastHotkeyReleaseTimer.Stop();
-                }
-                _state.LastHotkeyState = currentHotkeyState;
-            }
-            if (!currentHotkeyState && _state.IsInputCurrentlyBlocked &&
-                _state.LastHotkeyReleaseTimer.IsRunning &&
-                _state.LastHotkeyReleaseTimer.ElapsedMilliseconds > PluginContext.HOTKEY_RELEASE_FAILSAFE_MS)
-            {
-                _forceUnblockInput($"Hotkey released for {_state.LastHotkeyReleaseTimer.ElapsedMilliseconds}ms");
-            }
-            if (_state.IsInputCurrentlyBlocked && _gameController?.Game?.IngameState?.InGame != true)
-            {
-                _forceUnblockInput("Not in game");
-            }
         }
 
         private bool IsClickHotkeyPressed()

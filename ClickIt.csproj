@@ -120,7 +120,6 @@
     <Compile Include="Utils\PerformanceMonitor.cs" />
     <Compile Include="Utils\ErrorHandler.cs" />
     <Compile Include="Utils\CoroutineManager.cs" />
-    <Compile Include="Utils\InputSafetyManager.cs" />
   </ItemGroup>
 
   <ItemGroup>

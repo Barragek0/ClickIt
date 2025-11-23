@@ -18,18 +18,16 @@ namespace ClickIt.Utils
     {
         private readonly ClickItSettings _settings;
         private readonly Random _random;
-        private readonly Action<bool>? _safeBlockInput;
         private readonly ErrorHandler? _errorHandler;
         private readonly PerformanceMonitor _performanceMonitor;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
 
-        public InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, Action<bool>? safeBlockInput = null, ErrorHandler? errorHandler = null)
+        public InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
         {
             _settings = settings;
             _performanceMonitor = performanceMonitor;
             _random = new Random();
-            _safeBlockInput = safeBlockInput;
             _errorHandler = errorHandler;
         }
 
@@ -141,13 +139,6 @@ namespace ClickIt.Utils
 
             _errorHandler?.LogMessage(true, true, "InputHandler: PerformClick - entering", 5);
 
-            if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
-            {
-                _errorHandler?.LogMessage(true, true, "InputHandler: Requesting system input block", 5);
-                _safeBlockInput(true);
-                _errorHandler?.LogMessage(true, true, "InputHandler: System input block requested", 5);
-            }
-
             _errorHandler?.LogMessage(true, true, $"InputHandler: Setting cursor pos to {position}", 5);
             var swTotal = Stopwatch.StartNew();
             var before = Mouse.GetCursorPosition();
@@ -211,23 +202,7 @@ namespace ClickIt.Utils
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
 
             swTotal.Stop();
-            // If the whole operation took too long, attempt to clear any stuck input block and log
-            if (swTotal.ElapsedMilliseconds > 500)
-            {
-                _errorHandler?.LogMessage(true, true, $"InputHandler: WARNING - PerformClick took {swTotal.ElapsedMilliseconds} ms, attempting to release input block", 10);
-                if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
-                {
-                    _safeBlockInput(false);
-                    _errorHandler?.LogMessage(true, true, "InputHandler: Watchdog released system input block", 10);
-                }
-            }
 
-            if ((_settings.BlockUserInput?.Value ?? false) && _safeBlockInput != null)
-            {
-                _errorHandler?.LogMessage(true, true, "InputHandler: Releasing system input block", 5);
-                _safeBlockInput(false);
-                _errorHandler?.LogMessage(true, true, "InputHandler: System input block released", 5);
-            }
             _errorHandler?.LogMessage(true, true, "InputHandler: PerformClick - exiting", 5);
         }
 
