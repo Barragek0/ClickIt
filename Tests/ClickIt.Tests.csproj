@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net8-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
@@ -13,13 +13,22 @@
     <OutputPath>bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <CoverletOutputFormat>lcov</CoverletOutputFormat>
+    <CoverletOutput>Tests/TestResults/lcov.info</CoverletOutput>
+    <Exclude>[*Tests*]***</Exclude>
+    <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverage</ExcludeByAttribute>
+    <ExcludeByFile>**/bin/**,**/obj/**,**/TestResults/**</ExcludeByFile>
+    <Include>[ClickIt*]***</Include>
+  </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
-    <PackageReference Include="MSTest.TestAdapter" Version="3.0.4" />
-    <PackageReference Include="MSTest.TestFramework" Version="3.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.0.6" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.0.6" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
-    <PackageReference Include="coverlet.collector" Version="3.2.0" />
-    <PackageReference Include="coverlet.msbuild" Version="3.2.0" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.1" PrivateAssets="all" ExcludeAssets="runtime" />
     <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
     <PackageReference Include="SharpDX" Version="4.2.0" />
     <PackageReference Include="SharpDX.Mathematics" Version="4.2.0" />
@@ -49,6 +58,14 @@
     <Compile Include="..\Utils\IndexConstants.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Reference ExileCore runtime used by plugin base types (adjust path if your PoeHelper is elsewhere) -->
+    <Reference Include="ExileCore">
+      <HintPath>..\..\..\PoeHelper\net48\ExileCore.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
   <!-- By default exclude integration tests from the test build.
        They can be opt-in by setting the MSBuild property IncludeIntegrationTests=true.
        This keeps CI fast/isolated while allowing local builds (VS Code task) to include them. -->
@@ -58,6 +75,14 @@
 
   <ItemGroup Condition="'$(IncludeIntegrationTests)' == 'true'">
     <Compile Include="Integration\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Only reference the main ClickIt project when explicitly requested.
+         This avoids pulling the compiled ClickIt.dll into test builds and
+         causing type conflicts with test-included source files. Set
+         IncludeMainProject=true when you want tests to reference the built project. -->
+    <ProjectReference Include="..\ClickIt.csproj" PrivateAssets="all" Condition="'$(IncludeMainProject)' == 'true'" />
   </ItemGroup>
 
 </Project>
