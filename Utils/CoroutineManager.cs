@@ -80,8 +80,9 @@ namespace ClickIt.Utils
             if (!_settings.LazyMode.Value) return false;
             bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
             if (hasRestrictedItems) return false;
-            bool skillButtonHeld = _settings.LeftHanded.Value ? Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
-            return skillButtonHeld;
+            bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);
+            bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && Input.GetKeyState(Keys.RButton);
+            return leftClickBlocks || rightClickBlocks;
         }
 
         private bool HasClickableAltars()

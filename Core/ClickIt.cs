@@ -236,7 +236,9 @@ namespace ClickIt
             // Check if primary mouse button is held (prevents lazy clicking)
             bool leftButtonHeld = Input.GetKeyState(Keys.LButton);
             bool rightButtonHeld = Input.GetKeyState(Keys.RButton);
-            bool skillButtonHeld = Settings.LeftHanded.Value ? leftButtonHeld : rightButtonHeld;
+            bool leftClickBlocks = Settings.DisableLazyModeLeftClickHeld.Value && leftButtonHeld;
+            bool rightClickBlocks = Settings.DisableLazyModeRightClickHeld.Value && rightButtonHeld;
+            bool mouseButtonBlocks = leftClickBlocks || rightClickBlocks;
 
             // Check if hotkey is currently held
             bool hotkeyHeld = Input.GetKeyState(Settings.ClickLabelKey.Value);
@@ -276,10 +278,14 @@ namespace ClickIt
                 line1 = "Lazy mode disabled by hotkey.";
                 line2 = "Release to resume lazy clicking.";
             }
-            else if (skillButtonHeld)
+            else if (mouseButtonBlocks)
             {
                 textColor = SharpDX.Color.Red;
-                line1 = Settings.LeftHanded.Value ? "Left mouse button held." : "Right mouse button held.";
+                string buttonName = "";
+                if (leftClickBlocks && rightClickBlocks) buttonName = "both mouse buttons";
+                else if (leftClickBlocks) buttonName = "Left mouse button";
+                else buttonName = "Right mouse button";
+                line1 = $"{buttonName} held.";
                 line2 = "Release to resume lazy clicking.";
             }
             else
@@ -457,7 +463,9 @@ namespace ClickIt
             // Lazy mode: held always enables (manual override), released enables lazy auto only if safe
             bool hasRestricted = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(State.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
             bool disableKeyHeld = Input.GetKeyState(Settings.LazyModeDisableKey.Value);
-            bool primaryButtonHeld = Settings.LeftHanded.Value ? Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
+            bool leftClickBlocks = Settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);
+            bool rightClickBlocks = Settings.DisableLazyModeRightClickHeld.Value && Input.GetKeyState(Keys.RButton);
+            bool mouseButtonBlocks = leftClickBlocks || rightClickBlocks;
 
             if (hotkeyHeld)
             {
@@ -465,7 +473,7 @@ namespace ClickIt
             }
 
             // Hotkey released: lazy auto only if no blockers
-            return !hasRestricted && !disableKeyHeld && !primaryButtonHeld;
+            return !hasRestricted && !disableKeyHeld && !mouseButtonBlocks;
         }
 
         private void HandleHotkeyPressed()

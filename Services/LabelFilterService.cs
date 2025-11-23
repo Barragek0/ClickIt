@@ -68,7 +68,7 @@ namespace ClickIt.Services
 
                     // Check for restricted items: locked strongbox or chest, settlers tree
                     var chestComponent = label.ItemOnGround.GetComponent<Chest>();
-                    if (path.Contains(PetrifiedWood) || chestComponent?.IsLocked == true)
+                    if (path.Contains(PetrifiedWood) || chestComponent?.IsLocked == true || !label.IsVisible)
                     {
                         _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
                         return true;
