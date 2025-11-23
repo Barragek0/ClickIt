@@ -7,6 +7,7 @@ using RectangleF = SharpDX.RectangleF;
 using ClickIt.Utils;
 using System;
 using System.Collections.Generic;
+using ExileCore;
 #nullable enable
 namespace ClickIt.Services
 {
@@ -14,6 +15,7 @@ namespace ClickIt.Services
     {
         private readonly ClickItSettings _settings;
         private readonly EssenceService _essenceService;
+        private readonly ErrorHandler _errorHandler;
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
@@ -25,10 +27,11 @@ namespace ClickIt.Services
         private const string ClosedDoorPast = "ClosedDoorPast";
         private const string LegionInitiator = "LegionInitiator";
 
-        public LabelFilterService(ClickItSettings settings, EssenceService essenceService)
+        public LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler)
         {
             _settings = settings;
             _essenceService = essenceService;
+            _errorHandler = errorHandler;
         }
         public bool HasVerisiumOnScreen(List<LabelOnGround> allLabels)
         {
@@ -63,11 +66,11 @@ namespace ClickIt.Services
                     if (string.IsNullOrEmpty(path))
                         continue;
 
-                    // Check for restricted items: strongboxes, league chests (not basic chests), settlers trees
-                    if (path.ToLowerInvariant().Contains("strongbox") ||
-                        path.Contains(PetrifiedWood) ||
-                        (item.Type == EntityType.Chest && label.ItemOnGround.GetComponent<Chest>()?.IsLocked == true))
+                    // Check for restricted items: locked strongbox or chest, settlers tree
+                    var chestComponent = label.ItemOnGround.GetComponent<Chest>();
+                    if (path.Contains(PetrifiedWood) || chestComponent?.IsLocked == true)
                     {
+                        _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
                         return true;
                     }
                 }
@@ -113,8 +116,10 @@ namespace ClickIt.Services
         {
             var s = _settings;
 
-            // Check if lazy mode restrictions should be applied
-            bool applyLazyModeRestrictions = s.LazyMode.Value && !HasLazyModeRestrictedItemsOnScreen(allLabels);
+            // Check if lazy mode restrictions should be applied (only when lazy mode active, restricted items present, and hotkey NOT held)
+            bool hasRestricted = HasLazyModeRestrictedItemsOnScreen(allLabels);
+            bool hotkeyHeld = Input.GetKeyState(s.ClickLabelKey.Value);
+            bool applyLazyModeRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
 
             return new ClickSettings
             {
