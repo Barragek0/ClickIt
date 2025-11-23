@@ -4,6 +4,9 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
+using ClickIt.Utils;
+using ClickIt.Components;
+using ClickIt.Tests.Shared;
 
 namespace ClickIt.Tests
 {
@@ -260,6 +263,30 @@ namespace ClickIt.Tests
             // Both should have recorded time
             timer1.ElapsedMilliseconds.Should().BeGreaterThan(0, "timer1 should have elapsed time");
             timer2.ElapsedMilliseconds.Should().BeGreaterThan(0, "timer2 should have elapsed time");
+        }
+
+        [TestMethod]
+        public void WeightCalculator_Performance_ShouldCompleteWithin100ms()
+        {
+            // Arrange
+            var settings = TestHelpers.CreateSettingsWithTiers();
+            var calc = new WeightCalculator(settings);
+            var top = new SecondaryAltarComponent(
+                new List<string> { "Top|up1", "Top|up2" },
+                new List<string> { "Top|down1" });
+            var bottom = new SecondaryAltarComponent(
+                new List<string> { "Bottom|up1" },
+                new List<string> { "Bottom|down1" });
+            var primary = new PrimaryAltarComponent(top, bottom);
+
+            // Act
+            var stopwatch = Stopwatch.StartNew();
+            var weights = calc.CalculateAltarWeights(primary);
+            stopwatch.Stop();
+
+            // Assert
+            stopwatch.ElapsedMilliseconds.Should().BeLessThan(100, "weight calculation should complete within 100ms");
+            weights.Should().NotBeNull();
         }
     }
 }

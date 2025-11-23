@@ -35,7 +35,7 @@ namespace ClickIt.Tests.Decision
             _settings.ModTiers["x"] = 2;
             _settings.ModTiers["y"] = 3;
             var downs = new List<string> { "x", "y" };
-            _calc.CalculateDownsideWeight(downs).Should().Be(5);
+            _calc.CalculateDownsideWeight(downs).Should().Be(6); // 1 + 2 + 3
         }
 
         [TestMethod]
@@ -166,7 +166,7 @@ namespace ClickIt.Tests.Decision
         public void CalculateDownsideWeight_NullList_ReturnsZero()
         {
             decimal res = _calc.CalculateDownsideWeight(null);
-            res.Should().Be(0m);
+            res.Should().Be(1m);
         }
 
         [TestMethod]

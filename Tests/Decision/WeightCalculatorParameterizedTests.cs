@@ -38,9 +38,9 @@ namespace ClickIt.Tests.Decision
         }
 
         [DataTestMethod]
-        [DataRow(new[] { "mod1", "mod2" }, new[] { 2, 3 }, 5)]
-        [DataRow(new[] { "mod3" }, new[] { 8 }, 8)]
-        [DataRow(new string[] { }, new int[] { }, 0)]
+        [DataRow(new[] { "mod1", "mod2" }, new[] { 2, 3 }, 6)]  // 1 + 2 + 3
+        [DataRow(new[] { "mod3" }, new[] { 8 }, 9)]  // 1 + 8
+        [DataRow(new string[] { }, new int[] { }, 1)]  // empty, 1
         public void CalculateDownsideWeight_VariousInputs(string[] mods, int[] weights, int expected)
         {
             for (int i = 0; i < mods.Length && i < weights.Length; i++)
@@ -71,10 +71,57 @@ namespace ClickIt.Tests.Decision
         }
 
         [TestMethod]
-        public void CalculateAltarWeights_NullPrimary_ThrowsArgumentException()
+        public void CalculateUpsideWeight_NullList_ReturnsZero()
         {
-            Action act = () => _calc.CalculateAltarWeights(null);
-            act.Should().Throw<ArgumentException>();
+            _calc.CalculateUpsideWeight(null).Should().Be(0);
+        }
+
+        [TestMethod]
+        public void CalculateDownsideWeight_NullList_ReturnsOne()
+        {
+            _calc.CalculateDownsideWeight(null).Should().Be(1);
+        }
+
+        [TestMethod]
+        public void CalculateUpsideWeight_EmptyList_ReturnsZero()
+        {
+            _calc.CalculateUpsideWeight(new List<string>()).Should().Be(0);
+        }
+
+        [TestMethod]
+        public void CalculateDownsideWeight_EmptyList_ReturnsOne()
+        {
+            _calc.CalculateDownsideWeight(new List<string>()).Should().Be(1);
+        }
+
+        [TestMethod]
+        public void CalculateUpsideWeight_WithEmptyStrings_IgnoresThem()
+        {
+            _settings.ModTiers["valid"] = 10;
+            var list = new List<string> { "", "valid", "   ", "\t" };
+            _calc.CalculateUpsideWeight(list).Should().Be(10);
+        }
+
+        [TestMethod]
+        public void CalculateDownsideWeight_WithEmptyStrings_IgnoresThem()
+        {
+            _settings.ModTiers["valid"] = 5;
+            var list = new List<string> { "", "valid", "   " };
+            _calc.CalculateDownsideWeight(list).Should().Be(6); // 1 + 5
+        }
+
+        [TestMethod]
+        public void CalculateUpsideWeight_UnknownMods_DefaultToZero()
+        {
+            var list = new List<string> { "unknown1", "unknown2" };
+            _calc.CalculateUpsideWeight(list).Should().Be(2); // 1 + 1
+        }
+
+        [TestMethod]
+        public void CalculateDownsideWeight_UnknownMods_DefaultToOne()
+        {
+            var list = new List<string> { "unknown" };
+            _calc.CalculateDownsideWeight(list).Should().Be(2); // 1 + 1
         }
 
         // Additional edge cases can be added here

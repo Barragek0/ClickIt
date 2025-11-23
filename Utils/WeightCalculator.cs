@@ -77,24 +77,24 @@ namespace ClickIt.Utils
         }
         public decimal CalculateUpsideWeight(List<string> upsides)
         {
-            return CalculateWeightFromList(upsides);
+            return CalculateWeightFromList(upsides, false);
         }
 
         public decimal CalculateDownsideWeight(List<string> downsides)
         {
-            return CalculateWeightFromList(downsides);
+            return CalculateWeightFromList(downsides, true);
         }
 
-        private decimal CalculateWeightFromList(List<string> mods)
+        private decimal CalculateWeightFromList(List<string> mods, bool isDownside)
         {
-            if (mods == null) return 0m;
+            if (mods == null || mods.Count == 0) return isDownside ? 1m : 0m;
             decimal total = 0m;
             foreach (var mod in mods)
             {
-                if (string.IsNullOrEmpty(mod)) continue;
+                if (string.IsNullOrWhiteSpace(mod)) continue;
                 total += GetModWeightFromString(mod);
             }
-            return total;
+            return isDownside ? 1 + total : total;
         }
 
         private decimal GetModWeightFromString(string mod)

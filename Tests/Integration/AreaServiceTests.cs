@@ -7,7 +7,7 @@ using System.IO;
 namespace ClickIt.Tests.Unit.Services
 {
     [TestClass]
-    [TestCategory("Unit")]
+    [TestCategory("Integration")]
     public class AreaServiceTests
     {
         private static Assembly _mainAssembly;
