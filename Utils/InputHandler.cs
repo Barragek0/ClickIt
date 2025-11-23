@@ -161,9 +161,9 @@ namespace ClickIt.Utils
             var after = Mouse.GetCursorPosition();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor after move: {after}", 5);
             //UIHover needs time to update so we sleep longer in lazy mode, we still sleep in normal mode to give cursor time to move
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            if (_settings?.LazyMode?.Value == true)
             {
-                Thread.Sleep(25);
+                Thread.Sleep(_settings.LazyModeUIHoverSleep.Value);
             }
             else
             {
@@ -250,7 +250,7 @@ namespace ClickIt.Utils
 
         private void RestoreCursorIfLazyMode(System.Drawing.Point before)
         {
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
+            if (_settings?.LazyMode?.Value == true && _settings.RestoreCursorInLazyMode?.Value == true)
             {
                 try
                 {

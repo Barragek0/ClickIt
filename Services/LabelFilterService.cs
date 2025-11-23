@@ -65,8 +65,8 @@ namespace ClickIt.Services
 
                     // Check for restricted items: strongboxes, league chests (not basic chests), settlers trees
                     if (path.ToLowerInvariant().Contains("strongbox") ||
-                        (item.Type == EntityType.Chest && !IsBasicChest(label)) ||
-                        path.Contains(PetrifiedWood))
+                        path.Contains(PetrifiedWood) ||
+                        (item.Type == EntityType.Chest && label.ItemOnGround.GetComponent<Chest>()?.IsLocked == true))
                     {
                         return true;
                     }
