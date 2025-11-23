@@ -448,44 +448,24 @@ namespace ClickIt
 
         private bool IsClickHotkeyPressed()
         {
-            bool actual = Input.GetKeyState(Settings.ClickLabelKey.Value);
-            if (Settings?.LazyMode != null && Settings.LazyMode.Value)
+            bool hotkeyHeld = Input.GetKeyState(Settings.ClickLabelKey.Value);
+            if (!Settings.LazyMode.Value)
             {
-                // Check if restricted items are present
-                bool hasRestrictedItems = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(State.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
-
-                if (hasRestrictedItems)
-                {
-                    // When restricted items are present in lazy mode, only activate when hotkey is held (normal behavior)
-                    return actual;
-                }
-                else
-                {
-                    // No restricted items, check if lazy mode disable key is held
-                    bool lazyModeDisableHeld = Input.GetKeyState(Settings.LazyModeDisableKey.Value);
-                    if (lazyModeDisableHeld)
-                    {
-                        // Lazy mode disable key is held, don't allow clicking
-                        return false;
-                    }
-
-                    // No restricted items and disable key not held, invert hotkey: released -> active
-                    bool inverted = !actual;
-                    if (inverted)
-                    {
-                        // Prevent lazy mode clicking if the primary mouse button is held
-                        // Left-handed users use right click as primary, right-handed users use left click
-                        bool primaryButtonHeld = Settings.LeftHanded.Value ?
-                            Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
-                        if (primaryButtonHeld)
-                        {
-                            return false; // Don't click while primary mouse button is held
-                        }
-                    }
-                    return inverted;
-                }
+                return hotkeyHeld;
             }
-            return actual;
+
+            // Lazy mode: held always enables (manual override), released enables lazy auto only if safe
+            bool hasRestricted = State.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(State.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+            bool disableKeyHeld = Input.GetKeyState(Settings.LazyModeDisableKey.Value);
+            bool primaryButtonHeld = Settings.LeftHanded.Value ? Input.GetKeyState(Keys.LButton) : Input.GetKeyState(Keys.RButton);
+
+            if (hotkeyHeld)
+            {
+                return true;  // Manual override: always enable clicking (safe + restricted)
+            }
+
+            // Hotkey released: lazy auto only if no blockers
+            return !hasRestricted && !disableKeyHeld && !primaryButtonHeld;
         }
 
         private void HandleHotkeyPressed()
