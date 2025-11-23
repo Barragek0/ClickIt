@@ -246,19 +246,14 @@ namespace ClickIt
             SharpDX.Color textColor;
             string line1 = "", line2 = "", line3 = "";
 
-            if (isRitualActive)
-            {
-                textColor = SharpDX.Color.Red;
-                line1 = "Ritual in progress.";
-                line2 = "Complete it to resume lazy clicking.";
-            }
-            else if (hasRestrictedItems)
+
+            if (hasRestrictedItems)
             {
                 if (hotkeyHeld)
                 {
                     textColor = SharpDX.Color.LawnGreen;
                     line1 = "Blocking overridden by hotkey.";
-                    line2 = "Clicking restricted items.";
+                    line2 = "";
                 }
                 else
                 {
@@ -283,6 +278,21 @@ namespace ClickIt
                 else buttonName = "Right mouse button";
                 line1 = $"{buttonName} held.";
                 line2 = "Release to resume lazy clicking.";
+            }
+            else if (isRitualActive)
+            {
+                if (hotkeyHeld)
+                {
+                    textColor = SharpDX.Color.LawnGreen;
+                    line1 = "Blocking overridden by hotkey.";
+                    line2 = "";
+                }
+                else
+                {
+                    textColor = SharpDX.Color.Red;
+                    line1 = "Ritual in progress.";
+                    line2 = "Complete it to resume lazy clicking.";
+                }
             }
             else
             {

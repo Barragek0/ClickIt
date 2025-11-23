@@ -52,16 +52,22 @@ namespace ClickIt.Utils
         }
         public Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
-            Vector2 offset = new(_random.Next(0, 5),
-                label.ItemOnGround.Type == EntityType.Chest ?
-                -_random.Next(_settings.ChestHeightOffset, _settings.ChestHeightOffset + 2) :
-                _random.Next(0, 5));
             // Use null-conditional operator for safe memory access
             if (label.Label?.GetClientRect() is not RectangleF rect)
             {
                 throw new InvalidOperationException("Label element is invalid");
             }
-            return rect.Center + windowTopLeft + offset;
+
+            float jitterRange = 2f;
+            float jitterX = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
+            float jitterY = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
+
+            if (label.ItemOnGround.Type == EntityType.Chest)
+            {
+                jitterY -= _settings.ChestHeightOffset;
+            }
+
+            return rect.Center + windowTopLeft + new Vector2(jitterX, jitterY);
         }
         public bool TriggerToggleItems()
         {
@@ -88,14 +94,18 @@ namespace ClickIt.Utils
 
             // In lazy mode, always allow clicking (ignore hotkey state)
             // When not in lazy mode, check hotkey state normally
-            bool keyState = lazyModeActive || Input.GetKeyState(_settings.ClickLabelKey.Value);
+            bool keyState = lazyModeActive || (_settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value));
+
+            // Holding the click hotkey should override ritual-in-progress blocking.
+            bool clickHotkeyHeld = (_settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value));
 
             return keyState &&
                 IsPOEActive(gameController) &&
                 (_settings.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
                 !IsInTownOrHideout(gameController) &&
                 !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible &&
-                !isRitualActive &&
+                // Allow clicking during a ritual if the click hotkey is being held
+                (!isRitualActive || clickHotkeyHeld) &&
                 !gameController.Game.IsEscapeState &&
                 !gameController.IngameState.IngameUi.AtlasPanel.IsVisible &&
                 !gameController.IngameState.IngameUi.AtlasTreePanel.IsVisible &&
