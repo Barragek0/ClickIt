@@ -1,8 +1,5 @@
 ﻿
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
@@ -12,7 +9,6 @@ using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
 
 #nullable enable
 

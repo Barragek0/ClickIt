@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.Serialization;
+using System.Runtime.CompilerServices;
 using System.Reflection;
 using FluentAssertions;
 using ClickIt.Components;
@@ -16,7 +16,10 @@ namespace ClickIt.Tests.Shared
         public static object CreateUninitializedPrimary()
         {
             var pType = GetPrimaryType();
-            var primary = FormatterServices.GetUninitializedObject(pType);
+
+            // Create SecondaryAltarComponent instances via constructor (safe and public)
+            // Create PrimaryAltarComponent without invoking constructor to avoid pulling heavy runtime dependencies
+            var primary = RuntimeHelpers.GetUninitializedObject(pType);
             primary.Should().NotBeNull();
             return primary!;
         }
@@ -24,7 +27,8 @@ namespace ClickIt.Tests.Shared
         public static object CreateUninitializedSecondary()
         {
             var sType = GetSecondaryType();
-            var sec = FormatterServices.GetUninitializedObject(sType);
+            // keep uninitialized secondary for tests (avoid ExileCore dependency)
+            var sec = RuntimeHelpers.GetUninitializedObject(sType);
             sec.Should().NotBeNull();
             return sec!;
         }
@@ -45,7 +49,7 @@ namespace ClickIt.Tests.Shared
         public static object CreateUninitializedAltarButton()
         {
             var btnType = Type.GetType("ClickIt.Components.AltarButton, ClickIt");
-            var btn = FormatterServices.GetUninitializedObject(btnType);
+            var btn = RuntimeHelpers.GetUninitializedObject(btnType);
             btn.Should().NotBeNull();
             return btn!;
         }

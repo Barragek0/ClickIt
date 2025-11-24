@@ -5,8 +5,6 @@ using ExileCore.Shared.Enums;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ClickIt.Utils;
-using System;
-using System.Collections.Generic;
 using ExileCore;
 #nullable enable
 namespace ClickIt.Services

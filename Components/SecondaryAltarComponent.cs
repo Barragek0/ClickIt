@@ -1,6 +1,4 @@
 ﻿using ExileCore.PoEMemory;
-using System.Collections.Generic;
-using ClickIt.Utils;
 namespace ClickIt.Components
 {
 #nullable enable

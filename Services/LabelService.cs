@@ -3,7 +3,6 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
 using SharpDX;
 using ClickIt.Utils;
-using System.Collections.Generic;
 
 namespace ClickIt.Services
 {

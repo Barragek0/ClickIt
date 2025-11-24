@@ -1,6 +1,4 @@
 ﻿using static ClickIt.ClickIt;
-using SharpDX;
-using System;
 using System.Diagnostics;
 using ClickIt.Utils;
 using RectangleF = SharpDX.RectangleF;

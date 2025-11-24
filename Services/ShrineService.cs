@@ -1,10 +1,7 @@
 using ExileCore;
 using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace ClickIt.Services

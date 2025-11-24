@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System;
 using System.Reflection;
-using System.Runtime.Serialization;
+using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using ClickIt.Tests.Shared;
 
@@ -17,7 +17,7 @@ namespace ClickIt.Tests.Services
         public void AddAltarComponent_AddsAndPreventsDuplicate()
         {
             var altarType = AltarTestHelpers.GetAltarServiceType();
-            var altar = FormatterServices.GetUninitializedObject(altarType);
+            var altar = RuntimeHelpers.GetUninitializedObject(altarType);
 
             // initialize private _altarComponents list as List<PrimaryAltarComponent>
             var compsField = altarType.GetField("_altarComponents", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -38,8 +38,7 @@ namespace ClickIt.Tests.Services
             pType.GetProperty("TopMods").SetValue(p1, top1);
             pType.GetProperty("BottomMods").SetValue(p1, bottom1);
             // create simple AltarButton instances via uninitialized object
-            var btnType = Type.GetType("ClickIt.Components.AltarButton, ClickIt");
-            var btn1 = FormatterServices.GetUninitializedObject(btnType);
+            var btn1 = AltarTestHelpers.CreateUninitializedAltarButton();
             pType.GetProperty("TopButton").SetValue(p1, btn1);
             pType.GetProperty("BottomButton").SetValue(p1, btn1);
 
@@ -64,7 +63,7 @@ namespace ClickIt.Tests.Services
         public void ClearAltarComponents_ClearsList()
         {
             var altarType = AltarTestHelpers.GetAltarServiceType();
-            var altar = FormatterServices.GetUninitializedObject(altarType);
+            var altar = RuntimeHelpers.GetUninitializedObject(altarType);
             var compsField = altarType.GetField("_altarComponents", BindingFlags.NonPublic | BindingFlags.Instance);
             compsField.Should().NotBeNull();
             var listType = typeof(List<>).MakeGenericType(AltarTestHelpers.GetPrimaryType());
@@ -94,9 +93,9 @@ namespace ClickIt.Tests.Services
             var pType = AltarTestHelpers.GetPrimaryType();
             var sType = AltarTestHelpers.GetSecondaryType();
 
-            var primary = FormatterServices.GetUninitializedObject(pType);
-            var top = FormatterServices.GetUninitializedObject(sType);
-            var bottom = FormatterServices.GetUninitializedObject(sType);
+            var primary = AltarTestHelpers.CreateUninitializedPrimary();
+            var top = AltarTestHelpers.CreateUninitializedSecondary();
+            var bottom = AltarTestHelpers.CreateUninitializedSecondary();
 
             // Prepare 8-length arrays
             string[] topUps = new string[8] { "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8" };
@@ -136,7 +135,7 @@ namespace ClickIt.Tests.Services
         public void GetAltarComponentsReadOnly_ReturnsAddedComponents()
         {
             var altarType = AltarTestHelpers.GetAltarServiceType();
-            var altar = FormatterServices.GetUninitializedObject(altarType);
+            var altar = RuntimeHelpers.GetUninitializedObject(altarType);
 
             // initialize private _altarComponents list as List<PrimaryAltarComponent>
             var compsField = altarType.GetField("_altarComponents", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -152,8 +151,7 @@ namespace ClickIt.Tests.Services
             AltarTestHelpers.SetSecondaryArrays(top, new[] { "A", "", "", "", "", "", "", "" }, new string[8]);
             AltarTestHelpers.SetSecondaryArrays(bottom, new[] { "B", "", "", "", "", "", "", "" }, new string[8]);
             var pType = AltarTestHelpers.GetPrimaryType();
-            var btnType = Type.GetType("ClickIt.Components.AltarButton, ClickIt");
-            var btn = FormatterServices.GetUninitializedObject(btnType);
+            var btn = AltarTestHelpers.CreateUninitializedAltarButton();
             pType.GetProperty("TopMods").SetValue(p, top);
             pType.GetProperty("BottomMods").SetValue(p, bottom);
             pType.GetProperty("TopButton").SetValue(p, btn);

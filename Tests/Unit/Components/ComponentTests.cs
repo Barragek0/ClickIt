@@ -1,8 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using System.Collections.Generic;
 using System.Reflection;
-using ClickIt.Components;
 
 namespace ClickIt.Tests.Unit.Components
 {
