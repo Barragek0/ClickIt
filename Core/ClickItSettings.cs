@@ -167,6 +167,8 @@ namespace ClickIt
         // ----- Strongboxes -----
         [Menu("Strongboxes", 3510)]
         public EmptyNode Strongboxes { get; set; } = new EmptyNode();
+        [Menu("Show Strongbox Frames", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked", 0, 3510)]
+        public ToggleNode ShowStrongboxFrames { get; set; } = new ToggleNode(true);
         [Menu("Regular Strongbox", "Click regular strongboxes", 1, 3510)]
         public ToggleNode RegularStrongbox { get; set; } = new ToggleNode(true);
         [Menu("Arcanist Strongbox (currency)", "Click arcanist strongboxes", 2, 3510)]

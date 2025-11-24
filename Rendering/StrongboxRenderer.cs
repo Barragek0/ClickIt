@@ -59,15 +59,19 @@ namespace ClickIt.Rendering
                 var chestComp = label?.ItemOnGround?.GetComponent<ExileCore.PoEMemory.Components.Chest>();
                 bool chestLocked = chestComp?.IsLocked == true;
 
-                // Determine whether this particular strongbox type is allowed by settings (and unlocked)
-                if (!IsStrongboxClickableBySettings(itemPathRaw, chestLocked))
+                var isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw, chestLocked);
+                if (!isClickableBySettings && !_settings.ShowStrongboxFrames.Value)
                     continue;
 
-                // Draw the frame. If unlocked we'll draw green; locked frames are skipped because the plugin
-                // will not click locked strongboxes.
                 var color = chestLocked ? Color.Red : Color.LawnGreen;
                 _deferredFrameQueue.Enqueue(rect, color, 2);
             }
+        }
+
+        // Internal helper used by tests to inspect enqueued frames
+        internal (SharpDX.RectangleF Rectangle, Color Color, int Thickness)[] GetEnqueuedFramesForTests()
+        {
+            return _deferredFrameQueue.GetSnapshotForTests();
         }
 
         private bool IsStrongboxClickableBySettings(string path, bool chestLocked)
