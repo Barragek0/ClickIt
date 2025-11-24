@@ -96,20 +96,20 @@ namespace ClickIt
             // Use no-op logger for AltarDisplayRenderer to prevent recursive logging during render loop
             State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, (msg, frame) => { });
             LockManager.Instance = new LockManager(Settings);
-                State.ClickService = new Services.ClickService(
-                Settings,
-                GameController,
-                State.ErrorHandler,
-                State.AltarService,
-                weightCalculator,
-                State.AltarDisplayRenderer,
-                PointIsInClickableArea,
-                State.InputHandler,
-                labelFilterService,
-                // LabelService is created during Initialise and owns label discovery; pass its delegate directly
-                new System.Func<bool>(State.LabelService.GroundItemsVisible),
-                State.CachedLabels,
-                State.PerformanceMonitor);
+            State.ClickService = new Services.ClickService(
+            Settings,
+            GameController,
+            State.ErrorHandler,
+            State.AltarService,
+            weightCalculator,
+            State.AltarDisplayRenderer,
+            PointIsInClickableArea,
+            State.InputHandler,
+            labelFilterService,
+            // LabelService is created during Initialise and owns label discovery; pass its delegate directly
+            new System.Func<bool>(State.LabelService.GroundItemsVisible),
+            State.CachedLabels,
+            State.PerformanceMonitor);
             State.PerformanceMonitor.Start();
 
             var coroutineManager = new CoroutineManager(
