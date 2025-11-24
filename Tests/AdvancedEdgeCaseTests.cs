@@ -376,11 +376,6 @@ namespace ClickIt.Tests
             private MockMemoryManager _memoryManager;
             private MockGameStateManager _gameStateManager;
 
-            // NOTE: The following legacy helpers were intentionally removed to keep the
-            // test file free of unused-member build errors. If you need to restore them
-            // for debugging or heavy integration tests, reintroduce the mocks and enable
-            // the gated CI flow described in `Tests/CI-HEAVY.md`.
-
             public void SetMemoryManager(MockMemoryManager manager) => _memoryManager = manager;
             public void SetGameStateManager(MockGameStateManager manager) => _gameStateManager = manager;
             public void SetPerformanceProfiler(MockPerformanceProfiler profiler) { /* no-op in lightweight tests */ }

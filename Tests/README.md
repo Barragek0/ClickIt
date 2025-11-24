@@ -301,9 +301,6 @@ Summary of recent work
 - Added shared test helpers and stubs under `Tests/Shared/` to avoid pulling runtime assemblies (ExileCore/SharpDX) into the default test run.
 - Added focused tests for WeightCalculator, LockManager, LabelFilterService, AltarService (public helpers and private utils via reflection), ElementService (thread-local patterns), and ClickService surface-level behaviors.
 
-What is intentionally deferred
-- Integration/smoke tests that require ExileCore/SharpDX are NOT part of the default test run. There is no compatible ExileCore binary targeting .NET Framework 4.8 available in this repository or CI runner. See `Tests/CI-HEAVY.md` for an optional gated CI plan to run those tests when a vetted runtime is available.
-
 How to run the lightweight suite (recap)
 ```powershell
 dotnet test "Tests/ClickIt.Tests.csproj" --configuration Debug
@@ -312,11 +309,6 @@ dotnet test "Tests/ClickIt.Tests.csproj" --configuration Debug
 
 Where to find skipped/heavy tests
 - Some legacy or integration-focused tests remain in the tree but are documented and skipped (via `[Ignore]` or `Assert.Inconclusive`) so they don't break the default suite. Search for the terms `Ignore("Requires` or `Assert.Inconclusive("ElementService depends`.
-
-Handoff actions for maintainers
-- Review `Tests/COVERAGE-GAPS.md` for a short list of areas that still require heavy-runtime access or additional coverage.
-- If you want the gated heavy-runtime tests enabled in CI, follow the steps in `Tests/CI-HEAVY.md` and provide a secure way to host ExileCore/SharpDX binaries (self-hosted runner or internal artifact feed).
-- If you'd like help migrating any heavy test to a dependency-light pattern (e.g., by adding small production-level adapters that don't require ExileCore), open an issue and I can implement a small PR.
 
 Completion summary
 - Final cleanup tasks completed: README handoff, coverage gaps file added, clarifying comments added to tests that are intentionally skipped. The lightweight test suite remains green locally and on default CI runs.

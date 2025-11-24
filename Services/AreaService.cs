@@ -23,25 +23,32 @@ namespace ClickIt.Services
             using (LockManager.AcquireStatic(_screenAreasLock))
             {
                 RectangleF winRect = gameController.Window.GetWindowRectangleTimeCache;
-                if (_fullScreenRectangle.Width != winRect.Width || _fullScreenRectangle.Height != winRect.Height ||
-                    _fullScreenRectangle.X != winRect.X || _fullScreenRectangle.Y != winRect.Y)
+                // Compare with a small tolerance to avoid floating-point equality issues
+                const float EPS = 0.5f;
+                static bool RectsDiffer(RectangleF a, RectangleF b, float eps)
+                {
+                    return Math.Abs(a.Width - b.Width) > eps || Math.Abs(a.Height - b.Height) > eps ||
+                           Math.Abs(a.X - b.X) > eps || Math.Abs(a.Y - b.Y) > eps;
+                }
+
+                if (RectsDiffer(_fullScreenRectangle, winRect, EPS))
                 {
                     _fullScreenRectangle = new RectangleF(winRect.X, winRect.Y, winRect.Width, winRect.Height);
                     _healthAndFlaskRectangle = new RectangleF(
-                        (float)(winRect.BottomLeft.X / 3),
-                        (float)(winRect.BottomLeft.Y / 5 * 3.92),
-                        (float)(winRect.BottomLeft.X + (winRect.BottomRight.X / 3.4)),
+                        winRect.BottomLeft.X / 3f,
+                        winRect.BottomLeft.Y / 5f * 3.92f,
+                        winRect.BottomLeft.X + (winRect.BottomRight.X / 3.4f),
                         winRect.BottomLeft.Y);
                     _manaAndSkillsRectangle = new RectangleF(
-                        (float)(winRect.BottomRight.X / 3 * 2.12),
-                        (float)(winRect.BottomLeft.Y / 5 * 3.92),
+                        winRect.BottomRight.X / 3f * 2.12f,
+                        winRect.BottomLeft.Y / 5f * 3.92f,
                         winRect.BottomRight.X,
                         winRect.BottomRight.Y);
                     _buffsAndDebuffsRectangle = new RectangleF(
                         winRect.TopLeft.X,
                         winRect.TopLeft.Y,
-                        winRect.TopRight.X / 2,
-                        winRect.TopLeft.Y + 120);
+                        winRect.TopRight.X / 2f,
+                        winRect.TopLeft.Y + 120f);
                 }
             }
         }

@@ -10,100 +10,56 @@ namespace ClickIt.Tests.Services
     [TestClass]
     public class AltarServiceUtilsTests
     {
-        private static MethodInfo GetPrivateStatic(string name)
-        {
-            var type = Type.GetType("ClickIt.Services.AltarService, ClickIt");
-            type.Should().NotBeNull();
-            var m = type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
-            m.Should().NotBeNull($"Private static method {name} should exist");
-            return m;
-        }
+        // This file previously tested private helpers that were moved to utils/services.
+        // Keep a small set of integration-style tests to validate those helpers are wired correctly.
 
 
 
         [TestMethod]
-        public void GetLine_And_CountLines_WorkAsExpected()
+        public void TextHelpers_GetLine_And_CountLines_WorkAsExpected()
         {
-            var getLine = GetPrivateStatic("GetLine");
-            var countLines = GetPrivateStatic("CountLines");
-
             string text = "first\nsecond\nthird";
-            var line0 = getLine.Invoke(null, new object[] { text, 0 });
-            var line1 = getLine.Invoke(null, new object[] { text, 1 });
-            var line2 = getLine.Invoke(null, new object[] { text, 2 });
-
-            line0.Should().Be("first");
-            line1.Should().Be("second");
-            line2.Should().Be("third");
-
-            var cnt = countLines.Invoke(null, new object[] { text });
-            ((int)cnt).Should().Be(3);
+            ClickIt.Utils.TextHelpers.GetLine(text, 0).Should().Be("first");
+            ClickIt.Utils.TextHelpers.GetLine(text, 1).Should().Be("second");
+            ClickIt.Utils.TextHelpers.GetLine(text, 2).Should().Be("third");
+            ClickIt.Utils.TextHelpers.CountLines(text).Should().Be(3);
         }
 
         [TestMethod]
-        public void GetModTarget_ReturnsExpectedStrings()
+        public void AltarModMatcher_GetModTarget_ReturnsExpectedStrings()
         {
-            var getModTarget = GetPrivateStatic("GetModTarget");
-
-            getModTarget.Invoke(null, new object[] { "Mapboss" }).Should().Be("Boss");
-            getModTarget.Invoke(null, new object[] { "EldritchMinions" }).Should().Be("Minion");
-            getModTarget.Invoke(null, new object[] { "Player" }).Should().Be("Player");
-            getModTarget.Invoke(null, new object[] { "SomethingElse" }).Should().Be(string.Empty);
+            ClickIt.Utils.AltarModMatcher.GetModTarget("Mapboss").Should().Be("Boss");
+            ClickIt.Utils.AltarModMatcher.GetModTarget("EldritchMinions").Should().Be("Minion");
+            ClickIt.Utils.AltarModMatcher.GetModTarget("Player").Should().Be("Player");
+            ClickIt.Utils.AltarModMatcher.GetModTarget("SomethingElse").Should().Be(string.Empty);
         }
 
         [TestMethod]
-        public void TryMatchMod_Finds_Known_Mod()
+        public void AltarModMatcher_TryMatchMod_FindsKnownMod()
         {
-            var tryMatch = GetPrivateStatic("TryMatchMod");
-
             // Use a known downside mod string and negativeModType that maps to Player
             string mod = "Projectiles are fired in random directions";
             string negativeModType = "Player";
 
-            object[] args = new object[] { mod, negativeModType, null, null };
-            var result = (bool)tryMatch.Invoke(null, args);
-            result.Should().BeTrue();
-            args[2].Should().BeOfType<bool>();
-            args[3].Should().BeOfType<string>();
-            ((string)args[3]).ToLowerInvariant().Should().Contain("projectiles");
+            bool matched = ClickIt.Utils.AltarModMatcher.TryMatchMod(mod, negativeModType, out bool isUpside, out string matchedId);
+            matched.Should().BeTrue();
+            isUpside.Should().BeFalse();
+            matchedId.Should().NotBeNullOrEmpty();
+            matchedId.ToLowerInvariant().Should().Contain("projectiles");
         }
 
         [TestMethod]
-        public void TryMatchMod_ReturnsFalse_ForUnknownMod()
+        public void AltarModMatcher_TryMatchMod_ReturnsFalse_ForUnknownMod()
         {
-            var tryMatch = GetPrivateStatic("TryMatchMod");
             string mod = "some unknown mod text";
             string negativeModType = "Player";
-            object[] args = new object[] { mod, negativeModType, null, null };
-            var result = (bool)tryMatch.Invoke(null, args);
-            result.Should().BeFalse();
-            args[3].Should().NotBeNull();
-            ((string)args[3]).Should().BeEmpty();
+            bool matched = ClickIt.Utils.AltarModMatcher.TryMatchMod(mod, negativeModType, out _, out string matchedId);
+            matched.Should().BeFalse();
+            matchedId.Should().BeEmpty();
         }
 
-        [TestMethod]
-        public void CleanAltarModsText_RemovesRgbAndPlaceholders()
-        {
-            var type = Type.GetType("ClickIt.Services.AltarService, ClickIt");
-            type.Should().NotBeNull();
-
-            var instance = FormatterServices.GetUninitializedObject(type);
-            // initialize the private _textCleanCache field to a real dictionary
-            var cacheField = type.GetField("_textCleanCache", BindingFlags.NonPublic | BindingFlags.Instance);
-            cacheField.Should().NotBeNull();
-            cacheField.SetValue(instance, new Dictionary<string, string>());
-
-            var cleanMethod = type.GetMethod("CleanAltarModsText", BindingFlags.NonPublic | BindingFlags.Instance);
-            cleanMethod.Should().NotBeNull();
-
-            string input = "<rgb(12,34,56)>{some} <valuedefault> gain: Test";
-            var cleaned = (string)cleanMethod.Invoke(instance, new object[] { input });
-            cleaned.Should().NotContain("<rgb(");
-            cleaned.Should().NotContain("<valuedefault>");
-            cleaned.Should().NotContain("{");
-            cleaned.Should().NotContain("}");
-            cleaned.Should().NotContain(" "); // spaces removed by method
-            cleaned.Should().Contain("Test");
-        }
+        // Cleaning behaviour is tested in AltarModParsingTests which exercises
+        // the functionally-equivalent cleaning logic; no direct test against
+        // the AltarMatcher instance is required here to keep tests dependency-light.
     }
 }

@@ -24,12 +24,7 @@ namespace ClickIt.Services
 
         public bool GroundItemsVisible()
         {
-            var cachedValue = CachedLabels?.Value;
-            if (cachedValue == null || cachedValue.Count < 1)
-            {
-                return false;
-            }
-            return true;
+            return CachedLabels?.Value?.Count > 0;
         }
 
         public List<LabelOnGround> UpdateLabelComponent()
@@ -46,7 +41,7 @@ namespace ClickIt.Services
             for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
             {
                 LabelOnGround label = groundLabels[i];
-                if (LabelUtils.IsValidClickableLabel(label, point => _pointIsInClickableArea(point)))
+                if (LabelUtils.IsValidClickableLabel(label, _pointIsInClickableArea))
                 {
                     validLabels.Add(label);
                 }

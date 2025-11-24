@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
@@ -14,7 +13,6 @@ using RectangleF = SharpDX.RectangleF;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
-using Serilog;
 
 #nullable enable
 
@@ -305,20 +303,6 @@ namespace ClickIt.Services
             foreach (int cap in caps)
             {
                 int limit = Math.Min(cap, allLabels.Count);
-                /*for (int i = 0; i < limit; i++)
-                {
-                    var it = allLabels[i].ItemOnGround;
-                    string path = it?.Path ?? string.Empty;
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        float dist = it?.DistancePlayer ?? 0f;
-                        DebugLog(() => $"[LabelPaths{cap}] {path} (dist={dist:F1})");
-                    }
-                    else
-                    {
-                        DebugLog(() => $"[LabelPaths{cap}] <no path> (dist={it?.DistancePlayer ?? 0f:F1})");
-                    }
-                }*/
 
                 var slice = allLabels.GetRange(0, limit);
                 var label = labelFilterService.GetNextLabelToClick(slice);

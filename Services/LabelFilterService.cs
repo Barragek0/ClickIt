@@ -62,7 +62,7 @@ namespace ClickIt.Services
 
                     // Check for restricted items: locked strongbox or chest, settlers tree
                     var chestComponent = label.ItemOnGround.GetComponent<Chest>();
-                    if (path.Contains(PetrifiedWood) || chestComponent?.IsLocked == true || !label.IsVisible)
+                    if (path.Contains(PetrifiedWood) || chestComponent?.IsLocked == true)
                     {
                         _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
                         return true;
@@ -255,22 +255,43 @@ namespace ClickIt.Services
         }
         private static bool ShouldClickSpecialPath(ClickSettings settings, string path)
         {
-            if (string.IsNullOrEmpty(path))
-                return false;
-            return (settings.NearestHarvest && (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))) ||
-                   (settings.ClickSulphite && path.Contains("DelveMineral")) ||
-                   ShouldClickStrongbox(settings, path) ||
-                   (settings.ClickSanctum && path.Contains("Sanctum")) ||
-                   (settings.ClickBetrayal && path.Contains("BetrayalMakeChoice")) ||
-                   (settings.ClickBlight && path.Contains("BlightPump")) ||
-                   (settings.ClickAlvaTempleDoors && path.Contains(ClosedDoorPast)) ||
-                   (settings.ClickLegionPillars && path.Contains(LegionInitiator)) ||
-                   (settings.ClickAzurite && path.Contains("AzuriteEncounterController")) ||
-                   (settings.ClickDelveSpawners && path.Contains("Delve/Objects/Encounter")) ||
-                   (settings.ClickCrafting && path.Contains("CraftingUnlocks")) ||
-                   (settings.ClickBreach && path.Contains(Brequel)) ||
-                   (settings.ClickSettlersOre && (path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth)));
+            if (string.IsNullOrEmpty(path)) return false;
+
+            bool strongboxesEnabled = settings.RegularStrongbox || settings.ArcanistStrongbox || settings.ArmourerStrongbox ||
+                                     settings.ArtisanStrongbox || settings.BlacksmithStrongbox || settings.CartographerStrongbox ||
+                                     settings.DivinerStrongbox || settings.GemcutterStrongbox || settings.JewellerStrongbox ||
+                                     settings.LargeStrongbox || settings.OrnateStrongbox;
+
+            var checks = new (bool On, Func<string, bool> Matches)[]
+            {
+                (settings.NearestHarvest, p => IsHarvestPath(p)),
+                (settings.ClickSulphite, p => p.Contains("DelveMineral")),
+                (strongboxesEnabled, p => ShouldClickStrongbox(settings, p)),
+                (settings.ClickSanctum, p => p.Contains("Sanctum")),
+                (settings.ClickBetrayal, p => p.Contains("BetrayalMakeChoice")),
+                (settings.ClickBlight, p => p.Contains("BlightPump")),
+                (settings.ClickAlvaTempleDoors, p => p.Contains(ClosedDoorPast)),
+                (settings.ClickLegionPillars, p => p.Contains(LegionInitiator)),
+                (settings.ClickAzurite, p => p.Contains("AzuriteEncounterController")),
+                (settings.ClickDelveSpawners, p => p.Contains("Delve/Objects/Encounter")),
+                (settings.ClickCrafting, p => p.Contains("CraftingUnlocks")),
+                (settings.ClickBreach, p => p.Contains(Brequel)),
+                (settings.ClickSettlersOre, p => IsSettlersOrePath(p))
+            };
+
+            foreach (var (on, matches) in checks)
+            {
+                if (!on) continue;
+                if (matches == (Func<string, bool>)(p => true) && ShouldClickStrongbox(settings, path))
+                    return true;
+                if (matches(path)) return true;
+            }
+
+            return false;
         }
+
+        private static bool IsHarvestPath(string path) => path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor");
+        private static bool IsSettlersOrePath(string path) => path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth);
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -307,19 +328,27 @@ namespace ClickIt.Services
         {
             if (string.IsNullOrEmpty(path))
                 return false;
+            // require both the global setting and the specific strongbox type
+            var checks = new (bool On, string Key)[]
+            {
+                (settings.RegularStrongbox, "StrongBoxes/Strongbox"),
+                (settings.ArcanistStrongbox, "StrongBoxes/Arcanist"),
+                (settings.ArmourerStrongbox, "StrongBoxes/Armory"),
+                (settings.ArtisanStrongbox, "StrongBoxes/Artisan"),
+                (settings.BlacksmithStrongbox, "StrongBoxes/Arsenal"),
+                (settings.CartographerStrongbox, "StrongBoxes/CartographerEndMaps"),
+                (settings.DivinerStrongbox, "StrongBoxes/StrongboxDivination"),
+                (settings.GemcutterStrongbox, "StrongBoxes/Gemcutter"),
+                (settings.JewellerStrongbox, "StrongBoxes/Jeweller"),
+                (settings.LargeStrongbox, "StrongBoxes/Large"),
+                (settings.OrnateStrongbox, "StrongBoxes/Ornate")
+            };
 
-            // Require both global ClickStrongboxes and the specific strongbox setting
-            return (settings.RegularStrongbox && path.Contains("StrongBoxes/Strongbox")) ||
-                   (settings.ArcanistStrongbox && path.Contains("StrongBoxes/Arcanist")) ||
-                   (settings.ArmourerStrongbox && path.Contains("StrongBoxes/Armory")) ||
-                   (settings.ArtisanStrongbox && path.Contains("StrongBoxes/Artisan")) ||
-                   (settings.BlacksmithStrongbox && path.Contains("StrongBoxes/Arsenal")) ||
-                   (settings.CartographerStrongbox && path.Contains("StrongBoxes/CartographerEndMaps")) ||
-                   (settings.DivinerStrongbox && path.Contains("StrongBoxes/StrongboxDivination")) ||
-                   (settings.GemcutterStrongbox && path.Contains("StrongBoxes/Gemcutter")) ||
-                   (settings.JewellerStrongbox && path.Contains("StrongBoxes/Jeweller")) ||
-                   (settings.LargeStrongbox && path.Contains("StrongBoxes/Large")) ||
-                   (settings.OrnateStrongbox && path.Contains("StrongBoxes/Ornate"));
+            foreach (var (on, key) in checks)
+            {
+                if (on && path.Contains(key)) return true;
+            }
+            return false;
         }
 
         public bool ShouldCorruptEssence(LabelOnGround label)

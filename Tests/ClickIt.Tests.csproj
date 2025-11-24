@@ -54,6 +54,8 @@
     <!-- Include selected, dependency-light production files so coverage can instrument them without building the full plugin -->
     <Compile Include="..\Utils\LockManager.cs" />
     <Compile Include="..\Utils\WeightCalculator.cs" />
+    <Compile Include="..\Utils\TextHelpers.cs" />
+    <Compile Include="..\Utils\AltarModMatcher.cs" />
     <Compile Include="..\Utils\ModIndexConstants.cs" />
     <Compile Include="..\Utils\IndexConstants.cs" />
   </ItemGroup>

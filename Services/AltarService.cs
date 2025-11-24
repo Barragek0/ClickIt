@@ -1,11 +1,6 @@
 ﻿using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
-using ClickIt.Constants;
 using ClickIt.Components;
 using ClickIt.Utils;
 #nullable enable
@@ -32,36 +27,19 @@ namespace ClickIt.Services
         private readonly ClickIt _clickIt = clickIt;
         private readonly ClickItSettings _settings = settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels = cachedLabels;
-        private readonly List<PrimaryAltarComponent> _altarComponents = [];
+        private readonly AltarRepository _altarRepository = new();
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
 
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
 
-        private readonly Dictionary<string, (bool isUpside, string matchedId)> _modMatchCache = new(StringComparer.OrdinalIgnoreCase);
-        private readonly Dictionary<string, string> _textCleanCache = new(StringComparer.Ordinal);
+        private readonly AltarMatcher _altarMatcher = new();
 
-        // Thread safety locks for cache dictionaries and shared collections
-        private readonly object _modMatchCacheLock = new();
-        private readonly object _textCleanCacheLock = new();
-        private readonly object _altarComponentsLock = new();
-
-        private static readonly Regex RgbRegex = new(
-            @"<rgb\(\d+,\d+,\d+\)>",
-            RegexOptions.Compiled);
-
-        public List<PrimaryAltarComponent> GetAltarComponents() => _altarComponents.ToList();
-        public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarComponents;
+        public List<PrimaryAltarComponent> GetAltarComponents() => _altarRepository.GetAltarComponents();
+        public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarRepository.GetAltarComponentsReadOnly();
         public void ClearAltarComponents()
         {
-            using (LockManager.AcquireStatic(_altarComponentsLock))
-            {
-                foreach (var component in _altarComponents)
-                {
-                    component.InvalidateCache();
-                }
-                _altarComponents.Clear();
-            }
+            _altarRepository.ClearAltarComponents();
         }
         public void RemoveAltarComponentsByElement(Element element)
         {
@@ -96,10 +74,7 @@ namespace ClickIt.Services
                 return match;
             }
 
-            using (LockManager.AcquireStatic(_altarComponentsLock))
-            {
-                _altarComponents.RemoveAll(ShouldRemove);
-            }
+            _altarRepository.RemoveAltarComponentsByElement(ShouldRemove);
         }
         public List<LabelOnGround> GetAltarLabels(ClickIt.AltarType type)
         {
@@ -118,20 +93,7 @@ namespace ClickIt.Services
             }
             return result;
         }
-        public bool AddAltarComponent(PrimaryAltarComponent component)
-        {
-            using (LockManager.AcquireStatic(_altarComponentsLock))
-            {
-                string newKey = BuildAltarKey(component);
-                bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
-                if (!exists)
-                {
-                    _altarComponents.Add(component);
-                    return true;
-                }
-                return false;
-            }
-        }
+        public bool AddAltarComponent(PrimaryAltarComponent component) => _altarRepository.AddAltarComponent(component);
         public void UpdateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
             Element ElementToExtractDataFrom, ClickIt.AltarType altarType)
         {
@@ -143,11 +105,11 @@ namespace ClickIt.Services
         {
             string negativeModType = "";
             List<string> mods = [];
-            string altarMods = CleanAltarModsText(element.GetText(512));
-            int lineCount = CountLines(element.GetText(512));
+            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(512));
+            int lineCount = TextHelpers.CountLines(altarMods);
             for (int i = 0; i < lineCount; i++)
             {
-                string line = GetLine(altarMods, i);
+                string line = TextHelpers.GetLine(altarMods, i);
                 if (i == 0)
                 {
                     negativeModType = line;
@@ -159,52 +121,26 @@ namespace ClickIt.Services
             }
             return (negativeModType, mods);
         }
-        private string CleanAltarModsText(string text)
-        {
-            using (LockManager.AcquireStatic(_textCleanCacheLock))
-            {
-                if (_textCleanCache.TryGetValue(text, out string? cached))
-                {
-                    return cached;
-                }
-
-                string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
-                    .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
-                    .Replace("gain:", "").Replace("gains:", "");
-                cleaned = RgbRegex.Replace(cleaned, "");
-
-                if (_textCleanCache.Count < 1000)
-                {
-                    _textCleanCache[text] = cleaned;
-                }
-
-                return cleaned;
-            }
-        }
         private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {
-            List<string> upsides = [];
-            List<string> downsides = [];
-            bool hasUnmatchedMods = false;
-
-            foreach (string mod in mods)
+            var (upsides, downsides, unmatched) = AltarParser.ProcessMods(mods, negativeModType, (mod, neg) =>
             {
-                if (!TryMatchModCached(mod, negativeModType, out bool isUpside, out string matchedId))
-                {
-                    hasUnmatchedMods = true;
-                    RecordUnmatchedMod(mod, negativeModType);
-                    continue;
-                }
+                if (_altarMatcher.TryMatchModCached(mod, neg, out bool isUpside, out string matchedId))
+                    return (true, isUpside, matchedId);
+                return (false, false, string.Empty);
+            });
 
-                // Matched
-                DebugInfo.ModsMatched++;
-                if (isUpside)
-                    upsides.Add(matchedId);
-                else
-                    downsides.Add(matchedId);
+            // Update debug counters and record unmatched mods
+            DebugInfo.ModsMatched += upsides.Count + downsides.Count;
+
+            if (unmatched.Count > 0)
+            {
+                foreach (var mod in unmatched)
+                    RecordUnmatchedMod(mod, negativeModType);
+                return (upsides, downsides, true);
             }
 
-            return (upsides, downsides, hasUnmatchedMods);
+            return (upsides, downsides, false);
         }
 
         // Records unmatched mod info into debug structures and logs when in debug mode.
@@ -226,86 +162,7 @@ namespace ClickIt.Services
             }
         }
 
-        private bool TryMatchModCached(string mod, string negativeModType, out bool isUpside, out string matchedId)
-        {
-            string cacheKey = $"{mod}|{negativeModType}";
 
-            // Try to read from cache (with lock).
-            if (TryGetCachedEntry(cacheKey, out var cached))
-            {
-                isUpside = cached.isUpside;
-                matchedId = cached.matchedId;
-
-                // Normalize legacy cached matchedId (id-only) to composite "Type|Id" using negativeModType
-                if (!string.IsNullOrEmpty(matchedId) && !matchedId.Contains('|'))
-                {
-                    string cleanedNegative = new(negativeModType.Where(char.IsLetter).ToArray());
-                    string modTarget = GetModTarget(cleanedNegative);
-                    if (!string.IsNullOrEmpty(modTarget))
-                        matchedId = $"{modTarget}|{matchedId}";
-                }
-
-                return !string.IsNullOrEmpty(matchedId);
-            }
-
-            // Not cached - perform match and insert result into cache if possible.
-            bool matched = TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
-
-            // Attempt to add to cache (with lock)
-            using (LockManager.AcquireStatic(_modMatchCacheLock))
-            {
-                if (_modMatchCache.Count < 5000)
-                    _modMatchCache[cacheKey] = (isUpside, matchedId);
-            }
-
-            return matched;
-
-            // Local helper to read from cache using lock
-            bool TryGetCachedEntry(string key, out (bool isUpside, string matchedId) value)
-            {
-                value = (false, string.Empty);
-                using (LockManager.AcquireStatic(_modMatchCacheLock))
-                {
-                    return _modMatchCache.TryGetValue(key, out value);
-                }
-            }
-        }
-
-        private static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
-        {
-            isUpside = false;
-            matchedId = string.Empty;
-            string cleanedMod = new(mod.Where(char.IsLetter).ToArray());
-            string cleanedNegativeModType = new(negativeModType.Where(char.IsLetter).ToArray());
-            string modTarget = GetModTarget(cleanedNegativeModType);
-            var searchLists = new[]
-            {
-                new { List = AltarModsConstants.UpsideMods, IsUpside = true },
-                new { List = AltarModsConstants.DownsideMods, IsUpside = false }
-            };
-            foreach (var searchList in searchLists)
-            {
-                foreach (var (Id, _, Type, _) in searchList.List)
-                {
-                    string cleanedId = new(Id.Where(char.IsLetter).ToArray());
-                    if (cleanedId.Equals(cleanedMod, StringComparison.OrdinalIgnoreCase) &&
-                        Type.Equals(modTarget, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isUpside = searchList.IsUpside;
-                        matchedId = $"{Type}|{Id}";
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-        private static string GetModTarget(string cleanedNegativeModType)
-        {
-            if (cleanedNegativeModType.Contains("Mapboss")) return "Boss";
-            if (cleanedNegativeModType.Contains("EldritchMinions")) return "Minion";
-            if (cleanedNegativeModType.Contains("Player")) return "Player";
-            return "";
-        }
         private static void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element element,
             List<string> upsides, List<string> downsides, bool hasUnmatchedMods)
         {
@@ -320,18 +177,7 @@ namespace ClickIt.Services
                 altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
             }
         }
-        private static string GetLine(string text, int lineNo)
-        {
-            string[] lines = text.Replace("\r", "").Split('\n');
-            if (lineNo >= 0 && lineNo < lines.Length)
-                return lines[lineNo];
-            return string.Empty;
-        }
-        private static int CountLines(string text)
-        {
-            string[] lines = text.Replace("\r", "").Split('\n');
-            return lines.Length;
-        }
+
         public void ProcessAltarScanningLogic()
         {
             DebugInfo.LastScanTime = DateTime.Now;
@@ -375,21 +221,8 @@ namespace ClickIt.Services
         }
         private void ProcessAltarLabels(List<LabelOnGround> altarLabels)
         {
-            var elementsToProcess = new List<(Element element, string path)>(altarLabels.Count * 2);
-
-            foreach (LabelOnGround label in altarLabels)
-            {
-                if (label == null) continue;
-                List<Element> elements = LabelUtils.GetElementsByStringContains(label.Label, "valuedefault");
-                if (elements == null || elements.Count == 0) continue;
-                string path = label.ItemOnGround?.Path ?? string.Empty;
-                DebugInfo.ElementsFound += elements.Count;
-
-                foreach (Element element in elements.Where(IsValidElement))
-                {
-                    elementsToProcess.Add((element, path));
-                }
-            }
+            var elementsToProcess = AltarScanner.CollectElementsFromLabels(altarLabels);
+            DebugInfo.ElementsFound = elementsToProcess.Count;
 
             // Remove invalid altars before processing new ones
             CleanupInvalidAltars();
@@ -397,6 +230,7 @@ namespace ClickIt.Services
             // Process elements in a single pass
             foreach (var (element, path) in elementsToProcess)
             {
+                if (element == null) continue;
                 DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
                 ClickIt.AltarType altarType = DetermineAltarType(path);
                 PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
@@ -417,19 +251,12 @@ namespace ClickIt.Services
 
         private void CleanupInvalidAltars()
         {
-            _altarComponents.RemoveAll(altar =>
+            _altarRepository.RemoveAltarComponentsByElement(altar =>
             {
                 bool isInvalid = altar.TopMods?.Element == null ||
                                 altar.BottomMods?.Element == null ||
                                 !altar.TopMods.Element.IsValid ||
                                 !altar.BottomMods.Element.IsValid;
-
-                if (isInvalid)
-                {
-                    // Invalidate cache when removing
-                    altar.InvalidateCache();
-                }
-
                 return isInvalid;
             });
         }
@@ -446,26 +273,17 @@ namespace ClickIt.Services
 
             // Note: Weights are cached lazily when first accessed since they need the calculator
         }
-        private bool IsValidElement(Element element)
-        {
-            if (element == null || !element.IsVisible)
-            {
-                DebugInfo.LastError = "Element is null or not visible";
-                return false;
-            }
-            return true;
-        }
         private static ClickIt.AltarType DetermineAltarType(string path)
         {
             if (string.IsNullOrEmpty(path)) return ClickIt.AltarType.Unknown;
 
             // Use OrdinalIgnoreCase for robust, culture-insensitive matching
-            if (path.IndexOf(CleansingFireAltar, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (path.Contains(CleansingFireAltar, StringComparison.OrdinalIgnoreCase))
             {
                 return ClickIt.AltarType.SearingExarch;
             }
 
-            if (path.IndexOf(TangleAltar, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (path.Contains(TangleAltar, StringComparison.OrdinalIgnoreCase))
             {
                 return ClickIt.AltarType.EaterOfWorlds;
             }
@@ -514,52 +332,6 @@ namespace ClickIt.Services
                 DebugInfo.LastError = "Invalid altar component - missing parts";
             }
             return isValid;
-        }
-        private static string BuildAltarKey(PrimaryAltarComponent comp)
-        {
-            // Support for 8 mods on top and bottom - build key from all available mods
-            // Much cleaner approach using array concatenation
-            var topUpside = GetModStrings(comp.TopMods, false);
-            var topDownside = GetModStrings(comp.TopMods, true);
-            var bottomUpside = GetModStrings(comp.BottomMods, false);
-            var bottomDownside = GetModStrings(comp.BottomMods, true);
-
-            // Join all mods with separator to create unique key
-            var allMods = topUpside.Concat(topDownside)
-                                  .Concat(bottomUpside)
-                                  .Concat(bottomDownside);
-
-            return string.Join("|", allMods);
-        }
-
-        // Helper method to extract mod strings for key building
-        private static string[] GetModStrings(SecondaryAltarComponent? component, bool isDownside)
-        {
-            if (component == null)
-            {
-                return new string[8]; // Return empty array if no component
-            }
-
-            if (isDownside)
-            {
-                // Get all 8 downside mods (supporting up to 8 mods)
-                var downsideMods = new string[8];
-                for (int i = 0; i < 8; i++)
-                {
-                    downsideMods[i] = component.GetDownsideByIndex(i);
-                }
-                return downsideMods;
-            }
-            else
-            {
-                // Get all 8 upside mods (supporting up to 8 mods)
-                var upsideMods = new string[8];
-                for (int i = 0; i < 8; i++)
-                {
-                    upsideMods[i] = component.GetUpsideByIndex(i);
-                }
-                return upsideMods;
-            }
         }
     }
 }

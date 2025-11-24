@@ -77,11 +77,11 @@ namespace ClickIt.Utils
             bool keyState = lazyModeActive || (_settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value));
 
             // Holding the click hotkey should override ritual-in-progress blocking.
-            bool clickHotkeyHeld = (_settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value));
+            bool clickHotkeyHeld = _settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value);
 
             return keyState &&
                 IsPOEActive(gameController) &&
-                (_settings.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
+                (_settings?.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
                 !IsInTownOrHideout(gameController) &&
                 !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible &&
                 // Allow clicking during a ritual if the click hotkey is being held

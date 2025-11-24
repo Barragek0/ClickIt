@@ -105,6 +105,10 @@
     <!-- Services -->
     <Compile Include="Services\AltarService.cs" />
     <Compile Include="Services\LabelService.cs" />
+    <Compile Include="Services\AltarRepository.cs" />
+    <Compile Include="Services\AltarParser.cs" />
+    <Compile Include="Services\AltarScanner.cs" />
+    <Compile Include="Services\AltarMatcher.cs" />
     <Compile Include="Services\LabelFilterService.cs" />
     <Compile Include="Services\EssenceService.cs" />
     <Compile Include="Services\AreaService.cs" />
@@ -125,6 +129,8 @@
     <Compile Include="Utils\DeferredTextQueue.cs" />
     <Compile Include="Utils\DeferredFrameQueue.cs" />
     <Compile Include="Utils\LabelUtils.cs" />
+    <Compile Include="Utils\TextHelpers.cs" />
+    <Compile Include="Utils\AltarModMatcher.cs" />
     <Compile Include="Utils\EntityHelpers.cs" />
     <Compile Include="Utils\PerformanceMonitor.cs" />
     <Compile Include="Utils\ErrorHandler.cs" />
