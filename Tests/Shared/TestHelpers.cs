@@ -5,9 +5,9 @@ namespace ClickIt.Tests.Shared
 {
     public static class TestHelpers
     {
-        public static ClickIt.ClickItSettings CreateSettingsWithTiers(Dictionary<string, int> tiers = null)
+        public static ClickItSettings CreateSettingsWithTiers(Dictionary<string, int> tiers = null)
         {
-            var s = new ClickIt.ClickItSettings();
+            var s = new ClickItSettings();
             s.ModTiers.Clear();
             if (tiers != null)
             {

@@ -44,6 +44,8 @@ namespace ClickIt
                 State.AltarDisplayRenderer?.RenderAltarComponents();
             }
 
+            State.StrongboxRenderer?.Render(GameController, State);
+
             State.PerformanceMonitor?.StopRenderTiming();
 
             // Flush deferred text rendering to prevent freezes

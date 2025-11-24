@@ -10,7 +10,7 @@ namespace ClickIt.Tests.Services
         [TestMethod]
         public void Acquire_InstanceAcquiresLock()
         {
-            var settings = new ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
             var lm = new ClickIt.Utils.LockManager(settings);
 
             var lockObj = new object();
@@ -18,9 +18,9 @@ namespace ClickIt.Tests.Services
             {
                 // While acquired by this instance, another thread should NOT be able to acquire it
                 bool acquiredByOther = false;
-                using (var done = new System.Threading.ManualResetEvent(false))
+                using (var done = new ManualResetEvent(false))
                 {
-                    var t = new System.Threading.Thread(() =>
+                    var t = new Thread(() =>
                     {
                         bool otherTaken = System.Threading.Monitor.TryEnter(lockObj, 200);
                         if (otherTaken)
@@ -41,7 +41,7 @@ namespace ClickIt.Tests.Services
         [TestMethod]
         public void Acquire_WithLocking_AcquiresLock()
         {
-            var settings = new ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
             var lm = new ClickIt.Utils.LockManager(settings);
 
             var lockObj = new object();
@@ -49,9 +49,9 @@ namespace ClickIt.Tests.Services
             {
                 // While acquired, another thread should NOT be able to acquire it
                 bool acquiredByOther = false;
-                using (var done = new System.Threading.ManualResetEvent(false))
+                using (var done = new ManualResetEvent(false))
                 {
-                    var t = new System.Threading.Thread(() =>
+                    var t = new Thread(() =>
                     {
                         bool otherTaken = System.Threading.Monitor.TryEnter(lockObj, 200);
                         if (otherTaken)
@@ -84,7 +84,7 @@ namespace ClickIt.Tests.Services
         [TestMethod]
         public void Setting_GlobalInstance_MapsToLockManagerInstance()
         {
-            var settings = new ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
             var lm = new ClickIt.Utils.LockManager(settings);
             ClickIt.Utils.GlobalLockManager.Instance = lm;
             ClickIt.Utils.LockManager.Instance.Should().BeSameAs(lm);
@@ -96,7 +96,7 @@ namespace ClickIt.Tests.Services
         [TestMethod]
         public void Acquire_NullLockObj_ReturnsNoop()
         {
-            var settings = new ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
             var lm = new ClickIt.Utils.LockManager(settings);
             using (var d = lm.Acquire(null))
             {

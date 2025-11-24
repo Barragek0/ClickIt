@@ -57,7 +57,7 @@ namespace ClickIt.Rendering
             {
                 return hotkeyHeld
                     ? (SharpDX.Color.LawnGreen, "Blocking overridden by hotkey.", string.Empty, string.Empty)
-                    : (SharpDX.Color.Red, "Locked strongbox, chest or tree detected.", $"Hold {_settings.ClickLabelKey.Value} to click them.", string.Empty);
+                    : (SharpDX.Color.Red, "Locked chest or tree detected.", $"Hold {_settings.ClickLabelKey.Value} to click them.", string.Empty);
             }
 
             if (lazyModeDisableHeld)

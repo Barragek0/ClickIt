@@ -10,7 +10,7 @@ namespace ClickIt
     public class ClickItSettings
     {
 
-        public System.Collections.Generic.Dictionary<string, int> ModTiers { get; set; } = new System.Collections.Generic.Dictionary<string, int>();
+        public Dictionary<string, int> ModTiers { get; set; } = new Dictionary<string, int>();
         public int GetModTier(string id)
         {
             if (string.IsNullOrEmpty(id)) return 1;

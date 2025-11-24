@@ -644,7 +644,7 @@ namespace ClickIt.Tests
 
             public MockDecisionEngine(MockClickItSettings settings)
             {
-                _settings = settings ?? throw new System.ArgumentNullException(nameof(settings));
+                _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             }
 
             public void SetSequentialTracker(MockSequentialDecisionTracker tracker)

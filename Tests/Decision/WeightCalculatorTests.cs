@@ -10,7 +10,7 @@ namespace ClickIt.Tests.Decision
     [TestClass]
     public class WeightCalculatorTests
     {
-        private ClickIt.ClickItSettings _settings;
+        private ClickItSettings _settings;
         private WeightCalculator _calc;
 
         [TestInitialize]
@@ -92,14 +92,14 @@ namespace ClickIt.Tests.Decision
         public void CalculateAltarWeights_MultipleUpsidesSum()
         {
             // Arrange - use lightweight test settings and the existing WeightCalculator
-            var calc = ClickIt.Tests.Shared.TestHelpers.CreateWeightCalculator(new System.Collections.Generic.Dictionary<string, int>
+            var calc = ClickIt.Tests.Shared.TestHelpers.CreateWeightCalculator(new Dictionary<string, int>
             {
                 ["up1"] = 2,
                 ["up2"] = 3
             });
 
-            var top = new SecondaryAltarComponent(new System.Collections.Generic.List<string> { "up1", "up2" }, new System.Collections.Generic.List<string> { "" });
-            var bottom = new SecondaryAltarComponent(new System.Collections.Generic.List<string> { "" }, new System.Collections.Generic.List<string> { "" });
+            var top = new SecondaryAltarComponent(new List<string> { "up1", "up2" }, new List<string> { "" });
+            var bottom = new SecondaryAltarComponent(new List<string> { "" }, new List<string> { "" });
             var primary = new PrimaryAltarComponent(top, bottom);
 
             // Act
@@ -114,7 +114,7 @@ namespace ClickIt.Tests.Decision
         public void CalculateAltarWeights_MixedTopBottom_RatioComputed()
         {
             // Arrange: set explicit mod tiers so that top total / bottom total = expected ratio (9 / 6 = 1.5)
-            var settings = ClickIt.Tests.Shared.TestHelpers.CreateSettingsWithTiers(new System.Collections.Generic.Dictionary<string, int>
+            var settings = ClickIt.Tests.Shared.TestHelpers.CreateSettingsWithTiers(new Dictionary<string, int>
             {
                 ["topA"] = 6,
                 ["topB"] = 3,
@@ -123,8 +123,8 @@ namespace ClickIt.Tests.Decision
             });
             var calc = new WeightCalculator(settings);
 
-            var top = new SecondaryAltarComponent(new System.Collections.Generic.List<string> { "topA", "topB" }, new System.Collections.Generic.List<string> { "" });
-            var bottom = new SecondaryAltarComponent(new System.Collections.Generic.List<string> { "botA", "botB" }, new System.Collections.Generic.List<string> { "" });
+            var top = new SecondaryAltarComponent(new List<string> { "topA", "topB" }, new List<string> { "" });
+            var bottom = new SecondaryAltarComponent(new List<string> { "botA", "botB" }, new List<string> { "" });
             var primary = new PrimaryAltarComponent(top, bottom);
 
             // Act
@@ -136,8 +136,8 @@ namespace ClickIt.Tests.Decision
             // TopWeight and BottomWeight are rounded ratios of upside/downside arrays; since downsides were provided as "" the downside totals are 0 -> weights become 0
             // To validate ratio math, set downsides as well and recompute a more direct ratio test below.
             // Now create an altar with explicit downsides so we can validate TopWeight/BottomWeight ratio
-            var topWithDowns = new SecondaryAltarComponent(new System.Collections.Generic.List<string> { "topA", "topB" }, new System.Collections.Generic.List<string> { "topDown" });
-            var bottomWithDowns = new SecondaryAltarComponent(new System.Collections.Generic.List<string> { "botA", "botB" }, new System.Collections.Generic.List<string> { "botDown" });
+            var topWithDowns = new SecondaryAltarComponent(new List<string> { "topA", "topB" }, new List<string> { "topDown" });
+            var bottomWithDowns = new SecondaryAltarComponent(new List<string> { "botA", "botB" }, new List<string> { "botDown" });
             settings.ModTiers["topDown"] = 3; // top downside total = 3
             settings.ModTiers["botDown"] = 6; // bottom downside total = 6
             var primary2 = new PrimaryAltarComponent(topWithDowns, bottomWithDowns);
@@ -376,15 +376,15 @@ namespace ClickIt.Tests.Decision
         public void CalculateAltarWeights_ZeroDownsides_ProducesZeroRatios()
         {
             // Arrange: set upsides but leave downsides empty so TopWeight/BottomWeight should become 0 (safe-division)
-            var calc = ClickIt.Tests.Shared.TestHelpers.CreateWeightCalculator(new System.Collections.Generic.Dictionary<string, int>
+            var calc = ClickIt.Tests.Shared.TestHelpers.CreateWeightCalculator(new Dictionary<string, int>
             {
                 ["u1"] = 10,
                 ["u2"] = 5
             });
 
-            var top = new ClickIt.Components.SecondaryAltarComponent(new System.Collections.Generic.List<string> { "u1", "u2" }, new System.Collections.Generic.List<string> { "" });
-            var bottom = new ClickIt.Components.SecondaryAltarComponent(new System.Collections.Generic.List<string> { "" }, new System.Collections.Generic.List<string> { "" });
-            var primary = new ClickIt.Components.PrimaryAltarComponent(top, bottom);
+            var top = new SecondaryAltarComponent(new List<string> { "u1", "u2" }, new List<string> { "" });
+            var bottom = new SecondaryAltarComponent(new List<string> { "" }, new List<string> { "" });
+            var primary = new PrimaryAltarComponent(top, bottom);
 
             // Act
             var weights = calc.CalculateAltarWeights(primary);

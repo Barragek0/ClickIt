@@ -3,7 +3,7 @@
 
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
-    <TargetFramework>net8-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
@@ -38,6 +38,7 @@
   <ItemGroup>
     <!-- Include LabelUtils so tests can exercise label helpers directly -->
     <Compile Include="..\Utils\LabelUtils.cs" />
+    <Compile Include="..\Utils\DeferredFrameQueue.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -549,7 +549,7 @@ namespace ClickIt.Tests
 
         public class MockPerformanceProfiler
         {
-            private System.DateTime _startTime;
+            private DateTime _startTime;
 
             public void StartProfiling()
             {

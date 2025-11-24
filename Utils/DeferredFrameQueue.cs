@@ -1,6 +1,6 @@
 using SharpDX;
-using System;
-using System.Collections.Generic;
+using RectangleF = SharpDX.RectangleF;
+using Color = SharpDX.Color;
 
 namespace ClickIt.Utils
 {
@@ -8,9 +8,9 @@ namespace ClickIt.Utils
     // and a single Flush call will draw them with a provided Graphics instance.
     public class DeferredFrameQueue
     {
-        private readonly List<(SharpDX.RectangleF Rectangle, SharpDX.Color Color, int Thickness)> _items = [];
+        private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _items = new List<(RectangleF, Color, int)>();
 
-        public void Enqueue(SharpDX.RectangleF rectangle, SharpDX.Color color, int thickness)
+        public void Enqueue(RectangleF rectangle, Color color, int thickness)
         {
             // Silently ignore errors to prevent logging during render
             try
@@ -21,6 +21,12 @@ namespace ClickIt.Utils
             {
                 // Intentionally empty - do not log during render operations
             }
+        }
+
+        // Internal helper used by tests to inspect queued frames
+        internal (RectangleF Rectangle, Color Color, int Thickness)[] GetSnapshotForTests()
+        {
+            return _items.ToArray();
         }
 
         public void Flush(ExileCore.Graphics graphics, Action<string, int> logMessage)

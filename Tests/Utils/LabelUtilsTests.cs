@@ -44,7 +44,7 @@ namespace ClickIt.Tests.Unit.Utils
             var b = new ExileCore.PoEMemory.Elements.LabelOnGround { ItemOnGround = new ExileCore.PoEMemory.MemoryObjects.Entity { DistancePlayer = 30 } };
             var c = new ExileCore.PoEMemory.Elements.LabelOnGround { ItemOnGround = new ExileCore.PoEMemory.MemoryObjects.Entity { DistancePlayer = 20 } };
 
-            var list = new System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround> { a, b, c };
+            var list = new List<ExileCore.PoEMemory.Elements.LabelOnGround> { a, b, c };
 
             // Insertion sort
             ClickIt.Utils.LabelUtils.InsertionSortByDistance(list, list.Count);
@@ -57,7 +57,7 @@ namespace ClickIt.Tests.Unit.Utils
             list[0].ItemOnGround.DistancePlayer.Should().Be(30);
 
             // partition/quick sort
-            var list2 = new System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround> { a, b, c };
+            var list2 = new List<ExileCore.PoEMemory.Elements.LabelOnGround> { a, b, c };
             int pivot = ClickIt.Utils.LabelUtils.PartitionByDistance(list2, 0, list2.Count - 1);
             pivot.Should().BeInRange(0, list2.Count - 1);
 
@@ -65,11 +65,11 @@ namespace ClickIt.Tests.Unit.Utils
             list2[0].ItemOnGround.DistancePlayer.Should().BeLessOrEqualTo(list2[1].ItemOnGround.DistancePlayer);
 
             // sorting dispatcher
-            var list3 = new System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>();
+            var list3 = new List<ExileCore.PoEMemory.Elements.LabelOnGround>();
             ClickIt.Utils.LabelUtils.SortLabelsByDistance(list3); // empty -> no-op
 
             // small list -> insertion sort path
-            ClickIt.Utils.LabelUtils.SortLabelsByDistance(new System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround> { a, b });
+            ClickIt.Utils.LabelUtils.SortLabelsByDistance(new List<ExileCore.PoEMemory.Elements.LabelOnGround> { a, b });
         }
 
         [TestMethod]
@@ -86,7 +86,7 @@ namespace ClickIt.Tests.Unit.Utils
 
             // HasEssenceImprisonmentText - nested child contains the special phrase
             var child = new ExileCore.PoEMemory.Element { Text = "The monster is imprisoned by powerful Essences." };
-            rootElement.Children = new System.Collections.Generic.List<ExileCore.PoEMemory.Element> { child };
+            rootElement.Children = new List<ExileCore.PoEMemory.Element> { child };
 
             ClickIt.Utils.LabelUtils.HasEssenceImprisonmentText(labelOnGround).Should().BeTrue();
 
@@ -99,7 +99,7 @@ namespace ClickIt.Tests.Unit.Utils
             // GetElementByString - exact match
             var exactRoot = new ExileCore.PoEMemory.Element { Text = "first" };
             var nested = new ExileCore.PoEMemory.Element { Text = "target" };
-            exactRoot.Children = new System.Collections.Generic.List<ExileCore.PoEMemory.Element> { nested };
+            exactRoot.Children = new List<ExileCore.PoEMemory.Element> { nested };
             var getExact = ClickIt.Utils.LabelUtils.GetElementByString(exactRoot, "target");
             getExact.Should().NotBeNull();
             getExact!.GetText(0).Should().Be("target");

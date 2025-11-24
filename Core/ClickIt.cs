@@ -48,6 +48,7 @@ namespace ClickIt
             State.ShrineService = null;
             State.InputHandler = null;
             State.DebugRenderer = null;
+            State.StrongboxRenderer = null;
             State.LazyModeRenderer = null;
             State.DeferredTextQueue = null;
             State.DeferredFrameQueue = null;
@@ -84,6 +85,7 @@ namespace ClickIt
             State.DeferredTextQueue = new DeferredTextQueue();
             State.DeferredFrameQueue = new DeferredFrameQueue();
             State.DebugRenderer = new Rendering.DebugRenderer(this, State.AltarService, State.AreaService, weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue);
+            State.StrongboxRenderer = new Rendering.StrongboxRenderer(Settings, State.DeferredFrameQueue);
             State.LazyModeRenderer = new Rendering.LazyModeRenderer(Settings, State.DeferredTextQueue, State.InputHandler, labelFilterService);
             State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, (msg, frame) => { });
             LockManager.Instance = new LockManager(Settings);

@@ -119,6 +119,7 @@
     <Compile Include="Rendering\DebugRenderer.cs" />
     <Compile Include="Rendering\LazyModeRenderer.cs" />
     <Compile Include="Rendering\AltarDisplayRenderer.cs" />
+    <Compile Include="Rendering\StrongboxRenderer.cs" />
 
     <!-- Utils -->
     <Compile Include="Utils\Mouse.cs" />

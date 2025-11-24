@@ -58,9 +58,9 @@ namespace ClickIt.Services
                     if (string.IsNullOrEmpty(path))
                         continue;
 
-                    // Check for restricted items: locked strongbox or chest, settlers tree
+                    // Check for restricted items: locked chest or settlers tree
                     var chestComponent = label.ItemOnGround.GetComponent<Chest>();
-                    if (path.Contains(PetrifiedWood) || chestComponent?.IsLocked == true)
+                    if (path.Contains(PetrifiedWood) || (chestComponent?.IsLocked == true && !chestComponent.IsStrongbox))
                     {
                         _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
                         return true;
@@ -134,17 +134,17 @@ namespace ClickIt.Services
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
-                RegularStrongbox = !applyLazyModeRestrictions && s.RegularStrongbox.Value,
-                ArcanistStrongbox = !applyLazyModeRestrictions && s.ArcanistStrongbox.Value,
-                ArmourerStrongbox = !applyLazyModeRestrictions && s.ArmourerStrongbox.Value,
-                ArtisanStrongbox = !applyLazyModeRestrictions && s.ArtisanStrongbox.Value,
-                BlacksmithStrongbox = !applyLazyModeRestrictions && s.BlacksmithStrongbox.Value,
-                CartographerStrongbox = !applyLazyModeRestrictions && s.CartographerStrongbox.Value,
-                DivinerStrongbox = !applyLazyModeRestrictions && s.DivinerStrongbox.Value,
-                GemcutterStrongbox = !applyLazyModeRestrictions && s.GemcutterStrongbox.Value,
-                JewellerStrongbox = !applyLazyModeRestrictions && s.JewellerStrongbox.Value,
-                LargeStrongbox = !applyLazyModeRestrictions && s.LargeStrongbox.Value,
-                OrnateStrongbox = !applyLazyModeRestrictions && s.OrnateStrongbox.Value,
+                RegularStrongbox = s.RegularStrongbox.Value,
+                ArcanistStrongbox = s.ArcanistStrongbox.Value,
+                ArmourerStrongbox = s.ArmourerStrongbox.Value,
+                ArtisanStrongbox = s.ArtisanStrongbox.Value,
+                BlacksmithStrongbox = s.BlacksmithStrongbox.Value,
+                CartographerStrongbox = s.CartographerStrongbox.Value,
+                DivinerStrongbox = s.DivinerStrongbox.Value,
+                GemcutterStrongbox = s.GemcutterStrongbox.Value,
+                JewellerStrongbox = s.JewellerStrongbox.Value,
+                LargeStrongbox = s.LargeStrongbox.Value,
+                OrnateStrongbox = s.OrnateStrongbox.Value,
                 ClickSanctum = s.ClickSanctum.Value,
                 ClickBetrayal = s.ClickBetrayal.Value,
                 ClickBlight = s.ClickBlight.Value,
@@ -206,7 +206,7 @@ namespace ClickIt.Services
             if (settings.ClickAreaTransitions && (type == EntityType.AreaTransition || path.Contains("AreaTransition")))
                 return true;
             // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround
-            if (ShouldClickSpecialPath(settings, path))
+            if (ShouldClickSpecialPath(settings, path, label))
                 return true;
             if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
                 return true;
@@ -251,7 +251,7 @@ namespace ClickIt.Services
             bool isBasicChest = IsBasicChest(label);
             return (clickBasicChests && isBasicChest) || (clickLeagueChests && !isBasicChest);
         }
-        private static bool ShouldClickSpecialPath(ClickSettings settings, string path)
+        private static bool ShouldClickSpecialPath(ClickSettings settings, string path, LabelOnGround label)
         {
             if (string.IsNullOrEmpty(path)) return false;
 
@@ -264,7 +264,7 @@ namespace ClickIt.Services
             {
                 (settings.NearestHarvest, p => IsHarvestPath(p)),
                 (settings.ClickSulphite, p => p.Contains("DelveMineral")),
-                (strongboxesEnabled, p => ShouldClickStrongbox(settings, p)),
+                (strongboxesEnabled, p => ShouldClickStrongbox(settings, p, label)),
                 (settings.ClickSanctum, p => p.Contains("Sanctum")),
                 (settings.ClickBetrayal, p => p.Contains("BetrayalMakeChoice")),
                 (settings.ClickBlight, p => p.Contains("BlightPump")),
@@ -280,7 +280,7 @@ namespace ClickIt.Services
             foreach (var (on, matches) in checks)
             {
                 if (!on) continue;
-                if (matches == (Func<string, bool>)(p => true) && ShouldClickStrongbox(settings, path))
+                if (matches == (Func<string, bool>)(p => true) && ShouldClickStrongbox(settings, path, label))
                     return true;
                 if (matches(path)) return true;
             }
@@ -322,7 +322,7 @@ namespace ClickIt.Services
             return false;
         }
 
-        private static bool ShouldClickStrongbox(ClickSettings settings, string path)
+        private static bool ShouldClickStrongbox(ClickSettings settings, string path, LabelOnGround label)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
@@ -344,7 +344,7 @@ namespace ClickIt.Services
 
             foreach (var (on, key) in checks)
             {
-                if (on && path.Contains(key)) return true;
+                if (on && path.Contains(key) && !label.ItemOnGround.GetComponent<Chest>().IsLocked) return true;
             }
             return false;
         }

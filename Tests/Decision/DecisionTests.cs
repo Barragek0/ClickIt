@@ -15,7 +15,7 @@ namespace ClickIt.Tests.Decision
         [TestMethod]
         public void Decision_ShouldBeDeterministic_ForSameInput()
         {
-            var settings = new Tests.MockClickItSettings();
+            var settings = new MockClickItSettings();
             var calc = new MockWeightCalculator(settings);
 
             var altar = TestFactories.CreateComplexTestAltarComponent();
@@ -30,7 +30,7 @@ namespace ClickIt.Tests.Decision
         [TestMethod]
         public void IncreasingTopModWeight_ShouldNotDecreaseTopWeight()
         {
-            var settings = new Tests.MockClickItSettings();
+            var settings = new MockClickItSettings();
             var calc = new MockWeightCalculator(settings);
 
             // Create an altar with a known top mod
@@ -51,7 +51,7 @@ namespace ClickIt.Tests.Decision
         [TestMethod]
         public void RandomizedAltars_ShouldNotThrow_AndBeDeterministic()
         {
-            var settings = new Tests.MockClickItSettings();
+            var settings = new MockClickItSettings();
             var calc = new MockWeightCalculator(settings);
 
             for (int i = 0; i < 300; i++)

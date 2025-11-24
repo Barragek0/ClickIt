@@ -36,13 +36,20 @@ namespace ExileCore.PoEMemory
         {
             public float DistancePlayer { get; set; }
             public string? Path { get; set; }
-            public ExileCore.Shared.Enums.EntityType Type { get; set; }
+            public Shared.Enums.EntityType Type { get; set; }
 
             public T? GetComponent<T>() where T : class, new()
             {
-                // Provide a simple Chest component if requested
+                // Provide a simple Chest component if requested. For tests, if the entity's Path contains
+                // the word "locked" we'll return a Chest with IsLocked set to true.
                 if (typeof(T).Name == "Chest")
-                    return new T();
+                {
+                    var chest = new Components.Chest();
+                    if (!string.IsNullOrEmpty(Path) && Path.ToLowerInvariant().Contains("locked"))
+                        chest.IsLocked = true;
+                    return chest as T;
+                }
+
                 return new T();
             }
         }
@@ -65,6 +72,7 @@ namespace ExileCore.PoEMemory
         public class Chest
         {
             public bool OpenOnDamage { get; set; } = false;
+            public bool IsLocked { get; set; } = false;
         }
     }
 }

@@ -215,7 +215,7 @@ namespace ClickIt.Tests
         private static string CleanAltarModsText(string text)
         {
             // Forward to the real production cleaning implementation in Services.AltarParser (stateless no-cache version)
-            return global::ClickIt.Services.AltarParser.CleanAltarModsText_NoCache(text);
+            return ClickIt.Services.AltarParser.CleanAltarModsText_NoCache(text);
         }
 
         private static string GetModTarget(string cleanedNegativeModType)
@@ -227,7 +227,7 @@ namespace ClickIt.Tests
         private static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
             // Exercise the real matching code in the utility layer so production logic is covered
-            return global::ClickIt.Utils.AltarModMatcher.TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
+            return ClickIt.Utils.AltarModMatcher.TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
         }
     }
 }

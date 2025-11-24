@@ -69,7 +69,7 @@ namespace ClickIt.Tests.Configuration
         [TestMethod]
         public void InitializeDefaultWeights_PopulatesCompositeKeys_ForAllUpsideAndDownside()
         {
-            var settings = new ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
             settings.ModTiers.Clear();
             settings.InitializeDefaultWeights();
 
@@ -93,7 +93,7 @@ namespace ClickIt.Tests.Configuration
         [TestMethod]
         public void EnsureAllModsHaveWeights_AfterInitialization_PopulatesCompositeKeys()
         {
-            var settings = new ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
             settings.ModTiers.Clear();
             settings.InitializeDefaultWeights();
 
@@ -104,7 +104,7 @@ namespace ClickIt.Tests.Configuration
         [TestMethod]
         public void InitializeDefaultWeights_PopulatesAtLeastConstantsCount()
         {
-            var s = new ClickIt.ClickItSettings();
+            var s = new ClickItSettings();
             s.ModTiers.Clear();
             s.InitializeDefaultWeights();
 
