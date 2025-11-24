@@ -38,34 +38,74 @@ namespace ClickIt.Rendering
         {
             if (labels == null) return;
 
+            bool showFrames = _settings.ShowStrongboxFrames.Value;
+            bool anyTypeEnabled = _settings.RegularStrongbox.Value || _settings.ArcanistStrongbox.Value ||
+                                  _settings.ArmourerStrongbox.Value || _settings.ArtisanStrongbox.Value ||
+                                  _settings.BlacksmithStrongbox.Value || _settings.CartographerStrongbox.Value ||
+                                  _settings.DivinerStrongbox.Value || _settings.GemcutterStrongbox.Value ||
+                                  _settings.JewellerStrongbox.Value || _settings.LargeStrongbox.Value ||
+                                  _settings.OrnateStrongbox.Value;
+
+            if (!showFrames && !anyTypeEnabled)
+            {
+                // Nothing to display or click for strongboxes
+                return;
+            }
+
+            // Build a small list of enabled path keys so we can cheaply test membership per-label
+            var enabledKeys = GetEnabledStrongboxKeys();
+
             foreach (var label in labels)
             {
-                var itemPathRaw = label?.ItemOnGround?.Path ?? string.Empty;
-                var itemPath = itemPathRaw.ToLowerInvariant();
-                if (string.IsNullOrEmpty(itemPath) || !itemPath.Contains("strongbox"))
+                if (!TryGetVisibleLabelRect(label, windowArea, out var rect, out var itemPathRaw))
                     continue;
 
-                var labelElem = label?.Label;
-                if (labelElem == null || !labelElem.IsValid) continue;
-
-                var rect = labelElem.GetClientRect();
-                if (rect.Width <= 0 || rect.Height <= 0) continue;
-
-                // Convert to absolute window coordinates and make sure some part is on-screen.
-                var rectAbs = new SharpDX.RectangleF(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
-                if (!rectAbs.Intersects(windowArea))
-                    continue; // completely off-screen => skip
+                bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, enabledKeys);
+                if (!isClickableBySettings && !showFrames)
+                    continue;
 
                 var chestComp = label?.ItemOnGround?.GetComponent<ExileCore.PoEMemory.Components.Chest>();
                 bool chestLocked = chestComp?.IsLocked == true;
 
-                var isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw);
-                if (!isClickableBySettings || !_settings.ShowStrongboxFrames.Value)
-                    continue;
-
                 var color = chestLocked ? Color.Red : Color.LawnGreen;
                 _deferredFrameQueue.Enqueue(rect, color, 2);
             }
+        }
+
+        private static bool TryGetVisibleLabelRect(LabelOnGround? label, SharpDX.RectangleF windowArea, out SharpDX.RectangleF rect, out string? itemPathRaw)
+        {
+            rect = new SharpDX.RectangleF();
+            itemPathRaw = label?.ItemOnGround?.Path;
+            if (string.IsNullOrEmpty(itemPathRaw)) return false;
+            if (itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0) return false;
+
+            var elem = label?.Label;
+            if (elem == null || !elem.IsValid) return false;
+
+            rect = elem.GetClientRect();
+            if (rect.Width <= 0 || rect.Height <= 0) return false;
+
+            var rectAbs = new SharpDX.RectangleF(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
+            if (!rectAbs.Intersects(windowArea)) return false;
+
+            return true;
+        }
+
+        private List<string> GetEnabledStrongboxKeys()
+        {
+            var enabledKeys = new List<string>(11);
+            if (_settings.RegularStrongbox.Value) enabledKeys.Add("StrongBoxes/Strongbox");
+            if (_settings.ArcanistStrongbox.Value) enabledKeys.Add("StrongBoxes/Arcanist");
+            if (_settings.ArmourerStrongbox.Value) enabledKeys.Add("StrongBoxes/Armory");
+            if (_settings.ArtisanStrongbox.Value) enabledKeys.Add("StrongBoxes/Artisan");
+            if (_settings.BlacksmithStrongbox.Value) enabledKeys.Add("StrongBoxes/Arsenal");
+            if (_settings.CartographerStrongbox.Value) enabledKeys.Add("StrongBoxes/CartographerEndMaps");
+            if (_settings.DivinerStrongbox.Value) enabledKeys.Add("StrongBoxes/StrongboxDivination");
+            if (_settings.GemcutterStrongbox.Value) enabledKeys.Add("StrongBoxes/Gemcutter");
+            if (_settings.JewellerStrongbox.Value) enabledKeys.Add("StrongBoxes/Jeweller");
+            if (_settings.LargeStrongbox.Value) enabledKeys.Add("StrongBoxes/Large");
+            if (_settings.OrnateStrongbox.Value) enabledKeys.Add("StrongBoxes/Ornate");
+            return enabledKeys;
         }
 
         // Internal helper used by tests to inspect enqueued frames
@@ -74,30 +114,15 @@ namespace ClickIt.Rendering
             return _deferredFrameQueue.GetSnapshotForTests();
         }
 
-        private bool IsStrongboxClickableBySettings(string path)
+        private bool IsStrongboxClickableBySettings(string path, IReadOnlyList<string> enabledKeys)
         {
             if (string.IsNullOrEmpty(path)) return false;
+            if (enabledKeys == null || enabledKeys.Count == 0) return false;
 
-            // Map the path keys used by LabelFilterService to the settings toggles.
-            var checks = new (bool enabled, string key)[]
+            // Iterate only the enabled keys and match the path case-insensitively.
+            for (int i = 0; i < enabledKeys.Count; i++)
             {
-                (_settings.RegularStrongbox.Value, "StrongBoxes/Strongbox"),
-                (_settings.ArcanistStrongbox.Value, "StrongBoxes/Arcanist"),
-                (_settings.ArmourerStrongbox.Value, "StrongBoxes/Armory"),
-                (_settings.ArtisanStrongbox.Value, "StrongBoxes/Artisan"),
-                (_settings.BlacksmithStrongbox.Value, "StrongBoxes/Arsenal"),
-                (_settings.CartographerStrongbox.Value, "StrongBoxes/CartographerEndMaps"),
-                (_settings.DivinerStrongbox.Value, "StrongBoxes/StrongboxDivination"),
-                (_settings.GemcutterStrongbox.Value, "StrongBoxes/Gemcutter"),
-                (_settings.JewellerStrongbox.Value, "StrongBoxes/Jeweller"),
-                (_settings.LargeStrongbox.Value, "StrongBoxes/Large"),
-                (_settings.OrnateStrongbox.Value, "StrongBoxes/Ornate")
-            };
-
-            foreach (var (on, key) in checks)
-            {
-                if (!on) continue;
-                if (path.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (path.IndexOf(enabledKeys[i], StringComparison.OrdinalIgnoreCase) >= 0) return true;
             }
 
             return false;
