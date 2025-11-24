@@ -59,8 +59,8 @@ namespace ClickIt.Rendering
                 var chestComp = label?.ItemOnGround?.GetComponent<ExileCore.PoEMemory.Components.Chest>();
                 bool chestLocked = chestComp?.IsLocked == true;
 
-                var isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw, chestLocked);
-                if (!isClickableBySettings && !_settings.ShowStrongboxFrames.Value)
+                var isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw);
+                if (!isClickableBySettings || !_settings.ShowStrongboxFrames.Value)
                     continue;
 
                 var color = chestLocked ? Color.Red : Color.LawnGreen;
@@ -74,7 +74,7 @@ namespace ClickIt.Rendering
             return _deferredFrameQueue.GetSnapshotForTests();
         }
 
-        private bool IsStrongboxClickableBySettings(string path, bool chestLocked)
+        private bool IsStrongboxClickableBySettings(string path)
         {
             if (string.IsNullOrEmpty(path)) return false;
 
