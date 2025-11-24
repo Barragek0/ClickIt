@@ -1,6 +1,7 @@
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using Color = SharpDX.Color;
+using Graphics = ExileCore.Graphics;
 
 namespace ClickIt.Utils
 {
@@ -29,7 +30,7 @@ namespace ClickIt.Utils
             return _items.ToArray();
         }
 
-        public void Flush(ExileCore.Graphics graphics, Action<string, int> logMessage)
+        public void Flush(Graphics graphics, Action<string, int> logMessage)
         {
             if (graphics == null) return;
             if (_items.Count == 0) return;
