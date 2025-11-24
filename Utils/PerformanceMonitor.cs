@@ -9,14 +9,9 @@ namespace ClickIt.Utils
     /// Handles all performance monitoring, timing, and FPS calculations for the ClickIt plugin.
     /// Provides thread-safe access to timing queues and performance metrics.
     /// </summary>
-    public class PerformanceMonitor
+    public class PerformanceMonitor(ClickItSettings settings)
     {
-        private readonly ClickItSettings _settings;
-
-        public PerformanceMonitor(ClickItSettings settings)
-        {
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        }
+        private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
         // Primary timing controls
         private readonly Stopwatch _mainTimer = new();
@@ -325,7 +320,7 @@ namespace ClickIt.Utils
         }
 
         // Helper to enqueue timing measurements and keep a fixed-length queue
-        private void EnqueueTiming(Queue<long> queue, long value, int maxLength, object lockObject)
+        private static void EnqueueTiming(Queue<long> queue, long value, int maxLength, object lockObject)
         {
             lock (lockObject)
             {

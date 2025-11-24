@@ -13,27 +13,18 @@ using ClickIt;
 
 namespace ClickIt.Utils
 {
-    public class CoroutineManager
+    public class CoroutineManager(
+        PluginContext state,
+        ClickItSettings settings,
+        GameController gameController,
+        ErrorHandler errorHandler,
+        Func<Vector2, bool> pointIsInClickableArea)
     {
-        private readonly PluginContext _state;
-        private readonly ClickItSettings _settings;
-        private readonly GameController _gameController;
-        private readonly ErrorHandler _errorHandler;
-        private readonly Func<Vector2, bool> _pointIsInClickableArea;
-
-        public CoroutineManager(
-            PluginContext state,
-            ClickItSettings settings,
-            GameController gameController,
-            ErrorHandler errorHandler,
-            Func<Vector2, bool> pointIsInClickableArea)
-        {
-            _state = state ?? throw new ArgumentNullException(nameof(state));
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-            _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
-            _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
-        }
+        private readonly PluginContext _state = state ?? throw new ArgumentNullException(nameof(state));
+        private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
+        private readonly ErrorHandler _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        private readonly Func<Vector2, bool> _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
 
         /// <summary>
         /// Helper to execute an action while holding the click-element access lock (if LockManager enabled)
@@ -43,7 +34,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null && _state.ClickService != null)
             {
-                using (gm.Acquire(_state.ClickService.GetElementAccessLock()))
+                using (LockManager.Acquire(_state.ClickService.GetElementAccessLock()))
                 {
                     action();
                 }
@@ -59,23 +50,13 @@ namespace ClickIt.Utils
         /// </summary>
         private bool IsRitualActive()
         {
-            if (_gameController?.EntityListWrapper?.OnlyValidEntities == null)
-                return false;
-
-            foreach (var entity in _gameController.EntityListWrapper.OnlyValidEntities)
-            {
-                if (entity?.Path?.Contains("RitualBlocker") == true)
-                {
-                    return true;
-                }
-            }
-            return false;
+            return EntityHelpers.IsRitualActive(_gameController);
         }
 
         private bool IsShrineClickBlockedInLazyMode()
         {
             if (!_settings.LazyMode.Value) return false;
-            bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+            bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? []) ?? false;
             if (hasRestrictedItems) return false;
             bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);
             bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && Input.GetKeyState(Keys.RButton);
@@ -169,11 +150,11 @@ namespace ClickIt.Utils
             // Determine if lazy mode is active (enabled and no restricted items on screen and no ritual active)
             bool isRitualActive = IsRitualActive();
             bool lazyModeActive = _settings.LazyMode.Value &&
-                !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false) &&
+                !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? []) ?? false) &&
                 !isRitualActive;
 
             // Check if there are lazy mode restricted items on screen
-            bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? new List<LabelOnGround>()) ?? false;
+            bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(_state.CachedLabels?.Value ?? []) ?? false;
 
             // Use lazy mode click limiting when lazy mode is active, otherwise use normal frequency target
             double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;

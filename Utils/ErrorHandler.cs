@@ -9,25 +9,18 @@ namespace ClickIt.Utils
     /// Centralized error handling and logging system for the ClickIt plugin.
     /// Provides consistent error management, logging, and safety mechanisms.
     /// </summary>
-    public class ErrorHandler
+    public class ErrorHandler(
+        ClickItSettings settings,
+        Action<string, int> logError,
+        Action<string, int> logMessage)
     {
-        private readonly ClickItSettings _settings;
-        private readonly Action<string, int> _logError;
-        private readonly Action<string, int> _logMessage;
-        private readonly List<string> _recentErrors = new();
+        private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        private readonly Action<string, int> _logError = logError ?? throw new ArgumentNullException(nameof(logError));
+        private readonly Action<string, int> _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
+        private readonly List<string> _recentErrors = [];
         private const int MAX_ERRORS_TO_TRACK = 10;
 
         public IReadOnlyList<string> RecentErrors => _recentErrors.AsReadOnly();
-
-        public ErrorHandler(
-            ClickItSettings settings,
-            Action<string, int> logError,
-            Action<string, int> logMessage)
-        {
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _logError = logError ?? throw new ArgumentNullException(nameof(logError));
-            _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
-        }
 
         /// <summary>
         /// Registers global exception handlers to improve crash visibility and safe cleanup.

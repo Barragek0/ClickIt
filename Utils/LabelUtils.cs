@@ -159,11 +159,11 @@ namespace ClickIt.Utils
             return GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
         }
 
-        private static readonly ThreadLocal<List<Element>> _threadLocalElementsList = new(() => new List<Element>());
+        private static readonly ThreadLocal<List<Element>> _threadLocalElementsList = new(() => []);
 
         private static List<Element> GetThreadLocalElementsList()
         {
-            return _threadLocalElementsList.Value ?? new List<Element>();
+            return _threadLocalElementsList.Value ?? [];
         }
 
         /// <summary>

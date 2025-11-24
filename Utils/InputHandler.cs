@@ -14,22 +14,14 @@ using ExileCore.PoEMemory;
 #nullable enable
 namespace ClickIt.Utils
 {
-    public class InputHandler
+    public class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
     {
-        private readonly ClickItSettings _settings;
-        private readonly Random _random;
-        private readonly ErrorHandler? _errorHandler;
-        private readonly PerformanceMonitor _performanceMonitor;
+        private readonly ClickItSettings _settings = settings;
+        private readonly Random _random = new Random();
+        private readonly ErrorHandler? _errorHandler = errorHandler;
+        private readonly PerformanceMonitor _performanceMonitor = performanceMonitor;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
-
-        public InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
-        {
-            _settings = settings;
-            _performanceMonitor = performanceMonitor;
-            _random = new Random();
-            _errorHandler = errorHandler;
-        }
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();

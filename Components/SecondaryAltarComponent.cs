@@ -9,8 +9,8 @@ namespace ClickIt.Components
         public SecondaryAltarComponent(Element? element, List<string> upsides, List<string> downsides, bool hasUnmatchedMods = false)
         {
             this.Element = element;
-            this.Upsides = upsides ?? new List<string>();
-            this.Downsides = downsides ?? new List<string>();
+            this.Upsides = upsides ?? [];
+            this.Downsides = downsides ?? [];
             this.HasUnmatchedMods = hasUnmatchedMods;
 
             _upsides = new string[8];

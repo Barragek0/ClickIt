@@ -8,7 +8,7 @@ namespace ClickIt.Utils
     // and a single Flush call will draw them with a provided Graphics instance.
     public class DeferredFrameQueue
     {
-        private readonly List<(SharpDX.RectangleF Rectangle, SharpDX.Color Color, int Thickness)> _items = new();
+        private readonly List<(SharpDX.RectangleF Rectangle, SharpDX.Color Color, int Thickness)> _items = [];
 
         public void Enqueue(SharpDX.RectangleF rectangle, SharpDX.Color color, int thickness)
         {

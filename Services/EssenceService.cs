@@ -6,13 +6,10 @@ using System;
 #nullable enable
 namespace ClickIt.Services
 {
-    public class EssenceService
+    public class EssenceService(ClickItSettings settings)
     {
-        private readonly ClickItSettings _settings;
-        public EssenceService(ClickItSettings settings)
-        {
-            _settings = settings;
-        }
+        private readonly ClickItSettings _settings = settings;
+
         public bool ShouldCorruptEssence(Element? label)
         {
             if (label == null)
@@ -33,7 +30,7 @@ namespace ClickIt.Services
             }
             return false;
         }
-        public Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
+        public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
             Element? corruptElement = label.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);
             if (corruptElement == null)

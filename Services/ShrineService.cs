@@ -28,7 +28,7 @@ namespace ClickIt.Services
         {
             if (_threadLocalShrineList == null)
             {
-                _threadLocalShrineList = new List<Entity>();
+                _threadLocalShrineList = [];
             }
             return _threadLocalShrineList;
         }

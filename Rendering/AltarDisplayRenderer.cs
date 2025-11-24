@@ -15,31 +15,19 @@ using System.Linq;
 
 namespace ClickIt.Rendering
 {
-    public class AltarDisplayRenderer
+    public class AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, DeferredTextQueue deferredTextQueue, DeferredFrameQueue deferredFrameQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
     {
         // Optional external lock to synchronize element access with ClickService
         public object? ElementAccessLock { get; set; }
 
-        private readonly Graphics _graphics;
-        private readonly ClickItSettings _settings;
-        private readonly AltarService? _altarService;
-        private readonly GameController _gameController;
-        private readonly WeightCalculator _weightCalculator;
-        private readonly Action<string, int> _logMessage;
-        private readonly DeferredTextQueue _deferredTextQueue;
-        private readonly DeferredFrameQueue _deferredFrameQueue;
-
-        public AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, DeferredTextQueue deferredTextQueue, DeferredFrameQueue deferredFrameQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
-        {
-            _graphics = graphics;
-            _settings = settings;
-            _gameController = gameController;
-            _weightCalculator = weightCalculator;
-            _deferredTextQueue = deferredTextQueue ?? throw new ArgumentNullException(nameof(deferredTextQueue));
-            _deferredFrameQueue = deferredFrameQueue ?? throw new ArgumentNullException(nameof(deferredFrameQueue));
-            _altarService = altarService;
-            _logMessage = logMessage ?? ((msg, frame) => { });
-        }
+        private readonly Graphics _graphics = graphics;
+        private readonly ClickItSettings _settings = settings;
+        private readonly AltarService? _altarService = altarService;
+        private readonly GameController _gameController = gameController;
+        private readonly WeightCalculator _weightCalculator = weightCalculator;
+        private readonly Action<string, int> _logMessage = logMessage ?? ((msg, frame) => { });
+        private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? throw new ArgumentNullException(nameof(deferredTextQueue));
+        private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue ?? throw new ArgumentNullException(nameof(deferredFrameQueue));
 
         public Element? DetermineAltarChoice(PrimaryAltarComponent altar, AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
@@ -217,7 +205,7 @@ namespace ClickIt.Rendering
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(ElementAccessLock))
+                using (LockManager.Acquire(ElementAccessLock))
                 {
                     if (button == null)
                     {
@@ -275,7 +263,7 @@ namespace ClickIt.Rendering
             return weightArray.Any(w => w > 0 && w <= threshold);
         }
 
-        private decimal[] GetWeightArray(AltarWeights weights, bool isTop, bool isUpside)
+        private static decimal[] GetWeightArray(AltarWeights weights, bool isTop, bool isUpside)
         {
             // Prefer direct array accessors on AltarWeights to reduce duplicated property usage
             if (isUpside)
@@ -349,7 +337,7 @@ namespace ClickIt.Rendering
 
         public void RenderAltarComponents()
         {
-            List<PrimaryAltarComponent> altarSnapshot = _altarService?.GetAltarComponents() ?? new List<PrimaryAltarComponent>();
+            List<PrimaryAltarComponent> altarSnapshot = _altarService?.GetAltarComponents() ?? [];
             if (altarSnapshot.Count == 0) return;
 
             // Cache frequently accessed settings

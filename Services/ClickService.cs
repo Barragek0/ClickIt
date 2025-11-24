@@ -5,12 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using ExileCore;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using ClickIt.Components;
@@ -27,20 +21,32 @@ using Serilog;
 namespace ClickIt.Services
 {
 
-    public class ClickService
+    public class ClickService(
+        ClickItSettings settings,
+        GameController gameController,
+        ErrorHandler errorHandler,
+        AltarService altarService,
+        WeightCalculator weightCalculator,
+        Rendering.AltarDisplayRenderer altarDisplayRenderer,
+        Func<Vector2, string, bool> pointIsInClickableArea,
+        InputHandler inputHandler,
+        LabelFilterService labelFilterService,
+        Func<bool> groundItemsVisible,
+        TimeCache<List<LabelOnGround>> cachedLabels,
+        PerformanceMonitor performanceMonitor)
     {
-        private readonly ClickItSettings settings;
-        private readonly GameController gameController;
-        private readonly ErrorHandler errorHandler;
-        private readonly AltarService altarService;
-        private readonly WeightCalculator weightCalculator;
-        private readonly Rendering.AltarDisplayRenderer altarDisplayRenderer;
-        private readonly Func<Vector2, string, bool> pointIsInClickableArea;
-        private readonly InputHandler inputHandler;
-        private readonly LabelFilterService labelFilterService;
-        private readonly Func<bool> groundItemsVisible;
-        private readonly TimeCache<List<LabelOnGround>> cachedLabels;
-        private readonly PerformanceMonitor performanceMonitor;
+        private readonly ClickItSettings settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        private readonly GameController gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
+        private readonly ErrorHandler errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        private readonly AltarService altarService = altarService ?? throw new ArgumentNullException(nameof(altarService));
+        private readonly WeightCalculator weightCalculator = weightCalculator ?? throw new ArgumentNullException(nameof(weightCalculator));
+        private readonly Rendering.AltarDisplayRenderer altarDisplayRenderer = altarDisplayRenderer ?? throw new ArgumentNullException(nameof(altarDisplayRenderer));
+        private readonly Func<Vector2, string, bool> pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
+        private readonly InputHandler inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
+        private readonly LabelFilterService labelFilterService = labelFilterService ?? throw new ArgumentNullException(nameof(labelFilterService));
+        private readonly Func<bool> groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
+        private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
+        private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
@@ -48,35 +54,6 @@ namespace ClickIt.Services
         public object GetElementAccessLock()
         {
             return _elementAccessLock;
-        }
-
-
-        public ClickService(
-            ClickItSettings settings,
-            GameController gameController,
-            ErrorHandler errorHandler,
-            AltarService altarService,
-            WeightCalculator weightCalculator,
-            Rendering.AltarDisplayRenderer altarDisplayRenderer,
-            Func<Vector2, string, bool> pointIsInClickableArea,
-            InputHandler inputHandler,
-            LabelFilterService labelFilterService,
-            Func<bool> groundItemsVisible,
-            TimeCache<List<LabelOnGround>> cachedLabels,
-            PerformanceMonitor performanceMonitor)
-        {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            this.gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
-            this.errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
-            this.altarService = altarService ?? throw new ArgumentNullException(nameof(altarService));
-            this.weightCalculator = weightCalculator ?? throw new ArgumentNullException(nameof(weightCalculator));
-            this.altarDisplayRenderer = altarDisplayRenderer ?? throw new ArgumentNullException(nameof(altarDisplayRenderer));
-            this.pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
-            this.inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
-            this.labelFilterService = labelFilterService ?? throw new ArgumentNullException(nameof(labelFilterService));
-            this.groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
-            this.cachedLabels = cachedLabels;
-            this.performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
         }
 
         // Helper to avoid allocating debug message strings when debug logging is disabled
@@ -240,7 +217,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(_elementAccessLock))
+                using (LockManager.Acquire(_elementAccessLock))
                 {
                     return el != null && el.IsValid && el.IsVisible;
                 }
@@ -253,7 +230,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(_elementAccessLock))
+                using (LockManager.Acquire(_elementAccessLock))
                 {
                     if (!IsValidVisible(el))
                     {
@@ -310,7 +287,7 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            var allLabels = cachedLabels?.Value ?? new List<LabelOnGround>();
+            var allLabels = cachedLabels?.Value ?? [];
             LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
 
             if (nextLabel == null)
@@ -375,7 +352,7 @@ namespace ClickIt.Services
             return labelFilterService.GetNextLabelToClick(allLabels);
         }
 
-        private bool IsAltarLabel(LabelOnGround label)
+        private static bool IsAltarLabel(LabelOnGround label)
         {
             var item = label.ItemOnGround;
             string path = item.Path ?? "";
@@ -393,7 +370,7 @@ namespace ClickIt.Services
                     var gm = LockManager.Instance;
                     if (gm != null)
                     {
-                        using (gm.Acquire(_elementAccessLock))
+                        using (LockManager.Acquire(_elementAccessLock))
                         {
                             inputHandler.PerformClick(corruptionPos.Value);
                         }
@@ -414,7 +391,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(_elementAccessLock))
+                using (LockManager.Acquire(_elementAccessLock))
                 {
                     inputHandler.PerformClick(clickPos, expectedElement, gameController);
                 }

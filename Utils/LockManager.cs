@@ -5,19 +5,14 @@ using ClickIt;
 
 namespace ClickIt.Utils
 {
-    public class LockManager
+    public class LockManager(ClickItSettings settings)
     {
-        private readonly ClickItSettings _settings;
+        private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
-        public LockManager(ClickItSettings settings)
+        private class Releaser(object lockObj) : IDisposable
         {
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        }
+            private readonly object _lockObj = lockObj;
 
-        private class Releaser : IDisposable
-        {
-            private readonly object _lockObj;
-            public Releaser(object lockObj) { _lockObj = lockObj; }
             public void Dispose()
             {
                 try { Monitor.Exit(_lockObj); } catch { }
@@ -35,7 +30,7 @@ namespace ClickIt.Utils
         /// Acquire a lock for the provided object. If locking failed to initialize, returns a noop disposable.
         /// Use with 'using(var d = LockManager.Acquire(obj)) { ... }'
         /// </summary>
-        public IDisposable Acquire(object lockObj)
+        public static IDisposable Acquire(object lockObj)
         {
             if (lockObj == null)
             {

@@ -23,7 +23,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(_screenAreasLock))
+                using (LockManager.Acquire(_screenAreasLock))
                 {
                     RectangleF winRect = gameController.Window.GetWindowRectangleTimeCache;
                     if (_fullScreenRectangle.Width != winRect.Width || _fullScreenRectangle.Height != winRect.Height ||
@@ -77,7 +77,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(_screenAreasLock))
+                using (LockManager.Acquire(_screenAreasLock))
                 {
                     return point.PointInRectangle(_fullScreenRectangle) &&
                            !point.PointInRectangle(_healthAndFlaskRectangle) &&

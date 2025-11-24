@@ -11,11 +11,11 @@ using ExileCore;
 #nullable enable
 namespace ClickIt.Services
 {
-    public class LabelFilterService
+    public class LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler)
     {
-        private readonly ClickItSettings _settings;
-        private readonly EssenceService _essenceService;
-        private readonly ErrorHandler _errorHandler;
+        private readonly ClickItSettings _settings = settings;
+        private readonly EssenceService _essenceService = essenceService;
+        private readonly ErrorHandler _errorHandler = errorHandler;
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
@@ -27,12 +27,6 @@ namespace ClickIt.Services
         private const string ClosedDoorPast = "ClosedDoorPast";
         private const string LegionInitiator = "LegionInitiator";
 
-        public LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler)
-        {
-            _settings = settings;
-            _essenceService = essenceService;
-            _errorHandler = errorHandler;
-        }
         public bool HasVerisiumOnScreen(List<LabelOnGround> allLabels)
         {
             if (!_settings.ClickSettlersOre.Value || allLabels == null)
@@ -79,7 +73,7 @@ namespace ClickIt.Services
         }
         public static List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, Func<Vector2, bool> isInClickableArea)
         {
-            List<LabelOnGround> result = new();
+            List<LabelOnGround> result = [];
             if (allLabels == null)
                 return result;
             for (int i = 0; i < allLabels.Count; i++)
@@ -335,7 +329,7 @@ namespace ClickIt.Services
 
         public Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
-            return _essenceService.GetCorruptionClickPosition(label, windowTopLeft);
+            return EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
         }
 
 

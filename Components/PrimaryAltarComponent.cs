@@ -41,7 +41,7 @@ namespace ClickIt.Components
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(_cacheLock))
+                using (LockManager.Acquire(_cacheLock))
                 {
                     return func();
                 }
@@ -56,7 +56,7 @@ namespace ClickIt.Components
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (gm.Acquire(_cacheLock))
+                using (LockManager.Acquire(_cacheLock))
                 {
                     action();
                 }
@@ -103,7 +103,7 @@ namespace ClickIt.Components
             });
         }
 
-        private RectangleF GetModsRect(SecondaryAltarComponent? mods, string name)
+        private static RectangleF GetModsRect(SecondaryAltarComponent? mods, string name)
         {
             if (mods?.Element == null)
             {

@@ -490,7 +490,7 @@ namespace ClickIt
             if (ModTiers.TryGetValue(compositeKey, out int value)) return value;
             return 1;
         }
-        public Dictionary<string, int> ModTiers { get; set; } = new Dictionary<string, int>();
+        public Dictionary<string, int> ModTiers { get; set; } = [];
         private static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
         {
             ImDrawListPtr drawList = ImGui.GetWindowDrawList();

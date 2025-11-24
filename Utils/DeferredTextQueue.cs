@@ -10,7 +10,7 @@ namespace ClickIt.Utils
     // and a single Flush call will draw them with a provided Graphics instance.
     public class DeferredTextQueue
     {
-        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = new();
+        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = [];
 
         public void Enqueue(string text, Vector2 pos, SharpDX.Color color, int size, FontAlign align = FontAlign.Left)
         {

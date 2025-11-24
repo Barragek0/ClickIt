@@ -18,7 +18,7 @@ using ClickIt.Properties;
 
 namespace ClickIt.Rendering
 {
-    public class DebugRenderer
+    public class DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, DeferredTextQueue? deferredTextQueue = null, DeferredFrameQueue? deferredFrameQueue = null)
     {
         private const double FPS_HIGH_THRESHOLD = 144;
         private const double FPS_MEDIUM_THRESHOLD = 60;
@@ -29,24 +29,13 @@ namespace ClickIt.Rendering
         private const double TARGET_DEVIATION_LOW = 0.05;
         private const double TARGET_DEVIATION_MEDIUM = 0.10;
 
-        private readonly BaseSettingsPlugin<ClickItSettings> _plugin;
-        private readonly Graphics _graphics;
-        private readonly AltarService? _altarService;
-        private readonly AreaService? _areaService;
-        private readonly WeightCalculator? _weightCalculator;
-        private readonly DeferredTextQueue _deferredTextQueue;
-        private readonly DeferredFrameQueue _deferredFrameQueue;
-
-        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, DeferredTextQueue? deferredTextQueue = null, DeferredFrameQueue? deferredFrameQueue = null)
-        {
-            _plugin = plugin;
-            _graphics = graphics;
-            _altarService = altarService;
-            _areaService = areaService;
-            _weightCalculator = weightCalculator;
-            _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
-            _deferredFrameQueue = deferredFrameQueue ?? new DeferredFrameQueue();
-        }
+        private readonly BaseSettingsPlugin<ClickItSettings> _plugin = plugin;
+        private readonly Graphics _graphics = graphics;
+        private readonly AltarService? _altarService = altarService;
+        private readonly AreaService? _areaService = areaService;
+        private readonly WeightCalculator? _weightCalculator = weightCalculator;
+        private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
+        private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue ?? new DeferredFrameQueue();
 
         public void RenderDebugFrames(ClickItSettings settings)
         {
@@ -191,7 +180,7 @@ namespace ClickIt.Rendering
         {
             _deferredTextQueue.Enqueue("--- Altar Detection ---", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            var altarComps = _altarService?.GetAltarComponents() ?? new List<PrimaryAltarComponent>();
+            var altarComps = _altarService?.GetAltarComponents() ?? [];
             Color altarCountColor = altarComps.Count > 0 ? Color.LightGreen : Color.Gray;
             _deferredTextQueue.Enqueue($"Altar Components: {altarComps.Count}", new Vector2(xPos, yPos), altarCountColor, 16);
             yPos += lineHeight;
@@ -306,25 +295,25 @@ namespace ClickIt.Rendering
             return yPos;
         }
 
-        private decimal GetTopUpsideWeight(AltarWeights weights, int index)
+        private static decimal GetTopUpsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetTopUpsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
-        private decimal GetTopDownsideWeight(AltarWeights weights, int index)
+        private static decimal GetTopDownsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetTopDownsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
-        private decimal GetBottomUpsideWeight(AltarWeights weights, int index)
+        private static decimal GetBottomUpsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetBottomUpsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
 
-        private decimal GetBottomDownsideWeight(AltarWeights weights, int index)
+        private static decimal GetBottomDownsideWeight(AltarWeights weights, int index)
         {
             var arr = weights.GetBottomDownsideWeights();
             return (index >= 0 && index < arr.Length) ? arr[index] : 0;
@@ -521,7 +510,7 @@ namespace ClickIt.Rendering
             if (_plugin is ClickIt clickItPlugin)
             {
                 var gameController = _plugin.GameController;
-                var allLabels = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.ToList() ?? new List<LabelOnGround>();
+                var allLabels = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.ToList() ?? [];
                 hasRestrictedItems = clickItPlugin.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
             }
 

@@ -80,6 +80,9 @@
   <ItemGroup>
     <!-- Core Classes -->
     <Compile Include="Core\ClickIt.cs" />
+    <Compile Include="Core\ClickIt.Render.cs" />
+    <Compile Include="Core\ClickIt.Input.cs" />
+    <Compile Include="Core\ClickIt.Labels.cs" />
     <Compile Include="Core\ClickItSettings.cs" />
     <Compile Include="Core\PluginContext.cs" />
 
@@ -102,6 +105,7 @@
 
     <!-- Services -->
     <Compile Include="Services\AltarService.cs" />
+    <Compile Include="Services\LabelService.cs" />
     <Compile Include="Services\LabelFilterService.cs" />
     <Compile Include="Services\EssenceService.cs" />
     <Compile Include="Services\AreaService.cs" />
@@ -121,6 +125,7 @@
     <Compile Include="Utils\DeferredTextQueue.cs" />
     <Compile Include="Utils\DeferredFrameQueue.cs" />
     <Compile Include="Utils\LabelUtils.cs" />
+    <Compile Include="Utils\EntityHelpers.cs" />
     <Compile Include="Utils\PerformanceMonitor.cs" />
     <Compile Include="Utils\ErrorHandler.cs" />
     <Compile Include="Utils\CoroutineManager.cs" />
