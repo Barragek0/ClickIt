@@ -113,6 +113,7 @@
 
     <!-- Rendering -->
     <Compile Include="Rendering\DebugRenderer.cs" />
+    <Compile Include="Rendering\LazyModeRenderer.cs" />
     <Compile Include="Rendering\AltarDisplayRenderer.cs" />
 
     <!-- Utils -->

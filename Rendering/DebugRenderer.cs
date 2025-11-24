@@ -3,22 +3,16 @@ using ExileCore.Shared.Cache;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using Color = SharpDX.Color;
-using RectangleF = SharpDX.RectangleF;
-using Graphics = ExileCore.Graphics;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using ClickIt.Components;
 using ClickIt.Services;
 using ClickIt.Utils;
-using System.Linq;
-using ClickIt.Properties;
 
 #nullable enable
 
 namespace ClickIt.Rendering
 {
-    public class DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin, Graphics graphics, ClickItSettings settings, AltarService? altarService = null, AreaService? areaService = null, WeightCalculator? weightCalculator = null, DeferredTextQueue? deferredTextQueue = null, DeferredFrameQueue? deferredFrameQueue = null)
+    public class DebugRenderer
     {
         private const double FPS_HIGH_THRESHOLD = 144;
         private const double FPS_MEDIUM_THRESHOLD = 60;
@@ -29,13 +23,27 @@ namespace ClickIt.Rendering
         private const double TARGET_DEVIATION_LOW = 0.05;
         private const double TARGET_DEVIATION_MEDIUM = 0.10;
 
-        private readonly BaseSettingsPlugin<ClickItSettings> _plugin = plugin;
-        private readonly Graphics _graphics = graphics;
-        private readonly AltarService? _altarService = altarService;
-        private readonly AreaService? _areaService = areaService;
-        private readonly WeightCalculator? _weightCalculator = weightCalculator;
-        private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
-        private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue ?? new DeferredFrameQueue();
+        private readonly BaseSettingsPlugin<ClickItSettings> _plugin;
+        private readonly AltarService? _altarService;
+        private readonly AreaService? _areaService;
+        private readonly WeightCalculator? _weightCalculator;
+        private readonly DeferredTextQueue _deferredTextQueue;
+        private readonly DeferredFrameQueue _deferredFrameQueue;
+
+        public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin,
+                             AltarService? altarService = null,
+                             AreaService? areaService = null,
+                             WeightCalculator? weightCalculator = null,
+                             DeferredTextQueue? deferredTextQueue = null,
+                             DeferredFrameQueue? deferredFrameQueue = null)
+        {
+            _plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));
+            _altarService = altarService;
+            _areaService = areaService;
+            _weightCalculator = weightCalculator;
+            _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
+            _deferredFrameQueue = deferredFrameQueue ?? new DeferredFrameQueue();
+        }
 
         public void RenderDebugFrames(ClickItSettings settings)
         {
@@ -101,7 +109,7 @@ namespace ClickIt.Rendering
             }
             if (settings.DebugShowRecentErrors)
             {
-                yPos = RenderErrorsDebug(col2X, yPos, lineHeight);
+                _ = RenderErrorsDebug(col2X, yPos, lineHeight);
                 // No line break needed after the last category
             }
         }
@@ -495,15 +503,15 @@ namespace ClickIt.Rendering
             return yPos + lineHeight;
         }
 
-        private int RenderClickFrequencyTargetDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
+        private void RenderClickFrequencyTargetDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
             _deferredTextQueue.Enqueue($"--- Click Frequency Target ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            var settings = _plugin.Settings;
-            bool lazyModeEnabled = settings.LazyMode.Value;
-            int lazyModeTarget = settings.LazyModeClickLimiting.Value;
-            bool lazyModeDisableKeyHeld = Input.GetKeyState(settings.LazyModeDisableKey.Value);
+            var pluginSettings = _plugin.Settings;
+            bool lazyModeEnabled = pluginSettings.LazyMode.Value;
+            int lazyModeTarget = pluginSettings.LazyModeClickLimiting.Value;
+            bool lazyModeDisableKeyHeld = Input.GetKeyState(pluginSettings.LazyModeDisableKey.Value);
 
             // Check if there are restricted items on screen
             bool hasRestrictedItems = false;
@@ -541,9 +549,6 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
-            yPos += lineHeight;
-
-            return yPos;
         }
 
         public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)

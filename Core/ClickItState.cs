@@ -1,8 +1,4 @@
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared;
-using ExileCore.Shared.Cache;
-using System.Diagnostics;
+
 
 namespace ClickIt
 {

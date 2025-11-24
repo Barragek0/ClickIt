@@ -1,15 +1,12 @@
-using ClickIt.Utils;
 using ExileCore;
 using System.Diagnostics;
-using System.IO;
+using ExileCore.Shared.Cache;
 using System.Runtime.InteropServices;
 using System.Text;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Enums;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
-using System;
-using System.Threading;
 using ExileCore.PoEMemory;
 #nullable enable
 namespace ClickIt.Utils
@@ -32,16 +29,7 @@ namespace ClickIt.Utils
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
-        private static string GetActiveWindowTitle()
-        {
-            var hwnd = GetForegroundWindow();
-            if (hwnd == IntPtr.Zero) return string.Empty;
-            int len = GetWindowTextLength(hwnd);
-            if (len <= 0) return string.Empty;
-            var sb = new StringBuilder(len + 1);
-            GetWindowText(hwnd, sb, sb.Capacity);
-            return sb.ToString();
-        }
+        // helper removed — not used
         public Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
             // Use null-conditional operator for safe memory access
@@ -114,6 +102,77 @@ namespace ClickIt.Utils
                 !gameController.IngameState.IngameUi.ResurrectPanel.IsVisible &&
                 !gameController.IngameState.IngameUi.NpcDialog.IsVisible &&
                 !gameController.IngameState.IngameUi.KalandraTabletWindow.IsVisible;
+        }
+        public string GetCanClickFailureReason(GameController gameController)
+        {
+            if (gameController?.Window?.IsForeground() == false)
+                return "PoE not in focus.";
+
+            var area = gameController?.Area?.CurrentArea;
+            if (_settings.BlockOnOpenLeftRightPanel.Value)
+            {
+                var ui = gameController?.IngameState?.IngameUi;
+                if (ui?.OpenLeftPanel?.Address != 0 || ui?.OpenRightPanel?.Address != 0)
+                    return "Panel is open.";
+            }
+
+            if (area?.IsTown == true || area?.IsHideout == true)
+                return "In town/hideout.";
+
+            var uiState = gameController?.IngameState?.IngameUi;
+            var checks = new (bool Condition, string Message)[]
+            {
+                (uiState?.ChatTitlePanel?.IsVisible == true, "Chat is open."),
+                (uiState?.AtlasPanel?.IsVisible == true, "Atlas panel is open."),
+                (uiState?.AtlasTreePanel?.IsVisible == true, "Atlas tree panel is open."),
+                (uiState?.TreePanel?.IsVisible == true, "Passive tree panel is open."),
+                (uiState?.UltimatumPanel?.IsVisible == true, "Ultimatum panel is open."),
+                (uiState?.BetrayalWindow?.IsVisible == true, "Betrayal window is open."),
+                (uiState?.SyndicatePanel?.IsVisible == true, "Syndicate panel is open."),
+                (uiState?.SyndicateTree?.IsVisible == true, "Syndicate tree panel is open."),
+                (uiState?.IncursionWindow?.IsVisible == true, "Incursion window is open."),
+                (uiState?.RitualWindow?.IsVisible == true, "Ritual window is open."),
+                (uiState?.SanctumFloorWindow?.IsVisible == true, "Sanctum floor window is open."),
+                (uiState?.SanctumRewardWindow?.IsVisible == true, "Sanctum reward window is open."),
+                (uiState?.MicrotransactionShopWindow?.IsVisible == true, "Microtransaction shop window is open."),
+                (uiState?.ResurrectPanel?.IsVisible == true, "Resurrect panel is open."),
+                (uiState?.NpcDialog?.IsVisible == true, "NPC dialog is open."),
+                (uiState?.KalandraTabletWindow?.IsVisible == true, "Kalandra tablet window is open.")
+            };
+
+            foreach (var check in checks)
+            {
+                if (check.Condition)
+                    return check.Message;
+            }
+
+            if (gameController?.Game?.IsEscapeState == true)
+                return "Escape menu is open.";
+
+            return "Clicking disabled.";
+        }
+
+        public bool IsClickHotkeyPressed(TimeCache<System.Collections.Generic.List<LabelOnGround>>? cachedLabels, Services.LabelFilterService? labelFilterService)
+        {
+            bool hotkeyHeld = Input.GetKeyState(_settings.ClickLabelKey.Value);
+            if (!_settings.LazyMode.Value)
+            {
+                return hotkeyHeld;
+            }
+
+            var labels = cachedLabels?.Value ?? new System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>();
+            bool hasRestricted = labelFilterService?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
+            bool disableKeyHeld = Input.GetKeyState(_settings.LazyModeDisableKey.Value);
+            bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);
+            bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && Input.GetKeyState(Keys.RButton);
+            bool mouseButtonBlocks = leftClickBlocks || rightClickBlocks;
+
+            if (hotkeyHeld)
+            {
+                return true;
+            }
+
+            return !hasRestricted && !disableKeyHeld && !mouseButtonBlocks;
         }
         private static bool IsPOEActive(GameController gameController)
         {

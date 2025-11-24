@@ -10,11 +10,11 @@ namespace ClickIt.Services
     public class LabelService
     {
         private readonly GameController _gameController;
-        private readonly System.Func<Vector2, bool> _pointIsInClickableArea;
+        private readonly Func<Vector2, bool> _pointIsInClickableArea;
 
         public TimeCache<List<LabelOnGround>> CachedLabels { get; }
 
-        public LabelService(GameController gameController, System.Func<Vector2, bool> pointIsInClickableArea)
+        public LabelService(GameController gameController, Func<Vector2, bool> pointIsInClickableArea)
         {
             _gameController = gameController;
             _pointIsInClickableArea = pointIsInClickableArea;

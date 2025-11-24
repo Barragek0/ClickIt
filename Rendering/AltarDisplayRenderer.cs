@@ -7,9 +7,6 @@ using SharpDX;
 using Color = SharpDX.Color;
 using RectangleF = SharpDX.RectangleF;
 using Graphics = ExileCore.Graphics;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 #nullable enable
 
