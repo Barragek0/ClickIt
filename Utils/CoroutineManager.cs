@@ -31,15 +31,7 @@ namespace ClickIt.Utils
         /// </summary>
         private void ExecuteWithElementAccessLock(Action action)
         {
-            var gm = LockManager.Instance;
-            if (gm != null && _state.ClickService != null)
-            {
-                using (LockManager.AcquireStatic(_state.ClickService.GetElementAccessLock()))
-                {
-                    action();
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_state.ClickService?.GetElementAccessLock()))
             {
                 action();
             }

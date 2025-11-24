@@ -55,7 +55,8 @@ namespace ClickIt.Utils
         /// </summary>
         public static IDisposable AcquireStatic(object? lockObj)
         {
-            if (lockObj == null) return NoopReleaser.Value;
+            // If there is no global LockManager instance configured, treat AcquireStatic as a no-op.
+            if (Instance == null || lockObj == null) return NoopReleaser.Value;
             Monitor.Enter(lockObj);
             return new Releaser(lockObj);
         }

@@ -214,50 +214,28 @@ namespace ClickIt.Services
 
         private bool IsValidVisibleUnderLock(Element el)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_elementAccessLock))
             {
-                using (LockManager.AcquireStatic(_elementAccessLock))
-                {
-                    return el != null && el.IsValid && el.IsVisible;
-                }
+                return el != null && el.IsValid && el.IsVisible;
             }
-            return el != null && el.IsValid && el.IsVisible;
         }
 
         private bool TryPerformClick(Element el, Vector2 windowTopLeft)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_elementAccessLock))
             {
-                using (LockManager.AcquireStatic(_elementAccessLock))
+                if (!IsValidVisible(el))
                 {
-                    if (!IsValidVisible(el))
-                    {
-                        errorHandler.LogError("[ClickAltarElement] Element became invalid or invisible before click", 10);
-                        return false;
-                    }
-                    RectangleF r = el.GetClientRect();
-                    Vector2 clickPos = r.Center + windowTopLeft;
-                    inputHandler.PerformClick(clickPos, el, gameController);
-                    performanceMonitor.RecordClickInterval();
-                    DebugLog(() => "[ClickAltarElement] Click performed");
-                    return true;
+                    errorHandler.LogError("[ClickAltarElement] Element became invalid or invisible before click", 10);
+                    return false;
                 }
+                RectangleF r = el.GetClientRect();
+                Vector2 clickPos = r.Center + windowTopLeft;
+                inputHandler.PerformClick(clickPos, el, gameController);
+                performanceMonitor.RecordClickInterval();
+                DebugLog(() => "[ClickAltarElement] Click performed");
+                return true;
             }
-
-            // No lock path
-            if (!IsValidVisible(el))
-            {
-                errorHandler.LogError("[ClickAltarElement] Element became invalid or invisible before click", 10);
-                return false;
-            }
-            RectangleF rect = el.GetClientRect();
-            Vector2 pos = rect.Center + windowTopLeft;
-            inputHandler.PerformClick(pos, el, gameController);
-            performanceMonitor.RecordClickInterval();
-            DebugLog(() => "[ClickAltarElement] Click performed");
-            return true;
         }
 
         public IEnumerator ProcessRegularClick()
@@ -367,15 +345,7 @@ namespace ClickIt.Services
                 if (corruptionPos.HasValue)
                 {
                     DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");
-                    var gm = LockManager.Instance;
-                    if (gm != null)
-                    {
-                        using (LockManager.AcquireStatic(_elementAccessLock))
-                        {
-                            inputHandler.PerformClick(corruptionPos.Value);
-                        }
-                    }
-                    else
+                    using (LockManager.AcquireStatic(_elementAccessLock))
                     {
                         inputHandler.PerformClick(corruptionPos.Value);
                     }
@@ -388,15 +358,7 @@ namespace ClickIt.Services
 
         private void PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? gameController)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_elementAccessLock))
-                {
-                    inputHandler.PerformClick(clickPos, expectedElement, gameController);
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_elementAccessLock))
             {
                 inputHandler.PerformClick(clickPos, expectedElement, gameController);
             }

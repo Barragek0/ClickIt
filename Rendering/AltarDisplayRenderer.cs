@@ -202,48 +202,26 @@ namespace ClickIt.Rendering
 
         private Element? GetValidatedButtonElement(AltarButton? button, string buttonName)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(ElementAccessLock))
             {
-                using (LockManager.AcquireStatic(ElementAccessLock))
+                if (button == null)
                 {
-                    if (button == null)
-                    {
-                        _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
-                        return null;
-                    }
-                    Element el = button.Element;
-                    if (el == null)
-                    {
-                        _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
-                        return null;
-                    }
-                    if (!el.IsValid)
-                    {
-                        _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is not valid", 10);
-                        return null;
-                    }
-                    return el;
+                    _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
+                    return null;
                 }
+                Element el = button.Element;
+                if (el == null)
+                {
+                    _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
+                    return null;
+                }
+                if (!el.IsValid)
+                {
+                    _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is not valid", 10);
+                    return null;
+                }
+                return el;
             }
-
-            if (button == null)
-            {
-                _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
-                return null;
-            }
-            Element elNoLock = button.Element;
-            if (elNoLock == null)
-            {
-                _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
-                return null;
-            }
-            if (!elNoLock.IsValid)
-            {
-                _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is not valid", 10);
-                return null;
-            }
-            return elNoLock;
         }
 
         // Flush deferred texts through the shared DeferredTextQueue

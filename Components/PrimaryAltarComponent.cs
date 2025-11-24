@@ -38,30 +38,16 @@ namespace ClickIt.Components
         // Helper to execute a Func<T> under the configured LockManager if present
         private T WithCacheLock<T>(Func<T> func)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_cacheLock))
             {
-                using (LockManager.AcquireStatic(_cacheLock))
-                {
-                    return func();
-                }
+                return func();
             }
-
-            return func();
         }
 
         // Helper to execute an Action under the configured LockManager if present
         private void WithCacheLock(Action action)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_cacheLock))
-                {
-                    action();
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_cacheLock))
             {
                 action();
             }

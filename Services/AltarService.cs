@@ -54,19 +54,7 @@ namespace ClickIt.Services
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarComponents;
         public void ClearAltarComponents()
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_altarComponentsLock))
-                {
-                    foreach (var component in _altarComponents)
-                    {
-                        component.InvalidateCache();
-                    }
-                    _altarComponents.Clear();
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_altarComponentsLock))
             {
                 foreach (var component in _altarComponents)
                 {
@@ -108,15 +96,7 @@ namespace ClickIt.Services
                 return match;
             }
 
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_altarComponentsLock))
-                {
-                    _altarComponents.RemoveAll(ShouldRemove);
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_altarComponentsLock))
             {
                 _altarComponents.RemoveAll(ShouldRemove);
             }
@@ -140,22 +120,7 @@ namespace ClickIt.Services
         }
         public bool AddAltarComponent(PrimaryAltarComponent component)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_altarComponentsLock))
-                {
-                    string newKey = BuildAltarKey(component);
-                    bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
-                    if (!exists)
-                    {
-                        _altarComponents.Add(component);
-                        return true;
-                    }
-                    return false;
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_altarComponentsLock))
             {
                 string newKey = BuildAltarKey(component);
                 bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
@@ -196,30 +161,7 @@ namespace ClickIt.Services
         }
         private string CleanAltarModsText(string text)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_textCleanCacheLock))
-                {
-                    if (_textCleanCache.TryGetValue(text, out string? cached))
-                    {
-                        return cached;
-                    }
-
-                    string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
-                        .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
-                        .Replace("gain:", "").Replace("gains:", "");
-                    cleaned = RgbRegex.Replace(cleaned, "");
-
-                    if (_textCleanCache.Count < 1000)
-                    {
-                        _textCleanCache[text] = cleaned;
-                    }
-
-                    return cleaned;
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_textCleanCacheLock))
             {
                 if (_textCleanCache.TryGetValue(text, out string? cached))
                 {
@@ -288,10 +230,8 @@ namespace ClickIt.Services
         {
             string cacheKey = $"{mod}|{negativeModType}";
 
-            var gm = LockManager.Instance;
-
-            // Try to read from cache (with lock when available).
-            if (TryGetCachedEntry(gm, cacheKey, out var cached))
+            // Try to read from cache (with lock).
+            if (TryGetCachedEntry(cacheKey, out var cached))
             {
                 isUpside = cached.isUpside;
                 matchedId = cached.matchedId;
@@ -311,16 +251,8 @@ namespace ClickIt.Services
             // Not cached - perform match and insert result into cache if possible.
             bool matched = TryMatchMod(mod, negativeModType, out isUpside, out matchedId);
 
-            // Attempt to add to cache (respecting lock if present)
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_modMatchCacheLock))
-                {
-                    if (_modMatchCache.Count < 5000)
-                        _modMatchCache[cacheKey] = (isUpside, matchedId);
-                }
-            }
-            else
+            // Attempt to add to cache (with lock)
+            using (LockManager.AcquireStatic(_modMatchCacheLock))
             {
                 if (_modMatchCache.Count < 5000)
                     _modMatchCache[cacheKey] = (isUpside, matchedId);
@@ -328,19 +260,14 @@ namespace ClickIt.Services
 
             return matched;
 
-            // Local helper to unify cache reads with and without locking
-            bool TryGetCachedEntry(object? lockManager, string key, out (bool isUpside, string matchedId) value)
+            // Local helper to read from cache using lock
+            bool TryGetCachedEntry(string key, out (bool isUpside, string matchedId) value)
             {
                 value = (false, string.Empty);
-                if (lockManager != null)
+                using (LockManager.AcquireStatic(_modMatchCacheLock))
                 {
-                    using (LockManager.AcquireStatic(_modMatchCacheLock))
-                    {
-                        return _modMatchCache.TryGetValue(key, out value);
-                    }
+                    return _modMatchCache.TryGetValue(key, out value);
                 }
-
-                return _modMatchCache.TryGetValue(key, out value);
             }
         }
 

@@ -153,96 +153,54 @@ namespace ClickIt.Utils
         // Helper to centralize LockManager usage for weight array operations
         private readonly T WithWeightsLock<T>(Func<T> func)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_weightsLock))
             {
-                using (LockManager.AcquireStatic(_weightsLock))
-                {
-                    return func();
-                }
+                return func();
             }
-            return func();
         }
 
         private readonly void WithWeightsLock(Action action)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_weightsLock))
             {
-                using (LockManager.AcquireStatic(_weightsLock))
-                {
-                    action();
-                }
-                return;
+                action();
             }
-            action();
         }
 
         // Helper methods for cleaner access
         public readonly decimal[] GetTopDownsideWeights()
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_weightsLock))
             {
-                using (LockManager.AcquireStatic(_weightsLock))
-                {
-                    return _topDownsideWeights ?? new decimal[8];
-                }
+                return _topDownsideWeights ?? new decimal[8];
             }
-            return _topDownsideWeights ?? new decimal[8];
         }
         public readonly decimal[] GetBottomDownsideWeights()
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_weightsLock))
             {
-                using (LockManager.AcquireStatic(_weightsLock))
-                {
-                    return _bottomDownsideWeights ?? new decimal[8];
-                }
+                return _bottomDownsideWeights ?? new decimal[8];
             }
-            return _bottomDownsideWeights ?? new decimal[8];
         }
         public readonly decimal[] GetTopUpsideWeights()
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_weightsLock))
             {
-                using (LockManager.AcquireStatic(_weightsLock))
-                {
-                    return _topUpsideWeights ?? new decimal[8];
-                }
+                return _topUpsideWeights ?? new decimal[8];
             }
-            return _topUpsideWeights ?? new decimal[8];
         }
         public readonly decimal[] GetBottomUpsideWeights()
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
+            using (LockManager.AcquireStatic(_weightsLock))
             {
-                using (LockManager.AcquireStatic(_weightsLock))
-                {
-                    return _bottomUpsideWeights ?? new decimal[8];
-                }
+                return _bottomUpsideWeights ?? new decimal[8];
             }
-            return _bottomUpsideWeights ?? new decimal[8];
         }
 
         // Method to initialize all weights from arrays (for cleaner construction)
         public void InitializeFromArrays(decimal[] topDownside, decimal[] bottomDownside, decimal[] topUpside, decimal[] bottomUpside)
         {
-            var gm = LockManager.Instance;
-            if (gm != null)
-            {
-                using (LockManager.AcquireStatic(_weightsLock))
-                {
-                    _topDownsideWeights = topDownside ?? new decimal[8];
-                    _bottomDownsideWeights = bottomDownside ?? new decimal[8];
-                    _topUpsideWeights = topUpside ?? new decimal[8];
-                    _bottomUpsideWeights = bottomUpside ?? new decimal[8];
-                }
-            }
-            else
+            using (LockManager.AcquireStatic(_weightsLock))
             {
                 _topDownsideWeights = topDownside ?? new decimal[8];
                 _bottomDownsideWeights = bottomDownside ?? new decimal[8];
