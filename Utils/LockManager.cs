@@ -5,13 +5,21 @@ using ClickIt;
 
 namespace ClickIt.Utils
 {
-    public class LockManager(ClickItSettings settings)
+    public class LockManager
     {
-        private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-
-        private class Releaser(object lockObj) : IDisposable
+        public LockManager(ClickItSettings settings)
         {
-            private readonly object _lockObj = lockObj;
+            _ = settings ?? throw new ArgumentNullException(nameof(settings));
+        }
+
+        private sealed class Releaser : IDisposable
+        {
+            private readonly object _lockObj;
+
+            public Releaser(object lockObj)
+            {
+                _lockObj = lockObj;
+            }
 
             public void Dispose()
             {
@@ -19,26 +27,40 @@ namespace ClickIt.Utils
             }
         }
 
-        private class NoopReleaser : IDisposable
+        private sealed class NoopReleaser : IDisposable
         {
-            public static readonly NoopReleaser Instance = new();
+            public static readonly NoopReleaser Value = new NoopReleaser();
             private NoopReleaser() { }
             public void Dispose() { }
         }
 
         /// <summary>
-        /// Acquire a lock for the provided object. If locking failed to initialize, returns a noop disposable.
-        /// Use with 'using(var d = LockManager.Acquire(obj)) { ... }'
+        /// Instance Acquire method — use via instance: using(var d = lm.Acquire(obj)) { ... }
+        /// Always performs a Monitor.Enter for non-null objects to enforce thread-safety.
         /// </summary>
-        public static IDisposable Acquire(object lockObj)
+        public IDisposable Acquire(object? lockObj)
         {
             if (lockObj == null)
             {
-                return NoopReleaser.Instance;
+                return NoopReleaser.Value;
             }
+
             Monitor.Enter(lockObj);
             return new Releaser(lockObj);
         }
+
+        /// <summary>
+        /// Static Acquire helper for call sites that wish to use type-qualified Acquire.
+        /// This does not consider instance settings and will acquire the monitor for the object if non-null.
+        /// </summary>
+        public static IDisposable AcquireStatic(object? lockObj)
+        {
+            if (lockObj == null) return NoopReleaser.Value;
+            Monitor.Enter(lockObj);
+            return new Releaser(lockObj);
+        }
+
+        // Note: static AcquireStatic is provided for type-qualified call sites; instance Acquire honors settings.
 
         // Global instance holder for convenience. Set this during plugin initialization.
         public static LockManager? Instance { get; set; }

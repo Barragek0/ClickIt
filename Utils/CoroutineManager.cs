@@ -34,7 +34,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null && _state.ClickService != null)
             {
-                using (LockManager.Acquire(_state.ClickService.GetElementAccessLock()))
+                using (LockManager.AcquireStatic(_state.ClickService.GetElementAccessLock()))
                 {
                     action();
                 }

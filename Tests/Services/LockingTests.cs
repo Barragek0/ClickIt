@@ -8,19 +8,33 @@ namespace ClickIt.Tests.Services
     public class LockingTests
     {
         [TestMethod]
-        public void Acquire_NoLocking_ReturnsNoop()
+        public void Acquire_InstanceAcquiresLock()
         {
             var settings = new ClickIt.ClickItSettings();
-            settings.UseLocking.Value = false;
             var lm = new ClickIt.Utils.LockManager(settings);
 
             var lockObj = new object();
             using (var releaser = lm.Acquire(lockObj))
             {
-                // When locking disabled, should not block the Monitor
-                bool taken = Monitor.TryEnter(lockObj, 0);
-                if (taken) Monitor.Exit(lockObj);
-                taken.Should().BeTrue();
+                // While acquired by this instance, another thread should NOT be able to acquire it
+                bool acquiredByOther = false;
+                using (var done = new System.Threading.ManualResetEvent(false))
+                {
+                    var t = new System.Threading.Thread(() =>
+                    {
+                        bool otherTaken = System.Threading.Monitor.TryEnter(lockObj, 200);
+                        if (otherTaken)
+                        {
+                            System.Threading.Monitor.Exit(lockObj);
+                            acquiredByOther = true;
+                        }
+                        done.Set();
+                    });
+                    t.IsBackground = true;
+                    t.Start();
+                    done.WaitOne(1000);
+                }
+                acquiredByOther.Should().BeFalse();
             }
         }
 
@@ -28,7 +42,6 @@ namespace ClickIt.Tests.Services
         public void Acquire_WithLocking_AcquiresLock()
         {
             var settings = new ClickIt.ClickItSettings();
-            settings.UseLocking.Value = true;
             var lm = new ClickIt.Utils.LockManager(settings);
 
             var lockObj = new object();
@@ -84,7 +97,6 @@ namespace ClickIt.Tests.Services
         public void Acquire_NullLockObj_ReturnsNoop()
         {
             var settings = new ClickIt.ClickItSettings();
-            settings.UseLocking.Value = true;
             var lm = new ClickIt.Utils.LockManager(settings);
             using (var d = lm.Acquire(null))
             {

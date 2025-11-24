@@ -9,7 +9,6 @@ namespace ClickIt
 
     public class ClickItSettings
     {
-        public ToggleNode<bool> UseLocking { get; set; } = new ToggleNode<bool>(true);
 
         public System.Collections.Generic.Dictionary<string, int> ModTiers { get; set; } = new System.Collections.Generic.Dictionary<string, int>();
         public int GetModTier(string id)

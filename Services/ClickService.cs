@@ -217,7 +217,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_elementAccessLock))
+                using (LockManager.AcquireStatic(_elementAccessLock))
                 {
                     return el != null && el.IsValid && el.IsVisible;
                 }
@@ -230,7 +230,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_elementAccessLock))
+                using (LockManager.AcquireStatic(_elementAccessLock))
                 {
                     if (!IsValidVisible(el))
                     {
@@ -370,7 +370,7 @@ namespace ClickIt.Services
                     var gm = LockManager.Instance;
                     if (gm != null)
                     {
-                        using (LockManager.Acquire(_elementAccessLock))
+                        using (LockManager.AcquireStatic(_elementAccessLock))
                         {
                             inputHandler.PerformClick(corruptionPos.Value);
                         }
@@ -391,7 +391,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_elementAccessLock))
+                using (LockManager.AcquireStatic(_elementAccessLock))
                 {
                     inputHandler.PerformClick(clickPos, expectedElement, gameController);
                 }

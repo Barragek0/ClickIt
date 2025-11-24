@@ -156,7 +156,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_weightsLock))
+                using (LockManager.AcquireStatic(_weightsLock))
                 {
                     return func();
                 }
@@ -169,7 +169,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_weightsLock))
+                using (LockManager.AcquireStatic(_weightsLock))
                 {
                     action();
                 }
@@ -184,7 +184,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_weightsLock))
+                using (LockManager.AcquireStatic(_weightsLock))
                 {
                     return _topDownsideWeights ?? new decimal[8];
                 }
@@ -196,7 +196,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_weightsLock))
+                using (LockManager.AcquireStatic(_weightsLock))
                 {
                     return _bottomDownsideWeights ?? new decimal[8];
                 }
@@ -208,7 +208,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_weightsLock))
+                using (LockManager.AcquireStatic(_weightsLock))
                 {
                     return _topUpsideWeights ?? new decimal[8];
                 }
@@ -220,7 +220,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_weightsLock))
+                using (LockManager.AcquireStatic(_weightsLock))
                 {
                     return _bottomUpsideWeights ?? new decimal[8];
                 }
@@ -234,7 +234,7 @@ namespace ClickIt.Utils
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_weightsLock))
+                using (LockManager.AcquireStatic(_weightsLock))
                 {
                     _topDownsideWeights = topDownside ?? new decimal[8];
                     _bottomDownsideWeights = bottomDownside ?? new decimal[8];

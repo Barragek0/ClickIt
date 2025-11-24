@@ -82,7 +82,6 @@
     <Compile Include="Core\ClickIt.cs" />
     <Compile Include="Core\ClickIt.Render.cs" />
     <Compile Include="Core\ClickIt.Input.cs" />
-    <Compile Include="Core\ClickIt.Labels.cs" />
     <Compile Include="Core\ClickItSettings.cs" />
     <Compile Include="Core\PluginContext.cs" />
 

@@ -205,7 +205,7 @@ namespace ClickIt.Rendering
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(ElementAccessLock))
+                using (LockManager.AcquireStatic(ElementAccessLock))
                 {
                     if (button == null)
                     {

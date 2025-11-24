@@ -57,7 +57,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_altarComponentsLock))
+                using (LockManager.AcquireStatic(_altarComponentsLock))
                 {
                     foreach (var component in _altarComponents)
                     {
@@ -111,7 +111,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_altarComponentsLock))
+                using (LockManager.AcquireStatic(_altarComponentsLock))
                 {
                     _altarComponents.RemoveAll(ShouldRemove);
                 }
@@ -143,7 +143,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_altarComponentsLock))
+                using (LockManager.AcquireStatic(_altarComponentsLock))
                 {
                     string newKey = BuildAltarKey(component);
                     bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
@@ -199,7 +199,7 @@ namespace ClickIt.Services
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_textCleanCacheLock))
+                using (LockManager.AcquireStatic(_textCleanCacheLock))
                 {
                     if (_textCleanCache.TryGetValue(text, out string? cached))
                     {
@@ -314,7 +314,7 @@ namespace ClickIt.Services
             // Attempt to add to cache (respecting lock if present)
             if (gm != null)
             {
-                using (LockManager.Acquire(_modMatchCacheLock))
+                using (LockManager.AcquireStatic(_modMatchCacheLock))
                 {
                     if (_modMatchCache.Count < 5000)
                         _modMatchCache[cacheKey] = (isUpside, matchedId);
@@ -334,7 +334,7 @@ namespace ClickIt.Services
                 value = (false, string.Empty);
                 if (lockManager != null)
                 {
-                    using (LockManager.Acquire(_modMatchCacheLock))
+                    using (LockManager.AcquireStatic(_modMatchCacheLock))
                     {
                         return _modMatchCache.TryGetValue(key, out value);
                     }

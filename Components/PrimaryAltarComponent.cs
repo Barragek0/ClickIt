@@ -41,7 +41,7 @@ namespace ClickIt.Components
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_cacheLock))
+                using (LockManager.AcquireStatic(_cacheLock))
                 {
                     return func();
                 }
@@ -56,7 +56,7 @@ namespace ClickIt.Components
             var gm = LockManager.Instance;
             if (gm != null)
             {
-                using (LockManager.Acquire(_cacheLock))
+                using (LockManager.AcquireStatic(_cacheLock))
                 {
                     action();
                 }
