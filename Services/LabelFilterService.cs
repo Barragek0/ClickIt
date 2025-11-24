@@ -25,7 +25,7 @@ namespace ClickIt.Services
         private const string ClosedDoorPast = "ClosedDoorPast";
         private const string LegionInitiator = "LegionInitiator";
 
-        public bool HasVerisiumOnScreen(List<LabelOnGround> allLabels)
+        public bool HasVerisiumOnScreen(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
             if (!_settings.ClickSettlersOre.Value || allLabels == null)
                 return false;
@@ -43,7 +43,7 @@ namespace ClickIt.Services
             return false;
         }
 
-        public bool HasLazyModeRestrictedItemsOnScreen(List<LabelOnGround> allLabels)
+        public bool HasLazyModeRestrictedItemsOnScreen(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
             if (allLabels == null)
                 return false;
@@ -69,7 +69,7 @@ namespace ClickIt.Services
             }
             return false;
         }
-        public static List<LabelOnGround> FilterHarvestLabels(List<LabelOnGround> allLabels, Func<Vector2, bool> isInClickableArea)
+        public static List<LabelOnGround> FilterHarvestLabels(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels, Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = [];
             if (allLabels == null)
@@ -87,7 +87,7 @@ namespace ClickIt.Services
                 result.Sort((a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
             return result;
         }
-        public LabelOnGround? GetNextLabelToClick(List<LabelOnGround> allLabels)
+        public LabelOnGround? GetNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
             if (allLabels == null || allLabels.Count == 0)
                 return null;
@@ -104,7 +104,7 @@ namespace ClickIt.Services
             }
             return null;
         }
-        private ClickSettings CreateClickSettings(List<LabelOnGround> allLabels)
+        private ClickSettings CreateClickSettings(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
             var s = _settings;
 

@@ -30,10 +30,14 @@ namespace ClickIt.Rendering
         private const string TOP_BUTTON_NAME = "TopButton";
         private const string BOTTOM_BUTTON_NAME = "BottomButton";
 
+        // Common offsets used for text positioning (avoid constructing every frame)
+        private static readonly Vector2 Offset120_Minus60 = new(120, -80);
+        private static readonly Vector2 Offset120_Minus25 = new(120, -25);
+
         public Element? DetermineAltarChoice(PrimaryAltarComponent altar, AltarWeights weights, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 topModsTopLeft)
         {
-            Vector2 offset120_Minus60 = new(120, -80);
-            Vector2 offset120_Minus25 = new(120, -25);
+            Vector2 offset120_Minus60 = Offset120_Minus60;
+            Vector2 offset120_Minus25 = Offset120_Minus25;
 
             if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect))
             {
@@ -51,25 +55,25 @@ namespace ClickIt.Rendering
             if (weights.TopUpsideWeight <= 0)
             {
                 // TopMods may be null; ensure we pass a non-null string[] to avoid dereference issues
-                DrawUnrecognizedWeightText("Top upside", altar.TopMods?.GetAllUpsides() ?? System.Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Top upside", altar.TopMods?.GetAllUpsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.TopDownsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Top downside", altar.TopMods?.GetAllDownsides() ?? System.Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Top downside", altar.TopMods?.GetAllDownsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.BottomUpsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Bottom upside", altar.BottomMods?.GetAllUpsides() ?? System.Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Bottom upside", altar.BottomMods?.GetAllUpsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.BottomDownsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Bottom downside", altar.BottomMods?.GetAllDownsides() ?? System.Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Bottom downside", altar.BottomMods?.GetAllDownsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
@@ -233,14 +237,23 @@ namespace ClickIt.Rendering
         {
             // Create a collection of the relevant weights and check if any exceed threshold
             var weightArray = GetWeightArray(weights, isTop, isUpside);
-            return weightArray.Any(w => w >= threshold);
+            for (int i = 0; i < weightArray.Length; i++)
+            {
+                if (weightArray[i] >= threshold) return true;
+            }
+            return false;
         }
 
         private bool HasAnyWeightAtOrBelowThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
         {
             // Create a collection of the relevant weights and check if any are at or below the threshold
             var weightArray = GetWeightArray(weights, isTop, isUpside);
-            return weightArray.Any(w => w > 0 && w <= threshold);
+            for (int i = 0; i < weightArray.Length; i++)
+            {
+                var v = weightArray[i];
+                if (v > 0 && v <= threshold) return true;
+            }
+            return false;
         }
 
         private static decimal[] GetWeightArray(AltarWeights weights, bool isTop, bool isUpside)
@@ -317,8 +330,8 @@ namespace ClickIt.Rendering
 
         public void RenderAltarComponents()
         {
-            List<PrimaryAltarComponent> altarSnapshot = _altarService?.GetAltarComponents() ?? [];
-            if (altarSnapshot.Count == 0) return;
+            var altarSnapshot = _altarService?.GetAltarComponents();
+            if (altarSnapshot == null || altarSnapshot.Count == 0) return;
 
             // Cache frequently accessed settings
             bool clickEater = _settings.ClickEaterAltars;

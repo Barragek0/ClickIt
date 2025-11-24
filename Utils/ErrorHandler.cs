@@ -67,7 +67,7 @@ namespace ClickIt.Utils
                 // Fallback to direct file logging if plugin logging fails
                 try
                 {
-                    System.IO.File.AppendAllText("ClickIt_Crash.log", $"{DateTime.Now}: {message}\n");
+                    File.AppendAllText("ClickIt_Crash.log", $"{DateTime.Now}: {message}\n");
                 }
                 catch { }
             }

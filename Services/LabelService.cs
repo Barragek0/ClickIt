@@ -35,7 +35,7 @@ namespace ClickIt.Services
                 return [];
             }
 
-            List<LabelOnGround> validLabels = new(System.Math.Min(groundLabels.Count, 1000));
+            List<LabelOnGround> validLabels = new(Math.Min(groundLabels.Count, 1000));
 
             for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
             {

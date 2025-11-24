@@ -160,7 +160,7 @@ namespace ClickIt.Utils
                 return hotkeyHeld;
             }
 
-            var labels = cachedLabels?.Value ?? new System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>();
+            var labels = cachedLabels?.Value;
             bool hasRestricted = labelFilterService?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
             bool disableKeyHeld = Input.GetKeyState(_settings.LazyModeDisableKey.Value);
             bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);

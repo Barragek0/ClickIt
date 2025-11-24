@@ -32,10 +32,10 @@ namespace ClickIt
             }
 
             // Clear static instances
-            Utils.LockManager.Instance = null;
+            LockManager.Instance = null;
 
             // Clear ThreadLocal storage
-            Utils.LabelUtils.ClearThreadLocalStorage();
+            LabelUtils.ClearThreadLocalStorage();
 
             // Clear cached data
             State.CachedLabels = null;

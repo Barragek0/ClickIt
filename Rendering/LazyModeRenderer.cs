@@ -13,12 +13,12 @@ namespace ClickIt.Rendering
 
         public void Render(GameController gameController, PluginContext state)
         {
-            if (_deferredTextQueue == null) return;
+            if (!_settings.LazyMode.Value) return;
             var windowRect = gameController.Window.GetWindowRectangleTimeCache;
             float centerX = windowRect.Width / 2f;
             float topY = 60f;
 
-            var allLabels = state.CachedLabels?.Value ?? new System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>();
+            var allLabels = state.CachedLabels?.Value;
             bool hasRestrictedItems = _labelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
 
             bool leftButtonHeld = Input.GetKeyState(Keys.LButton);
@@ -27,8 +27,10 @@ namespace ClickIt.Rendering
             bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && rightButtonHeld;
             bool mouseButtonBlocks = leftClickBlocks || rightClickBlocks;
 
-            bool hotkeyHeld = Input.GetKeyState(_settings.ClickLabelKey.Value);
-            bool lazyModeDisableHeld = Input.GetKeyState(_settings.LazyModeDisableKey.Value);
+            var clickLabelKey = _settings.ClickLabelKey.Value;
+            var lazyModeDisableKey = _settings.LazyModeDisableKey.Value;
+            bool hotkeyHeld = Input.GetKeyState(clickLabelKey);
+            bool lazyModeDisableHeld = Input.GetKeyState(lazyModeDisableKey);
 
             var (textColor, line1, line2, line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,
@@ -37,7 +39,8 @@ namespace ClickIt.Rendering
                 mouseButtonBlocks,
                 leftClickBlocks,
                 rightClickBlocks,
-                gameController);
+                gameController,
+                clickLabelKey);
 
             RenderLazyModeText(centerX, topY, textColor, line1, line2, line3);
         }
@@ -49,7 +52,8 @@ namespace ClickIt.Rendering
             bool mouseButtonBlocks,
             bool leftClickBlocks,
             bool rightClickBlocks,
-            GameController gameController)
+            GameController gameController,
+            Keys clickLabelKey)
         {
             _ = (SharpDX.Color.White, string.Empty, string.Empty, string.Empty);
 
@@ -57,7 +61,7 @@ namespace ClickIt.Rendering
             {
                 return hotkeyHeld
                     ? (SharpDX.Color.LawnGreen, "Blocking overridden by hotkey.", string.Empty, string.Empty)
-                    : (SharpDX.Color.Red, "Locked chest or tree detected.", $"Hold {_settings.ClickLabelKey.Value} to click them.", string.Empty);
+                    : (SharpDX.Color.Red, "Locked chest or tree detected.", $"Hold {clickLabelKey} to click them.", string.Empty);
             }
 
             if (lazyModeDisableHeld)
@@ -74,7 +78,7 @@ namespace ClickIt.Rendering
                 return (SharpDX.Color.Red, $"{buttonName} held.", "Release to resume lazy clicking.", string.Empty);
             }
 
-            bool isRitualActive = Utils.EntityHelpers.IsRitualActive(gameController);
+            bool isRitualActive = EntityHelpers.IsRitualActive(gameController);
 
             if (isRitualActive)
             {

@@ -5,6 +5,7 @@ using SharpDX;
 using Color = SharpDX.Color;
 using System.Diagnostics;
 using ClickIt.Components;
+using System.Reflection;
 using ClickIt.Services;
 using ClickIt.Utils;
 
@@ -29,6 +30,7 @@ namespace ClickIt.Rendering
         private readonly WeightCalculator? _weightCalculator;
         private readonly DeferredTextQueue _deferredTextQueue;
         private readonly DeferredFrameQueue _deferredFrameQueue;
+        private static readonly PropertyInfo? CachedLabelsPropertyInfo = typeof(ClickIt).GetProperty("CachedLabels", BindingFlags.NonPublic | BindingFlags.Instance);
 
         public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin,
                              AltarService? altarService = null,
@@ -61,6 +63,14 @@ namespace ClickIt.Rendering
         public void RenderDetailedDebugInfo(ClickItSettings settings, PerformanceMonitor performanceMonitor)
         {
             if (settings == null || performanceMonitor == null) return;
+
+            // avoid doing any work if nothing to render
+            if (!settings.DebugShowStatus && !settings.DebugShowGameState && !settings.DebugShowPerformance &&
+                !settings.DebugShowClickFrequencyTarget && !settings.DebugShowAltarDetection && !settings.DebugShowAltarService &&
+                !settings.DebugShowLabels && !settings.DebugShowRecentErrors)
+            {
+                return;
+            }
 
             int startY = 120;
             int lineHeight = 18;
@@ -153,9 +163,7 @@ namespace ClickIt.Rendering
             // Show cached labels information
             if (_plugin is ClickIt clickItPlugin)
             {
-                var cachedLabelsField = typeof(ClickIt).GetProperty("CachedLabels",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (cachedLabelsField?.GetValue(clickItPlugin) is TimeCache<List<LabelOnGround>> cachedLabels)
+                if (CachedLabelsPropertyInfo?.GetValue(clickItPlugin) is TimeCache<List<LabelOnGround>> cachedLabels)
                 {
                     var labels = cachedLabels.Value;
                     int cachedCount = labels?.Count ?? 0;
@@ -471,10 +479,19 @@ namespace ClickIt.Rendering
             if (renderTimings == null || renderTimings.Count == 0)
                 return yPos;
 
-            var renderTimingsSnapshot = renderTimings.ToArray();
-            long lastRenderTime = renderTimingsSnapshot[^1];
-            double avgRenderTime = renderTimingsSnapshot.Average();
-            double maxRenderTime = renderTimingsSnapshot.Max();
+            // Compute last / avg / max in a single pass without creating intermediate arrays
+            long lastRenderTime = 0;
+            long sum = 0;
+            long maxRenderTime = long.MinValue;
+            int count = 0;
+            foreach (var t in renderTimings)
+            {
+                lastRenderTime = t;
+                sum += t;
+                if (t > maxRenderTime) maxRenderTime = t;
+                count++;
+            }
+            double avgRenderTime = count > 0 ? (double)sum / count : 0.0;
 
             Color renderColor = avgRenderTime <= RENDER_TIME_LOW_THRESHOLD ? Color.LawnGreen :
                                (avgRenderTime <= RENDER_TIME_MEDIUM_THRESHOLD ? Color.Yellow : Color.Red);
@@ -518,8 +535,18 @@ namespace ClickIt.Rendering
             if (_plugin is ClickIt clickItPlugin)
             {
                 var gameController = _plugin.GameController;
-                var allLabels = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.ToList() ?? [];
-                hasRestrictedItems = clickItPlugin.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
+                // Only materialize the label list if the LabelFilterService is present (costly operation)
+                var labelFilterService = clickItPlugin.LabelFilterService;
+                if (labelFilterService != null)
+                {
+
+                    var allLabels = (System.Collections.Generic.IReadOnlyList<LabelOnGround>?)gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+                    hasRestrictedItems = labelFilterService.HasLazyModeRestrictedItemsOnScreen(allLabels);
+                }
+                else
+                {
+                    hasRestrictedItems = false;
+                }
             }
 
             bool poeActive = _plugin.GameController?.Window?.IsForeground() == true;
