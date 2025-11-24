@@ -244,7 +244,7 @@ namespace ClickIt.Utils
                 _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification skipped - expectedElement is null", 5);
             }
             sw.Restart();
-            if (_settings.LeftHanded.Value)
+            if (_settings?.LeftHanded?.Value == true)
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: Performing right click (left-handed)", 5);
                 Mouse.RightClick();
