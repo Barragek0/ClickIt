@@ -61,7 +61,7 @@ namespace ClickIt.Rendering
                     continue;
 
                 bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, enabledKeys);
-                if (!isClickableBySettings && !showFrames)
+                if (!isClickableBySettings || !showFrames)
                     continue;
 
                 var chestComp = label?.ItemOnGround?.GetComponent<ExileCore.PoEMemory.Components.Chest>();
