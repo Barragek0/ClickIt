@@ -4,24 +4,21 @@
 
 **Plugin Purpose**: Path of Exile automation (item pickup, chest opening, essence corruption, altar decision-making) built on ExileCore framework.
 
-You are expected to autonomously execute all tasks given to you.
-Treat any list of tasks from the user as authoritative. Complete each task sequentially without pausing, asking for confirmation, or offering multiple options.
+You are expected to operate autonomously and execute tasks the user gives you. Treat any list of tasks in a user's message as authoritative — execute each task sequentially and complete it before moving on. Do not interrupt execution to ask for high-level guidance, approval, or to weigh options.
 
-Rules:
-1. Do NOT ask the user which approach to take.
-2. Do NOT offer choices between actions.
-3. Do NOT ask what to do next unless the task list is empty.
-4. If a task involves multiple steps, proceed through all steps in order without stopping.
-5. If a decision is required, always choose the option that:
-   a. is fastest to implement,
-   b. is easiest to maintain,
-   c. is least likely to cause errors.
-6. If uncertainty exists, make a confident choice following rules above; do not ask the user.
+Core rules for autonomous execution (kept intentionally strict):
 
-Additional guidance:
-- Think step by step, but do not pause between steps.
-- Execute all tasks to completion unless the list is empty.
-- Only stop and ask the user when there are no remaining tasks.
+1) Do NOT ask the user which approach to take. If you need to choose, pick the simplest safe option.
+2) Do NOT offer choices between actions in user-facing messages — perform the chosen action.
+3) Do NOT ask what to do next unless the task list is empty.
+4) If a task contains multiple steps, proceed through them in order and complete all steps.
+5) When a technical decision is required, prefer the alternative that (in priority order):
+    a) is fastest to implement,
+    b) is easiest to maintain,
+    c) is least likely to cause runtime or safety errors.
+6) If uncertainty remains after applying the rules above, make the best confident choice and continue; only ask the user when absolutely required (for example: missing credentials, ambiguous repository-wide policy, or dangerous state that needs human approval).
+
+Extra guidance: work methodically, commit small changes, and validate with tests when available. If a step fails (broken tests, build errors), stop, report the failure clearly, and propose a remediation plan before continuing.
 
 
 ### 5 Essential Patterns Every AI Must Know
@@ -42,7 +39,7 @@ Additional guidance:
 
 ### Critical Commands
 ```powershell
-# Test (always run this first)
+# Test (run this early and often)
 dotnet test Tests\ClickIt.Tests.csproj --logger "console;verbosity=normal"
 
 # Build main plugin (requires ExileCore dependencies)  
@@ -342,6 +339,57 @@ private bool TryConsumeLazyModeLimiter()
 - **Integration**: `ServiceIntegrationTests.cs`, `ConfigurationIntegrationTests.cs`
 - **Input/Safety**: `InputSafetyAndValidationTests.cs`
 - **Full suite**: 292 tests across all categories
+
+---
+
+## Repository Layout & File Descriptions
+
+Below is a guided map of the repository. Use this as the primary orientation for navigation and deciding where to make edits.
+
+- Root-level files
+    - `ClickIt.sln` / `ClickIt.csproj` — Solution and main project file.
+    - `README.md` — High-level project description for humans.
+    - `run-tests.ps1` / `run-tests.bat` / `run-tests.sh` — Convenience scripts to run the test-suite in different shells.
+    - `runsettings.xml` — Test run settings used for code-coverage and CI.
+
+- Components/
+    - `PrimaryAltarComponent.cs`, `SecondaryAltarComponent.cs` — UI/element parsing and cached validation patterns for altars.
+    - `AltarButton.cs` — Clickable altar button element logic.
+
+- Constants/
+    - `Constants.cs` — Global constants and shared values used across the codebase.
+    - `AltarModsConstants.cs` — Canonical list of altar mod definitions (used by AltarService / parser).
+
+- Core/
+    - `ClickIt.cs` — Entry and orchestration (service wiring) for the plugin.
+    - `ClickIt.Input.cs`, `ClickIt.Render.cs` — Input and rendering specific separation of concerns.
+    - `ClickItSettings.cs` — Settings tree for the plugin (menus, toggles, ranges, hotkeys).
+    - `ClickItState.cs` — In-memory runtime state for plugin data.
+    - `PluginContext.cs` — Shared context passed to services.
+
+- Rendering/
+    - `DebugRenderer.cs` — Central debug output and timing queues for performance measurement.
+    - `AltarDisplayRenderer.cs` — Visual overlay showing altar decisions, weights and matching mods.
+    - `LazyModeRenderer.cs` — Visual feedback for lazy-mode click limiting.
+
+- Services/
+    - `AltarService.cs` / `AltarScanner.cs` / `AltarParser.cs` — End-to-end altar detection, parsing, and matching logic.
+    - `ClickService.cs` — Centralized click orchestration and safety logic.
+    - `LabelService.cs` / `LabelFilterService.cs` — Ground label detection and filtering logic.
+    - `AreaService.cs` — Screen area calculations and UI zone checks.
+    - `ShrineService.cs` / `EssenceService.cs` — Ancillary feature services (shrines, essence corruption, etc.)
+
+- Utils/
+    - `InputHandler.cs` / `Mouse.cs` / `Keyboard.cs` — Input primitives and safety handling.
+    - `WeightCalculator.cs` / `AltarModMatcher.cs` / `IndexConstants.cs` — Decision logic and helper utilities.
+    - `ErrorHandler.cs`, `LockManager.cs` — Global helpers for exception handling and concurrency.
+
+- Tests/  (organized into subfolders: Configuration, Constants, Integration, Services, Unit, Utils)
+    - `ClickIt.Tests.csproj` — Test project; run it frequently.
+    - Representative tests: `WeightCalculationTests.cs`, `AltarModParsingTests.cs`, `InputSafetyAndValidationTests.cs`, `RenderingAndUILogicTests.cs`.
+
+If you add a new feature or change behaviour, put logic in a service (Services/), the UI in Rendering/ or Components/, settings in Core/ClickItSettings.cs and tests in Tests/ in the matching category.
+
 
 ---
 

@@ -162,6 +162,36 @@ namespace ClickIt.Tests.Decision
             total.Should().Be(1m);
         }
 
+        [DataTestMethod]
+        [DataRow(new[] { "mod1", "mod2", "" }, new[] { 5, 10 }, 15)]
+        [DataRow(new[] { "mod3" }, new[] { 7 }, 7)]
+        [DataRow(new string[] { }, new int[] { }, 0)]
+        public void CalculateUpsideWeight_VariousInputs_Data(string[] mods, int[] weights, int expected)
+        {
+            for (int i = 0; i < mods.Length && i < weights.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(mods[i]))
+                    _settings.ModTiers[mods[i]] = weights[i];
+            }
+            var upsides = new List<string>(mods);
+            _calc.CalculateUpsideWeight(upsides).Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [DataRow(new[] { "mod1", "mod2" }, new[] { 2, 3 }, 6)]
+        [DataRow(new[] { "mod3" }, new[] { 8 }, 9)]
+        [DataRow(new string[] { }, new int[] { }, 1)]
+        public void CalculateDownsideWeight_VariousInputs_Data(string[] mods, int[] weights, int expected)
+        {
+            for (int i = 0; i < mods.Length && i < weights.Length; i++)
+            {
+                _settings.ModTiers[mods[i]] = weights[i];
+            }
+            var downsides = new List<string>(mods);
+            _calc.CalculateDownsideWeight(downsides).Should().Be(expected);
+        }
+
+
         [TestMethod]
         public void CalculateDownsideWeight_NullList_ReturnsZero()
         {

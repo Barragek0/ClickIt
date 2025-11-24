@@ -2,6 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
     <TargetFramework>net8-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
@@ -35,6 +36,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Include LabelUtils so tests can exercise label helpers directly -->
+    <Compile Include="..\Utils\LabelUtils.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Include Constants files directly to avoid build dependencies -->
     <Compile Include="..\Constants\AltarModsConstants.cs" />
     <Compile Include="..\Constants\Constants.cs" />
@@ -56,6 +62,7 @@
     <Compile Include="..\Utils\WeightCalculator.cs" />
     <Compile Include="..\Utils\TextHelpers.cs" />
     <Compile Include="..\Utils\AltarModMatcher.cs" />
+    <Compile Include="..\Services\AltarParser.cs" />
     <Compile Include="..\Utils\ModIndexConstants.cs" />
     <Compile Include="..\Utils\IndexConstants.cs" />
   </ItemGroup>
