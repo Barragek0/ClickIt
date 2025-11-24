@@ -48,8 +48,8 @@ namespace ClickIt.Utils
         private bool IsShrineClickBlockedInLazyMode()
         {
             if (!_settings.LazyMode.Value) return false;
-                var cached = _state.CachedLabels?.Value;
-                bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
+            var cached = _state.CachedLabels?.Value;
+            bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
             if (hasRestrictedItems) return false;
             bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);
             bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && Input.GetKeyState(Keys.RButton);
@@ -142,13 +142,13 @@ namespace ClickIt.Utils
 
             // Determine if lazy mode is active (enabled and no restricted items on screen and no ritual active)
             bool isRitualActive = IsRitualActive();
-                var cached = _state.CachedLabels?.Value;
-                bool lazyModeActive = _settings.LazyMode.Value &&
-                    !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false) &&
-                !isRitualActive;
+            var cached = _state.CachedLabels?.Value;
+            bool lazyModeActive = _settings.LazyMode.Value &&
+                !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false) &&
+            !isRitualActive;
 
             // Check if there are lazy mode restricted items on screen
-                bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
+            bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
 
             // Use lazy mode click limiting when lazy mode is active, otherwise use normal frequency target
             double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
