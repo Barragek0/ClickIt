@@ -38,7 +38,6 @@
   <ItemGroup>
     <!-- Include LabelUtils so tests can exercise label helpers directly -->
     <Compile Include="..\Utils\LabelUtils.cs" />
-    <Compile Include="..\Utils\DeferredFrameQueue.cs" />
   </ItemGroup>
 
   <ItemGroup>
