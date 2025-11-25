@@ -328,7 +328,8 @@ namespace ClickIt
         private static void SetupModTableColumns(bool isUpside = false)
         {
             ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 125);
-            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 760);
+            var modWidth = isUpside ? 760 : 830;
+            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, modWidth);
             ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 50);
             if (isUpside)
             {
@@ -473,8 +474,7 @@ namespace ClickIt
             {
                 ModTiers[BuildCompositeKey(type, id)] = currentValue;
             }
-            // Field width should match locked Mod column width
-            ImGui.SetNextItemWidth(760);
+            ImGui.SetNextItemWidth(830);
             _ = ImGui.TableNextColumn();
             Vector4 textColor = sectionHeader switch
             {

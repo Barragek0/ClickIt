@@ -26,10 +26,10 @@ ClickIt is a Path of Exile automation plugin that makes grinding way less tediou
 
 ## Quick Start
 
-1. **Get ExileCore** - This runs as an ExileCore plugin
-2. **Build it** - `msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="path\to\exilecore"`
-3. **Copy DLL** to your ExileCore plugins folder
-4. **Launch POE** with ExileCore
+1. **Get ExileAPI** - https://www.ownedcore.com/forums/mmo/path-of-exile/poe-bots-programs/1000594-exileapi-3-23-beyond-plugin-framework.html
+2. **Download latest release** - https://github.com/Barragek0/ClickIt/releases/latest
+3. **Copy DLL** to your ExileAPI plugins folder
+4. **Launch ExileAPI**
 5. **Press F1** (default hotkey) to start clicking
 
 ## Settings Overview
@@ -37,8 +37,7 @@ ClickIt is a Path of Exile automation plugin that makes grinding way less tediou
 ### Basic Stuff
 - **Hotkey**: F1 by default, hold to click
 - **Range**: How far it looks for stuff (100 for 1080p)
-- **Click speed**: How fast it clicks (80-250ms)
-- **Chest offset**: If it's clicking too high/low on chests
+- **Click frequency target**: The amount of time the plugin aims to maintain between clicks
 
 ### What to Click
 - Items (with unique filtering)
@@ -57,7 +56,7 @@ ClickIt is a Path of Exile automation plugin that makes grinding way less tediou
 
 **Altar AI**:
 - Analyzes 300+ modifier combinations
-- Lets you weight what modifiers are good/bad
+- Lets you weight modifiers based on how good or bad they are
 - Highlights or auto-clicks the best choice
 - Works for both Eater and Exarch altars
 
@@ -86,8 +85,8 @@ msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\ExileCore
 ```
 
 ### Testing
-- **292 tests** covering almost everything
-- **CI/CD** runs on every commit
+- **A lot of tests** covering almost everything
+- **CI** runs on every commit
 - Tests game logic, performance, edge cases
 
 ### Code Quality
@@ -99,9 +98,10 @@ msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\ExileCore
 ## Troubleshooting
 
 **Plugin not working?**
-- Make sure ExileCore is running as admin
+- Make sure ExileAPI is running as admin
+- Enable debug mode and additional debug information - render
 - Check debug overlay for errors
-- Adjust search radius if it's missing stuff
+- Adjust search radius if it's not clicking things that are on-screen
 
 **Missing clicks?**
 - Tweak chest height offset
@@ -109,7 +109,7 @@ msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\ExileCore
 
 **Performance issues?**
 - Debug overlay shows timing stats
-- Reduce search radius if needed
+- Reduce search radius / click frequency target, higher radius and higher click frequency means higher performance impact
 
 ## Contributing
 
