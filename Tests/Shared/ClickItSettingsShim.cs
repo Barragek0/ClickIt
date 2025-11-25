@@ -43,7 +43,19 @@ namespace ClickIt
                     if (!ModTiers.ContainsKey(t.Id)) ModTiers[t.Id] = t.DefaultValue;
                     var composite = $"{t.Type}|{t.Id}";
                     if (!ModTiers.ContainsKey(composite)) ModTiers[composite] = t.DefaultValue;
-                    if (!ModAlerts.ContainsKey(composite)) ModAlerts[composite] = false;
+                    if (!ModAlerts.ContainsKey(composite))
+                    {
+                        // Enable Divine Orb related modifiers by default (matches production defaults)
+                        if ((t.Type == "Minion" && t.Id == "#% chance to drop an additional Divine Orb") ||
+                            (t.Type == "Boss" && t.Id == "Final Boss drops # additional Divine Orbs"))
+                        {
+                            ModAlerts[composite] = true;
+                        }
+                        else
+                        {
+                            ModAlerts[composite] = false;
+                        }
+                    }
                 }
             }
             catch

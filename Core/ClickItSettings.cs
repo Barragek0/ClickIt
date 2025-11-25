@@ -233,7 +233,7 @@ namespace ClickIt
         public ButtonNode ReloadAlertSound { get; set; } = new ButtonNode();
 
         [Menu("Alert Volume", "Volume to play alert sound at (0-100)", 3, 4620)]
-        public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(25, 0, 100);
+        public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(5, 0, 100);
 
         [JsonIgnore]
         public CustomNode AltarModWeights { get; }
@@ -510,12 +510,24 @@ namespace ClickIt
 
                 ModTiers[compositeKey] = defaultValue;
             }
-            // Add per-upside mod alert defaults (false)
+            // Add per-upside mod alert defaults — most are off by default, but enable
+            // a couple of very-high-value mods (Divine Orb drops) by default.
             foreach ((string id, _, string type, int _) in AltarModsConstants.UpsideMods)
             {
                 var compositeKey = BuildCompositeKey(type, id);
                 if (!ModAlerts.ContainsKey(compositeKey))
-                    ModAlerts[compositeKey] = false;
+                {
+                    // Default to enabled for Divine Orb related modifiers
+                    if ((type == "Minion" && id == "#% chance to drop an additional Divine Orb") ||
+                        (type == "Boss" && id == "Final Boss drops # additional Divine Orbs"))
+                    {
+                        ModAlerts[compositeKey] = true;
+                    }
+                    else
+                    {
+                        ModAlerts[compositeKey] = false;
+                    }
+                }
             }
         }
 
