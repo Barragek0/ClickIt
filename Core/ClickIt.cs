@@ -1,6 +1,7 @@
 ﻿using ClickIt.Utils;
 using ExileCore;
 using System.Diagnostics;
+using System.IO;
 namespace ClickIt
 {
 #nullable enable
@@ -20,6 +21,9 @@ namespace ClickIt
             // Remove event handlers to prevent issues during DLL reload
             // Unsubscribe the report-bug event handler
             Settings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
+            // Unsubscribe alert sound handlers
+            Settings.OpenConfigDirectory.OnPressed -= OpenConfigDirectoryPressed;
+            Settings.ReloadAlertSound.OnPressed -= ReloadAlertSound;
 
             // Clear static instances
             LockManager.Instance = null;
@@ -104,6 +108,12 @@ namespace ClickIt
 
             Settings.EnsureAllModsHaveWeights();
 
+            // Wire Alert Sound buttons
+            Settings.OpenConfigDirectory.OnPressed += OpenConfigDirectoryPressed;
+            Settings.ReloadAlertSound.OnPressed += ReloadAlertSound;
+            // Load any existing alert sound at startup
+            ReloadAlertSound();
+
             // Start monitoring timers
             State.LastRenderTimer.Start();
             State.LastTickTimer.Start();
@@ -159,6 +169,98 @@ namespace ClickIt
             // Skip logging during render loop to prevent crashes
             if (State.IsRendering) return;
             base.LogError(message, frame);
+        }
+
+        // --- Alert sound playback / cooldown ---
+        private readonly Dictionary<string, DateTime> _lastAlertTimes = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        private const string AlertFileName = "alert.wav";
+        private string? _alertSoundPath = null;
+
+        public void ReloadAlertSound()
+        {
+            try
+            {
+                var file = Path.Join(ConfigDirectory, AlertFileName);
+                if (!File.Exists(file))
+                {
+                    var baseDirPath = AppDomain.CurrentDomain.BaseDirectory ?? Directory.GetCurrentDirectory();
+                    LogError($"Alert sound not found at {Path.Join(ConfigDirectory, AlertFileName)}", 20);
+                    _alertSoundPath = null;
+                    return;
+                }
+
+                _alertSoundPath = file;
+                LogMessage($"Alert sound loaded: {file}", 5);
+            }
+            catch (Exception ex)
+            {
+                LogError("Failed to reload alert sound: " + ex.Message, 5);
+            }
+        }
+
+        private void OpenConfigDirectoryPressed()
+        {
+            Process.Start("explorer.exe", ConfigDirectory);
+        }
+
+        public void TryTriggerAlertForMatchedMod(string matchedId)
+        {
+            if (string.IsNullOrEmpty(matchedId)) return;
+
+            string? key = ResolveCompositeKey(matchedId);
+            if (string.IsNullOrEmpty(key)) return;
+
+            if (!IsAlertEnabledForKey(key)) return;
+
+            if (!CanTriggerForKey(key)) return;
+
+            EnsureAlertLoaded();
+            if (string.IsNullOrEmpty(_alertSoundPath) || !File.Exists(_alertSoundPath))
+            {
+                LogError($"No alert sound loaded (expected '{AlertFileName}' in the config directory or plugin folder).", 20);
+                return;
+            }
+            PlaySoundFile(_alertSoundPath!);
+            _lastAlertTimes[key] = DateTime.UtcNow;
+        }
+
+        private string? ResolveCompositeKey(string matchedId)
+        {
+            string key = matchedId;
+            if (!Settings.ModAlerts.ContainsKey(key))
+            {
+                var found = Settings.ModAlerts.Keys.FirstOrDefault(k => k.EndsWith("|" + matchedId, StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrEmpty(found)) key = found;
+            }
+
+            return key;
+        }
+
+        private bool IsAlertEnabledForKey(string key)
+        {
+            return Settings.ModAlerts.TryGetValue(key, out bool enabled) && enabled;
+        }
+
+        private bool CanTriggerForKey(string key)
+        {
+            var now = DateTime.UtcNow;
+            if (_lastAlertTimes.TryGetValue(key, out DateTime last) && (now - last).TotalSeconds < 30)
+                return false;
+            return true;
+        }
+
+        private void EnsureAlertLoaded()
+        {
+            if (!string.IsNullOrEmpty(_alertSoundPath) && File.Exists(_alertSoundPath)) return;
+            ReloadAlertSound();
+        }
+
+        private void PlaySoundFile(string path)
+        {
+            if (GameController?.SoundController != null)
+            {
+                GameController.SoundController.PlaySound(path, Settings?.AlertSoundVolume?.Value ?? 5);
+            }
         }
 
 

@@ -11,6 +11,8 @@ namespace ClickIt
     {
 
         public Dictionary<string, int> ModTiers { get; set; } = new Dictionary<string, int>();
+        public Dictionary<string, bool> ModAlerts { get; set; } = new Dictionary<string, bool>();
+        public int AlertSoundVolume { get; set; } = 100;
         public int GetModTier(string id)
         {
             if (string.IsNullOrEmpty(id)) return 1;
@@ -41,6 +43,7 @@ namespace ClickIt
                     if (!ModTiers.ContainsKey(t.Id)) ModTiers[t.Id] = t.DefaultValue;
                     var composite = $"{t.Type}|{t.Id}";
                     if (!ModTiers.ContainsKey(composite)) ModTiers[composite] = t.DefaultValue;
+                    if (!ModAlerts.ContainsKey(composite)) ModAlerts[composite] = false;
                 }
             }
             catch

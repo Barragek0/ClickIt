@@ -223,6 +223,18 @@ namespace ClickIt
         public ToggleNode DangerousDownside { get; set; } = new ToggleNode(true);
         [Menu("Dangerous Downside Threshold", "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.", 6, 4600)]
         public RangeNode<int> DangerousDownsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
+        [Menu("Alert Sound", "The alert sound file must be named 'alert.wav' and be placed in the plugin config directory.\n\nYou can find the default alert.wav file in the plugin's GitHub repository.", 4620)]
+        public EmptyNode AlertSoundCategory { get; set; } = new EmptyNode();
+
+        [Menu("Open Config Directory", "Open the plugin config directory where you should put 'alert.wav'", 1, 4620)]
+        public ButtonNode OpenConfigDirectory { get; set; } = new ButtonNode();
+
+        [Menu("Reload Alert Sound", "Reloads the 'alert.wav' sound file from the config directory", 2, 4620)]
+        public ButtonNode ReloadAlertSound { get; set; } = new ButtonNode();
+
+        [Menu("Alert Volume", "Volume to play alert sound at (0-100)", 3, 4620)]
+        public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(25, 0, 100);
+
         [JsonIgnore]
         public CustomNode AltarModWeights { get; }
         private string upsideSearchFilter = "";
@@ -280,9 +292,12 @@ namespace ClickIt
         }
         private void DrawUpsideModsTable()
         {
-            if (!ImGui.BeginTable("UpsideModsConfig", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
+            // Upside table includes an extra "Alert" checkbox column
+            // Use NoHostExtendX + NoPadOuterX so the table keeps the fixed column widths
+            // and doesn't stretch to the window width when the settings window is resized.
+            if (!ImGui.BeginTable("UpsideModsConfig", 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
                 return;
-            SetupModTableColumns();
+            SetupModTableColumns(isUpside: true);
             string currentSection = "";
             foreach ((string id, string name, string type, int _) in AltarModsConstants.UpsideMods)
             {
@@ -296,9 +311,9 @@ namespace ClickIt
         }
         private void DrawDownsideModsTable()
         {
-            if (!ImGui.BeginTable("DownsideModsConfig", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders))
+            if (!ImGui.BeginTable("DownsideModsConfig", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
                 return;
-            SetupModTableColumns();
+            SetupModTableColumns(isUpside: false);
             string lastProcessedSection = "";
             foreach ((string id, string name, string type, int defaultWeight) in AltarModsConstants.DownsideMods)
             {
@@ -310,11 +325,15 @@ namespace ClickIt
             }
             ImGui.EndTable();
         }
-        private static void SetupModTableColumns()
+        private static void SetupModTableColumns(bool isUpside = false)
         {
             ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 125);
-            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 900);
-            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 75);
+            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthFixed, 760);
+            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 50);
+            if (isUpside)
+            {
+                ImGui.TableSetupColumn("Alert", ImGuiTableColumnFlags.WidthFixed, 55);
+            }
             ImGui.TableHeadersRow();
         }
         private static bool MatchesSearchFilter(string name, string type, string filter)
@@ -399,11 +418,14 @@ namespace ClickIt
             _ = ImGui.TableNextColumn();
             ImGui.SetNextItemWidth(125);
             int currentValue = GetModTier(id, type);
-            if (ImGui.SliderInt($"", ref currentValue, 1, 100))
+            // Use a unique internal id for the slider so it does not collide with other widgets
+            if (ImGui.SliderInt("##weight", ref currentValue, 1, 100))
             {
                 ModTiers[BuildCompositeKey(type, id)] = currentValue;
             }
-            ImGui.SetNextItemWidth(1000);
+            // Mod column
+            // Field width should match locked Mod column width
+            ImGui.SetNextItemWidth(760);
             _ = ImGui.TableNextColumn();
             Vector4 textColor = type switch
             {
@@ -415,6 +437,28 @@ namespace ClickIt
             ImGui.TextColored(textColor, name);
             _ = ImGui.TableNextColumn();
             ImGui.Text(type);
+
+            // Final column: Alert checkbox for upside mods
+            if (ModAlerts != null)
+            {
+                _ = ImGui.TableNextColumn();
+                // center the checkbox inside the fixed-width alert cell
+                var avail = ImGui.GetContentRegionAvail();
+                float checkboxSize = 18f; // small visual estimate for a checkbox
+                float currentX = ImGui.GetCursorPosX();
+                float offset = (avail.X - checkboxSize) * 0.5f;
+                if (offset > 0)
+                {
+                    ImGui.SetCursorPosX(currentX + offset);
+                }
+
+                bool currentAlert = GetModAlert(id, type);
+                // Use a unique internal id for the checkbox so it doesn't share an id with the slider
+                if (ImGui.Checkbox("##alert", ref currentAlert))
+                {
+                    ModAlerts[BuildCompositeKey(type, id)] = currentAlert;
+                }
+            }
             ImGui.PopID();
         }
         private void DrawDownsideModRow(string id, string name, string type, string sectionHeader)
@@ -424,11 +468,13 @@ namespace ClickIt
             _ = ImGui.TableNextColumn();
             ImGui.SetNextItemWidth(125);
             int currentValue = GetModTier(id, type);
-            if (ImGui.SliderInt($"", ref currentValue, 1, 100))
+            // Unique internal id for the slider prevents conflicts with other widgets in the same row
+            if (ImGui.SliderInt("##weight", ref currentValue, 1, 100))
             {
                 ModTiers[BuildCompositeKey(type, id)] = currentValue;
             }
-            ImGui.SetNextItemWidth(1000);
+            // Field width should match locked Mod column width
+            ImGui.SetNextItemWidth(760);
             _ = ImGui.TableNextColumn();
             Vector4 textColor = sectionHeader switch
             {
@@ -464,6 +510,13 @@ namespace ClickIt
 
                 ModTiers[compositeKey] = defaultValue;
             }
+            // Add per-upside mod alert defaults (false)
+            foreach ((string id, _, string type, int _) in AltarModsConstants.UpsideMods)
+            {
+                var compositeKey = BuildCompositeKey(type, id);
+                if (!ModAlerts.ContainsKey(compositeKey))
+                    ModAlerts[compositeKey] = false;
+            }
         }
 
         private static string BuildCompositeKey(string type, string id)
@@ -490,7 +543,19 @@ namespace ClickIt
             if (ModTiers.TryGetValue(compositeKey, out int value)) return value;
             return 1;
         }
-        public Dictionary<string, int> ModTiers { get; set; } = [];
+
+        public bool GetModAlert(string modId, string type)
+        {
+            if (string.IsNullOrEmpty(modId)) return false;
+            string compositeKey = BuildCompositeKey(type, modId);
+            if (ModAlerts.TryGetValue(compositeKey, out bool enabled)) return enabled;
+            // fallback to id-only key if present
+            if (ModAlerts.TryGetValue(modId, out enabled)) return enabled;
+            return false;
+        }
+        public Dictionary<string, int> ModTiers { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        // Per-upside mod alert flags (composite key = "type|id")
+        public Dictionary<string, bool> ModAlerts { get; set; } = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
         {
             ImDrawListPtr drawList = ImGui.GetWindowDrawList();

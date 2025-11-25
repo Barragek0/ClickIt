@@ -66,5 +66,19 @@ namespace ClickIt.Tests
             lowPenaltyDownsides.Should().NotBeEmpty("should have some minor penalty downside mods");
         }
 
+        [TestMethod]
+        public void ClickItSettings_UpsideMods_HaveAlertEntriesDefaultFalse()
+        {
+            var settings = new ClickIt.ClickItSettings();
+            settings.InitializeDefaultWeights();
+
+            foreach (var mod in AltarModsConstants.UpsideMods)
+            {
+                string key = $"{mod.Type}|{mod.Id}";
+                settings.ModAlerts.Should().ContainKey(key);
+                settings.ModAlerts[key].Should().BeFalse();
+            }
+        }
+
     }
 }

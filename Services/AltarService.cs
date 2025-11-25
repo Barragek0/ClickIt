@@ -133,14 +133,23 @@ namespace ClickIt.Services
             // Update debug counters and record unmatched mods
             DebugInfo.ModsMatched += upsides.Count + downsides.Count;
 
+            // Trigger alert sound for any matched upside mods with alerts enabled
+            if (upsides?.Count > 0)
+            {
+                foreach (var matchedId in upsides)
+                {
+                    _clickIt.TryTriggerAlertForMatchedMod(matchedId);
+                }
+            }
+
             if (unmatched.Count > 0)
             {
                 foreach (var mod in unmatched)
                     RecordUnmatchedMod(mod, negativeModType);
-                return (upsides, downsides, true);
+                return (upsides ?? new List<string>(), downsides ?? new List<string>(), true);
             }
 
-            return (upsides, downsides, false);
+            return (upsides ?? new List<string>(), downsides ?? new List<string>(), false);
         }
 
         // Records unmatched mod info into debug structures and logs when in debug mode.
