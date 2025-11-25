@@ -65,6 +65,7 @@
     <Compile Include="..\Services\AltarParser.cs" />
     <Compile Include="..\Utils\ModIndexConstants.cs" />
     <Compile Include="..\Utils\IndexConstants.cs" />
+    <Compile Include="..\Services\AltarMatcher.cs" />
   </ItemGroup>
 
   <ItemGroup>
