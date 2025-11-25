@@ -8,16 +8,10 @@ using ClickIt.Utils;
 namespace ClickIt.Rendering
 {
     // Responsible for drawing debug frames around strongboxes (locked/unlocked)
-    public class StrongboxRenderer
+    public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
     {
-        private readonly DeferredFrameQueue _deferredFrameQueue;
-        private readonly ClickItSettings _settings;
-
-        public StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
-        {
-            _settings = settings;
-            _deferredFrameQueue = deferredFrameQueue;
-        }
+        private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
+        private readonly ClickItSettings _settings = settings;
 
         public void Render(GameController? gameController, object? state)
         {
