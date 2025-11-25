@@ -10,7 +10,8 @@ namespace ClickIt.Services
         private readonly Dictionary<string, string> _textCleanCache = new(StringComparer.Ordinal);
         private readonly object _modMatchCacheLock = new();
         private readonly object _textCleanCacheLock = new();
-        private static readonly Regex RgbRegex = new(@"<rgb\(\d+,\d+,\d+\)>", RegexOptions.Compiled);
+        // Match any single angled-tag like <rgb(1,2,3)>, <divine>, <scarab> (non-greedy, stops at first '>')
+        private static readonly Regex RgbRegex = new(@"<[^>]*>", RegexOptions.Compiled);
 
         public bool TryMatchModCached(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
