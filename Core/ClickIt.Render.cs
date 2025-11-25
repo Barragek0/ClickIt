@@ -10,15 +10,9 @@ namespace ClickIt
             bool renderDebug = Settings.RenderDebug;
             bool hasDebugRendering = debugMode && renderDebug;
 
-            int altarCount = State.AltarService?.GetAltarComponentsReadOnly()?.Count ?? 0;
+            int altarCount = State.AltarService?.GetAltarComponents()?.Count ?? 0;
             bool hasAltars = altarCount > 0;
 
-            bool hasLazyModeIndicator = Settings.LazyMode.Value;
-
-            if (!hasDebugRendering && !hasAltars && !hasLazyModeIndicator)
-            {
-                return; // Skip all timer operations for no-op renders
-            }
 
             // Start timing only when actually rendering
             State.PerformanceMonitor?.StartRenderTiming();
