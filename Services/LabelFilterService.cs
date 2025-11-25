@@ -104,6 +104,23 @@ namespace ClickIt.Services
             }
             return null;
         }
+
+        // Overload to search only a slice of the provided label list without allocating a new list.
+        public LabelOnGround? GetNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+        {
+            if (allLabels == null || allLabels.Count == 0) return null;
+            int end = Math.Min(allLabels.Count, startIndex + Math.Max(0, maxCount));
+            for (int i = startIndex; i < end; i++)
+            {
+                LabelOnGround label = allLabels[i];
+                Entity item = label.ItemOnGround;
+                if (item == null || item.DistancePlayer > _settings.ClickDistance.Value)
+                    continue;
+                if (ShouldClickLabel(label, item, CreateClickSettings(allLabels)))
+                    return label;
+            }
+            return null;
+        }
         private ClickSettings CreateClickSettings(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
             var s = _settings;
@@ -364,11 +381,15 @@ namespace ClickIt.Services
 
         private static bool IsBasicChest(LabelOnGround label)
         {
-            return label.ItemOnGround.RenderName.ToLower() switch
-            {
-                "chest" or "tribal chest" or "golden chest" or "cocoon" or "weapon rack" or "armour rack" or "trunk" or "rotted cocoon" => true,
-                _ => false,
-            };
+            var name = label.ItemOnGround.RenderName ?? string.Empty;
+            return name.Equals("chest", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("tribal chest", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("golden chest", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("cocoon", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("weapon rack", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("armour rack", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("trunk", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("rotted cocoon", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -211,38 +211,40 @@ namespace ClickIt.Utils
 
         private readonly decimal GetArrayElement(string weightType, int index)
         {
-            string key = (weightType ?? string.Empty).ToLower();
-            return key switch
-            {
-                WeightTypeConstants.TopDownside => _topDownsideWeights?[index] ?? 0,
-                WeightTypeConstants.BottomDownside => _bottomDownsideWeights?[index] ?? 0,
-                WeightTypeConstants.TopUpside => _topUpsideWeights?[index] ?? 0,
-                WeightTypeConstants.BottomUpside => _bottomUpsideWeights?[index] ?? 0,
-                _ => 0
-            };
+            string key = weightType ?? string.Empty;
+            if (string.Equals(key, WeightTypeConstants.TopDownside, StringComparison.OrdinalIgnoreCase))
+                return _topDownsideWeights?[index] ?? 0;
+            if (string.Equals(key, WeightTypeConstants.BottomDownside, StringComparison.OrdinalIgnoreCase))
+                return _bottomDownsideWeights?[index] ?? 0;
+            if (string.Equals(key, WeightTypeConstants.TopUpside, StringComparison.OrdinalIgnoreCase))
+                return _topUpsideWeights?[index] ?? 0;
+            if (string.Equals(key, WeightTypeConstants.BottomUpside, StringComparison.OrdinalIgnoreCase))
+                return _bottomUpsideWeights?[index] ?? 0;
+            return 0;
         }
 
         private void SetArrayElement(string weightType, int index, decimal value)
         {
-            string key = (weightType ?? string.Empty).ToLower();
-            switch (key)
+            string key = weightType ?? string.Empty;
+            if (string.Equals(key, WeightTypeConstants.TopDownside, StringComparison.OrdinalIgnoreCase))
             {
-                case WeightTypeConstants.TopDownside:
-                    if (_topDownsideWeights == null) _topDownsideWeights = new decimal[8];
-                    _topDownsideWeights[index] = value;
-                    break;
-                case WeightTypeConstants.BottomDownside:
-                    if (_bottomDownsideWeights == null) _bottomDownsideWeights = new decimal[8];
-                    _bottomDownsideWeights[index] = value;
-                    break;
-                case WeightTypeConstants.TopUpside:
-                    if (_topUpsideWeights == null) _topUpsideWeights = new decimal[8];
-                    _topUpsideWeights[index] = value;
-                    break;
-                case WeightTypeConstants.BottomUpside:
-                    if (_bottomUpsideWeights == null) _bottomUpsideWeights = new decimal[8];
-                    _bottomUpsideWeights[index] = value;
-                    break;
+                if (_topDownsideWeights == null) _topDownsideWeights = new decimal[8];
+                _topDownsideWeights[index] = value;
+            }
+            else if (string.Equals(key, WeightTypeConstants.BottomDownside, StringComparison.OrdinalIgnoreCase))
+            {
+                if (_bottomDownsideWeights == null) _bottomDownsideWeights = new decimal[8];
+                _bottomDownsideWeights[index] = value;
+            }
+            else if (string.Equals(key, WeightTypeConstants.TopUpside, StringComparison.OrdinalIgnoreCase))
+            {
+                if (_topUpsideWeights == null) _topUpsideWeights = new decimal[8];
+                _topUpsideWeights[index] = value;
+            }
+            else if (string.Equals(key, WeightTypeConstants.BottomUpside, StringComparison.OrdinalIgnoreCase))
+            {
+                if (_bottomUpsideWeights == null) _bottomUpsideWeights = new decimal[8];
+                _bottomUpsideWeights[index] = value;
             }
         }
     }

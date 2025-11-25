@@ -10,7 +10,9 @@ namespace ClickIt.Utils
     // and a single Flush call will draw them with a provided Graphics instance.
     public class DeferredTextQueue
     {
-        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = [];
+        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = new List<(string, Vector2, SharpDX.Color, int, FontAlign)>();
+        // Spare list reused during Flush to avoid allocating a snapshot array every frame.
+        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _spare = new List<(string, Vector2, SharpDX.Color, int, FontAlign)>();
 
         public void Enqueue(string text, Vector2 pos, SharpDX.Color color, int size, FontAlign align = FontAlign.Left)
         {
@@ -30,15 +32,18 @@ namespace ClickIt.Utils
             if (graphics == null) return;
             if (_items.Count == 0) return;
 
-            // Create a snapshot to avoid issues if Enqueue is called during Flush 
-            var itemsSnapshot = _items.ToArray();
+            // Move items into the spare list and clear the main list. This avoids allocating
+            // a new array each frame while preserving safety if Enqueue is called during Flush
+            // (new items will go into _items).
+            _spare.Clear();
+            _spare.AddRange(_items);
             _items.Clear();
 
             // Silently handle errors to prevent logging during render loop
             // which can cause recursive calls and freeze/crash ExileCore
             try
             {
-                foreach (var entry in itemsSnapshot)
+                foreach (var entry in _spare)
                 {
                     try
                     {
@@ -54,6 +59,9 @@ namespace ClickIt.Utils
             {
                 // Intentionally empty - logging here causes recursive issues
             }
+
+            // Clear spare after drawing; keep capacity for reuse.
+            _spare.Clear();
         }
     }
 }

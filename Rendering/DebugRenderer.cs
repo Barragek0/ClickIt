@@ -196,7 +196,7 @@ namespace ClickIt.Rendering
         {
             _deferredTextQueue.Enqueue("--- Altar Detection ---", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            var altarComps = _altarService?.GetAltarComponents() ?? [];
+            var altarComps = _altarService?.GetAltarComponentsReadOnly() ?? System.Array.Empty<PrimaryAltarComponent>();
             Color altarCountColor = altarComps.Count > 0 ? Color.LightGreen : Color.Gray;
             _deferredTextQueue.Enqueue($"Altar Components: {altarComps.Count}", new Vector2(xPos, yPos), altarCountColor, 16);
             yPos += lineHeight;
@@ -536,7 +536,7 @@ namespace ClickIt.Rendering
             {
                 var gameController = _plugin.GameController;
                 // Only materialize the label list if the LabelFilterService is present (costly operation)
-                var labelFilterService = clickItPlugin.LabelFilterService;
+                var labelFilterService = clickItPlugin.State.LabelFilterService;
                 if (labelFilterService != null)
                 {
 
@@ -586,7 +586,7 @@ namespace ClickIt.Rendering
             // Access recent errors from the main plugin class
             if (_plugin is ClickIt clickItPlugin)
             {
-                var recentErrors = clickItPlugin.RecentErrors;
+                var recentErrors = clickItPlugin.State.RecentErrors;
                 if (recentErrors.Count > 0)
                 {
                     _deferredTextQueue.Enqueue($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);

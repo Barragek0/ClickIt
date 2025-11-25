@@ -44,5 +44,11 @@ namespace ClickIt
         /// Used to prevent logging that could cause recursive rendering issues.
         /// </summary>
         public bool IsRendering { get; set; } = false;
+
+        public double CurrentFPS => PerformanceMonitor?.CurrentFPS ?? 0;
+
+        public System.Collections.Generic.Queue<long> RenderTimings => PerformanceMonitor?.RenderTimings ?? new System.Collections.Generic.Queue<long>();
+
+        public System.Collections.Generic.IReadOnlyList<string> RecentErrors => ErrorHandler?.RecentErrors ?? new System.Collections.Generic.List<string>();
     }
 }

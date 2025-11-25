@@ -10,6 +10,11 @@ namespace ClickIt.Utils
     public class DeferredFrameQueue
     {
         private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _items = new List<(RectangleF, Color, int)>();
+        // Spare list reused during Flush to avoid allocating a snapshot array every frame.
+        // We AddRange -> Clear the main list, iterate the spare and Clear it afterwards. This keeps
+        // capacity across frames and avoids frequent array allocations while still being safe
+        // if callers Enqueue during a Flush (they'll add into _items after we've cleared it).
+        private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _spare = new List<(RectangleF, Color, int)>();
 
         public void Enqueue(RectangleF rectangle, Color color, int thickness)
         {
@@ -35,15 +40,18 @@ namespace ClickIt.Utils
             if (graphics == null) return;
             if (_items.Count == 0) return;
 
-            // Create a snapshot to avoid issues if Enqueue is called during Flush
-            var itemsSnapshot = _items.ToArray();
+            // Move items into the spare list and clear the main list. This avoids allocating
+            // a new array each frame while preserving safety if Enqueue is called during Flush
+            // (new items will go into _items).
+            _spare.Clear();
+            _spare.AddRange(_items);
             _items.Clear();
 
             // Silently handle errors to prevent logging during render loop
             // which can cause recursive calls and freeze/crash ExileCore
             try
             {
-                foreach (var entry in itemsSnapshot)
+                foreach (var entry in _spare)
                 {
                     try
                     {
@@ -59,6 +67,9 @@ namespace ClickIt.Utils
             {
                 // Intentionally empty - logging here causes recursive issues
             }
+
+            // Clear spare after drawing; keep capacity for reuse.
+            _spare.Clear();
         }
     }
 }

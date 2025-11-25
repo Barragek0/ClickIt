@@ -69,8 +69,17 @@ namespace ClickIt.Services
             bool clickExarch = settings.ClickExarchAltars;
             bool leftHanded = settings.LeftHanded;
 
-            var altarsToClick = altarSnapshot.Where(altar => ShouldClickAltar(altar, clickEater, clickExarch)).ToList();
-            if (altarsToClick.Count == 0)
+            // Avoid materializing a list just to check presence; do a quick indexed scan instead
+            bool anyAltarToClick = false;
+            for (int i = 0; i < altarSnapshot.Count; i++)
+            {
+                if (ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
+                {
+                    anyAltarToClick = true;
+                    break;
+                }
+            }
+            if (!anyAltarToClick)
                 yield break;
 
             foreach (PrimaryAltarComponent altar in altarSnapshot)
@@ -259,7 +268,7 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            var allLabels = cachedLabels?.Value ?? [];
+            var allLabels = cachedLabels?.Value;
             LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
 
             if (nextLabel == null)
@@ -291,17 +300,15 @@ namespace ClickIt.Services
             }
         }
 
-        private LabelOnGround? FindNextLabelToClick(List<LabelOnGround> allLabels)
+        private LabelOnGround? FindNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
-            if (allLabels.Count == 0) return null;
+            if (allLabels == null || allLabels.Count == 0) return null;
 
             int[] caps = [1, 5, 25, 100];
             foreach (int cap in caps)
             {
                 int limit = Math.Min(cap, allLabels.Count);
-
-                var slice = allLabels.GetRange(0, limit);
-                var label = labelFilterService.GetNextLabelToClick(slice);
+                var label = labelFilterService.GetNextLabelToClick(allLabels, 0, limit);
                 if (label != null)
                     return label;
             }

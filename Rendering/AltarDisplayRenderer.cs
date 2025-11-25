@@ -330,7 +330,7 @@ namespace ClickIt.Rendering
 
         public void RenderAltarComponents()
         {
-            var altarSnapshot = _altarService?.GetAltarComponents();
+            var altarSnapshot = _altarService?.GetAltarComponentsReadOnly();
             if (altarSnapshot == null || altarSnapshot.Count == 0) return;
 
             // Cache frequently accessed settings

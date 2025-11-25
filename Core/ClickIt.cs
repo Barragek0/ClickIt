@@ -6,15 +6,7 @@ namespace ClickIt
 #nullable enable
     public partial class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
-        private PluginContext State { get; } = new PluginContext();
-        private Action? _reportBugHandler;
-
-        public double CurrentFPS => State.PerformanceMonitor?.CurrentFPS ?? 0;
-        public Services.ShrineService? ShrineService => State.ShrineService;
-        public Services.LabelFilterService? LabelFilterService => State.LabelFilterService;
-        public PerformanceMonitor? PerformanceMonitor => State.PerformanceMonitor;
-        public Queue<long> RenderTimings => State.PerformanceMonitor?.RenderTimings ?? new Queue<long>();
-        public IReadOnlyList<string> RecentErrors => State.ErrorHandler?.RecentErrors ?? new List<string>();
+        public PluginContext State { get; } = new PluginContext();
 
         public override void OnLoad()
         {
@@ -26,10 +18,8 @@ namespace ClickIt
         public override void OnClose()
         {
             // Remove event handlers to prevent issues during DLL reload
-            if (_reportBugHandler != null)
-            {
-                Settings.ReportBugButton.OnPressed -= _reportBugHandler;
-            }
+            // Unsubscribe the report-bug event handler
+            Settings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
 
             // Clear static instances
             LockManager.Instance = null;
@@ -66,8 +56,7 @@ namespace ClickIt
         }
         public override bool Initialise()
         {
-            _reportBugHandler = () => { _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues"); };
-            Settings.ReportBugButton.OnPressed += _reportBugHandler;
+            Settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
             State.PerformanceMonitor = new PerformanceMonitor(Settings);
             State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage);
             // Use LabelService to own label discovery + caching
@@ -123,6 +112,11 @@ namespace ClickIt
             State.ShrineTimer.Start();
 
             return true;
+        }
+
+        private void ReportBugButtonPressed()
+        {
+            _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues");
         }
 
         public override void Render()

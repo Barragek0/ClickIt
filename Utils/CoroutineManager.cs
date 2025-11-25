@@ -63,7 +63,12 @@ namespace ClickIt.Utils
             if (altarSnapshot.Count == 0) return false;
             bool clickEater = _settings.ClickEaterAltars;
             bool clickExarch = _settings.ClickExarchAltars;
-            return altarSnapshot.Any(altar => _state.ClickService.ShouldClickAltar(altar, clickEater, clickExarch));
+            for (int i = 0; i < altarSnapshot.Count; i++)
+            {
+                if (_state.ClickService.ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
+                    return true;
+            }
+            return false;
         }
 
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
@@ -123,7 +128,15 @@ namespace ClickIt.Utils
                 {
                     bool clickEater = _settings.ClickEaterAltars;
                     bool clickExarch = _settings.ClickExarchAltars;
-                    hasClickableAltars = altarSnapshot.Any(altar => _state.ClickService.ShouldClickAltar(altar, clickEater, clickExarch));
+                    hasClickableAltars = false;
+                    for (int i = 0; i < altarSnapshot.Count; i++)
+                    {
+                        if (_state.ClickService.ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
+                        {
+                            hasClickableAltars = true;
+                            break;
+                        }
+                    }
                 }
             }
 
