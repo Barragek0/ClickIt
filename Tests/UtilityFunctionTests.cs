@@ -76,7 +76,16 @@ namespace ClickIt.Tests
             {
                 string key = $"{mod.Type}|{mod.Id}";
                 settings.ModAlerts.Should().ContainKey(key);
-                settings.ModAlerts[key].Should().BeFalse();
+                // Divine Orb related upsides are enabled by default
+                if ((mod.Type == "Minion" && mod.Id == "#% chance to drop an additional Divine Orb") ||
+                    (mod.Type == "Boss" && mod.Id == "Final Boss drops # additional Divine Orbs"))
+                {
+                    settings.ModAlerts[key].Should().BeTrue();
+                }
+                else
+                {
+                    settings.ModAlerts[key].Should().BeFalse();
+                }
             }
         }
 
