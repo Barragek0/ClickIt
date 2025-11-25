@@ -24,31 +24,6 @@ namespace ClickIt.Rendering
             RenderFromLabels((IEnumerable<LabelOnGround>)(dynamic)labels, gameController.Window.GetWindowRectangleTimeCache);
         }
 
-        /// <summary>
-        /// Count visible strongbox labels on screen. This is used by the render gate to decide
-        /// whether we should perform a render pass even if other render flags are disabled.
-        /// </summary>
-        public int GetStrongboxCount(GameController? gameController)
-        {
-            if (gameController == null) return 0;
-            var labels = gameController.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            if (labels == null) return 0;
-
-            var windowArea = gameController.Window.GetWindowRectangleTimeCache;
-            int count = 0;
-            foreach (dynamic label in labels)
-            {
-                if (label == null) continue;
-                // When calling a method using a dynamic argument the compiler
-                // can't infer the types of implicitly-typed discards. Use
-                // explicitly-typed out parameters here to avoid CS8183.
-                if (TryGetVisibleLabelRect((LabelOnGround?)label, windowArea, out SharpDX.RectangleF _, out string? _))
-                    count++;
-            }
-
-            return count;
-        }
-
 
         // Exposed for tests — pass in the current window rectangle so we can determine on-screen intersection.
         public void RenderFromLabels(IEnumerable<LabelOnGround> labels, SharpDX.RectangleF windowArea)
@@ -124,20 +99,6 @@ namespace ClickIt.Rendering
             if (!rectAbs.Intersects(windowArea)) return false;
 
             return true;
-        }
-
-        public int GetStrongboxCount(IEnumerable<LabelOnGround>? labels, SharpDX.RectangleF windowArea)
-        {
-            if (labels == null) return 0;
-
-            int count = 0;
-            foreach (var label in labels)
-            {
-                if (label == null) continue;
-                if (TryGetVisibleLabelRect(label, windowArea, out _, out _)) count++;
-            }
-
-            return count;
         }
 
         private List<string> GetEnabledStrongboxKeys()
