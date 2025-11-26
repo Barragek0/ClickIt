@@ -10,6 +10,10 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class ClickServicePrivateTests
     {
+        // Note: IsAltarLabel inspects ExileCore types which vary across test environments.
+        // More robust integration-style tests of ProcessRegularClick / altar-detection will cover
+        // IsAltarLabel behaviour in later phases; keeping this file focused on DebugLog (quick-wins).
+
         [TestMethod]
         public void DebugLog_OnlyLogs_WhenDebugModeEnabled()
         {
