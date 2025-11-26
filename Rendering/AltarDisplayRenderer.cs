@@ -88,24 +88,24 @@ namespace ClickIt.Rendering
             bool topHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, true, true, _settings.UnvaluableUpsideThreshold.Value);
             bool bottomHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, false, true, _settings.UnvaluableUpsideThreshold.Value);
 
-            if (topHasDangerousDownside && bottomHasDangerousDownside)
-            {
-                return HandleBothDangerousCase(altar, topModsRect, bottomModsRect, textPos1);
-            }
-
             if (topHasHighValueUpside || bottomHasHighValueUpside)
             {
                 return HandleHighValueOverride(topHasHighValueUpside, altar, topModsRect, bottomModsRect, textPos1);
             }
 
-            if (topHasLowValue || bottomHasLowValue)
+            if (topHasDangerousDownside && bottomHasDangerousDownside)
             {
-                return HandleLowValueOverride(topHasLowValue, bottomHasLowValue, altar, topModsRect, bottomModsRect, textPos1);
+                return HandleBothDangerousCase(altar, topModsRect, bottomModsRect, textPos1);
             }
 
             if (topHasDangerousDownside || bottomHasDangerousDownside)
             {
                 return HandleDangerousDownside(topHasDangerousDownside, altar, topModsRect, bottomModsRect, textPos1);
+            }
+
+            if (topHasLowValue || bottomHasLowValue)
+            {
+                return HandleLowValueOverride(topHasLowValue, bottomHasLowValue, altar, topModsRect, bottomModsRect, textPos1);
             }
 
             return HandleNormalWeight(weights, altar, topModsRect, bottomModsRect, textPos2);

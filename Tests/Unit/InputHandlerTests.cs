@@ -187,5 +187,30 @@ namespace ClickIt.Tests.Unit
 
             res.Should().BeTrue();
         }
+
+        [TestMethod]
+        public void TryConsumeLazyModeLimiter_Skips_WhenWithinLimit()
+        {
+            var settings = new ClickItSettings();
+            settings.LazyMode.Value = true;
+            settings.LazyModeClickLimiting.Value = 5000; // large limit for test
+
+            var perf = new PerformanceMonitor(settings);
+            var handler = new InputHandler(settings, perf);
+
+            // Set private last-click timestamp to 'now' so elapsed < limiter
+            var field = typeof(InputHandler).GetField("_lastClickTimestampMs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            field.SetValue(handler, System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+            var mi = typeof(InputHandler).GetMethod("TryConsumeLazyModeLimiter", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            var res = mi.Invoke(handler, new object[0]);
+
+            (res is bool b && b).Should().BeFalse();
+
+            // Reset to zero (no limiter) and test again – should allow
+            field.SetValue(handler, 0L);
+            res = mi.Invoke(handler, new object[0]);
+            (res is bool b2 && b2).Should().BeTrue();
+        }
     }
 }
