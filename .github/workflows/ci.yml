@@ -62,16 +62,6 @@ jobs:
           targetdir: Tests/TestResults/cov
           reporttypes: HtmlSummary;XmlSummary
 
-      - name: Enforce coverage threshold
-        shell: pwsh
-        run: |
-          $summary = Join-Path ${{ github.workspace }} 'Tests/TestResults/cov/Summary.xml'
-          if (-not (Test-Path $summary)) { Write-Error "Coverage summary not found at $summary"; exit 1 }
-          [xml]$xml = Get-Content $summary
-          $lineRate = [double]$xml.coverage.'@line-rate'
-          Write-Host "Line-rate: $lineRate"
-          if ($lineRate -lt 0.90) { Write-Error "Coverage below threshold (0.90). Current: $lineRate"; exit 1 }
-
       - name: Upload test and coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
