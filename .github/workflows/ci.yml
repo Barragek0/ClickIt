@@ -45,20 +45,20 @@ jobs:
       - name: Test with coverage
         shell: pwsh
         run: |
-          # Ensure the output directory exists so coverlet can write files
+          # Ensure the output directory exists
           New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\TestResults') | Out-Null
 
-          # Use a prefix for CoverletOutput (coverlet appends the extension for the format).
-          # If you include the extension explicitly, coverlet may append it again (e.g. lcov.info.info)
-          dotnet test Tests/ClickIt.Tests.csproj -c Debug /p:CoverletOutputFormat=lcov /p:CoverletOutput=Tests/TestResults/lcov --no-build
+          # Use XPlat collector here — this reliably produces a cobertura xml under Tests/TestResults/<guid>/coverage.cobertura.xml
+          dotnet test Tests/ClickIt.Tests.csproj -c Debug --collect:"XPlat Code Coverage" /p:IncludeIntegrationTests=false
 
-          # Helpful debug listing so CI logs show exactly which files were produced
+          # Diagnostic listing so CI logs show files that were produced
           Get-ChildItem -Path (Join-Path $PWD 'Tests\TestResults') -Recurse -File | ForEach-Object { Write-Host $_.FullName }
 
       - name: Generate coverage report
         uses: danielpalme/ReportGenerator-GitHub-Action@5.5.0
         with:
-          reports: Tests/TestResults/lcov.info
+          # Try lcov first (if produced) and fall back to any cobertura results produced by the XPlat collector
+          reports: Tests/TestResults/lcov.info;Tests/TestResults/**/coverage.cobertura.xml
           targetdir: Tests/TestResults/cov
           reporttypes: HtmlSummary;XmlSummary
 
