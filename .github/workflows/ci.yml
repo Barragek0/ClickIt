@@ -43,8 +43,17 @@ jobs:
           msbuild Tests\ClickIt.Tests.csproj /p:Configuration=Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
 
       - name: Test with coverage
+        shell: pwsh
         run: |
-          dotnet test Tests/ClickIt.Tests.csproj -c Debug /p:CoverletOutputFormat=lcov /p:CoverletOutput=Tests/TestResults/lcov.info --no-build
+          # Ensure the output directory exists so coverlet can write files
+          New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\TestResults') | Out-Null
+
+          # Use a prefix for CoverletOutput (coverlet appends the extension for the format).
+          # If you include the extension explicitly, coverlet may append it again (e.g. lcov.info.info)
+          dotnet test Tests/ClickIt.Tests.csproj -c Debug /p:CoverletOutputFormat=lcov /p:CoverletOutput=Tests/TestResults/lcov --no-build
+
+          # Helpful debug listing so CI logs show exactly which files were produced
+          Get-ChildItem -Path (Join-Path $PWD 'Tests\TestResults') -Recurse -File | ForEach-Object { Write-Host $_.FullName }
 
       - name: Generate coverage report
         uses: danielpalme/ReportGenerator-GitHub-Action@5.5.0
