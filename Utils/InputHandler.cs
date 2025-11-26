@@ -11,7 +11,7 @@ using ExileCore.PoEMemory;
 #nullable enable
 namespace ClickIt.Utils
 {
-    public class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
+    public partial class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
     {
         private readonly ClickItSettings _settings = settings;
         private readonly Random _random = new Random();
@@ -201,12 +201,18 @@ namespace ClickIt.Utils
             _errorHandler?.LogMessage(true, true, "InputHandler: PerformClick - entering", 5);
 
             _errorHandler?.LogMessage(true, true, $"InputHandler: Setting cursor pos to {position}", 5);
+            // NOTE: Performing clicks is a real native operation. Tests must not invoke PerformClick via
+            // reflection (we rely on test seams to exercise logic without executing native input).
             var swTotal = Stopwatch.StartNew();
             var before = Mouse.GetCursorPosition();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor before move: {before}", 5);
 
             var sw = Stopwatch.StartNew();
-            Input.SetCursorPos(position);
+            // Skip native cursor movement during tests / CI when Mouse.DisableNativeInput is enabled
+            if (!Mouse.DisableNativeInput)
+            {
+                Input.SetCursorPos(position);
+            }
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
 
@@ -247,12 +253,18 @@ namespace ClickIt.Utils
             if (_settings?.LeftHanded?.Value == true)
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: Performing right click (left-handed)", 5);
-                Mouse.RightClick();
+                if (!Mouse.DisableNativeInput)
+                {
+                    Mouse.RightClick();
+                }
             }
             else
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: Performing left click", 5);
-                Mouse.LeftClick();
+                if (!Mouse.DisableNativeInput)
+                {
+                    Mouse.LeftClick();
+                }
             }
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
@@ -291,7 +303,10 @@ namespace ClickIt.Utils
                 try
                 {
                     var beforeVec = new Vector2(before.X, before.Y);
-                    Input.SetCursorPos(beforeVec);
+                    if (!Mouse.DisableNativeInput)
+                    {
+                        Input.SetCursorPos(beforeVec);
+                    }
                     // Small delay to let the OS update cursor position
                     Thread.Sleep(5);
                     _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);

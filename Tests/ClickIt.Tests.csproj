@@ -2,25 +2,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <ImplicitUsings>enable</ImplicitUsings>
     <TargetFramework>net8.0-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
-    <DebugType>portable</DebugType>
-    <DebugSymbols>true</DebugSymbols>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\$(Configuration)\</OutputPath>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <CoverletOutputFormat>lcov</CoverletOutputFormat>
-    <CoverletOutput>Tests/TestResults/lcov.info</CoverletOutput>
-    <Exclude>[*Tests*]***</Exclude>
-    <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverage</ExcludeByAttribute>
-    <ExcludeByFile>**/bin/**,**/obj/**,**/TestResults/**</ExcludeByFile>
-    <Include>[ClickIt*]***</Include>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,71 +16,42 @@
     <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
     <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
-    <PackageReference Include="coverlet.msbuild" Version="6.0.0" />
+    <PackageReference Include="Moq" Version="4.20.2" />
+    <PackageReference Include="AutoFixture" Version="4.17.0" />
+    <PackageReference Include="AutoFixture.AutoMoq" Version="4.17.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.1" PrivateAssets="all" ExcludeAssets="runtime" />
-    <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
-    <PackageReference Include="SharpDX" Version="4.2.0" />
-    <PackageReference Include="SharpDX.Mathematics" Version="4.2.0" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.0" />
+  
+    <ProjectReference Include="..\ClickIt.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Include LabelUtils so tests can exercise label helpers directly -->
-    <Compile Include="..\Utils\LabelUtils.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Include Constants files directly to avoid build dependencies -->
-    <Compile Include="..\Constants\AltarModsConstants.cs" />
-    <Compile Include="..\Constants\Constants.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Copy constants to output for tests -->
-    <None Include="..\Constants\AltarModsConstants.cs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\Constants\Constants.cs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Include selected, dependency-light production files so coverage can instrument them without building the full plugin -->
-    <Compile Include="..\Utils\LockManager.cs" />
-    <Compile Include="..\Utils\WeightCalculator.cs" />
-    <Compile Include="..\Utils\TextHelpers.cs" />
-    <Compile Include="..\Utils\AltarModMatcher.cs" />
-    <Compile Include="..\Services\AltarParser.cs" />
-    <Compile Include="..\Utils\ModIndexConstants.cs" />
-    <Compile Include="..\Utils\IndexConstants.cs" />
-    <Compile Include="..\Services\AltarMatcher.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Reference ExileCore runtime used by plugin base types (adjust path if your PoeHelper is elsewhere) -->
+    <!-- Reference the third-party ExileCore DLLs provided at repo root ThirdParty/ -->
     <Reference Include="ExileCore">
-      <HintPath>..\..\..\PoeHelper\net48\ExileCore.dll</HintPath>
-      <Private>false</Private>
+      <HintPath>..\ThirdParty\ExileCore.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="GameOffsets">
+      <HintPath>..\ThirdParty\GameOffsets.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="ProcessMemoryUtilities">
+      <HintPath>..\ThirdParty\ProcessMemoryUtilities.dll</HintPath>
+      <Private>true</Private>
     </Reference>
   </ItemGroup>
 
-  <!-- By default exclude integration tests from the test build.
-       They can be opt-in by setting the MSBuild property IncludeIntegrationTests=true.
-       This keeps CI fast/isolated while allowing local builds (VS Code task) to include them. -->
-  <ItemGroup>
-    <Compile Remove="Integration\**\*.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(IncludeIntegrationTests)' == 'true'">
-    <Compile Include="Integration\**\*.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Only reference the main ClickIt project when explicitly requested.
-         This avoids pulling the compiled ClickIt.dll into test builds and
-         causing type conflicts with test-included source files. Set
-         IncludeMainProject=true when you want tests to reference the built project. -->
-    <ProjectReference Include="..\ClickIt.csproj" PrivateAssets="all" Condition="'$(IncludeMainProject)' == 'true'" />
-  </ItemGroup>
+  <PropertyGroup>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>lcov</CoverletOutputFormat>
+    <CoverletOutput>Tests/TestResults/lcov.info</CoverletOutput>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Exclude only rendering and low-level input/safety files which are not practical to unit-test -->
+    <ExcludeByFile>**\Rendering\**;**\Core\ClickIt.Render.cs;**\Core\ClickIt.Input.cs;**\Utils\Mouse.cs;**\Utils\Keyboard.cs;**\Utils\InputHandler.cs;**\Utils\InputSafetyManager.cs</ExcludeByFile>
+  </PropertyGroup>
 
 </Project>

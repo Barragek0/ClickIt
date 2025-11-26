@@ -7,7 +7,7 @@ namespace ClickIt.Utils
 {
     // Small helper to centralize deferred DrawFrame rendering so other classes can enqueue frames
     // and a single Flush call will draw them with a provided Graphics instance.
-    public class DeferredFrameQueue
+    public partial class DeferredFrameQueue
     {
         private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _items = new List<(RectangleF, Color, int)>();
         // Spare list reused during Flush to avoid allocating a snapshot array every frame.
@@ -29,11 +29,6 @@ namespace ClickIt.Utils
             }
         }
 
-        // Internal helper used by tests to inspect queued frames
-        internal (RectangleF Rectangle, Color Color, int Thickness)[] GetSnapshotForTests()
-        {
-            return _items.ToArray();
-        }
 
         public void Flush(Graphics graphics, Action<string, int> logMessage)
         {

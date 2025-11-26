@@ -8,7 +8,7 @@ using ClickIt.Utils;
 namespace ClickIt.Rendering
 {
     // Responsible for drawing debug frames around strongboxes (locked/unlocked)
-    public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
+    public partial class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
     {
         private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
         private readonly ClickItSettings _settings = settings;
@@ -118,11 +118,6 @@ namespace ClickIt.Rendering
             return enabledKeys;
         }
 
-        // Internal helper used by tests to inspect enqueued frames
-        internal (SharpDX.RectangleF Rectangle, Color Color, int Thickness)[] GetEnqueuedFramesForTests()
-        {
-            return _deferredFrameQueue.GetSnapshotForTests();
-        }
 
         private bool IsStrongboxClickableBySettings(string path, IReadOnlyList<string> enabledKeys)
         {

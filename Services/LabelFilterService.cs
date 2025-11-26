@@ -9,7 +9,7 @@ using ExileCore;
 #nullable enable
 namespace ClickIt.Services
 {
-    public class LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler)
+    public partial class LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler)
     {
         private readonly ClickItSettings _settings = settings;
         private readonly EssenceService _essenceService = essenceService;
@@ -21,30 +21,18 @@ namespace ClickIt.Services
         private const string CopperAltar = "copper_altar";
         private const string PetrifiedWood = "PetrifiedWood";
         private const string Bismuth = "Bismuth";
-        private const string Verisium = "Verisium";
         private const string ClosedDoorPast = "ClosedDoorPast";
         private const string LegionInitiator = "LegionInitiator";
 
-        public bool HasVerisiumOnScreen(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (!_settings.ClickSettlersOre.Value || allLabels == null)
-                return false;
-            for (int i = 0; i < allLabels.Count; i++)
-            {
-                LabelOnGround label = allLabels[i];
-                Entity item = label.ItemOnGround;
-                if (item != null && item.DistancePlayer <= _settings.ClickDistance.Value)
-                {
-                    string path = item.Path;
-                    if (!string.IsNullOrEmpty(path) && path.Contains(Verisium))
-                        return true;
-                }
-            }
-            return false;
-        }
+
 
         public bool HasLazyModeRestrictedItemsOnScreen(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
+            return LazyModeRestrictedChecker(this, allLabels);
+        }
+        private bool HasLazyModeRestrictedItemsOnScreenImpl(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            // original implementation moved to maintain behavior while allowing tests to override logic
             if (allLabels == null)
                 return false;
 
@@ -126,8 +114,8 @@ namespace ClickIt.Services
             var s = _settings;
 
             // Check if lazy mode restrictions should be applied (only when lazy mode active, restricted items present, and hotkey NOT held)
-            bool hasRestricted = HasLazyModeRestrictedItemsOnScreen(allLabels);
-            bool hotkeyHeld = Input.GetKeyState(s.ClickLabelKey.Value);
+            bool hasRestricted = LazyModeRestrictedChecker(this, allLabels);
+            bool hotkeyHeld = KeyStateProvider(s.ClickLabelKey.Value);
             bool applyLazyModeRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
 
             return new ClickSettings
@@ -257,15 +245,23 @@ namespace ClickIt.Services
             }
             return true;
         }
+        // Test-friendly helper: allows calling chest logic using primitive values (path/renderName)
         private static bool ShouldClickChest(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)
+        {
+            string? path = label.ItemOnGround?.Path;
+            var renderName = label.ItemOnGround?.RenderName ?? string.Empty;
+            return ShouldClickChestInternal(clickBasicChests, clickLeagueChests, type, path, renderName);
+        }
+
+        // Internalized logic so tests can call via reflection without needing to set runtime Entity fields
+        private static bool ShouldClickChestInternal(bool clickBasicChests, bool clickLeagueChests, EntityType type, string? path, string renderName)
         {
             if (type != EntityType.Chest)
                 return false;
             // Avoid treating strongboxes as generic chests; strongboxes have their own settings
-            string? path = label.ItemOnGround?.Path;
             if (!string.IsNullOrEmpty(path) && path.ToLowerInvariant().Contains("strongbox"))
                 return false;
-            bool isBasicChest = IsBasicChest(label);
+            bool isBasicChest = IsBasicChestName(renderName);
             return (clickBasicChests && isBasicChest) || (clickLeagueChests && !isBasicChest);
         }
         private static bool ShouldClickSpecialPath(ClickSettings settings, string path, LabelOnGround label)
@@ -379,9 +375,12 @@ namespace ClickIt.Services
 
 
 
-        private static bool IsBasicChest(LabelOnGround label)
+        // (moved to IsBasicChestName)
+
+        // Name-only helper used by IsBasicChest and by tests
+        private static bool IsBasicChestName(string name)
         {
-            var name = label.ItemOnGround.RenderName ?? string.Empty;
+            if (name == null) name = string.Empty;
             return name.Equals("chest", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("tribal chest", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("golden chest", StringComparison.OrdinalIgnoreCase)

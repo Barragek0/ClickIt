@@ -1,7 +1,6 @@
 ﻿using ClickIt.Utils;
 using ExileCore;
 using System.Diagnostics;
-using System.IO;
 namespace ClickIt
 {
 #nullable enable
@@ -19,11 +18,11 @@ namespace ClickIt
         public override void OnClose()
         {
             // Remove event handlers to prevent issues during DLL reload
-            // Unsubscribe the report-bug event handler
-            Settings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
+            // Unsubscribe the report-bug event handler (use EffectiveSettings so tests that inject settings succeed)
+            EffectiveSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
             // Unsubscribe alert sound handlers
-            Settings.OpenConfigDirectory.OnPressed -= OpenConfigDirectoryPressed;
-            Settings.ReloadAlertSound.OnPressed -= ReloadAlertSound;
+            EffectiveSettings.OpenConfigDirectory.OnPressed -= OpenConfigDirectoryPressed;
+            EffectiveSettings.ReloadAlertSound.OnPressed -= ReloadAlertSound;
 
             // Clear static instances
             LockManager.Instance = null;
@@ -54,16 +53,19 @@ namespace ClickIt
             State.DelveFlareCoroutine?.Done();
             State.ShrineCoroutine?.Done();
 
-
-
-            base.OnClose();
+            // Base OnClose will attempt to save plugin settings which relies on the actual base-class storage for Settings.
+            // In some test scenarios the Settings property isn't populated on the base class even though tests inject settings via the test seam.
+            // Avoid invoking base.OnClose when the real Settings property is null to prevent ExileCore.BaseSettingsPlugin from attempting to save a null settings instance.
+            if (Settings != null)
+            {
+                base.OnClose();
+            }
         }
         public override bool Initialise()
         {
             Settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
             State.PerformanceMonitor = new PerformanceMonitor(Settings);
             State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage);
-            // Use LabelService to own label discovery + caching
             State.LabelService = new Services.LabelService(GameController!, point => PointIsInClickableArea(point));
             State.CachedLabels = State.LabelService.CachedLabels;
             State.AreaService = new Services.AreaService();
@@ -108,13 +110,10 @@ namespace ClickIt
 
             Settings.EnsureAllModsHaveWeights();
 
-            // Wire Alert Sound buttons
             Settings.OpenConfigDirectory.OnPressed += OpenConfigDirectoryPressed;
             Settings.ReloadAlertSound.OnPressed += ReloadAlertSound;
-            // Load any existing alert sound at startup
             ReloadAlertSound();
 
-            // Start monitoring timers
             State.LastRenderTimer.Start();
             State.LastTickTimer.Start();
             State.Timer.Start();
@@ -162,7 +161,11 @@ namespace ClickIt
         {
             // Skip logging during render loop to prevent crashes
             if (State.IsRendering) return;
-            LogMessage(localDebug, message, frame);
+            // Log when not in local debug mode, or when in local debug mode and DebugMode is enabled.
+            if (!localDebug || Settings.DebugMode)
+            {
+                base.LogMessage(message, frame);
+            }
         }
         public void LogError(string message, int frame = 0)
         {
@@ -183,7 +186,6 @@ namespace ClickIt
                 var file = Path.Join(ConfigDirectory, AlertFileName);
                 if (!File.Exists(file))
                 {
-                    var baseDirPath = AppDomain.CurrentDomain.BaseDirectory ?? Directory.GetCurrentDirectory();
                     LogError($"Alert sound not found at {Path.Join(ConfigDirectory, AlertFileName)}", 20);
                     _alertSoundPath = null;
                     return;
@@ -227,9 +229,9 @@ namespace ClickIt
         private string? ResolveCompositeKey(string matchedId)
         {
             string key = matchedId;
-            if (!Settings.ModAlerts.ContainsKey(key))
+            if (!EffectiveSettings.ModAlerts.ContainsKey(key))
             {
-                var found = Settings.ModAlerts.Keys.FirstOrDefault(k => k.EndsWith("|" + matchedId, StringComparison.OrdinalIgnoreCase));
+                var found = EffectiveSettings.ModAlerts.Keys.FirstOrDefault(k => k.EndsWith("|" + matchedId, StringComparison.OrdinalIgnoreCase));
                 if (!string.IsNullOrEmpty(found)) key = found;
             }
 
@@ -238,7 +240,7 @@ namespace ClickIt
 
         private bool IsAlertEnabledForKey(string key)
         {
-            return Settings.ModAlerts.TryGetValue(key, out bool enabled) && enabled;
+            return EffectiveSettings.ModAlerts.TryGetValue(key, out bool enabled) && enabled;
         }
 
         private bool CanTriggerForKey(string key)
@@ -259,10 +261,9 @@ namespace ClickIt
         {
             if (GameController?.SoundController != null)
             {
-                GameController.SoundController.PlaySound(path, Settings?.AlertSoundVolume?.Value ?? 5);
+                GameController.SoundController.PlaySound(path, EffectiveSettings?.AlertSoundVolume?.Value ?? 5);
             }
         }
-
 
         public enum AltarType
         {

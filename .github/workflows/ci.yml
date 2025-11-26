@@ -2,9 +2,9 @@ name: ClickIt CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, test-suite-v2 ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, test-suite-v2 ]
 
 jobs:
   build-and-test:
@@ -28,26 +28,45 @@ jobs:
         run: |
           dotnet restore .github\ci-stubs\ClickItStub.csproj
           dotnet build .github\ci-stubs\ClickItStub.csproj --configuration Debug --no-restore -o .github\ci-stubs\out
+        shell: pwsh
 
       - name: Copy ClickIt stub into test output folder
         run: |
-          pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\\bin\\Debug') | Out-Null"
-          pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\\bin\\Debug\\net48') | Out-Null"
-          pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $PWD 'Tests\\bin\\Debug\\ClickIt.dll') -Force"
-          pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $PWD 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
+          New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\bin\Debug') | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\bin\Debug\net48') | Out-Null
+          Copy-Item -Path .github\ci-stubs\out\ClickIt.dll -Destination (Join-Path $PWD 'Tests\bin\Debug\ClickIt.dll') -Force
+          Copy-Item -Path .github\ci-stubs\out\ClickIt.dll -Destination (Join-Path $PWD 'Tests\bin\Debug\net48\ClickIt.dll') -Force
+        shell: pwsh
 
       - name: Build test project (MSBuild)
         run: |
           msbuild Tests\ClickIt.Tests.csproj /p:Configuration=Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
 
-      - name: Run tests (no build)
+      - name: Test with coverage
         run: |
-          dotnet test Tests\ClickIt.Tests.csproj --configuration Debug --no-build --logger "trx;LogFileName=ClickIt.Tests.trx" --results-directory TestResults
+          dotnet test Tests/ClickIt.Tests.csproj -c Debug /p:CoverletOutputFormat=lcov /p:CoverletOutput=Tests/TestResults/lcov.info --no-build
 
-      - name: Upload test results
+      - name: Generate coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.5.0
+        with:
+          reports: Tests/TestResults/lcov.info
+          targetdir: Tests/TestResults/cov
+          reporttypes: HtmlSummary;XmlSummary
+
+      - name: Enforce coverage threshold
+        shell: pwsh
+        run: |
+          $summary = Join-Path ${{ github.workspace }} 'Tests/TestResults/cov/Summary.xml'
+          if (-not (Test-Path $summary)) { Write-Error "Coverage summary not found at $summary"; exit 1 }
+          [xml]$xml = Get-Content $summary
+          $lineRate = [double]$xml.coverage.'@line-rate'
+          Write-Host "Line-rate: $lineRate"
+          if ($lineRate -lt 0.90) { Write-Error "Coverage below threshold (0.90). Current: $lineRate"; exit 1 }
+
+      - name: Upload test and coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: TestResults/
+          name: test-and-coverage-results
+          path: Tests/TestResults/
           retention-days: 30

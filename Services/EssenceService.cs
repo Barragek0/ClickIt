@@ -19,12 +19,12 @@ namespace ClickIt.Services
                 return true;
             if (_settings.CorruptMEDSEssences.Value)
             {
-                string[] meds = new[]
-                {
+                string[] meds =
+                [
                     "Screaming Essence of Misery", "Screaming Essence of Envy", "Screaming Essence of Dread", "Screaming Essence of Scorn",
                     "Shrieking Essence of Misery", "Shrieking Essence of Envy", "Shrieking Essence of Dread", "Shrieking Essence of Scorn",
                     "Deafening Essence of Misery", "Deafening Essence of Envy", "Deafening Essence of Dread", "Deafening Essence of Scorn"
-                };
+                ];
                 return LabelUtils.ElementContainsAnyStrings(label, meds);
             }
             return false;
