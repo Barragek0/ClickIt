@@ -53,5 +53,16 @@ namespace ClickIt.Tests.Unit
             ((string)mi.Invoke(null, [10])).Should().Be("Ok Modifiers");
             ((string)mi.Invoke(null, [0])).Should().Be("Free Modifiers");
         }
+
+        [TestMethod]
+        public void BuildCompositeKey_ProducesExpectedFormat()
+        {
+            var type = typeof(ClickItSettings);
+            var mi = type.GetMethod("BuildCompositeKey", BindingFlags.NonPublic | BindingFlags.Static);
+            mi.Should().NotBeNull();
+
+            var res = (string)mi!.Invoke(null, new object[] { "MyType", "my-id" });
+            res.Should().Be("MyType|my-id");
+        }
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+#nullable enable
 using FluentAssertions;
 using System.Runtime.CompilerServices;
 using System.Linq;
