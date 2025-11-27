@@ -7,24 +7,30 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class TextHelpersTests
     {
-        [TestMethod]
-        public void GetLine_ReturnsCorrectLine()
+        [DataTestMethod]
+        [DataRow("line1\nline2\nline3", 0, "line1")]
+        [DataRow("line1\nline2\nline3", 1, "line2")]
+        [DataRow("line1\nline2\nline3", 2, "line3")]
+        [DataRow("line1\nline2\nline3", 3, "")] // out of range
+        [DataRow(null, 0, "")] // null input
+        [DataRow("singleline", 0, "singleline")]
+        [DataRow("trailing\n", 1, "")] // trailing newline => empty second line
+        [DataRow("\r\ncrlf\r\nsecond", 1, "crlf")] // CRLF handling - index 1 is the middle line after CR removal
+        public void GetLine_VariousInputs_ReturnsExpected(string text, int index, string expected)
         {
-            string text = "line1\nline2\nline3";
-            TextHelpers.GetLine(text, 0).Should().Be("line1");
-            TextHelpers.GetLine(text, 1).Should().Be("line2");
-            TextHelpers.GetLine(text, 2).Should().Be("line3");
-            TextHelpers.GetLine(text, 3).Should().Be(string.Empty);
-            TextHelpers.GetLine(null, 0).Should().Be(string.Empty);
+            TextHelpers.GetLine(text, index).Should().Be(expected);
         }
 
-        [TestMethod]
-        public void CountLines_WorksWithDifferentLineEndings()
+        [DataTestMethod]
+        [DataRow(null, 0)]
+        [DataRow("", 0)]
+        [DataRow("a\n b\n c", 3)]
+        [DataRow("a\r\nb\r\nc", 3)]
+        [DataRow("onlyone", 1)]
+        [DataRow("\n\n", 3)] // 3 lines when there are two newlines
+        public void CountLines_VariousInputs_ReturnsExpected(string text, int expected)
         {
-            TextHelpers.CountLines(null).Should().Be(0);
-            TextHelpers.CountLines(string.Empty).Should().Be(0);
-            TextHelpers.CountLines("a\n b\n c").Should().Be(3);
-            TextHelpers.CountLines("a\r\nb\r\nc").Should().Be(3);
+            TextHelpers.CountLines(text).Should().Be(expected);
         }
 
         [TestMethod]

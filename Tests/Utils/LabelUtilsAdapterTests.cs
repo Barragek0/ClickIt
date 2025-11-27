@@ -70,5 +70,110 @@ namespace ClickIt.Tests.Utils
             LabelUtils.IsPathForClickableObject("CleansingFireAltar").Should().BeTrue();
             LabelUtils.IsPathForClickableObject("Random/NotRelevant").Should().BeFalse();
         }
+
+        [TestMethod]
+        public void GetElementsByStringContainsForTests_FindsRootAndChildren()
+        {
+            var root = new FakeAdapter("root contains match");
+            var child1 = new FakeAdapter("child1 match");
+            var child2 = new FakeAdapter("child2");
+            root.AddChild(child1);
+            root.AddChild(child2);
+
+            var res = LabelUtils.GetElementsByStringContainsForTests(root, "match");
+            res.Should().HaveCount(2);
+            res.Should().Contain(child1);
+            res.Should().Contain(root);
+        }
+
+        [TestMethod]
+        public void GetElementByStringForTests_ReturnsFirstExactMatch()
+        {
+            var root = new FakeAdapter("root");
+            var child1 = new FakeAdapter("findme");
+            var child2 = new FakeAdapter("findme");
+            root.AddChild(child1);
+            root.AddChild(child2);
+
+            var found = LabelUtils.GetElementByStringForTests(root, "findme");
+            // The depth-first LIFO traversal will find the last child pushed first (child2)
+            found.Should().Be(child2);
+        }
+
+        [TestMethod]
+        public void ElementContainsAnyStringsForTests_ReturnsTrueWhenAnyPatternMatches()
+        {
+            var root = new FakeAdapter("root text");
+            var child1 = new FakeAdapter("hello world");
+            root.AddChild(child1);
+
+            var ok = LabelUtils.ElementContainsAnyStringsForTests(root, new[] { "nomatch", "world" });
+            ok.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ElementContainsAnyStringsForTests_ReturnsFalseWhenNoPatternMatches()
+        {
+            var root = new FakeAdapter("root text");
+            var child = new FakeAdapter("nothing here");
+            root.AddChild(child);
+
+            var ok = LabelUtils.ElementContainsAnyStringsForTests(root, new[] { "abc", "def" });
+            ok.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void GetElementsByStringContainsForTests_ReturnsEmpty_WhenNoMatches()
+        {
+            var root = new FakeAdapter("root");
+            var child = new FakeAdapter("child");
+            root.AddChild(child);
+
+            var res = LabelUtils.GetElementsByStringContainsForTests(root, "nomatch");
+            res.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void GetElementByStringForTests_ReturnsNull_WhenNotFound()
+        {
+            var root = new FakeAdapter("root");
+            var child = new FakeAdapter("child");
+            root.AddChild(child);
+
+            var found = LabelUtils.GetElementByStringForTests(root, "missing");
+            found.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void GetElementByStringForTests_FindsDeepNestedChild()
+        {
+            var root = new FakeAdapter("root");
+            var level1 = new FakeAdapter("level1");
+            var level2 = new FakeAdapter("level2");
+            var target = new FakeAdapter("target");
+
+            root.AddChild(level1);
+            level1.AddChild(level2);
+            level2.AddChild(target);
+
+            var found = LabelUtils.GetElementByStringForTests(root, "target");
+            found.Should().Be(target);
+        }
+
+        [TestMethod]
+        public void GetElementsByStringContainsForTests_NullLabel_ReturnsEmpty()
+        {
+            var res = LabelUtils.GetElementsByStringContainsForTests(null, "whatever");
+            res.Should().NotBeNull();
+            res.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void ElementContainsAnyStringsForTests_EmptyPatterns_ReturnsFalse()
+        {
+            var root = new FakeAdapter("root text");
+            var ok = LabelUtils.ElementContainsAnyStringsForTests(root, new string[0]);
+            ok.Should().BeFalse();
+        }
     }
 }
