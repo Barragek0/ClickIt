@@ -77,22 +77,22 @@ namespace ClickIt
             // If we reached this point the injected settings instance has been recorded in _testSettingsForTests
         }
 
-            // Nested test seam: ClickIt.ClickItSettingsTestSeams
-            // Tests refer to ClickIt.ClickItSettingsTestSeams.<Method> so we provide a nested public static class
-            // that forwards to ClickItSettings internal helpers (keeps semantics in one place).
-            public static class ClickItSettingsTestSeams
-            {
-                public static bool MatchesSearchFilterForTests(string name, string type, string filter)
-                    => ClickItSettings.MatchesSearchFilterForTests(name, type, filter);
+        // Nested test seam: ClickIt.ClickItSettingsTestSeams
+        // Tests refer to ClickIt.ClickItSettingsTestSeams.<Method> so we provide a nested public static class
+        // that forwards to ClickItSettings internal helpers (keeps semantics in one place).
+        public static class ClickItSettingsTestSeams
+        {
+            public static bool MatchesSearchFilterForTests(string name, string type, string filter)
+                => ClickItSettings.MatchesSearchFilterForTests(name, type, filter);
 
-                public static string GetUpsideSectionHeaderForTests(string type)
-                    => ClickItSettings.GetUpsideSectionHeaderForTests(type);
+            public static string GetUpsideSectionHeaderForTests(string type)
+                => ClickItSettings.GetUpsideSectionHeaderForTests(type);
 
-                public static string GetDownsideSectionHeaderForTests(int weight)
-                    => ClickItSettings.GetDownsideSectionHeaderForTests(weight);
+            public static string GetDownsideSectionHeaderForTests(int weight)
+                => ClickItSettings.GetDownsideSectionHeaderForTests(weight);
 
-                public static SharpDX.Vector4 GetUpsideHeaderColorForTests(string type)
-                    => ClickItSettings.GetUpsideHeaderColorForTests(type);
-            }
+            public static SharpDX.Vector4 GetUpsideHeaderColorForTests(string type)
+                => ClickItSettings.GetUpsideHeaderColorForTests(type);
+        }
     }
 }
