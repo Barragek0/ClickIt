@@ -3,18 +3,21 @@ using FluentAssertions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using SharpDX;
+using ExileCore.PoEMemory;
+// Element type lives in ExileCore.PoEMemory
 using ClickIt.Utils;
+using ClickIt.Tests.TestUtils;
 using ClickIt.Components;
 using System.Collections.Generic;
 
 namespace ClickIt.Tests.Integration
 {
     [TestClass]
-    public class Phase3_IntegrationEndToEndTests
+    public class IntegrationEndToEndTests
     {
         private static object CreateRendererWithDefaults()
         {
-            var type = typeof(ClickIt.Rendering.AltarDisplayRenderer);
+            var type = typeof(Rendering.AltarDisplayRenderer);
             var inst = RuntimeHelpers.GetUninitializedObject(type);
 
             var settings = new ClickItSettings();
@@ -33,7 +36,7 @@ namespace ClickIt.Tests.Integration
         {
             var type = renderer.GetType();
             var mi = type.GetMethod("EvaluateAltarWeights", BindingFlags.NonPublic | BindingFlags.Instance);
-            return (Element?)mi.Invoke(renderer, new object[] { weights, primary, top, bottom, textPos, textPos });
+            return (Element?)mi!.Invoke(renderer, new object[] { weights, primary, top, bottom, textPos, textPos });
         }
 
         [TestMethod]
@@ -49,7 +52,7 @@ namespace ClickIt.Tests.Integration
 
             var topMods = new SecondaryAltarComponent(topEl, new List<string> { "up_special" }, new List<string> { "down_none" });
             var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string> { "up_small" }, new List<string> { "down_none" });
-            var primary = new PrimaryAltarComponent(ClickIt.ClickIt.AltarType.SearingExarch, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
+            var primary = new PrimaryAltarComponent(ClickIt.AltarType.SearingExarch, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 
             // set tiers so top upside is high
             settings.ModTiers["up_special"] = 100;
@@ -77,7 +80,7 @@ namespace ClickIt.Tests.Integration
 
             var topMods = new SecondaryAltarComponent(topEl, new List<string> { "up_small" }, new List<string> { "down_none" });
             var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string> { "up_special" }, new List<string> { "down_none" });
-            var primary = new PrimaryAltarComponent(ClickIt.ClickIt.AltarType.SearingExarch, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
+            var primary = new PrimaryAltarComponent(ClickIt.AltarType.SearingExarch, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
 
             var settings2 = settings;
             settings2.ModTiers["up_special"] = 100;
@@ -125,7 +128,7 @@ namespace ClickIt.Tests.Integration
             var bottomUps = new List<string>{ "big10" };
             var topMods = new SecondaryAltarComponent(topEl, topUps, new List<string>());
             var bottomMods = new SecondaryAltarComponent(bottomEl, bottomUps, new List<string>());
-            var primary = new PrimaryAltarComponent(ClickIt.ClickIt.AltarType.EaterOfWorlds, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
+            var primary = new PrimaryAltarComponent(ClickIt.AltarType.EaterOfWorlds, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 
             settings.ModTiers["tiny0"] = 0;
             settings.ModTiers["big10"] = 10;
@@ -149,7 +152,7 @@ namespace ClickIt.Tests.Integration
 
             var topMods = new SecondaryAltarComponent(topEl, new List<string>{ "x" }, new List<string>{ "y" });
             var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string>{ "x" }, new List<string>{ "y" });
-            var primary = new PrimaryAltarComponent(ClickIt.ClickIt.AltarType.SearingExarch, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
+            var primary = new PrimaryAltarComponent(ClickIt.AltarType.SearingExarch, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
 
             settings.ModTiers["x"] = 5;
             settings.ModTiers["y"] = 1;
@@ -170,7 +173,7 @@ namespace ClickIt.Tests.Integration
             // Create a minimal fake adapter lacking Parent.Parent to trigger InvalidOperationException
             var fake = new FakeAdapter(null);
 
-            Assert.ThrowsException<System.InvalidOperationException>(() => svc.CreateAltarComponentFromAdapter(fake, ClickIt.ClickIt.AltarType.Unknown));
+            Assert.ThrowsException<System.InvalidOperationException>(() => svc.CreateAltarComponentFromAdapter(fake, ClickIt.AltarType.Unknown));
         }
 
         private class FakeAdapter : Services.IElementAdapter
@@ -180,9 +183,11 @@ namespace ClickIt.Tests.Integration
                 Parent = parent;
             }
             public Services.IElementAdapter? Parent { get; }
-            public ExileCore.PoEMemory.Elements.Element? Underlying => null;
+            public ExileCore.PoEMemory.Element? Underlying => null;
             public Services.IElementAdapter? GetChildFromIndices(int a, int b) => null;
             public string GetText(int maxChars) => string.Empty;
+            public bool IsValid => false;
+            public SharpDX.RectangleF GetClientRect() => new SharpDX.RectangleF(0,0,0,0);
         }
 
         [TestMethod]
@@ -196,7 +201,7 @@ namespace ClickIt.Tests.Integration
 
             var topMods = new SecondaryAltarComponent(topEl, new List<string>{ "a1", "a2" }, new List<string>{ "d1" });
             var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string>{ "b1" }, new List<string>{ "d2" });
-            var primary = new PrimaryAltarComponent(ClickIt.ClickIt.AltarType.EaterOfWorlds, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
+            var primary = new PrimaryAltarComponent(ClickIt.AltarType.EaterOfWorlds, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 
             settings.ModTiers["a1"] = 10; settings.ModTiers["a2"] = 5; settings.ModTiers["b1"] = 8; settings.ModTiers["d1"] = 1; settings.ModTiers["d2"] = 1;
 
@@ -219,7 +224,7 @@ namespace ClickIt.Tests.Integration
 
             var top = TestBuilders.BuildSecondary();
             var bottom = TestBuilders.BuildSecondary();
-            var primary = new PrimaryAltarComponent(ClickIt.ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
+            var primary = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
             svc.AddAltarComponent(primary).Should().BeTrue();
 
             // Now simulate cleanup of invalid altars
