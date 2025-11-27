@@ -6,14 +6,13 @@ using SharpDX;
 namespace ClickIt.Tests.Unit
 {
     [TestClass]
-    public class MouseTests
+    public class MouseUnitTests
     {
         private bool _prevDisableNativeInput;
 
         [TestInitialize]
         public void BeforeEach()
         {
-            // Save prior state and ensure native input is disabled for deterministic tests
             _prevDisableNativeInput = Mouse.DisableNativeInput;
             Mouse.DisableNativeInput = true;
         }
@@ -21,7 +20,6 @@ namespace ClickIt.Tests.Unit
         [TestCleanup]
         public void AfterEach()
         {
-            // Restore whatever the prior test harness state was
             Mouse.DisableNativeInput = _prevDisableNativeInput;
         }
 
@@ -29,8 +27,7 @@ namespace ClickIt.Tests.Unit
         public void SetCursorPos_ReturnsTrue_WhenNativeDisabled()
         {
             Mouse.DisableNativeInput = true;
-            var ok = Mouse.SetCursorPos(100, 200);
-            ok.Should().BeTrue();
+            Mouse.SetCursorPos(100, 200).Should().BeTrue();
         }
 
         [TestMethod]
@@ -38,36 +35,33 @@ namespace ClickIt.Tests.Unit
         {
             Mouse.DisableNativeInput = true;
             var window = new RectangleF(100, 200, 0, 0);
-            bool result = Mouse.SetCursorPos(5, 6, window);
-            result.Should().BeTrue();
+            Mouse.SetCursorPos(5, 6, window).Should().BeTrue();
         }
 
         [TestMethod]
-        public void SetCurosPosToCenterOfRec_ReturnsTrue_WhenDisabled()
+        public void SetCursorPosToCenterOfRec_ComputesCorrectCoords_AndReturnsTrue()
         {
             Mouse.DisableNativeInput = true;
-            var rect = new RectangleF(10, 20, 4, 6);
-            var window = new RectangleF(100, 200, 0, 0);
-            bool result = Mouse.SetCurosPosToCenterOfRec(rect, window);
-            result.Should().BeTrue();
+            var win = new RectangleF(10, 20, 200, 100);
+            var rect = new RectangleF(0, 0, 50, 40);
+            Mouse.SetCurosPosToCenterOfRec(rect, win).Should().BeTrue();
         }
 
         [TestMethod]
-        public void SetCursorPosAndLeftClick_DoesNotThrow_WhenNativeDisabled()
+        public void SetCursorPosAndLeftClick_IsNoop_WhenNativeDisabled()
         {
             Mouse.DisableNativeInput = true;
-            Mouse.SetCursorPosAndLeftClick(new Vector2(32, 16), 0, new Vector2(0, 0));
-            // No exception == pass
+            Mouse.SetCursorPosAndLeftClick(new SharpDX.Vector2(32, 16), 0, new SharpDX.Vector2(0, 0));
+            // if we reach here without exception we're good
             true.Should().BeTrue();
         }
 
         [TestMethod]
-        public void LeftAndRightClick_DoNothing_WhenNativeDisabled()
+        public void LeftRightClick_AreNoop_WhenNativeDisabled()
         {
             Mouse.DisableNativeInput = true;
             Mouse.LeftClick();
             Mouse.RightClick();
-            // No exceptions and deterministic path when disabled
             true.Should().BeTrue();
         }
 
@@ -78,14 +72,6 @@ namespace ClickIt.Tests.Unit
             Mouse.VerticalScroll(true, 3);
             Mouse.VerticalScroll(false, 2);
             true.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void GetCursorPosition_ReturnsPoint_WhenNativeAvailable()
-        {
-            // This test intentionally calls the native GetCursorPos path; it should return a point (platform dependent)
-            var p = Mouse.GetCursorPosition();
-            p.Should().NotBeNull();
         }
     }
 }

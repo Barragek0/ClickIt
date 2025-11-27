@@ -9,6 +9,26 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class CoroutineManagerTests
     {
+        private Func<System.Windows.Forms.Keys, bool>? _originalKeyStateProvider;
+        private Func<global::ClickIt.Services.LabelFilterService, System.Collections.Generic.IReadOnlyList<ExileCore.PoEMemory.Elements.LabelOnGround>?, bool>? _originalLazyModeChecker;
+
+        [TestInitialize]
+        public void Init()
+        {
+            // Save original static seams
+            _originalKeyStateProvider = global::ClickIt.Utils.CoroutineManager.KeyStateProvider;
+            _originalLazyModeChecker = global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker;
+        }
+
+        [TestCleanup]
+        public void Cleanup()
+        {
+            // Restore saved static seams so tests are isolated
+            if (_originalKeyStateProvider != null)
+                global::ClickIt.Utils.CoroutineManager.KeyStateProvider = _originalKeyStateProvider;
+            if (_originalLazyModeChecker != null)
+                global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = _originalLazyModeChecker;
+        }
         [TestMethod]
         public void Constructor_Throws_OnNullArgs()
         {

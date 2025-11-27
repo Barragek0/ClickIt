@@ -4,7 +4,7 @@ using ExileCore;
 
 namespace ClickIt.Rendering
 {
-    public class LazyModeRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, Utils.InputHandler inputHandler, LabelFilterService? labelFilterService)
+    public partial class LazyModeRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, Utils.InputHandler inputHandler, LabelFilterService? labelFilterService)
     {
         private readonly ClickItSettings _settings = settings;
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();

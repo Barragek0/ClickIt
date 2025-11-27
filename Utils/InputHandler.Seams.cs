@@ -59,5 +59,44 @@ namespace ClickIt.Utils
 
             return !hasRestrictedItemsOnScreen && !disableKeyHeld && !mouseButtonBlocks;
         }
+
+        // Expose small private helpers for deterministic testing (avoid constructing GameController)
+        internal static bool IsPOEActiveForTests(bool windowIsForeground)
+        {
+            return windowIsForeground;
+        }
+
+        internal static bool IsPanelOpenForTests(long openLeftPanelAddress, long openRightPanelAddress)
+        {
+            return openLeftPanelAddress != 0 || openRightPanelAddress != 0;
+        }
+
+        internal static bool IsInTownOrHideoutForTests(bool isTown, bool isHideout)
+        {
+            return isTown || isHideout;
+        }
+
+        // Deterministic helper for CalculateClickPosition to avoid randomness and native Label objects
+        internal global::SharpDX.Vector2 CalculateClickPositionForTests(global::SharpDX.RectangleF rect, global::SharpDX.Vector2 windowTopLeft, global::ExileCore.Shared.Enums.EntityType type, float jitterX, float jitterY)
+        {
+            float yAdjustment = 0f;
+            if (type == global::ExileCore.Shared.Enums.EntityType.Chest)
+            {
+                yAdjustment -= _settings.ChestHeightOffset;
+            }
+
+            return rect.Center + windowTopLeft + new global::SharpDX.Vector2(jitterX, jitterY + yAdjustment);
+        }
+
+        // Deterministic helper for TriggerToggleItems without invoking Keyboard native input
+        internal bool TriggerToggleItemsForTests(int nextRandomValue)
+        {
+            if (_settings.ToggleItems.Value && nextRandomValue == 0)
+            {
+                // Do NOT call Keyboard.* during tests — just report what would have happened
+                return true;
+            }
+            return false;
+        }
     }
 }

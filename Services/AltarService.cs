@@ -19,7 +19,7 @@ namespace ClickIt.Services
         public string LastProcessedAltarType { get; set; } = "";
         public string LastError { get; set; } = "";
         public DateTime LastScanTime { get; set; } = DateTime.MinValue;
-        public List<string> RecentUnmatchedMods { get; set; } = [];
+        public List<string> RecentUnmatchedMods { get; set; } = new List<string>();
     }
 
     public partial class AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)

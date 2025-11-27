@@ -67,5 +67,49 @@ namespace ClickIt.Utils
             items[high] = tmp2;
             return i + 1;
         }
+
+        // --- Test-only helper methods ---
+        // These make it possible to deterministically test label/entity logic
+        // without constructing complex runtime ExileCore objects.
+        internal static bool IsValidEntityTypeForTests(ExileCore.Shared.Enums.EntityType type, string? path, bool chestOpenOnDamage)
+        {
+            // Mirror the production logic in IsValidEntityType
+            string p = path ?? string.Empty;
+            if (type == ExileCore.Shared.Enums.EntityType.WorldItem)
+                return true;
+            if (type == ExileCore.Shared.Enums.EntityType.AreaTransition)
+                return true;
+            if (p.Contains("AreaTransition"))
+                return true;
+            if (type == ExileCore.Shared.Enums.EntityType.Chest && !chestOpenOnDamage)
+                return true;
+            return false;
+        }
+
+        internal static bool IsValidClickableLabelForTests(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, ExileCore.Shared.Enums.EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment)
+        {
+            // Replicate production IsValidClickableLabel behavior using simple inputs
+            if (!labelNotNull || !itemNotNull || !isVisible || !labelElementValid)
+                return false;
+
+            if (!inClickableArea)
+                return false;
+
+            if (IsValidEntityTypeForTests(type, path, chestOpenOnDamage)) return true;
+            if (!string.IsNullOrEmpty(path) && IsPathForClickableObject(path)) return true;
+            if (hasEssenceImprisonment) return true;
+            return false;
+        }
+
+        internal static int GetThreadLocalElementsCountForTests()
+        {
+            return _threadLocalElementsList.Value?.Count ?? 0;
+        }
+
+        internal static void AddNullElementToThreadLocalForTests()
+        {
+            // Add a null placeholder to emulate a previously-populated list in tests.
+            _threadLocalElementsList.Value?.Add(null!);
+        }
     }
 }
