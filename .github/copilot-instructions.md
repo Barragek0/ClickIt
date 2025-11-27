@@ -57,12 +57,12 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug; & "C:\Program File
 
 ### Global Exception Handling (new)
 - The plugin now registers global handlers to improve crash visibility and safe cleanup:
-    - `AppDomain.CurrentDomain.UnhandledException` — logs unhandled exceptions and whether the runtime is terminating; attempts a minimal safe cleanup (calls `ForceUnblockInput`) to avoid leaving input blocked.
-    - `TaskScheduler.UnobservedTaskException` — marks unobserved task exceptions as observed and logs them; also tries to unblock input.
+    - `AppDomain.CurrentDomain.UnhandledException` — logs unhandled exceptions and whether the runtime is terminating; attempts a minimal safe cleanup to help keep the plugin in a safe state.
+    - `TaskScheduler.UnobservedTaskException` — marks unobserved task exceptions as observed and logs them; also attempts minimal cleanup.
 - Note: These handlers are for logging and light cleanup only. They don't guarantee the process will continue after fatal CLR-level crashes (e.g., StackOverflowException, severe OutOfMemory, or native crashes).
 - ExileCore itself also has its own error-handling paths and will log many errors originating from game memory access — the plugin-level handlers complement but do not replace ExileCore's internal logging.
 
-- Quick note: ExileCore already provides built-in error handling and logging; the plugin-level global handlers are intentionally small and complementary — they add plugin-specific context and attempt minimal, safety-critical cleanup (for example, unblocking input).
+    - Quick note: ExileCore already provides built-in error handling and logging; the plugin-level global handlers are intentionally small and complementary — they add plugin-specific context and attempt minimal, safety-critical cleanup (for example, resetting transient runtime state).
 
 ---
 
@@ -221,8 +221,7 @@ public ClickService(
     Action<string, int> logError,
     AltarService altarService,
     WeightCalculator weightCalculator,
-    Func<Vector2, string?, bool> pointIsInClickableArea,
-    Action<bool> safeBlockInput)
+    Func<Vector2, string?, bool> pointIsInClickableArea)
 {
     // Null checks and assignment
     this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -295,7 +294,7 @@ private bool TryConsumeLazyModeLimiter()
 ### Rollback Procedures
 - **Breaking Changes**: Identify via test failures or build errors
 - **Safe Rollback**: Revert to last known-good commit
-- **Emergency Input**: Use `ForceUnblockInput()` if input becomes stuck
+- **Emergency Input**: If input becomes stuck, perform safe-recovery steps such as stopping and restarting the plugin and investigating input handlers.
 
 ### Performance Impact Assessment
 - **Before**: Run test suite, note performance metrics in debug mode
@@ -322,7 +321,7 @@ private bool TryConsumeLazyModeLimiter()
 - **Access**: `Settings.PropertyName.Value`
 
 ### Emergency Procedures
-- **Stuck Input**: `ForceUnblockInput("Emergency")` 
+- **Stuck Input**: If input is stuck, stop the plugin and restart it to return to a known-good input state; investigate and fix the root cause before resuming.
 - **Game Freeze**: Restart plugin, check render loop for memory access
 - **High Memory**: Invalidate caches, check for memory leaks in altar service
 
