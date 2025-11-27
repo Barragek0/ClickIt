@@ -130,5 +130,70 @@ namespace ClickIt.Tests.Unit
             var items = (System.Collections.ICollection)dtq.GetType().GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dtq)!;
             items.Count.Should().BeGreaterThan(0);
         }
+
+        [DataTestMethod]
+        [DataRow(0f, 0f, 10f, 10f, true)]
+        [DataRow(1f, 2f, 0f, 3f, false)]
+        [DataRow(1f, 2f, 3f, 0f, false)]
+        [DataRow(float.NaN, 1f, 10f, 10f, false)]
+        [DataRow(float.PositiveInfinity, 1f, 10f, 10f, false)]
+        public void IsValidRectangle_ReturnsExpected_ForEdgeCases(float x, float y, float w, float h, bool expect)
+        {
+            var mi = typeof(Rendering.AltarDisplayRenderer).GetMethod("IsValidRectangle", BindingFlags.NonPublic | BindingFlags.Static);
+            mi.Should().NotBeNull();
+
+            var rect = new SharpDX.RectangleF(x, y, w, h);
+            var result = (bool)mi.Invoke(null, new object[] { rect })!;
+            result.Should().Be(expect);
+        }
+
+        [DataTestMethod]
+        [DataRow(10.0d, 1.0d, 0)]
+        [DataRow(1.0d, 10.0d, 1)]
+        [DataRow(5.0d, 5.0d, 2)]
+        public void GetWeightColor_PicksCorrectColor_ForComparisons(double left, double right, int expectedIndex)
+        {
+            var mi = typeof(Rendering.AltarDisplayRenderer).GetMethod("GetWeightColor", BindingFlags.NonPublic | BindingFlags.Static);
+            mi.Should().NotBeNull();
+
+            var win = SharpDX.Color.LawnGreen;
+            var lose = SharpDX.Color.OrangeRed;
+            var tie = SharpDX.Color.Yellow;
+
+            var color = (SharpDX.Color)mi.Invoke(null, new object[] { (decimal)left, (decimal)right, win, lose, tie })!;
+            if (expectedIndex == 0) color.Should().Be(win);
+            if (expectedIndex == 1) color.Should().Be(lose);
+            if (expectedIndex == 2) color.Should().Be(tie);
+        }
+
+        [TestMethod]
+        public void GetWeightArray_ReturnsCorrect_ArrayForAllCombinations()
+        {
+            var mi = typeof(Rendering.AltarDisplayRenderer).GetMethod("GetWeightArray", BindingFlags.NonPublic | BindingFlags.Static);
+            mi.Should().NotBeNull();
+
+            var aw = new AltarWeights();
+            var topDown = new decimal[] { 1, 1, 1, 1, 1, 1, 1, 1 };
+            var bottomDown = new decimal[] { 2, 2, 2, 2, 2, 2, 2, 2 };
+            var topUp = new decimal[] { 3, 3, 3, 3, 3, 3, 3, 3 };
+            var bottomUp = new decimal[] { 4, 4, 4, 4, 4, 4, 4, 4 };
+            aw.InitializeFromArrays(topDown, bottomDown, topUp, bottomUp);
+
+            // top/downside
+            var arr1 = (decimal[])mi.Invoke(null, new object[] { aw, true, false })!;
+            arr1.Should().Equal(topDown);
+
+            // bottom/downside
+            var arr2 = (decimal[])mi.Invoke(null, new object[] { aw, false, false })!;
+            arr2.Should().Equal(bottomDown);
+
+            // top/upside
+            var arr3 = (decimal[])mi.Invoke(null, new object[] { aw, true, true })!;
+            arr3.Should().Equal(topUp);
+
+            // bottom/upside
+            var arr4 = (decimal[])mi.Invoke(null, new object[] { aw, false, true })!;
+            arr4.Should().Equal(bottomUp);
+        }
     }
 }

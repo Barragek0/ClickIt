@@ -123,6 +123,22 @@ namespace ClickIt.Tests.Utils
         }
 
         [TestMethod]
+        public void ElementContainsAnyStringsForTests_EmptyPatternMatchesNonEmptyText()
+        {
+            var root = new FakeAdapter("root text");
+            var ok = LabelUtils.ElementContainsAnyStringsForTests(root, new[] { string.Empty });
+            ok.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ElementContainsAnyStringsForTests_EmptyPatternDoesNotMatchEmptyText()
+        {
+            var root = new FakeAdapter(string.Empty);
+            var ok = LabelUtils.ElementContainsAnyStringsForTests(root, new[] { string.Empty });
+            ok.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void GetElementsByStringContainsForTests_ReturnsEmpty_WhenNoMatches()
         {
             var root = new FakeAdapter("root");

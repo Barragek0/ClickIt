@@ -51,8 +51,11 @@ namespace ClickIt.Tests.Unit
             keys.Count.Should().BeGreaterThan(0);
         }
 
-        [TestMethod]
-        public void IsStrongboxClickableBySettings_MatchesPaths_CaseInsensitive()
+        [DataTestMethod]
+        [DataRow("abc/StrongBoxes/strongbox/somepath", true)]
+        [DataRow("no/match/here", false)]
+        [DataRow("path/StrongBoxes/Arcanist/thing", true)]
+        public void IsStrongboxClickableBySettings_VariousPaths(string path, bool expect)
         {
             var settings = new ClickItSettings();
             var queue = new DeferredFrameQueue();
@@ -62,11 +65,9 @@ namespace ClickIt.Tests.Unit
             var enabledKeys = (System.Collections.Generic.List<string>)getKeys.Invoke(renderer, Array.Empty<object>());
 
             var isClickable = typeof(StrongboxRenderer).GetMethod("IsStrongboxClickableBySettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            var res1 = (bool)isClickable.Invoke(null, new object[] { "abc/StrongBoxes/strongbox/somepath", enabledKeys });
-            var res2 = (bool)isClickable.Invoke(null, new object[] { "no/match/here", enabledKeys });
+            var res = (bool)isClickable.Invoke(null, new object[] { path, enabledKeys });
 
-            res1.Should().BeTrue();
-            res2.Should().BeFalse();
+            res.Should().Be(expect);
         }
     }
 }

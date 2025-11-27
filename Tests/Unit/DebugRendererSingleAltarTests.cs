@@ -35,20 +35,25 @@ namespace ClickIt.Tests.Unit
             return inst!;
         }
 
-        [TestMethod]
-        public void RenderSingleAltarDebug_EmitsText_AndIncludesWeights_WhenWeightCalculatorAvailable()
+        [DataTestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void RenderSingleAltarDebug_EmitsText_WithOrWithoutWeights(bool includeWeightCalculator)
         {
-            var wc = new WeightCalculator(new ClickItSettings());
+            var wc = includeWeightCalculator ? new WeightCalculator(new ClickItSettings()) : null;
             var renderer = CreateRendererAndInject(out var dtq, wc);
 
             // Build a primary altar with populated upsides/downsides so we generate output
             var top = Tests.TestUtils.TestBuilders.BuildSecondary(new string[] { "up1" }, new string[] { "down1" });
             var bottom = Tests.TestUtils.TestBuilders.BuildSecondary(new string[] { "bup1" }, new string[] { "bdown1" });
             var primary = Tests.TestUtils.TestBuilders.BuildPrimary(top, bottom);
-            // WeightCalculator expects non-null Element members on top/bottom (it doesn't inspect text here
-            // for this call) - create lightweight uninitialized Element instances to satisfy null checks.
-            top.Element = (ExileCore.PoEMemory.Element?)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.PoEMemory.Element));
-            bottom.Element = (ExileCore.PoEMemory.Element?)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.PoEMemory.Element));
+
+            // WeightCalculator requires non-null Element members when present - set placeholders only when needed
+            if (includeWeightCalculator)
+            {
+                top.Element = (ExileCore.PoEMemory.Element?)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.PoEMemory.Element));
+                bottom.Element = (ExileCore.PoEMemory.Element?)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.PoEMemory.Element));
+            }
 
             var mi = renderer.GetType().GetMethod("RenderSingleAltarDebug", BindingFlags.Public | BindingFlags.Instance)!;
             mi.Should().NotBeNull();
@@ -56,27 +61,7 @@ namespace ClickIt.Tests.Unit
             var result = (int)mi.Invoke(renderer, new object[] { 0, 0, 10, primary, 1 })!;
             result.Should().BeGreaterThan(0);
 
-            // Ensure something was enqueued
-            var field = typeof(DeferredTextQueue).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!;
-            var list = (System.Collections.ICollection)field.GetValue(dtq)!;
-            list.Count.Should().BeGreaterThan(0);
-        }
-
-        [TestMethod]
-        public void RenderSingleAltarDebug_EmitsText_WithoutWeights_WhenNoWeightCalculator()
-        {
-            var renderer = CreateRendererAndInject(out var dtq, null);
-
-            var top = Tests.TestUtils.TestBuilders.BuildSecondary(new string[] { "up1" }, new string[] { "down1" });
-            var bottom = Tests.TestUtils.TestBuilders.BuildSecondary(new string[] { "bup1" }, new string[] { "bdown1" });
-            var primary = Tests.TestUtils.TestBuilders.BuildPrimary(top, bottom);
-
-            var mi = renderer.GetType().GetMethod("RenderSingleAltarDebug", BindingFlags.Public | BindingFlags.Instance)!;
-            mi.Should().NotBeNull();
-
-            var result = (int)mi.Invoke(renderer, new object[] { 0, 0, 10, primary, 1 })!;
-            result.Should().BeGreaterThan(0);
-
+            // Ensure something was enqueued into deferred text queue
             var field = typeof(DeferredTextQueue).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!;
             var list = (System.Collections.ICollection)field.GetValue(dtq)!;
             list.Count.Should().BeGreaterThan(0);

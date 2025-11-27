@@ -8,43 +8,44 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class StrongboxRendererTryVisibleTests
     {
-        [TestMethod]
-        public void TryGetVisibleLabelRect_ForTests_ValidStrongbox_ReturnsTrueAndRectAdjusted()
+        [DataTestMethod]
+        // Valid case
+        [DataRow("Some/Path/StrongBoxes/Strongbox/foo", true, 2f, 3f, 4f, 5f, 10f, 20f, 100f, 100f, true)]
+        // missing path
+        [DataRow(null, true, 0f, 0f, 1f, 1f, 0f, 0f, 50f, 50f, false)]
+        // not a strongbox path
+        [DataRow("not/related/path", true, 0f, 0f, 1f, 1f, 0f, 0f, 50f, 50f, false)]
+        // element invalid
+        [DataRow("abc/strongbox/there", false, 0f, 0f, 1f, 1f, 0f, 0f, 50f, 50f, false)]
+        // rect outside window
+        [DataRow("abc/strongbox/x", true, 1000f, 1000f, 1f, 1f, 0f, 0f, 50f, 50f, false)]
+        public void TryGetVisibleLabelRect_ForTests_VariousCases(string? itemPath, bool elementIsValid, float rX, float rY, float rW, float rH, float wX, float wY, float wW, float wH, bool expect)
         {
-            var window = new RectangleF(10, 20, 100, 100);
-            var itemPath = "Some/Path/StrongBoxes/Strongbox/foo";
-            var maybeRect = new RectangleF(2, 3, 4, 5);
+            var window = new RectangleF(wX, wY, wW, wH);
 
-            var ok = StrongboxRenderer.TryGetVisibleLabelRect_ForTests(itemPath, true, maybeRect, window, out var rect, out var pathOut);
+            RectangleF? maybeRect = (rW <= 0 || rH <= 0) ? (RectangleF?)null : new RectangleF(rX, rY, rW, rH);
 
-            ok.Should().BeTrue();
-            pathOut.Should().Be(itemPath);
-            // seam returns the raw client rect (tests exercise the seam behaviour)
-            rect.X.Should().Be(2);
-            rect.Y.Should().Be(3);
-            rect.Width.Should().Be(4);
-            rect.Height.Should().Be(5);
+            var ok = StrongboxRenderer.TryGetVisibleLabelRect_ForTests(itemPath, elementIsValid, maybeRect, window, out var rect, out var pathOut);
+
+            ok.Should().Be(expect);
+            if (expect)
+            {
+                pathOut.Should().Be(itemPath);
+                rect.X.Should().Be(rX);
+                rect.Y.Should().Be(rY);
+                rect.Width.Should().Be(rW);
+                rect.Height.Should().Be(rH);
+            }
         }
 
         [TestMethod]
-        public void TryGetVisibleLabelRect_ForTests_InvalidUnderVariousFailures_ReturnsFalse()
+        public void TryGetVisibleLabelRect_PrivateMethod_NullLabel_ReturnsFalse()
         {
-            var window = new RectangleF(0, 0, 50, 50);
-
-            // missing path
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests(null, true, new RectangleF(0, 0, 1, 1), window, out _, out _).Should().BeFalse();
-
-            // not a strongbox path
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("not/related/path", true, new RectangleF(0, 0, 1, 1), window, out _, out _).Should().BeFalse();
-
-            // element invalid
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("abc/strongbox/there", false, new RectangleF(0, 0, 1, 1), window, out _, out _).Should().BeFalse();
-
-            // null rectangle
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("abc/strongbox/there", true, null, window, out _, out _).Should().BeFalse();
-
-            // rect outside window
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("abc/strongbox/x", true, new RectangleF(1000, 1000, 1, 1), window, out _, out _).Should().BeFalse();
+            // This covers the private, non-seam TryGetVisibleLabelRect(LabelOnGround?, RectangleF, out rect, out path)
+            var method = typeof(Rendering.StrongboxRenderer).GetMethod("TryGetVisibleLabelRect", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+            var args = new object?[] { null, SharpDX.RectangleF.Empty, null, null };
+            var ret = (bool?)method.Invoke(null, args);
+            ret.Should().BeFalse();
         }
     }
 }

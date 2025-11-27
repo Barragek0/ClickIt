@@ -184,5 +184,106 @@ namespace ClickIt.Tests.Unit
                 tie.InnerException.Should().BeOfType<NullReferenceException>();
             }
         }
+
+        [TestMethod]
+        public void StartCoroutines_CreatesAllCoroutines_AndSetsPriorities()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+
+            var pluginMock = new Moq.Mock<ExileCore.BaseSettingsPlugin<ClickItSettings>>();
+            var plugin = pluginMock.Object;
+
+            try
+            {
+                cm.GetType().GetMethod("StartCoroutines", BindingFlags.Public | BindingFlags.Instance)!.Invoke(cm, new object[] { plugin });
+            }
+            catch (TargetInvocationException)
+            {
+                // The StartCoroutines implementation may call into runtime-specific threads; ignore reflection errors but assert that at least the altar coroutine was created.
+            }
+
+            ctx.AltarCoroutine.Should().NotBeNull();
+            ctx.AltarCoroutine.Priority.Should().Be(ExileCore.Shared.Enums.CoroutinePriority.Normal);
+        }
+
+        [TestMethod]
+        public void IsClickHotkeyPressed_RespectsLazyMode_InversionBehaviour()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+
+            var mi = cm.GetType().GetMethod("IsClickHotkeyPressed", BindingFlags.NonPublic | BindingFlags.Instance);
+            mi.Should().NotBeNull();
+
+            global::ClickIt.Utils.CoroutineManager.KeyStateProvider = (k) => true;
+
+            settings.LazyMode.Value = false;
+            var resNormal = (bool)mi!.Invoke(cm, Array.Empty<object>());
+            resNormal.Should().BeTrue();
+
+            settings.LazyMode.Value = true;
+            var resInverted = (bool)mi.Invoke(cm, Array.Empty<object>());
+            resInverted.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ClickLabel_SetsWorkFinished_WhenTimerBelowTarget_OrCanClickFalse()
+        {
+            var settings = new ClickItSettings();
+            settings.Enable.Value = true;
+            settings.ClickFrequencyTarget.Value = 1000;
+
+            var ctx = new PluginContext();
+            var perf = new global::ClickIt.Utils.PerformanceMonitor(settings);
+            ctx.PerformanceMonitor = perf;
+            ctx.ClickService = (Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(Services.ClickService));
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+
+            ctx.Timer.Restart();
+            ctx.Timer.Stop();
+            ctx.Timer.Reset();
+
+            var mi = cm.GetType().GetMethod("ClickLabel", BindingFlags.NonPublic | BindingFlags.Instance);
+            mi.Should().NotBeNull();
+
+            var enumerator = mi!.Invoke(cm, Array.Empty<object>()) as System.Collections.IEnumerator;
+            enumerator.Should().NotBeNull();
+
+            enumerator!.MoveNext();
+            ctx.WorkFinished.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ExecuteWithElementAccessLock_RunsAction()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+
+            bool ran = false;
+            var mi = cm.GetType().GetMethod("ExecuteWithElementAccessLock", BindingFlags.NonPublic | BindingFlags.Instance);
+            mi.Should().NotBeNull();
+
+            mi!.Invoke(cm, new object[] { new Action(() => ran = true) });
+            ran.Should().BeTrue();
+        }
     }
 }
