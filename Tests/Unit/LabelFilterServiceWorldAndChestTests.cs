@@ -9,6 +9,7 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Enums;
 
 using ClickIt;
+#nullable enable
 using System.Runtime.CompilerServices;
 
 namespace ClickIt.Tests.Unit
