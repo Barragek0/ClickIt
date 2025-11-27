@@ -54,9 +54,9 @@
           when this file is interpreted relative to the tests project directory. -->
         <CoverletOutput>TestResults/lcov.info</CoverletOutput>
   </PropertyGroup>
-  <PropertyGroup>
-    <!-- Exclude only rendering and low-level input/safety files which are not practical to unit-test -->
-    <ExcludeByFile>**\Rendering\**;**\Core\ClickIt.Render.cs;**\Core\ClickIt.Input.cs;**\Utils\Mouse.cs;**\Utils\Keyboard.cs;**\Utils\InputHandler.cs;**\Utils\InputSafetyManager.cs</ExcludeByFile>
+    <PropertyGroup>
+    <!-- Exclude only rendering and low-level input files which are not practical to unit-test -->
+    <ExcludeByFile>**\Rendering\**;**\Core\ClickIt.Render.cs;**\Core\ClickIt.Input.cs;**\Utils\Mouse.cs;**\Utils\Keyboard.cs;**\Utils\InputHandler.cs</ExcludeByFile>
   </PropertyGroup>
 
 </Project>

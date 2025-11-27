@@ -52,10 +52,8 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug; & "C:\Program File
 ```
 
 ### Key Safety Mechanisms
-- **Input Blocking**: `SafeBlockInput()` with 5000ms failsafe
 - **UI Avoidance**: `PointIsInClickableArea()` geometric zone checks
 - **Element Validation**: `IsValid` verification + null checks
-- **Emergency**: `ForceUnblockInput()` for stuck input
 
 ### Global Exception Handling (new)
 - The plugin now registers global handlers to improve crash visibility and safe cleanup:
@@ -85,12 +83,11 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug; & "C:\Program File
 - **Memory Management**: Always implement cache invalidation with `InvalidateCache()`
 - **Performance Testing**: Monitor `DebugRenderer` timing queues (60-sample render, 10-sample click/altar)
 
-### Safety Validation Checklist
-- [ ] Input blocking implemented (`SafeBlockInput()`)
+- ### Safety Validation Checklist
 - [ ] UI safety zones respected (`PointIsInClickableArea()`)
 - [ ] Element state validated (`IsValid` checks)
-- [ ] Emergency unblock available (`ForceUnblockInput()`)
 - [ ] Cache invalidation implemented
+- [ ] ThreadLocal used for element lists
 - [ ] ThreadLocal used for element lists
 
 ---
@@ -109,7 +106,6 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug; & "C:\Program File
 ### Common Error Patterns & Solutions
 
 #### Input Safety Issues
-- **Stuck Input**: Call `ForceUnblockInput("Emergency unblock")` immediately
 - **UI Interference**: Validate `AreaService.PointIsInClickableArea()` calculations
 - **Hotkey Problems**: Check `Settings.ClickLabelKey` (default: F1) and `Settings.Enable`
 
