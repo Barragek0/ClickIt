@@ -142,6 +142,7 @@
     <Compile Include="Utils\DeferredFrameQueue.Seams.cs" />
     <Compile Include="Utils\LabelUtils.cs" />
     <Compile Include="Utils\LabelUtils.Seams.cs" />
+    <Compile Include="Utils\LabelUtils.Seams.Adapter.cs" />
     <Compile Include="Utils\TextHelpers.cs" />
     <Compile Include="Utils\AltarModMatcher.cs" />
     <Compile Include="Utils\EntityHelpers.cs" />

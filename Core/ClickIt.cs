@@ -146,7 +146,11 @@ namespace ClickIt
 
         private bool PointIsInClickableArea(SharpDX.Vector2 point, string? path = null)
         {
-            State.AreaService?.UpdateScreenAreas(GameController);
+            if (GameController != null)
+            {
+                State.AreaService?.UpdateScreenAreas(GameController);
+            }
+
             return State.AreaService?.PointIsInClickableArea(point) ?? false;
         }
 

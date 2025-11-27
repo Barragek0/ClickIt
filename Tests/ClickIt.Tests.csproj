@@ -6,6 +6,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\$(Configuration)\</OutputPath>
@@ -47,7 +49,10 @@
   <PropertyGroup>
     <CollectCoverage>true</CollectCoverage>
     <CoverletOutputFormat>lcov</CoverletOutputFormat>
-    <CoverletOutput>Tests/TestResults/lcov.info</CoverletOutput>
+        <!-- Write coverage output to the test project's TestResults folder (single canonical location)
+          Using a relative path without the leading 'Tests/' prevents creating Tests/Tests/TestResults
+          when this file is interpreted relative to the tests project directory. -->
+        <CoverletOutput>TestResults/lcov.info</CoverletOutput>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Exclude only rendering and low-level input/safety files which are not practical to unit-test -->
