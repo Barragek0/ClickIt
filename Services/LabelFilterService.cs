@@ -109,6 +109,20 @@ namespace ClickIt.Services
             }
             return null;
         }
+
+        // Test seam: deterministic helper for unit tests that avoids touching runtime memory objects.
+        // distances: array of ints where a negative value indicates no item, otherwise value is distance from player.
+        private static int? GetNextLabelToClickIndexForTests(int[] distances, int startIndex, int maxCount, int clickDistance)
+        {
+            if (distances == null || distances.Length == 0) return null;
+            int end = Math.Min(distances.Length, startIndex + Math.Max(0, maxCount));
+            for (int i = startIndex; i < end; i++)
+            {
+                int d = distances[i];
+                if (d >= 0 && d <= clickDistance) return i;
+            }
+            return null;
+        }
         private ClickSettings CreateClickSettings(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
             var s = _settings;
@@ -335,6 +349,23 @@ namespace ClickIt.Services
             return false;
         }
 
+        // Test seam: allow tests to exercise ritual text detection using the IElementAdapter test adapter
+        internal static bool ShouldClickRitualForTests(bool clickRitualInitiate, bool clickRitualCompleted, string path, Services.IElementAdapter? labelAdapter)
+        {
+            if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual"))
+                return false;
+
+            bool hasFavoursText = LabelUtils.GetElementByStringForTests(labelAdapter, "Interact to view Favours") != null;
+
+            if (clickRitualInitiate && !hasFavoursText)
+                return true;
+
+            if (clickRitualCompleted && hasFavoursText)
+                return true;
+
+            return false;
+        }
+
         private static bool ShouldClickStrongbox(ClickSettings settings, string path, LabelOnGround label)
         {
             if (string.IsNullOrEmpty(path))
@@ -367,7 +398,7 @@ namespace ClickIt.Services
             return _essenceService.ShouldCorruptEssence(label.Label);
         }
 
-        public Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
+        public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
             return EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
         }

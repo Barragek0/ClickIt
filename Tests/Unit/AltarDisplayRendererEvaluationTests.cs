@@ -133,5 +133,48 @@ namespace ClickIt.Tests.Unit
             var res = InvokeEvaluate(renderer, aw, primary, new RectangleF(0, 0, 2, 2), new RectangleF(0, 0, 2, 2), new Vector2(1, 1));
             res.Should().BeNull();
         }
+
+        [TestMethod]
+        public void EvaluateAltarWeights_DangerousDownside_TopOnly_ReturnsNull_WhenButtonsInvalid()
+        {
+            var renderer = CreateRendererWithDefaults();
+            var primary = TestBuilders.BuildPrimary();
+
+            var aw = new AltarWeights();
+            // top downside exceeds dangerous threshold
+            var topDown = new decimal[8];
+            topDown[0] = 95m;
+            aw.InitializeFromArrays(new decimal[8], new decimal[8], new decimal[8], new decimal[8]);
+            aw.TopDownsideWeight = 95m;
+            aw.BottomDownsideWeight = 10m;
+
+            var settings = (ClickItSettings)renderer.GetType().GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(renderer)!;
+            settings.DangerousDownside.Value = true;
+            settings.DangerousDownsideThreshold.Value = 90;
+
+            var res = InvokeEvaluate(renderer, aw, primary, new RectangleF(0, 0, 2, 2), new RectangleF(0, 0, 2, 2), new Vector2(1, 1));
+            // Primary has null elements; GetValidatedButtonElement will result in null, but the branch executes
+            res.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void EvaluateAltarWeights_DangerousDownside_BottomOnly_ReturnsNull_WhenButtonsInvalid()
+        {
+            var renderer = CreateRendererWithDefaults();
+            var primary = TestBuilders.BuildPrimary();
+
+            var aw = new AltarWeights();
+            // bottom downside exceeds dangerous threshold
+            aw.InitializeFromArrays(new decimal[8], new decimal[8], new decimal[8], new decimal[8]);
+            aw.TopDownsideWeight = 10m;
+            aw.BottomDownsideWeight = 99m;
+
+            var settings = (ClickItSettings)renderer.GetType().GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(renderer)!;
+            settings.DangerousDownside.Value = true;
+            settings.DangerousDownsideThreshold.Value = 90;
+
+            var res = InvokeEvaluate(renderer, aw, primary, new RectangleF(0, 0, 2, 2), new RectangleF(0, 0, 2, 2), new Vector2(1, 1));
+            res.Should().BeNull();
+        }
     }
 }

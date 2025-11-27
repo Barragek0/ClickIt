@@ -44,7 +44,7 @@ namespace ClickIt.Tests.Unit
             var handler = new InputHandler(settings, perf);
 
             // lazy mode false — should follow hotkeyHeld
-            var resTrue = handler.IsClickHotkeyPressedForTests(
+            var resTrue = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: false,
                 hotkeyHeld: true,
                 hasRestrictedItemsOnScreen: false,
@@ -54,7 +54,7 @@ namespace ClickIt.Tests.Unit
                 disableRightClickHeldSetting: false,
                 rightClickHeld: false);
 
-            var resFalse = handler.IsClickHotkeyPressedForTests(
+            var resFalse = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: false,
                 hotkeyHeld: false,
                 hasRestrictedItemsOnScreen: false,
@@ -75,7 +75,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.IsClickHotkeyPressedForTests(
+            var res = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: true,
                 hotkeyHeld: true,
                 hasRestrictedItemsOnScreen: true, // should be ignored when hotkey is held
@@ -95,7 +95,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.IsClickHotkeyPressedForTests(
+            var res = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: true,
                 hotkeyHeld: false,
                 hasRestrictedItemsOnScreen: true,
@@ -115,7 +115,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.IsClickHotkeyPressedForTests(
+            var res = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: true,
                 hotkeyHeld: false,
                 hasRestrictedItemsOnScreen: false,
@@ -135,7 +135,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.IsClickHotkeyPressedForTests(
+            var res = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: true,
                 hotkeyHeld: false,
                 hasRestrictedItemsOnScreen: false,
@@ -155,7 +155,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.IsClickHotkeyPressedForTests(
+            var res = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: true,
                 hotkeyHeld: false,
                 hasRestrictedItemsOnScreen: false,
@@ -175,7 +175,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.IsClickHotkeyPressedForTests(
+            var res = InputHandler.IsClickHotkeyPressedForTests(
                 lazyMode: true,
                 hotkeyHeld: false,
                 hasRestrictedItemsOnScreen: false,

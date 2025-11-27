@@ -12,7 +12,7 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class DebugRendererTests
     {
-        private object CreateRendererAndInject(out DeferredTextQueue dtq)
+        private static object CreateRendererAndInject(out DeferredTextQueue dtq)
         {
             var type = typeof(Rendering.DebugRenderer);
             var inst = RuntimeHelpers.GetUninitializedObject(type);

@@ -61,9 +61,9 @@ namespace ClickIt.Tests.Unit
             var getKeys = typeof(StrongboxRenderer).GetMethod("GetEnabledStrongboxKeys", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var enabledKeys = (System.Collections.Generic.List<string>)getKeys.Invoke(renderer, Array.Empty<object>());
 
-            var isClickable = typeof(StrongboxRenderer).GetMethod("IsStrongboxClickableBySettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var res1 = (bool)isClickable.Invoke(renderer, ["abc/StrongBoxes/strongbox/somepath", enabledKeys]);
-            var res2 = (bool)isClickable.Invoke(renderer, ["no/match/here", enabledKeys]);
+            var isClickable = typeof(StrongboxRenderer).GetMethod("IsStrongboxClickableBySettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var res1 = (bool)isClickable.Invoke(null, new object[] { "abc/StrongBoxes/strongbox/somepath", enabledKeys });
+            var res2 = (bool)isClickable.Invoke(null, new object[] { "no/match/here", enabledKeys });
 
             res1.Should().BeTrue();
             res2.Should().BeFalse();

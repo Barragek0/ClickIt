@@ -14,11 +14,11 @@ namespace ClickIt.Tests.Utils
             var settings = new ClickItSettings();
             var lm = new global::ClickIt.Utils.LockManager(settings);
 
-            using var d = lm.Acquire(null);
+            using var d = global::ClickIt.Utils.LockManager.Acquire(null);
             d.Should().NotBeNull();
 
             // Acquire(null) must return a singleton no-op instance (safe to dispose multiple times)
-            using var d2 = lm.Acquire(null);
+            using var d2 = global::ClickIt.Utils.LockManager.Acquire(null);
             d2.Should().BeSameAs(d);
         }
 
@@ -31,7 +31,7 @@ namespace ClickIt.Tests.Utils
             var lockObj = new object();
 
             // Acquire should enter the monitor
-            var disp = lm.Acquire(lockObj);
+            var disp = global::ClickIt.Utils.LockManager.Acquire(lockObj);
             try
             {
                 // Monitor.IsEntered is available; ensure current thread owns the lock

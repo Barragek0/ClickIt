@@ -233,7 +233,7 @@ namespace ClickIt.Rendering
         // Flush deferred texts through the shared DeferredTextQueue
         // (callers must provide the Graphics instance and a logger via constructor)
 
-        private bool HasAnyWeightOverThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
+        private static bool HasAnyWeightOverThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
         {
             // Create a collection of the relevant weights and check if any exceed threshold
             var weightArray = GetWeightArray(weights, isTop, isUpside);
@@ -244,7 +244,7 @@ namespace ClickIt.Rendering
             return false;
         }
 
-        private bool HasAnyWeightAtOrBelowThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
+        private static bool HasAnyWeightAtOrBelowThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
         {
             // Create a collection of the relevant weights and check if any are at or below the threshold
             var weightArray = GetWeightArray(weights, isTop, isUpside);

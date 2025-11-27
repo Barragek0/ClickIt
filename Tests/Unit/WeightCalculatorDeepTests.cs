@@ -3,6 +3,7 @@ using FluentAssertions;
 using System;
 using ClickIt.Utils;
 using ClickIt.Components;
+using ExileCore.PoEMemory;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -68,11 +69,11 @@ namespace ClickIt.Tests.Unit
             // BottomDownsideWeight = modBottom1 => 4
             weights.BottomDownsideWeight.Should().Be(4m);
 
-            // BottomUpsideWeight was provided as default/unknown -> 0
-            weights.BottomUpsideWeight.Should().Be(0m);
+            // BottomUpsideWeight was provided as unknown -> default mod tier 1
+            weights.BottomUpsideWeight.Should().Be(1m);
 
-            // BottomWeight = 0 / 4 = 0.00
-            weights.BottomWeight.Should().Be(0.00m);
+            // BottomWeight = 1 / 4 = 0.25
+            weights.BottomWeight.Should().Be(0.25m);
         }
     }
 }

@@ -28,7 +28,8 @@ namespace ClickIt.Tests.Unit
 
         private static MethodInfo GetPrivateMethod(object instance, string name)
         {
-            return instance.GetType().GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance)!;
+            // Allow finding private static helpers too
+            return instance.GetType().GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)!;
         }
 
         [TestMethod]

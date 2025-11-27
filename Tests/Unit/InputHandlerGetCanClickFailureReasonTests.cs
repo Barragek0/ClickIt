@@ -19,7 +19,7 @@ namespace ClickIt.Tests.Unit
             var handler = new InputHandler(settings, perf);
 
             // Call the test seam helper with a simulated area (avoid creating a real GameController)
-            var res = handler.GetCanClickFailureReasonForTests(
+            var res = InputHandler.GetCanClickFailureReasonForTests(
                 windowIsForeground: true,
                 isTown: true
             );
@@ -34,7 +34,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.GetCanClickFailureReasonForTests(
+            var res = InputHandler.GetCanClickFailureReasonForTests(
                 windowIsForeground: true,
                 blockOnOpenLeftRightPanel: true,
                 openLeftPanelAddress: 123L
@@ -49,7 +49,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.GetCanClickFailureReasonForTests(
+            var res = InputHandler.GetCanClickFailureReasonForTests(
                 windowIsForeground: true,
                 chatTitlePanelIsVisible: true
             );
@@ -63,7 +63,7 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            var res = handler.GetCanClickFailureReasonForTests(
+            var res = InputHandler.GetCanClickFailureReasonForTests(
                 windowIsForeground: true,
                 escapeState: true
             );

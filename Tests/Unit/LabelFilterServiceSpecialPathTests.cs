@@ -7,7 +7,7 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class LabelFilterServiceSpecialPathTests
     {
-        private Services.LabelFilterService CreateService()
+        private static Services.LabelFilterService CreateService()
         {
             var settings = new ClickItSettings();
             var ess = new Services.EssenceService(settings);
@@ -25,7 +25,7 @@ namespace ClickIt.Tests.Unit
             return svc;
         }
 
-        private object CreateClickSettings(Services.LabelFilterService svc)
+        private static object CreateClickSettings(Services.LabelFilterService svc)
         {
             var method = typeof(Services.LabelFilterService).GetMethod("CreateClickSettings", BindingFlags.NonPublic | BindingFlags.Instance);
             return method.Invoke(svc, [null])!;

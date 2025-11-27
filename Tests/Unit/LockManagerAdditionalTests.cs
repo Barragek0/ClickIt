@@ -12,7 +12,7 @@ namespace ClickIt.Tests.Unit
         public void Acquire_WithNull_ReturnsNoopAndDisposeSafe()
         {
             var lm = new LockManager(new ClickItSettings());
-            using (var d = lm.Acquire(null))
+            using (var d = LockManager.Acquire(null))
             {
                 d.Should().NotBeNull();
             }
@@ -24,7 +24,7 @@ namespace ClickIt.Tests.Unit
             var lm = new LockManager(new ClickItSettings());
             var o = new object();
 
-            using (var d = lm.Acquire(o))
+            using (var d = LockManager.Acquire(o))
             {
                 // while inside the acquired scope the current thread should be marked as owning the monitor
                 Monitor.IsEntered(o).Should().BeTrue();

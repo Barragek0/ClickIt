@@ -5,7 +5,7 @@ namespace ClickIt.Utils
     // Test-only seam helpers for InputHandler to avoid constructing complex ExileCore.GameController objects
     public partial class InputHandler
     {
-        internal string GetCanClickFailureReasonForTests(
+        internal static string GetCanClickFailureReasonForTests(
             bool? windowIsForeground = null,
             bool blockOnOpenLeftRightPanel = false,
             long openLeftPanelAddress = 0,
@@ -37,7 +37,7 @@ namespace ClickIt.Utils
         }
 
         // Test seam to exercise IsClickHotkeyPressed logic without native Input and label objects.
-        internal bool IsClickHotkeyPressedForTests(
+        internal static bool IsClickHotkeyPressedForTests(
             bool lazyMode,
             bool hotkeyHeld,
             bool hasRestrictedItemsOnScreen,

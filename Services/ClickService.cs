@@ -328,7 +328,7 @@ namespace ClickIt.Services
         {
             if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(label))
             {
-                Vector2? corruptionPos = labelFilterService.GetCorruptionClickPosition(label, windowTopLeft);
+                Vector2? corruptionPos = LabelFilterService.GetCorruptionClickPosition(label, windowTopLeft);
                 if (corruptionPos.HasValue)
                 {
                     DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");

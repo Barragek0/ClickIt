@@ -119,7 +119,7 @@ namespace ClickIt.Rendering
         }
 
 
-        private bool IsStrongboxClickableBySettings(string path, IReadOnlyList<string> enabledKeys)
+        private static bool IsStrongboxClickableBySettings(string path, IReadOnlyList<string> enabledKeys)
         {
             if (string.IsNullOrEmpty(path)) return false;
             if (enabledKeys == null || enabledKeys.Count == 0) return false;

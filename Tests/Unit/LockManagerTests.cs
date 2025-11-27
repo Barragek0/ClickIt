@@ -18,7 +18,7 @@ namespace ClickIt.Tests.Unit
         public void Acquire_ReturnsReleaser_ForObject()
         {
             var lm = new LockManager(new ClickItSettings());
-            using var r = lm.Acquire(new object());
+            using var r = LockManager.Acquire(new object());
             r.Should().NotBeNull();
         }
     }
