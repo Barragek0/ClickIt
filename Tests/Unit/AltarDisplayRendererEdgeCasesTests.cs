@@ -27,7 +27,7 @@ namespace ClickIt.Tests.Unit
             var fakeGraphics = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
             type.GetField("_graphics", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(inst, fakeGraphics);
             type.GetField("_deferredFrameQueue", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(inst, dfq);
-            type.GetField("_logMessage", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(inst, new System.Action<string,int>((s,f)=>{}));
+            type.GetField("_logMessage", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(inst, new System.Action<string, int>((s, f) => { }));
 
             return inst!;
         }
@@ -41,16 +41,16 @@ namespace ClickIt.Tests.Unit
 
             var primary = TestBuilders.BuildPrimary(TestBuilders.BuildSecondary(new string[] { "top1" }, new string[] { "topd" }), TestBuilders.BuildSecondary(new string[] { "bottomA" }, new string[] { }));
 
-            var aw = TestBuilders.BuildAltarWeights(topDown: new decimal[8] {1,1,1,1,1,1,1,1}, bottomDown: new decimal[8] {1,1,1,1,1,1,1,1}, topUp: new decimal[8] {2,2,0,0,0,0,0,0}, bottomUp: new decimal[8] {0,0,0,0,0,0,0,0}, topWeight: 5m, bottomWeight: 0m);
+            var aw = TestBuilders.BuildAltarWeights(topDown: new decimal[8] { 1, 1, 1, 1, 1, 1, 1, 1 }, bottomDown: new decimal[8] { 1, 1, 1, 1, 1, 1, 1, 1 }, topUp: new decimal[8] { 2, 2, 0, 0, 0, 0, 0, 0 }, bottomUp: new decimal[8] { 0, 0, 0, 0, 0, 0, 0, 0 }, topWeight: 5m, bottomWeight: 0m);
 
-            var res = (ExileCore.PoEMemory.Element?)method.Invoke(renderer, new object[] { primary, aw, new RectangleF(0,0,10,10), new RectangleF(0,0,10,10), new SharpDX.Vector2(1,1) });
+            var res = (ExileCore.PoEMemory.Element?)method.Invoke(renderer, new object[] { primary, aw, new RectangleF(0, 0, 10, 10), new RectangleF(0, 0, 10, 10), new SharpDX.Vector2(1, 1) });
 
             res.Should().BeNull();
 
             // should have enqueued warning about bottom upside
             var txtList = (System.Collections.ICollection)typeof(DeferredTextQueue).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dtq)!;
             bool found = false;
-            foreach(var x in (System.Collections.IEnumerable)txtList) if (x.ToString().Contains("Bottom upside")) found = true;
+            foreach (var x in (System.Collections.IEnumerable)txtList) if (x.ToString().Contains("Bottom upside")) found = true;
             found.Should().BeTrue();
 
             var frames = (System.Collections.ICollection)typeof(DeferredFrameQueue).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dfq)!;
@@ -65,15 +65,15 @@ namespace ClickIt.Tests.Unit
 
             var primary = TestBuilders.BuildPrimary(TestBuilders.BuildSecondary(new string[] { "top1" }, new string[] { "topd" }), TestBuilders.BuildSecondary(new string[] { "bottom1" }, new string[] { "bdown" }));
 
-            var aw = TestBuilders.BuildAltarWeights(topDown: new decimal[8] {1,1,1,1,1,1,1,1}, bottomDown: new decimal[8] {0,0,0,0,0,0,0,0}, topUp: new decimal[8] {2,2,0,0,0,0,0,0}, bottomUp: new decimal[8] {2,2,0,0,0,0,0,0}, topWeight: 5m, bottomWeight: 2m);
+            var aw = TestBuilders.BuildAltarWeights(topDown: new decimal[8] { 1, 1, 1, 1, 1, 1, 1, 1 }, bottomDown: new decimal[8] { 0, 0, 0, 0, 0, 0, 0, 0 }, topUp: new decimal[8] { 2, 2, 0, 0, 0, 0, 0, 0 }, bottomUp: new decimal[8] { 2, 2, 0, 0, 0, 0, 0, 0 }, topWeight: 5m, bottomWeight: 2m);
 
-            var res = (ExileCore.PoEMemory.Element?)method.Invoke(renderer, new object[] { primary, aw, new RectangleF(0,0,10,10), new RectangleF(0,0,10,10), new SharpDX.Vector2(1,1) });
+            var res = (ExileCore.PoEMemory.Element?)method.Invoke(renderer, new object[] { primary, aw, new RectangleF(0, 0, 10, 10), new RectangleF(0, 0, 10, 10), new SharpDX.Vector2(1, 1) });
 
             res.Should().BeNull();
 
             var txtList = (System.Collections.ICollection)typeof(DeferredTextQueue).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dtq)!;
             bool found = false;
-            foreach(var x in (System.Collections.IEnumerable)txtList) if (x.ToString().Contains("Bottom downside")) found = true;
+            foreach (var x in (System.Collections.IEnumerable)txtList) if (x.ToString().Contains("Bottom downside")) found = true;
             found.Should().BeTrue();
 
             var frames = (System.Collections.ICollection)typeof(DeferredFrameQueue).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dfq)!;

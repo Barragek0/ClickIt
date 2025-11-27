@@ -32,13 +32,13 @@ namespace ClickIt.Tests.Unit
             var window = new RectangleF(0, 0, 50, 50);
 
             // missing path
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests(null, true, new RectangleF(0,0,1,1), window, out _, out _).Should().BeFalse();
+            StrongboxRenderer.TryGetVisibleLabelRect_ForTests(null, true, new RectangleF(0, 0, 1, 1), window, out _, out _).Should().BeFalse();
 
             // not a strongbox path
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("not/related/path", true, new RectangleF(0,0,1,1), window, out _, out _).Should().BeFalse();
+            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("not/related/path", true, new RectangleF(0, 0, 1, 1), window, out _, out _).Should().BeFalse();
 
             // element invalid
-            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("abc/strongbox/there", false, new RectangleF(0,0,1,1), window, out _, out _).Should().BeFalse();
+            StrongboxRenderer.TryGetVisibleLabelRect_ForTests("abc/strongbox/there", false, new RectangleF(0, 0, 1, 1), window, out _, out _).Should().BeFalse();
 
             // null rectangle
             StrongboxRenderer.TryGetVisibleLabelRect_ForTests("abc/strongbox/there", true, null, window, out _, out _).Should().BeFalse();
