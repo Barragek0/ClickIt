@@ -36,7 +36,7 @@ namespace ClickIt.Tests.Integration
         {
             var type = renderer.GetType();
             var mi = type.GetMethod("EvaluateAltarWeights", BindingFlags.NonPublic | BindingFlags.Instance);
-            return (Element?)mi!.Invoke(renderer, new object[] { weights, primary, top, bottom, textPos, textPos });
+            return (Element?)mi!.Invoke(renderer, [weights, primary, top, bottom, textPos, textPos]);
         }
 
         [TestMethod]
@@ -61,7 +61,7 @@ namespace ClickIt.Tests.Integration
             var calc = new WeightCalculator(settings);
             var aw = calc.CalculateAltarWeights(primary);
 
-            InvokeEvaluate(renderer, aw, primary, new RectangleF(0,0,10,10), new RectangleF(0,0,10,10), new Vector2(1,1));
+            InvokeEvaluate(renderer, aw, primary, new RectangleF(0, 0, 10, 10), new RectangleF(0, 0, 10, 10), new Vector2(1, 1));
             // elements in this test are uninitialized (Element.IsValid default), so result may be null but branch logic should have executed.
             // We're successful if the evaluation did not throw and weights indicate top has higher upside.
             aw.TopUpsideWeight.Should().BeGreaterThan(aw.BottomUpsideWeight);
@@ -105,11 +105,11 @@ namespace ClickIt.Tests.Integration
 
             var aw = new AltarWeights();
             var big = new decimal[8]; big[0] = 99m;
-            aw.InitializeFromArrays(big, big, new decimal[8] { 1,1,1,1,1,1,1,1 }, new decimal[8] {1,1,1,1,1,1,1,1});
+            aw.InitializeFromArrays(big, big, [1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1]);
             aw.TopDownsideWeight = 99m;
             aw.BottomDownsideWeight = 99m;
 
-            var res = InvokeEvaluate(renderer, aw, primary, new RectangleF(0,0,3,3), new RectangleF(0,0,3,3), new Vector2(1,1));
+            var res = InvokeEvaluate(renderer, aw, primary, new RectangleF(0, 0, 3, 3), new RectangleF(0, 0, 3, 3), new Vector2(1, 1));
             res.Should().BeNull();
         }
 
@@ -124,8 +124,8 @@ namespace ClickIt.Tests.Integration
             var topEl = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
             var bottomEl = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
-            var topUps = new List<string>{ "tiny0" };
-            var bottomUps = new List<string>{ "big10" };
+            var topUps = new List<string> { "tiny0" };
+            var bottomUps = new List<string> { "big10" };
             var topMods = new SecondaryAltarComponent(topEl, topUps, new List<string>());
             var bottomMods = new SecondaryAltarComponent(bottomEl, bottomUps, new List<string>());
             var primary = new PrimaryAltarComponent(ClickIt.AltarType.EaterOfWorlds, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
@@ -150,8 +150,8 @@ namespace ClickIt.Tests.Integration
             var topEl = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
             var bottomEl = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
-            var topMods = new SecondaryAltarComponent(topEl, new List<string>{ "x" }, new List<string>{ "y" });
-            var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string>{ "x" }, new List<string>{ "y" });
+            var topMods = new SecondaryAltarComponent(topEl, new List<string> { "x" }, new List<string> { "y" });
+            var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string> { "x" }, new List<string> { "y" });
             var primary = new PrimaryAltarComponent(ClickIt.AltarType.SearingExarch, topMods, new AltarButton(topEl), bottomMods, new AltarButton(bottomEl));
 
             settings.ModTiers["x"] = 5;
@@ -187,7 +187,7 @@ namespace ClickIt.Tests.Integration
             public Services.IElementAdapter? GetChildFromIndices(int a, int b) => null;
             public string GetText(int maxChars) => string.Empty;
             public bool IsValid => false;
-            public SharpDX.RectangleF GetClientRect() => new SharpDX.RectangleF(0,0,0,0);
+            public SharpDX.RectangleF GetClientRect() => new SharpDX.RectangleF(0, 0, 0, 0);
         }
 
         [TestMethod]
@@ -199,8 +199,8 @@ namespace ClickIt.Tests.Integration
             var topEl = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
             var bottomEl = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
-            var topMods = new SecondaryAltarComponent(topEl, new List<string>{ "a1", "a2" }, new List<string>{ "d1" });
-            var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string>{ "b1" }, new List<string>{ "d2" });
+            var topMods = new SecondaryAltarComponent(topEl, new List<string> { "a1", "a2" }, new List<string> { "d1" });
+            var bottomMods = new SecondaryAltarComponent(bottomEl, new List<string> { "b1" }, new List<string> { "d2" });
             var primary = new PrimaryAltarComponent(ClickIt.AltarType.EaterOfWorlds, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 
             settings.ModTiers["a1"] = 10; settings.ModTiers["a2"] = 5; settings.ModTiers["b1"] = 8; settings.ModTiers["d1"] = 1; settings.ModTiers["d2"] = 1;
@@ -209,7 +209,7 @@ namespace ClickIt.Tests.Integration
             var aw = calc.CalculateAltarWeights(primary);
 
             // Call EvaluateAltarWeights to execute full pipeline branch logic
-            InvokeEvaluate(renderer, aw, primary, new RectangleF(0,0,20,20), new RectangleF(0,0,20,20), new Vector2(5,5));
+            InvokeEvaluate(renderer, aw, primary, new RectangleF(0, 0, 20, 20), new RectangleF(0, 0, 20, 20), new Vector2(5, 5));
 
             // Execution reaching here without exceptions is success; we expect no throw and weights computed
             aw.TopWeight.Should().BeGreaterThanOrEqualTo(0);
