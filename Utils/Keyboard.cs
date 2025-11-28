@@ -17,47 +17,34 @@ namespace ClickIt.Utils
         private static extern short GetKeyState(int nVirtKey);
         public static void KeyDown(Keys key)
         {
-            if (_disableNativeInput) return;
             keybd_event((byte)key, 0, KEYEVENTF_EXTENDEDKEY, 0);
         }
         public static void KeyUp(Keys key)
         {
-            if (_disableNativeInput) return;
             keybd_event((byte)key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
         }
         public static void KeyPress(Keys key)
         {
-            if (_disableNativeInput)
-            {
-                return;
-            }
             KeyDown(key);
             Thread.Sleep(50);
             KeyUp(key);
         }
         public static void KeyPress(Keys key, int delay)
         {
-            if (_disableNativeInput)
-            {
-                return;
-            }
             KeyDown(key);
             Thread.Sleep(delay);
             KeyUp(key);
         }
         public static bool IsKeyDown(Keys key)
         {
-            if (_disableNativeInput) return false;
             return GetKeyState((int)key) < 0;
         }
         public static bool IsKeyPressed(Keys key)
         {
-            if (_disableNativeInput) return false;
             return Convert.ToBoolean(GetKeyState((int)key) & KEY_PRESSED);
         }
         public static bool IsKeyToggled(Keys key)
         {
-            if (_disableNativeInput) return false;
             return Convert.ToBoolean(GetKeyState((int)key) & KEY_TOGGLED);
         }
     }

@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using SharpDX;
+using ExileCore.Shared.Enums;
 
 namespace ClickIt.Tests.Utils
 {
@@ -23,6 +24,26 @@ namespace ClickIt.Tests.Utils
         }
 
         [TestMethod]
+        public void DeferredFrameQueue_Enqueue_Multiple_OrderPreserved()
+        {
+            var q = new DeferredFrameQueue();
+
+            var rect1 = new RectangleF(0, 0, 1, 1);
+            var rect2 = new RectangleF(10, 10, 1, 1);
+            var rect3 = new RectangleF(20, 20, 2, 2);
+
+            q.Enqueue(rect1, Color.Red, 1);
+            q.Enqueue(rect2, Color.Green, 2);
+            q.Enqueue(rect3, Color.Blue, 3);
+
+            var snapshot = q.GetSnapshotForTests();
+            snapshot.Should().HaveCount(3);
+            snapshot[0].Rectangle.Should().Be(rect1);
+            snapshot[1].Rectangle.Should().Be(rect2);
+            snapshot[2].Rectangle.Should().Be(rect3);
+        }
+
+        [TestMethod]
         public void DeferredTextQueue_Enqueue_FlushWithNullGraphics_DoesNotThrow()
         {
             var q = new DeferredTextQueue();
@@ -32,6 +53,24 @@ namespace ClickIt.Tests.Utils
             q.Flush(null!, (s, f) => { });
             // If we reached this point, flush handled null safely
             true.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void DeferredTextQueue_Enqueue_AddsTextEntry_ToInternalList()
+        {
+            var q = new DeferredTextQueue();
+
+            // Reflect into private _items to assert the contents
+            var itemsField = typeof(DeferredTextQueue).GetField("_items", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            itemsField.Should().NotBeNull();
+
+            var initial = (System.Collections.ICollection)itemsField.GetValue(q);
+            initial.Count.Should().Be(0);
+
+            q.Enqueue("hello", new SharpDX.Vector2(1, 2), Color.White, 12, FontAlign.Left);
+
+            var after = (System.Collections.ICollection)itemsField.GetValue(q);
+            after.Count.Should().Be(1);
         }
 
         [TestMethod]

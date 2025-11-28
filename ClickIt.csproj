@@ -40,11 +40,6 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Exclude UI / rendering / platform input files from coverlet LCOV output when instrumented by coverlet.msbuild -->
-  <PropertyGroup>
-    <ExcludeByFile>**/Core/ClickItSettings.Methods.cs,**/Core/ClickItSettings.cs,**/Rendering/**,**/Services/ShrineService.cs,**/Services/EssenceService.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/Utils/InputHandler.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
-  </PropertyGroup>
-
   <!-- Fallback references for development when exapiPackage is not set -->
   <ItemGroup Condition="'$(exapiPackage)' == ''">
     <Reference Include="ExileCore">
@@ -60,6 +55,11 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <!-- Exclude UI / rendering / platform input files from coverlet LCOV output when instrumented by coverlet.msbuild -->
+  <PropertyGroup>
+    <ExcludeByFile>**/Core/ClickItSettings.cs,**/Rendering/**,**/Services/ShrineService.cs,**/Services/EssenceService.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/Utils/InputHandler.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
+  </PropertyGroup>
 
   <ItemGroup>
     <!-- NuGet packages (kept from original project) -->
@@ -89,8 +89,6 @@
     <Compile Include="Core\ClickIt.Render.cs" />
     <Compile Include="Core\ClickIt.Input.cs" />
     <Compile Include="Core\ClickItSettings.cs" />
-    <Compile Include="Core\ClickItSettings.Methods.cs" />
-    <Compile Include="Core\ClickItSettings.Seams.cs" />
     <Compile Include="Core\PluginContext.cs" />
 
     <!-- Constants -->
@@ -130,20 +128,16 @@
     <!-- Rendering -->
     <Compile Include="Rendering\DebugRenderer.cs" />
     <Compile Include="Rendering\LazyModeRenderer.cs" />
-    <Compile Include="Rendering\LazyModeRenderer.Seams.cs" />
     <Compile Include="Rendering\AltarDisplayRenderer.cs" />
     <Compile Include="Rendering\StrongboxRenderer.cs" />
-    <Compile Include="Rendering\StrongboxRenderer.Seams.cs" />
 
     <!-- Utils -->
     <Compile Include="Utils\Mouse.cs" />
-    <Compile Include="Utils\Keyboard.Seams.cs" />
     <Compile Include="Utils\Keyboard.cs" />
     <Compile Include="Utils\IndexConstants.cs" />
     <Compile Include="Utils\ModIndexConstants.cs" />
     <Compile Include="Utils\WeightCalculator.cs" />
     <Compile Include="Utils\InputHandler.cs" />
-    <Compile Include="Utils\InputHandler.Seams.cs" />
     <Compile Include="Utils\LockManager.cs" />
     <Compile Include="Utils\DeferredTextQueue.cs" />
     <Compile Include="Utils\DeferredFrameQueue.cs" />

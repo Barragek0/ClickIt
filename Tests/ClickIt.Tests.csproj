@@ -59,7 +59,7 @@
            This keeps LCOV output consistent with runsettings.xml and avoids under-reporting caused by UI/rendering files. -->
        <!-- coverlet expects forward-slash globs (unix style) when matching source file paths in the generated LCOV.
          Use forward slashes and double-star patterns so exclusions reliably match absolute or relative source paths. -->
-      <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*,**/Core/ClickItSettings.cs,**/Core/ClickItSettings.Methods.cs,**/Rendering/DebugRenderer.cs,**/Rendering/AltarDisplayRenderer.cs,**/Rendering/LazyModeRenderer.cs,**/Rendering/StrongboxRenderer.cs,**/Rendering/LazyModeRenderer.Seams.cs,**/Rendering/StrongboxRenderer.Seams.cs,**/Services/ShrineService.cs,**/Services/EssenceService.cs,**/Rendering/**,**/Core/ClickIt.Render.cs,**/Core/ClickIt.Input.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/Utils/InputHandler.cs</ExcludeByFile>
+      <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*,**/Core/ClickItSettings.cs,**/Core/ClickItSettings.Methods.cs,**/Rendering/DebugRenderer.cs,**/Rendering/AltarDisplayRenderer.cs,**/Rendering/LazyModeRenderer.cs,**/Rendering/StrongboxRenderer.cs,**/Rendering/LazyModeRenderer.Seams.cs,**/Rendering/StrongboxRenderer.Seams.cs,**/Services/ShrineService.cs,**/Services/EssenceService.cs,**/Utils/InputHandler.cs,**/Rendering/**,**/Core/ClickIt.Render.cs,**/Core/ClickIt.Input.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs</ExcludeByFile>
     </PropertyGroup>
 
 </Project>

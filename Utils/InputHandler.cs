@@ -152,6 +152,119 @@ namespace ClickIt.Utils
             return "Clicking disabled.";
         }
 
+        // Testable helper that mirrors GetCanClickFailureReason but accepts plain flags.
+        // This is intentionally inside this file so unit tests can cover the behavior without
+        // constructing ExileCore.GameController objects.
+        internal static string GetCanClickFailureReasonFromFlags(
+            bool windowIsForeground,
+            bool blockOnOpenLeftRightPanel,
+            bool openLeftPanelAddressNonZero,
+            bool openRightPanelAddressNonZero,
+            bool isTown,
+            bool isHideout,
+            bool chatTitlePanelIsVisible,
+            bool atlasPanelIsVisible,
+            bool atlasTreePanelIsVisible,
+            bool treePanelIsVisible,
+            bool ultimatumPanelIsVisible,
+            bool betrayalWindowIsVisible,
+            bool syndicatePanelIsVisible,
+            bool syndicateTreeIsVisible,
+            bool incursionWindowIsVisible,
+            bool ritualWindowIsVisible,
+            bool sanctumFloorWindowIsVisible,
+            bool sanctumRewardWindowIsVisible,
+            bool microtransactionShopWindowIsVisible,
+            bool resurrectPanelIsVisible,
+            bool npcDialogIsVisible,
+            bool kalandraTabletWindowIsVisible,
+            bool escapeState)
+        {
+            if (!windowIsForeground) return "PoE not in focus.";
+
+            if (blockOnOpenLeftRightPanel)
+            {
+                if (openLeftPanelAddressNonZero || openRightPanelAddressNonZero)
+                    return "Panel is open.";
+            }
+
+            if (isTown || isHideout) return "In town/hideout.";
+
+            if (chatTitlePanelIsVisible) return "Chat is open.";
+            if (atlasPanelIsVisible) return "Atlas panel is open.";
+            if (atlasTreePanelIsVisible) return "Atlas tree panel is open.";
+            if (treePanelIsVisible) return "Passive tree panel is open.";
+            if (ultimatumPanelIsVisible) return "Ultimatum panel is open.";
+            if (betrayalWindowIsVisible) return "Betrayal window is open.";
+            if (syndicatePanelIsVisible) return "Syndicate panel is open.";
+            if (syndicateTreeIsVisible) return "Syndicate tree panel is open.";
+            if (incursionWindowIsVisible) return "Incursion window is open.";
+            if (ritualWindowIsVisible) return "Ritual window is open.";
+            if (sanctumFloorWindowIsVisible) return "Sanctum floor window is open.";
+            if (sanctumRewardWindowIsVisible) return "Sanctum reward window is open.";
+            if (microtransactionShopWindowIsVisible) return "Microtransaction shop window is open.";
+            if (resurrectPanelIsVisible) return "Resurrect panel is open.";
+            if (npcDialogIsVisible) return "NPC dialog is open.";
+            if (kalandraTabletWindowIsVisible) return "Kalandra tablet window is open.";
+
+            if (escapeState) return "Escape menu is open.";
+
+            return "Clicking disabled.";
+        }
+
+        // Testable boolean wrapper for the main CanClick logic that accepts booleans instead of a GameController.
+        internal bool CanClickFromFlags(
+            bool keyState,
+            bool isPoEActive,
+            bool blockOnOpenLeftRightPanel,
+            bool isPanelOpen,
+            bool isInTownOrHideout,
+            bool chatTitlePanelIsVisible,
+            bool isRitualActive,
+            bool clickHotkeyHeld,
+            bool isEscapeState,
+            bool atlasPanelIsVisible,
+            bool atlasTreePanelIsVisible,
+            bool treePanelIsVisible,
+            bool ultimatumPanelIsVisible,
+            bool betrayalWindowIsVisible,
+            bool syndicatePanelIsVisible,
+            bool syndicateTreeIsVisible,
+            bool incursionWindowIsVisible,
+            bool ritualWindowIsVisible,
+            bool sanctumFloorWindowIsVisible,
+            bool sanctumRewardWindowIsVisible,
+            bool microtransactionShopWindowIsVisible,
+            bool resurrectPanelIsVisible,
+            bool npcDialogIsVisible,
+            bool kalandraTabletWindowIsVisible)
+        {
+            if (!keyState) return false;
+            if (!isPoEActive) return false;
+            if (blockOnOpenLeftRightPanel && isPanelOpen) return false;
+            if (isInTownOrHideout) return false;
+            if (chatTitlePanelIsVisible) return false;
+            if (isRitualActive && !clickHotkeyHeld) return false;
+            if (isEscapeState) return false;
+            if (atlasPanelIsVisible) return false;
+            if (atlasTreePanelIsVisible) return false;
+            if (treePanelIsVisible) return false;
+            if (ultimatumPanelIsVisible) return false;
+            if (betrayalWindowIsVisible) return false;
+            if (syndicatePanelIsVisible) return false;
+            if (syndicateTreeIsVisible) return false;
+            if (incursionWindowIsVisible) return false;
+            if (ritualWindowIsVisible) return false;
+            if (sanctumFloorWindowIsVisible) return false;
+            if (sanctumRewardWindowIsVisible) return false;
+            if (microtransactionShopWindowIsVisible) return false;
+            if (resurrectPanelIsVisible) return false;
+            if (npcDialogIsVisible) return false;
+            if (kalandraTabletWindowIsVisible) return false;
+
+            return true;
+        }
+
         public bool IsClickHotkeyPressed(TimeCache<System.Collections.Generic.List<LabelOnGround>>? cachedLabels, Services.LabelFilterService? labelFilterService)
         {
             bool hotkeyHeld = Input.GetKeyState(_settings.ClickLabelKey.Value);
@@ -209,10 +322,7 @@ namespace ClickIt.Utils
 
             var sw = Stopwatch.StartNew();
             // Skip native cursor movement during tests / CI when Mouse.DisableNativeInput is enabled
-            if (!Mouse.DisableNativeInput)
-            {
-                Input.SetCursorPos(position);
-            }
+            Input.SetCursorPos(position);
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
 
@@ -253,18 +363,12 @@ namespace ClickIt.Utils
             if (_settings?.LeftHanded?.Value == true)
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: Performing right click (left-handed)", 5);
-                if (!Mouse.DisableNativeInput)
-                {
-                    Mouse.RightClick();
-                }
+                Mouse.RightClick();
             }
             else
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: Performing left click", 5);
-                if (!Mouse.DisableNativeInput)
-                {
-                    Mouse.LeftClick();
-                }
+                Mouse.LeftClick();
             }
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
@@ -303,10 +407,7 @@ namespace ClickIt.Utils
                 try
                 {
                     var beforeVec = new Vector2(before.X, before.Y);
-                    if (!Mouse.DisableNativeInput)
-                    {
-                        Input.SetCursorPos(beforeVec);
-                    }
+                    Input.SetCursorPos(beforeVec);
                     // Small delay to let the OS update cursor position
                     Thread.Sleep(5);
                     _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);
