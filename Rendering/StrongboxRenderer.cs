@@ -3,8 +3,6 @@ using ExileCore.PoEMemory.Elements;
 using Color = SharpDX.Color;
 using ClickIt.Utils;
 
-#nullable enable
-
 namespace ClickIt.Rendering
 {
     // Responsible for drawing debug frames around strongboxes (locked/unlocked)

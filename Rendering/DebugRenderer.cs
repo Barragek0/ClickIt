@@ -196,7 +196,7 @@ namespace ClickIt.Rendering
         {
             _deferredTextQueue.Enqueue("--- Altar Detection ---", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            var altarComps = _altarService?.GetAltarComponentsReadOnly() ?? Array.Empty<PrimaryAltarComponent>();
+            var altarComps = _altarService?.GetAltarComponentsReadOnly() ?? System.Array.Empty<PrimaryAltarComponent>();
             Color altarCountColor = altarComps.Count > 0 ? Color.LightGreen : Color.Gray;
             _deferredTextQueue.Enqueue($"Altar Components: {altarComps.Count}", new Vector2(xPos, yPos), altarCountColor, 16);
             yPos += lineHeight;
@@ -429,6 +429,81 @@ namespace ClickIt.Rendering
                 int totalLabels = labelsCollection.Count;
                 _deferredTextQueue.Enqueue($"  Total Labels: {totalLabels}", new Vector2(xPos, yPos), Color.White, 16);
                 yPos += lineHeight;
+                // Draw debug frames for essence labels: green = not overlapping, red = overlapping
+                if (_plugin is ClickIt)
+                {
+                    try
+                    {
+                        var wndRect = gameController?.Window?.GetWindowRectangleTimeCache;
+                        var topLeft = wndRect?.TopLeft ?? new Vector2(0, 0);
+
+                        // collect visible essence labels (with their rectangles and player distance)
+                        var essenceInfos = new System.Collections.Generic.List<(LabelOnGround lbl, SharpDX.RectangleF rect, float distance, int index)>();
+                        foreach (var lbl in labelsCollection)
+                        {
+                            if (lbl == null || lbl.Label == null) continue;
+                            if (!LabelUtils.HasEssenceImprisonmentText(lbl)) continue;
+                            var r = lbl.Label.GetClientRect();
+                            if (r.Width <= 0 || r.Height <= 0) continue;
+                            var screenRect = new SharpDX.RectangleF(r.X + topLeft.X, r.Y + topLeft.Y, r.Width, r.Height);
+                            float dist = lbl.ItemOnGround?.DistancePlayer ?? float.MaxValue;
+                            essenceInfos.Add((lbl, screenRect, dist, essenceInfos.Count));
+                        }
+
+                        // enqueue frames: If a rect overlaps others, mark the single label the plugin would click as green
+                        // and mark the other overlapping labels red. For overlapping groups the label with the
+                        // smallest distance-to-player wins; tie-break to lower index.
+                        for (int i = 0; i < essenceInfos.Count; i++)
+                        {
+                            var rect = essenceInfos[i].rect;
+                            // find overlapping peers
+                            var overlappingIndices = new System.Collections.Generic.List<int>();
+                            for (int j = 0; j < essenceInfos.Count; j++)
+                            {
+                                if (i == j) continue;
+                                var otherRect = essenceInfos[j].rect;
+                                if (!(rect.Right <= otherRect.Left || rect.Left >= otherRect.Right || rect.Bottom <= otherRect.Top || rect.Top >= otherRect.Bottom))
+                                {
+                                    overlappingIndices.Add(j);
+                                }
+                            }
+
+                            // If no overlaps, show as green (clickable)
+                            if (overlappingIndices.Count == 0)
+                            {
+                                _deferredFrameQueue.Enqueue(rect, Color.LawnGreen, 2);
+                                continue;
+                            }
+
+                            // Build group of indices including self
+                            overlappingIndices.Add(i);
+
+                            // Determine the 'winner' candidate: smallest distance, tie-broken by lowest index
+                            float minDist = float.MaxValue;
+                            foreach (var k in overlappingIndices)
+                            {
+                                var d = essenceInfos[k].distance;
+                                if (d < minDist) minDist = d;
+                            }
+                            // pick the earliest index among those with minDist
+                            int winnerIndex = -1;
+                            for (int k = 0; k < essenceInfos.Count; k++)
+                            {
+                                if (!overlappingIndices.Contains(k)) continue;
+                                if (Math.Abs(essenceInfos[k].distance - minDist) < 0.0001f)
+                                {
+                                    winnerIndex = k;
+                                    break;
+                                }
+                            }
+
+                            // current rect is winner -> green, otherwise red
+                            var color = (winnerIndex == i) ? Color.LawnGreen : Color.Red;
+                            _deferredFrameQueue.Enqueue(rect, color, 2);
+                        }
+                    }
+                    catch { }
+                }
                 int validLabels = 0;
                 foreach (var label in labelsCollection)
                 {

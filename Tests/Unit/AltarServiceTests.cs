@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 using FluentAssertions;
@@ -7,7 +6,6 @@ using Moq;
 using ClickIt.Services;
 using ClickIt.Components;
 using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
 
 namespace ClickIt.Tests.Unit
 {
@@ -24,8 +22,8 @@ namespace ClickIt.Tests.Unit
             var service = new AltarService(clickIt, settings, null);
 
             // Create a minimal PrimaryAltarComponent using nullable-friendly constructors
-            var topMods = new SecondaryAltarComponent(null, new List<string>(), new List<string>());
-            var bottomMods = new SecondaryAltarComponent(null, new List<string>(), new List<string>());
+            var topMods = new SecondaryAltarComponent(null, [], []);
+            var bottomMods = new SecondaryAltarComponent(null, [], []);
             var topButton = new AltarButton(null);
             var bottomButton = new AltarButton(null);
 

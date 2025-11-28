@@ -3,15 +3,11 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using ExileCore.Shared.Enums;
 using ExileCore.PoEMemory.Components;
 
 namespace ClickIt.Utils
 {
-#nullable enable
     internal static partial class LabelUtils
     {
         public static void SortLabelsByDistance(List<LabelOnGround> labels)

@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace ClickIt.Utils
 {
     // Partial file containing test-only seams for LabelUtils.

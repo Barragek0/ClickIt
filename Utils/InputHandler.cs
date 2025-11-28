@@ -13,7 +13,7 @@ namespace ClickIt.Utils
     public class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
     {
         private readonly ClickItSettings _settings = settings;
-        private readonly Random _random = new Random();
+        private readonly Random _random = new();
         private readonly ErrorHandler? _errorHandler = errorHandler;
         private readonly PerformanceMonitor _performanceMonitor = performanceMonitor;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
@@ -151,7 +151,7 @@ namespace ClickIt.Utils
             return "Clicking disabled.";
         }
 
-        public bool IsClickHotkeyPressed(TimeCache<System.Collections.Generic.List<LabelOnGround>>? cachedLabels, Services.LabelFilterService? labelFilterService)
+        public bool IsClickHotkeyPressed(TimeCache<List<LabelOnGround>>? cachedLabels, Services.LabelFilterService? labelFilterService)
         {
             bool hotkeyHeld = Input.GetKeyState(_settings.ClickLabelKey.Value);
             if (!_settings.LazyMode.Value)

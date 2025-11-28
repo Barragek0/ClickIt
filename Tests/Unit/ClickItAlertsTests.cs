@@ -3,7 +3,6 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using ClickIt;
 
 namespace ClickIt.Tests.Unit
 {

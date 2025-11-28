@@ -1,9 +1,9 @@
 ﻿using ClickIt.Utils;
 using ExileCore;
 using System.Diagnostics;
+
 namespace ClickIt
 {
-#nullable enable
     public partial class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
         public PluginContext State { get; } = new PluginContext();
@@ -179,7 +179,7 @@ namespace ClickIt
         }
 
         // --- Alert sound playback / cooldown ---
-        private readonly Dictionary<string, DateTime> _lastAlertTimes = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, DateTime> _lastAlertTimes = new(StringComparer.OrdinalIgnoreCase);
         private const string AlertFileName = "alert.wav";
         // Raw URL used to fetch the default alert sound from the repository when missing
         private const string AlertDownloadUrl = "https://raw.githubusercontent.com/Barragek0/ClickIt/main/alert.wav";
@@ -205,9 +205,9 @@ namespace ClickIt
                         try
                         {
                             LogMessage("Attempting to download default alert sound from GitHub...", 10);
-                            using (var http = new System.Net.Http.HttpClient())
+                            using (var http = new HttpClient())
                             {
-                                http.Timeout = System.TimeSpan.FromSeconds(5);
+                                http.Timeout = TimeSpan.FromSeconds(5);
                                 var resp = http.GetAsync(AlertDownloadUrl).GetAwaiter().GetResult();
                                 if (resp.IsSuccessStatusCode)
                                 {

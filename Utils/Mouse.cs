@@ -2,7 +2,6 @@
 using RectangleF = SharpDX.RectangleF;
 using SystemDrawingPoint = System.Drawing.Point;
 using System.Runtime.InteropServices;
-using System.Threading;
 namespace ClickIt.Utils
 {
     internal class Mouse

@@ -13,7 +13,7 @@ namespace ClickIt.Utils
             if (gameController?.EntityListWrapper?.OnlyValidEntities == null)
                 return false;
             // Extract paths from the entity objects and delegate to the path-based implementation.
-            var paths = new System.Collections.Generic.List<string?>();
+            var paths = new List<string?>();
             foreach (var entity in gameController.EntityListWrapper.OnlyValidEntities)
             {
                 try

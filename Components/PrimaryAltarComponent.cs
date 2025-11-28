@@ -4,7 +4,6 @@ using ClickIt.Utils;
 using RectangleF = SharpDX.RectangleF;
 namespace ClickIt.Components
 {
-#nullable enable
     public class PrimaryAltarComponent
     {
         public PrimaryAltarComponent(AltarType AltarType, SecondaryAltarComponent TopMods, AltarButton TopButton, SecondaryAltarComponent BottomMods, AltarButton BottomButton)

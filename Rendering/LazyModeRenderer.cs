@@ -4,11 +4,11 @@ using ExileCore;
 
 namespace ClickIt.Rendering
 {
-    public class LazyModeRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, Utils.InputHandler inputHandler, LabelFilterService? labelFilterService)
+    public class LazyModeRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, InputHandler inputHandler, LabelFilterService? labelFilterService)
     {
         private readonly ClickItSettings _settings = settings;
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
-        private readonly Utils.InputHandler _inputHandler = inputHandler;
+        private readonly InputHandler _inputHandler = inputHandler;
         private readonly LabelFilterService? _labelFilterService = labelFilterService;
 
         public void Render(GameController gameController, PluginContext state)

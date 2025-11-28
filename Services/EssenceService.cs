@@ -2,7 +2,6 @@
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
-#nullable enable
 namespace ClickIt.Services
 {
     public class EssenceService(ClickItSettings settings)

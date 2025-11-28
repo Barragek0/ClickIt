@@ -1,4 +1,3 @@
-using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using Color = SharpDX.Color;
 

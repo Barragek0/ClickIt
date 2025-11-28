@@ -1,5 +1,3 @@
-using System;
-
 namespace ClickIt.Utils
 {
     public static class ModIndexConstants

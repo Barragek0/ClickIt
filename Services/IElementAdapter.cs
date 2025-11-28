@@ -1,4 +1,3 @@
-using SharpDX;
 using ExileCore.PoEMemory;
 
 namespace ClickIt.Services

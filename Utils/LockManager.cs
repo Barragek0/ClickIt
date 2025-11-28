@@ -1,7 +1,4 @@
-using System;
-using System.Threading;
 using ClickIt;
-#nullable enable
 
 namespace ClickIt.Utils
 {
@@ -29,7 +26,7 @@ namespace ClickIt.Utils
 
         private sealed class NoopReleaser : IDisposable
         {
-            public static readonly NoopReleaser Value = new NoopReleaser();
+            public static readonly NoopReleaser Value = new();
             private NoopReleaser() { }
             public void Dispose() { }
         }

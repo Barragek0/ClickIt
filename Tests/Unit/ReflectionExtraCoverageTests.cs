@@ -1,5 +1,4 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-#nullable enable
 using System;
 using System.Linq;
 using System.Reflection;

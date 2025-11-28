@@ -1,8 +1,6 @@
 using FluentAssertions;
 using ClickIt.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Reflection;
-using SharpDX;
 
 namespace ClickIt.Tests.Unit
 {
@@ -31,11 +29,11 @@ namespace ClickIt.Tests.Unit
             clickIt.__Test_SetSettings(new ClickItSettings());
 
             // Provide a simple PerformanceMonitor so Render proceeds into RenderInternal
-            clickIt.State.PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(clickIt.__Test_GetSettings());
+            clickIt.State.PerformanceMonitor = new PerformanceMonitor(clickIt.__Test_GetSettings());
 
             // Ensure required queues exist; Graphics can remain null (flush is no-op in that case)
-            clickIt.State.DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue();
-            clickIt.State.DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue();
+            clickIt.State.DeferredTextQueue = new DeferredTextQueue();
+            clickIt.State.DeferredFrameQueue = new DeferredFrameQueue();
 
             // Sanity: Render should not throw and IsRendering should be false when Render returns
             clickIt.Render();

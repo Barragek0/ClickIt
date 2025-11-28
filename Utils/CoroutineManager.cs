@@ -1,14 +1,8 @@
 using ExileCore;
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared;
-using ExileCore.Shared.Cache;
 using ExileCore.Shared.Enums;
 using SharpDX;
 using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using RectangleF = SharpDX.RectangleF;
 using ClickIt;
 
 namespace ClickIt.Utils

@@ -89,7 +89,17 @@ namespace ClickIt.Services
                 if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
                     continue;
                 if (ShouldClickLabel(label, item, clickSettings, _gameController))
+                {
+                    // If this label is an essence, avoid returning it when it is obscured
+                    // by another label (this prevents selecting a behind-label when two
+                    // essence labels overlap). Non-essence labels are not affected.
+                    // Do NOT filter out essence candidates here based on distance/overlap.
+                    // Overlapping essence resolution is handled at click time (ClickService) using
+                    // UIHover verification. Keeping this method conservative here would prevent
+                    // the resolver from running — so allow essence candidates through.
+
                     return label;
+                }
             }
             return null;
         }
@@ -107,7 +117,13 @@ namespace ClickIt.Services
                 if (item == null || item.DistancePlayer > _settings.ClickDistance.Value)
                     continue;
                 if (ShouldClickLabel(label, item, clickSettings, _gameController))
+                {
+                    // Allow returning essence labels even when overlap/distance heuristics suggest
+                    // they may be obscured. The ClickService will perform authoritative UIHover
+                    // verification when attempting to click, and will skip clicks that cannot
+                    // be verified (safer than filtering here by heuristic).
                     return label;
+                }
             }
             return null;
         }
@@ -268,6 +284,7 @@ namespace ClickIt.Services
         {
             try
             {
+                // (debug logging moved to instance method body below)
                 if (gameController == null) return false;
                 var world = item?.GetComponent<WorldItem>();
                 var itemEntity = world?.ItemEntity;
@@ -427,6 +444,11 @@ namespace ClickIt.Services
         {
             return EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
         }
+
+        // Note: overlap heuristics are preserved for tests via the seam helper
+        // IsLabelObscuredByCloserLabelForTests in LabelFilterService.Seams.cs.  The
+        // runtime click resolution now uses UIHover verification in ClickService
+        // so we avoid filtering essence labels here.
 
         private static bool DoRectanglesOverlap(RectangleF a, RectangleF b)
         {

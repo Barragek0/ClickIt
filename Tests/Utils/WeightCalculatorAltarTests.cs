@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using ClickIt.Components;
-using System.Collections.Generic;
 
 namespace ClickIt.Tests.Utils
 {
@@ -36,8 +35,8 @@ namespace ClickIt.Tests.Utils
             var calc = new WeightCalculator(settings);
 
             // SecondaryAltarComponent with null Element should trigger the null-element validation
-            var top = new SecondaryAltarComponent(null, new List<string> { "up0" }, new List<string> { "down0" });
-            var bottom = new SecondaryAltarComponent(null, new List<string> { "up1" }, new List<string> { "down1" });
+            var top = new SecondaryAltarComponent(null, ["up0"], ["down0"]);
+            var bottom = new SecondaryAltarComponent(null, ["up1"], ["down1"]);
 
             var altar = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
 
@@ -60,8 +59,8 @@ namespace ClickIt.Tests.Utils
             // Create a (uninitialized) Element so the component elements are non-null
             var elt = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.PoEMemory.Element)) as ExileCore.PoEMemory.Element;
 
-            var top = new SecondaryAltarComponent(elt, new List<string> { "up0", "up1" }, new List<string> { "down0" });
-            var bottom = new SecondaryAltarComponent(elt, new List<string> { "up1" }, new List<string> { "down1" });
+            var top = new SecondaryAltarComponent(elt, ["up0", "up1"], ["down0"]);
+            var bottom = new SecondaryAltarComponent(elt, ["up1"], ["down1"]);
 
             var altar = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
 

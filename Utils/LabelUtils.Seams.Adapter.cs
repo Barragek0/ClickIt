@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ClickIt.Utils
 {
     // Adapter-focused test seams to make LabelUtils traversal testable without ExileCore.Element

@@ -67,7 +67,7 @@ namespace ClickIt.Tests.Utils
             var initial = (System.Collections.ICollection)itemsField.GetValue(q);
             initial.Count.Should().Be(0);
 
-            q.Enqueue("hello", new SharpDX.Vector2(1, 2), Color.White, 12, FontAlign.Left);
+            q.Enqueue("hello", new Vector2(1, 2), Color.White, 12, FontAlign.Left);
 
             var after = (System.Collections.ICollection)itemsField.GetValue(q);
             after.Count.Should().Be(1);

@@ -26,7 +26,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void SortByDistanceForTests_Throws_On_NullDelegate()
         {
-            var list = new List<DummyLabel> { new DummyLabel(1) };
+            var list = new List<DummyLabel> { new(1) };
             var act = () => LabelUtils.SortByDistanceForTests(list, null!);
             act.Should().Throw<ArgumentNullException>();
         }

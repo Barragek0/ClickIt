@@ -1,7 +1,4 @@
 using SharpDX;
-using System;
-using System.Collections.Generic;
-using ExileCore;
 using ExileCore.Shared.Enums;
 
 namespace ClickIt.Utils
@@ -10,9 +7,9 @@ namespace ClickIt.Utils
     // and a single Flush call will draw them with a provided Graphics instance.
     public class DeferredTextQueue
     {
-        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = new List<(string, Vector2, SharpDX.Color, int, FontAlign)>();
+        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = [];
         // Spare list reused during Flush to avoid allocating a snapshot array every frame.
-        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _spare = new List<(string, Vector2, SharpDX.Color, int, FontAlign)>();
+        private readonly List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _spare = [];
 
         public void Enqueue(string text, Vector2 pos, SharpDX.Color color, int size, FontAlign align = FontAlign.Left)
         {

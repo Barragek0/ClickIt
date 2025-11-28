@@ -113,7 +113,7 @@ namespace ClickIt.Services
         public List<Entity> GetShrineEntities()
         {
             // Return a copy of the cached list to prevent external modification
-            return new List<Entity>(GetCachedShrineEntities());
+            return [.. GetCachedShrineEntities()];
         }
 
         public Entity? GetNearestShrineInRange(int clickDistance, Func<Vector2, bool>? isInClickableArea = null)

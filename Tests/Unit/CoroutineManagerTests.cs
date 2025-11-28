@@ -10,7 +10,7 @@ namespace ClickIt.Tests.Unit
     public class CoroutineManagerTests
     {
         private Func<System.Windows.Forms.Keys, bool>? _originalKeyStateProvider;
-        private Func<global::ClickIt.Services.LabelFilterService, System.Collections.Generic.IReadOnlyList<ExileCore.PoEMemory.Elements.LabelOnGround>?, bool>? _originalLazyModeChecker;
+        private Func<Services.LabelFilterService, System.Collections.Generic.IReadOnlyList<ExileCore.PoEMemory.Elements.LabelOnGround>?, bool>? _originalLazyModeChecker;
 
         [TestInitialize]
         public void Init()

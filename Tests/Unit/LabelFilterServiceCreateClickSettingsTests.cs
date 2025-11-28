@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

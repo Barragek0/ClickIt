@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt;
 using ClickIt.Components;
 using ClickIt.Utils;
 using ClickIt.Tests.TestUtils;
@@ -35,9 +34,9 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
             // null
-            calc.CalculateDownsideWeight((System.Collections.Generic.List<string>?)null!).Should().Be(1m);
+            calc.CalculateDownsideWeight((List<string>?)null!).Should().Be(1m);
             // empty
-            calc.CalculateDownsideWeight(new List<string>()).Should().Be(1m);
+            calc.CalculateDownsideWeight([]).Should().Be(1m);
         }
 
         [TestMethod]
@@ -65,9 +64,9 @@ namespace ClickIt.Tests.Unit
             var bottom = TestBuilders.BuildSecondary(["Player|upA"], ["Boss|downA"]);
 
             // Provide non-null Element instances for both components by creating uninitialized objects
-            var elemType = typeof(ExileCore.PoEMemory.Element);
-            var topElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as ExileCore.PoEMemory.Element;
-            var bottomElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as ExileCore.PoEMemory.Element;
+            var elemType = typeof(Element);
+            var topElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as Element;
+            var bottomElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as Element;
             top.Element = topElem;
             bottom.Element = bottomElem;
 
@@ -89,13 +88,13 @@ namespace ClickIt.Tests.Unit
             settings.ModTiers["Player|upA"] = 99;
             var calc = new WeightCalculator(settings);
 
-            var ups = new System.Collections.Generic.List<string> { "Player|upA" };
+            var ups = new List<string> { "Player|upA" };
             calc.CalculateUpsideWeight(ups).Should().Be(99m);
 
             var settings2 = new ClickItSettings();
             settings2.ModTiers["upA"] = 20;
             var calc2 = new WeightCalculator(settings2);
-            calc2.CalculateUpsideWeight(new System.Collections.Generic.List<string> { "Player|upA" }).Should().Be(1m);
+            calc2.CalculateUpsideWeight(["Player|upA"]).Should().Be(1m);
         }
 
         [TestMethod]
@@ -105,7 +104,7 @@ namespace ClickIt.Tests.Unit
             settings.ModTiers["a"] = 5;
             var calc = new WeightCalculator(settings);
 
-            var list = new System.Collections.Generic.List<string?> { "a", "", "   ", null };
+            var list = new List<string?> { "a", "", "   ", null };
             calc.CalculateUpsideWeight(list!).Should().Be(5m);
             calc.CalculateDownsideWeight(list!).Should().Be(1 + 5m);
         }
@@ -113,7 +112,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void Private_GetModString_HandlesBoundsAndNullViaReflection()
         {
-            var sec = new SecondaryAltarComponent(null, new System.Collections.Generic.List<string> { "up0", "up1" }, new System.Collections.Generic.List<string> { "down0", "down1" }, false);
+            var sec = new SecondaryAltarComponent(null, ["up0", "up1"], ["down0", "down1"], false);
 
             var m = typeof(WeightCalculator).GetMethod("GetModString", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             m.Should().NotBeNull();
@@ -140,7 +139,7 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
 
-            System.Collections.Generic.List<string>? list = listObj as System.Collections.Generic.List<string>;
+            List<string>? list = listObj as List<string>;
             var result = calc.CalculateUpsideWeight(list!);
             ((double)result).Should().Be(expected);
         }
@@ -156,7 +155,7 @@ namespace ClickIt.Tests.Unit
 
             var calc = new WeightCalculator(settings);
 
-            var upsides = new System.Collections.Generic.List<string> { "mod_a", "Player|special" };
+            var upsides = new List<string> { "mod_a", "Player|special" };
             var result = calc.CalculateUpsideWeight(upsides);
 
             result.Should().Be(12m);
@@ -169,7 +168,7 @@ namespace ClickIt.Tests.Unit
             settings.ModTiers["d1"] = 2; // downside tier
 
             var calc = new WeightCalculator(settings);
-            var downsides = new System.Collections.Generic.List<string> { "d1" };
+            var downsides = new List<string> { "d1" };
 
             // downside weight should be 1 + sum(tiers)
             calc.CalculateDownsideWeight(downsides).Should().Be(3m);
@@ -204,7 +203,7 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
 
-            calc.CalculateUpsideWeight(new System.Collections.Generic.List<string>()).Should().Be(0m);
+            calc.CalculateUpsideWeight([]).Should().Be(0m);
         }
 
         [TestMethod]
@@ -213,7 +212,7 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
 
-            calc.CalculateDownsideWeight(new System.Collections.Generic.List<string>()).Should().Be(1m);
+            calc.CalculateDownsideWeight([]).Should().Be(1m);
         }
 
         [TestMethod]
@@ -221,7 +220,7 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
-            var list = new System.Collections.Generic.List<string> { "", "" };
+            var list = new List<string> { "", "" };
             calc.CalculateUpsideWeight(list).Should().Be(0m);
         }
 
@@ -234,7 +233,7 @@ namespace ClickIt.Tests.Unit
             settings.ModTiers["neg_mod"] = -2;
 
             var calc = new WeightCalculator(settings);
-            var list = new System.Collections.Generic.List<string> { "zero_mod", "neg_mod" };
+            var list = new List<string> { "zero_mod", "neg_mod" };
 
             // sum should be 0 + (-2) = -2
             calc.CalculateUpsideWeight(list).Should().Be(-2m);
@@ -248,7 +247,7 @@ namespace ClickIt.Tests.Unit
             settings.ModTiers["neg_mod"] = -1;
 
             var calc = new WeightCalculator(settings);
-            var list = new System.Collections.Generic.List<string> { "zero_mod", "neg_mod" };
+            var list = new List<string> { "zero_mod", "neg_mod" };
 
             // downside returns 1 + sum => 1 + (0 + -1) = 0
             calc.CalculateDownsideWeight(list).Should().Be(0m);
@@ -264,8 +263,8 @@ namespace ClickIt.Tests.Unit
             var elTop = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
             var elBottom = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
-            var topMods = new SecondaryAltarComponent(elTop, new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>());
-            var bottomMods = new SecondaryAltarComponent(elBottom, new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>());
+            var topMods = new SecondaryAltarComponent(elTop, [], []);
+            var bottomMods = new SecondaryAltarComponent(elBottom, [], []);
 
             var primary = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 
@@ -287,20 +286,20 @@ namespace ClickIt.Tests.Unit
             var calc = new WeightCalculator(settings);
 
             // TopMods.Element == null should cause an ArgumentException
-            var top = new SecondaryAltarComponent(null, new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>());
-            var bottom = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>());
+            var top = new SecondaryAltarComponent(null, [], []);
+            var bottom = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
             var primary = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
 
-            System.Action act = () => calc.CalculateAltarWeights(primary);
-            act.Should().Throw<System.ArgumentException>();
+            Action act = () => calc.CalculateAltarWeights(primary);
+            act.Should().Throw<ArgumentException>();
 
             // Bottom.Element == null
-            var top2 = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>());
-            var bottom2 = new SecondaryAltarComponent(null, new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>());
+            var top2 = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
+            var bottom2 = new SecondaryAltarComponent(null, [], []);
             var primary2 = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top2, new AltarButton(null), bottom2, new AltarButton(null));
 
-            System.Action act2 = () => calc.CalculateAltarWeights(primary2);
-            act2.Should().Throw<System.ArgumentException>();
+            Action act2 = () => calc.CalculateAltarWeights(primary2);
+            act2.Should().Throw<ArgumentException>();
         }
 
         [TestMethod]
@@ -318,8 +317,8 @@ namespace ClickIt.Tests.Unit
             var elBottom = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
             // Use first 3 positions for testing: top upsides/modTop1 and modTop2, bottom downside modBottom1
-            var topMods = new SecondaryAltarComponent(elTop, new System.Collections.Generic.List<string> { "modTop1", "modTop2" }, new System.Collections.Generic.List<string> { "modTopD1" });
-            var bottomMods = new SecondaryAltarComponent(elBottom, new System.Collections.Generic.List<string> { "modBottomU1" }, new System.Collections.Generic.List<string> { "modBottom1" });
+            var topMods = new SecondaryAltarComponent(elTop, ["modTop1", "modTop2"], ["modTopD1"]);
+            var bottomMods = new SecondaryAltarComponent(elBottom, ["modBottomU1"], ["modBottom1"]);
 
             var primary = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 

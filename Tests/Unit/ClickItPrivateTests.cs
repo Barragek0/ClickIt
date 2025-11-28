@@ -56,8 +56,10 @@ namespace ClickIt.Tests.Unit
             var lastField = clickIt.GetType().GetField("_lastAlertTimes", BindingFlags.NonPublic | BindingFlags.Instance);
             lastField.Should().NotBeNull();
 
-            var dict = new System.Collections.Generic.Dictionary<string, System.DateTime>(System.StringComparer.OrdinalIgnoreCase);
-            dict["alpha"] = System.DateTime.UtcNow;
+            var dict = new System.Collections.Generic.Dictionary<string, System.DateTime>(System.StringComparer.OrdinalIgnoreCase)
+            {
+                ["alpha"] = System.DateTime.UtcNow
+            };
             lastField!.SetValue(clickIt, dict);
 
             ((bool)canTriggerMi!.Invoke(clickIt, ["alpha"])).Should().BeFalse();

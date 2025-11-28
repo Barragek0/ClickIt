@@ -1,16 +1,15 @@
-using SharpDX;
 using ExileCore.PoEMemory;
 
 namespace ClickIt.Services
 {
     public class ElementAdapter : IElementAdapter
     {
-        public ElementAdapter(ExileCore.PoEMemory.Element? element)
+        public ElementAdapter(Element? element)
         {
             Underlying = element;
         }
 
-        public ExileCore.PoEMemory.Element? Underlying { get; }
+        public Element? Underlying { get; }
 
         private IElementAdapter? _parent;
         public IElementAdapter? Parent

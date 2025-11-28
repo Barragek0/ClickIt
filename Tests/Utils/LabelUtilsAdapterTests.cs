@@ -16,7 +16,7 @@ namespace ClickIt.Tests.Utils
             public Element? Underlying => null;
             public IElementAdapter? Parent { get; }
             private readonly string _text;
-            private readonly List<IElementAdapter> _children = new();
+            private readonly List<IElementAdapter> _children = [];
             public bool IsValid => true;
             public FakeAdapter(string text)
             {
@@ -31,7 +31,7 @@ namespace ClickIt.Tests.Utils
 
             public void AddChild(FakeAdapter c) => _children.Add(c);
 
-            public RectangleF GetClientRect() => new RectangleF(0, 0, 10, 10);
+            public RectangleF GetClientRect() => new(0, 0, 10, 10);
 
             public string GetText(int maxChars) => _text;
         }

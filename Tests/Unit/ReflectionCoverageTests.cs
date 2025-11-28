@@ -1,5 +1,4 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-#nullable enable
 using System;
 using System.Linq;
 using System.Reflection;
@@ -25,7 +24,7 @@ namespace ClickIt.Tests.Unit
             foreach (var t in asm.GetTypes().Where(tt => tt.Namespace != null && allowedNamespaces.Contains(tt.Namespace)))
             {
                 // ignore compiler-generated / delegate types
-                if (t.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false)) continue;
+                if (t.IsDefined(typeof(CompilerGeneratedAttribute), false)) continue;
 
                 foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
                 {

@@ -1,10 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Reflection;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using ClickIt.Services;
-using ClickIt.Utils;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.PoEMemory.Elements;
 
@@ -101,7 +98,7 @@ namespace ClickIt.Tests.Unit
             var distances = new int[] { -1, 200, 50, 30 };
 
             // invoke the private deterministic test seam added to LabelFilterService
-            var helper = typeof(global::ClickIt.Services.LabelFilterService).GetMethod("GetNextLabelToClickIndexForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var helper = typeof(LabelFilterService).GetMethod("GetNextLabelToClickIndexForTests", BindingFlags.NonPublic | BindingFlags.Static);
             helper.Should().NotBeNull();
 
             // scan [0,2) -> should skip indices 0..1 (no clickable) -> no clickable found
@@ -125,10 +122,10 @@ namespace ClickIt.Tests.Unit
         public void IsLabelObscuredByCloserLabelForTests_DetectsOverlappingCloserLabel()
         {
             // Candidate rect at index 0, center at (5,5)
-            var rects = new SharpDX.RectangleF[] { new SharpDX.RectangleF(0,0,10,10), new SharpDX.RectangleF(0,0,6,6) };
+            var rects = new SharpDX.RectangleF[] { new(0,0,10,10), new(0,0,6,6) };
             var distances = new int[] { 10, 5 }; // second label is closer
 
-            var helper = typeof(global::ClickIt.Services.LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var helper = typeof(LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", BindingFlags.NonPublic | BindingFlags.Static);
             helper.Should().NotBeNull();
 
             var res = (bool)helper!.Invoke(null, new object[] { rects, distances, 0 })!;
@@ -138,10 +135,10 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void IsLabelObscuredByCloserLabelForTests_IgnoresFartherOverlappingLabel()
         {
-            var rects = new SharpDX.RectangleF[] { new SharpDX.RectangleF(0,0,10,10), new SharpDX.RectangleF(0,0,6,6) };
+            var rects = new SharpDX.RectangleF[] { new(0,0,10,10), new(0,0,6,6) };
             var distances = new int[] { 5, 20 }; // other is farther -> should not obscure
 
-            var helper = typeof(global::ClickIt.Services.LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var helper = typeof(LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", BindingFlags.NonPublic | BindingFlags.Static);
             helper.Should().NotBeNull();
 
             var res = (bool)helper!.Invoke(null, new object[] { rects, distances, 0 })!;
@@ -151,10 +148,10 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void IsLabelObscuredByCloserLabelForTests_ReturnsFalse_WhenNoOverlap()
         {
-            var rects = new SharpDX.RectangleF[] { new SharpDX.RectangleF(0,0,10,10), new SharpDX.RectangleF(20,20,5,5) };
+            var rects = new SharpDX.RectangleF[] { new(0,0,10,10), new(20,20,5,5) };
             var distances = new int[] { 5, 2 };
 
-            var helper = typeof(global::ClickIt.Services.LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var helper = typeof(LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", BindingFlags.NonPublic | BindingFlags.Static);
             helper.Should().NotBeNull();
 
             var res = (bool)helper!.Invoke(null, new object[] { rects, distances, 0 })!;
@@ -164,21 +161,21 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void Debug_DumpLabelOnGroundMembers()
         {
-            var t = typeof(ExileCore.PoEMemory.Elements.LabelOnGround);
+            var t = typeof(LabelOnGround);
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("LabelOnGround Properties:");
-            foreach (var p in t.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
                 sb.AppendLine($" - {p.Name} ({p.PropertyType.FullName}) writable={p.CanWrite}");
             }
             sb.AppendLine("LabelOnGround Fields:");
-            foreach (var f in t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            foreach (var f in t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
                 sb.AppendLine($" - {f.Name} ({f.FieldType.FullName})");
             }
-            var e = typeof(ExileCore.PoEMemory.MemoryObjects.Entity);
+            var e = typeof(Entity);
             sb.AppendLine("Entity Fields:");
-            foreach (var f in e.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            foreach (var f in e.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
                 sb.AppendLine($" - {f.Name} ({f.FieldType.FullName})");
             }

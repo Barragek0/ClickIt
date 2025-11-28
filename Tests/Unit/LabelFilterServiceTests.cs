@@ -1,13 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
 using ClickIt.Services;
-using SharpDX;
-using Moq;
 
 namespace ClickIt.Tests.Unit
 {

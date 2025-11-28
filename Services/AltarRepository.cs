@@ -5,7 +5,7 @@ namespace ClickIt.Services
 {
     public class AltarRepository
     {
-        private readonly List<PrimaryAltarComponent> _altarComponents = new();
+        private readonly List<PrimaryAltarComponent> _altarComponents = [];
         private readonly object _altarComponentsLock = new();
 
         public List<PrimaryAltarComponent> GetAltarComponents() => _altarComponents.ToList();

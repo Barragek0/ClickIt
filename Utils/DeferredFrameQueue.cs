@@ -1,4 +1,3 @@
-using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using Color = SharpDX.Color;
 using Graphics = ExileCore.Graphics;
@@ -9,12 +8,12 @@ namespace ClickIt.Utils
     // and a single Flush call will draw them with a provided Graphics instance.
     public partial class DeferredFrameQueue
     {
-        private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _items = new List<(RectangleF, Color, int)>();
+        private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _items = [];
         // Spare list reused during Flush to avoid allocating a snapshot array every frame.
         // We AddRange -> Clear the main list, iterate the spare and Clear it afterwards. This keeps
         // capacity across frames and avoids frequent array allocations while still being safe
         // if callers Enqueue during a Flush (they'll add into _items after we've cleared it).
-        private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _spare = new List<(RectangleF, Color, int)>();
+        private readonly List<(RectangleF Rectangle, Color Color, int Thickness)> _spare = [];
 
         public void Enqueue(RectangleF rectangle, Color color, int thickness)
         {

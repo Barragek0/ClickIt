@@ -1,8 +1,5 @@
 ﻿using ClickIt.Components;
 using ClickIt;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 namespace ClickIt.Utils
 {
     internal static class WeightTypeConstants

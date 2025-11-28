@@ -1,4 +1,3 @@
-using System;
 using ExileCore.PoEMemory.Elements;
 using ClickIt.Utils;
 
@@ -8,13 +7,13 @@ namespace ClickIt.Services
     public partial class LabelFilterService
     {
         // Test seam - delegate used to query key state so test environments don't need native Win32
-        internal static Func<System.Windows.Forms.Keys, bool> KeyStateProvider = Keyboard.IsKeyDown;
+        internal static Func<Keys, bool> KeyStateProvider = Keyboard.IsKeyDown;
 
         // Test seam - allows tests to short-circuit the expensive/native dependent check
-        internal static Func<LabelFilterService, System.Collections.Generic.IReadOnlyList<LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
+        internal static Func<LabelFilterService, IReadOnlyList<LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
 
         // Test seam: allow tests to exercise ritual text detection using the IElementAdapter test adapter
-        internal static bool ShouldClickRitualForTests(bool clickRitualInitiate, bool clickRitualCompleted, string path, Services.IElementAdapter? labelAdapter)
+        internal static bool ShouldClickRitualForTests(bool clickRitualInitiate, bool clickRitualCompleted, string path, IElementAdapter? labelAdapter)
         {
             if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual"))
                 return false;

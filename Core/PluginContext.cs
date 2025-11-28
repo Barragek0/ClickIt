@@ -47,8 +47,8 @@ namespace ClickIt
 
         public double CurrentFPS => PerformanceMonitor?.CurrentFPS ?? 0;
 
-        public System.Collections.Generic.Queue<long> RenderTimings => PerformanceMonitor?.RenderTimings ?? new System.Collections.Generic.Queue<long>();
+        public Queue<long> RenderTimings => PerformanceMonitor?.RenderTimings ?? new Queue<long>();
 
-        public System.Collections.Generic.IReadOnlyList<string> RecentErrors => ErrorHandler?.RecentErrors ?? new System.Collections.Generic.List<string>();
+        public IReadOnlyList<string> RecentErrors => ErrorHandler?.RecentErrors ?? [];
     }
 }

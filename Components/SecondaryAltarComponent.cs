@@ -1,7 +1,6 @@
 ﻿using ExileCore.PoEMemory;
 namespace ClickIt.Components
 {
-#nullable enable
     public class SecondaryAltarComponent
     {
         public SecondaryAltarComponent(Element? element, List<string> upsides, List<string> downsides, bool hasUnmatchedMods = false)

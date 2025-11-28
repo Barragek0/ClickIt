@@ -4,8 +4,6 @@ using System.Runtime.CompilerServices;
 using ClickIt.Utils;
 using System;
 using System.Diagnostics;
-using System.Threading;
-using ClickIt;
 using System.Reflection;
 
 namespace ClickIt.Tests.Unit
@@ -155,7 +153,7 @@ namespace ClickIt.Tests.Unit
                 var res = mi.Invoke(null, []);
                 res.Should().BeNull();
             }
-            catch (System.Reflection.TargetInvocationException tie)
+            catch (TargetInvocationException tie)
             {
                 // Core.ParallelRunner may be unavailable in unit-test contexts and cause a NullReferenceException.
                 // Accept that as valid behaviour for this environment.

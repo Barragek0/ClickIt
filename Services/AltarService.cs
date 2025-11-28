@@ -3,7 +3,6 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
 using ClickIt.Components;
 using ClickIt.Utils;
-#nullable enable
 namespace ClickIt.Services
 {
     public class AltarServiceDebugInfo
@@ -19,7 +18,7 @@ namespace ClickIt.Services
         public string LastProcessedAltarType { get; set; } = "";
         public string LastError { get; set; } = "";
         public DateTime LastScanTime { get; set; } = DateTime.MinValue;
-        public List<string> RecentUnmatchedMods { get; set; } = new List<string>();
+        public List<string> RecentUnmatchedMods { get; set; } = [];
     }
 
     public partial class AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
@@ -146,10 +145,10 @@ namespace ClickIt.Services
             {
                 foreach (var mod in unmatched)
                     RecordUnmatchedMod(mod, negativeModType);
-                return (upsides ?? new List<string>(), downsides ?? new List<string>(), true);
+                return (upsides ?? [], downsides ?? [], true);
             }
 
-            return (upsides ?? new List<string>(), downsides ?? new List<string>(), false);
+            return (upsides ?? [], downsides ?? [], false);
         }
 
         // Records unmatched mod info into debug structures and logs when in debug mode.
@@ -317,8 +316,8 @@ namespace ClickIt.Services
             var topAltarAdapter = altarParentAdapter.GetChildFromIndices(0, 1);
             var bottomAltarAdapter = altarParentAdapter.GetChildFromIndices(1, 1);
 
-            var topMods = topAltarAdapter != null ? new SecondaryAltarComponent(topAltarAdapter.Underlying, new List<string>(), new List<string>()) : null;
-            var bottomMods = bottomAltarAdapter != null ? new SecondaryAltarComponent(bottomAltarAdapter.Underlying, new List<string>(), new List<string>()) : null;
+            var topMods = topAltarAdapter != null ? new SecondaryAltarComponent(topAltarAdapter.Underlying, [], []) : null;
+            var bottomMods = bottomAltarAdapter != null ? new SecondaryAltarComponent(bottomAltarAdapter.Underlying, [], []) : null;
             var topButton = topAltarAdapter != null ? new AltarButton(topAltarAdapter.Parent?.Underlying) : null;
             var bottomButton = bottomAltarAdapter != null ? new AltarButton(bottomAltarAdapter.Parent?.Underlying) : null;
 

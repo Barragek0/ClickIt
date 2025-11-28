@@ -1,15 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.Serialization;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Enums;
-
-using ClickIt;
-#nullable enable
 using System.Runtime.CompilerServices;
 
 namespace ClickIt.Tests.Unit

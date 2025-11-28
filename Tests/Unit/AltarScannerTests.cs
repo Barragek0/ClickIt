@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Services;
-using System.Collections.Generic;
 
 namespace ClickIt.Tests.Unit
 {
@@ -18,7 +17,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void CollectElementsFromLabels_ReturnsEmpty_WhenEmptyList()
         {
-            var result = AltarScanner.CollectElementsFromLabels(new List<ExileCore.PoEMemory.Elements.LabelOnGround>());
+            var result = AltarScanner.CollectElementsFromLabels([]);
             result.Should().BeEmpty();
         }
     }

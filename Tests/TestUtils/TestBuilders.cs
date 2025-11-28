@@ -1,7 +1,5 @@
 using ClickIt.Components;
-using ExileCore.PoEMemory;
 using ClickIt.Utils;
-using SharpDX;
 using System.Collections.Generic;
 
 namespace ClickIt.Tests.TestUtils

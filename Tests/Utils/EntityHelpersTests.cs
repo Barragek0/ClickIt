@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using System.Runtime.Serialization;
 using System.Runtime.CompilerServices;
 
 namespace ClickIt.Tests.Utils

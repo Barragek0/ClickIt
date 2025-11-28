@@ -1,11 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using System.Collections.Generic;
-using global::ClickIt.Services;
-using global::ClickIt.Components;
+using ClickIt.Services;
 using ExileCore.PoEMemory;
 using Moq;
-using ExileCore.PoEMemory.Elements;
 
 namespace ClickIt.Tests.Unit
 {

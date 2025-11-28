@@ -7,7 +7,7 @@ namespace ClickIt.Tests.TestUtils
     // construct element trees without referencing ExileCore types.
     internal class ElementAdapterStub : Services.IElementAdapter
     {
-        private readonly List<Services.IElementAdapter> _children = new();
+        private readonly List<Services.IElementAdapter> _children = [];
         public ElementAdapterStub(string text)
         {
             Text = text;
@@ -30,7 +30,7 @@ namespace ClickIt.Tests.TestUtils
             return _children[b];
         }
 
-        public RectangleF GetClientRect() => new RectangleF(0, 0, 10, 10);
+        public RectangleF GetClientRect() => new(0, 0, 10, 10);
 
         public string GetText(int maxChars) => Text;
     }

@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt;
 using ClickIt.Utils;
 using ClickIt.Components;
 
@@ -35,7 +34,7 @@ namespace ClickIt.Tests.Unit
 
             // prepare a minimal altar service and add a primary component
             var altarSvc = new Services.AltarService(plugin, settings, null);
-            var p = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, new SecondaryAltarComponent(null, new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>()), new AltarButton(null), new SecondaryAltarComponent(null, new System.Collections.Generic.List<string>(), new System.Collections.Generic.List<string>()), new AltarButton(null));
+            var p = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, new SecondaryAltarComponent(null, [], []), new AltarButton(null), new SecondaryAltarComponent(null, [], []), new AltarButton(null));
             altarSvc.AddAltarComponent(p);
 
             plugin.State.AltarService = altarSvc;

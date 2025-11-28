@@ -29,14 +29,14 @@ namespace ClickIt.Tests.Unit
             clickIt.__Test_SetSettings(new ClickItSettings());
 
             // Create and configure AreaService directly so we avoid GameController dependency
-            var svc = new Services.AreaService();
+            var svc = new AreaService();
             // Set private rectangles via reflection to define the allowed area
-            var full = new SharpDX.RectangleF(0, 0, 200, 200);
-            var health = new SharpDX.RectangleF(0, 300, 10, 10); // off-screen so no overlap
-            var mana = new SharpDX.RectangleF(300, 300, 10, 10);
-            var buffs = new SharpDX.RectangleF(300, 0, 10, 10);
+            var full = new RectangleF(0, 0, 200, 200);
+            var health = new RectangleF(0, 300, 10, 10); // off-screen so no overlap
+            var mana = new RectangleF(300, 300, 10, 10);
+            var buffs = new RectangleF(300, 0, 10, 10);
 
-            var t = typeof(Services.AreaService);
+            var t = typeof(AreaService);
             t.GetField("_fullScreenRectangle", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, full);
             t.GetField("_healthAndFlaskRectangle", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, health);
             t.GetField("_manaAndSkillsRectangle", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, mana);

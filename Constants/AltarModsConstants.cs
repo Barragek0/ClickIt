@@ -1,7 +1,4 @@
-﻿
-using System.Collections.Generic;
-
-namespace ClickIt.Constants
+﻿namespace ClickIt.Constants
 {
     internal static class AltarModsConstants
     {
