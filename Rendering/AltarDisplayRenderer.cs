@@ -113,7 +113,8 @@ namespace ClickIt.Rendering
 
         private Element? HandleBothDangerousCase(PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
         {
-            _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBoth options have downsides with a weight of 90+ that may brick your build.", textPos, Color.Orange, 30);
+            int dangerThreshold = _settings.DangerousDownsideThreshold.Value;
+            _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nBoth options have downsides with a weight of {dangerThreshold}+ that may brick your build.", textPos, Color.Orange, 30);
             _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
             _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
             _logMessage?.Invoke("[EvaluateAltarWeights] BOTH DANGEROUS CASE - both sides >= threshold", 10);
@@ -127,14 +128,16 @@ namespace ClickIt.Rendering
         {
             if (topChosen)
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of 90+", textPos, Color.LawnGreen, 30);
+                int highValueThreshold = _settings.ValuableUpsideThreshold.Value;
+                _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of {highValueThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 3);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
                 return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
             }
             else
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of 90+", textPos, Color.LawnGreen, 30);
+                int highValueThreshold = _settings.ValuableUpsideThreshold.Value;
+                _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of {highValueThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 3);
                 return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
@@ -146,21 +149,24 @@ namespace ClickIt.Rendering
             // If both sides have low value, treat as equal and let user choose
             if (topHasLowValue && bottomHasLowValue)
             {
-                _deferredTextQueue.Enqueue("Both options have low value modifiers (weight < 1), you should choose.", textPos, Color.Orange, 30);
+                int lowValueThreshold = _settings.UnvaluableUpsideThreshold.Value;
+                _deferredTextQueue.Enqueue($"Both options have low value modifiers (weight <= {lowValueThreshold}), you should choose.", textPos, Color.Orange, 30);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
 
             if (topHasLowValue)
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight < 1", textPos, Color.Yellow, 30);
+                int lowValueThreshold = _settings.UnvaluableUpsideThreshold.Value;
+                _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight <= {lowValueThreshold}", textPos, Color.Yellow, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
                 return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
             }
             else
             {
-                _deferredTextQueue.Enqueue("Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight < 1", textPos, Color.Yellow, 30);
+                int lowValueThreshold = _settings.UnvaluableUpsideThreshold.Value;
+                _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight <= {lowValueThreshold}", textPos, Color.Yellow, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
                 return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
@@ -171,14 +177,16 @@ namespace ClickIt.Rendering
         {
             if (topHasDanger)
             {
-                _deferredTextQueue.Enqueue("Weighting overridden\n\nBottom chosen due to top downside 90+", textPos, Color.LawnGreen, 30);
+                int dangerThreshold = _settings.DangerousDownsideThreshold.Value;
+                _deferredTextQueue.Enqueue($"Weighting overridden\n\nBottom chosen due to top downside {dangerThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
                 return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
             }
             else
             {
-                _deferredTextQueue.Enqueue("Weighting overridden\n\nTop chosen due to bottom downside 90+", textPos, Color.LawnGreen, 30);
+                int dangerThreshold = _settings.DangerousDownsideThreshold.Value;
+                _deferredTextQueue.Enqueue($"Weighting overridden\n\nTop chosen due to bottom downside {dangerThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
                 return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
