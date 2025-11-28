@@ -18,7 +18,7 @@ namespace ClickIt.Tests.Unit
             var ess = new EssenceService(settings);
             var err = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
 
-            var svc = new LabelFilterService(settings, ess, err);
+            var svc = new LabelFilterService(settings, ess, err, null);
 
             // Avoid native Win32 key queries in tests by overriding the static provider via reflection
             var ksField = typeof(LabelFilterService).GetField("KeyStateProvider", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -58,7 +58,7 @@ namespace ClickIt.Tests.Unit
 
             var ess = new EssenceService(settings);
             var err = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
-            var svc = new LabelFilterService(settings, ess, err);
+            var svc = new LabelFilterService(settings, ess, err, null);
 
             // Build a fake LabelOnGround with a fake Entity.Path containing PetrifiedWood and small DistancePlayer
             var labelType = typeof(ExileCore.PoEMemory.Elements.LabelOnGround);

@@ -4,10 +4,10 @@
 
 **Plugin Purpose**: Path of Exile automation (item pickup, chest opening, essence corruption, altar decision-making) built on ExileCore framework.
 
+**Autonomous Operation**:
 You are expected to operate autonomously and execute tasks the user gives you. Treat any list of tasks in a user's message as authoritative — execute each task sequentially and complete it before moving on. Do not interrupt execution to ask for high-level guidance, approval, or to weigh options.
 
-Core rules for autonomous execution (kept intentionally strict):
-
+**Core rules for autonomous execution (kept intentionally strict)**
 1) Do NOT ask the user which approach to take. If you need to choose, pick the simplest safe option.
 2) Do NOT offer choices between actions in user-facing messages — perform the chosen action.
 3) Do NOT ask what to do next unless the task list is empty.
@@ -20,6 +20,8 @@ Core rules for autonomous execution (kept intentionally strict):
 
 Extra guidance: work methodically, commit small changes, and validate with tests when available. If a step fails (broken tests, build errors), stop, report the failure clearly, and propose a remediation plan before continuing.
 
+**You must update tests whenever you change functionality.** 
+After you change any functionality in the code, you must update any appropriate tests to cover the new or changed behavior. Always run the full test suite after making changes to ensure nothing is broken.
 
 ### 5 Essential Patterns Every AI Must Know
 1. **Service Architecture**: 7 core services with constructor injection (Services/*)

@@ -9,11 +9,12 @@ using ExileCore;
 #nullable enable
 namespace ClickIt.Services
 {
-    public partial class LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler)
+    public partial class LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler, ExileCore.GameController? gameController)
     {
         private readonly ClickItSettings _settings = settings;
         private readonly EssenceService _essenceService = essenceService;
         private readonly ErrorHandler _errorHandler = errorHandler;
+        private readonly ExileCore.GameController? _gameController = gameController;
         private const string CleansingFireAltar = "CleansingFireAltar";
         private const string TangleAltar = "TangleAltar";
         private const string Brequel = "Brequel";
@@ -87,7 +88,7 @@ namespace ClickIt.Services
                 Entity item = label.ItemOnGround;
                 if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
                     continue;
-                if (ShouldClickLabel(label, item, clickSettings))
+                if (ShouldClickLabel(label, item, clickSettings, _gameController))
                     return label;
             }
             return null;
@@ -104,7 +105,7 @@ namespace ClickIt.Services
                 Entity item = label.ItemOnGround;
                 if (item == null || item.DistancePlayer > _settings.ClickDistance.Value)
                     continue;
-                if (ShouldClickLabel(label, item, CreateClickSettings(allLabels)))
+                if (ShouldClickLabel(label, item, CreateClickSettings(allLabels), _gameController))
                     return label;
             }
             return null;
@@ -124,6 +125,8 @@ namespace ClickIt.Services
                 ClickItems = s.ClickItems.Value,
                 IgnoreUniques = s.IgnoreUniques.Value,
                 IgnoreHeistQuestContracts = s.IgnoreHeistQuestContracts.Value,
+                IgnoreInscribedUltimatums = s.IgnoreInscribedUltimatums.Value,
+                OnlyPickupCurrencyItems = s.OnlyPickupCurrencyItems.Value,
                 ClickBasicChests = s.ClickBasicChests.Value,
                 ClickLeagueChests = !applyLazyModeRestrictions && s.ClickLeagueChests.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
@@ -165,6 +168,8 @@ namespace ClickIt.Services
             public bool ClickItems { get; set; }
             public bool IgnoreUniques { get; set; }
             public bool IgnoreHeistQuestContracts { get; set; }
+            public bool IgnoreInscribedUltimatums { get; set; }
+            public bool OnlyPickupCurrencyItems { get; set; }
             public bool ClickBasicChests { get; set; }
             public bool ClickLeagueChests { get; set; }
             public bool ClickAreaTransitions { get; set; }
@@ -200,11 +205,11 @@ namespace ClickIt.Services
             public bool ClickBetrayal { get; set; }
         }
 
-        private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings)
+        private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings, ExileCore.GameController? gameController)
         {
             string path = item.Path;
             EntityType type = item.Type;
-            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, settings.IgnoreHeistQuestContracts, type, item))
+            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, settings.IgnoreHeistQuestContracts, settings.IgnoreInscribedUltimatums, settings.OnlyPickupCurrencyItems, type, item, gameController))
                 return true;
             if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
                 return true;
@@ -221,7 +226,7 @@ namespace ClickIt.Services
                 return true;
             return false;
         }
-        private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, EntityType type, Entity item)
+        private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, bool ignoreInscribedUltimatums, bool onlyPickupCurrencyItems, EntityType type, Entity item, ExileCore.GameController? gameController)
         {
             if (!clickItems || type != EntityType.WorldItem)
                 return false;
@@ -243,7 +248,57 @@ namespace ClickIt.Services
                 if (Constants.Constants.HeistQuestContractNames.Contains(itemName))
                     return false;
             }
+            // Ignore explicitly-inscribed ultimatum items if the user enabled the option
+            if (ignoreInscribedUltimatums && (itemEntity?.Path?.Contains("ItemisedTrial", StringComparison.OrdinalIgnoreCase) ?? false))
+            {
+                return false;
+            }
+
+            // If the user enabled only-pickup-currency, ensure the item is stackable currency
+            if (onlyPickupCurrencyItems && !IsStackableCurrency(item, gameController))
+            {
+                return false;
+            }
             return true;
+        }
+
+        // Overload to check stackable currency directly from an Entity (when label isn't available)
+        public static bool IsStackableCurrency(Entity item, ExileCore.GameController? gameController)
+        {
+            try
+            {
+                if (gameController == null) return false;
+                var world = item?.GetComponent<WorldItem>();
+                var itemEntity = world?.ItemEntity;
+                if (itemEntity == null) return false;
+                var baseItemType = gameController.Files.BaseItemTypes.Translate(itemEntity.Path ?? string.Empty);
+                if (baseItemType == null) return false;
+                return string.Equals(baseItemType.ClassName, "StackableCurrency", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Detect if a label represents stackable currency via the game controller's BaseItemTypes table
+        // This is intentionally static so callers (e.g., ClickService) can use it without an instance.
+        public static bool IsStackableCurrency(LabelOnGround label, ExileCore.GameController? gameController)
+        {
+            try
+            {
+                if (gameController == null) return false;
+                var world = label.ItemOnGround?.GetComponent<WorldItem>();
+                var itemEntity = world?.ItemEntity;
+                if (itemEntity == null) return false;
+                var baseItemType = gameController.Files.BaseItemTypes.Translate(itemEntity.Path ?? string.Empty);
+                if (baseItemType == null) return false;
+                return string.Equals(baseItemType.ClassName, "StackableCurrency", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
         }
         // Test-friendly helper: allows calling chest logic using primitive values (path/renderName)
         private static bool ShouldClickChest(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)

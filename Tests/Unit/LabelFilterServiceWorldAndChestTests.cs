@@ -77,7 +77,7 @@ namespace ClickIt.Tests.Unit
         public void ShouldClickWorldItem_ReturnsFalse_WhenClickItemsDisabled()
         {
             // clickItems=false should short-circuit (no need to set entity fields)
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", false, false, false, EntityType.WorldItem, null)!;
+            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", false, false, false, false, false, EntityType.WorldItem, null, null)!;
             res.Should().BeFalse();
         }
 
@@ -87,7 +87,7 @@ namespace ClickIt.Tests.Unit
             var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             SetMemberValue(ent, "Path", "some/StrongBoxes/Strongbox/x");
 
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", true, false, false, EntityType.WorldItem, ent)!;
+            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", true, false, false, false, false, EntityType.WorldItem, ent, null)!;
             res.Should().BeFalse();
         }
 
@@ -97,7 +97,7 @@ namespace ClickIt.Tests.Unit
             var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             SetMemberValue(ent, "Path", "some/Item/Name");
 
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", true, false, false, EntityType.WorldItem, ent)!;
+            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", true, false, false, false, false, EntityType.WorldItem, ent, null)!;
             res.Should().BeTrue();
         }
 

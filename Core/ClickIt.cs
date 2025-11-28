@@ -72,7 +72,7 @@ namespace ClickIt
             State.AreaService.UpdateScreenAreas(GameController);
             State.Camera = GameController?.Game?.IngameState?.Camera;
             State.AltarService = new Services.AltarService(this, Settings, State.CachedLabels);
-            var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings), State.ErrorHandler);
+            var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings), State.ErrorHandler, GameController);
             State.LabelFilterService = labelFilterService;
             State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
             State.InputHandler = new InputHandler(Settings, State.PerformanceMonitor, State.ErrorHandler);

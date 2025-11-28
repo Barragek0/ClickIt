@@ -8,6 +8,7 @@ using ClickIt.Utils;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ExileCore.PoEMemory;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 
 #nullable enable

@@ -12,7 +12,7 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var ess = new Services.EssenceService(settings);
             var err = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
-            var svc = new Services.LabelFilterService(settings, ess, err);
+            var svc = new Services.LabelFilterService(settings, ess, err, null);
 
             // Override key state provider to avoid native key queries
             var ksField = typeof(Services.LabelFilterService).GetField("KeyStateProvider", BindingFlags.NonPublic | BindingFlags.Static);

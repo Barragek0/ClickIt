@@ -70,25 +70,29 @@ namespace ClickIt
         public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
         [Menu("Ignore Heist Quest Contracts", "Ignore heist quest contracts", 8, 3000)]
         public ToggleNode IgnoreHeistQuestContracts { get; set; } = new ToggleNode(false);
-        [Menu("Basic Chests", "Click normal (non-league related) chests", 9, 3000)]
+        [Menu("Ignore Inscribed Ultimatums", "Ignore inscribed ultimatums", 9, 3000)]
+        public ToggleNode IgnoreInscribedUltimatums { get; set; } = new ToggleNode(false);
+        [Menu("Only Pickup Currency Items", "When enabled, the plugin will only pick up currency items. All other items will be ignored.", 10, 3000)]
+        public ToggleNode OnlyPickupCurrencyItems { get; set; } = new ToggleNode(false);
+        [Menu("Basic Chests", "Click normal (non-league related) chests", 11, 3000)]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
-        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 10, 3000)]
+        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 12, 3000)]
         public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
-        [Menu("Shrines", "Click shrines", 11, 3000)]
+        [Menu("Shrines", "Click shrines", 13, 3000)]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click area transitions", 12, 3000)]
+        [Menu("Area Transitions", "Click area transitions", 14, 3000)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
-        [Menu("Crafting Recipes", "Click crafting recipes", 13, 3000)]
+        [Menu("Crafting Recipes", "Click crafting recipes", 15, 3000)]
         public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
-        [Menu("---", 14, 3000)]
+        [Menu("---", 16, 3000)]
         public EmptyNode GeneralSeparator2 { get; set; } = new EmptyNode();
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 15, 3000)]
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 17, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 15, 3000)]
+        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 18, 3000)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 17, 3000)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 19, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 18, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 20, 3000)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
         [Menu("Lazy Mode", 3050)]
         public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();

@@ -86,7 +86,7 @@ namespace ClickIt.Tests.Unit
 
             var ctx = new PluginContext();
             // Provide LabelFilterService that reports no restricted items present
-            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }));
+            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
             global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
             ctx.LabelFilterService = lfs;
 
@@ -113,7 +113,7 @@ namespace ClickIt.Tests.Unit
 
             var ctx = new PluginContext();
             // Provide LabelFilterService that reports no restricted items present
-            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }));
+            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
             global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
             ctx.LabelFilterService = lfs;
 
@@ -139,7 +139,7 @@ namespace ClickIt.Tests.Unit
 
             var ctx = new PluginContext();
             // Provide a LabelFilterService and override the lazy-check to return true (restricted items present)
-            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }));
+            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
             // Override test seam so the implementation reports restricted items present
             global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => true;
 
