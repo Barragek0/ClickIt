@@ -51,13 +51,24 @@ namespace ClickIt.Tests.Unit
             // Ensure precondition
             state.WorkFinished = true;
 
-            // Call the private handler directly via reflection
-            var mi = typeof(ClickIt).GetMethod("HandleHotkeyPressed", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            mi.Should().NotBeNull();
-            mi.Invoke(plugin, new object[0]);
+            // Disable native input to prevent real mouse operations during testing
+            var originalDisable = global::ClickIt.Utils.Mouse.DisableNativeInput;
+            global::ClickIt.Utils.Mouse.DisableNativeInput = true;
 
-            // WorkFinished should have been cleared by the handler
-            state.WorkFinished.Should().BeFalse();
+            try
+            {
+                // Call the private handler directly via reflection
+                var mi = typeof(ClickIt).GetMethod("HandleHotkeyPressed", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                mi.Should().NotBeNull();
+                mi.Invoke(plugin, new object[0]);
+
+                // WorkFinished should have been cleared by the handler
+                state.WorkFinished.Should().BeFalse();
+            }
+            finally
+            {
+                global::ClickIt.Utils.Mouse.DisableNativeInput = originalDisable;
+            }
         }
 
         [TestMethod]

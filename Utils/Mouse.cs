@@ -10,11 +10,13 @@ namespace ClickIt.Utils
         // Under normal runtime we call into user32.dll to change the OS cursor.
         // For unit tests we want to avoid touching native input. Use the wrapper
         // `SetCursorPos` and toggle `DisableNativeInput` to suppress native calls.
+        public static bool DisableNativeInput = false;
         [DllImport("user32.dll")]
         private static extern bool NativeSetCursorPos(int x, int y);
 
         public static bool SetCursorPos(int x, int y)
         {
+            if (DisableNativeInput) return true;
             return NativeSetCursorPos(x, y);
         }
         [DllImport("user32.dll")]
@@ -58,22 +60,27 @@ namespace ClickIt.Utils
         }
         public static void LeftMouseDown()
         {
+            if (DisableNativeInput) return;
             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
         }
         public static void LeftMouseUp()
         {
+            if (DisableNativeInput) return;
             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
         }
         public static void RightMouseDown()
         {
+            if (DisableNativeInput) return;
             mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
         }
         public static void RightMouseUp()
         {
+            if (DisableNativeInput) return;
             mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
         }
         public static void SetCursorPosAndLeftClick(Vector2 pos, int extraDelay, Vector2 offset)
         {
+            if (DisableNativeInput) return;
             var posX = (int)(pos.X + offset.X);
             var posY = (int)(pos.Y + offset.Y);
             SetCursorPos(posX, posY);
@@ -82,6 +89,7 @@ namespace ClickIt.Utils
         }
         public static void SetCursorPosAndRightClick(Vector2 pos, int extraDelay, Vector2 offset)
         {
+            if (DisableNativeInput) return;
             var posX = (int)(pos.X + offset.X);
             var posY = (int)(pos.Y + offset.Y);
             SetCursorPos(posX, posY);
@@ -90,6 +98,7 @@ namespace ClickIt.Utils
         }
         public static void VerticalScroll(bool forward, int clicks)
         {
+            if (DisableNativeInput) return;
             if (forward)
             {
                 mouse_event(MOUSE_EVENT_WHEEL, 0, 0, clicks * 120, 0);
@@ -101,12 +110,14 @@ namespace ClickIt.Utils
         }
         public static void LeftClick()
         {
+            if (DisableNativeInput) return;
             LeftMouseDown();
             Thread.Sleep(CLICK_DELAY);
             LeftMouseUp();
         }
         public static void RightClick()
         {
+            if (DisableNativeInput) return;
             RightMouseDown();
             Thread.Sleep(CLICK_DELAY);
             RightMouseUp();

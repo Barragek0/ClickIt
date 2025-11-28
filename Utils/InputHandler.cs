@@ -322,7 +322,10 @@ namespace ClickIt.Utils
 
             var sw = Stopwatch.StartNew();
             // Skip native cursor movement during tests / CI when Mouse.DisableNativeInput is enabled
-            Input.SetCursorPos(position);
+            if (!Mouse.DisableNativeInput)
+            {
+                Input.SetCursorPos(position);
+            }
             sw.Stop();
             _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
 
@@ -407,7 +410,10 @@ namespace ClickIt.Utils
                 try
                 {
                     var beforeVec = new Vector2(before.X, before.Y);
-                    Input.SetCursorPos(beforeVec);
+                    if (!Mouse.DisableNativeInput)
+                    {
+                        Input.SetCursorPos(beforeVec);
+                    }
                     // Small delay to let the OS update cursor position
                     Thread.Sleep(5);
                     _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);

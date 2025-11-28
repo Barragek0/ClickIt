@@ -58,7 +58,7 @@
 
   <!-- Exclude UI / rendering / platform input files from coverlet LCOV output when instrumented by coverlet.msbuild -->
   <PropertyGroup>
-    <ExcludeByFile>**/Core/ClickItSettings.cs,**/Rendering/**,**/Services/ShrineService.cs,**/Services/EssenceService.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/Utils/InputHandler.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
+    <ExcludeByFile>**/Core/ClickItSettings.cs,**/Rendering/**,**/Services/ClickService.cs,**/Services/ShrineService.cs,**/Services/EssenceService.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/Utils/InputHandler.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
   </PropertyGroup>
 
   <ItemGroup>
