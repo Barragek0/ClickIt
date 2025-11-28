@@ -196,7 +196,7 @@ namespace ClickIt.Rendering
         {
             _deferredTextQueue.Enqueue("--- Altar Detection ---", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            var altarComps = _altarService?.GetAltarComponentsReadOnly() ?? System.Array.Empty<PrimaryAltarComponent>();
+            var altarComps = _altarService?.GetAltarComponentsReadOnly() ?? Array.Empty<PrimaryAltarComponent>();
             Color altarCountColor = altarComps.Count > 0 ? Color.LightGreen : Color.Gray;
             _deferredTextQueue.Enqueue($"Altar Components: {altarComps.Count}", new Vector2(xPos, yPos), altarCountColor, 16);
             yPos += lineHeight;

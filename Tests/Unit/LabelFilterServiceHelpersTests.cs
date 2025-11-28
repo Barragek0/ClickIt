@@ -54,7 +54,7 @@ namespace ClickIt.Tests.Unit
         {
             var mi = typeof(Services.LabelFilterService).GetMethod("IsHarvestPath", BindingFlags.NonPublic | BindingFlags.Static);
             mi.Should().NotBeNull();
-            var res = (bool)mi.Invoke(null, new object[] { path })!;
+            var res = (bool)mi.Invoke(null, [path])!;
             res.Should().Be(expect);
         }
 
@@ -68,7 +68,7 @@ namespace ClickIt.Tests.Unit
         {
             var mi = typeof(Services.LabelFilterService).GetMethod("IsSettlersOrePath", BindingFlags.NonPublic | BindingFlags.Static);
             mi.Should().NotBeNull();
-            var res = (bool)mi.Invoke(null, new object[] { path })!;
+            var res = (bool)mi.Invoke(null, [path])!;
             res.Should().Be(expect);
         }
 
@@ -82,7 +82,7 @@ namespace ClickIt.Tests.Unit
         {
             var mi = typeof(Services.LabelFilterService).GetMethod("ShouldClickAltar", BindingFlags.NonPublic | BindingFlags.Static);
             mi.Should().NotBeNull();
-            var res = (bool)mi.Invoke(null, new object[] { f1, f2, f3, f4, path })!;
+            var res = (bool)mi.Invoke(null, [f1, f2, f3, f4, path])!;
             res.Should().Be(expect);
         }
     }

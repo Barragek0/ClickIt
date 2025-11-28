@@ -25,7 +25,7 @@ namespace ClickIt.Tests.Utils
             var calc = new WeightCalculator(settings);
 
             // PrimaryAltarComponent can be constructed with null TopMods/BottomMods
-            var altar = new PrimaryAltarComponent(global::ClickIt.ClickIt.AltarType.Unknown, null!, new AltarButton(null), null!, new AltarButton(null));
+            var altar = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, null!, new AltarButton(null), null!, new AltarButton(null));
             Assert.ThrowsException<System.ArgumentException>(() => calc.CalculateAltarWeights(altar));
         }
 
@@ -39,7 +39,7 @@ namespace ClickIt.Tests.Utils
             var top = new SecondaryAltarComponent(null, new List<string> { "up0" }, new List<string> { "down0" });
             var bottom = new SecondaryAltarComponent(null, new List<string> { "up1" }, new List<string> { "down1" });
 
-            var altar = new PrimaryAltarComponent(global::ClickIt.ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
+            var altar = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
 
             Assert.ThrowsException<System.ArgumentException>(() => calc.CalculateAltarWeights(altar));
         }
@@ -63,7 +63,7 @@ namespace ClickIt.Tests.Utils
             var top = new SecondaryAltarComponent(elt, new List<string> { "up0", "up1" }, new List<string> { "down0" });
             var bottom = new SecondaryAltarComponent(elt, new List<string> { "up1" }, new List<string> { "down1" });
 
-            var altar = new PrimaryAltarComponent(global::ClickIt.ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
+            var altar = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
 
             var weights = calc.CalculateAltarWeights(altar);
 

@@ -181,16 +181,54 @@ namespace ClickIt
         // --- Alert sound playback / cooldown ---
         private readonly Dictionary<string, DateTime> _lastAlertTimes = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private const string AlertFileName = "alert.wav";
+        // Raw URL used to fetch the default alert sound from the repository when missing
+        private const string AlertDownloadUrl = "https://raw.githubusercontent.com/Barragek0/ClickIt/main/alert.wav";
         private string? _alertSoundPath = null;
 
         public void ReloadAlertSound()
         {
             try
             {
-                var file = Path.Join(ConfigDirectory, AlertFileName);
+                var configDir = __Test_GetConfigDirectory() ?? ConfigDirectory;
+                var file = Path.Join(configDir, AlertFileName);
                 if (!File.Exists(file))
                 {
-                    LogError($"Alert sound not found at {Path.Join(ConfigDirectory, AlertFileName)}", 20);
+                    LogMessage("Alert sound not found in config directory.", 5);
+
+                    // Optionally attempt to auto-download the default alert sound from GitHub
+                    bool tryDownload = Settings?.AutoDownloadAlertSound?.Value == true;
+                    // Tests can disable network via the test seam
+                    tryDownload = tryDownload && !__Test_GetDisableAutoDownload();
+
+                    if (tryDownload)
+                    {
+                        try
+                        {
+                            LogMessage("Attempting to download default alert sound from GitHub...", 10);
+                            using (var http = new System.Net.Http.HttpClient())
+                            {
+                                http.Timeout = System.TimeSpan.FromSeconds(5);
+                                var resp = http.GetAsync(AlertDownloadUrl).GetAwaiter().GetResult();
+                                if (resp.IsSuccessStatusCode)
+                                {
+                                    var bytes = resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+                                    File.WriteAllBytes(file, bytes);
+                                    LogMessage($"Downloaded default alert sound to {file}", 20);
+                                    _alertSoundPath = file;
+                                    return;
+                                }
+                                else
+                                {
+                                    LogError($"Failed to download alert sound: server returned {(int)resp.StatusCode}", 20);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogError($"Downloading alert sound failed: {ex.Message}", 20);
+                        }
+                    }
+
                     _alertSoundPath = null;
                     return;
                 }

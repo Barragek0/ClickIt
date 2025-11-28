@@ -28,8 +28,8 @@ namespace ClickIt.Tests.Unit
 
             var listInstance = System.Activator.CreateInstance(valueProp!.PropertyType);
             var addMethod = valueProp.PropertyType.GetMethod("Add");
-            addMethod!.Invoke(listInstance, new object?[] { null });
-            addMethod!.Invoke(listInstance, new object?[] { null });
+            addMethod!.Invoke(listInstance, [null]);
+            addMethod!.Invoke(listInstance, [null]);
 
             // Set the created list as the thread-local value
             valueProp.SetValue(threadLocalObj, listInstance);

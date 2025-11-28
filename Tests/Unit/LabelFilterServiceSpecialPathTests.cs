@@ -20,7 +20,7 @@ namespace ClickIt.Tests.Unit
 
             // Disable lazy mode checks for deterministic behaviour
             // LazyModeRestrictedChecker is a static property now - assign directly to avoid reflection fragility
-            global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = (svc2, labels) => false;
+            Services.LabelFilterService.LazyModeRestrictedChecker = (svc2, labels) => false;
 
             return svc;
         }

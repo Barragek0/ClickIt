@@ -46,7 +46,7 @@ namespace ClickIt.Tests.Unit
             var lock2 = clickSvc.GetElementAccessLock();
 
             lock1.Should().NotBeNull();
-            object.ReferenceEquals(lock1, lock2).Should().BeTrue();
+            ReferenceEquals(lock1, lock2).Should().BeTrue();
         }
     }
 }

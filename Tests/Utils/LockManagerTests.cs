@@ -35,14 +35,14 @@ namespace ClickIt.Tests.Utils
             try
             {
                 // Monitor.IsEntered is available; ensure current thread owns the lock
-                bool entered = System.Threading.Monitor.IsEntered(lockObj);
+                bool entered = Monitor.IsEntered(lockObj);
                 entered.Should().BeTrue("Acquire must enter the monitor for non-null objects");
 
                 // Dispose once releases the monitor
                 disp.Dispose();
 
                 // After disposing the first time, the lock should be released
-                System.Threading.Monitor.IsEntered(lockObj).Should().BeFalse();
+                Monitor.IsEntered(lockObj).Should().BeFalse();
 
                 // Calling Dispose a second time should be swallowed by the implementation (no exception)
                 Action a = () => disp.Dispose();

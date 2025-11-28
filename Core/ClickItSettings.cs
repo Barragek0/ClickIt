@@ -230,13 +230,16 @@ namespace ClickIt
         [Menu("Alert Sound", "The alert sound file must be named 'alert.wav' and be placed in the plugin config directory.\n\nYou can find the default alert.wav file in the plugin's GitHub repository.", 4620)]
         public EmptyNode AlertSoundCategory { get; set; } = new EmptyNode();
 
-        [Menu("Open Config Directory", "Open the plugin config directory where you should put 'alert.wav'", 1, 4620)]
+        [Menu("Auto-download Default Alert Sound", "When enabled the plugin will attempt to download a default 'alert.wav' from the project's GitHub repository into your plugin config folder if the file is missing.", 1, 4620)]
+        public ToggleNode AutoDownloadAlertSound { get; set; } = new ToggleNode(true);
+
+        [Menu("Open Config Directory", "Open the plugin config directory where you should put 'alert.wav'", 2, 4620)]
         public ButtonNode OpenConfigDirectory { get; set; } = new ButtonNode();
 
-        [Menu("Reload Alert Sound", "Reloads the 'alert.wav' sound file from the config directory", 2, 4620)]
+        [Menu("Reload Alert Sound", "Reloads the 'alert.wav' sound file from the config directory", 3, 4620)]
         public ButtonNode ReloadAlertSound { get; set; } = new ButtonNode();
 
-        [Menu("Alert Volume", "Volume to play alert sound at (0-100)", 3, 4620)]
+        [Menu("Alert Volume", "Volume to play alert sound at (0-100)", 4, 4620)]
         public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(5, 0, 100);
 
         [JsonIgnore]

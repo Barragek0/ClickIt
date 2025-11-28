@@ -15,7 +15,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void UpdateAltarComponentFromAdapter_Throws_WhenElementNull()
         {
-            var primary = Tests.TestUtils.TestBuilders.BuildPrimary();
+            var primary = TestUtils.TestBuilders.BuildPrimary();
 
             // Passing null for the element parameter should throw ArgumentNullException
             FluentActions.Invoking(() => AltarService.UpdateAltarComponentFromAdapter(true, primary, null, new List<string>(), new List<string>(), false))
@@ -25,7 +25,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void UpdateAltarComponentFromAdapter_SetsBottom_WhenTopFalse()
         {
-            var primary = Tests.TestUtils.TestBuilders.BuildPrimary();
+            var primary = TestUtils.TestBuilders.BuildPrimary();
 
             var mockElementAdapter = new Mock<IElementAdapter>();
             var parentAdapter = new Mock<IElementAdapter>();
@@ -56,12 +56,12 @@ namespace ClickIt.Tests.Unit
 
             // Add six unique unmatched mods -> should trim to last 5
             string neg = "N";
-            mi.Invoke(svc, new object[] { "a1", neg });
-            mi.Invoke(svc, new object[] { "b2", neg });
-            mi.Invoke(svc, new object[] { "c3", neg });
-            mi.Invoke(svc, new object[] { "d4", neg });
-            mi.Invoke(svc, new object[] { "e5", neg });
-            mi.Invoke(svc, new object[] { "f6", neg });
+            mi.Invoke(svc, ["a1", neg]);
+            mi.Invoke(svc, ["b2", neg]);
+            mi.Invoke(svc, ["c3", neg]);
+            mi.Invoke(svc, ["d4", neg]);
+            mi.Invoke(svc, ["e5", neg]);
+            mi.Invoke(svc, ["f6", neg]);
 
             // ModsUnmatched increments for every invocation
             svc.DebugInfo.ModsUnmatched.Should().Be(6);
@@ -83,9 +83,9 @@ namespace ClickIt.Tests.Unit
             mi.Should().NotBeNull();
 
             string neg = "X";
-            mi.Invoke(svc, new object[] { "dup1", neg });
-            mi.Invoke(svc, new object[] { "dup1", neg });
-            mi.Invoke(svc, new object[] { "other1", neg });
+            mi.Invoke(svc, ["dup1", neg]);
+            mi.Invoke(svc, ["dup1", neg]);
+            mi.Invoke(svc, ["other1", neg]);
 
             // Two invocations for 'dup1' increment ModsUnmatched twice but recent list only once
             svc.DebugInfo.ModsUnmatched.Should().Be(3);

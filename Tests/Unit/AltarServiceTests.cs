@@ -29,7 +29,7 @@ namespace ClickIt.Tests.Unit
             var topButton = new AltarButton(null);
             var bottomButton = new AltarButton(null);
 
-            var component = new PrimaryAltarComponent(global::ClickIt.ClickIt.AltarType.Unknown, topMods, topButton, bottomMods, bottomButton);
+            var component = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, topMods, topButton, bottomMods, bottomButton);
 
             // Add and ensure it's present
             bool added = service.AddAltarComponent(component);
@@ -50,13 +50,13 @@ namespace ClickIt.Tests.Unit
             mi.Should().NotBeNull();
 
             var searing = (ClickIt.AltarType)mi.Invoke(null, ["SomePath/CleansingFireAltar/Other"]);
-            searing.Should().Be(global::ClickIt.ClickIt.AltarType.SearingExarch);
+            searing.Should().Be(ClickIt.AltarType.SearingExarch);
 
             var eater = (ClickIt.AltarType)mi.Invoke(null, ["prefix/TangleAltar/suffix"]);
-            eater.Should().Be(global::ClickIt.ClickIt.AltarType.EaterOfWorlds);
+            eater.Should().Be(ClickIt.AltarType.EaterOfWorlds);
 
             var unknown = (ClickIt.AltarType)mi.Invoke(null, [string.Empty]);
-            unknown.Should().Be(global::ClickIt.ClickIt.AltarType.Unknown);
+            unknown.Should().Be(ClickIt.AltarType.Unknown);
         }
 
         [TestMethod]
@@ -90,10 +90,10 @@ namespace ClickIt.Tests.Unit
             mockBottomAltarAdapter.SetupGet(a => a.Underlying).Returns((Element)null);
 
             // Call the internal adapter-based creator directly
-            var created = service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, global::ClickIt.ClickIt.AltarType.SearingExarch);
+            var created = service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, ClickIt.AltarType.SearingExarch);
 
             created.Should().NotBeNull();
-            created.AltarType.Should().Be(global::ClickIt.ClickIt.AltarType.SearingExarch);
+            created.AltarType.Should().Be(ClickIt.AltarType.SearingExarch);
             created.TopMods.Should().NotBeNull();
             created.BottomMods.Should().NotBeNull();
         }
@@ -105,7 +105,7 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var service = new AltarService(clickIt, settings, null);
 
-            var primary = Tests.TestUtils.TestBuilders.BuildPrimary();
+            var primary = TestUtils.TestBuilders.BuildPrimary();
 
             var mockElementAdapter = new Mock<IElementAdapter>();
             // Parent used by AltarButton is retrieved from adapter.Parent.Underlying; provide a parent adapter with null underlying

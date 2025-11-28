@@ -8,7 +8,7 @@ namespace ClickIt.Utils
         internal static bool ElementContainsAnyStringsForTests(Services.IElementAdapter? root, IEnumerable<string> patterns)
         {
             if (root == null) return false;
-            var patList = patterns as string[] ?? System.Linq.Enumerable.ToArray(patterns);
+            var patList = patterns as string[] ?? Enumerable.ToArray(patterns);
             if (patList.Length == 0) return false;
 
             var stack = new Stack<Services.IElementAdapter>();

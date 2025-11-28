@@ -64,7 +64,7 @@ namespace ClickIt
                     }
 
                     // As a last resort, match any field whose name looks like it stores settings (handles odd backing-field naming)
-                    if (!string.IsNullOrEmpty(fx.Name) && fx.Name.IndexOf("setting", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (!string.IsNullOrEmpty(fx.Name) && fx.Name.IndexOf("setting", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         fx.SetValue(this, settings);
                         return;
@@ -75,6 +75,30 @@ namespace ClickIt
             }
 
             // If we reached this point the injected settings instance has been recorded in _testSettingsForTests
+        }
+
+        // Test seam: disable auto-download behavior during tests so unit tests do not attempt network I/O
+        private bool _testDisableAutoDownload = false;
+        internal void __Test_SetDisableAutoDownload(bool value)
+        {
+            _testDisableAutoDownload = value;
+        }
+
+        internal bool __Test_GetDisableAutoDownload()
+        {
+            return _testDisableAutoDownload;
+        }
+
+        // Test seam: optionally override the ConfigDirectory used by the plugin during tests
+        private string? _testConfigDirectory = null;
+        internal void __Test_SetConfigDirectory(string? path)
+        {
+            _testConfigDirectory = path;
+        }
+
+        internal string? __Test_GetConfigDirectory()
+        {
+            return _testConfigDirectory;
         }
     }
 }

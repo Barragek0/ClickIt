@@ -17,7 +17,7 @@ namespace ClickIt.Tests.Unit
         {
             // Save original static seams
             _originalKeyStateProvider = global::ClickIt.Utils.CoroutineManager.KeyStateProvider;
-            _originalLazyModeChecker = global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker;
+            _originalLazyModeChecker = Services.LabelFilterService.LazyModeRestrictedChecker;
         }
 
         [TestCleanup]
@@ -27,7 +27,7 @@ namespace ClickIt.Tests.Unit
             if (_originalKeyStateProvider != null)
                 global::ClickIt.Utils.CoroutineManager.KeyStateProvider = _originalKeyStateProvider;
             if (_originalLazyModeChecker != null)
-                global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = _originalLazyModeChecker;
+                Services.LabelFilterService.LazyModeRestrictedChecker = _originalLazyModeChecker;
         }
         [TestMethod]
         public void Constructor_Throws_OnNullArgs()
@@ -87,7 +87,7 @@ namespace ClickIt.Tests.Unit
             var ctx = new PluginContext();
             // Provide LabelFilterService that reports no restricted items present
             var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
-            global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
+            Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
             ctx.LabelFilterService = lfs;
 
             // deterministic key state: left button held
@@ -114,7 +114,7 @@ namespace ClickIt.Tests.Unit
             var ctx = new PluginContext();
             // Provide LabelFilterService that reports no restricted items present
             var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
-            global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
+            Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
             ctx.LabelFilterService = lfs;
 
             // deterministic key state: right button held
@@ -141,7 +141,7 @@ namespace ClickIt.Tests.Unit
             // Provide a LabelFilterService and override the lazy-check to return true (restricted items present)
             var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
             // Override test seam so the implementation reports restricted items present
-            global::ClickIt.Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => true;
+            Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => true;
 
             ctx.LabelFilterService = lfs;
 
@@ -221,7 +221,7 @@ namespace ClickIt.Tests.Unit
 
             try
             {
-                cm.GetType().GetMethod("StartCoroutines", BindingFlags.Public | BindingFlags.Instance)!.Invoke(cm, new object[] { plugin });
+                cm.GetType().GetMethod("StartCoroutines", BindingFlags.Public | BindingFlags.Instance)!.Invoke(cm, [plugin]);
             }
             catch (TargetInvocationException)
             {
@@ -302,7 +302,7 @@ namespace ClickIt.Tests.Unit
             var mi = cm.GetType().GetMethod("ExecuteWithElementAccessLock", BindingFlags.NonPublic | BindingFlags.Instance);
             mi.Should().NotBeNull();
 
-            mi!.Invoke(cm, new object[] { new Action(() => ran = true) });
+            mi!.Invoke(cm, [new Action(() => ran = true)]);
             ran.Should().BeTrue();
         }
     }

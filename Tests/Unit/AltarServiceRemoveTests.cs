@@ -16,7 +16,7 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var service = new AltarService(clickIt, settings, null);
 
-            var component = Tests.TestUtils.TestBuilders.BuildPrimary();
+            var component = TestUtils.TestBuilders.BuildPrimary();
             service.AddAltarComponent(component).Should().BeTrue();
 
             // Removing by null should return early and leave components intact

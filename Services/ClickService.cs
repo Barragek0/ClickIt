@@ -395,7 +395,7 @@ namespace ClickIt.Services
                 for (int i = 0; i < all.Count; i++)
                 {
                     var other = all[i];
-                    if (other == null || object.ReferenceEquals(other, label)) continue;
+                    if (other == null || ReferenceEquals(other, label)) continue;
                     var otherEl = other.Label;
                     if (otherEl == null) continue;
                     var r = otherEl.GetClientRect();

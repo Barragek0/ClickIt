@@ -20,7 +20,7 @@ namespace ClickIt.Tests.Unit
             // Expanded blacklist of risky name parts to avoid dangerous/native operations
             // Further expand blacklist to avoid invoking methods that have side-effects
             // (native mouse movement / keyboard / blocking operations etc.)
-            string[] riskyNameParts = new[] {
+            string[] riskyNameParts = [
                 // high-risk operations
                 "Report", "PlaySound", "OpenConfig", "StartNative", "Start", "Stop", "Run", "Process", "Parallel", "Thread", "Task", "Main", "Kill",
                 "File", "Directory", "Play", "Export", "Import", "Reload", "RemoveAltarComponentsByElement",
@@ -34,10 +34,10 @@ namespace ClickIt.Tests.Unit
                 "Dispose", "Close", "Open", "Connect", "Attach", "Detach", "Shutdown", "Exit", "Kill", "Release",
                 // drawing / GUI / imgui / unsafe native helpers
                 "Draw", "ImGui", "TreeNode", "Render", "Renderer", "Unsafe", "Native", "Pointer", "GetUnmanaged",
-            };
+            ];
 
             // Avoid invoking reflection on external assemblies or third-party SharpDX/ExileCore types
-            string[] bannedTypeParts = new[] { "SharpDX", "ExileCore", "ThirdParty", "ImGui", "ClickItSettings" };
+            string[] bannedTypeParts = ["SharpDX", "ExileCore", "ThirdParty", "ImGui", "ClickItSettings"];
 
             int invoked = 0;
 

@@ -20,10 +20,10 @@ namespace ClickIt.Tests.Unit
 
             // Use the test seam __Test_SetSettings to inject test settings (seam exists in ClickIt.TestSeams.cs)
             var setMethod = typeof(ClickIt).GetMethod("__Test_SetSettings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-            setMethod.Invoke(plugin, new object[] { settings });
+            setMethod.Invoke(plugin, [settings]);
 
             var method = typeof(ClickIt).GetMethod("ResolveCompositeKey", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var res = method.Invoke(plugin, new object[] { "xmod" });
+            var res = method.Invoke(plugin, ["xmod"]);
             Assert.AreEqual("downside|xmod", res);
         }
 
@@ -37,7 +37,7 @@ namespace ClickIt.Tests.Unit
 
             // Set EffectiveSettings
             var setMethod = typeof(ClickIt).GetMethod("__Test_SetSettings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-            setMethod.Invoke(plugin, new object[] { settings });
+            setMethod.Invoke(plugin, [settings]);
 
             string tmp = Path.Combine(Path.GetTempPath(), "ClickItTestTemp");
             Directory.CreateDirectory(tmp);
@@ -62,7 +62,7 @@ namespace ClickIt.Tests.Unit
 
             // Call the public API
             typeof(ClickIt).GetMethod("TryTriggerAlertForMatchedMod", BindingFlags.Instance | BindingFlags.Public)!
-                .Invoke(plugin, new object[] { "mymod" });
+                .Invoke(plugin, ["mymod"]);
 
             // After invocation, the lastAlertTimes should contain the key
             Assert.IsTrue(dict.Contains("mymod"));

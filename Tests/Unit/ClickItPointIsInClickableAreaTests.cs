@@ -18,7 +18,7 @@ namespace ClickIt.Tests.Unit
             clickIt.State.AreaService = null; // explicit
 
             var mi = typeof(ClickIt).GetMethod("PointIsInClickableArea", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var res = (bool)mi.Invoke(clickIt, new object[] { new Vector2(10, 10), null });
+            var res = (bool)mi.Invoke(clickIt, [new Vector2(10, 10), null]);
             res.Should().BeFalse();
         }
 
@@ -48,7 +48,7 @@ namespace ClickIt.Tests.Unit
 
             // choose a point inside the full screen rectangle and not in any blocked area
             var p = new Vector2(20, 20);
-            var res = (bool)mi.Invoke(clickIt, new object[] { p, null });
+            var res = (bool)mi.Invoke(clickIt, [p, null]);
             res.Should().BeTrue();
         }
     }

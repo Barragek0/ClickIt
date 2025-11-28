@@ -118,16 +118,16 @@ namespace ClickIt.Tests.Unit
             var m = typeof(WeightCalculator).GetMethod("GetModString", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             m.Should().NotBeNull();
 
-            var valUp = (string)(m!.Invoke(null, new object[] { sec, 1, false })!);
+            var valUp = (string)(m!.Invoke(null, [sec, 1, false])!);
             valUp.Should().Be("up1");
 
-            var valDown = (string)(m.Invoke(null, new object[] { sec, 0, true })!);
+            var valDown = (string)(m.Invoke(null, [sec, 0, true])!);
             valDown.Should().Be("down0");
 
-            var outVal = (string)(m.Invoke(null, new object[] { sec, 10, false })!);
+            var outVal = (string)(m.Invoke(null, [sec, 10, false])!);
             outVal.Should().Be("");
 
-            var nullVal = (string)(m.Invoke(null, new object?[] { null!, 0, true })!);
+            var nullVal = (string)(m.Invoke(null, [null!, 0, true])!);
             nullVal.Should().Be("");
         }
 

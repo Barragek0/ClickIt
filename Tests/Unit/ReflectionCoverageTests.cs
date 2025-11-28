@@ -16,7 +16,7 @@ namespace ClickIt.Tests.Unit
             var asm = typeof(ClickIt).Assembly;
 
             // blacklist to avoid process-starting or destructive invocation
-            string[] bannedNames = new[] { "ReportBugButtonPressed", "OpenConfigDirectoryPressed", "PlaySoundFile", "ReloadAlertSound", "TryTriggerAlertForMatchedMod", "Start", "Process" };
+            string[] bannedNames = ["ReportBugButtonPressed", "OpenConfigDirectoryPressed", "PlaySoundFile", "ReloadAlertSound", "TryTriggerAlertForMatchedMod", "Start", "Process"];
 
             int invoked = 0;
 
@@ -34,7 +34,7 @@ namespace ClickIt.Tests.Unit
                     if (bannedNames.Any(b => m.Name.IndexOf(b, StringComparison.OrdinalIgnoreCase) >= 0)) continue;
 
                     // skip methods that look like they might interact with native libs or heavy game objects
-                    string[] riskyNameParts = new[] { "Renderer", "Settings", "Controller", "ClickService", "Coroutine", "InputHandler", "GameController", "SoundController" };
+                    string[] riskyNameParts = ["Renderer", "Settings", "Controller", "ClickService", "Coroutine", "InputHandler", "GameController", "SoundController"];
                     if (riskyNameParts.Any(r => t.Name.IndexOf(r, StringComparison.OrdinalIgnoreCase) >= 0)) continue;
 
                     // Only attempt to invoke methods that have manageable parameter lists

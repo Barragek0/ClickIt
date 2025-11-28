@@ -13,7 +13,7 @@ namespace ClickIt.Tests.Unit
         {
             var method = typeof(AreaService).GetMethod("<UpdateScreenAreas>g__RectsDiffer|13_0", BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
-            return method!.Invoke(null, new object[] { a, b, eps });
+            return method!.Invoke(null, [a, b, eps]);
         }
 
         [TestMethod]

@@ -17,12 +17,12 @@ namespace ClickIt.Tests.Unit
         public void IsClickHotkeyPressed_ReturnsFalse_WhenInputHandlerMissing()
         {
             // Create uninitialized ClickIt instance and ensure State.InputHandler is null -> method should return false
-            var plugin = (ClickIt)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
+            var plugin = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
 
             // Inject an empty state with no InputHandler (create via reflection so tests don't depend on compile-time symbol)
             // The runtime state type is PluginContext (not ClickItState) — create an instance via reflection
             var stateType = typeof(ClickIt).Assembly.GetType("ClickIt.PluginContext");
-            var state = stateType is null ? null : System.Activator.CreateInstance(stateType);
+            var state = stateType is null ? null : Activator.CreateInstance(stateType);
             // The State property is an init-only auto-property; set its compiler-generated backing field
             var backingField = typeof(ClickIt).GetField("<State>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
             backingField.Should().NotBeNull();
@@ -30,7 +30,7 @@ namespace ClickIt.Tests.Unit
 
             // Call private IsClickHotkeyPressed method via reflection
             var mi = typeof(ClickIt).GetMethod("IsClickHotkeyPressed", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var result = mi.Invoke(plugin, new object[0]);
+            var result = mi.Invoke(plugin, []);
 
             // mi.Invoke returns object boxed bool — assert it's false
             ((bool)result!).Should().BeFalse();
@@ -52,22 +52,22 @@ namespace ClickIt.Tests.Unit
             state.WorkFinished = true;
 
             // Disable native input to prevent real mouse operations during testing
-            var originalDisable = global::ClickIt.Utils.Mouse.DisableNativeInput;
-            global::ClickIt.Utils.Mouse.DisableNativeInput = true;
+            var originalDisable = Mouse.DisableNativeInput;
+            Mouse.DisableNativeInput = true;
 
             try
             {
                 // Call the private handler directly via reflection
                 var mi = typeof(ClickIt).GetMethod("HandleHotkeyPressed", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 mi.Should().NotBeNull();
-                mi.Invoke(plugin, new object[0]);
+                mi.Invoke(plugin, []);
 
                 // WorkFinished should have been cleared by the handler
                 state.WorkFinished.Should().BeFalse();
             }
             finally
             {
-                global::ClickIt.Utils.Mouse.DisableNativeInput = originalDisable;
+                Mouse.DisableNativeInput = originalDisable;
             }
         }
 
@@ -137,7 +137,7 @@ namespace ClickIt.Tests.Unit
             // Invoke private method via reflection and ensure it restarts the timer
             var mi = typeof(ClickIt).GetMethod("ResumeAltarScanningIfDue", BindingFlags.Instance | BindingFlags.NonPublic)!;
             mi.Should().NotBeNull();
-            mi.Invoke(plugin, new object[0]);
+            mi.Invoke(plugin, []);
 
             // After invocation the timer should have been restarted (elapsed resets near-zero)
             state.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
@@ -152,7 +152,7 @@ namespace ClickIt.Tests.Unit
             mi.Should().NotBeNull();
             try
             {
-                var res = mi.Invoke(null, new object[0]);
+                var res = mi.Invoke(null, []);
                 res.Should().BeNull();
             }
             catch (System.Reflection.TargetInvocationException tie)

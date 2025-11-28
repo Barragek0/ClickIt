@@ -23,7 +23,7 @@ namespace ClickIt.Tests.Unit
             // Parent is null -> should throw
             mockElementAdapter.SetupGet(a => a.Parent).Returns((IElementAdapter?)null);
 
-            FluentActions.Invoking(() => service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, global::ClickIt.ClickIt.AltarType.Unknown))
+            FluentActions.Invoking(() => service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, ClickIt.AltarType.Unknown))
                 .Should().Throw<System.InvalidOperationException>();
         }
 
@@ -53,7 +53,7 @@ namespace ClickIt.Tests.Unit
             mockTopAltarAdapter.Setup(a => a.GetText(It.IsAny<int>())).Returns(string.Empty);
             mockTopAltarAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
 
-            FluentActions.Invoking(() => service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, global::ClickIt.ClickIt.AltarType.Unknown))
+            FluentActions.Invoking(() => service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, ClickIt.AltarType.Unknown))
                 .Should().Throw<System.InvalidOperationException>();
         }
     }
