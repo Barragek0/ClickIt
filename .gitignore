@@ -134,7 +134,3 @@ build.log
 # Allow checking in explicit third-party runtime libs used by the tests
 !ThirdParty/
 !ThirdParty/*.dll
-
-# Temporary
-Tests/TestSuitePlan.md
-Tests/scripts/generate-coverage.ps1

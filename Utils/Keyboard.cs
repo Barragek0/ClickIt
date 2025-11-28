@@ -4,7 +4,7 @@ using System.Threading;
 using System.Windows.Forms;
 namespace ClickIt.Utils
 {
-    internal static partial class Keyboard
+    internal static class Keyboard
     {
         // The DisableNativeInput flag lives in Keyboard.Seams.cs for test-only configuration
         private const int KEYEVENTF_EXTENDEDKEY = 0x0001;

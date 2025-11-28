@@ -2,9 +2,9 @@ name: ClickIt CI
 
 on:
   push:
-    branches: [ main, test-suite-v2 ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, test-suite-v2 ]
+    branches: [ main ]
 
 jobs:
   build-and-test:
