@@ -122,6 +122,46 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void IsLabelObscuredByCloserLabelForTests_DetectsOverlappingCloserLabel()
+        {
+            // Candidate rect at index 0, center at (5,5)
+            var rects = new SharpDX.RectangleF[] { new SharpDX.RectangleF(0,0,10,10), new SharpDX.RectangleF(0,0,6,6) };
+            var distances = new int[] { 10, 5 }; // second label is closer
+
+            var helper = typeof(global::ClickIt.Services.LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            helper.Should().NotBeNull();
+
+            var res = (bool)helper!.Invoke(null, new object[] { rects, distances, 0 })!;
+            res.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsLabelObscuredByCloserLabelForTests_IgnoresFartherOverlappingLabel()
+        {
+            var rects = new SharpDX.RectangleF[] { new SharpDX.RectangleF(0,0,10,10), new SharpDX.RectangleF(0,0,6,6) };
+            var distances = new int[] { 5, 20 }; // other is farther -> should not obscure
+
+            var helper = typeof(global::ClickIt.Services.LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            helper.Should().NotBeNull();
+
+            var res = (bool)helper!.Invoke(null, new object[] { rects, distances, 0 })!;
+            res.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsLabelObscuredByCloserLabelForTests_ReturnsFalse_WhenNoOverlap()
+        {
+            var rects = new SharpDX.RectangleF[] { new SharpDX.RectangleF(0,0,10,10), new SharpDX.RectangleF(20,20,5,5) };
+            var distances = new int[] { 5, 2 };
+
+            var helper = typeof(global::ClickIt.Services.LabelFilterService).GetMethod("IsLabelObscuredByCloserLabelForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            helper.Should().NotBeNull();
+
+            var res = (bool)helper!.Invoke(null, new object[] { rects, distances, 0 })!;
+            res.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void Debug_DumpLabelOnGroundMembers()
         {
             var t = typeof(ExileCore.PoEMemory.Elements.LabelOnGround);

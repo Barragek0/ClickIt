@@ -197,14 +197,10 @@ namespace ClickIt.Utils
             if (!TryConsumeLazyModeLimiter())
                 return;
 
-            _errorHandler?.LogMessage(true, true, "InputHandler: PerformClick - entering", 5);
-
-            _errorHandler?.LogMessage(true, true, $"InputHandler: Setting cursor pos to {position}", 5);
             // NOTE: Performing clicks is a real native operation. Tests must not invoke PerformClick via
             // reflection (we rely on test seams to exercise logic without executing native input).
             var swTotal = Stopwatch.StartNew();
             var before = Mouse.GetCursorPosition();
-            _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor before move: {before}", 5);
 
             var sw = Stopwatch.StartNew();
             // Skip native cursor movement during tests / CI when Mouse.DisableNativeInput is enabled
@@ -213,10 +209,8 @@ namespace ClickIt.Utils
                 Input.SetCursorPos(position);
             }
             sw.Stop();
-            _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor position set (SetCursorPos took {sw.ElapsedMilliseconds} ms)", 5);
 
             var after = Mouse.GetCursorPosition();
-            _errorHandler?.LogMessage(true, true, $"InputHandler: Cursor after move: {after}", 5);
             //UIHover needs time to update so we sleep longer in lazy mode, we still sleep in normal mode to give cursor time to move
             if (_settings?.LazyMode?.Value == true)
             {
@@ -238,7 +232,6 @@ namespace ClickIt.Utils
                     RestoreCursorIfLazyMode(before);
                     return;
                 }
-                _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification passed", 5);
             }
             else if (uiHover == null)
             {
@@ -251,16 +244,13 @@ namespace ClickIt.Utils
             sw.Restart();
             if (_settings?.LeftHanded?.Value == true)
             {
-                _errorHandler?.LogMessage(true, true, "InputHandler: Performing right click (left-handed)", 5);
                 Mouse.RightClick();
             }
             else
             {
-                _errorHandler?.LogMessage(true, true, "InputHandler: Performing left click", 5);
                 Mouse.LeftClick();
             }
             sw.Stop();
-            _errorHandler?.LogMessage(true, true, $"InputHandler: Click performed (took {sw.ElapsedMilliseconds} ms)", 5);
 
             Thread.Sleep(10);
 
@@ -268,9 +258,44 @@ namespace ClickIt.Utils
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
 
             swTotal.Stop();
-
-            _errorHandler?.LogMessage(true, true, "InputHandler: PerformClick - exiting", 5);
         }
+
+        /// <summary>
+        /// Move the cursor to the supplied screen point (if native input is allowed),
+        /// sleep for the UI hover update, and return the game's UIHoverElement.
+        /// Returns null on error or when UIHover is not present.
+        /// This method respects Mouse.DisableNativeInput so tests won't move the real cursor.
+        /// </summary>
+        public Element? HoverAndGetUIHover(Vector2 screenPoint, GameController? gameController, int delayMs = -1)
+        {
+            if (gameController == null) return null;
+
+            int sleepMs = delayMs;
+            if (sleepMs <= 0)
+            {
+                // Use configured hover sleep when available
+                sleepMs = _settings?.LazyModeUIHoverSleep?.Value ?? 20;
+            }
+
+            try
+            {
+                if (!Mouse.DisableNativeInput)
+                {
+                    Input.SetCursorPos(screenPoint);
+                }
+
+                Thread.Sleep(sleepMs);
+
+                var uiHover = gameController?.IngameState?.UIHoverElement;
+                return uiHover;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // probe-based verification removed; simplified HoverAndGetUIHover is used instead
 
         private bool TryConsumeLazyModeLimiter()
         {

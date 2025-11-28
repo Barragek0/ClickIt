@@ -174,11 +174,6 @@ namespace ClickIt.Utils
                 yield break;
             }
 
-            if (_settings.DebugMode.Value)
-            {
-                _errorHandler.LogMessage($"Starting click process...", 5);
-            }
-
             _state.Timer.Restart();
             _state.PerformanceMonitor.StartCoroutineTiming("click");
             yield return _state.ClickService.ProcessRegularClick();

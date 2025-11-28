@@ -244,7 +244,6 @@ namespace ClickIt.Services
 
         public IEnumerator ProcessRegularClick()
         {
-            DebugLog(() => "[ProcessRegularClick] Starting process regular click");
 
             // Check if there are clickable altars
             var altarSnapshot = altarService.GetAltarComponentsReadOnly();
@@ -272,6 +271,27 @@ namespace ClickIt.Services
             var allLabels = cachedLabels?.Value;
             LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
 
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+
+            // For essences: use the game's UIHoverElement as the authoritative front-most target.
+            // If the player's current UIHover element corresponds to a visible label, prefer it
+            // over our candidate.
+            if (nextLabel != null && IsEssenceLabel(nextLabel))
+            {
+                var uiHover = gameController?.IngameState?.UIHoverElement;
+                if (uiHover != null && allLabels != null)
+                {
+                    // Prefer the hovered label (if it matches any label in our scan)
+                    var hovered = allLabels.FirstOrDefault(l => l?.Label != null && l.Label.Address == uiHover.Address);
+                    if (hovered != null && !ReferenceEquals(hovered, nextLabel) && IsEssenceLabel(hovered))
+                    {
+                        DebugLog(() => "[ProcessRegularClick] UIHover-first: switching target to UIHover label");
+                        nextLabel = hovered;
+                    }
+                }
+            }
+
             if (nextLabel == null)
             {
                 DebugLog(() => "[ProcessRegularClick] No label to click found, breaking");
@@ -284,8 +304,6 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
 
             if (TryCorruptEssence(nextLabel, windowTopLeft))
                 yield break;
@@ -293,12 +311,17 @@ namespace ClickIt.Services
             Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
             PerformLabelClick(clickPos, nextLabel.Label, gameController);
 
-            DebugLog(() => $"[ProcessRegularClick] Clicked label at distance {nextLabel.ItemOnGround.DistancePlayer:F1}");
 
             if (inputHandler.TriggerToggleItems())
             {
                 yield return new WaitTime(20);
             }
+        }
+
+        private static bool IsEssenceLabel(LabelOnGround lbl)
+        {
+            if (lbl == null || lbl.Label == null) return false;
+            return LabelUtils.HasEssenceImprisonmentText(lbl);
         }
 
         private LabelOnGround? FindNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
@@ -329,6 +352,14 @@ namespace ClickIt.Services
         {
             if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(label))
             {
+                // If the corruption control (vaal orb element) is overlapped by any other label
+                // on-screen, skip corrupting this essence now — it prevents the plugin from
+                // attempting to click a target that is obscured by another label (causing
+                // mis-clicks on the wrong UI element). See GitHub issue #27.
+                if (IsCorruptionBlockedByOverlappingLabels(label, windowTopLeft))
+                {
+                    return false;
+                }
                 Vector2? corruptionPos = LabelFilterService.GetCorruptionClickPosition(label, windowTopLeft);
                 if (corruptionPos.HasValue)
                 {
@@ -342,6 +373,54 @@ namespace ClickIt.Services
                 }
             }
             return false;
+        }
+
+        // Determine whether the corruption target of the given label is occluded by
+        // any other label on-screen. This helps avoid clicking the wrong UI element
+        // when labels overlap (see GitHub issue #27).
+        private bool IsCorruptionBlockedByOverlappingLabels(LabelOnGround label, Vector2 windowTopLeft)
+        {
+            try
+            {
+                var corruptEl = label.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);
+                if (corruptEl == null) return false;
+
+                var corruptRect = corruptEl.GetClientRect();
+                // translate to screen coords
+                var targetRect = new SharpDX.RectangleF(corruptRect.X + windowTopLeft.X, corruptRect.Y + windowTopLeft.Y, corruptRect.Width, corruptRect.Height);
+
+                var all = cachedLabels?.Value;
+                if (all == null || all.Count == 0) return false;
+
+                for (int i = 0; i < all.Count; i++)
+                {
+                    var other = all[i];
+                    if (other == null || object.ReferenceEquals(other, label)) continue;
+                    var otherEl = other.Label;
+                    if (otherEl == null) continue;
+                    var r = otherEl.GetClientRect();
+                    var otherRect = new SharpDX.RectangleF(r.X + windowTopLeft.X, r.Y + windowTopLeft.Y, r.Width, r.Height);
+                    if (AreRectanglesOverlapping(targetRect, otherRect))
+                        return true;
+                }
+
+                return false;
+            }
+            catch
+            {
+                // Be defensive in case the Element graph access throws — prefer ignoring than clicking blindly
+                return true;
+            }
+        }
+
+        private static bool AreRectanglesOverlapping(SharpDX.RectangleF a, SharpDX.RectangleF b)
+        {
+            // Rectangles overlap when their projections on both axes intersect
+            if (a.Right <= b.Left) return false;
+            if (a.Left >= b.Right) return false;
+            if (a.Bottom <= b.Top) return false;
+            if (a.Top >= b.Bottom) return false;
+            return true;
         }
 
         private void PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? gameController)

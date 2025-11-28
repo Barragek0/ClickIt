@@ -109,50 +109,51 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
 
     <!-- Services -->
+    <Compile Include="Services\AltarMatcher.cs" />
+    <Compile Include="Services\AltarParser.cs" />
+    <Compile Include="Services\AltarRepository.cs" />
+    <Compile Include="Services\AltarScanner.cs" />
     <Compile Include="Services\AltarService.cs" />
     <Compile Include="Services\AltarService.Seams.cs" />
-    <Compile Include="Services\IElementAdapter.cs" />
-    <Compile Include="Services\ElementAdapter.cs" />
-    <Compile Include="Services\LabelService.cs" />
-    <Compile Include="Services\AltarRepository.cs" />
-    <Compile Include="Services\AltarParser.cs" />
-    <Compile Include="Services\AltarScanner.cs" />
-    <Compile Include="Services\AltarMatcher.cs" />
-    <Compile Include="Services\LabelFilterService.cs" />
-    <Compile Include="Services\LabelFilterService.Seams.cs" />
-    <Compile Include="Services\EssenceService.cs" />
     <Compile Include="Services\AreaService.cs" />
     <Compile Include="Services\ClickService.cs" />
+    <Compile Include="Services\ClickService.Seams.cs" />
+    <Compile Include="Services\ElementAdapter.cs" />
+    <Compile Include="Services\EssenceService.cs" />
+    <Compile Include="Services\IElementAdapter.cs" />
+    <Compile Include="Services\LabelFilterService.cs" />
+    <Compile Include="Services\LabelFilterService.Seams.cs" />
+    <Compile Include="Services\LabelService.cs" />
     <Compile Include="Services\ShrineService.cs" />
 
     <!-- Rendering -->
+    <Compile Include="Rendering\AltarDisplayRenderer.cs" />
     <Compile Include="Rendering\DebugRenderer.cs" />
     <Compile Include="Rendering\LazyModeRenderer.cs" />
-    <Compile Include="Rendering\AltarDisplayRenderer.cs" />
     <Compile Include="Rendering\StrongboxRenderer.cs" />
 
     <!-- Utils -->
-    <Compile Include="Utils\Mouse.cs" />
-    <Compile Include="Utils\Keyboard.cs" />
-    <Compile Include="Utils\IndexConstants.cs" />
-    <Compile Include="Utils\ModIndexConstants.cs" />
-    <Compile Include="Utils\WeightCalculator.cs" />
-    <Compile Include="Utils\InputHandler.cs" />
-    <Compile Include="Utils\LockManager.cs" />
-    <Compile Include="Utils\DeferredTextQueue.cs" />
-    <Compile Include="Utils\DeferredFrameQueue.cs" />
-    <Compile Include="Utils\DeferredFrameQueue.Seams.cs" />
-    <Compile Include="Utils\LabelUtils.cs" />
-    <Compile Include="Utils\LabelUtils.Seams.cs" />
-    <Compile Include="Utils\LabelUtils.Seams.Adapter.cs" />
-    <Compile Include="Utils\TextHelpers.cs" />
     <Compile Include="Utils\AltarModMatcher.cs" />
-    <Compile Include="Utils\EntityHelpers.cs" />
-    <Compile Include="Utils\EntityHelpers.Seams.cs" />
-    <Compile Include="Utils\PerformanceMonitor.cs" />
-    <Compile Include="Utils\ErrorHandler.cs" />
     <Compile Include="Utils\CoroutineManager.cs" />
     <Compile Include="Utils\CoroutineManager.Seams.cs" />
+    <Compile Include="Utils\DeferredFrameQueue.cs" />
+    <Compile Include="Utils\DeferredFrameQueue.Seams.cs" />
+    <Compile Include="Utils\DeferredTextQueue.cs" />
+    <Compile Include="Utils\EntityHelpers.cs" />
+    <Compile Include="Utils\EntityHelpers.Seams.cs" />
+    <Compile Include="Utils\ErrorHandler.cs" />
+    <Compile Include="Utils\IndexConstants.cs" />
+    <Compile Include="Utils\InputHandler.cs" />
+    <Compile Include="Utils\Keyboard.cs" />
+    <Compile Include="Utils\LabelUtils.Seams.Adapter.cs" />
+    <Compile Include="Utils\LabelUtils.Seams.cs" />
+    <Compile Include="Utils\LabelUtils.cs" />
+    <Compile Include="Utils\LockManager.cs" />
+    <Compile Include="Utils\ModIndexConstants.cs" />
+    <Compile Include="Utils\Mouse.cs" />
+    <Compile Include="Utils\PerformanceMonitor.cs" />
+    <Compile Include="Utils\TextHelpers.cs" />
+    <Compile Include="Utils\WeightCalculator.cs" />
   </ItemGroup>
 
   <ItemGroup>

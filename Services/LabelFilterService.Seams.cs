@@ -47,5 +47,26 @@ namespace ClickIt.Services
             }
             return null;
         }
+
+        // Test seam - simplified simulation to assert obscured-label logic without needing runtime LabelOnGround
+        // Test seam for IsLabelObscuredByCloserLabel - invoked via reflection from tests
+#pragma warning disable IDE0051 // unused private member - used via reflection in tests
+        private static bool IsLabelObscuredByCloserLabelForTests(SharpDX.RectangleF[] rects, int[] distances, int candidateIndex)
+#pragma warning restore IDE0051
+        {
+            if (rects == null || distances == null) return false;
+            if (candidateIndex < 0 || candidateIndex >= rects.Length) return false;
+
+            var r = rects[candidateIndex];
+            int candDistance = distances[candidateIndex];
+
+            for (int i = 0; i < rects.Length; i++)
+            {
+                if (i == candidateIndex) continue;
+                var other = rects[i];
+                if (DoRectanglesOverlap(r, other) && distances[i] <= candDistance) return true;
+            }
+            return false;
+        }
     }
 }

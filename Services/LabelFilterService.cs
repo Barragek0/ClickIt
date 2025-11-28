@@ -98,6 +98,7 @@ namespace ClickIt.Services
         public LabelOnGround? GetNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
             if (allLabels == null || allLabels.Count == 0) return null;
+            var clickSettings = CreateClickSettings(allLabels);
             int end = Math.Min(allLabels.Count, startIndex + Math.Max(0, maxCount));
             for (int i = startIndex; i < end; i++)
             {
@@ -105,7 +106,7 @@ namespace ClickIt.Services
                 Entity item = label.ItemOnGround;
                 if (item == null || item.DistancePlayer > _settings.ClickDistance.Value)
                     continue;
-                if (ShouldClickLabel(label, item, CreateClickSettings(allLabels), _gameController))
+                if (ShouldClickLabel(label, item, clickSettings, _gameController))
                     return label;
             }
             return null;
@@ -425,6 +426,15 @@ namespace ClickIt.Services
         public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
             return EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
+        }
+
+        private static bool DoRectanglesOverlap(RectangleF a, RectangleF b)
+        {
+            if (a.Right <= b.Left) return false;
+            if (a.Left >= b.Right) return false;
+            if (a.Bottom <= b.Top) return false;
+            if (a.Top >= b.Bottom) return false;
+            return true;
         }
 
 
