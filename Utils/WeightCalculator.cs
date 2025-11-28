@@ -99,7 +99,7 @@ namespace ClickIt.Utils
             if (string.IsNullOrEmpty(mod)) return 0m;
             if (mod.Contains('|'))
             {
-                var parts = mod.Split(new[] { '|' }, 2);
+                var parts = mod.Split(['|'], 2);
                 string type = parts[0];
                 string id = parts.Length > 1 ? parts[1] : parts[0];
                 return _settings.GetModTier(id, type);

@@ -13,7 +13,7 @@ using ClickIt;
 
 namespace ClickIt.Utils
 {
-    public class CoroutineManager(
+    public partial class CoroutineManager(
         PluginContext state,
         ClickItSettings settings,
         GameController gameController,
@@ -45,14 +45,15 @@ namespace ClickIt.Utils
             return EntityHelpers.IsRitualActive(_gameController);
         }
 
+
         private bool IsShrineClickBlockedInLazyMode()
         {
             if (!_settings.LazyMode.Value) return false;
             var cached = _state.CachedLabels?.Value;
             bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
             if (hasRestrictedItems) return false;
-            bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);
-            bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && Input.GetKeyState(Keys.RButton);
+            bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && KeyStateProvider(Keys.LButton);
+            bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && KeyStateProvider(Keys.RButton);
             return leftClickBlocks || rightClickBlocks;
         }
 
@@ -266,7 +267,7 @@ namespace ClickIt.Utils
 
         private bool IsClickHotkeyPressed()
         {
-            bool actual = Input.GetKeyState(_settings.ClickLabelKey.Value);
+            bool actual = KeyStateProvider(_settings.ClickLabelKey.Value);
             if (_settings?.LazyMode != null && _settings.LazyMode.Value)
             {
                 // In lazy mode, invert hotkey behaviour: released -> active, held -> inactive

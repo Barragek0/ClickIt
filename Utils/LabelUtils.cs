@@ -12,7 +12,7 @@ using ExileCore.PoEMemory.Components;
 namespace ClickIt.Utils
 {
 #nullable enable
-    internal static class LabelUtils
+    internal static partial class LabelUtils
     {
         public static void SortLabelsByDistance(List<LabelOnGround> labels)
         {

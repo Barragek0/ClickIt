@@ -8,7 +8,7 @@
           <ResultsDirectory>TestResults</ResultsDirectory>
           <Exclude>[*.Tests]*,[*]*.Program,[ExileCore]*,[ImGui.NET]*,[Newtonsoft.Json]*,[System.*]*,[Microsoft.*]*</Exclude>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
-          <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
+          <ExcludeByFile>**/Core/ClickItSettings.cs,**/Rendering/**,**/Services/ClickService.cs,**/Services/ShrineService.cs,**/Services/EssenceService.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/Utils/InputHandler.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
           <IncludeDirectory>../</IncludeDirectory>
         </Configuration>
       </DataCollector>

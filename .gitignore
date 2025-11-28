@@ -130,3 +130,7 @@ build.log
 
 # Local assistant / continuation state
 .continue/
+
+# Allow checking in explicit third-party runtime libs used by the tests
+!ThirdParty/
+!ThirdParty/*.dll

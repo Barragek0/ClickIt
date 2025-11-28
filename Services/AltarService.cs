@@ -19,10 +19,10 @@ namespace ClickIt.Services
         public string LastProcessedAltarType { get; set; } = "";
         public string LastError { get; set; } = "";
         public DateTime LastScanTime { get; set; } = DateTime.MinValue;
-        public List<string> RecentUnmatchedMods { get; set; } = [];
+        public List<string> RecentUnmatchedMods { get; set; } = new List<string>();
     }
 
-    public class AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
+    public partial class AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
     {
         private readonly ClickIt _clickIt = clickIt;
         private readonly ClickItSettings _settings = settings;
@@ -172,20 +172,21 @@ namespace ClickIt.Services
         }
 
 
-        private static void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element element,
+        private static void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element? element,
             List<string> upsides, List<string> downsides, bool hasUnmatchedMods)
         {
             if (top)
             {
-                altarComponent.TopButton = new AltarButton(element.Parent);
+                altarComponent.TopButton = new AltarButton(element?.Parent);
                 altarComponent.TopMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
             }
             else
             {
-                altarComponent.BottomButton = new AltarButton(element.Parent);
+                altarComponent.BottomButton = new AltarButton(element?.Parent);
                 altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
             }
         }
+
 
         public void ProcessAltarScanningLogic()
         {
@@ -301,19 +302,25 @@ namespace ClickIt.Services
         }
         private PrimaryAltarComponent CreateAltarComponent(Element element, ClickIt.AltarType altarType)
         {
-            Element altarParent = element.Parent.Parent;
-            Element? topAltarElement = altarParent.GetChildFromIndices(0, 1);
-            Element? bottomAltarElement = altarParent.GetChildFromIndices(1, 1);
+            // Wrap production Element with adapter and call internal adapter-based creator
+            var adapter = new ElementAdapter(element);
+            return CreateAltarComponentFromAdapter(adapter, altarType);
+        }
 
-            // Create altar component with proper validation
-            var topMods = topAltarElement != null ?
-                new SecondaryAltarComponent(topAltarElement, [], []) :
-                null;
-            var bottomMods = bottomAltarElement != null ?
-                new SecondaryAltarComponent(bottomAltarElement, [], []) :
-                null;
-            var topButton = topAltarElement != null ? new AltarButton(topAltarElement.Parent) : null;
-            var bottomButton = bottomAltarElement != null ? new AltarButton(bottomAltarElement.Parent) : null;
+        // Internal adapter-based creation method for easier unit testing
+        internal PrimaryAltarComponent CreateAltarComponentFromAdapter(IElementAdapter elementAdapter, ClickIt.AltarType altarType)
+        {
+            if (elementAdapter == null || elementAdapter.Parent?.Parent == null)
+                throw new InvalidOperationException("Failed to create valid altar component - missing required elements");
+
+            var altarParentAdapter = elementAdapter.Parent.Parent;
+            var topAltarAdapter = altarParentAdapter.GetChildFromIndices(0, 1);
+            var bottomAltarAdapter = altarParentAdapter.GetChildFromIndices(1, 1);
+
+            var topMods = topAltarAdapter != null ? new SecondaryAltarComponent(topAltarAdapter.Underlying, new List<string>(), new List<string>()) : null;
+            var bottomMods = bottomAltarAdapter != null ? new SecondaryAltarComponent(bottomAltarAdapter.Underlying, new List<string>(), new List<string>()) : null;
+            var topButton = topAltarAdapter != null ? new AltarButton(topAltarAdapter.Parent?.Underlying) : null;
+            var bottomButton = bottomAltarAdapter != null ? new AltarButton(bottomAltarAdapter.Parent?.Underlying) : null;
 
             if (topMods == null || bottomMods == null || topButton == null || bottomButton == null)
             {
@@ -322,15 +329,42 @@ namespace ClickIt.Services
 
             PrimaryAltarComponent altarComponent = new(altarType, topMods, topButton, bottomMods, bottomButton);
 
-            if (topAltarElement != null)
+            if (topAltarAdapter != null)
             {
-                UpdateComponentFromElementData(true, altarParent, altarComponent, topAltarElement, altarType);
+                // Extract and process mods using adapter-backed helpers
+                var (negativeModType, mods) = ExtractModsFromAdapter(topAltarAdapter);
+                var (upsides, downsides, hasUnmatched) = ProcessMods(mods, negativeModType);
+                UpdateAltarComponentFromAdapter(true, altarComponent, topAltarAdapter, upsides, downsides, hasUnmatched);
             }
-            if (bottomAltarElement != null)
+            if (bottomAltarAdapter != null)
             {
-                UpdateComponentFromElementData(false, altarParent, altarComponent, bottomAltarElement, altarType);
+                var (negativeModType, mods) = ExtractModsFromAdapter(bottomAltarAdapter);
+                var (upsides, downsides, hasUnmatched) = ProcessMods(mods, negativeModType);
+                UpdateAltarComponentFromAdapter(false, altarComponent, bottomAltarAdapter, upsides, downsides, hasUnmatched);
             }
+
             return altarComponent;
+        }
+
+        private (string negativeModType, List<string> mods) ExtractModsFromAdapter(IElementAdapter element)
+        {
+            string negativeModType = "";
+            var mods = new List<string>();
+            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(512));
+            int lineCount = TextHelpers.CountLines(altarMods);
+            for (int i = 0; i < lineCount; i++)
+            {
+                string line = TextHelpers.GetLine(altarMods, i);
+                if (i == 0)
+                {
+                    negativeModType = line;
+                }
+                else if (line != null)
+                {
+                    mods.Add(line);
+                }
+            }
+            return (negativeModType, mods);
         }
         private bool IsValidAltarComponent(PrimaryAltarComponent altarComponent)
         {

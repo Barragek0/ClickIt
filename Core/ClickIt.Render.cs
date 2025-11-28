@@ -6,8 +6,11 @@ namespace ClickIt
 
         private void RenderInternal()
         {
-            bool debugMode = Settings.DebugMode;
-            bool renderDebug = Settings.RenderDebug;
+            // Use EffectiveSettings (test seam) where possible to avoid null-reference
+            // when tests inject settings via the test seam without setting the base Settings property.
+            var effective = EffectiveSettings;
+            bool debugMode = effective.DebugMode;
+            bool renderDebug = effective.RenderDebug;
             bool hasDebugRendering = debugMode && renderDebug;
 
             int altarCount = State.AltarService?.GetAltarComponents()?.Count ?? 0;
@@ -19,17 +22,17 @@ namespace ClickIt
             State.PerformanceMonitor?.UpdateFPS();
 
             // Render lazy mode indicator if enabled
-            if (Settings.LazyMode.Value)
+            if (effective.LazyMode.Value)
             {
                 State.LazyModeRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"), State);
             }
 
             if (hasDebugRendering)
             {
-                State.DebugRenderer?.RenderDebugFrames(Settings);
+                State.DebugRenderer?.RenderDebugFrames(effective);
                 if (State.DebugRenderer != null && State.PerformanceMonitor != null)
                 {
-                    State.DebugRenderer.RenderDetailedDebugInfo(Settings, State.PerformanceMonitor);
+                    State.DebugRenderer.RenderDetailedDebugInfo(effective, State.PerformanceMonitor);
                 }
             }
 

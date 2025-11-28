@@ -28,26 +28,48 @@ jobs:
         run: |
           dotnet restore .github\ci-stubs\ClickItStub.csproj
           dotnet build .github\ci-stubs\ClickItStub.csproj --configuration Debug --no-restore -o .github\ci-stubs\out
+        shell: pwsh
 
       - name: Copy ClickIt stub into test output folder
         run: |
-          pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\\bin\\Debug') | Out-Null"
-          pwsh -Command "New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\\bin\\Debug\\net48') | Out-Null"
-          pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $PWD 'Tests\\bin\\Debug\\ClickIt.dll') -Force"
-          pwsh -Command "Copy-Item -Path .github\\ci-stubs\\out\\ClickIt.dll -Destination (Join-Path $PWD 'Tests\\bin\\Debug\\net48\\ClickIt.dll') -Force"
+          New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\bin\Debug') | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\bin\Debug\net48') | Out-Null
+          Copy-Item -Path .github\ci-stubs\out\ClickIt.dll -Destination (Join-Path $PWD 'Tests\bin\Debug\ClickIt.dll') -Force
+          Copy-Item -Path .github\ci-stubs\out\ClickIt.dll -Destination (Join-Path $PWD 'Tests\bin\Debug\net48\ClickIt.dll') -Force
+        shell: pwsh
 
       - name: Build test project (MSBuild)
         run: |
           msbuild Tests\ClickIt.Tests.csproj /p:Configuration=Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
 
-      - name: Run tests (no build)
+      - name: Test with coverage
+        shell: pwsh
         run: |
-          dotnet test Tests\ClickIt.Tests.csproj --configuration Debug --no-build --logger "trx;LogFileName=ClickIt.Tests.trx" --results-directory TestResults
+          # Ensure the output directory exists
+          New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\TestResults') | Out-Null
 
-      - name: Upload test results
+          # Use XPlat collector here — this reliably produces a cobertura xml under Tests/TestResults/<guid>/coverage.cobertura.xml
+          dotnet test Tests/ClickIt.Tests.csproj -c Debug --collect:"XPlat Code Coverage" /p:IncludeIntegrationTests=false
+
+          # Also generate an lcov report via coverlet so reportgenerator has a canonical lcov file
+          # (place it in Tests/TestResults/lcov.info relative to repo root)
+          dotnet test Tests/ClickIt.Tests.csproj -c Debug /p:CollectCoverage=true /p:CoverletOutputFormat=lcov /p:CoverletOutput=TestResults/lcov.info /p:BuildProjectReferences=false /p:IncludeIntegrationTests=false --no-build
+
+          # Diagnostic listing so CI logs show files that were produced
+          Get-ChildItem -Path (Join-Path $PWD 'Tests\TestResults') -Recurse -File | ForEach-Object { Write-Host $_.FullName }
+
+      - name: Generate coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.5.0
+        with:
+          # Try lcov first (if produced) and fall back to any cobertura results produced by the XPlat collector
+          reports: Tests/TestResults/lcov.info;Tests/TestResults/**/coverage.cobertura.xml
+          targetdir: Tests/TestResults/cov
+          reporttypes: HtmlSummary;XmlSummary
+
+      - name: Upload test and coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: TestResults/
+          name: test-and-coverage-results
+          path: Tests/TestResults/
           retention-days: 30

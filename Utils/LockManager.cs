@@ -38,7 +38,7 @@ namespace ClickIt.Utils
         /// Instance Acquire method — use via instance: using(var d = lm.Acquire(obj)) { ... }
         /// Always performs a Monitor.Enter for non-null objects to enforce thread-safety.
         /// </summary>
-        public IDisposable Acquire(object? lockObj)
+        public static IDisposable Acquire(object? lockObj)
         {
             if (lockObj == null)
             {
