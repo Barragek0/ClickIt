@@ -108,6 +108,40 @@ namespace ClickIt.Rendering
                 return HandleLowValueOverride(topHasLowValue, bottomHasLowValue, altar, topModsRect, bottomModsRect, textPos1);
             }
 
+            // Minimum final-weight threshold: if enabled, avoid picking options whose final computed
+            // weight is below the configured threshold. If one side is below and the other side is above,
+            // pick the opposite side. If both are below, draw yellow frames and do not pick either.
+            if (_settings.MinWeightThresholdEnabled.Value)
+            {
+                // Stored in settings as double; weights are decimal => convert for comparison
+                decimal minThreshold = Convert.ToDecimal(_settings.MinWeightThreshold.Value);
+                bool topBelowMin = weights.TopWeight < minThreshold;
+                bool bottomBelowMin = weights.BottomWeight < minThreshold;
+
+                if (topBelowMin && bottomBelowMin)
+                {
+                    _deferredTextQueue.Enqueue($"Both options have final weights below the minimum threshold ({minThreshold}) - please choose manually.", textPos1, Color.Orange, 30);
+                    DrawYellowFrames(topModsRect, bottomModsRect);
+                    return null;
+                }
+
+                if (topBelowMin)
+                {
+                    _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because top weight ({weights.TopWeight}) is below minimum {minThreshold}", textPos1, Color.Yellow, 30);
+                    _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
+                    _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
+                    return GetValidatedButtonElement(altar.BottomButton, BOTTOM_BUTTON_NAME);
+                }
+
+                if (bottomBelowMin)
+                {
+                    _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because bottom weight ({weights.BottomWeight}) is below minimum {minThreshold}", textPos1, Color.Yellow, 30);
+                    _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
+                    _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
+                    return GetValidatedButtonElement(altar.TopButton, TOP_BUTTON_NAME);
+                }
+            }
+
             return HandleNormalWeight(weights, altar, topModsRect, bottomModsRect, textPos2);
         }
 

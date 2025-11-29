@@ -227,6 +227,11 @@ namespace ClickIt
         public ToggleNode DangerousDownside { get; set; } = new ToggleNode(true);
         [Menu("Dangerous Downside Threshold", "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.", 6, 4600)]
         public RangeNode<int> DangerousDownsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
+        [Menu("Minimum Weight Threshold", "When enabled, the plugin will enforce a minimum final weight for altar options. If an option's final weight is below this value the plugin will avoid picking it (and will choose the opposite option if available).", 7, 4600)]
+        public ToggleNode MinWeightThresholdEnabled { get; set; } = new ToggleNode(false);
+
+        [Menu("Minimum Weight Value", "Minimum final weight (0.01 - 1.00) an option must have to be considered valid. If both options are below this value, neither will be auto-chosen.", 8, 4600)]
+        public RangeNode<double> MinWeightThreshold { get; set; } = new RangeNode<double>(0.25d, 0.01d, 1.0d);
         [Menu("Alert Sound", "The alert sound file must be named 'alert.wav' and be placed in the plugin config directory.\n\nYou can find the default alert.wav file in the plugin's GitHub repository.", 4620)]
         public EmptyNode AlertSoundCategory { get; set; } = new EmptyNode();
 
