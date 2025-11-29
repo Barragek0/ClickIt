@@ -110,10 +110,6 @@ namespace ClickIt.Services
                     continue;
                 if (ShouldClickLabel(label, item, clickSettings, _gameController))
                 {
-                    // Allow returning essence labels even when overlap/distance heuristics suggest
-                    // they may be obscured. The ClickService will perform authoritative UIHover
-                    // verification when attempting to click, and will skip clicks that cannot
-                    // be verified (safer than filtering here by heuristic).
                     return label;
                 }
             }
