@@ -121,7 +121,7 @@ namespace ClickIt
         public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
         [Menu("Breach Nodes", "Click breach nodes", 14, 3100)]
         public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
-        [Menu("Legion Encounters", "Click legion encounter pillars", 15, 3100)]
+        [Menu("Legion Pillars", "Click legion encounter pillars", 15, 3100)]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
         [Menu("Nearest Harvest Plot", "Click nearest harvest plot", 16, 3100)]
         public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
@@ -137,7 +137,7 @@ namespace ClickIt
         public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
         [Menu("Sulphite Veins", "Click sulphite veins", 2, 3200)]
         public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Spawners", "Click spawners", 3, 3200)]
+        [Menu("Encounter Initiators", "Click delve encounter initiators", 3, 3200)]
         public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
         [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 3200)]
         public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
