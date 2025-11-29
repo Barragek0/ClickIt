@@ -90,14 +90,6 @@ namespace ClickIt.Services
                     continue;
                 if (ShouldClickLabel(label, item, clickSettings, _gameController))
                 {
-                    // If this label is an essence, avoid returning it when it is obscured
-                    // by another label (this prevents selecting a behind-label when two
-                    // essence labels overlap). Non-essence labels are not affected.
-                    // Do NOT filter out essence candidates here based on distance/overlap.
-                    // Overlapping essence resolution is handled at click time (ClickService) using
-                    // UIHover verification. Keeping this method conservative here would prevent
-                    // the resolver from running — so allow essence candidates through.
-
                     return label;
                 }
             }

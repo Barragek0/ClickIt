@@ -6,7 +6,7 @@ namespace ClickIt.Services
 {
     public static class AltarParser
     {
-        private static readonly Regex RgbRegex = new(@"<rgb\(\d+,\d+,\d+\)>", RegexOptions.Compiled);
+        private static readonly Regex RgbRegex = new(@"<[^>]*>", RegexOptions.Compiled);
 
         // Stateless cleaning logic — does not include any caching.
         public static string CleanAltarModsText_NoCache(string text)
