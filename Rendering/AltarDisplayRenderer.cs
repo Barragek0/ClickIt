@@ -77,6 +77,7 @@ namespace ClickIt.Rendering
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
+
             return EvaluateAltarWeights(weights, altar, topModsRect, bottomModsRect, topModsTopLeft + offset120_Minus60, topModsTopLeft + offset120_Minus25);
         }
         private Element? EvaluateAltarWeights(AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
@@ -113,8 +114,8 @@ namespace ClickIt.Rendering
             // pick the opposite side. If both are below, draw yellow frames and do not pick either.
             if (_settings.MinWeightThresholdEnabled.Value)
             {
-                // Stored in settings as double; weights are decimal => convert for comparison
-                decimal minThreshold = Convert.ToDecimal(_settings.MinWeightThreshold.Value);
+                // Stored in settings as int; weights are decimal => convert for comparison
+                decimal minThreshold = _settings.MinWeightThreshold.Value;
                 bool topBelowMin = weights.TopWeight < minThreshold;
                 bool bottomBelowMin = weights.BottomWeight < minThreshold;
 
@@ -352,6 +353,7 @@ namespace ClickIt.Rendering
 
         public void DrawWeightTexts(AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
+
             Vector2 offset5_Minus32 = new(5, -32);
             Vector2 offset5_Minus20 = new(5, -20);
             Vector2 offset10_Minus32 = new(10, -32);
@@ -413,6 +415,7 @@ namespace ClickIt.Rendering
             Vector2 bottomModsTopLeft = bottomModsRect.TopLeft;
 
             DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
+
             DrawWeightTexts(altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
             // Deferred text rendering is flushed at the end of the main Render method
         }

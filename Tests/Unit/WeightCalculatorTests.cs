@@ -78,7 +78,7 @@ namespace ClickIt.Tests.Unit
             weights.TopUpsideWeight.Should().Be(50m);
             weights.TopDownsideWeight.Should().Be(25m);
             // Ratio rounded to 2 decimals: 50 / 25 = 2.00
-            weights.TopWeight.Should().Be(2.00m);
+            weights.TopWeight.Should().Be(200);
         }
 
         [TestMethod]
@@ -274,8 +274,8 @@ namespace ClickIt.Tests.Unit
             weights.TopUpsideWeight.Should().Be(0m);
             weights.BottomDownsideWeight.Should().Be(0m);
             weights.BottomUpsideWeight.Should().Be(0m);
-            weights.TopWeight.Should().Be(0m);
-            weights.BottomWeight.Should().Be(0m);
+            weights.TopWeight.Should().Be(0);
+            weights.BottomWeight.Should().Be(0);
         }
 
         // --- Merged tests from WeightCalculatorDeepTests.cs ---
@@ -331,7 +331,7 @@ namespace ClickIt.Tests.Unit
             weights.TopDownsideWeight.Should().Be(1m);
 
             // TopWeight = round(5 / 1, 2) -> 5.00
-            weights.TopWeight.Should().Be(5.00m);
+            weights.TopWeight.Should().Be(500);
 
             // BottomDownsideWeight = modBottom1 => 4
             weights.BottomDownsideWeight.Should().Be(4m);
@@ -340,7 +340,7 @@ namespace ClickIt.Tests.Unit
             weights.BottomUpsideWeight.Should().Be(1m);
 
             // BottomWeight = 1 / 4 = 0.25
-            weights.BottomWeight.Should().Be(0.25m);
+            weights.BottomWeight.Should().Be(25);
         }
     }
 }

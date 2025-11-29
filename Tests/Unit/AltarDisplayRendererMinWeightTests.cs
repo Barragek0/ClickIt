@@ -40,7 +40,7 @@ namespace ClickIt.Tests.Unit
                 bottomDown: new decimal[] { 2m, 0, 0, 0, 0, 0, 0, 0 },
                 topUp: new decimal[] { 5m, 0, 0, 0, 0, 0, 0, 0 },
                 bottomUp: new decimal[] { 5m, 0, 0, 0, 0, 0, 0, 0 },
-                topWeight: 0.50m, bottomWeight: 0.20m);
+                topWeight: 50, bottomWeight: 20);
             var topRect = new RectangleF(0, 0, 100, 50);
             var bottomRect = new RectangleF(0, 60, 100, 50);
 
@@ -71,7 +71,7 @@ namespace ClickIt.Tests.Unit
             var renderer = (AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(AltarDisplayRenderer));
             var settings = new ClickItSettings();
             settings.MinWeightThresholdEnabled.Value = true;
-            settings.MinWeightThreshold.Value = 0.25d; // 0.25
+            settings.MinWeightThreshold.Value = 25;
             var dtq = new DeferredTextQueue();
             var dfq = new DeferredFrameQueue();
 
@@ -90,7 +90,7 @@ namespace ClickIt.Tests.Unit
                 bottomDown: new decimal[] { 2m, 0, 0, 0, 0, 0, 0, 0 },
                 topUp: new decimal[] { 1m, 0, 0, 0, 0, 0, 0, 0 },
                 bottomUp: new decimal[] { 5m, 0, 0, 0, 0, 0, 0, 0 },
-                topWeight: 0.10m, bottomWeight: 0.50m);
+                topWeight: 10, bottomWeight: 50);
             var topRect = new RectangleF(0, 0, 100, 50);
             var bottomRect = new RectangleF(0, 60, 100, 50);
 
@@ -130,7 +130,7 @@ namespace ClickIt.Tests.Unit
             var renderer = (AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(AltarDisplayRenderer));
             var settings = new ClickItSettings();
             settings.MinWeightThresholdEnabled.Value = true;
-            settings.MinWeightThreshold.Value = 0.25d;
+            settings.MinWeightThreshold.Value = 25;
             var dtq = new DeferredTextQueue();
             var dfq = new DeferredFrameQueue();
 
@@ -149,7 +149,7 @@ namespace ClickIt.Tests.Unit
                 bottomDown: new decimal[] { 2m, 0, 0, 0, 0, 0, 0, 0 },
                 topUp: new decimal[] { 1m, 0, 0, 0, 0, 0, 0, 0 },
                 bottomUp: new decimal[] { 1m, 0, 0, 0, 0, 0, 0, 0 },
-                topWeight: 0.10m, bottomWeight: 0.20m);
+                topWeight: 10, bottomWeight: 20);
             var topRect = new RectangleF(0, 0, 100, 50);
             var bottomRect = new RectangleF(0, 60, 100, 50);
 

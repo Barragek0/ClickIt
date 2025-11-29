@@ -24,7 +24,7 @@ namespace ClickIt.Tests.TestUtils
             return new PrimaryAltarComponent(ClickIt.AltarType.Unknown, t, topButton, b, bottomButton);
         }
 
-        public static AltarWeights BuildAltarWeights(decimal[]? topDown = null, decimal[]? bottomDown = null, decimal[]? topUp = null, decimal[]? bottomUp = null, decimal topWeight = 0m, decimal bottomWeight = 0m)
+        public static AltarWeights BuildAltarWeights(decimal[]? topDown = null, decimal[]? bottomDown = null, decimal[]? topUp = null, decimal[]? bottomUp = null, int topWeight = 0, int bottomWeight = 0)
         {
             var aw = new AltarWeights();
             aw.InitializeFromArrays(topDown ?? new decimal[8], bottomDown ?? new decimal[8], topUp ?? new decimal[8], bottomUp ?? new decimal[8]);

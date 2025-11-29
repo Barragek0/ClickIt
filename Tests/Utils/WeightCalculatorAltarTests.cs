@@ -76,9 +76,9 @@ namespace ClickIt.Tests.Utils
             weights.BottomDownsideWeight.Should().Be(2m);
 
             // TopWeight = round(TopUpside/TopDownside, 2) = round(5 / 4, 2) = 1.25
-            weights.TopWeight.Should().Be(1.25m);
+            weights.TopWeight.Should().Be(125);
             // BottomWeight = round(3 / 2, 2) = 1.5
-            weights.BottomWeight.Should().Be(1.5m);
+            weights.BottomWeight.Should().Be(150);
         }
     }
 }

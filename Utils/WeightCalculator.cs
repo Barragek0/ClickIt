@@ -57,8 +57,8 @@ namespace ClickIt.Utils
             result.BottomDownsideWeight = bottomDownsideWeight;
 
             // Safe division: avoid divide-by-zero
-            result.TopWeight = Math.Round(topDownsideWeight == 0 ? 0 : topUpsideWeight / topDownsideWeight, 2);
-            result.BottomWeight = Math.Round(bottomDownsideWeight == 0 ? 0 : bottomUpsideWeight / bottomDownsideWeight, 2);
+            result.TopWeight = (int)Math.Round(topDownsideWeight == 0 ? 0 : (topUpsideWeight / topDownsideWeight) * 100, 2);
+            result.BottomWeight = (int)Math.Round(bottomDownsideWeight == 0 ? 0 : (bottomUpsideWeight / bottomDownsideWeight) * 100, 2);
             return result;
         }
 
@@ -129,8 +129,8 @@ namespace ClickIt.Utils
             _bottomUpsideWeights = new decimal[8];
         }
 
-        public decimal TopWeight { get; set; }
-        public decimal BottomWeight { get; set; }
+        public int TopWeight { get; set; }
+        public int BottomWeight { get; set; }
 
         // Indexers for convenient access - much cleaner than individual properties
         public decimal this[string weightType, int index]
