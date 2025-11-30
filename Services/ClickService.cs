@@ -352,14 +352,6 @@ namespace ClickIt.Services
         {
             if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(label))
             {
-                // If the corruption control (vaal orb element) is overlapped by any other label
-                // on-screen, skip corrupting this essence now — it prevents the plugin from
-                // attempting to click a target that is obscured by another label (causing
-                // mis-clicks on the wrong UI element). See GitHub issue #27.
-                if (IsCorruptionBlockedByOverlappingLabels(label, windowTopLeft))
-                {
-                    return false;
-                }
                 Vector2? corruptionPos = LabelFilterService.GetCorruptionClickPosition(label, windowTopLeft);
                 if (corruptionPos.HasValue)
                 {
@@ -373,54 +365,6 @@ namespace ClickIt.Services
                 }
             }
             return false;
-        }
-
-        // Determine whether the corruption target of the given label is occluded by
-        // any other label on-screen. This helps avoid clicking the wrong UI element
-        // when labels overlap (see GitHub issue #27).
-        private bool IsCorruptionBlockedByOverlappingLabels(LabelOnGround label, Vector2 windowTopLeft)
-        {
-            try
-            {
-                var corruptEl = label.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);
-                if (corruptEl == null) return false;
-
-                var corruptRect = corruptEl.GetClientRect();
-                // translate to screen coords
-                var targetRect = new SharpDX.RectangleF(corruptRect.X + windowTopLeft.X, corruptRect.Y + windowTopLeft.Y, corruptRect.Width, corruptRect.Height);
-
-                var all = cachedLabels?.Value;
-                if (all == null || all.Count == 0) return false;
-
-                for (int i = 0; i < all.Count; i++)
-                {
-                    var other = all[i];
-                    if (other == null || object.ReferenceEquals(other, label)) continue;
-                    var otherEl = other.Label;
-                    if (otherEl == null) continue;
-                    var r = otherEl.GetClientRect();
-                    var otherRect = new SharpDX.RectangleF(r.X + windowTopLeft.X, r.Y + windowTopLeft.Y, r.Width, r.Height);
-                    if (AreRectanglesOverlapping(targetRect, otherRect))
-                        return true;
-                }
-
-                return false;
-            }
-            catch
-            {
-                // Be defensive in case the Element graph access throws — prefer ignoring than clicking blindly
-                return true;
-            }
-        }
-
-        private static bool AreRectanglesOverlapping(SharpDX.RectangleF a, SharpDX.RectangleF b)
-        {
-            // Rectangles overlap when their projections on both axes intersect
-            if (a.Right <= b.Left) return false;
-            if (a.Left >= b.Right) return false;
-            if (a.Bottom <= b.Top) return false;
-            if (a.Top >= b.Bottom) return false;
-            return true;
         }
 
         // Test-only helper moved to ClickService.Seams.cs
