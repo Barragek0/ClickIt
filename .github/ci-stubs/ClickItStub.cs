@@ -28,6 +28,7 @@ namespace ClickIt.Services
 {
     using ClickIt.Components;
     using System.Reflection;
+    using SharpDX;
 
     public class AltarService
     {
@@ -102,6 +103,13 @@ namespace ClickIt.Services
                 case "Player": return "Player";
                 default: return string.Empty;
             }
+        }
+
+        // Helper used by unit tests via reflection
+        private static bool AreRectanglesOverlapping(SharpDX.RectangleF a, SharpDX.RectangleF b)
+        {
+            if (a.Width <= 0 || a.Height <= 0 || b.Width <= 0 || b.Height <= 0) return false;
+            return !(a.X + a.Width < b.X || b.X + b.Width < a.X || a.Y + a.Height < b.Y || b.Y + b.Height < a.Y);
         }
 
         // TryMatchMod signature must take (string, string, out bool, out string) so reflection invocation

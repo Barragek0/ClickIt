@@ -381,9 +381,9 @@ namespace ClickIt.Services
         }
 
         // Helper used by unit tests (private static) to determine rectangle intersection
-    #pragma warning disable IDE0051 // Method is used via reflection in tests
+#pragma warning disable IDE0051 // Method is used via reflection in tests
         private static bool AreRectanglesOverlapping(SharpDX.RectangleF a, SharpDX.RectangleF b)
-    #pragma warning restore IDE0051
+#pragma warning restore IDE0051
         {
             if (a.Width <= 0 || a.Height <= 0 || b.Width <= 0 || b.Height <= 0) return false;
             return !(a.X + a.Width < b.X || b.X + b.Width < a.X || a.Y + a.Height < b.Y || b.Y + b.Height < a.Y);
