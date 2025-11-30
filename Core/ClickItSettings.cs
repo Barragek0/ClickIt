@@ -88,11 +88,13 @@ namespace ClickIt
         public EmptyNode GeneralSeparator2 { get; set; } = new EmptyNode();
         [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 17, 3000)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 18, 3000)]
+        [Menu("Verify cursor is within game window before clicking", "When enabled the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window the click will be skipped.", 18, 3000)]
+        public ToggleNode VerifyCursorInGameWindowBeforeClick { get; set; } = new ToggleNode(true);
+        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 19, 3000)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 19, 3000)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 20, 3000)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 20, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 21, 3000)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
         [Menu("Lazy Mode", 3050)]
         public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();

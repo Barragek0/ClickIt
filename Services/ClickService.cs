@@ -192,7 +192,23 @@ namespace ClickIt.Services
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
 
             bool clicked = false;
-            clicked = TryPerformClick(element, windowTopLeft);
+            // Verify cursor is inside game window before clicking when setting enabled
+            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true)
+            {
+                if (!IsCursorInsideGameWindow())
+                {
+                    DebugLog(() => "[ClickAltarElement] Skipping click - cursor is outside the PoE window");
+                    clicked = false;
+                }
+                else
+                {
+                    clicked = TryPerformClick(element, windowTopLeft);
+                }
+            }
+            else
+            {
+                clicked = TryPerformClick(element, windowTopLeft);
+            }
 
             if (clicked)
             {
@@ -238,6 +254,22 @@ namespace ClickIt.Services
                 inputHandler.PerformClick(clickPos, el, gameController);
                 performanceMonitor.RecordClickInterval();
                 DebugLog(() => "[ClickAltarElement] Click performed");
+                return true;
+            }
+        }
+
+        private bool IsCursorInsideGameWindow()
+        {
+            try
+            {
+                var winRect = gameController?.Window.GetWindowRectangleTimeCache;
+                if (winRect == null) return true;
+                var cursor = Mouse.GetCursorPosition();
+                return cursor.X >= winRect.Value.X && cursor.Y >= winRect.Value.Y && cursor.X <= winRect.Value.X + winRect.Value.Width && cursor.Y <= winRect.Value.Y + winRect.Value.Height;
+            }
+            catch
+            {
+                // If we cannot determine the cursor/window bounds assume it's fine so we don't block clicks unexpectedly
                 return true;
             }
         }
@@ -348,6 +380,15 @@ namespace ClickIt.Services
             return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
         }
 
+        // Helper used by unit tests (private static) to determine rectangle intersection
+    #pragma warning disable IDE0051 // Method is used via reflection in tests
+        private static bool AreRectanglesOverlapping(SharpDX.RectangleF a, SharpDX.RectangleF b)
+    #pragma warning restore IDE0051
+        {
+            if (a.Width <= 0 || a.Height <= 0 || b.Width <= 0 || b.Height <= 0) return false;
+            return !(a.X + a.Width < b.X || b.X + b.Width < a.X || a.Y + a.Height < b.Y || b.Y + b.Height < a.Y);
+        }
+
         private bool TryCorruptEssence(LabelOnGround label, Vector2 windowTopLeft)
         {
             if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(label))
@@ -355,10 +396,16 @@ namespace ClickIt.Services
                 Vector2? corruptionPos = LabelFilterService.GetCorruptionClickPosition(label, windowTopLeft);
                 if (corruptionPos.HasValue)
                 {
+                    // Respect setting: ensure cursor currently in PoE window before attempting a click
+                    if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+                    {
+                        DebugLog(() => "[TryCorruptEssence] Skipping corruption click - cursor outside PoE window");
+                        return false;
+                    }
                     DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");
                     using (LockManager.AcquireStatic(_elementAccessLock))
                     {
-                        inputHandler.PerformClick(corruptionPos.Value);
+                        inputHandler.PerformClick(corruptionPos.Value, null, gameController);
                     }
                     performanceMonitor.RecordClickInterval();
                     return true;
@@ -367,10 +414,14 @@ namespace ClickIt.Services
             return false;
         }
 
-        // Test-only helper moved to ClickService.Seams.cs
-
         private void PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? gameController)
         {
+            // Optionally skip clicks if the OS cursor is outside the PoE window
+            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+            {
+                DebugLog(() => "[PerformLabelClick] Skipping label click - cursor outside PoE window");
+                return;
+            }
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
                 inputHandler.PerformClick(clickPos, expectedElement, gameController);
