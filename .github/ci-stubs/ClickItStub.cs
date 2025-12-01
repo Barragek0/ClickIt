@@ -28,7 +28,6 @@ namespace ClickIt.Services
 {
     using ClickIt.Components;
     using System.Reflection;
-    using SharpDX;
 
     public class AltarService
     {
@@ -105,11 +104,48 @@ namespace ClickIt.Services
             }
         }
 
-        // Helper used by unit tests via reflection
-        private static bool AreRectanglesOverlapping(SharpDX.RectangleF a, SharpDX.RectangleF b)
+        // Helper used by unit tests via reflection. Accepts any runtime rect-like object
+        // (we avoid adding a SharpDX assembly reference in the CI stub project).
+        private static bool AreRectanglesOverlapping(object aObj, object bObj)
         {
-            if (a.Width <= 0 || a.Height <= 0 || b.Width <= 0 || b.Height <= 0) return false;
-            return !(a.X + a.Width < b.X || b.X + b.Width < a.X || a.Y + a.Height < b.Y || b.Y + b.Height < a.Y);
+            if (aObj == null || bObj == null) return false;
+
+            float ax, ay, aw, ah, bx, by, bw, bh;
+            try
+            {
+                var at = aObj.GetType();
+                var bt = bObj.GetType();
+
+                var propX = at.GetProperty("X");
+                var propY = at.GetProperty("Y");
+                var propW = at.GetProperty("Width");
+                var propH = at.GetProperty("Height");
+
+                var propBX = bt.GetProperty("X");
+                var propBY = bt.GetProperty("Y");
+                var propBW = bt.GetProperty("Width");
+                var propBH = bt.GetProperty("Height");
+
+                if (propX == null || propY == null || propW == null || propH == null) return false;
+                if (propBX == null || propBY == null || propBW == null || propBH == null) return false;
+
+                ax = Convert.ToSingle(propX.GetValue(aObj));
+                ay = Convert.ToSingle(propY.GetValue(aObj));
+                aw = Convert.ToSingle(propW.GetValue(aObj));
+                ah = Convert.ToSingle(propH.GetValue(aObj));
+
+                bx = Convert.ToSingle(propBX.GetValue(bObj));
+                by = Convert.ToSingle(propBY.GetValue(bObj));
+                bw = Convert.ToSingle(propBW.GetValue(bObj));
+                bh = Convert.ToSingle(propBH.GetValue(bObj));
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (aw <= 0 || ah <= 0 || bw <= 0 || bh <= 0) return false;
+            return !(ax + aw < bx || bx + bw < ax || ay + ah < by || by + bh < ay);
         }
 
         // TryMatchMod signature must take (string, string, out bool, out string) so reflection invocation
