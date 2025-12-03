@@ -197,6 +197,10 @@ namespace ClickIt.Utils
             if (!TryConsumeLazyModeLimiter())
                 return;
 
+            // If not in lazy mode, verify the click hotkey is still held before clicking
+            if (!_settings.LazyMode.Value && !Input.GetKeyState(_settings.ClickLabelKey.Value))
+                return;
+
             // NOTE: Performing clicks is a real native operation. Tests must not invoke PerformClick via
             // reflection (we rely on test seams to exercise logic without executing native input).
             var swTotal = Stopwatch.StartNew();
