@@ -12,7 +12,7 @@ ClickIt is a Path of Exile automation plugin that makes grinding way less tediou
 - **Clicks shrines** so you don't have to
 - **Corrupts essences** and spam clicks to awaken them
 - **Smart altar clicking** - analyzes Eater/Exarch modifiers and picks the best ones based on weights you provide
-- **Lazy mode** - hands-free automation with safety restrictions
+- **Lazy mode** - clicks for you without you needing to press a button
 - **Lots of settings** - 200+ options to tweak everything
 
 ### League-specific stuff it handles
@@ -28,7 +28,7 @@ ClickIt is a Path of Exile automation plugin that makes grinding way less tediou
 
 1. **Get ExileAPI** - https://www.ownedcore.com/forums/mmo/path-of-exile/poe-bots-programs/1000594-exileapi-3-23-beyond-plugin-framework.html
 2. **Download latest release** - https://github.com/Barragek0/ClickIt/releases/latest
-3. **Copy DLL** to your ExileAPI plugins folder
+3. **Copy DLL** to ExileAPI/Plugins/Compiled/ClickIt
 4. **Launch ExileAPI**
 5. **Press F1** (default hotkey) to start clicking
 
@@ -49,10 +49,10 @@ ClickIt is a Path of Exile automation plugin that makes grinding way less tediou
 
 ### Advanced Features
 
-**Lazy Mode** (use carefully):
+**Lazy Mode**:
 - Runs automatically without holding hotkey
-- Won't click dangerous stuff (strongboxes, league chests, settlers trees)
-- But if dangerous stuff is on screen, it temporarily allows clicking other things
+- Won't click locked chests or settlers tree, but will click everything else
+- If these are on-screen, you need to hold the hotkey to override the blacklist behaviour
 
 **Altar AI**:
 - Analyzes 300+ modifier combinations
