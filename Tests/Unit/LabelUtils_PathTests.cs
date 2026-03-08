@@ -18,7 +18,7 @@ namespace ClickIt.Tests.Unit
                 "Harvest/Extractor/abc",
                 "CleansingFireAltar/whatever",
                 "TangleAltar/something",
-                "Metadata/MiscellaneousObjects/Lights/IncaDoorLight",
+                "Metadata/MiscellaneousObjects/Lights/TempleDoorLight",
                 "Metadata/MiscellaneousObjects/Door/TempleDoor",
                 "Leagues/Ritual/blah",
                 "ClosedDoorPast/door"
