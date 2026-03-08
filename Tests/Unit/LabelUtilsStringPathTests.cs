@@ -28,6 +28,7 @@ namespace ClickIt.Tests.Unit
                 "PetrifiedWood",
                 "Bismuth",
                 "IncaDoorLight",
+                "MiscellaneousObjects/Door",
                 "ClosedDoorPast",
                 "LegionInitiator",
                 "DarkShrine",

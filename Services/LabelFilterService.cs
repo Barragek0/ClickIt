@@ -240,7 +240,8 @@ namespace ClickIt.Services
         {
             string path = string.IsNullOrWhiteSpace(metadataPath) ? string.Empty : metadataPath.Trim();
 
-            bool isDoor = path.Contains("IncaDoorLight", StringComparison.OrdinalIgnoreCase);
+            bool isDoor = path.Contains("IncaDoorLight", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("MiscellaneousObjects/Door", StringComparison.OrdinalIgnoreCase);
             bool isLever = path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
 
             return (clickDoors && isDoor) || (clickLevers && isLever);

@@ -19,6 +19,7 @@ namespace ClickIt.Tests.Unit
                 "CleansingFireAltar/whatever",
                 "TangleAltar/something",
                 "Metadata/MiscellaneousObjects/Lights/IncaDoorLight",
+                "Metadata/MiscellaneousObjects/Door/TempleDoor",
                 "Leagues/Ritual/blah",
                 "ClosedDoorPast/door"
             };
