@@ -46,6 +46,22 @@ namespace ClickIt.Tests.Unit
             cleaned.Should().Be("GainValue");
         }
 
+        [DataTestMethod]
+        [DataRow("<rgb(255,255,255)>{Gain} gains: Value <enchanted>")]
+        [DataRow("<valuedefault>{A} gain: B gains: C")]
+        [DataRow("NoFormattingText")]
+        [DataRow("")]
+        [DataRow(null)]
+        public void CleanAltarModsText_MatchesParserCleaner_ForRepresentativeInputs(string? input)
+        {
+            var matcher = new AltarMatcher();
+
+            string fromMatcher = matcher.CleanAltarModsText(input!);
+            string fromParser = AltarParser.CleanAltarModsText_NoCache(input!);
+
+            fromMatcher.Should().Be(fromParser);
+        }
+
         [TestMethod]
         public void TryMatchModCached_ReturnsExpected_ForKnownMod()
         {
