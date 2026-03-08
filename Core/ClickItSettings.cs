@@ -471,6 +471,7 @@ namespace ClickIt
 
             ImGui.SetNextItemOpen(false, ImGuiCond.Once);
             bool sectionOpen = ImGui.TreeNode("Item Filters");
+            DrawInlineTooltip("Configure item whitelist/blacklist behavior. Use arrows to move entries between lists and click a row to open subtype options.");
             if (!sectionOpen)
                 return;
 
@@ -619,6 +620,7 @@ namespace ClickIt
 
             ImGui.SetNextItemOpen(false, ImGuiCond.Once);
             bool sectionOpen = ImGui.TreeNode("Corruption Filters");
+            DrawInlineTooltip("Configure which Screaming and Shrieking essences should be corrupted. Use arrows to move entries between Corrupt and Don't Corrupt lists.");
             if (!sectionOpen)
                 return;
 
