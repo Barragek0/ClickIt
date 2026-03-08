@@ -143,6 +143,12 @@ namespace ClickIt
 
         private static readonly Dictionary<string, ItemSubtypeDefinition[]> ItemSubtypeCatalog = new(StringComparer.OrdinalIgnoreCase)
         {
+            ["jewels"] =
+            [
+                new("regular-jewels", "Jewels", ["special:jewels-regular"]),
+                new("abyss-jewels", "Abyss Jewels", ["Items/Jewels/JewelAbyss"]),
+                new("cluster-jewels", "Cluster Jewels", ["Items/Jewels/JewelPassiveTreeExpansion"])
+            ],
             ["armour"] =
             [
                 new("helmets", "Helmets", ["Items/Armours/Helmets/"]),
@@ -940,6 +946,7 @@ namespace ClickIt
             {
                 ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
                 ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
+                ItemTypeBlacklistSubtypeIds["jewels"] = new HashSet<string>(new[] { "regular-jewels", "abyss-jewels" }, StringComparer.OrdinalIgnoreCase);
                 return;
             }
 

@@ -60,9 +60,7 @@ namespace ClickIt.Constants
 
             // Character progression/socketables.
             new("gems", "Skill Gems", "Items/Gems/", ItemListKind.Blacklist, ["Fireball", "Added Lightning Damage Support"]),
-            new("jewels", "Jewels", "Items/Jewels/", ItemListKind.Blacklist, ["Crimson Jewel", "Cobalt Jewel"]),
-            new("abyss-jewels", "Abyss Jewels", "Items/Jewels/JewelAbyss", ItemListKind.Blacklist, ["Hypnotic Eye Jewel", "Murderous Eye Jewel"]),
-            new("cluster-jewels", "Cluster Jewels", "Items/Jewels/JewelPassiveTreeExpansion", ItemListKind.Whitelist, ["Large Cluster Jewel", "Medium Cluster Jewel"]),
+            new("jewels", "Jewels", "Items/Jewels/", ItemListKind.Blacklist, ["Crimson Jewel", "Murderous Eye Jewel", "Large Cluster Jewel"]),
 
             // Flask and flask-adjacent.
             new("flasks", "Flasks", "Items/Flasks/", ItemListKind.Blacklist, ["Divine Life Flask", "Granite Flask"]),

@@ -330,6 +330,12 @@ namespace ClickIt.Services
                             || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0))
                         return true;
 
+                    if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase)
+                        && metadataPath.IndexOf("Items/Jewels/", StringComparison.OrdinalIgnoreCase) >= 0
+                        && metadataPath.IndexOf("Items/Jewels/JewelAbyss", StringComparison.OrdinalIgnoreCase) < 0
+                        && metadataPath.IndexOf("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase) < 0)
+                        return true;
+
                     continue;
                 }
 

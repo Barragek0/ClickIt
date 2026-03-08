@@ -103,6 +103,20 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void UnifiedJewels_DefaultSubtypeSplit_PreservesClusterWhitelistBehavior()
+        {
+            var settings = new ClickItSettings();
+
+            var whitelistMetadata = settings.GetItemTypeWhitelistMetadataIdentifiers();
+            var blacklistMetadata = settings.GetItemTypeBlacklistMetadataIdentifiers();
+
+            whitelistMetadata.Should().Contain(x => x.Contains("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase));
+            blacklistMetadata.Should().Contain(x => x.Contains("Items/Jewels/JewelAbyss", StringComparison.OrdinalIgnoreCase));
+            blacklistMetadata.Should().Contain(x => x.Equals("special:jewels-regular", StringComparison.OrdinalIgnoreCase));
+            blacklistMetadata.Should().NotContain(x => x.Contains("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [TestMethod]
         public void MetadataFilter_SpecialInscribedUltimatumRule_MatchesPath()
         {
             LabelFilterService.MatchesMetadataFiltersForTests(
