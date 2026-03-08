@@ -128,7 +128,7 @@ namespace ClickIt
         [Menu("Items", "Click items", 1, 1100)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
 
-        [Menu("Item Type Filters", "Metadata-based whitelist/blacklist. Use arrows to move entries between lists and click a row to open subtype options.", 2, 1100)]
+        [Menu("Item Type Filters", "", 2, 1100)]
         [JsonIgnore]
         public CustomNode ItemTypeFiltersPanel { get; }
 
@@ -261,7 +261,7 @@ namespace ClickIt
         public EmptyNode Essences { get; set; } = new EmptyNode();
         [Menu("Essences", "Click essences", 1, 2200)]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
-        [Menu("Essence Corruption Table", "Configure which Screaming/Shrieking essences should be corrupted.", 2, 2200)]
+        [Menu("Essence Corruption Table", "", 2, 2200)]
         [JsonIgnore]
         public CustomNode EssenceCorruptionTablePanel { get; }
 
