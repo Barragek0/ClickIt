@@ -459,12 +459,10 @@ namespace ClickIt.Services
             return name.Equals("chest", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("tribal chest", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("golden chest", StringComparison.OrdinalIgnoreCase)
-                || name.Equals("cocoon", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("cocoon", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("weapon rack", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("armour rack", StringComparison.OrdinalIgnoreCase)
-                || name.Equals("trunk", StringComparison.OrdinalIgnoreCase)
-                || name.Equals("rotted cocoon", StringComparison.OrdinalIgnoreCase)
-                || name.Equals("decayed cocoon", StringComparison.OrdinalIgnoreCase);
+                || name.Equals("trunk", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
