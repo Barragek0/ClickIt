@@ -134,6 +134,8 @@ namespace ClickIt.Services
                 OnlyPickupCurrencyItems = s.OnlyPickupCurrencyItems.Value,
                 ClickBasicChests = s.ClickBasicChests.Value,
                 ClickLeagueChests = !applyLazyModeRestrictions && s.ClickLeagueChests.Value,
+                ClickDoors = s.ClickDoors.Value,
+                ClickLevers = s.ClickLevers.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
                 NearestHarvest = s.NearestHarvest.Value,
                 ClickSulphite = s.ClickSulphiteVeins.Value,
@@ -177,6 +179,8 @@ namespace ClickIt.Services
             public bool OnlyPickupCurrencyItems { get; set; }
             public bool ClickBasicChests { get; set; }
             public bool ClickLeagueChests { get; set; }
+            public bool ClickDoors { get; set; }
+            public bool ClickLevers { get; set; }
             public bool ClickAreaTransitions { get; set; }
             public bool NearestHarvest { get; set; }
             public bool ClickSulphite { get; set; }
@@ -218,6 +222,8 @@ namespace ClickIt.Services
                 return true;
             if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
                 return true;
+            if (ShouldClickNamedInteractable(settings.ClickDoors, settings.ClickLevers, item.RenderName))
+                return true;
             if (settings.ClickAreaTransitions && (type == EntityType.AreaTransition || path.Contains("AreaTransition")))
                 return true;
             // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround
@@ -231,6 +237,16 @@ namespace ClickIt.Services
                 return true;
             return false;
         }
+
+        private static bool ShouldClickNamedInteractable(bool clickDoors, bool clickLevers, string? renderName)
+        {
+            if (string.IsNullOrWhiteSpace(renderName))
+                return false;
+
+            return (clickDoors && renderName.Equals("door", StringComparison.OrdinalIgnoreCase))
+                || (clickLevers && renderName.Equals("lever", StringComparison.OrdinalIgnoreCase));
+        }
+
         private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, bool ignoreInscribedUltimatums, bool onlyPickupCurrencyItems, EntityType type, Entity item, ExileCore.GameController? gameController)
         {
             if (!clickItems || type != EntityType.WorldItem)
