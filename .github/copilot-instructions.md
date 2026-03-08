@@ -77,6 +77,15 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug; & "C:\Program File
 4. **Add Tests**: Add to appropriate test file in Tests/ directory  
 5. **Run Validation**: Execute test suite before/after changes
 
+### Merge-First Change Policy (Avoid Duplication)
+Before writing any new logic, first inspect existing services, helpers, and feature paths to find where the behavior already belongs.
+
+- Prefer extending existing methods/classes for related behavior instead of creating parallel or duplicate code paths.
+- Reuse existing constants, utility helpers, and settings nodes where possible.
+- Do not create new code blocks/files if equivalent functionality can be cleanly integrated into existing structures.
+- Only introduce new methods/classes when integration would make existing code less clear, less safe, or harder to maintain.
+- If new code is required, keep it small and colocated with the owning feature, and wire it through existing orchestration points.
+
 ### Performance-First Development
 - **Caching Rules**: 
   - 50ms: `TimeCache<List<LabelOnGround>>` for label updates
