@@ -27,6 +27,7 @@ namespace ClickIt.Tests.Unit
                 "copper_altar",
                 "PetrifiedWood",
                 "Bismuth",
+                "IncaDoorLight",
                 "ClosedDoorPast",
                 "LegionInitiator",
                 "DarkShrine",

@@ -222,7 +222,7 @@ namespace ClickIt.Services
                 return true;
             if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
                 return true;
-            if (ShouldClickNamedInteractable(settings.ClickDoors, settings.ClickLevers, item.RenderName))
+            if (ShouldClickNamedInteractable(settings.ClickDoors, settings.ClickLevers, item.RenderName, path))
                 return true;
             if (settings.ClickAreaTransitions && (type == EntityType.AreaTransition || path.Contains("AreaTransition")))
                 return true;
@@ -238,13 +238,16 @@ namespace ClickIt.Services
             return false;
         }
 
-        private static bool ShouldClickNamedInteractable(bool clickDoors, bool clickLevers, string? renderName)
+        private static bool ShouldClickNamedInteractable(bool clickDoors, bool clickLevers, string? renderName, string? metadataPath)
         {
-            if (string.IsNullOrWhiteSpace(renderName))
-                return false;
+            string name = string.IsNullOrWhiteSpace(renderName) ? string.Empty : renderName.Trim();
+            string path = string.IsNullOrWhiteSpace(metadataPath) ? string.Empty : metadataPath.Trim();
 
-            return (clickDoors && renderName.Equals("IncaDoorLight", StringComparison.OrdinalIgnoreCase))
-                || (clickLevers && renderName.Equals("lever", StringComparison.OrdinalIgnoreCase));
+            bool isDoor = path.Contains("IncaDoorLight", StringComparison.OrdinalIgnoreCase);
+            bool isLever = name.Equals("lever", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("lever", StringComparison.OrdinalIgnoreCase);
+
+            return (clickDoors && isDoor) || (clickLevers && isLever);
         }
 
         private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, bool ignoreInscribedUltimatums, bool onlyPickupCurrencyItems, EntityType type, Entity item, ExileCore.GameController? gameController)

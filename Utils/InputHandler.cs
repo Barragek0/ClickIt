@@ -237,23 +237,21 @@ namespace ClickIt.Utils
 
             var uiHover = gameController?.IngameState?.UIHoverElement;
 
-            // Verify UIHover matches expected element in lazy mode to detect obscuring elements
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value && expectedElement != null && uiHover != null)
+            bool lazyModeEnabled = _settings?.LazyMode?.Value == true;
+            bool toggleItemsEnabled = _settings?.ToggleItems?.Value == true;
+            ulong expectedAddress = unchecked((ulong)(expectedElement?.Address ?? 0));
+            ulong hoverAddress = unchecked((ulong)(uiHover?.Address ?? 0));
+
+            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, toggleItemsEnabled, expectedAddress, hoverAddress))
             {
-                if (uiHover.Address != expectedElement?.Address)
-                {
-                    _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification failed - expected element is obscured. Skipping click.", 5);
-                    RestoreCursorIfLazyMode(before);
-                    return;
-                }
+                _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification failed for current mode. Skipping click.", 5);
+                RestoreCursorIfLazyMode(before);
+                return;
             }
-            else if (uiHover == null)
+
+            if (expectedAddress == 0)
             {
-                _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification failed - UIHover is null", 5);
-            }
-            else if (expectedElement == null)
-            {
-                _errorHandler?.LogMessage(true, true, $"InputHandler: UIHover verification skipped - expectedElement is null", 5);
+                _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification skipped - expectedElement is null", 5);
             }
             sw.Restart();
             if (_settings?.LeftHanded?.Value == true)
@@ -272,6 +270,23 @@ namespace ClickIt.Utils
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
 
             swTotal.Stop();
+        }
+
+        public static bool ShouldSkipClickDueToHoverMismatch(
+            bool lazyModeEnabled,
+            bool toggleItemsEnabled,
+            ulong expectedAddress,
+            ulong hoverAddress)
+        {
+            bool strictHoverVerification = lazyModeEnabled || toggleItemsEnabled;
+            if (!strictHoverVerification)
+                return false;
+
+            if (expectedAddress == 0)
+                return false;
+
+            // In strict modes, only click when hover confidently matches expected target.
+            return hoverAddress == 0 || hoverAddress != expectedAddress;
         }
 
         /// <summary>

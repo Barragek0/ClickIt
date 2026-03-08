@@ -1,0 +1,36 @@
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ClickIt.Utils;
+
+namespace ClickIt.Tests.Unit
+{
+    [TestClass]
+    public class InputHandlerHoverVerificationTests
+    {
+        [DataTestMethod]
+        [DataRow(false, false, 100UL, 0UL, false)]
+        [DataRow(false, false, 100UL, 200UL, false)]
+        [DataRow(true, false, 100UL, 100UL, false)]
+        [DataRow(true, false, 100UL, 200UL, true)]
+        [DataRow(true, false, 100UL, 0UL, true)]
+        [DataRow(false, true, 100UL, 100UL, false)]
+        [DataRow(false, true, 100UL, 200UL, true)]
+        [DataRow(false, true, 100UL, 0UL, true)]
+        [DataRow(false, true, 0UL, 0UL, false)]
+        public void ShouldSkipClickDueToHoverMismatch_ReturnsExpectedResult(
+            bool lazyModeEnabled,
+            bool toggleItemsEnabled,
+            ulong expectedAddress,
+            ulong hoverAddress,
+            bool expected)
+        {
+            bool result = InputHandler.ShouldSkipClickDueToHoverMismatch(
+                lazyModeEnabled,
+                toggleItemsEnabled,
+                expectedAddress,
+                hoverAddress);
+
+            result.Should().Be(expected);
+        }
+    }
+}
