@@ -18,7 +18,7 @@
 ## Non-Negotiable Quality Gates
 
 1. **Update tests whenever behavior changes.**
-2. **Run full tests after code changes.**
+2. **Run the workspace default build task after code changes** so the project is built, tests are run, and the compiled DLL copy/reload flow runs automatically.
 3. **Preserve safety-first click behavior**: clickable area checks, element validity checks, and conservative fallbacks.
 4. **Prefer merge-first edits**: extend existing services/helpers before creating new paths.
 
@@ -59,19 +59,22 @@ Before adding code, inspect existing services/helpers and integrate there if pos
 2. Verify whether caching or invalidation is required.
 3. Apply thread-safe element access patterns where needed.
 4. Add or update tests in the matching `Tests/` area.
-5. Run full validation commands.
+5. Run the workspace default build task (not just direct build/test commands) so build + tests execute and `Copy Compiled DLL` runs.
 
 ### Definition of done
 
 - Behavior implemented and aligned with existing patterns.
 - Relevant tests added/updated.
-- Full test suite passes.
+- Workspace default build task has run successfully so build + tests complete and the latest DLL is copied/reloaded.
 - No avoidable duplication introduced.
 - Safety behavior preserved (especially click/input safety).
 
 ## Commands and Validation
 
 ```powershell
+# Preferred final validation/run path (ensures build + tests run and post-build DLL copy task runs)
+# VS Code: Run Build Task -> default workspace build task
+
 # Full test suite (primary gate)
 dotnet test Tests\ClickIt.Tests.csproj --configuration Debug --logger "console;verbosity=minimal"
 
@@ -81,6 +84,8 @@ dotnet test Tests\ClickIt.Tests.csproj --configuration Debug --logger "console;v
 # Combined validation
 dotnet test Tests\ClickIt.Tests.csproj --configuration Debug; & "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ClickIt.sln /p:Configuration=Debug
 ```
+
+After code changes are complete, always run the workspace default build task as the final step so the project is built, tests are run, and the compiled DLL is copied to the plugin directory.
 
 ## Runtime and Environment Notes
 
@@ -155,7 +160,7 @@ When refactoring for deduplication or merge-first cleanup:
 
 ## Success Criteria Before Hand-Off
 
-1. `dotnet test Tests/ClickIt.Tests.csproj --configuration Debug` passes.
+1. Workspace default build task completes successfully (including build, tests, and DLL copy step).
 2. Safety checks remain intact (clickable-area + element validation).
 3. No obvious performance regression in debug metrics.
 4. Changes follow merge-first principles with minimal duplication.
