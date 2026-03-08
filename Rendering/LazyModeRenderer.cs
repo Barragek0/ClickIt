@@ -21,11 +21,8 @@ namespace ClickIt.Rendering
             var allLabels = state.CachedLabels?.Value;
             bool hasRestrictedItems = _labelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
 
-            bool leftButtonHeld = Input.GetKeyState(Keys.LButton);
-            bool rightButtonHeld = Input.GetKeyState(Keys.RButton);
-            bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && leftButtonHeld;
-            bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && rightButtonHeld;
-            bool mouseButtonBlocks = leftClickBlocks || rightClickBlocks;
+            var (leftClickBlocks, rightClickBlocks, mouseButtonBlocks) =
+                InputHandler.GetMouseButtonBlockingState(_settings, Input.GetKeyState);
 
             var clickLabelKey = _settings.ClickLabelKey.Value;
             var lazyModeDisableKey = _settings.LazyModeDisableKey.Value;

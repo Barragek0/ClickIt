@@ -162,9 +162,7 @@ namespace ClickIt.Utils
             var labels = cachedLabels?.Value;
             bool hasRestricted = labelFilterService?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
             bool disableKeyHeld = Input.GetKeyState(_settings.LazyModeDisableKey.Value);
-            bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && Input.GetKeyState(Keys.LButton);
-            bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && Input.GetKeyState(Keys.RButton);
-            bool mouseButtonBlocks = leftClickBlocks || rightClickBlocks;
+            var (_, _, mouseButtonBlocks) = GetMouseButtonBlockingState(_settings, Input.GetKeyState);
 
             if (hotkeyHeld)
             {
@@ -173,6 +171,18 @@ namespace ClickIt.Utils
 
             return !hasRestricted && !disableKeyHeld && !mouseButtonBlocks;
         }
+
+        public static (bool leftClickBlocks, bool rightClickBlocks, bool mouseButtonBlocks)
+            GetMouseButtonBlockingState(ClickItSettings settings, Func<Keys, bool> keyStateProvider)
+        {
+            if (settings == null || keyStateProvider == null)
+                return (false, false, false);
+
+            bool leftClickBlocks = settings.DisableLazyModeLeftClickHeld.Value && keyStateProvider(Keys.LButton);
+            bool rightClickBlocks = settings.DisableLazyModeRightClickHeld.Value && keyStateProvider(Keys.RButton);
+            return (leftClickBlocks, rightClickBlocks, leftClickBlocks || rightClickBlocks);
+        }
+
         private static bool IsPOEActive(GameController gameController)
         {
             return gameController.Window.IsForeground();

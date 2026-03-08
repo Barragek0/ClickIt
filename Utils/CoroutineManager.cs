@@ -46,9 +46,8 @@ namespace ClickIt.Utils
             var cached = _state.CachedLabels?.Value;
             bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
             if (hasRestrictedItems) return false;
-            bool leftClickBlocks = _settings.DisableLazyModeLeftClickHeld.Value && KeyStateProvider(Keys.LButton);
-            bool rightClickBlocks = _settings.DisableLazyModeRightClickHeld.Value && KeyStateProvider(Keys.RButton);
-            return leftClickBlocks || rightClickBlocks;
+            var (_, _, mouseButtonBlocks) = InputHandler.GetMouseButtonBlockingState(_settings, KeyStateProvider);
+            return mouseButtonBlocks;
         }
 
         private bool HasClickableAltars()
@@ -115,25 +114,7 @@ namespace ClickIt.Utils
         private IEnumerator ClickLabel()
         {
             // Check for clickable altars first (highest priority)
-            bool hasClickableAltars = false;
-            if (_state.AltarService != null && _state.ClickService != null)
-            {
-                var altarSnapshot = _state.AltarService.GetAltarComponentsReadOnly();
-                if (altarSnapshot.Count > 0)
-                {
-                    bool clickEater = _settings.ClickEaterAltars;
-                    bool clickExarch = _settings.ClickExarchAltars;
-                    hasClickableAltars = false;
-                    for (int i = 0; i < altarSnapshot.Count; i++)
-                    {
-                        if (_state.ClickService.ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
-                        {
-                            hasClickableAltars = true;
-                            break;
-                        }
-                    }
-                }
-            }
+            bool hasClickableAltars = HasClickableAltars();
 
             if (!hasClickableAltars)
             {

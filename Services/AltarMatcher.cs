@@ -1,5 +1,4 @@
 
-using System.Text.RegularExpressions;
 using ClickIt.Utils;
 
 namespace ClickIt.Services
@@ -10,8 +9,6 @@ namespace ClickIt.Services
         private readonly Dictionary<string, string> _textCleanCache = new(StringComparer.Ordinal);
         private readonly object _modMatchCacheLock = new();
         private readonly object _textCleanCacheLock = new();
-        // Match any single angled-tag like <rgb(1,2,3)>, <divine>, <scarab> (non-greedy, stops at first '>')
-        private static readonly Regex RgbRegex = new(@"<[^>]*>", RegexOptions.Compiled);
 
         public bool TryMatchModCached(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
@@ -64,10 +61,7 @@ namespace ClickIt.Services
                     return cached;
                 }
 
-                string cleaned = text.Replace("<valuedefault>", "").Replace("{", "")
-                    .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
-                    .Replace("gain:", "").Replace("gains:", "");
-                cleaned = RgbRegex.Replace(cleaned, "");
+                string cleaned = AltarParser.CleanAltarModsText_NoCache(text);
 
                 if (_textCleanCache.Count < 1000)
                     _textCleanCache[text] = cleaned;

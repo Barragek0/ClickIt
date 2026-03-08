@@ -278,23 +278,20 @@ namespace ClickIt.Rendering
 
         private static bool HasAnyWeightOverThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
         {
-            // Create a collection of the relevant weights and check if any exceed threshold
-            var weightArray = GetWeightArray(weights, isTop, isUpside);
-            for (int i = 0; i < weightArray.Length; i++)
-            {
-                if (weightArray[i] >= threshold) return true;
-            }
-            return false;
+            return HasAnyWeightMatching(weights, isTop, isUpside, w => w >= threshold);
         }
 
         private static bool HasAnyWeightAtOrBelowThreshold(AltarWeights weights, bool isTop, bool isUpside, int threshold)
         {
-            // Create a collection of the relevant weights and check if any are at or below the threshold
+            return HasAnyWeightMatching(weights, isTop, isUpside, w => w > 0 && w <= threshold);
+        }
+
+        private static bool HasAnyWeightMatching(AltarWeights weights, bool isTop, bool isUpside, Func<decimal, bool> predicate)
+        {
             var weightArray = GetWeightArray(weights, isTop, isUpside);
             for (int i = 0; i < weightArray.Length; i++)
             {
-                var v = weightArray[i];
-                if (v > 0 && v <= threshold) return true;
+                if (predicate(weightArray[i])) return true;
             }
             return false;
         }
