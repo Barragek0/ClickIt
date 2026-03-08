@@ -243,7 +243,7 @@ namespace ClickIt.Services
             if (string.IsNullOrWhiteSpace(renderName))
                 return false;
 
-            return (clickDoors && renderName.Equals("door", StringComparison.OrdinalIgnoreCase))
+            return (clickDoors && renderName.Equals("IncaDoorLight", StringComparison.OrdinalIgnoreCase))
                 || (clickLevers && renderName.Equals("lever", StringComparison.OrdinalIgnoreCase));
         }
 
