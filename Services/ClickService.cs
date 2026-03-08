@@ -465,8 +465,9 @@ namespace ClickIt.Services
 
         private static bool IsLeverLabel(LabelOnGround? label)
         {
-            string? renderName = label?.ItemOnGround?.RenderName;
-            return !string.IsNullOrWhiteSpace(renderName) && renderName.Equals("lever", StringComparison.OrdinalIgnoreCase);
+            string? path = label?.ItemOnGround?.Path;
+            return !string.IsNullOrWhiteSpace(path)
+                && path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
         }
 
         private static ulong GetLeverIdentityKey(LabelOnGround label)

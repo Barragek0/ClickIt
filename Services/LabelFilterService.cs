@@ -238,12 +238,10 @@ namespace ClickIt.Services
 
         private static bool ShouldClickNamedInteractable(bool clickDoors, bool clickLevers, string? renderName, string? metadataPath)
         {
-            string name = string.IsNullOrWhiteSpace(renderName) ? string.Empty : renderName.Trim();
             string path = string.IsNullOrWhiteSpace(metadataPath) ? string.Empty : metadataPath.Trim();
 
             bool isDoor = path.Contains("IncaDoorLight", StringComparison.OrdinalIgnoreCase);
-            bool isLever = name.Equals("lever", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("lever", StringComparison.OrdinalIgnoreCase);
+            bool isLever = path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
 
             return (clickDoors && isDoor) || (clickLevers && isLever);
         }

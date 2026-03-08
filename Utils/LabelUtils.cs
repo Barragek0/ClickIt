@@ -92,7 +92,9 @@ namespace ClickIt.Utils
                 return false;
             }
 
-            return IsValidEntityType(label.ItemOnGround) || IsValidEntityPath(label.ItemOnGround) || HasEssenceImprisonmentText(label);
+                 return IsValidEntityType(label.ItemOnGround)
+                     || IsValidEntityPath(label.ItemOnGround)
+                     || HasEssenceImprisonmentText(label);
         }
 
         public static bool IsLabelElementValid(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
@@ -148,6 +150,7 @@ namespace ClickIt.Utils
                    path.Contains("Sanctum") ||
                    path.Contains("BetrayalMakeChoice") ||
                    path.Contains("BlightPump") ||
+                   path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("Leagues/Ritual");
         }
 
