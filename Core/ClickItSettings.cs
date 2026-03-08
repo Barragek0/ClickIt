@@ -1,4 +1,4 @@
-﻿using ExileCore.Shared.Attributes;
+using ExileCore.Shared.Attributes;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
 using ImGuiNET;
@@ -10,263 +10,537 @@ namespace ClickIt
 {
     public class ClickItSettings : ISettings
     {
+        private const string AltarTypeMinion = "Minion";
+        private const string AltarTypeBoss = "Boss";
+        private const string AltarTypePlayer = "Player";
+
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
-        [Menu("Enable these if you run into a bug", 900)]
+
+        // ----- Debug/Testing -----
+        [Menu("Debug/Testing", 900)]
         public EmptyNode EmptyTesting { get; set; } = new EmptyNode();
+
+        [Menu(" ", 1, 900)]
+        [JsonIgnore]
+        public CustomNode DebugTestingPanel { get; }
+
+        [JsonIgnore]
+        public bool ShowRawDebugNodesInSettings => false;
+
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Debug Mode", "Enables debug mode to help with troubleshooting issues.", 1, 900)]
         public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Additional Debug Information", "Provides more debug text related to rendering the overlay. ", 2, 900)]
         public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay("RenderDebug")]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Status", "Show/hide the Status debug section", 1, 2)]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Game State", "Show/hide the Game State debug section", 2, 2)]
         public ToggleNode DebugShowGameState { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Performance", "Show/hide the Performance debug section", 3, 2)]
         public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Click Frequency Target", "Show/hide the Click Frequency Target debug section", 4, 2)]
         public ToggleNode DebugShowClickFrequencyTarget { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
-        [Menu("Altar Detection", "Show/hide the Altar Detection debug section", 6, 2)]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Altar Detection", "Show/hide the Altar Detection debug section", 5, 2)]
         public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
-        [Menu("Altar Service", "Show/hide the Altar Service debug section", 7, 2)]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Altar Service", "Show/hide the Altar Service debug section", 6, 2)]
         public ToggleNode DebugShowAltarService { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
-        [Menu("Labels", "Show/hide the Labels debug section", 8, 2)]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Labels", "Show/hide the Labels debug section", 7, 2)]
         public ToggleNode DebugShowLabels { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
-        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 9, 2)]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 8, 2)]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay("RenderDebug")]
-        [Menu("Debug Frames", "Show/hide the debug screen area frames", 10, 2)]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Debug Frames", "Show/hide the debug screen area frames", 9, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Log messages", "This will flood your log and screen with debug text.", 3, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
-        [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 5, 900)]
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 4, 900)]
         public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
 
         // ----- General -----
-        [Menu("General", 3000)]
+        [Menu("General", 1000)]
         public EmptyNode Click { get; set; } = new EmptyNode();
-        [Menu("Hotkey", "Held hotkey to start clicking", 1, 3000)]
+        [Menu("Click Hotkey", "Held hotkey to start clicking", 1, 1000)]
         [Obsolete("Can be safely ignored for now.")]
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
-        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 2, 3000)]
+        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 2, 1000)]
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
-        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 3, 3000)]
+        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 3, 1000)]
         public RangeNode<int> ClickFrequencyTarget { get; set; } = new RangeNode<int>(80, 80, 250);
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 4, 3000)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 4, 1000)]
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
-        [Menu("---", 5, 3000)]
-        public EmptyNode GeneralSeparator1 { get; set; } = new EmptyNode();
-        [Menu("Items", "Click items", 6, 3000)]
-        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("Ignore Unique Items", "Ignore unique items", 7, 3000)]
-        public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Ignore Heist Quest Contracts", "Ignore heist quest contracts", 8, 3000)]
-        public ToggleNode IgnoreHeistQuestContracts { get; set; } = new ToggleNode(false);
-        [Menu("Ignore Inscribed Ultimatums", "Ignore inscribed ultimatums", 9, 3000)]
-        public ToggleNode IgnoreInscribedUltimatums { get; set; } = new ToggleNode(false);
-        [Menu("Only Pickup Currency Items", "When enabled, the plugin will only pick up currency items. All other items will be ignored.", 10, 3000)]
-        public ToggleNode OnlyPickupCurrencyItems { get; set; } = new ToggleNode(false);
-        [Menu("Basic Chests", "Click normal (non-league related) chests", 11, 3000)]
-        public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
-        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 12, 3000)]
-        public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
-        [Menu("Shrines", "Click shrines", 13, 3000)]
-        public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click area transitions", 14, 3000)]
-        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
-        [Menu("Crafting Recipes", "Click crafting recipes", 15, 3000)]
-        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
-        [Menu("Doors", "Click doors", 16, 3000)]
-        public ToggleNode ClickDoors { get; set; } = new ToggleNode(false);
-        [Menu("Levers", "Click levers", 17, 3000)]
-        public ToggleNode ClickLevers { get; set; } = new ToggleNode(false);
-        [Menu("---", 18, 3000)]
-        public EmptyNode GeneralSeparator2 { get; set; } = new EmptyNode();
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 19, 3000)]
+
+        // ----- Controls -----
+        [Menu("Controls", 1050)]
+        public EmptyNode InputAndSafetyCategory { get; set; } = new EmptyNode();
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 1, 1050)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
-        [Menu("Verify cursor is within game window before clicking", "When enabled the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window the click will be skipped.", 20, 3000)]
+        [Menu("Verify cursor is within game window before clicking", "When enabled the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window the click will be skipped.", 2, 1050)]
         public ToggleNode VerifyCursorInGameWindowBeforeClick { get; set; } = new ToggleNode(true);
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 21, 3000)]
+        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 3, 1050)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 22, 3000)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 4, 1050)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 23, 3000)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 5, 1050)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
-        [Menu("Lazy Mode", 3050)]
+
+        // ----- Lazy Mode -----
+        [Menu("Lazy Mode", 1075)]
         public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();
-        [Menu("Lazy Mode - IMPORTANT INFO IN TOOLTIP ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'disable lazy mode while x click held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked, or if a settlers tree has been activated.\n   This is a limitation with exileapi and not the plugin and for this reason, Lazy Mode is not allowed\n   to click chests that were locked when spawned or the settlers tree. When one of these is on-screen,\n   Lazy Mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in General will override lazy mode blocking.", 1, 3050)]
+        [Menu("Lazy Mode - IMPORTANT INFO IN TOOLTIP ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'disable lazy mode while x click held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked, or if a settlers tree has been activated.\n   This is a limitation with exileapi and not the plugin and for this reason, Lazy Mode is not allowed\n   to click chests that were locked when spawned or the settlers tree. When one of these is on-screen,\n   Lazy Mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in Controls will override lazy mode blocking.", 1, 1075)]
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
-        [Menu("Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 2, 3050)]
+        [Menu("Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 2, 1075)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
-        [Menu("Disable Hotkey", "When Lazy Mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 3050)]
+        [Menu("Disable Hotkey", "When Lazy Mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1075)]
         public HotkeyNode LazyModeDisableKey { get; set; } = new HotkeyNode(Keys.F2);
-        [Menu("Restore cursor position after each click", "When enabled, restores cursor to original position after clicking in lazy mode.", 4, 3050)]
+        [Menu("Restore cursor position after each click", "When enabled, restores cursor to original position after clicking in lazy mode.", 4, 1075)]
         public ToggleNode RestoreCursorInLazyMode { get; set; } = new ToggleNode(true);
-        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 5, 3050)]
+        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 5, 1075)]
         public RangeNode<int> LazyModeUIHoverSleep { get; set; } = new RangeNode<int>(20, 20, 40);
-        [Menu("Disable lazy mode while left click held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 6, 3050)]
+        [Menu("Disable lazy mode while left click held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 6, 1075)]
         public ToggleNode DisableLazyModeLeftClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Disable lazy mode while right click held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 7, 3050)]
+        [Menu("Disable lazy mode while right click held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 7, 1075)]
         public ToggleNode DisableLazyModeRightClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Lever Reclick Delay (ms)", "When Lazy Mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 8, 3050)]
+        [Menu("Lever Reclick Delay (ms)", "When Lazy Mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 8, 1075)]
         public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
+
+        // ----- Items -----
+        [Menu("Items", 1100)]
+        public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
+        [Menu("Items", "Click items", 1, 1100)]
+        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
+        [Menu("Ignore Unique Items", "Ignore unique items", 2, 1100)]
+        public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
+        [Menu("Ignore Heist Quest Contracts", "Ignore heist quest contracts", 3, 1100)]
+        public ToggleNode IgnoreHeistQuestContracts { get; set; } = new ToggleNode(false);
+        [Menu("Ignore Inscribed Ultimatums", "Ignore inscribed ultimatums", 4, 1100)]
+        public ToggleNode IgnoreInscribedUltimatums { get; set; } = new ToggleNode(false);
+        [Menu("Only Pickup Currency Items", "When enabled, the plugin will only pick up currency items. All other items will be ignored.", 5, 1100)]
+        public ToggleNode OnlyPickupCurrencyItems { get; set; } = new ToggleNode(false);
+
+        // ----- World Interactions -----
+        [Menu("World Interactions", 1200)]
+        public EmptyNode WorldInteractionsCategory { get; set; } = new EmptyNode();
+        [Menu("Basic Chests", "Click normal (non-league related) chests", 1, 1200)]
+        public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
+        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 2, 1200)]
+        public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
+        [Menu("Shrines", "Click shrines", 3, 1200)]
+        public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
+        [Menu("Area Transitions", "Click area transitions", 4, 1200)]
+        public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
+        [Menu("Crafting Recipes", "Click crafting recipes", 5, 1200)]
+        public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
+        [Menu("Doors", "Click doors", 6, 1200)]
+        public ToggleNode ClickDoors { get; set; } = new ToggleNode(false);
+        [Menu("Levers", "Click levers", 7, 1200)]
+        public ToggleNode ClickLevers { get; set; } = new ToggleNode(false);
+
         // ----- Mechanics -----
-        [Menu("Mechanics", 3100)]
+        [Menu("Mechanics", 2000)]
         public EmptyNode Mechanics { get; set; } = new EmptyNode();
-        [Menu("Alva Temple Doors", "Click alva temple doors", 11, 3100)]
+        [Menu("Alva Temple Doors", "Click alva temple doors", 1, 2000)]
         public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
-        [Menu("Betrayal", "Click betrayal labels", 12, 3100)]
+        [Menu("Betrayal", "Click betrayal labels", 2, 2000)]
         public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(false);
-        [Menu("Blight", "Click blight pumps", 13, 3100)]
+        [Menu("Blight", "Click blight pumps", 3, 2000)]
         public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
-        [Menu("Breach Nodes", "Click breach nodes", 14, 3100)]
+        [Menu("Breach Nodes", "Click breach nodes", 4, 2000)]
         public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
-        [Menu("Legion Pillars", "Click legion encounter pillars", 15, 3100)]
+        [Menu("Legion Pillars", "Click legion encounter pillars", 5, 2000)]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Nearest Harvest Plot", "Click nearest harvest plot", 16, 3100)]
+        [Menu("Nearest Harvest Plot", "Click nearest harvest plot", 6, 2000)]
         public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
-        [Menu("Sanctum", "Click sanctum related stuff", 18, 3100)]
+        [Menu("Sanctum", "Click sanctum related stuff", 7, 2000)]
         public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
-        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 19, 3100)]
+        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 8, 2000)]
         public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
 
         // ----- Delve -----
-        [Menu("Delve", 3200)]
+        [Menu("Delve", 2100)]
         public EmptyNode Delve { get; set; } = new EmptyNode();
-        [Menu("Azurite Veins", "Click azurite veins", 1, 3200)]
+        [Menu("Azurite Veins", "Click azurite veins", 1, 2100)]
         public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Sulphite Veins", "Click sulphite veins", 2, 3200)]
+        [Menu("Sulphite Veins", "Click sulphite veins", 2, 2100)]
         public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Encounter Initiators", "Click delve encounter initiators", 3, 3200)]
+        [Menu("Encounter Initiators", "Click delve encounter initiators", 3, 2100)]
         public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
-        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 3200)]
+        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 2100)]
         public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
-        [Menu("Flare Hotkey", "Set this to your in-game keybind for flares, the plugin will press this button to use a flare", 5, 3200)]
+        [Menu("Flare Hotkey", "Set this to your in-game keybind for flares, the plugin will press this button to use a flare", 5, 2100)]
         public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
-        [Menu("Darkness Debuff Stacks", 6, 3200)]
+        [Menu("Darkness Debuff Stacks", 6, 2100)]
         public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
-        [Menu("Flare Health %", 7, 3200)]
+        [Menu("Flare Health %", 7, 2100)]
         public RangeNode<int> DelveFlareHealthThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
-        [Menu("Flare Energy Shield %", 8, 3200)]
+        [Menu("Flare Energy Shield %", 8, 2100)]
         public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
 
         // ----- Essences -----
-        [Menu("Essences", 3500)]
+        [Menu("Essences", 2200)]
         public EmptyNode Essences { get; set; } = new EmptyNode();
-        [Menu("Essences", "Click essences", 1, 3500)]
+        [Menu("Essences", "Click essences", 1, 2200)]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
-        [Menu("Corrupt ALL Essences (Warning: This overrides all settings below)", "Corrupt all essences, overriding the settings below.", 3, 3500)]
+        [Menu("Corrupt ALL Essences (Warning: This overrides all settings below)", "Corrupt all essences, overriding the settings below.", 2, 2200)]
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
-        [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 4, 3500)]
+        [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 3, 2200)]
         public ToggleNode CorruptMEDSEssences { get; set; } = new ToggleNode(true);
 
         // ----- Ritual -----
-        [Menu("Ritual", 3505)]
+        [Menu("Ritual", 2300)]
         public EmptyNode Ritual { get; set; } = new EmptyNode();
-        [Menu("Initiate Ritual Altars", "Click ritual altars that have not been completed yet", 1, 3505)]
+        [Menu("Initiate Ritual Altars", "Click ritual altars that have not been completed yet", 1, 2300)]
         public ToggleNode ClickRitualInitiate { get; set; } = new ToggleNode(true);
-        [Menu("Completed Ritual Altars", "Click ritual altars that have been completed", 2, 3505)]
+        [Menu("Completed Ritual Altars", "Click ritual altars that have been completed", 2, 2300)]
         public ToggleNode ClickRitualCompleted { get; set; } = new ToggleNode(true);
 
         // ----- Strongboxes -----
-        [Menu("Strongboxes", 3510)]
+        [Menu("Strongboxes", 2400)]
         public EmptyNode Strongboxes { get; set; } = new EmptyNode();
-        [Menu("Show Strongbox Frames", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked", 0, 3510)]
+        [Menu("Show Strongbox Frames", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked", 1, 2400)]
         public ToggleNode ShowStrongboxFrames { get; set; } = new ToggleNode(true);
-        [Menu("Regular Strongbox", "Click regular strongboxes", 1, 3510)]
+        [Menu("Regular Strongbox", "Click regular strongboxes", 2, 2400)]
         public ToggleNode RegularStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Arcanist Strongbox (currency)", "Click arcanist strongboxes", 2, 3510)]
+        [Menu("Arcanist Strongbox (currency)", "Click arcanist strongboxes", 3, 2400)]
         public ToggleNode ArcanistStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Armourer Strongbox (armour)", "Click armourer strongboxes", 3, 3510)]
+        [Menu("Armourer Strongbox (armour)", "Click armourer strongboxes", 4, 2400)]
         public ToggleNode ArmourerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Artisan Strongbox (quality currency)", "Click artisan strongboxes", 4, 3510)]
+        [Menu("Artisan Strongbox (quality currency)", "Click artisan strongboxes", 5, 2400)]
         public ToggleNode ArtisanStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Blacksmith Strongbox (weapons)", "Click blacksmith strongboxes", 5, 3510)]
+        [Menu("Blacksmith Strongbox (weapons)", "Click blacksmith strongboxes", 6, 2400)]
         public ToggleNode BlacksmithStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Cartographer Strongbox (maps)", "Click cartographer strongboxes", 6, 3510)]
+        [Menu("Cartographer Strongbox (maps)", "Click cartographer strongboxes", 7, 2400)]
         public ToggleNode CartographerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Diviner Strongbox (divination cards)", "Click diviner strongboxes", 7, 3510)]
+        [Menu("Diviner Strongbox (divination cards)", "Click diviner strongboxes", 8, 2400)]
         public ToggleNode DivinerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Gemcutter Strongbox (gems)", "Click gemcutter strongboxes", 8, 3510)]
+        [Menu("Gemcutter Strongbox (gems)", "Click gemcutter strongboxes", 9, 2400)]
         public ToggleNode GemcutterStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Jeweller Strongbox (jewellery)", "Click jeweller strongboxes", 9, 3510)]
+        [Menu("Jeweller Strongbox (jewellery)", "Click jeweller strongboxes", 10, 2400)]
         public ToggleNode JewellerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Large Strongbox (+ quantity)", "Click large strongboxes", 10, 3510)]
+        [Menu("Large Strongbox (+ quantity)", "Click large strongboxes", 11, 2400)]
         public ToggleNode LargeStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Ornate Strongbox (+ rarity)", "Click ornate strongboxes", 11, 3510)]
+        [Menu("Ornate Strongbox (+ rarity)", "Click ornate strongboxes", 12, 2400)]
         public ToggleNode OrnateStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Searing Exarch", 4000)]
-        public EmptyNode ExarchAltar { get; set; } = new EmptyNode();
-        [Menu("Click recommended option",
-            "Clicks searing exarch altars for you based on a decision tree created from your settings." +
-            "\n\nIf both options are as good as each other (according to your weights), this won't click for you.", 1, 4000)]
-        public ToggleNode ClickExarchAltars { get; set; } = new ToggleNode(false);
-        [Menu("Highlight recommended option",
-            "Highlights the recommended option for you to choose for searing exarch altars, based on a decision tree created from your settings below.", 2, 4000)]
-        public ToggleNode HighlightExarchAltars { get; set; } = new ToggleNode(true);
-        [Menu("Eater of Worlds", 4500)]
-        public EmptyNode EaterAltar { get; set; } = new EmptyNode();
-        [Menu("Click recommended option",
-            "Clicks eater of worlds altars for you based on a decision tree created from your settings." +
-            "\n\nIf both options are as good as each other (according to your weights), this won't click for you.", 1, 4500)]
-        public ToggleNode ClickEaterAltars { get; set; } = new ToggleNode(false);
-        [Menu("Highlight recommended option",
-            "Highlights the recommended option for you to choose for eater of worlds altars, based on a decision tree created from your settings below.", 2, 4500)]
-        public ToggleNode HighlightEaterAltars { get; set; } = new ToggleNode(true);
-        [Menu("Weight Overrides", 4600)]
-        public EmptyNode WeightOverrides { get; set; } = new EmptyNode();
-        [Menu("Valuable Upside", "When enabled, automatically chooses the altar option with modifiers that have weights above the threshold, even if the overall weight calculation would suggest otherwise.", 1, 4600)]
-        public ToggleNode ValuableUpside { get; set; } = new ToggleNode(true);
-        [Menu("Valuable Upside Threshold", "Minimum weight threshold for upside modifiers to trigger the high value override. Modifiers with weights at or above this value will cause the plugin to choose that altar option.", 2, 4600)]
-        public RangeNode<int> ValuableUpsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
-        [Menu("Unvaluable Upside", "When enabled, automatically chooses the opposite altar option when modifiers have weights at or below the threshold, avoiding potentially undesirable choices.", 3, 4600)]
-        public ToggleNode UnvaluableUpside { get; set; } = new ToggleNode(true);
-        [Menu("Unvaluable Threshold", "Weight threshold that triggers the low value override. When any modifier has a weight at or below this value, the plugin will choose the opposite altar option.", 4, 4600)]
-        public RangeNode<int> UnvaluableUpsideThreshold { get; set; } = new RangeNode<int>(1, 1, 100);
-        [Menu("Dangerous Downside", "When enabled, automatically avoids altar options with dangerous downside modifiers that have weights above the threshold.", 5, 4600)]
-        public ToggleNode DangerousDownside { get; set; } = new ToggleNode(true);
-        [Menu("Dangerous Downside Threshold", "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.", 6, 4600)]
-        public RangeNode<int> DangerousDownsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
-        [Menu("Minimum Weight Threshold", "When enabled, the plugin will enforce a minimum final weight for altar options. If an option's final weight is below this value the plugin will avoid picking it (and will choose the opposite option if available).", 7, 4600)]
-        public ToggleNode MinWeightThresholdEnabled { get; set; } = new ToggleNode(false);
 
-        [Menu("Minimum Weight Value", "Minimum final weight (1 - 100) an option must have to be considered valid. If both options are below this value, neither will be auto-chosen.", 8, 4600)]
-        public RangeNode<int> MinWeightThreshold { get; set; } = new RangeNode<int>(25, 1, 100);
+        // ----- Altars -----
+        [Menu("Altars", 3000)]
+        public EmptyNode AltarsCategory { get; set; } = new EmptyNode();
 
-        [Menu("Alert Sound", "The alert sound file must be named 'alert.wav' and be placed in the plugin config directory.\n\nYou can find the default alert.wav file in the plugin's GitHub repository.", 4620)]
-        public EmptyNode AlertSoundCategory { get; set; } = new EmptyNode();
-
-        [Menu("Auto-download Default Alert Sound", "When enabled the plugin will attempt to download a default 'alert.wav' from the project's GitHub repository into your plugin config folder if the file is missing.", 1, 4620)]
-        public ToggleNode AutoDownloadAlertSound { get; set; } = new ToggleNode(true);
-
-        [Menu("Open Config Directory", "Open the plugin config directory where you should put 'alert.wav'", 2, 4620)]
-        public ButtonNode OpenConfigDirectory { get; set; } = new ButtonNode();
-
-        [Menu("Reload Alert Sound", "Reloads the 'alert.wav' sound file from the config directory", 3, 4620)]
-        public ButtonNode ReloadAlertSound { get; set; } = new ButtonNode();
-
-        [Menu("Alert Volume", "Volume to play alert sound at (0-100)", 4, 4620)]
-        public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(5, 0, 100);
+        [Menu("Settings", 1, 3000)]
+        [JsonIgnore]
+        public CustomNode AltarsPanel { get; }
 
         [JsonIgnore]
+        public bool ShowRawAltarNodesInSettings => false;
+
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public EmptyNode ExarchAltar { get; set; } = new EmptyNode();
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode ClickExarchAltars { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode HighlightExarchAltars { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public EmptyNode EaterAltar { get; set; } = new EmptyNode();
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode ClickEaterAltars { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode HighlightEaterAltars { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public EmptyNode WeightOverrides { get; set; } = new EmptyNode();
+        [JsonIgnore]
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
         public CustomNode AltarModWeights { get; }
+
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode ValuableUpside { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public RangeNode<int> ValuableUpsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode UnvaluableUpside { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public RangeNode<int> UnvaluableUpsideThreshold { get; set; } = new RangeNode<int>(1, 1, 100);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode DangerousDownside { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public RangeNode<int> DangerousDownsideThreshold { get; set; } = new RangeNode<int>(90, 1, 100);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode MinWeightThresholdEnabled { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public RangeNode<int> MinWeightThreshold { get; set; } = new RangeNode<int>(25, 1, 100);
+
+        // ----- Alert Sound -----
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public EmptyNode AlertSoundCategory { get; set; } = new EmptyNode();
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ToggleNode AutoDownloadAlertSound { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ButtonNode OpenConfigDirectory { get; set; } = new ButtonNode();
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public ButtonNode ReloadAlertSound { get; set; } = new ButtonNode();
+        [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
+        public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(5, 0, 100);
+
         private string upsideSearchFilter = "";
         private string downsideSearchFilter = "";
         public ClickItSettings()
         {
             InitializeDefaultWeights();
+            DebugTestingPanel = new CustomNode
+            {
+                DrawDelegate = DrawDebugTestingPanel
+            };
+            AltarsPanel = new CustomNode
+            {
+                DrawDelegate = DrawAltarsPanel
+            };
             AltarModWeights = new CustomNode
             {
                 DrawDelegate = DrawAltarModWeights
             };
+        }
+        private void DrawAltarsPanel()
+        {
+            DrawExarchSection();
+            DrawEaterSection();
+            DrawAltarWeightingSection();
+            DrawAlertSoundSection();
+        }
+        private void DrawDebugTestingPanel()
+        {
+            DrawToggleNodeControl(
+                "Debug Mode",
+                DebugMode,
+                "Enables debug mode to help with troubleshooting issues.");
+
+            DrawToggleNodeControl(
+                "Additional Debug Information",
+                RenderDebug,
+                "Provides more debug text related to rendering the overlay.");
+
+            if (RenderDebug.Value)
+            {
+                ImGui.Indent();
+                DrawToggleNodeControl("Status", DebugShowStatus, "Show/hide the Status debug section");
+                DrawToggleNodeControl("Game State", DebugShowGameState, "Show/hide the Game State debug section");
+                DrawToggleNodeControl("Performance", DebugShowPerformance, "Show/hide the Performance debug section");
+                DrawToggleNodeControl("Click Frequency Target", DebugShowClickFrequencyTarget, "Show/hide the Click Frequency Target debug section");
+                DrawToggleNodeControl("Altar Detection", DebugShowAltarDetection, "Show/hide the Altar Detection debug section");
+                DrawToggleNodeControl("Altar Service", DebugShowAltarService, "Show/hide the Altar Service debug section");
+                DrawToggleNodeControl("Labels", DebugShowLabels, "Show/hide the Labels debug section");
+                DrawToggleNodeControl("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section");
+                DrawToggleNodeControl("Debug Frames", DebugShowFrames, "Show/hide the debug screen area frames");
+                ImGui.Unindent();
+            }
+
+            DrawToggleNodeControl(
+                "Log messages",
+                LogMessages,
+                "This will flood your log and screen with debug text.");
+
+            if (ImGui.Button("Report Bug"))
+            {
+                TriggerButtonNode(ReportBugButton);
+            }
+            DrawInlineTooltip("If you run into a bug that hasn't already been reported, please report it here.");
+        }
+        private void DrawExarchSection()
+        {
+            if (!ImGui.TreeNode("Searing Exarch"))
+                return;
+
+            DrawToggleNodeControl(
+                "Click recommended option##Exarch",
+                ClickExarchAltars,
+                "Clicks searing exarch altars for you based on a decision tree created from your settings.\n\nIf both options are as good as each other (according to your weights), this won't click for you.");
+
+            DrawToggleNodeControl(
+                "Highlight recommended option##Exarch",
+                HighlightExarchAltars,
+                "Highlights the recommended option for you to choose for searing exarch altars, based on a decision tree created from your settings below.");
+
+            ImGui.TreePop();
+        }
+        private void DrawEaterSection()
+        {
+            if (!ImGui.TreeNode("Eater of Worlds"))
+                return;
+
+            DrawToggleNodeControl(
+                "Click recommended option##Eater",
+                ClickEaterAltars,
+                "Clicks eater of worlds altars for you based on a decision tree created from your settings.\n\nIf both options are as good as each other (according to your weights), this won't click for you.");
+
+            DrawToggleNodeControl(
+                "Highlight recommended option##Eater",
+                HighlightEaterAltars,
+                "Highlights the recommended option for you to choose for eater of worlds altars, based on a decision tree created from your settings below.");
+
+            ImGui.TreePop();
+        }
+        private void DrawAltarWeightingSection()
+        {
+            if (!ImGui.TreeNode("Altar Weighting"))
+                return;
+
+            DrawAltarModWeights();
+
+            DrawToggleNodeControl(
+                "Valuable Upside",
+                ValuableUpside,
+                "When enabled, automatically chooses the altar option with modifiers that have weights above the threshold, even if the overall weight calculation would suggest otherwise.");
+
+            DrawRangeNodeControl(
+                "Valuable Upside Threshold",
+                ValuableUpsideThreshold,
+                1,
+                100,
+                "Minimum weight threshold for upside modifiers to trigger the high value override. Modifiers with weights at or above this value will cause the plugin to choose that altar option.");
+
+            DrawToggleNodeControl(
+                "Unvaluable Upside",
+                UnvaluableUpside,
+                "When enabled, automatically chooses the opposite altar option when modifiers have weights at or below the threshold, avoiding potentially undesirable choices.");
+
+            DrawRangeNodeControl(
+                "Unvaluable Threshold",
+                UnvaluableUpsideThreshold,
+                1,
+                100,
+                "Weight threshold that triggers the low value override. When any modifier has a weight at or below this value, the plugin will choose the opposite altar option.");
+
+            DrawToggleNodeControl(
+                "Dangerous Downside",
+                DangerousDownside,
+                "When enabled, automatically avoids altar options with dangerous downside modifiers that have weights above the threshold.");
+
+            DrawRangeNodeControl(
+                "Dangerous Downside Threshold",
+                DangerousDownsideThreshold,
+                1,
+                100,
+                "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.");
+
+            DrawToggleNodeControl(
+                "Minimum Weight Threshold",
+                MinWeightThresholdEnabled,
+                "When enabled, the plugin will enforce a minimum final weight for altar options. If an option's final weight is below this value the plugin will avoid picking it (and will choose the opposite option if available).");
+
+            DrawRangeNodeControl(
+                "Minimum Weight Value",
+                MinWeightThreshold,
+                1,
+                100,
+                "Minimum final weight (1 - 100) an option must have to be considered valid. If both options are below this value, neither will be auto-chosen.");
+
+            ImGui.TreePop();
+        }
+        private void DrawAlertSoundSection()
+        {
+            if (!ImGui.TreeNode("Alert Sound"))
+                return;
+
+            DrawToggleNodeControl(
+                "Auto-download Default Alert Sound",
+                AutoDownloadAlertSound,
+                "When enabled the plugin will attempt to download a default 'alert.wav' from the project's GitHub repository into your plugin config folder if the file is missing.");
+
+            if (ImGui.Button("Open Config Directory"))
+            {
+                TriggerButtonNode(OpenConfigDirectory);
+            }
+            DrawInlineTooltip("Open the plugin config directory where you should put 'alert.wav'");
+
+            if (ImGui.Button("Reload Alert Sound"))
+            {
+                TriggerButtonNode(ReloadAlertSound);
+            }
+            DrawInlineTooltip("Reloads the 'alert.wav' sound file from the config directory");
+
+            DrawRangeNodeControl(
+                "Alert Volume",
+                AlertSoundVolume,
+                0,
+                100,
+                "Volume to play alert sound at (0-100)");
+
+            ImGui.TreePop();
+        }
+        private static void DrawToggleNodeControl(string label, ToggleNode node, string tooltip)
+        {
+            bool value = node.Value;
+            if (ImGui.Checkbox(label, ref value))
+            {
+                node.Value = value;
+            }
+            DrawInlineTooltip(tooltip);
+        }
+        private static void DrawRangeNodeControl(string label, RangeNode<int> node, int min, int max, string tooltip)
+        {
+            int value = node.Value;
+            if (ImGui.SliderInt(label, ref value, min, max))
+            {
+                node.Value = value;
+            }
+            DrawInlineTooltip(tooltip);
+        }
+        private static void DrawInlineTooltip(string tooltip)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(tooltip);
+            }
+        }
+        private static void TriggerButtonNode(ButtonNode buttonNode)
+        {
+            if (buttonNode == null)
+                return;
+
+            try
+            {
+                var buttonType = buttonNode.GetType();
+                var candidateMethods = new[] { "Press", "Click", "Invoke", "Trigger" };
+                foreach (var methodName in candidateMethods)
+                {
+                    var method = buttonType.GetMethod(methodName);
+                    if (method != null && method.GetParameters().Length == 0)
+                    {
+                        method.Invoke(buttonNode, null);
+                        return;
+                    }
+                }
+
+                var onPressedProperty = buttonType.GetProperty("OnPressed");
+                if (onPressedProperty?.GetValue(buttonNode) is Delegate propertyDelegate)
+                {
+                    propertyDelegate.DynamicInvoke();
+                    return;
+                }
+
+                var onPressedField = buttonType.GetField("OnPressed");
+                if (onPressedField?.GetValue(buttonNode) is Delegate fieldDelegate)
+                {
+                    fieldDelegate.DynamicInvoke();
+                }
+            }
+            catch
+            {
+                // Best effort fallback: button invocation API may vary by ExileCore build.
+            }
         }
         private void DrawAltarModWeights()
         {
@@ -275,7 +549,9 @@ namespace ClickIt
         }
         private void DrawUpsideModsSection()
         {
-            if (!ImGui.TreeNode("Altar Upside Weights")) return;
+            bool isOpen = ImGui.TreeNode("Altar Upside Weights");
+            DrawInlineTooltip("Set weights for upside modifiers. Higher values are more desirable and can influence recommended altar choices.");
+            if (!isOpen) return;
             ImGui.Spacing();
             ImGui.Spacing();
             ImGui.TextWrapped("Weight Scale (Higher = More Valuable):");
@@ -289,7 +565,9 @@ namespace ClickIt
         }
         private void DrawDownsideModsSection()
         {
-            if (!ImGui.TreeNode("Altar Downside Weights")) return;
+            bool isOpen = ImGui.TreeNode("Altar Downside Weights");
+            DrawInlineTooltip("Set weights for downside modifiers. Higher values are more dangerous and can influence recommended altar choices.");
+            if (!isOpen) return;
             ImGui.Spacing();
             ImGui.Spacing();
             ImGui.TextWrapped("Weight Scale (Higher = More Dangerous):");
@@ -368,9 +646,9 @@ namespace ClickIt
         {
             return type switch
             {
-                "Minion" => "Minion Drops",
-                "Boss" => "Boss Drops",
-                "Player" => "Player Bonuses",
+                AltarTypeMinion => "Minion Drops",
+                AltarTypeBoss => "Boss Drops",
+                AltarTypePlayer => "Player Bonuses",
                 _ => ""
             };
         }
@@ -398,9 +676,9 @@ namespace ClickIt
             ImGui.TableNextColumn();
             Vector4 headerColor = type switch
             {
-                "Minion" => new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                "Boss" => new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
-                "Player" => new Vector4(0.2f, 0.2f, 0.6f, 0.3f),
+                AltarTypeMinion => new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                AltarTypeBoss => new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                AltarTypePlayer => new Vector4(0.2f, 0.2f, 0.6f, 0.3f),
                 _ => new Vector4(0.4f, 0.4f, 0.4f, 0.3f)
             };
             ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(headerColor));
@@ -451,9 +729,9 @@ namespace ClickIt
             _ = ImGui.TableNextColumn();
             Vector4 textColor = type switch
             {
-                "Minion" => new Vector4(0.4f, 0.8f, 0.4f, 1.0f),
-                "Boss" => new Vector4(0.8f, 0.4f, 0.4f, 1.0f),
-                "Player" => new Vector4(0.4f, 0.7f, 0.9f, 1.0f),
+                AltarTypeMinion => new Vector4(0.4f, 0.8f, 0.4f, 1.0f),
+                AltarTypeBoss => new Vector4(0.8f, 0.4f, 0.4f, 1.0f),
+                AltarTypePlayer => new Vector4(0.4f, 0.7f, 0.9f, 1.0f),
                 _ => new Vector4(1.0f, 1.0f, 1.0f, 1.0f)
             };
             ImGui.TextColored(textColor, name);
@@ -531,7 +809,7 @@ namespace ClickIt
 
                 ModTiers[compositeKey] = defaultValue;
             }
-            // Add per-upside mod alert defaults — most are off by default, but enable
+            // Add per-upside mod alert defaults - most are off by default, but enable
             // a couple of very-high-value mods (Divine Orb drops) by default.
             foreach ((string id, _, string type, int _) in AltarModsConstants.UpsideMods)
             {
@@ -539,8 +817,8 @@ namespace ClickIt
                 if (!ModAlerts.ContainsKey(compositeKey))
                 {
                     // Default to enabled for Divine Orb related modifiers
-                    if ((type == "Minion" && id == "#% chance to drop an additional Divine Orb") ||
-                        (type == "Boss" && id == "Final Boss drops # additional Divine Orbs"))
+                    if ((type == AltarTypeMinion && id == "#% chance to drop an additional Divine Orb") ||
+                        (type == AltarTypeBoss && id == "Final Boss drops # additional Divine Orbs"))
                     {
                         ModAlerts[compositeKey] = true;
                     }
@@ -629,3 +907,5 @@ namespace ClickIt
         }
     }
 }
+
+
