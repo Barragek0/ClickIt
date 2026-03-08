@@ -42,6 +42,8 @@ namespace ClickIt.Services
         private readonly Func<bool> groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
+        private ulong _lastLeverKey;
+        private long _lastLeverClickTimestampMs;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
@@ -341,7 +343,11 @@ namespace ClickIt.Services
                 yield break;
 
             Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
-            PerformLabelClick(clickPos, nextLabel.Label, gameController);
+            bool clicked = PerformLabelClick(clickPos, nextLabel.Label, gameController);
+            if (clicked)
+            {
+                MarkLeverClicked(nextLabel);
+            }
 
 
             if (inputHandler.TriggerToggleItems())
@@ -364,13 +370,116 @@ namespace ClickIt.Services
             foreach (int cap in caps)
             {
                 int limit = Math.Min(cap, allLabels.Count);
-                var label = labelFilterService.GetNextLabelToClick(allLabels, 0, limit);
-                if (label != null)
-                    return label;
+                int start = 0;
+                while (start < limit)
+                {
+                    var label = labelFilterService.GetNextLabelToClick(allLabels, start, limit - start);
+                    if (label == null)
+                        break;
+
+                    if (!ShouldSuppressLeverClick(label))
+                        return label;
+
+                    int idx = IndexOfLabelReference(allLabels, label, start, limit);
+                    if (idx < 0)
+                        break;
+
+                    start = idx + 1;
+                }
             }
 
             // Fallback to full scan (rare)
-            return labelFilterService.GetNextLabelToClick(allLabels);
+            int fullStart = 0;
+            while (fullStart < allLabels.Count)
+            {
+                var label = labelFilterService.GetNextLabelToClick(allLabels, fullStart, allLabels.Count - fullStart);
+                if (label == null)
+                    return null;
+
+                if (!ShouldSuppressLeverClick(label))
+                    return label;
+
+                int idx = IndexOfLabelReference(allLabels, label, fullStart, allLabels.Count);
+                if (idx < 0)
+                    return null;
+
+                fullStart = idx + 1;
+            }
+
+            return null;
+        }
+
+        private static int IndexOfLabelReference(System.Collections.Generic.IReadOnlyList<LabelOnGround> labels, LabelOnGround target, int start, int endExclusive)
+        {
+            for (int i = start; i < endExclusive; i++)
+            {
+                if (ReferenceEquals(labels[i], target))
+                    return i;
+            }
+            return -1;
+        }
+
+        private bool ShouldSuppressLeverClick(LabelOnGround label)
+        {
+            if (!settings.LazyMode.Value)
+                return false;
+            if (!IsLeverLabel(label))
+                return false;
+
+            int cooldownMs = settings.LazyModeLeverReclickDelay?.Value ?? 1200;
+            ulong currentLeverKey = GetLeverIdentityKey(label);
+            long now = Environment.TickCount64;
+
+            return IsLeverClickSuppressedByCooldown(_lastLeverKey, _lastLeverClickTimestampMs, currentLeverKey, now, cooldownMs);
+        }
+
+        private static bool IsLeverClickSuppressedByCooldown(ulong lastLeverKey, long lastLeverClickTimestampMs, ulong currentLeverKey, long now, int cooldownMs)
+        {
+            if (cooldownMs <= 0)
+                return false;
+            if (currentLeverKey == 0 || lastLeverKey == 0)
+                return false;
+            if (currentLeverKey != lastLeverKey)
+                return false;
+            if (lastLeverClickTimestampMs <= 0)
+                return false;
+
+            long elapsed = now - lastLeverClickTimestampMs;
+            return elapsed >= 0 && elapsed < cooldownMs;
+        }
+
+        private void MarkLeverClicked(LabelOnGround label)
+        {
+            if (!settings.LazyMode.Value)
+                return;
+            if (!IsLeverLabel(label))
+                return;
+
+            ulong key = GetLeverIdentityKey(label);
+            if (key == 0)
+                return;
+
+            _lastLeverKey = key;
+            _lastLeverClickTimestampMs = Environment.TickCount64;
+        }
+
+        private static bool IsLeverLabel(LabelOnGround? label)
+        {
+            string? renderName = label?.ItemOnGround?.RenderName;
+            return !string.IsNullOrWhiteSpace(renderName) && renderName.Equals("lever", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static ulong GetLeverIdentityKey(LabelOnGround label)
+        {
+            ulong itemAddress = unchecked((ulong)(label.ItemOnGround?.Address ?? 0));
+            if (itemAddress != 0)
+                return itemAddress;
+
+            ulong elementAddress = unchecked((ulong)(label.Label?.Address ?? 0));
+            if (elementAddress != 0)
+                return elementAddress;
+
+            return 0;
         }
 
         private static bool IsAltarLabel(LabelOnGround label)
@@ -414,13 +523,13 @@ namespace ClickIt.Services
             return false;
         }
 
-        private void PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? gameController)
+        private bool PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? gameController)
         {
             // Optionally skip clicks if the OS cursor is outside the PoE window
             if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
             {
                 DebugLog(() => "[PerformLabelClick] Skipping label click - cursor outside PoE window");
-                return;
+                return false;
             }
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
@@ -430,6 +539,7 @@ namespace ClickIt.Services
             // Record the click interval after the actual click
             // This ensures we measure time between actual clicks, not between hotkey presses
             performanceMonitor.RecordClickInterval();
+            return true;
         }
     }
 }

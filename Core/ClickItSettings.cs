@@ -116,6 +116,8 @@ namespace ClickIt
         public ToggleNode DisableLazyModeLeftClickHeld { get; set; } = new ToggleNode(true);
         [Menu("Disable lazy mode while right click held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 7, 3050)]
         public ToggleNode DisableLazyModeRightClickHeld { get; set; } = new ToggleNode(true);
+        [Menu("Lever Reclick Delay (ms)", "When Lazy Mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 8, 3050)]
+        public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
         // ----- Mechanics -----
         [Menu("Mechanics", 3100)]
         public EmptyNode Mechanics { get; set; } = new EmptyNode();
