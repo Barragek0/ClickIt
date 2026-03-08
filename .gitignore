@@ -134,3 +134,6 @@ build.log
 # Allow checking in explicit third-party runtime libs used by the tests
 !ThirdParty/
 !ThirdParty/*.dll
+
+# Copilot
+copilot-instructions.md
