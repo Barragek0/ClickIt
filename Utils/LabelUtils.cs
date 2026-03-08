@@ -92,9 +92,9 @@ namespace ClickIt.Utils
                 return false;
             }
 
-                 return IsValidEntityType(label.ItemOnGround)
-                     || IsValidEntityPath(label.ItemOnGround)
-                     || HasEssenceImprisonmentText(label);
+            return IsValidEntityType(label.ItemOnGround)
+                || IsValidEntityPath(label.ItemOnGround)
+                || HasEssenceImprisonmentText(label);
         }
 
         public static bool IsLabelElementValid(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
