@@ -13,6 +13,8 @@ namespace ClickIt
         private const string AltarTypeMinion = "Minion";
         private const string AltarTypeBoss = "Boss";
         private const string AltarTypePlayer = "Player";
+        private static readonly Vector4 WhitelistTextColor = new(0.4f, 0.8f, 0.4f, 1.0f);
+        private static readonly Vector4 BlacklistTextColor = new(0.8f, 0.4f, 0.4f, 1.0f);
 
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
 
@@ -151,14 +153,20 @@ namespace ClickIt
             ],
             ["weapons"] =
             [
-                new("swords", "Swords", ["Items/Weapons/OneHandWeapons/OneHandSwords/", "Items/Weapons/TwoHandWeapons/TwoHandSwords/", "Items/Weapons/TwoHandWeapon/TwoHandSwords/"]),
-                new("axes", "Axes", ["Items/Weapons/OneHandWeapons/OneHandAxes/", "Items/Weapons/TwoHandWeapons/TwoHandAxes/", "Items/Weapons/TwoHandWeapon/TwoHandAxes/"]),
-                new("maces-sceptres", "Maces & Sceptres", ["Items/Weapons/OneHandWeapons/OneHandMaces/", "Items/Weapons/OneHandWeapons/Sceptres/", "Items/Weapons/TwoHandWeapons/TwoHandMaces/", "Items/Weapons/TwoHandWeapon/TwoHandMaces/"]),
+                new("one-hand-swords", "One-Hand Swords", ["Items/Weapons/OneHandWeapons/OneHandSwords/"]),
+                new("two-hand-swords", "Two-Hand Swords", ["Items/Weapons/TwoHandWeapons/TwoHandSwords/", "Items/Weapons/TwoHandWeapon/TwoHandSwords/"]),
+                new("one-hand-axes", "One-Hand Axes", ["Items/Weapons/OneHandWeapons/OneHandAxes/"]),
+                new("two-hand-axes", "Two-Hand Axes", ["Items/Weapons/TwoHandWeapons/TwoHandAxes/", "Items/Weapons/TwoHandWeapon/TwoHandAxes/"]),
+                new("one-hand-maces", "One-Hand Maces", ["Items/Weapons/OneHandWeapons/OneHandMaces/"]),
+                new("sceptres", "Sceptres", ["Items/Weapons/OneHandWeapons/Sceptres/"]),
+                new("two-hand-maces", "Two-Hand Maces", ["Items/Weapons/TwoHandWeapons/TwoHandMaces/", "Items/Weapons/TwoHandWeapon/TwoHandMaces/"]),
                 new("bows", "Bows", ["Items/Weapons/TwoHandWeapons/Bows/", "Items/Weapons/TwoHandWeapon/Bows/"]),
                 new("wands", "Wands", ["Items/Weapons/OneHandWeapons/Wands/"]),
-                new("daggers", "Daggers", ["Items/Weapons/OneHandWeapons/Daggers/", "Items/Weapons/OneHandWeapons/RuneDaggers/"]),
+                new("daggers", "Daggers", ["Items/Weapons/OneHandWeapons/Daggers/"]),
+                new("rune-daggers", "Rune Daggers", ["Items/Weapons/OneHandWeapons/RuneDaggers/"]),
                 new("claws", "Claws", ["Items/Weapons/OneHandWeapons/Claws/"]),
-                new("staves", "Staves & Warstaves", ["Items/Weapons/TwoHandWeapons/Staves/", "Items/Weapons/TwoHandWeapon/Staves/", "Items/Weapons/TwoHandWeapons/Warstaves/", "Items/Weapons/TwoHandWeapon/Warstaves/"])
+                new("staves", "Staves", ["Items/Weapons/TwoHandWeapons/Staves/", "Items/Weapons/TwoHandWeapon/Staves/"]),
+                new("warstaves", "Warstaves", ["Items/Weapons/TwoHandWeapons/Warstaves/", "Items/Weapons/TwoHandWeapon/Warstaves/"])
             ],
             ["flasks"] =
             [
@@ -168,6 +176,27 @@ namespace ClickIt
                 new("utility", "Utility Flasks", ["Items/Flasks/UtilityFlask"])
             ]
         };
+
+        private static readonly string[] EssenceSuffixes =
+        [
+            "Greed", "Contempt", "Hatred", "Woe",
+            "Fear", "Anger", "Torment", "Sorrow",
+            "Rage", "Suffering", "Wrath", "Doubt",
+            "Loathing", "Zeal", "Anguish", "Spite",
+            "Scorn", "Envy", "Misery", "Dread"
+        ];
+
+        private static readonly HashSet<string> EssenceMedsSuffixes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Misery", "Envy", "Dread", "Scorn"
+        };
+
+        private static readonly string[] EssenceAllTableNames =
+            EssenceSuffixes.SelectMany(suffix => new[]
+            {
+                $"Screaming Essence of {suffix}",
+                $"Shrieking Essence of {suffix}"
+            }).ToArray();
 
         // ----- General Interactions -----
         [Menu("General", 1200)]
@@ -232,10 +261,12 @@ namespace ClickIt
         public EmptyNode Essences { get; set; } = new EmptyNode();
         [Menu("Essences", "Click essences", 1, 2200)]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
-        [Menu("Corrupt ALL Essences (Warning: This overrides all settings below)", "Corrupt all essences, overriding the settings below.", 2, 2200)]
-        public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
-        [Menu("Corrupt Misery, Envy, Dread, Scorn", "Corrupt misery, envy, dread, scorn.", 3, 2200)]
-        public ToggleNode CorruptMEDSEssences { get; set; } = new ToggleNode(true);
+        [Menu("Essence Corruption Table", "Configure which Screaming/Shrieking essences should be corrupted.", 2, 2200)]
+        [JsonIgnore]
+        public CustomNode EssenceCorruptionTablePanel { get; }
+
+        public HashSet<string> EssenceCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> EssenceDontCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // ----- Ritual -----
         [Menu("Ritual", 2300)]
@@ -336,11 +367,13 @@ namespace ClickIt
         private string upsideSearchFilter = "";
         private string downsideSearchFilter = "";
         private string itemTypeSearchFilter = "";
+        private string essenceSearchFilter = "";
         private string _lastSettingsUiError = string.Empty;
         public ClickItSettings()
         {
             InitializeDefaultWeights();
             EnsureItemTypeFiltersInitialized();
+            EnsureEssenceCorruptionFiltersInitialized();
             DebugTestingPanel = new CustomNode
             {
                 DrawDelegate = () => DrawPanelSafe("DebugTestingPanel", DrawDebugTestingPanel)
@@ -356,6 +389,10 @@ namespace ClickIt
             ItemTypeFiltersPanel = new CustomNode
             {
                 DrawDelegate = () => DrawPanelSafe("ItemTypeFiltersPanel", DrawItemTypeFiltersPanel)
+            };
+            EssenceCorruptionTablePanel = new CustomNode
+            {
+                DrawDelegate = () => DrawPanelSafe("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel)
             };
         }
 
@@ -433,7 +470,7 @@ namespace ClickIt
             EnsureItemTypeFiltersInitialized();
 
             ImGui.SetNextItemOpen(false, ImGuiCond.Once);
-            bool sectionOpen = ImGui.TreeNode("Item Type Whitelist / Blacklist");
+            bool sectionOpen = ImGui.TreeNode("Item Filters");
             if (!sectionOpen)
                 return;
 
@@ -441,7 +478,6 @@ namespace ClickIt
             {
 
                 ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Click a table row to open subtype filter options.");
-                ImGui.TextWrapped("Use arrow buttons to move item types between lists. Row-click only opens the subtype menu.");
                 ImGui.Spacing();
 
                 DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref itemTypeSearchFilter);
@@ -465,15 +501,25 @@ namespace ClickIt
                 {
                     ImGui.TableSetupColumn("Whitelist", ImGuiTableColumnFlags.WidthStretch, 0.5f);
                     ImGui.TableSetupColumn("Blacklist", ImGuiTableColumnFlags.WidthStretch, 0.5f);
-                    ImGui.TableHeadersRow();
+
+                    // Custom header row to match altar/essence visual style.
+                    ImGui.TableNextRow(ImGuiTableRowFlags.None);
+
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.2f, 0.6f, 0.2f, 0.3f)));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Whitelist");
+
+                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.6f, 0.2f, 0.2f, 0.3f)));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Blacklist");
 
                     ImGui.TableNextRow();
 
                     ImGui.TableSetColumnIndex(0);
-                    DrawItemTypeList("Whitelist##ItemType", ItemTypeWhitelistIds, moveToWhitelist: false);
+                    DrawItemTypeList("Whitelist##ItemType", ItemTypeWhitelistIds, moveToWhitelist: false, textColor: WhitelistTextColor);
 
                     ImGui.TableSetColumnIndex(1);
-                    DrawItemTypeList("Blacklist##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true);
+                    DrawItemTypeList("Blacklist##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true, textColor: BlacklistTextColor);
                 }
                 finally
                 {
@@ -486,7 +532,7 @@ namespace ClickIt
             }
         }
 
-        private void DrawItemTypeList(string id, HashSet<string> sourceSet, bool moveToWhitelist)
+        private void DrawItemTypeList(string id, HashSet<string> sourceSet, bool moveToWhitelist, Vector4 textColor)
         {
             // Avoid BeginChild here for compatibility with older ImGuiNET builds bundled by ExileAPI.
             ImGui.PushID(id);
@@ -516,12 +562,16 @@ namespace ClickIt
                 {
                     arrowClicked = ImGui.Button($"<-##Move_{id}_{category.Id}", new Vector2(arrowWidth, 0));
                     ImGui.SameLine();
+                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
                     rowClicked = ImGui.Selectable(label, IsExpandedRow(id, category.Id), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+                    ImGui.PopStyleColor();
                     rowHovered = ImGui.IsItemHovered();
                 }
                 else
                 {
+                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
                     rowClicked = ImGui.Selectable(label, IsExpandedRow(id, category.Id), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+                    ImGui.PopStyleColor();
                     rowHovered = ImGui.IsItemHovered();
                     ImGui.SameLine();
                     arrowClicked = ImGui.Button($"->##Move_{id}_{category.Id}", new Vector2(arrowWidth, 0));
@@ -563,6 +613,142 @@ namespace ClickIt
             ImGui.PopID();
         }
 
+        private void DrawEssenceCorruptionTablePanel()
+        {
+            EnsureEssenceCorruptionFiltersInitialized();
+
+            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
+            bool sectionOpen = ImGui.TreeNode("Corruption Filters");
+            if (!sectionOpen)
+                return;
+
+            try
+            {
+                DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref essenceSearchFilter);
+
+                ImGui.SameLine();
+                if (ImGui.Button("Reset Defaults##EssenceResetDefaults"))
+                {
+                    EssenceCorruptNames = BuildDefaultCorruptEssenceNames();
+                    EssenceDontCorruptNames = BuildDefaultDontCorruptEssenceNames();
+                }
+
+                ImGui.Spacing();
+
+                if (!ImGui.BeginTable("EssenceCorruptionLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
+                    return;
+
+                try
+                {
+                    ImGui.TableSetupColumn("Corrupt", ImGuiTableColumnFlags.WidthStretch, 0.5f);
+                    ImGui.TableSetupColumn("Don't Corrupt", ImGuiTableColumnFlags.WidthStretch, 0.5f);
+
+                    // Custom header row so each column can use the same visual style as altar upside colors.
+                    ImGui.TableNextRow(ImGuiTableRowFlags.None);
+
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.6f, 0.2f, 0.2f, 0.3f)));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Corrupt");
+
+                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.2f, 0.6f, 0.2f, 0.3f)));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Don't Corrupt");
+
+                    ImGui.TableNextRow();
+
+                    ImGui.TableSetColumnIndex(0);
+                    DrawEssenceCorruptionList("Corrupt##Essence", EssenceCorruptNames, moveToCorrupt: false, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
+
+                    ImGui.TableSetColumnIndex(1);
+                    DrawEssenceCorruptionList("DontCorrupt##Essence", EssenceDontCorruptNames, moveToCorrupt: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
+                }
+                finally
+                {
+                    ImGui.EndTable();
+                }
+            }
+            finally
+            {
+                ImGui.TreePop();
+            }
+        }
+
+        private void DrawEssenceCorruptionList(string id, HashSet<string> sourceSet, bool moveToCorrupt, Vector4 textColor)
+        {
+            ImGui.PushID(id);
+
+            bool hasEntries = false;
+            foreach (string essenceName in EssenceAllTableNames)
+            {
+                if (!sourceSet.Contains(essenceName))
+                    continue;
+                if (!MatchesEssenceSearch(essenceName, essenceSearchFilter))
+                    continue;
+
+                hasEntries = true;
+                float availableWidth = Math.Max(80f, ImGui.GetContentRegionAvail().X);
+                const float arrowWidth = 28f;
+                float rowWidth = Math.Max(40f, availableWidth - arrowWidth - 6f);
+
+                bool arrowClicked;
+                if (moveToCorrupt)
+                {
+                    arrowClicked = ImGui.Button($"<-##Move_{id}_{essenceName}", new Vector2(arrowWidth, 0));
+                    ImGui.SameLine();
+                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+                    ImGui.Selectable($"{essenceName}##{id}_{essenceName}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
+                    ImGui.PopStyleColor();
+                }
+                else
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+                    ImGui.Selectable($"{essenceName}##{id}_{essenceName}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
+                    ImGui.PopStyleColor();
+                    ImGui.SameLine();
+                    arrowClicked = ImGui.Button($"->##Move_{id}_{essenceName}", new Vector2(arrowWidth, 0));
+                }
+
+                if (arrowClicked)
+                {
+                    MoveEssenceName(essenceName, moveToCorrupt);
+                    break;
+                }
+            }
+
+            if (!hasEntries)
+            {
+                ImGui.TextDisabled("No entries");
+            }
+
+            ImGui.PopID();
+        }
+
+        private void MoveEssenceName(string essenceName, bool moveToCorrupt)
+        {
+            HashSet<string> source = moveToCorrupt ? EssenceDontCorruptNames : EssenceCorruptNames;
+            HashSet<string> target = moveToCorrupt ? EssenceCorruptNames : EssenceDontCorruptNames;
+
+            source.Remove(essenceName);
+            target.Add(essenceName);
+        }
+
+        private static bool MatchesEssenceSearch(string essenceName, string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+                return true;
+
+            return essenceName.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        public IReadOnlyList<string> GetCorruptEssenceNames()
+        {
+            EnsureEssenceCorruptionFiltersInitialized();
+            return EssenceCorruptNames
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
         private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)
         {
             if (!TryGetSubtypeDefinitions(category.Id, out ItemSubtypeDefinition[] subtypeDefinitions))
@@ -580,6 +766,13 @@ namespace ClickIt
             foreach (ItemSubtypeDefinition subtype in subtypeDefinitions)
             {
                 bool isSelected = selectedSubtypeIds.Contains(subtype.Id);
+                bool hasActiveSelection = selectedSubtypeIds.Count > 0;
+                bool subtypeIsWhitelistSide = hasActiveSelection
+                    ? (isSourceWhitelist ? isSelected : !isSelected)
+                    : isSourceWhitelist;
+                Vector4 subtypeTextColor = subtypeIsWhitelistSide ? WhitelistTextColor : BlacklistTextColor;
+
+                ImGui.PushStyleColor(ImGuiCol.Text, subtypeTextColor);
                 if (ImGui.Checkbox($"{subtype.DisplayName}##Subtype_{listId}_{category.Id}_{subtype.Id}", ref isSelected))
                 {
                     if (isSelected)
@@ -591,6 +784,7 @@ namespace ClickIt
                         selectedSubtypeIds.Remove(subtype.Id);
                     }
                 }
+                ImGui.PopStyleColor();
 
                 if (ImGui.IsItemHovered())
                 {
@@ -780,6 +974,51 @@ namespace ClickIt
 
                 HashSet<string> validSubtypeIds = new HashSet<string>(subtypeDefinitions.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
                 selectedSubtypes.RemoveWhere(id => !validSubtypeIds.Contains(id));
+            }
+        }
+
+        private static HashSet<string> BuildDefaultCorruptEssenceNames()
+        {
+            return new HashSet<string>(
+                EssenceAllTableNames.Where(name => EssenceMedsSuffixes.Any(meds => name.EndsWith($"of {meds}", StringComparison.OrdinalIgnoreCase))),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static HashSet<string> BuildDefaultDontCorruptEssenceNames()
+        {
+            HashSet<string> defaults = new HashSet<string>(EssenceAllTableNames, StringComparer.OrdinalIgnoreCase);
+            defaults.RemoveWhere(name => EssenceMedsSuffixes.Any(meds => name.EndsWith($"of {meds}", StringComparison.OrdinalIgnoreCase)));
+            return defaults;
+        }
+
+        private void EnsureEssenceCorruptionFiltersInitialized()
+        {
+            EssenceCorruptNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            EssenceDontCorruptNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (EssenceCorruptNames.Count == 0 && EssenceDontCorruptNames.Count == 0)
+            {
+                EssenceCorruptNames = BuildDefaultCorruptEssenceNames();
+                EssenceDontCorruptNames = BuildDefaultDontCorruptEssenceNames();
+                return;
+            }
+
+            HashSet<string> allowed = new HashSet<string>(EssenceAllTableNames, StringComparer.OrdinalIgnoreCase);
+
+            EssenceCorruptNames.RemoveWhere(x => !allowed.Contains(x));
+            EssenceDontCorruptNames.RemoveWhere(x => !allowed.Contains(x));
+
+            foreach (string name in EssenceCorruptNames.ToArray())
+            {
+                EssenceDontCorruptNames.Remove(name);
+            }
+
+            foreach (string essenceName in EssenceAllTableNames)
+            {
+                if (!EssenceCorruptNames.Contains(essenceName) && !EssenceDontCorruptNames.Contains(essenceName))
+                {
+                    EssenceDontCorruptNames.Add(essenceName);
+                }
             }
         }
 

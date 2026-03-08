@@ -14,19 +14,12 @@ namespace ClickIt.Services
                 return false;
             if (LabelUtils.ElementContainsAnyStrings(label, ["Corrupted"]))
                 return false;
-            if (_settings.CorruptAllEssences.Value)
-                return true;
-            if (_settings.CorruptMEDSEssences.Value)
-            {
-                string[] meds =
-                [
-                    "Screaming Essence of Misery", "Screaming Essence of Envy", "Screaming Essence of Dread", "Screaming Essence of Scorn",
-                    "Shrieking Essence of Misery", "Shrieking Essence of Envy", "Shrieking Essence of Dread", "Shrieking Essence of Scorn",
-                    "Deafening Essence of Misery", "Deafening Essence of Envy", "Deafening Essence of Dread", "Deafening Essence of Scorn"
-                ];
-                return LabelUtils.ElementContainsAnyStrings(label, meds);
-            }
-            return false;
+
+            IReadOnlyList<string> selectedEssences = _settings.GetCorruptEssenceNames();
+            if (selectedEssences.Count == 0)
+                return false;
+
+            return LabelUtils.ElementContainsAnyStrings(label, selectedEssences);
         }
         public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
