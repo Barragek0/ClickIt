@@ -55,10 +55,13 @@ namespace ClickIt
         [Menu("Labels", "Show/hide the Labels debug section", 7, 2)]
         public ToggleNode DebugShowLabels { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 8, 2)]
+        [Menu("Hovered Item Metadata", "Show/hide the hovered item metadata debug section", 8, 2)]
+        public ToggleNode DebugShowHoveredItemMetadata { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 9, 2)]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Frames", "Show/hide the debug screen area frames", 9, 2)]
+        [Menu("Debug Frames", "Show/hide the debug screen area frames", 10, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Log messages", "This will flood your log and screen with debug text.", 3, 900)]
@@ -92,7 +95,9 @@ namespace ClickIt
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
         [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 4, 1050)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 5, 1050)]
+        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 5, 1050)]
+        public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 6, 1050)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
 
         // ----- Lazy Mode -----
@@ -100,7 +105,7 @@ namespace ClickIt
         public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();
         [Menu("Lazy Mode - IMPORTANT INFO IN TOOLTIP ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'disable lazy mode while x click held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked, or if a settlers tree has been activated.\n   This is a limitation with exileapi and not the plugin and for this reason, Lazy Mode is not allowed\n   to click chests that were locked when spawned or the settlers tree. When one of these is on-screen,\n   Lazy Mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in Controls will override lazy mode blocking.", 1, 1075)]
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
-        [Menu("Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from the user.", 2, 1075)]
+        [Menu("Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 1075)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
         [Menu("Disable Hotkey", "When Lazy Mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1075)]
         public HotkeyNode LazyModeDisableKey { get; set; } = new HotkeyNode(Keys.F2);
@@ -120,17 +125,52 @@ namespace ClickIt
         public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
         [Menu("Items", "Click items", 1, 1100)]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-        [Menu("Ignore Unique Items", "Ignore unique items", 2, 1100)]
-        public ToggleNode IgnoreUniques { get; set; } = new ToggleNode(false);
-        [Menu("Ignore Heist Quest Contracts", "Ignore heist quest contracts", 3, 1100)]
-        public ToggleNode IgnoreHeistQuestContracts { get; set; } = new ToggleNode(false);
-        [Menu("Ignore Inscribed Ultimatums", "Ignore inscribed ultimatums", 4, 1100)]
-        public ToggleNode IgnoreInscribedUltimatums { get; set; } = new ToggleNode(false);
-        [Menu("Only Pickup Currency Items", "When enabled, the plugin will only pick up currency items. All other items will be ignored.", 5, 1100)]
-        public ToggleNode OnlyPickupCurrencyItems { get; set; } = new ToggleNode(false);
 
-        // ----- World Interactions -----
-        [Menu("World Interactions", 1200)]
+        [Menu("Item Type Filters", "Metadata-based whitelist/blacklist. Use arrows to move entries between lists and click a row to open subtype options.", 2, 1100)]
+        [JsonIgnore]
+        public CustomNode ItemTypeFiltersPanel { get; }
+
+        public HashSet<string> ItemTypeWhitelistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> ItemTypeBlacklistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, HashSet<string>> ItemTypeWhitelistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, HashSet<string>> ItemTypeBlacklistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+        private string _expandedItemTypeRowKey = string.Empty;
+
+        private sealed record ItemSubtypeDefinition(string Id, string DisplayName, IReadOnlyList<string> MetadataIdentifiers);
+
+        private static readonly Dictionary<string, ItemSubtypeDefinition[]> ItemSubtypeCatalog = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["armour"] =
+            [
+                new("helmets", "Helmets", ["Items/Armours/Helmets/"]),
+                new("body-armours", "Body Armours", ["Items/Armours/BodyArmours/"]),
+                new("gloves", "Gloves", ["Items/Armours/Gloves/"]),
+                new("boots", "Boots", ["Items/Armours/Boots/"]),
+                new("shields", "Shields", ["Items/Armours/Shields/"])
+            ],
+            ["weapons"] =
+            [
+                new("swords", "Swords", ["Items/Weapons/OneHandWeapons/OneHandSwords/", "Items/Weapons/TwoHandWeapons/TwoHandSwords/", "Items/Weapons/TwoHandWeapon/TwoHandSwords/"]),
+                new("axes", "Axes", ["Items/Weapons/OneHandWeapons/OneHandAxes/", "Items/Weapons/TwoHandWeapons/TwoHandAxes/", "Items/Weapons/TwoHandWeapon/TwoHandAxes/"]),
+                new("maces-sceptres", "Maces & Sceptres", ["Items/Weapons/OneHandWeapons/OneHandMaces/", "Items/Weapons/OneHandWeapons/Sceptres/", "Items/Weapons/TwoHandWeapons/TwoHandMaces/", "Items/Weapons/TwoHandWeapon/TwoHandMaces/"]),
+                new("bows", "Bows", ["Items/Weapons/TwoHandWeapons/Bows/", "Items/Weapons/TwoHandWeapon/Bows/"]),
+                new("wands", "Wands", ["Items/Weapons/OneHandWeapons/Wands/"]),
+                new("daggers", "Daggers", ["Items/Weapons/OneHandWeapons/Daggers/", "Items/Weapons/OneHandWeapons/RuneDaggers/"]),
+                new("claws", "Claws", ["Items/Weapons/OneHandWeapons/Claws/"]),
+                new("staves", "Staves & Warstaves", ["Items/Weapons/TwoHandWeapons/Staves/", "Items/Weapons/TwoHandWeapon/Staves/", "Items/Weapons/TwoHandWeapons/Warstaves/", "Items/Weapons/TwoHandWeapon/Warstaves/"])
+            ],
+            ["flasks"] =
+            [
+                new("life", "Life Flasks", ["Items/Flasks/LifeFlask"]),
+                new("mana", "Mana Flasks", ["Items/Flasks/ManaFlask"]),
+                new("hybrid", "Hybrid Flasks", ["Items/Flasks/HybridFlask"]),
+                new("utility", "Utility Flasks", ["Items/Flasks/UtilityFlask"])
+            ]
+        };
+
+        // ----- General Interactions -----
+        [Menu("General", 1200)]
         public EmptyNode WorldInteractionsCategory { get; set; } = new EmptyNode();
         [Menu("Basic Chests", "Click normal (non-league related) chests", 1, 1200)]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
@@ -295,22 +335,52 @@ namespace ClickIt
 
         private string upsideSearchFilter = "";
         private string downsideSearchFilter = "";
+        private string itemTypeSearchFilter = "";
+        private string _lastSettingsUiError = string.Empty;
         public ClickItSettings()
         {
             InitializeDefaultWeights();
+            EnsureItemTypeFiltersInitialized();
             DebugTestingPanel = new CustomNode
             {
-                DrawDelegate = DrawDebugTestingPanel
+                DrawDelegate = () => DrawPanelSafe("DebugTestingPanel", DrawDebugTestingPanel)
             };
             AltarsPanel = new CustomNode
             {
-                DrawDelegate = DrawAltarsPanel
+                DrawDelegate = () => DrawPanelSafe("AltarsPanel", DrawAltarsPanel)
             };
             AltarModWeights = new CustomNode
             {
-                DrawDelegate = DrawAltarModWeights
+                DrawDelegate = () => DrawPanelSafe("AltarModWeights", DrawAltarModWeights)
+            };
+            ItemTypeFiltersPanel = new CustomNode
+            {
+                DrawDelegate = () => DrawPanelSafe("ItemTypeFiltersPanel", DrawItemTypeFiltersPanel)
             };
         }
+
+        private void DrawPanelSafe(string panelName, Action drawAction)
+        {
+            try
+            {
+                drawAction();
+            }
+            catch (Exception ex)
+            {
+                _lastSettingsUiError = $"{panelName}: {ex.GetType().Name}: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[ClickItSettings UI Error] {_lastSettingsUiError}{Environment.NewLine}{ex}");
+
+                ImGui.Separator();
+                ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "Settings UI error caught");
+                ImGui.TextWrapped(_lastSettingsUiError);
+
+                if (ImGui.Button($"Throw Last UI Error##{panelName}"))
+                {
+                    throw new InvalidOperationException(_lastSettingsUiError, ex);
+                }
+            }
+        }
+
         private void DrawAltarsPanel()
         {
             DrawExarchSection();
@@ -340,6 +410,7 @@ namespace ClickIt
                 DrawToggleNodeControl("Altar Detection", DebugShowAltarDetection, "Show/hide the Altar Detection debug section");
                 DrawToggleNodeControl("Altar Service", DebugShowAltarService, "Show/hide the Altar Service debug section");
                 DrawToggleNodeControl("Labels", DebugShowLabels, "Show/hide the Labels debug section");
+                DrawToggleNodeControl("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section");
                 DrawToggleNodeControl("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section");
                 DrawToggleNodeControl("Debug Frames", DebugShowFrames, "Show/hide the debug screen area frames");
                 ImGui.Unindent();
@@ -356,6 +427,357 @@ namespace ClickIt
             }
             DrawInlineTooltip("If you run into a bug that hasn't already been reported, please report it here.");
         }
+
+        private void DrawItemTypeFiltersPanel()
+        {
+            EnsureItemTypeFiltersInitialized();
+
+            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
+            bool sectionOpen = ImGui.TreeNode("Item Type Whitelist / Blacklist");
+            if (!sectionOpen)
+                return;
+
+            try
+            {
+
+                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Click a table row to open subtype filter options.");
+                ImGui.TextWrapped("Use arrow buttons to move item types between lists. Row-click only opens the subtype menu.");
+                ImGui.Spacing();
+
+                DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref itemTypeSearchFilter);
+                ImGui.SameLine();
+                if (ImGui.Button("Reset Defaults##ItemTypeDefaults"))
+                {
+                    ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
+                    ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
+                    ItemTypeWhitelistSubtypeIds.Clear();
+                    ItemTypeBlacklistSubtypeIds.Clear();
+                    _expandedItemTypeRowKey = string.Empty;
+                }
+
+                ImGui.Spacing();
+
+                bool tableOpen = ImGui.BeginTable("ItemTypeFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable);
+                if (!tableOpen)
+                    return;
+
+                try
+                {
+                    ImGui.TableSetupColumn("Whitelist", ImGuiTableColumnFlags.WidthStretch, 0.5f);
+                    ImGui.TableSetupColumn("Blacklist", ImGuiTableColumnFlags.WidthStretch, 0.5f);
+                    ImGui.TableHeadersRow();
+
+                    ImGui.TableNextRow();
+
+                    ImGui.TableSetColumnIndex(0);
+                    DrawItemTypeList("Whitelist##ItemType", ItemTypeWhitelistIds, moveToWhitelist: false);
+
+                    ImGui.TableSetColumnIndex(1);
+                    DrawItemTypeList("Blacklist##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true);
+                }
+                finally
+                {
+                    ImGui.EndTable();
+                }
+            }
+            finally
+            {
+                ImGui.TreePop();
+            }
+        }
+
+        private void DrawItemTypeList(string id, HashSet<string> sourceSet, bool moveToWhitelist)
+        {
+            // Avoid BeginChild here for compatibility with older ImGuiNET builds bundled by ExileAPI.
+            ImGui.PushID(id);
+
+            bool hasEntries = false;
+            foreach (ItemCategoryDefinition category in ItemCategoryCatalog.All)
+            {
+                if (!sourceSet.Contains(category.Id))
+                    continue;
+                if (!MatchesItemTypeSearch(category, itemTypeSearchFilter))
+                    continue;
+
+                hasEntries = true;
+                bool hasSubtypeMenu = TryGetSubtypeDefinitions(category.Id, out _);
+                string submenuIndicator = hasSubtypeMenu ? " [v]" : string.Empty;
+                string label = $"{category.DisplayName}{submenuIndicator}##{id}_{category.Id}";
+
+                float availableWidth = Math.Max(80f, ImGui.GetContentRegionAvail().X);
+                const float arrowWidth = 28f;
+                float rowWidth = Math.Max(40f, availableWidth - arrowWidth - 6f);
+
+                bool rowClicked;
+                bool arrowClicked;
+                bool rowHovered;
+
+                if (moveToWhitelist)
+                {
+                    arrowClicked = ImGui.Button($"<-##Move_{id}_{category.Id}", new Vector2(arrowWidth, 0));
+                    ImGui.SameLine();
+                    rowClicked = ImGui.Selectable(label, IsExpandedRow(id, category.Id), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+                    rowHovered = ImGui.IsItemHovered();
+                }
+                else
+                {
+                    rowClicked = ImGui.Selectable(label, IsExpandedRow(id, category.Id), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+                    rowHovered = ImGui.IsItemHovered();
+                    ImGui.SameLine();
+                    arrowClicked = ImGui.Button($"->##Move_{id}_{category.Id}", new Vector2(arrowWidth, 0));
+                }
+
+                if (arrowClicked)
+                {
+                    MoveItemTypeCategory(category.Id, moveToWhitelist);
+                    _expandedItemTypeRowKey = string.Empty;
+                    break;
+                }
+
+                if (rowClicked)
+                {
+                    ToggleExpandedRow(id, category.Id);
+                }
+
+                if (rowHovered && category.ExampleItems.Count > 0)
+                {
+                    string examples = string.Join(", ", category.ExampleItems);
+                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
+                    ImGui.Indent();
+                    ImGui.TextWrapped($"Examples: {examples}");
+                    ImGui.Unindent();
+                    ImGui.PopStyleColor();
+                }
+
+                if (IsExpandedRow(id, category.Id))
+                {
+                    DrawItemTypeSubtypePanel(id, category, isSourceWhitelist: !moveToWhitelist);
+                }
+            }
+
+            if (!hasEntries)
+            {
+                ImGui.TextDisabled("No entries");
+            }
+
+            ImGui.PopID();
+        }
+
+        private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)
+        {
+            if (!TryGetSubtypeDefinitions(category.Id, out ItemSubtypeDefinition[] subtypeDefinitions))
+            {
+                return;
+            }
+
+            HashSet<string> selectedSubtypeIds = GetOrCreateSubtypeSelection(isSourceWhitelist, category.Id);
+
+            ImGui.Indent();
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.75f, 0.75f, 0.75f, 1f));
+            ImGui.TextWrapped("Subtype filter: select subtypes to narrow this category. Example: choosing only Helmets means Body Armours/Gloves/Boots/Shields will be treated as being in the opposite list.");
+            ImGui.PopStyleColor();
+
+            foreach (ItemSubtypeDefinition subtype in subtypeDefinitions)
+            {
+                bool isSelected = selectedSubtypeIds.Contains(subtype.Id);
+                if (ImGui.Checkbox($"{subtype.DisplayName}##Subtype_{listId}_{category.Id}_{subtype.Id}", ref isSelected))
+                {
+                    if (isSelected)
+                    {
+                        selectedSubtypeIds.Add(subtype.Id);
+                    }
+                    else
+                    {
+                        selectedSubtypeIds.Remove(subtype.Id);
+                    }
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    string metadataPreview = string.Join("\n", subtype.MetadataIdentifiers);
+                    ImGui.SetTooltip(metadataPreview);
+                }
+            }
+
+            ImGui.Unindent();
+        }
+
+        private static bool TryGetSubtypeDefinitions(string categoryId, out ItemSubtypeDefinition[] definitions)
+        {
+            return ItemSubtypeCatalog.TryGetValue(categoryId, out definitions!);
+        }
+
+        private HashSet<string> GetOrCreateSubtypeSelection(bool isWhitelist, string categoryId)
+        {
+            Dictionary<string, HashSet<string>> source = isWhitelist ? ItemTypeWhitelistSubtypeIds : ItemTypeBlacklistSubtypeIds;
+            if (!source.TryGetValue(categoryId, out HashSet<string>? subtypeSelection))
+            {
+                subtypeSelection = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                source[categoryId] = subtypeSelection;
+            }
+
+            return subtypeSelection;
+        }
+
+        private static string BuildExpandedRowKey(string listId, string categoryId)
+        {
+            return $"{listId}:{categoryId}";
+        }
+
+        private bool IsExpandedRow(string listId, string categoryId)
+        {
+            return string.Equals(_expandedItemTypeRowKey, BuildExpandedRowKey(listId, categoryId), StringComparison.Ordinal);
+        }
+
+        private void ToggleExpandedRow(string listId, string categoryId)
+        {
+            string rowKey = BuildExpandedRowKey(listId, categoryId);
+            if (string.Equals(_expandedItemTypeRowKey, rowKey, StringComparison.Ordinal))
+            {
+                _expandedItemTypeRowKey = string.Empty;
+            }
+            else
+            {
+                _expandedItemTypeRowKey = rowKey;
+            }
+        }
+
+        private void MoveItemTypeCategory(string categoryId, bool moveToWhitelist)
+        {
+            HashSet<string> sourceSet = moveToWhitelist ? ItemTypeBlacklistIds : ItemTypeWhitelistIds;
+            HashSet<string> targetSet = moveToWhitelist ? ItemTypeWhitelistIds : ItemTypeBlacklistIds;
+            Dictionary<string, HashSet<string>> sourceSubtypeDict = moveToWhitelist ? ItemTypeBlacklistSubtypeIds : ItemTypeWhitelistSubtypeIds;
+            Dictionary<string, HashSet<string>> targetSubtypeDict = moveToWhitelist ? ItemTypeWhitelistSubtypeIds : ItemTypeBlacklistSubtypeIds;
+
+            sourceSet.Remove(categoryId);
+            targetSet.Add(categoryId);
+
+            if (sourceSubtypeDict.TryGetValue(categoryId, out HashSet<string>? subtypeSelection))
+            {
+                sourceSubtypeDict.Remove(categoryId);
+                targetSubtypeDict[categoryId] = new HashSet<string>(subtypeSelection, StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                targetSubtypeDict.Remove(categoryId);
+            }
+        }
+
+        private static bool MatchesItemTypeSearch(ItemCategoryDefinition category, string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+                return true;
+
+            string term = filter.Trim();
+            return category.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || category.MetadataIdentifiers.Any(x => x.Contains(term, StringComparison.OrdinalIgnoreCase))
+                || category.Id.Contains(term, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public IReadOnlyList<string> GetItemTypeWhitelistMetadataIdentifiers()
+        {
+            EnsureItemTypeFiltersInitialized();
+            return ItemTypeWhitelistIds
+                .SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: true, includeOppositeSubtypeSelections: false))
+                .Concat(ItemTypeBlacklistIds.SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: false, includeOppositeSubtypeSelections: true)))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        public IReadOnlyList<string> GetItemTypeBlacklistMetadataIdentifiers()
+        {
+            EnsureItemTypeFiltersInitialized();
+            return ItemTypeBlacklistIds
+                .SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: false, includeOppositeSubtypeSelections: false))
+                .Concat(ItemTypeWhitelistIds.SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: true, includeOppositeSubtypeSelections: true)))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        private IEnumerable<string> GetEffectiveMetadataIdentifiers(string categoryId, bool isWhitelist, bool includeOppositeSubtypeSelections)
+        {
+            if (!ItemCategoryCatalog.TryGet(categoryId, out ItemCategoryDefinition? category))
+            {
+                return Array.Empty<string>();
+            }
+
+            if (!TryGetSubtypeDefinitions(categoryId, out ItemSubtypeDefinition[] subtypeDefinitions))
+            {
+                return category.MetadataIdentifiers;
+            }
+
+            Dictionary<string, HashSet<string>> subtypeConfig = isWhitelist ? ItemTypeWhitelistSubtypeIds : ItemTypeBlacklistSubtypeIds;
+            if (!subtypeConfig.TryGetValue(categoryId, out HashSet<string>? selectedSubtypeIds) || selectedSubtypeIds.Count == 0)
+            {
+                if (includeOppositeSubtypeSelections)
+                {
+                    return Array.Empty<string>();
+                }
+
+                return category.MetadataIdentifiers;
+            }
+
+            return subtypeDefinitions
+                .Where(x => includeOppositeSubtypeSelections
+                    ? !selectedSubtypeIds.Contains(x.Id)
+                    : selectedSubtypeIds.Contains(x.Id))
+                .SelectMany(x => x.MetadataIdentifiers)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        private void EnsureItemTypeFiltersInitialized()
+        {
+            ItemTypeWhitelistIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            ItemTypeBlacklistIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            ItemTypeWhitelistSubtypeIds ??= new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            ItemTypeBlacklistSubtypeIds ??= new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+            if (ItemTypeWhitelistIds.Count == 0 && ItemTypeBlacklistIds.Count == 0)
+            {
+                ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
+                ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
+                return;
+            }
+
+            ItemTypeWhitelistIds.RemoveWhere(x => !ItemCategoryCatalog.AllIds.Contains(x));
+            ItemTypeBlacklistIds.RemoveWhere(x => !ItemCategoryCatalog.AllIds.Contains(x));
+
+            foreach (string id in ItemTypeWhitelistIds.ToArray())
+            {
+                ItemTypeBlacklistIds.Remove(id);
+            }
+
+            SanitizeSubtypeDictionary(ItemTypeWhitelistSubtypeIds, ItemTypeWhitelistIds);
+            SanitizeSubtypeDictionary(ItemTypeBlacklistSubtypeIds, ItemTypeBlacklistIds);
+        }
+
+        private static void SanitizeSubtypeDictionary(Dictionary<string, HashSet<string>> subtypeSelections, HashSet<string> parentCategoryIds)
+        {
+            string[] invalidParentIds = subtypeSelections.Keys
+                .Where(id => !parentCategoryIds.Contains(id) || !ItemSubtypeCatalog.ContainsKey(id))
+                .ToArray();
+
+            foreach (string invalidParentId in invalidParentIds)
+            {
+                subtypeSelections.Remove(invalidParentId);
+            }
+
+            foreach ((string parentId, HashSet<string> selectedSubtypes) in subtypeSelections.ToArray())
+            {
+                if (!ItemSubtypeCatalog.TryGetValue(parentId, out ItemSubtypeDefinition[]? subtypeDefinitions))
+                {
+                    subtypeSelections.Remove(parentId);
+                    continue;
+                }
+
+                HashSet<string> validSubtypeIds = new HashSet<string>(subtypeDefinitions.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
+                selectedSubtypes.RemoveWhere(id => !validSubtypeIds.Contains(id));
+            }
+        }
+
         private void DrawExarchSection()
         {
             if (!ImGui.TreeNode("Searing Exarch"))

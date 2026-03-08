@@ -128,10 +128,8 @@ namespace ClickIt.Services
             {
                 ClickDistance = s.ClickDistance.Value,
                 ClickItems = s.ClickItems.Value,
-                IgnoreUniques = s.IgnoreUniques.Value,
-                IgnoreHeistQuestContracts = s.IgnoreHeistQuestContracts.Value,
-                IgnoreInscribedUltimatums = s.IgnoreInscribedUltimatums.Value,
-                OnlyPickupCurrencyItems = s.OnlyPickupCurrencyItems.Value,
+                ItemTypeWhitelistMetadata = s.GetItemTypeWhitelistMetadataIdentifiers(),
+                ItemTypeBlacklistMetadata = s.GetItemTypeBlacklistMetadataIdentifiers(),
                 ClickBasicChests = s.ClickBasicChests.Value,
                 ClickLeagueChests = !applyLazyModeRestrictions && s.ClickLeagueChests.Value,
                 ClickDoors = s.ClickDoors.Value,
@@ -173,10 +171,8 @@ namespace ClickIt.Services
         {
             public int ClickDistance { get; set; }
             public bool ClickItems { get; set; }
-            public bool IgnoreUniques { get; set; }
-            public bool IgnoreHeistQuestContracts { get; set; }
-            public bool IgnoreInscribedUltimatums { get; set; }
-            public bool OnlyPickupCurrencyItems { get; set; }
+            public IReadOnlyList<string> ItemTypeWhitelistMetadata { get; set; }
+            public IReadOnlyList<string> ItemTypeBlacklistMetadata { get; set; }
             public bool ClickBasicChests { get; set; }
             public bool ClickLeagueChests { get; set; }
             public bool ClickDoors { get; set; }
@@ -218,7 +214,9 @@ namespace ClickIt.Services
         {
             string path = item.Path;
             EntityType type = item.Type;
-            if (ShouldClickWorldItem(settings.ClickItems, settings.IgnoreUniques, settings.IgnoreHeistQuestContracts, settings.IgnoreInscribedUltimatums, settings.OnlyPickupCurrencyItems, type, item, gameController))
+            if (type == EntityType.WorldItem && !ShouldAllowWorldItemByMetadata(settings, item))
+                return false;
+            if (ShouldClickWorldItemCore(settings.ClickItems, type, item))
                 return true;
             if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
                 return true;
@@ -250,7 +248,13 @@ namespace ClickIt.Services
             return (clickDoors && isDoor) || (clickLevers && isLever);
         }
 
+        // Kept for test compatibility; legacy parameters are ignored because filtering is table-driven.
         private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, bool ignoreInscribedUltimatums, bool onlyPickupCurrencyItems, EntityType type, Entity item, ExileCore.GameController? gameController)
+        {
+            return ShouldClickWorldItemCore(clickItems, type, item);
+        }
+
+        private static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)
         {
             if (!clickItems || type != EntityType.WorldItem)
                 return false;
@@ -258,32 +262,166 @@ namespace ClickIt.Services
             string? itemPath = item.Path;
             if (!string.IsNullOrEmpty(itemPath) && itemPath.ToLowerInvariant().Contains("strongbox"))
                 return false;
-            if (!ignoreUniques)
-                return true;
-            WorldItem? worldItemComp = item.GetComponent<WorldItem>();
-            Entity? itemEntity = worldItemComp?.ItemEntity;
-            Mods? mods = itemEntity?.GetComponent<Mods>();
-            if (mods?.ItemRarity == ItemRarity.Unique && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/") ?? false))
+            return true;
+        }
+
+        private static bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item)
+        {
+            string metadata = GetWorldItemMetadataPath(item);
+            string itemName = GetWorldItemBaseName(item);
+            IReadOnlyList<string> whitelist = settings.ItemTypeWhitelistMetadata ?? Array.Empty<string>();
+            IReadOnlyList<string> blacklist = settings.ItemTypeBlacklistMetadata ?? Array.Empty<string>();
+
+            bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadata, itemName, item, whitelist);
+            if (!whitelistPass)
                 return false;
-            // Check for heist contracts
-            if (ignoreHeistQuestContracts && itemEntity?.GetComponent<Base>()?.Name != null)
-            {
-                string itemName = itemEntity.GetComponent<Base>().Name;
-                if (Constants.Constants.HeistQuestContractNames.Contains(itemName))
-                    return false;
-            }
-            // Ignore explicitly-inscribed ultimatum items if the user enabled the option
-            if (ignoreInscribedUltimatums && (itemEntity?.Path?.Contains("ItemisedTrial", StringComparison.OrdinalIgnoreCase) ?? false))
-            {
+
+            bool blacklistMatch = blacklist.Count > 0 && ContainsAnyMetadataIdentifier(metadata, itemName, item, blacklist);
+            return !blacklistMatch;
+        }
+
+        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
+        {
+            return ContainsAnyMetadataIdentifier(metadataPath, itemName, null, identifiers);
+        }
+
+        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, IReadOnlyList<string> identifiers)
+        {
+            if (identifiers == null || identifiers.Count == 0)
                 return false;
+
+            metadataPath ??= string.Empty;
+            itemName ??= string.Empty;
+
+            for (int i = 0; i < identifiers.Count; i++)
+            {
+                string identifier = identifiers[i] ?? string.Empty;
+                if (identifier.Length == 0)
+                    continue;
+
+                if (identifier.StartsWith("name:", StringComparison.OrdinalIgnoreCase))
+                {
+                    string nameFragment = identifier.Substring("name:".Length).Trim();
+                    if (!string.IsNullOrEmpty(itemName)
+                        && !string.IsNullOrEmpty(nameFragment)
+                        && itemName.IndexOf(nameFragment, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+
+                    continue;
+                }
+
+                if (identifier.StartsWith("special:", StringComparison.OrdinalIgnoreCase))
+                {
+                    string specialRule = identifier.Substring("special:".Length).Trim();
+                    if (specialRule.Equals("unique-items", StringComparison.OrdinalIgnoreCase)
+                        && item != null
+                        && IsUniqueItem(item))
+                        return true;
+
+                    if (specialRule.Equals("heist-quest-contract", StringComparison.OrdinalIgnoreCase)
+                        && IsHeistQuestContract(itemName))
+                        return true;
+
+                    if (specialRule.Equals("heist-non-quest-contract", StringComparison.OrdinalIgnoreCase)
+                        && IsHeistNonQuestContract(itemName))
+                        return true;
+
+                    if (specialRule.Equals("inscribed-ultimatum", StringComparison.OrdinalIgnoreCase)
+                        && ((item != null && IsInscribedUltimatum(item))
+                            || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0))
+                        return true;
+
+                    continue;
+                }
+
+                if (metadataPath.IndexOf(identifier, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+
+                if (identifier.StartsWith("Items/", StringComparison.OrdinalIgnoreCase)
+                    && metadataPath.IndexOf("Metadata/" + identifier, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
             }
 
-            // If the user enabled only-pickup-currency, ensure the item is stackable currency
-            if (onlyPickupCurrencyItems && !IsStackableCurrency(item, gameController))
+            return false;
+        }
+
+        private static bool IsUniqueItem(Entity item)
+        {
+            try
+            {
+                WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                Entity? itemEntity = worldItemComp?.ItemEntity;
+                Mods? mods = itemEntity?.GetComponent<Mods>();
+                return mods?.ItemRarity == ItemRarity.Unique
+                    && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/", StringComparison.OrdinalIgnoreCase) ?? false);
+            }
+            catch
             {
                 return false;
             }
-            return true;
+        }
+
+        private static bool IsHeistQuestContract(string itemName)
+        {
+            return !string.IsNullOrWhiteSpace(itemName)
+                && Constants.Constants.HeistQuestContractNames.Contains(itemName);
+        }
+
+        private static bool IsHeistNonQuestContract(string itemName)
+        {
+            return !string.IsNullOrWhiteSpace(itemName)
+                && itemName.StartsWith("Contract:", StringComparison.OrdinalIgnoreCase)
+                && !Constants.Constants.HeistQuestContractNames.Contains(itemName);
+        }
+
+        private static bool IsInscribedUltimatum(Entity item)
+        {
+            try
+            {
+                WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                Entity? itemEntity = worldItemComp?.ItemEntity;
+                return itemEntity?.Path?.Contains("ItemisedTrial", StringComparison.OrdinalIgnoreCase) == true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string GetWorldItemMetadataPath(Entity item)
+        {
+            try
+            {
+                WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                Entity? itemEntity = worldItemComp?.ItemEntity;
+                if (itemEntity == null)
+                    return string.Empty;
+
+                var metadataProperty = itemEntity.GetType().GetProperty("Metadata", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                if (metadataProperty?.GetValue(itemEntity) is string metadata && !string.IsNullOrWhiteSpace(metadata))
+                    return metadata;
+
+                return itemEntity.Path ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string GetWorldItemBaseName(Entity item)
+        {
+            try
+            {
+                WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                Entity? itemEntity = worldItemComp?.ItemEntity;
+                string? itemName = itemEntity?.GetComponent<Base>()?.Name;
+                return itemName ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         // Overload to check stackable currency directly from an Entity (when label isn't available)

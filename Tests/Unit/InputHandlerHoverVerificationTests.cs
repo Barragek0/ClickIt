@@ -10,23 +10,23 @@ namespace ClickIt.Tests.Unit
         [DataTestMethod]
         [DataRow(false, false, 100UL, 0UL, false)]
         [DataRow(false, false, 100UL, 200UL, false)]
-        [DataRow(true, false, 100UL, 100UL, false)]
-        [DataRow(true, false, 100UL, 200UL, true)]
-        [DataRow(true, false, 100UL, 0UL, true)]
         [DataRow(false, true, 100UL, 100UL, false)]
         [DataRow(false, true, 100UL, 200UL, true)]
         [DataRow(false, true, 100UL, 0UL, true)]
         [DataRow(false, true, 0UL, 0UL, false)]
+        [DataRow(true, false, 100UL, 100UL, false)]
+        [DataRow(true, false, 100UL, 200UL, true)]
+        [DataRow(true, false, 100UL, 0UL, true)]
         public void ShouldSkipClickDueToHoverMismatch_ReturnsExpectedResult(
             bool lazyModeEnabled,
-            bool toggleItemsEnabled,
+            bool verifyUiHoverWhenNotLazy,
             ulong expectedAddress,
             ulong hoverAddress,
             bool expected)
         {
             bool result = InputHandler.ShouldSkipClickDueToHoverMismatch(
                 lazyModeEnabled,
-                toggleItemsEnabled,
+                verifyUiHoverWhenNotLazy,
                 expectedAddress,
                 hoverAddress);
 

@@ -67,5 +67,23 @@ namespace ClickIt.Services
             }
             return false;
         }
+
+        internal static bool MatchesMetadataFiltersForTests(string metadataPath, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)
+        {
+            return MatchesMetadataFiltersForTests(metadataPath, string.Empty, whitelist, blacklist);
+        }
+
+        internal static bool MatchesMetadataFiltersForTests(string metadataPath, string itemName, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)
+        {
+            whitelist ??= Array.Empty<string>();
+            blacklist ??= Array.Empty<string>();
+
+            bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, whitelist);
+            if (!whitelistPass)
+                return false;
+
+            bool blacklistMatch = blacklist.Count > 0 && ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, blacklist);
+            return !blacklistMatch;
+        }
     }
 }

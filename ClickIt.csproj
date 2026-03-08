@@ -91,6 +91,7 @@
     <!-- Constants -->
     <Compile Include="Constants\AltarModsConstants.cs" />
     <Compile Include="Constants\Constants.cs" />
+    <Compile Include="Constants\ItemCategoryCatalog.cs" />
 
     <!-- Components -->
     <Compile Include="Components\AltarButton.cs" />

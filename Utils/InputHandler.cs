@@ -238,11 +238,11 @@ namespace ClickIt.Utils
             var uiHover = gameController?.IngameState?.UIHoverElement;
 
             bool lazyModeEnabled = _settings?.LazyMode?.Value == true;
-            bool toggleItemsEnabled = _settings?.ToggleItems?.Value == true;
+            bool verifyUiHoverWhenNotLazy = _settings?.VerifyUIHoverWhenNotLazy?.Value != false;
             ulong expectedAddress = unchecked((ulong)(expectedElement?.Address ?? 0));
             ulong hoverAddress = unchecked((ulong)(uiHover?.Address ?? 0));
 
-            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, toggleItemsEnabled, expectedAddress, hoverAddress))
+            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress))
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification failed for current mode. Skipping click.", 5);
                 RestoreCursorIfLazyMode(before);
@@ -274,11 +274,12 @@ namespace ClickIt.Utils
 
         public static bool ShouldSkipClickDueToHoverMismatch(
             bool lazyModeEnabled,
-            bool toggleItemsEnabled,
+            bool verifyUiHoverWhenNotLazy,
             ulong expectedAddress,
             ulong hoverAddress)
         {
-            bool strictHoverVerification = lazyModeEnabled || toggleItemsEnabled;
+            // Lazy mode always requires strict UIHover verification for safety.
+            bool strictHoverVerification = lazyModeEnabled || verifyUiHoverWhenNotLazy;
             if (!strictHoverVerification)
                 return false;
 

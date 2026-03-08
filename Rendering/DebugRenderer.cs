@@ -1,8 +1,10 @@
 ﻿using ExileCore;
 using ExileCore.Shared.Cache;
 using ExileCore.PoEMemory.Elements;
+using ExileCore.PoEMemory.Components;
 using SharpDX;
 using Color = SharpDX.Color;
+using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics;
 using ClickIt.Components;
 using System.Reflection;
@@ -67,7 +69,7 @@ namespace ClickIt.Rendering
             // avoid doing any work if nothing to render
             if (!settings.DebugShowStatus && !settings.DebugShowGameState && !settings.DebugShowPerformance &&
                 !settings.DebugShowClickFrequencyTarget && !settings.DebugShowAltarDetection && !settings.DebugShowAltarService &&
-                !settings.DebugShowLabels && !settings.DebugShowRecentErrors)
+                !settings.DebugShowLabels && !settings.DebugShowHoveredItemMetadata && !settings.DebugShowRecentErrors)
             {
                 return;
             }
@@ -115,6 +117,11 @@ namespace ClickIt.Rendering
             if (settings.DebugShowLabels)
             {
                 yPos = RenderLabelsDebug(col2X, yPos, lineHeight);
+                yPos += lineHeight;
+            }
+            if (settings.DebugShowHoveredItemMetadata)
+            {
+                yPos = RenderHoveredItemMetadataDebug(col2X, yPos, lineHeight);
                 yPos += lineHeight;
             }
             if (settings.DebugShowRecentErrors)
@@ -445,6 +452,101 @@ namespace ClickIt.Rendering
             }
             return yPos;
         }
+
+        public int RenderHoveredItemMetadataDebug(int xPos, int yPos, int lineHeight)
+        {
+            _deferredTextQueue.Enqueue("--- Hovered Item Metadata ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+
+            var gameController = _plugin.GameController;
+            var labels = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+            if (labels == null || labels.Count == 0)
+            {
+                _deferredTextQueue.Enqueue("No ground labels available", new Vector2(xPos, yPos), Color.Gray, 16);
+                return yPos + lineHeight;
+            }
+
+            RectangleF winRect = gameController?.Window.GetWindowRectangleTimeCache ?? RectangleF.Empty;
+            var cursorPos = Mouse.GetCursorPosition();
+
+            LabelOnGround? hovered = null;
+            float bestDistance = float.MaxValue;
+
+            for (int i = 0; i < labels.Count; i++)
+            {
+                var label = labels[i];
+                if (label?.Label?.IsValid != true)
+                    continue;
+
+                object? rectObj = label.Label.GetClientRect();
+                if (rectObj is not RectangleF labelRect)
+                    continue;
+
+                var screenRect = new RectangleF(
+                    labelRect.X + winRect.X,
+                    labelRect.Y + winRect.Y,
+                    labelRect.Width,
+                    labelRect.Height);
+
+                if (!IsPointInRect(cursorPos.X, cursorPos.Y, screenRect))
+                    continue;
+
+                float dist = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;
+                if (dist < bestDistance)
+                {
+                    hovered = label;
+                    bestDistance = dist;
+                }
+            }
+
+            if (hovered == null)
+            {
+                _deferredTextQueue.Enqueue("Hover a ground-item label to inspect metadata", new Vector2(xPos, yPos), Color.Gray, 16);
+                return yPos + lineHeight;
+            }
+
+            string name = hovered.ItemOnGround?.RenderName ?? "<unknown>";
+            string entityPath = hovered.ItemOnGround?.Path ?? string.Empty;
+            string metadata = ResolveHoveredItemMetadataPath(hovered);
+
+            _deferredTextQueue.Enqueue($"Name: {name}", new Vector2(xPos, yPos), Color.LightGreen, 16);
+            yPos += lineHeight;
+            yPos = RenderWrappedText($"Entity Path: {entityPath}", new Vector2(xPos, yPos), Color.White, 14, lineHeight, 60);
+            yPos = RenderWrappedText($"Item Metadata: {metadata}", new Vector2(xPos, yPos), Color.Cyan, 14, lineHeight, 60);
+
+            return yPos;
+        }
+
+        private static bool IsPointInRect(int x, int y, RectangleF rect)
+        {
+            return x >= rect.Left && x <= rect.Right && y >= rect.Top && y <= rect.Bottom;
+        }
+
+        private static string ResolveHoveredItemMetadataPath(LabelOnGround label)
+        {
+            try
+            {
+                var item = label.ItemOnGround;
+                if (item == null)
+                    return "<missing item>";
+
+                WorldItem? world = item.GetComponent<WorldItem>();
+                var itemEntity = world?.ItemEntity;
+                if (itemEntity == null)
+                    return "<missing WorldItem.ItemEntity>";
+
+                var metadataProp = itemEntity.GetType().GetProperty("Metadata", BindingFlags.Instance | BindingFlags.Public);
+                if (metadataProp?.GetValue(itemEntity) is string metadata && !string.IsNullOrWhiteSpace(metadata))
+                    return metadata;
+
+                return itemEntity.Path ?? "<missing metadata/path>";
+            }
+            catch (Exception ex)
+            {
+                return $"<error: {ex.GetType().Name}>";
+            }
+        }
+
         public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
             _deferredTextQueue.Enqueue($"--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
