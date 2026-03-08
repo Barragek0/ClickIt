@@ -705,6 +705,11 @@ namespace ClickIt
 
             if (!TryGetSubtypeDefinitions(categoryId, out ItemSubtypeDefinition[] subtypeDefinitions))
             {
+                if (includeOppositeSubtypeSelections)
+                {
+                    return Array.Empty<string>();
+                }
+
                 return category.MetadataIdentifiers;
             }
 

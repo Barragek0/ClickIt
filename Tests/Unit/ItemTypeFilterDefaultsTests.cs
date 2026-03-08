@@ -45,6 +45,8 @@ namespace ClickIt.Tests.Unit
 
             blacklistMetadata.Should().Contain(x => x.Contains("Items/Armours/"));
             blacklistMetadata.Should().Contain(x => x.Contains("Items/Weapons/"));
+            blacklistMetadata.Should().NotContain(x => x.Equals("Items/Currency/", StringComparison.OrdinalIgnoreCase));
+            whitelistMetadata.Should().NotContain(x => x.Equals("Items/Armours/", StringComparison.OrdinalIgnoreCase));
         }
 
         [TestMethod]
