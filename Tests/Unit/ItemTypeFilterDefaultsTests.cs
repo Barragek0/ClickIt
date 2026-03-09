@@ -19,11 +19,12 @@ namespace ClickIt.Tests.Unit
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("inscribed-ultimatums");
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("scarabs");
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("heist-contracts");
-            ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("heist-quest-contracts");
+            ItemCategoryCatalog.DefaultWhitelistIds.Should().NotContain("heist-quest-contracts");
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("maps");
 
             ItemCategoryCatalog.DefaultBlacklistIds.Should().Contain("armour");
             ItemCategoryCatalog.DefaultBlacklistIds.Should().Contain("weapons");
+            ItemCategoryCatalog.DefaultBlacklistIds.Should().Contain("heist-quest-contracts");
             ItemCategoryCatalog.DefaultBlacklistIds.Should().Contain("gold");
         }
 
@@ -41,7 +42,9 @@ namespace ClickIt.Tests.Unit
             whitelistMetadata.Should().Contain(x => x.Contains("Items/Scarabs/"));
             whitelistMetadata.Should().Contain(x => x.Contains("Items/Currency/Scarabs/"));
             whitelistMetadata.Should().Contain(x => x.Equals("special:heist-non-quest-contract", StringComparison.OrdinalIgnoreCase));
-            whitelistMetadata.Should().Contain(x => x.Equals("special:heist-quest-contract", StringComparison.OrdinalIgnoreCase));
+            whitelistMetadata.Should().NotContain(x => x.Equals("special:heist-quest-contract", StringComparison.OrdinalIgnoreCase));
+
+            blacklistMetadata.Should().Contain(x => x.Equals("special:heist-quest-contract", StringComparison.OrdinalIgnoreCase));
 
             blacklistMetadata.Should().Contain(x => x.Contains("Items/Armours/"));
             blacklistMetadata.Should().Contain(x => x.Contains("Items/Weapons/"));
