@@ -7,7 +7,7 @@ namespace ClickIt.Tests.Unit
     public class LabelFilterServiceSpecialPathAdditionalTests
     {
         private static object CreateClickSettingsStub(bool nearestHarvest = false, bool clickSulphite = false, bool clickDelveSpawners = false,
-            bool strongboxes = false, bool clickSanctum = false, bool clickBreach = false, bool clickSettlers = false)
+            bool strongboxes = false, bool clickSanctum = false, bool clickBreach = false, bool clickSettlers = false, bool clickUltimatum = false)
         {
             var type = typeof(Services.LabelFilterService);
             var ksType = type.GetNestedType("ClickSettings", System.Reflection.BindingFlags.NonPublic)!;
@@ -27,6 +27,7 @@ namespace ClickIt.Tests.Unit
             Set("ClickSanctum", clickSanctum);
             Set("ClickBreach", clickBreach);
             Set("ClickSettlersOre", clickSettlers);
+            Set("ClickUltimatum", clickUltimatum);
 
             return inst!;
         }
@@ -55,6 +56,10 @@ namespace ClickIt.Tests.Unit
             var settings5 = CreateClickSettingsStub(clickSanctum: true);
             bool r5 = (bool)mi.Invoke(null, new object[] { settings5, "Sanctum/step", null })!;
             r5.Should().BeTrue();
+
+            var settings6 = CreateClickSettingsStub(clickUltimatum: true);
+            bool r6 = (bool)mi.Invoke(null, new object[] { settings6, "Metadata/Terrain/Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", null })!;
+            r6.Should().BeTrue();
         }
     }
 }

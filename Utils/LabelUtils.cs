@@ -151,6 +151,7 @@ namespace ClickIt.Utils
                    path.Contains("Sanctum") ||
                    path.Contains("BetrayalMakeChoice") ||
                    path.Contains("BlightPump") ||
+                   path.Contains("Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("Leagues/Ritual");
         }

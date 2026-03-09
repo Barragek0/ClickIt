@@ -35,6 +35,7 @@ namespace ClickIt.Tests.Unit
                 "Sanctum",
                 "BetrayalMakeChoice",
                 "BlightPump",
+                "Leagues/Ultimatum/Objects/UltimatumChallengeInteractable",
                 "Leagues/Ritual"
             };
 

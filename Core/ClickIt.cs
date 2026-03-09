@@ -42,6 +42,7 @@ namespace ClickIt
             State.InputHandler = null;
             State.DebugRenderer = null;
             State.StrongboxRenderer = null;
+            State.UltimatumRenderer = null;
             State.LazyModeRenderer = null;
             State.DeferredTextQueue = null;
             State.DeferredFrameQueue = null;
@@ -85,6 +86,7 @@ namespace ClickIt
             State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, LogMessage);
             LockManager.Instance = new LockManager(Settings);
             State.ClickService = new Services.ClickService(Settings, GameController, State.ErrorHandler, State.AltarService, weightCalculator, State.AltarDisplayRenderer, PointIsInClickableArea, State.InputHandler, labelFilterService, new Func<bool>(State.LabelService.GroundItemsVisible), State.CachedLabels, State.PerformanceMonitor);
+            State.UltimatumRenderer = new Rendering.UltimatumRenderer(Settings, State.ClickService, State.DeferredFrameQueue);
             State.PerformanceMonitor.Start();
 
             var coroutineManager = new CoroutineManager(

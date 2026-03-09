@@ -41,6 +41,8 @@ namespace ClickIt
                 State.AltarDisplayRenderer?.RenderAltarComponents();
             }
 
+            State.UltimatumRenderer?.Render();
+
             State.StrongboxRenderer?.Render(GameController, State);
 
             State.PerformanceMonitor?.StopRenderTiming();

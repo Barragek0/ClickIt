@@ -89,7 +89,7 @@ namespace ClickIt.Utils
                 !gameController.IngameState.IngameUi.AtlasPanel.IsVisible &&
                 !gameController.IngameState.IngameUi.AtlasTreePanel.IsVisible &&
                 !gameController.IngameState.IngameUi.TreePanel.IsVisible &&
-                !gameController.IngameState.IngameUi.UltimatumPanel.IsVisible &&
+                (!gameController.IngameState.IngameUi.UltimatumPanel.IsVisible || _settings.ClickUltimatum.Value) &&
                 !gameController.IngameState.IngameUi.BetrayalWindow.IsVisible &&
                 !gameController.IngameState.IngameUi.SyndicatePanel.IsVisible &&
                 !gameController.IngameState.IngameUi.SyndicateTree.IsVisible &&
@@ -125,7 +125,7 @@ namespace ClickIt.Utils
                 (uiState?.AtlasPanel?.IsVisible == true, "Atlas panel is open."),
                 (uiState?.AtlasTreePanel?.IsVisible == true, "Atlas tree panel is open."),
                 (uiState?.TreePanel?.IsVisible == true, "Passive tree panel is open."),
-                (uiState?.UltimatumPanel?.IsVisible == true, "Ultimatum panel is open."),
+                (uiState?.UltimatumPanel?.IsVisible == true && _settings.ClickUltimatum.Value == false, "Ultimatum panel is open (ClickUltimatum is disabled)."),
                 (uiState?.BetrayalWindow?.IsVisible == true, "Betrayal window is open."),
                 (uiState?.SyndicatePanel?.IsVisible == true, "Syndicate panel is open."),
                 (uiState?.SyndicateTree?.IsVisible == true, "Syndicate tree panel is open."),

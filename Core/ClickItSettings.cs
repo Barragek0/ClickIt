@@ -274,6 +274,20 @@ namespace ClickIt
         public HashSet<string> EssenceCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         public HashSet<string> EssenceDontCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // ----- Ultimatum -----
+        [Menu("Ultimatum", 2350)]
+        public EmptyNode Ultimatum { get; set; } = new EmptyNode();
+        [Menu("Click Ultimatum", "Click and select Ultimatum modifier options by configured priority.", 1, 2350)]
+        public ToggleNode ClickUltimatum { get; set; } = new ToggleNode(false);
+        [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 2, 2350)]
+        public ToggleNode ShowUltimatumOptionOverlay { get; set; } = new ToggleNode(true);
+        [Menu("Modifier Priority Table", "", 3, 2350)]
+        [JsonIgnore]
+        public CustomNode UltimatumModifierTablePanel { get; }
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public List<string> UltimatumModifierPriority { get; set; } = new();
+
         // ----- Ritual -----
         [Menu("Ritual", 2300)]
         public EmptyNode Ritual { get; set; } = new EmptyNode();
@@ -374,12 +388,14 @@ namespace ClickIt
         private string downsideSearchFilter = "";
         private string itemTypeSearchFilter = "";
         private string essenceSearchFilter = "";
+        private string ultimatumSearchFilter = "";
         private string _lastSettingsUiError = string.Empty;
         public ClickItSettings()
         {
             InitializeDefaultWeights();
             EnsureItemTypeFiltersInitialized();
             EnsureEssenceCorruptionFiltersInitialized();
+            EnsureUltimatumModifiersInitialized();
             DebugTestingPanel = new CustomNode
             {
                 DrawDelegate = () => DrawPanelSafe("DebugTestingPanel", DrawDebugTestingPanel)
@@ -399,6 +415,10 @@ namespace ClickIt
             EssenceCorruptionTablePanel = new CustomNode
             {
                 DrawDelegate = () => DrawPanelSafe("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel)
+            };
+            UltimatumModifierTablePanel = new CustomNode
+            {
+                DrawDelegate = () => DrawPanelSafe("UltimatumModifierTablePanel", DrawUltimatumModifierTablePanel)
             };
         }
 
@@ -757,6 +777,140 @@ namespace ClickIt
                 .ToArray();
         }
 
+        public IReadOnlyList<string> GetUltimatumModifierPriority()
+        {
+            EnsureUltimatumModifiersInitialized();
+            return UltimatumModifierPriority.ToArray();
+        }
+
+        private void DrawUltimatumModifierTablePanel()
+        {
+            EnsureUltimatumModifiersInitialized();
+
+            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
+            bool sectionOpen = ImGui.TreeNode("Modifier Priorities");
+            DrawInlineTooltip("Top rows are preferred first. Example: if the options are Resistant Monsters, Reduced Recovery, and Ruin, the plugin picks whichever appears highest in this table.");
+            if (!sectionOpen)
+                return;
+
+            try
+            {
+                DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref ultimatumSearchFilter);
+
+                ImGui.SameLine();
+                if (ImGui.Button("Reset Defaults##UltimatumResetDefaults"))
+                {
+                    UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
+                }
+
+                ImGui.Spacing();
+
+                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Priority: top row is highest, bottom row is lowest.");
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
+                ImGui.TextWrapped("Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.");
+                ImGui.PopStyleColor();
+                ImGui.Spacing();
+
+                float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
+                if (!ImGui.BeginTable("UltimatumModifierPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
+                    return;
+
+                try
+                {
+                    ImGui.TableSetupColumn("Modifiers", ImGuiTableColumnFlags.WidthFixed, tableWidth);
+
+                    ImGui.TableNextRow(ImGuiTableRowFlags.None);
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.6f, 0.3f)));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Modifiers");
+
+                    for (int i = 0; i < UltimatumModifierPriority.Count; i++)
+                    {
+                        string modifier = UltimatumModifierPriority[i];
+                        if (!MatchesUltimatumSearch(modifier, ultimatumSearchFilter))
+                            continue;
+
+                        ImGui.TableNextRow();
+                        ImGui.TableSetColumnIndex(0);
+
+                        Vector4 priorityColor = GetUltimatumPriorityRowColor(i, UltimatumModifierPriority.Count);
+                        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(priorityColor));
+
+                        if (DrawUltimatumArrowButton(ImGuiDir.Up, $"UltimatumUp_{i}", enabled: i > 0))
+                        {
+                            (UltimatumModifierPriority[i], UltimatumModifierPriority[i - 1]) = (UltimatumModifierPriority[i - 1], UltimatumModifierPriority[i]);
+                            continue;
+                        }
+
+                        ImGui.SameLine();
+
+                        if (DrawUltimatumArrowButton(ImGuiDir.Down, $"UltimatumDown_{i}", enabled: i < UltimatumModifierPriority.Count - 1))
+                        {
+                            (UltimatumModifierPriority[i], UltimatumModifierPriority[i + 1]) = (UltimatumModifierPriority[i + 1], UltimatumModifierPriority[i]);
+                            continue;
+                        }
+
+                        ImGui.SameLine();
+                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.95f, 0.95f, 1f));
+                        ImGui.Selectable($"{modifier}##UltimatumModifier_{i}", false, ImGuiSelectableFlags.None, new Vector2(0, 0));
+                        ImGui.PopStyleColor();
+
+                        if (ImGui.IsItemHovered())
+                        {
+                            string description = UltimatumModifiersConstants.GetDescription(modifier);
+                            if (!string.IsNullOrWhiteSpace(description))
+                            {
+                                ImGui.TableNextRow();
+                                ImGui.TableSetColumnIndex(0);
+                                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
+                                ImGui.TextWrapped(description);
+                                ImGui.PopStyleColor();
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    ImGui.EndTable();
+                }
+            }
+            finally
+            {
+                ImGui.TreePop();
+            }
+        }
+
+        private static bool MatchesUltimatumSearch(string modifier, string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+                return true;
+
+            return modifier.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static Vector4 GetUltimatumPriorityRowColor(int index, int totalCount)
+        {
+            return UltimatumModifiersConstants.GetPriorityGradientColor(index, totalCount, 0.30f);
+        }
+
+        private static bool DrawUltimatumArrowButton(ImGuiDir direction, string id, bool enabled)
+        {
+            if (!enabled)
+            {
+                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, ImGui.GetStyle().Alpha * 0.5f);
+            }
+
+            bool clicked = ImGui.ArrowButton(id, direction);
+
+            if (!enabled)
+            {
+                ImGui.PopStyleVar();
+                return false;
+            }
+
+            return clicked;
+        }
+
         private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)
         {
             if (!TryGetSubtypeDefinitions(category.Id, out ItemSubtypeDefinition[] subtypeDefinitions))
@@ -1029,6 +1183,41 @@ namespace ClickIt
                     EssenceDontCorruptNames.Add(essenceName);
                 }
             }
+        }
+
+        private void EnsureUltimatumModifiersInitialized()
+        {
+            UltimatumModifierPriority ??= new List<string>();
+
+            if (UltimatumModifierPriority.Count == 0)
+            {
+                UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
+                return;
+            }
+
+            HashSet<string> valid = new(UltimatumModifiersConstants.AllModifierNames, StringComparer.OrdinalIgnoreCase);
+            HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+
+            var sanitized = new List<string>(UltimatumModifierPriority.Count);
+            foreach (string modifier in UltimatumModifierPriority)
+            {
+                if (string.IsNullOrWhiteSpace(modifier))
+                    continue;
+                if (!valid.Contains(modifier))
+                    continue;
+                if (!seen.Add(modifier))
+                    continue;
+
+                sanitized.Add(modifier);
+            }
+
+            foreach (string modifier in UltimatumModifiersConstants.AllModifierNames)
+            {
+                if (seen.Add(modifier))
+                    sanitized.Add(modifier);
+            }
+
+            UltimatumModifierPriority = sanitized;
         }
 
         private void DrawExarchSection()

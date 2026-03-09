@@ -165,6 +165,7 @@ namespace ClickIt.Services
                 ClickLegionPillars = s.ClickLegionPillars.Value,
                 ClickRitualInitiate = s.ClickRitualInitiate.Value,
                 ClickRitualCompleted = s.ClickRitualCompleted.Value,
+                ClickUltimatum = s.ClickUltimatum.Value,
             };
         }
         private struct ClickSettings
@@ -185,6 +186,7 @@ namespace ClickIt.Services
             public bool ClickLegionPillars { get; set; }
             public bool ClickRitualInitiate { get; set; }
             public bool ClickRitualCompleted { get; set; }
+            public bool ClickUltimatum { get; set; }
             public bool ClickAzurite { get; set; }
             public bool ClickDelveSpawners { get; set; }
             public bool HighlightEater { get; set; }
@@ -507,6 +509,7 @@ namespace ClickIt.Services
                 (settings.ClickAlvaTempleDoors, p => p.Contains(ClosedDoorPast)),
                 (settings.ClickLegionPillars, p => p.Contains(LegionInitiator)),
                 (settings.ClickAzurite, p => p.Contains("AzuriteEncounterController")),
+                (settings.ClickUltimatum, p => IsUltimatumPath(p)),
                 (settings.ClickDelveSpawners, p => p.Contains("Delve/Objects/Encounter")),
                 (settings.ClickCrafting, p => p.Contains("CraftingUnlocks")),
                 (settings.ClickBreach, p => p.Contains(Brequel)),
@@ -526,6 +529,10 @@ namespace ClickIt.Services
 
         private static bool IsHarvestPath(string path) => path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor");
         private static bool IsSettlersOrePath(string path) => path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth);
+        private static bool IsUltimatumPath(string path)
+        {
+            return path.Contains("Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", StringComparison.OrdinalIgnoreCase);
+        }
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {
             if (string.IsNullOrEmpty(path))

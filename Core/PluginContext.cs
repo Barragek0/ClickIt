@@ -29,6 +29,7 @@ namespace ClickIt
         public Utils.InputHandler? InputHandler { get; set; }
         public Rendering.DebugRenderer? DebugRenderer { get; set; }
         public Rendering.StrongboxRenderer? StrongboxRenderer { get; set; }
+        public Rendering.UltimatumRenderer? UltimatumRenderer { get; set; }
         public Rendering.LazyModeRenderer? LazyModeRenderer { get; set; }
         public Rendering.AltarDisplayRenderer? AltarDisplayRenderer { get; set; }
         public Utils.DeferredTextQueue? DeferredTextQueue { get; set; }

@@ -16,7 +16,7 @@ using ExileCore.PoEMemory.Elements;
 namespace ClickIt.Services
 {
 
-    public class ClickService(
+    public partial class ClickService(
         ClickItSettings settings,
         GameController gameController,
         ErrorHandler errorHandler,
@@ -295,6 +295,13 @@ namespace ClickIt.Services
             // No clickable altars, check for shrines
             // Note: We can't access shrineService here, so this check is done in CoroutineManager
 
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+
+            // Handle the dedicated Ultimatum panel UI (post-round choices) before ground-label logic.
+            if (TryHandleUltimatumPanelUi(windowTopLeft))
+                yield break;
+
             // No altars, proceed with item clicking
             if (!groundItemsVisible())
             {
@@ -304,9 +311,6 @@ namespace ClickIt.Services
 
             var allLabels = cachedLabels?.Value;
             LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
-
-            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
 
             // For essences: use the game's UIHoverElement as the authoritative front-most target.
             // If the player's current UIHover element corresponds to a visible label, prefer it
@@ -341,6 +345,16 @@ namespace ClickIt.Services
 
             if (TryCorruptEssence(nextLabel, windowTopLeft))
                 yield break;
+
+            bool isUltimatumLabel = IsUltimatumLabel(nextLabel);
+            if (settings.ClickUltimatum.Value && isUltimatumLabel)
+            {
+                if (TryClickPreferredUltimatumModifier(nextLabel, windowTopLeft))
+                    yield break;
+
+                DebugLog(() => "[ProcessRegularClick] Ultimatum label detected but no preferred modifier matched; skipping generic label click");
+                yield break;
+            }
 
             Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
             bool clicked = PerformLabelClick(clickPos, nextLabel.Label, gameController);
@@ -377,7 +391,7 @@ namespace ClickIt.Services
                     if (label == null)
                         break;
 
-                    if (!ShouldSuppressLeverClick(label))
+                    if (!ShouldSuppressLeverClick(label) && !ShouldSuppressInactiveUltimatumLabel(label))
                         return label;
 
                     int idx = IndexOfLabelReference(allLabels, label, start, limit);
@@ -396,7 +410,7 @@ namespace ClickIt.Services
                 if (label == null)
                     return null;
 
-                if (!ShouldSuppressLeverClick(label))
+                if (!ShouldSuppressLeverClick(label) && !ShouldSuppressInactiveUltimatumLabel(label))
                     return label;
 
                 int idx = IndexOfLabelReference(allLabels, label, fullStart, allLabels.Count);

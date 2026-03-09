@@ -92,6 +92,7 @@
     <Compile Include="Constants\AltarModsConstants.cs" />
     <Compile Include="Constants\Constants.cs" />
     <Compile Include="Constants\ItemCategoryCatalog.cs" />
+    <Compile Include="Constants\UltimatumModifiersConstants.cs" />
 
     <!-- Components -->
     <Compile Include="Components\AltarButton.cs" />
@@ -115,6 +116,7 @@
     <Compile Include="Services\AltarService.Seams.cs" />
     <Compile Include="Services\AreaService.cs" />
     <Compile Include="Services\ClickService.cs" />
+    <Compile Include="Services\ClickService.Ultimatum.cs" />
     <Compile Include="Services\ClickService.Seams.cs" />
     <Compile Include="Services\ElementAdapter.cs" />
     <Compile Include="Services\EssenceService.cs" />
@@ -129,6 +131,7 @@
     <Compile Include="Rendering\DebugRenderer.cs" />
     <Compile Include="Rendering\LazyModeRenderer.cs" />
     <Compile Include="Rendering\StrongboxRenderer.cs" />
+    <Compile Include="Rendering\UltimatumRenderer.cs" />
 
     <!-- Utils -->
     <Compile Include="Utils\AltarModMatcher.cs" />
