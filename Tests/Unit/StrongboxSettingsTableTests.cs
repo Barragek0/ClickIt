@@ -16,6 +16,7 @@ namespace ClickIt.Tests.Unit
             clickMetadata.Should().Contain("StrongBoxes/Arcanist");
             clickMetadata.Should().Contain("StrongBoxes/Strongbox");
             clickMetadata.Should().Contain("StrongBoxes/Ornate");
+            clickMetadata.Should().Contain("StrongBoxes/Operative");
         }
 
         [TestMethod]
@@ -44,6 +45,23 @@ namespace ClickIt.Tests.Unit
 
             clickMetadata.Should().Contain("StrongBoxes/Arcanist");
             dontClickMetadata.Should().NotContain("StrongBoxes/Arcanist");
+        }
+
+        [TestMethod]
+        public void StrongboxFilters_EnsureInitialization_RemovesUnknownIds()
+        {
+            var settings = new ClickItSettings
+            {
+                StrongboxClickIds = new System.Collections.Generic.HashSet<string>(new[] { "arcanist", "not-a-real-id" }, System.StringComparer.OrdinalIgnoreCase),
+                StrongboxDontClickIds = new System.Collections.Generic.HashSet<string>(new[] { "another-bad-id" }, System.StringComparer.OrdinalIgnoreCase)
+            };
+
+            var clickMetadata = settings.GetStrongboxClickMetadataIdentifiers();
+            var dontClickMetadata = settings.GetStrongboxDontClickMetadataIdentifiers();
+
+            clickMetadata.Should().Contain("StrongBoxes/Arcanist");
+            clickMetadata.Should().NotContain(x => x.Contains("not-a-real-id", System.StringComparison.OrdinalIgnoreCase));
+            dontClickMetadata.Should().NotContain(x => x.Contains("another-bad-id", System.StringComparison.OrdinalIgnoreCase));
         }
     }
 }
