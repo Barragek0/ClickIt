@@ -147,17 +147,8 @@ namespace ClickIt.Services
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
-                RegularStrongbox = s.RegularStrongbox.Value,
-                ArcanistStrongbox = s.ArcanistStrongbox.Value,
-                ArmourerStrongbox = s.ArmourerStrongbox.Value,
-                ArtisanStrongbox = s.ArtisanStrongbox.Value,
-                BlacksmithStrongbox = s.BlacksmithStrongbox.Value,
-                CartographerStrongbox = s.CartographerStrongbox.Value,
-                DivinerStrongbox = s.DivinerStrongbox.Value,
-                GemcutterStrongbox = s.GemcutterStrongbox.Value,
-                JewellerStrongbox = s.JewellerStrongbox.Value,
-                LargeStrongbox = s.LargeStrongbox.Value,
-                OrnateStrongbox = s.OrnateStrongbox.Value,
+                StrongboxClickMetadata = s.GetStrongboxClickMetadataIdentifiers(),
+                StrongboxDontClickMetadata = s.GetStrongboxDontClickMetadataIdentifiers(),
                 ClickSanctum = s.ClickSanctum.Value,
                 ClickBetrayal = s.ClickBetrayal.Value,
                 ClickBlight = s.ClickBlight.Value,
@@ -197,17 +188,8 @@ namespace ClickIt.Services
             public bool ClickCrafting { get; set; }
             public bool ClickBreach { get; set; }
             public bool ClickSettlersOre { get; set; }
-            public bool RegularStrongbox { get; set; }
-            public bool ArcanistStrongbox { get; set; }
-            public bool ArmourerStrongbox { get; set; }
-            public bool ArtisanStrongbox { get; set; }
-            public bool BlacksmithStrongbox { get; set; }
-            public bool CartographerStrongbox { get; set; }
-            public bool DivinerStrongbox { get; set; }
-            public bool GemcutterStrongbox { get; set; }
-            public bool JewellerStrongbox { get; set; }
-            public bool LargeStrongbox { get; set; }
-            public bool OrnateStrongbox { get; set; }
+            public IReadOnlyList<string> StrongboxClickMetadata { get; set; }
+            public IReadOnlyList<string> StrongboxDontClickMetadata { get; set; }
             public bool ClickSanctum { get; set; }
             public bool ClickBetrayal { get; set; }
         }
@@ -493,10 +475,7 @@ namespace ClickIt.Services
         {
             if (string.IsNullOrEmpty(path)) return false;
 
-            bool strongboxesEnabled = settings.RegularStrongbox || settings.ArcanistStrongbox || settings.ArmourerStrongbox ||
-                                     settings.ArtisanStrongbox || settings.BlacksmithStrongbox || settings.CartographerStrongbox ||
-                                     settings.DivinerStrongbox || settings.GemcutterStrongbox || settings.JewellerStrongbox ||
-                                     settings.LargeStrongbox || settings.OrnateStrongbox;
+            bool strongboxesEnabled = settings.StrongboxClickMetadata?.Count > 0;
 
             var checks = new (bool On, Func<string, bool> Matches)[]
             {
@@ -519,8 +498,6 @@ namespace ClickIt.Services
             foreach (var (on, matches) in checks)
             {
                 if (!on) continue;
-                if (matches == (Func<string, bool>)(p => true) && ShouldClickStrongbox(settings, path, label))
-                    return true;
                 if (matches(path)) return true;
             }
 
@@ -569,27 +546,23 @@ namespace ClickIt.Services
         {
             if (string.IsNullOrEmpty(path))
                 return false;
-            // require both the global setting and the specific strongbox type
-            var checks = new (bool On, string Key)[]
-            {
-                (settings.RegularStrongbox, "StrongBoxes/Strongbox"),
-                (settings.ArcanistStrongbox, "StrongBoxes/Arcanist"),
-                (settings.ArmourerStrongbox, "StrongBoxes/Armory"),
-                (settings.ArtisanStrongbox, "StrongBoxes/Artisan"),
-                (settings.BlacksmithStrongbox, "StrongBoxes/Arsenal"),
-                (settings.CartographerStrongbox, "StrongBoxes/CartographerEndMaps"),
-                (settings.DivinerStrongbox, "StrongBoxes/StrongboxDivination"),
-                (settings.GemcutterStrongbox, "StrongBoxes/Gemcutter"),
-                (settings.JewellerStrongbox, "StrongBoxes/Jeweller"),
-                (settings.LargeStrongbox, "StrongBoxes/Large"),
-                (settings.OrnateStrongbox, "StrongBoxes/Ornate")
-            };
+            if (label?.ItemOnGround == null)
+                return false;
+            Chest? chest = label.ItemOnGround.GetComponent<Chest>();
+            if (chest?.IsLocked != false)
+                return false;
 
-            foreach (var (on, key) in checks)
-            {
-                if (on && path.Contains(key) && !label.ItemOnGround.GetComponent<Chest>().IsLocked) return true;
-            }
-            return false;
+            IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? Array.Empty<string>();
+            IReadOnlyList<string> dontClickMetadata = settings.StrongboxDontClickMetadata ?? Array.Empty<string>();
+            string renderName = label.ItemOnGround.RenderName ?? string.Empty;
+
+            if (clickMetadata.Count == 0)
+                return false;
+
+            if (ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata))
+                return false;
+
+            return ContainsAnyMetadataIdentifier(path, renderName, clickMetadata);
         }
 
         public bool ShouldCorruptEssence(LabelOnGround label)

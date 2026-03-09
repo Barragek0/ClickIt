@@ -29,12 +29,9 @@ namespace ClickIt.Rendering
             if (labels == null) return;
 
             bool showFrames = _settings.ShowStrongboxFrames.Value;
-            bool anyTypeEnabled = _settings.RegularStrongbox.Value || _settings.ArcanistStrongbox.Value ||
-                                  _settings.ArmourerStrongbox.Value || _settings.ArtisanStrongbox.Value ||
-                                  _settings.BlacksmithStrongbox.Value || _settings.CartographerStrongbox.Value ||
-                                  _settings.DivinerStrongbox.Value || _settings.GemcutterStrongbox.Value ||
-                                  _settings.JewellerStrongbox.Value || _settings.LargeStrongbox.Value ||
-                                  _settings.OrnateStrongbox.Value;
+            IReadOnlyList<string> clickMetadata = _settings.GetStrongboxClickMetadataIdentifiers();
+            IReadOnlyList<string> dontClickMetadata = _settings.GetStrongboxDontClickMetadataIdentifiers();
+            bool anyTypeEnabled = clickMetadata.Count > 0;
 
             if (!showFrames && !anyTypeEnabled)
             {
@@ -42,15 +39,13 @@ namespace ClickIt.Rendering
                 return;
             }
 
-            // Build a small list of enabled path keys so we can cheaply test membership per-label
-            var enabledKeys = GetEnabledStrongboxKeys();
-
             foreach (var label in labels)
             {
                 if (!TryGetVisibleLabelRect(label, windowArea, out var rect, out var itemPathRaw))
                     continue;
 
-                bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, enabledKeys);
+                string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
+                bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, renderName, clickMetadata, dontClickMetadata);
                 if (!isClickableBySettings || !showFrames)
                     continue;
 
@@ -99,36 +94,43 @@ namespace ClickIt.Rendering
             return true;
         }
 
-        private List<string> GetEnabledStrongboxKeys()
+        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
         {
-            var enabledKeys = new List<string>(11);
-            if (_settings.RegularStrongbox.Value) enabledKeys.Add("StrongBoxes/Strongbox");
-            if (_settings.ArcanistStrongbox.Value) enabledKeys.Add("StrongBoxes/Arcanist");
-            if (_settings.ArmourerStrongbox.Value) enabledKeys.Add("StrongBoxes/Armory");
-            if (_settings.ArtisanStrongbox.Value) enabledKeys.Add("StrongBoxes/Artisan");
-            if (_settings.BlacksmithStrongbox.Value) enabledKeys.Add("StrongBoxes/Arsenal");
-            if (_settings.CartographerStrongbox.Value) enabledKeys.Add("StrongBoxes/CartographerEndMaps");
-            if (_settings.DivinerStrongbox.Value) enabledKeys.Add("StrongBoxes/StrongboxDivination");
-            if (_settings.GemcutterStrongbox.Value) enabledKeys.Add("StrongBoxes/Gemcutter");
-            if (_settings.JewellerStrongbox.Value) enabledKeys.Add("StrongBoxes/Jeweller");
-            if (_settings.LargeStrongbox.Value) enabledKeys.Add("StrongBoxes/Large");
-            if (_settings.OrnateStrongbox.Value) enabledKeys.Add("StrongBoxes/Ornate");
-            return enabledKeys;
-        }
+            if (identifiers == null || identifiers.Count == 0)
+                return false;
 
-
-        private static bool IsStrongboxClickableBySettings(string path, IReadOnlyList<string> enabledKeys)
-        {
-            if (string.IsNullOrEmpty(path)) return false;
-            if (enabledKeys == null || enabledKeys.Count == 0) return false;
-
-            // Iterate only the enabled keys and match the path case-insensitively.
-            for (int i = 0; i < enabledKeys.Count; i++)
+            for (int i = 0; i < identifiers.Count; i++)
             {
-                if (path.IndexOf(enabledKeys[i], StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                string identifier = identifiers[i] ?? string.Empty;
+                if (identifier.Length == 0)
+                    continue;
+
+                if (identifier.StartsWith("name:", StringComparison.OrdinalIgnoreCase))
+                {
+                    string nameFragment = identifier.Substring("name:".Length).Trim();
+                    if (!string.IsNullOrWhiteSpace(nameFragment)
+                        && itemName.IndexOf(nameFragment, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+
+                    continue;
+                }
+
+                if (metadataPath.IndexOf(identifier, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
             }
 
             return false;
+        }
+
+        private static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata)
+        {
+            if (string.IsNullOrEmpty(path) || clickMetadata == null || clickMetadata.Count == 0)
+                return false;
+
+            if (ContainsAnyMetadataIdentifier(path, itemName, dontClickMetadata))
+                return false;
+
+            return ContainsAnyMetadataIdentifier(path, itemName, clickMetadata);
         }
 
     }

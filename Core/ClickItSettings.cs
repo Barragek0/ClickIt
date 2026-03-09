@@ -87,57 +87,40 @@ namespace ClickIt
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
 
         // ----- Controls -----
-        [Menu("Controls", 1050)]
+        [Menu("Controls", 1100)]
         public EmptyNode InputAndSafetyCategory { get; set; } = new EmptyNode();
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 1, 1050)]
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 1, 1100)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
-        [Menu("Verify cursor is within game window before clicking", "When enabled the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window the click will be skipped.", 2, 1050)]
+        [Menu("Verify cursor is within game window before clicking", "When enabled the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window the click will be skipped.", 2, 1100)]
         public ToggleNode VerifyCursorInGameWindowBeforeClick { get; set; } = new ToggleNode(true);
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 3, 1050)]
+        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 3, 1100)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 4, 1050)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 4, 1100)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 5, 1050)]
+        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 5, 1100)]
         public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 6, 1050)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 6, 1100)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
 
         // ----- Lazy Mode -----
-        [Menu("Lazy Mode", 1075)]
+        [Menu("Lazy Mode", 1200)]
         public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();
-        [Menu("Lazy Mode - IMPORTANT INFO IN TOOLTIP ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'disable lazy mode while x click held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked, or if a settlers tree has been activated.\n   This is a limitation with exileapi and not the plugin and for this reason, Lazy Mode is not allowed\n   to click chests that were locked when spawned or the settlers tree. When one of these is on-screen,\n   Lazy Mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in Controls will override lazy mode blocking.", 1, 1075)]
+        [Menu("Lazy Mode - IMPORTANT INFO IN TOOLTIP ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'disable lazy mode while x click held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked, or if a settlers tree has been activated.\n   This is a limitation with exileapi and not the plugin and for this reason, Lazy Mode is not allowed\n   to click chests that were locked when spawned or the settlers tree. When one of these is on-screen,\n   Lazy Mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in Controls will override lazy mode blocking.", 1, 1200)]
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
-        [Menu("Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 1075)]
+        [Menu("Click Limiting (ms)", "When Lazy Mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while Lazy Mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 1200)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
-        [Menu("Disable Hotkey", "When Lazy Mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1075)]
+        [Menu("Disable Hotkey", "When Lazy Mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1200)]
         public HotkeyNode LazyModeDisableKey { get; set; } = new HotkeyNode(Keys.F2);
-        [Menu("Restore cursor position after each click", "When enabled, restores cursor to original position after clicking in lazy mode.", 4, 1075)]
+        [Menu("Restore cursor position after each click", "When enabled, restores cursor to original position after clicking in lazy mode.", 4, 1200)]
         public ToggleNode RestoreCursorInLazyMode { get; set; } = new ToggleNode(true);
-        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 5, 1075)]
+        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 5, 1200)]
         public RangeNode<int> LazyModeUIHoverSleep { get; set; } = new RangeNode<int>(20, 20, 40);
-        [Menu("Disable lazy mode while left click held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 6, 1075)]
+        [Menu("Disable lazy mode while left click held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 6, 1200)]
         public ToggleNode DisableLazyModeLeftClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Disable lazy mode while right click held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 7, 1075)]
+        [Menu("Disable lazy mode while right click held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 7, 1200)]
         public ToggleNode DisableLazyModeRightClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Lever Reclick Delay (ms)", "When Lazy Mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 8, 1075)]
+        [Menu("Lever Reclick Delay (ms)", "When Lazy Mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 8, 1200)]
         public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
-
-        // ----- Items -----
-        [Menu("Items", 1100)]
-        public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
-        [Menu("Items", "Click items", 1, 1100)]
-        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
-
-        [Menu("Item Type Filters", "", 2, 1100)]
-        [JsonIgnore]
-        public CustomNode ItemTypeFiltersPanel { get; }
-
-        public HashSet<string> ItemTypeWhitelistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        public HashSet<string> ItemTypeBlacklistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        public Dictionary<string, HashSet<string>> ItemTypeWhitelistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        public Dictionary<string, HashSet<string>> ItemTypeBlacklistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-
-        private string _expandedItemTypeRowKey = string.Empty;
 
         private sealed record ItemSubtypeDefinition(string Id, string DisplayName, IReadOnlyList<string> MetadataIdentifiers);
 
@@ -204,70 +187,126 @@ namespace ClickIt
                 $"Shrieking Essence of {suffix}"
             }).ToArray();
 
+        private sealed record StrongboxFilterEntry(string Id, string DisplayName, string[] MetadataIdentifiers);
+
+        private static readonly StrongboxFilterEntry[] StrongboxTableEntries =
+        [
+            new("regular", "Regular Strongbox (mixed loot)", ["StrongBoxes/Strongbox"]),
+            new("arcanist", "Arcanist Strongbox (currency)", ["StrongBoxes/Arcanist"]),
+            new("armourer", "Armourer Strongbox (armour)", ["StrongBoxes/Armory"]),
+            new("artisan", "Artisan Strongbox (quality currency)", ["StrongBoxes/Artisan"]),
+            new("blacksmith", "Blacksmith Strongbox (weapons)", ["StrongBoxes/Arsenal"]),
+            new("cartographer", "Cartographer Strongbox (maps)", ["StrongBoxes/CartographerEndMaps"]),
+            new("diviner", "Diviner Strongbox (divination cards)", ["StrongBoxes/StrongboxDivination"]),
+            new("gemcutter", "Gemcutter Strongbox (gems)", ["StrongBoxes/Gemcutter"]),
+            new("jeweller", "Jeweller Strongbox (jewellery)", ["StrongBoxes/Jeweller"]),
+            new("large", "Large Strongbox (+ quantity)", ["StrongBoxes/Large"]),
+            new("ornate", "Ornate Strongbox (+ rarity)", ["StrongBoxes/Ornate"]),
+            new("operative", "Operative Strongbox (scarabs)", ["StrongBoxes/Operative"]),
+
+            // Unique strongboxes (verified names from PoEWiki/PoEDB pages).
+            new("unique-strange-barrel", "Strange Barrel (unique strongbox)", ["name:Strange Barrel"]),
+            new("unique-ashes-of-the-condemned", "Ashes of the Condemned (unique strongbox)", ["name:Ashes of the Condemned"]),
+            new("unique-redblade-cache", "Redblade Cache (unique strongbox)", ["name:Redblade Cache"]),
+            new("unique-brinerot-cache", "Brinerot Cache (unique strongbox)", ["name:Brinerot Cache"]),
+            new("unique-mutewind-cache", "Mutewind Cache (unique strongbox)", ["name:Mutewind Cache"]),
+            new("unique-renegades-cache", "Renegades Cache (unique strongbox)", ["name:Renegades Cache"]),
+            new("unique-deshrets-storm", "Deshret's Storm (unique strongbox)", ["name:Deshret's Storm"]),
+            new("unique-perandus-bank", "Perandus Bank (unique strongbox)", ["name:Perandus Bank"]),
+            new("unique-empyrean-apparatus", "Empyrean Apparatus (unique strongbox)", ["name:Empyrean Apparatus"]),
+            new("unique-grandmasters-arcanist-cache", "Grandmaster's Arcanist Cache (unique strongbox)", ["name:Grandmaster's Arcanist Cache"]),
+            new("unique-grandmasters-cartography-cache", "Grandmaster's Cartography Cache (unique strongbox)", ["name:Grandmaster's Cartography Cache"]),
+            new("unique-grandmasters-corrupted-cache", "Grandmaster's Corrupted Cache (unique strongbox)", ["name:Grandmaster's Corrupted Cache"]),
+            new("unique-grandmasters-gemcutting-cache", "Grandmaster's Gemcutting Cache (unique strongbox)", ["name:Grandmaster's Gemcutting Cache"]),
+            new("unique-grandmasters-large-cache", "Grandmaster's Large Cache (unique strongbox)", ["name:Grandmaster's Large Cache"]),
+            new("unique-grandmasters-ornate-cache", "Grandmaster's Ornate Cache (unique strongbox)", ["name:Grandmaster's Ornate Cache"]),
+            new("unique-grandmasters-treasury", "Grandmaster's Treasury (unique strongbox)", ["name:Grandmaster's Treasury"]),
+            new("unique-grandmasters-trove", "Grandmaster's Trove (unique strongbox)", ["name:Grandmaster's Trove"]),
+            new("unique-kaoms-cache", "Kaom's Cache (unique strongbox)", ["name:Kaom's Cache"]),
+            new("unique-maelstrom-cell", "The Maelstrom Cell (unique strongbox)", ["name:The Maelstrom Cell", "name:Maelstrom Cell"]),
+            new("unique-obas-glittering-stash", "Oba's Glittering Stash (unique strongbox)", ["name:Oba's Glittering Stash"]),
+            new("unique-obas-prized-cache", "Oba's Prized Cache (unique strongbox)", ["name:Oba's Prized Cache"]),
+            new("unique-obas-riches", "Oba's Riches (unique strongbox)", ["name:Oba's Riches"]),
+            new("unique-weylams-war-chest", "Weylam's War Chest (unique strongbox)", ["name:Weylam's War Chest"])
+        ];
+
+        private static readonly string[] StrongboxDefaultClickIds =
+        [
+            "regular",
+            "arcanist",
+            "armourer",
+            "artisan",
+            "blacksmith",
+            "cartographer",
+            "diviner",
+            "gemcutter",
+            "jeweller",
+            "large",
+            "ornate",
+            "operative"
+        ];
+
         // ----- General Interactions -----
-        [Menu("General", 1200)]
+        [Menu("General", 1300)]
         public EmptyNode WorldInteractionsCategory { get; set; } = new EmptyNode();
-        [Menu("Basic Chests", "Click normal (non-league related) chests", 1, 1200)]
+        [Menu("Basic Chests", "Click normal (non-league related) chests", 1, 1300)]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
-        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 2, 1200)]
+        [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc)", 2, 1300)]
         public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
-        [Menu("Shrines", "Click shrines", 3, 1200)]
+        [Menu("Shrines", "Click shrines", 3, 1300)]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Area Transitions", "Click area transitions", 4, 1200)]
+        [Menu("Area Transitions", "Click area transitions", 4, 1300)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
-        [Menu("Crafting Recipes", "Click crafting recipes", 5, 1200)]
+        [Menu("Crafting Recipes", "Click crafting recipes", 5, 1300)]
         public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
-        [Menu("Doors", "Click doors", 6, 1200)]
+        [Menu("Doors", "Click doors", 6, 1300)]
         public ToggleNode ClickDoors { get; set; } = new ToggleNode(false);
-        [Menu("Levers", "Click levers", 7, 1200)]
+        [Menu("Levers", "Click levers", 7, 1300)]
         public ToggleNode ClickLevers { get; set; } = new ToggleNode(false);
 
         // ----- Mechanics -----
-        [Menu("Mechanics", 2000)]
+        [Menu("Mechanics", 1400)]
         public EmptyNode Mechanics { get; set; } = new EmptyNode();
-        [Menu("Alva Temple Doors", "Click alva temple doors", 1, 2000)]
+        [Menu("Alva Temple Doors", "Click alva temple doors", 1, 1400)]
         public ToggleNode ClickAlvaTempleDoors { get; set; } = new ToggleNode(true);
-        [Menu("Betrayal", "Click betrayal labels", 2, 2000)]
+        [Menu("Betrayal", "Click betrayal labels", 2, 1400)]
         public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(false);
-        [Menu("Blight", "Click blight pumps", 3, 2000)]
+        [Menu("Blight", "Click blight pumps", 3, 1400)]
         public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
-        [Menu("Breach Nodes", "Click breach nodes", 4, 2000)]
+        [Menu("Breach Nodes", "Click breach nodes", 4, 1400)]
         public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
-        [Menu("Legion Pillars", "Click legion encounter pillars", 5, 2000)]
+        [Menu("Legion Pillars", "Click legion encounter pillars", 5, 1400)]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Nearest Harvest Plot", "Click nearest harvest plot", 6, 2000)]
+        [Menu("Nearest Harvest Plot", "Click nearest harvest plot", 6, 1400)]
         public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
-        [Menu("Sanctum", "Click sanctum related stuff", 7, 2000)]
+        [Menu("Sanctum", "Click sanctum related stuff", 7, 1400)]
         public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);
-        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 8, 2000)]
+        [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, etc)\n\nThere is a known issue with this feature meaning the plugin will repeatedly try to click on trees that have already been activated.\n\nI don't currently think there is any way to fix this due to limitations with the game memory and ExileAPI.", 8, 1400)]
         public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
 
-        // ----- Delve -----
-        [Menu("Delve", 2100)]
-        public EmptyNode Delve { get; set; } = new EmptyNode();
-        [Menu("Azurite Veins", "Click azurite veins", 1, 2100)]
-        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Sulphite Veins", "Click sulphite veins", 2, 2100)]
-        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
-        [Menu("Encounter Initiators", "Click delve encounter initiators", 3, 2100)]
-        public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
-        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 2100)]
-        public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
-        [Menu("Flare Hotkey", "Set this to your in-game keybind for flares, the plugin will press this button to use a flare", 5, 2100)]
-        public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
-        [Menu("Darkness Debuff Stacks", 6, 2100)]
-        public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
-        [Menu("Flare Health %", 7, 2100)]
-        public RangeNode<int> DelveFlareHealthThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
-        [Menu("Flare Energy Shield %", 8, 2100)]
-        public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
+        // ----- Items -----
+        [Menu("Items", 1500)]
+        public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
+        [Menu("Items", "Click items", 1, 1500)]
+        public ToggleNode ClickItems { get; set; } = new ToggleNode(true);
+
+        [Menu("Item Type Filters", "", 2, 1500)]
+        [JsonIgnore]
+        public CustomNode ItemTypeFiltersPanel { get; }
+
+        public HashSet<string> ItemTypeWhitelistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> ItemTypeBlacklistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, HashSet<string>> ItemTypeWhitelistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, HashSet<string>> ItemTypeBlacklistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+        private string _expandedItemTypeRowKey = string.Empty;
 
         // ----- Essences -----
-        [Menu("Essences", 2200)]
+        [Menu("Essences", 1600)]
         public EmptyNode Essences { get; set; } = new EmptyNode();
-        [Menu("Essences", "Click essences", 1, 2200)]
+        [Menu("Essences", "Click essences", 1, 1600)]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
-        [Menu("Essence Corruption Table", "", 2, 2200)]
+        [Menu("Essence Corruption Table", "", 2, 1600)]
         [JsonIgnore]
         public CustomNode EssenceCorruptionTablePanel { get; }
 
@@ -275,60 +314,39 @@ namespace ClickIt
         public HashSet<string> EssenceDontCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // ----- Ultimatum -----
-        [Menu("Ultimatum", 2350)]
+        [Menu("Ultimatum", 1700)]
         public EmptyNode Ultimatum { get; set; } = new EmptyNode();
-        [Menu("Click Ultimatum", "Click and select Ultimatum modifier options by configured priority.", 1, 2350)]
+        [Menu("Click Ultimatum", "Click and select Ultimatum modifier options by configured priority.", 1, 1700)]
         public ToggleNode ClickUltimatum { get; set; } = new ToggleNode(false);
-        [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 2, 2350)]
+        [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 2, 1700)]
         public ToggleNode ShowUltimatumOptionOverlay { get; set; } = new ToggleNode(true);
-        [Menu("Modifier Priority Table", "", 3, 2350)]
+        [Menu("Modifier Priority Table", "", 3, 1700)]
         [JsonIgnore]
         public CustomNode UltimatumModifierTablePanel { get; }
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> UltimatumModifierPriority { get; set; } = new();
 
-        // ----- Ritual -----
-        [Menu("Ritual", 2300)]
-        public EmptyNode Ritual { get; set; } = new EmptyNode();
-        [Menu("Initiate Ritual Altars", "Click ritual altars that have not been completed yet", 1, 2300)]
-        public ToggleNode ClickRitualInitiate { get; set; } = new ToggleNode(true);
-        [Menu("Completed Ritual Altars", "Click ritual altars that have been completed", 2, 2300)]
-        public ToggleNode ClickRitualCompleted { get; set; } = new ToggleNode(true);
-
         // ----- Strongboxes -----
-        [Menu("Strongboxes", 2400)]
+        [Menu("Strongboxes", 1800)]
         public EmptyNode Strongboxes { get; set; } = new EmptyNode();
-        [Menu("Show Strongbox Frames", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked", 1, 2400)]
+        [Menu("Show Strongbox Frames", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked", 1, 1800)]
         public ToggleNode ShowStrongboxFrames { get; set; } = new ToggleNode(true);
-        [Menu("Regular Strongbox", "Click regular strongboxes", 2, 2400)]
-        public ToggleNode RegularStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Arcanist Strongbox (currency)", "Click arcanist strongboxes", 3, 2400)]
-        public ToggleNode ArcanistStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Armourer Strongbox (armour)", "Click armourer strongboxes", 4, 2400)]
-        public ToggleNode ArmourerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Artisan Strongbox (quality currency)", "Click artisan strongboxes", 5, 2400)]
-        public ToggleNode ArtisanStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Blacksmith Strongbox (weapons)", "Click blacksmith strongboxes", 6, 2400)]
-        public ToggleNode BlacksmithStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Cartographer Strongbox (maps)", "Click cartographer strongboxes", 7, 2400)]
-        public ToggleNode CartographerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Diviner Strongbox (divination cards)", "Click diviner strongboxes", 8, 2400)]
-        public ToggleNode DivinerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Gemcutter Strongbox (gems)", "Click gemcutter strongboxes", 9, 2400)]
-        public ToggleNode GemcutterStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Jeweller Strongbox (jewellery)", "Click jeweller strongboxes", 10, 2400)]
-        public ToggleNode JewellerStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Large Strongbox (+ quantity)", "Click large strongboxes", 11, 2400)]
-        public ToggleNode LargeStrongbox { get; set; } = new ToggleNode(true);
-        [Menu("Ornate Strongbox (+ rarity)", "Click ornate strongboxes", 12, 2400)]
-        public ToggleNode OrnateStrongbox { get; set; } = new ToggleNode(true);
+        [Menu("Strongbox Table", "", 2, 1800)]
+        [JsonIgnore]
+        public CustomNode StrongboxFilterTablePanel { get; }
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public HashSet<string> StrongboxClickIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public HashSet<string> StrongboxDontClickIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // ----- Altars -----
-        [Menu("Altars", 3000)]
+        [Menu("Altars", 1900)]
         public EmptyNode AltarsCategory { get; set; } = new EmptyNode();
 
-        [Menu("Settings", 1, 3000)]
+        [Menu("Settings", 1, 1900)]
         [JsonIgnore]
         public CustomNode AltarsPanel { get; }
 
@@ -384,10 +402,39 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
         public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(5, 0, 100);
 
+        // ----- Ritual -----
+        [Menu("Ritual", 2000)]
+        public EmptyNode Ritual { get; set; } = new EmptyNode();
+        [Menu("Initiate Ritual Altars", "Click ritual altars that have not been completed yet", 1, 2000)]
+        public ToggleNode ClickRitualInitiate { get; set; } = new ToggleNode(true);
+        [Menu("Completed Ritual Altars", "Click ritual altars that have been completed", 2, 2000)]
+        public ToggleNode ClickRitualCompleted { get; set; } = new ToggleNode(true);
+
+        // ----- Delve -----
+        [Menu("Delve", 2100)]
+        public EmptyNode Delve { get; set; } = new EmptyNode();
+        [Menu("Azurite Veins", "Click azurite veins", 1, 2100)]
+        public ToggleNode ClickAzuriteVeins { get; set; } = new ToggleNode(true);
+        [Menu("Sulphite Veins", "Click sulphite veins", 2, 2100)]
+        public ToggleNode ClickSulphiteVeins { get; set; } = new ToggleNode(true);
+        [Menu("Encounter Initiators", "Click delve encounter initiators", 3, 2100)]
+        public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
+        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 2100)]
+        public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
+        [Menu("Flare Hotkey", "Set this to your in-game keybind for flares, the plugin will press this button to use a flare", 5, 2100)]
+        public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
+        [Menu("Darkness Debuff Stacks", 6, 2100)]
+        public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
+        [Menu("Flare Health %", 7, 2100)]
+        public RangeNode<int> DelveFlareHealthThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
+        [Menu("Flare Energy Shield %", 8, 2100)]
+        public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
+
         private string upsideSearchFilter = "";
         private string downsideSearchFilter = "";
         private string itemTypeSearchFilter = "";
         private string essenceSearchFilter = "";
+        private string strongboxSearchFilter = "";
         private string ultimatumSearchFilter = "";
         private string _lastSettingsUiError = string.Empty;
         public ClickItSettings()
@@ -395,6 +442,7 @@ namespace ClickIt
             InitializeDefaultWeights();
             EnsureItemTypeFiltersInitialized();
             EnsureEssenceCorruptionFiltersInitialized();
+            EnsureStrongboxFiltersInitialized();
             EnsureUltimatumModifiersInitialized();
             DebugTestingPanel = new CustomNode
             {
@@ -415,6 +463,10 @@ namespace ClickIt
             EssenceCorruptionTablePanel = new CustomNode
             {
                 DrawDelegate = () => DrawPanelSafe("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel)
+            };
+            StrongboxFilterTablePanel = new CustomNode
+            {
+                DrawDelegate = () => DrawPanelSafe("StrongboxFilterTablePanel", DrawStrongboxFilterTablePanel)
             };
             UltimatumModifierTablePanel = new CustomNode
             {
@@ -751,6 +803,135 @@ namespace ClickIt
             ImGui.PopID();
         }
 
+        private void DrawStrongboxFilterTablePanel()
+        {
+            EnsureStrongboxFiltersInitialized();
+
+            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
+            bool sectionOpen = ImGui.TreeNode("Strongbox Filters");
+            DrawInlineTooltip("Configure which strongboxes should be clicked. Use arrows to move entries between Click and Don't Click lists.");
+            if (!sectionOpen)
+                return;
+
+            try
+            {
+                DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref strongboxSearchFilter);
+
+                ImGui.SameLine();
+                if (ImGui.Button("Reset Defaults##StrongboxResetDefaults"))
+                {
+                    StrongboxClickIds = BuildDefaultClickStrongboxIds();
+                    StrongboxDontClickIds = BuildDefaultDontClickStrongboxIds();
+                }
+
+                ImGui.Spacing();
+
+                if (!ImGui.BeginTable("StrongboxFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
+                    return;
+
+                try
+                {
+                    ImGui.TableSetupColumn("Click", ImGuiTableColumnFlags.WidthStretch, 0.5f);
+                    ImGui.TableSetupColumn("Don't Click", ImGuiTableColumnFlags.WidthStretch, 0.5f);
+
+                    ImGui.TableNextRow(ImGuiTableRowFlags.None);
+
+                    ImGui.TableSetColumnIndex(0);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.2f, 0.6f, 0.2f, 0.3f)));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Click");
+
+                    ImGui.TableSetColumnIndex(1);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.6f, 0.2f, 0.2f, 0.3f)));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Don't Click");
+
+                    ImGui.TableNextRow();
+
+                    ImGui.TableSetColumnIndex(0);
+                    DrawStrongboxFilterList("Click##Strongbox", StrongboxClickIds, moveToClick: false, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
+
+                    ImGui.TableSetColumnIndex(1);
+                    DrawStrongboxFilterList("DontClick##Strongbox", StrongboxDontClickIds, moveToClick: true, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
+                }
+                finally
+                {
+                    ImGui.EndTable();
+                }
+            }
+            finally
+            {
+                ImGui.TreePop();
+            }
+        }
+
+        private void DrawStrongboxFilterList(string id, HashSet<string> sourceSet, bool moveToClick, Vector4 textColor)
+        {
+            ImGui.PushID(id);
+
+            bool hasEntries = false;
+            foreach (StrongboxFilterEntry entry in StrongboxTableEntries)
+            {
+                if (!sourceSet.Contains(entry.Id))
+                    continue;
+                if (!MatchesStrongboxSearch(entry, strongboxSearchFilter))
+                    continue;
+
+                hasEntries = true;
+                float availableWidth = Math.Max(80f, ImGui.GetContentRegionAvail().X);
+                const float arrowWidth = 28f;
+                float rowWidth = Math.Max(40f, availableWidth - arrowWidth - 6f);
+
+                bool arrowClicked;
+                if (moveToClick)
+                {
+                    arrowClicked = ImGui.Button($"<-##Move_{id}_{entry.Id}", new Vector2(arrowWidth, 0));
+                    ImGui.SameLine();
+                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+                    ImGui.Selectable($"{entry.DisplayName}##{id}_{entry.Id}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
+                    ImGui.PopStyleColor();
+                }
+                else
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+                    ImGui.Selectable($"{entry.DisplayName}##{id}_{entry.Id}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
+                    ImGui.PopStyleColor();
+                    ImGui.SameLine();
+                    arrowClicked = ImGui.Button($"->##Move_{id}_{entry.Id}", new Vector2(arrowWidth, 0));
+                }
+
+                if (arrowClicked)
+                {
+                    MoveStrongboxFilter(entry.Id, moveToClick);
+                    break;
+                }
+            }
+
+            if (!hasEntries)
+            {
+                ImGui.TextDisabled("No entries");
+            }
+
+            ImGui.PopID();
+        }
+
+        private void MoveStrongboxFilter(string strongboxId, bool moveToClick)
+        {
+            HashSet<string> source = moveToClick ? StrongboxDontClickIds : StrongboxClickIds;
+            HashSet<string> target = moveToClick ? StrongboxClickIds : StrongboxDontClickIds;
+
+            source.Remove(strongboxId);
+            target.Add(strongboxId);
+        }
+
+        private static bool MatchesStrongboxSearch(StrongboxFilterEntry entry, string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+                return true;
+
+            string term = filter.Trim();
+            return entry.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || entry.MetadataIdentifiers.Any(x => x.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
         private void MoveEssenceName(string essenceName, bool moveToCorrupt)
         {
             HashSet<string> source = moveToCorrupt ? EssenceDontCorruptNames : EssenceCorruptNames;
@@ -772,6 +953,26 @@ namespace ClickIt
         {
             EnsureEssenceCorruptionFiltersInitialized();
             return EssenceCorruptNames
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        public IReadOnlyList<string> GetStrongboxClickMetadataIdentifiers()
+        {
+            EnsureStrongboxFiltersInitialized();
+            return StrongboxClickIds
+                .SelectMany(id => TryGetStrongboxFilterById(id)?.MetadataIdentifiers ?? Array.Empty<string>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        public IReadOnlyList<string> GetStrongboxDontClickMetadataIdentifiers()
+        {
+            EnsureStrongboxFiltersInitialized();
+            return StrongboxDontClickIds
+                .SelectMany(id => TryGetStrongboxFilterById(id)?.MetadataIdentifiers ?? Array.Empty<string>())
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
@@ -1154,6 +1355,18 @@ namespace ClickIt
             return defaults;
         }
 
+        private static HashSet<string> BuildDefaultClickStrongboxIds()
+        {
+            return new HashSet<string>(StrongboxDefaultClickIds, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static HashSet<string> BuildDefaultDontClickStrongboxIds()
+        {
+            HashSet<string> defaults = new HashSet<string>(StrongboxTableEntries.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
+            defaults.ExceptWith(StrongboxDefaultClickIds);
+            return defaults;
+        }
+
         private void EnsureEssenceCorruptionFiltersInitialized()
         {
             EssenceCorruptNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1183,6 +1396,42 @@ namespace ClickIt
                     EssenceDontCorruptNames.Add(essenceName);
                 }
             }
+        }
+
+        private void EnsureStrongboxFiltersInitialized()
+        {
+            StrongboxClickIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            StrongboxDontClickIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (StrongboxClickIds.Count == 0 && StrongboxDontClickIds.Count == 0)
+            {
+                StrongboxClickIds = BuildDefaultClickStrongboxIds();
+                StrongboxDontClickIds = BuildDefaultDontClickStrongboxIds();
+                return;
+            }
+
+            HashSet<string> allowed = new HashSet<string>(StrongboxTableEntries.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
+
+            StrongboxClickIds.RemoveWhere(x => !allowed.Contains(x));
+            StrongboxDontClickIds.RemoveWhere(x => !allowed.Contains(x));
+
+            foreach (string id in StrongboxClickIds.ToArray())
+            {
+                StrongboxDontClickIds.Remove(id);
+            }
+
+            foreach (StrongboxFilterEntry entry in StrongboxTableEntries)
+            {
+                if (!StrongboxClickIds.Contains(entry.Id) && !StrongboxDontClickIds.Contains(entry.Id))
+                {
+                    StrongboxDontClickIds.Add(entry.Id);
+                }
+            }
+        }
+
+        private static StrongboxFilterEntry? TryGetStrongboxFilterById(string id)
+        {
+            return StrongboxTableEntries.FirstOrDefault(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
         }
 
         private void EnsureUltimatumModifiersInitialized()

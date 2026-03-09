@@ -23,7 +23,7 @@ namespace ClickIt.Tests.Unit
             Set("NearestHarvest", nearestHarvest);
             Set("ClickSulphite", clickSulphite);
             Set("ClickDelveSpawners", clickDelveSpawners);
-            Set("RegularStrongbox", strongboxes);
+            Set("StrongboxClickMetadata", strongboxes ? new[] { "StrongBoxes/Strongbox" } : System.Array.Empty<string>());
             Set("ClickSanctum", clickSanctum);
             Set("ClickBreach", clickBreach);
             Set("ClickSettlersOre", clickSettlers);
@@ -38,27 +38,27 @@ namespace ClickIt.Tests.Unit
             var mi = typeof(Services.LabelFilterService).GetMethod("ShouldClickSpecialPath", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
 
             var settings1 = CreateClickSettingsStub(nearestHarvest: true);
-            bool r1 = (bool)mi.Invoke(null, new object[] { settings1, "Harvest/Irrigator/abc", null })!;
+            bool r1 = (bool)mi.Invoke(null, new object[] { settings1, "Harvest/Irrigator/abc", null! })!;
             r1.Should().BeTrue();
 
             var settings2 = CreateClickSettingsStub(clickSulphite: true);
-            bool r2 = (bool)mi.Invoke(null, new object[] { settings2, "DelveMineral/foo", null })!;
+            bool r2 = (bool)mi.Invoke(null, new object[] { settings2, "DelveMineral/foo", null! })!;
             r2.Should().BeTrue();
 
             var settings3 = CreateClickSettingsStub(clickDelveSpawners: true);
-            bool r3 = (bool)mi.Invoke(null, new object[] { settings3, "Delve/Objects/Encounter/bar", null })!;
+            bool r3 = (bool)mi.Invoke(null, new object[] { settings3, "Delve/Objects/Encounter/bar", null! })!;
             r3.Should().BeTrue();
 
             var settings4 = CreateClickSettingsStub(clickBreach: true);
-            bool r4 = (bool)mi.Invoke(null, new object[] { settings4, "Brequel/something", null })!;
+            bool r4 = (bool)mi.Invoke(null, new object[] { settings4, "Brequel/something", null! })!;
             r4.Should().BeTrue();
 
             var settings5 = CreateClickSettingsStub(clickSanctum: true);
-            bool r5 = (bool)mi.Invoke(null, new object[] { settings5, "Sanctum/step", null })!;
+            bool r5 = (bool)mi.Invoke(null, new object[] { settings5, "Sanctum/step", null! })!;
             r5.Should().BeTrue();
 
             var settings6 = CreateClickSettingsStub(clickUltimatum: true);
-            bool r6 = (bool)mi.Invoke(null, new object[] { settings6, "Metadata/Terrain/Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", null })!;
+            bool r6 = (bool)mi.Invoke(null, new object[] { settings6, "Metadata/Terrain/Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", null! })!;
             r6.Should().BeTrue();
         }
     }
