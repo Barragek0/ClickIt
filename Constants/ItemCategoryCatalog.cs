@@ -47,7 +47,7 @@ namespace ClickIt.Constants
             new("scarabs", "Scarabs", ["Items/Scarabs/", "Items/Currency/Scarabs/"], ItemListKind.Whitelist, ["Ambush Scarab", "Divination Scarab"]),
             // PoE Wiki: Contract page separates normal contracts from quest contracts.
             new("heist-contracts", "Heist Contracts", ["special:heist-non-quest-contract"], ItemListKind.Whitelist, ["Contract: Bunker", "Contract: Smuggler's Den"]),
-            new("heist-quest-contracts", "Heist Quest Contracts", ["special:heist-quest-contract"], ItemListKind.Whitelist, ["Contract: Trial Run", "Contract: The Finest Costumes"]),
+            new("heist-quest-contracts", "Heist Quest Contracts", ["special:heist-quest-contract"], ItemListKind.Blacklist, ["Contract: Trial Run", "Contract: The Finest Costumes"]),
             new("rogue-markers", "Rogue Markers", "Items/Heist/HeistCoin", ItemListKind.Whitelist, ["Rogue's Marker"]),
 
             // Core equipment.
