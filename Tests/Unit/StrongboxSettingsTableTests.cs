@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace ClickIt.Tests.Unit
 {
@@ -62,6 +63,30 @@ namespace ClickIt.Tests.Unit
             clickMetadata.Should().Contain("StrongBoxes/Arcanist");
             clickMetadata.Should().NotContain(x => x.Contains("not-a-real-id", System.StringComparison.OrdinalIgnoreCase));
             dontClickMetadata.Should().NotContain(x => x.Contains("another-bad-id", System.StringComparison.OrdinalIgnoreCase));
+        }
+
+        [TestMethod]
+        public void StrongboxFilters_RoundTrip_PreservesMovedEntries()
+        {
+            var settings = new ClickItSettings();
+
+            const string movedToDontClick = "arcanist";
+            const string movedToClick = "unique-perandus-bank";
+
+            settings.StrongboxClickIds.Remove(movedToDontClick);
+            settings.StrongboxDontClickIds.Add(movedToDontClick);
+
+            settings.StrongboxDontClickIds.Remove(movedToClick);
+            settings.StrongboxClickIds.Add(movedToClick);
+
+            string json = JsonConvert.SerializeObject(settings);
+            var restored = JsonConvert.DeserializeObject<ClickItSettings>(json);
+
+            restored.Should().NotBeNull();
+            restored!.StrongboxClickIds.Should().Contain(movedToClick);
+            restored.StrongboxClickIds.Should().NotContain(movedToDontClick);
+            restored.StrongboxDontClickIds.Should().Contain(movedToDontClick);
+            restored.StrongboxDontClickIds.Should().NotContain(movedToClick);
         }
     }
 }

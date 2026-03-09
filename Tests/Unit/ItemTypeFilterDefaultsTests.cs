@@ -5,6 +5,7 @@ using ClickIt.Constants;
 using ClickIt.Services;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace ClickIt.Tests.Unit
 {
@@ -223,6 +224,43 @@ namespace ClickIt.Tests.Unit
             var blacklistMetadata = settings.GetItemTypeBlacklistMetadataIdentifiers();
 
             blacklistMetadata.Should().Contain(x => x.Contains("Items/Armours/"));
+        }
+
+        [TestMethod]
+        public void ItemTypeFilters_RoundTrip_PreservesMembership_ForAllCategories()
+        {
+            var settings = new ClickItSettings();
+
+            var expectedWhitelist = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var expectedBlacklist = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (ItemCategoryDefinition category in ItemCategoryCatalog.All)
+            {
+                bool defaultIsWhitelist = ItemCategoryCatalog.DefaultWhitelistIds.Contains(category.Id);
+                if (defaultIsWhitelist)
+                {
+                    expectedBlacklist.Add(category.Id);
+                }
+                else
+                {
+                    expectedWhitelist.Add(category.Id);
+                }
+            }
+
+            settings.ItemTypeWhitelistIds = expectedWhitelist;
+            settings.ItemTypeBlacklistIds = expectedBlacklist;
+            settings.ItemTypeWhitelistSubtypeIds = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            settings.ItemTypeBlacklistSubtypeIds = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+            string json = JsonConvert.SerializeObject(settings);
+            var restored = JsonConvert.DeserializeObject<ClickItSettings>(json);
+
+            restored.Should().NotBeNull();
+            restored!.ItemTypeWhitelistIds.Should().BeEquivalentTo(expectedWhitelist);
+            restored.ItemTypeBlacklistIds.Should().BeEquivalentTo(expectedBlacklist);
+
+            restored.ItemTypeWhitelistIds.Should().NotContain("unique-items");
+            restored.ItemTypeBlacklistIds.Should().Contain("unique-items");
         }
 
     }

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace ClickIt.Tests.Unit
 {
@@ -9,14 +10,16 @@ namespace ClickIt.Tests.Unit
     public class EssenceCorruptionTableTests
     {
         [TestMethod]
-        public void Defaults_ContainOnlyScreamingAndShriekingEssences()
+        public void Defaults_ContainOnlyScreamingShriekingAndDeafeningEssences()
         {
             var settings = new ClickItSettings();
 
             settings.EssenceCorruptNames.Should().OnlyContain(x => x.StartsWith("Screaming Essence of ", StringComparison.OrdinalIgnoreCase)
-                || x.StartsWith("Shrieking Essence of ", StringComparison.OrdinalIgnoreCase));
+                || x.StartsWith("Shrieking Essence of ", StringComparison.OrdinalIgnoreCase)
+                || x.StartsWith("Deafening Essence of ", StringComparison.OrdinalIgnoreCase));
             settings.EssenceDontCorruptNames.Should().OnlyContain(x => x.StartsWith("Screaming Essence of ", StringComparison.OrdinalIgnoreCase)
-                || x.StartsWith("Shrieking Essence of ", StringComparison.OrdinalIgnoreCase));
+                || x.StartsWith("Shrieking Essence of ", StringComparison.OrdinalIgnoreCase)
+                || x.StartsWith("Deafening Essence of ", StringComparison.OrdinalIgnoreCase));
         }
 
         [TestMethod]
@@ -33,9 +36,13 @@ namespace ClickIt.Tests.Unit
             corrupt.Should().Contain("Shrieking Essence of Envy");
             corrupt.Should().Contain("Shrieking Essence of Dread");
             corrupt.Should().Contain("Shrieking Essence of Scorn");
+            corrupt.Should().Contain("Deafening Essence of Misery");
+            corrupt.Should().Contain("Deafening Essence of Envy");
+            corrupt.Should().Contain("Deafening Essence of Dread");
+            corrupt.Should().Contain("Deafening Essence of Scorn");
 
-            corrupt.Should().HaveCount(8);
-            settings.EssenceDontCorruptNames.Should().HaveCount(32);
+            corrupt.Should().HaveCount(12);
+            settings.EssenceDontCorruptNames.Should().HaveCount(48);
             settings.EssenceDontCorruptNames.Should().NotIntersectWith(corrupt);
         }
 
@@ -49,7 +56,31 @@ namespace ClickIt.Tests.Unit
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-            allConfigured.Should().HaveCount(40);
+            allConfigured.Should().HaveCount(60);
+        }
+
+        [TestMethod]
+        public void EssenceCorruption_RoundTrip_PreservesMovedEntries()
+        {
+            var settings = new ClickItSettings();
+
+            const string movedToDontCorrupt = "Screaming Essence of Misery";
+            const string movedToCorrupt = "Screaming Essence of Greed";
+
+            settings.EssenceCorruptNames.Remove(movedToDontCorrupt);
+            settings.EssenceDontCorruptNames.Add(movedToDontCorrupt);
+
+            settings.EssenceDontCorruptNames.Remove(movedToCorrupt);
+            settings.EssenceCorruptNames.Add(movedToCorrupt);
+
+            string json = JsonConvert.SerializeObject(settings);
+            var restored = JsonConvert.DeserializeObject<ClickItSettings>(json);
+
+            restored.Should().NotBeNull();
+            restored!.EssenceCorruptNames.Should().Contain(movedToCorrupt);
+            restored.EssenceCorruptNames.Should().NotContain(movedToDontCorrupt);
+            restored.EssenceDontCorruptNames.Should().Contain(movedToDontCorrupt);
+            restored.EssenceDontCorruptNames.Should().NotContain(movedToCorrupt);
         }
     }
 }
