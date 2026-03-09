@@ -86,7 +86,7 @@ namespace ClickIt.Utils
         internal static bool IsValidClickableLabelForTests(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, ExileCore.Shared.Enums.EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment)
         {
             // Replicate production IsValidClickableLabel behavior using simple inputs
-            if (!labelNotNull || !itemNotNull || !isVisible || !labelElementValid)
+            if (!labelNotNull || !itemNotNull || !labelElementValid)
                 return false;
 
             if (!inClickableArea)

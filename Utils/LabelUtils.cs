@@ -82,7 +82,7 @@ namespace ClickIt.Utils
         public static bool IsValidClickableLabel(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
             if (label == null || label.ItemOnGround == null ||
-                !label.IsVisible || !IsLabelElementValid(label, pointIsInClickableArea))
+                !IsLabelElementValid(label, pointIsInClickableArea))
             {
                 return false;
             }
@@ -102,7 +102,7 @@ namespace ClickIt.Utils
             RectangleF? labelRect = label.Label?.GetClientRect();
             return labelRect is RectangleF rect &&
                    label.Label?.IsValid == true &&
-                   label.Label?.IsVisible == true &&
+                   // Intentionally center-point based so partially clipped labels remain clickable.
                    pointIsInClickableArea(rect.Center);
         }
 
