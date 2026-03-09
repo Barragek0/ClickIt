@@ -184,7 +184,8 @@ namespace ClickIt
             EssenceSuffixes.SelectMany(suffix => new[]
             {
                 $"Screaming Essence of {suffix}",
-                $"Shrieking Essence of {suffix}"
+                $"Shrieking Essence of {suffix}",
+                $"Deafening Essence of {suffix}"
             }).ToArray();
 
         private sealed record StrongboxFilterEntry(string Id, string DisplayName, string[] MetadataIdentifiers);
@@ -294,9 +295,16 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode ItemTypeFiltersPanel { get; }
 
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> ItemTypeWhitelistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> ItemTypeBlacklistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public Dictionary<string, HashSet<string>> ItemTypeWhitelistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public Dictionary<string, HashSet<string>> ItemTypeBlacklistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
         private string _expandedItemTypeRowKey = string.Empty;
@@ -310,7 +318,10 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode EssenceCorruptionTablePanel { get; }
 
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> EssenceCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> EssenceDontCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // ----- Ultimatum -----
@@ -698,7 +709,7 @@ namespace ClickIt
 
             ImGui.SetNextItemOpen(false, ImGuiCond.Once);
             bool sectionOpen = ImGui.TreeNode("Corruption Filters");
-            DrawInlineTooltip("Configure which Screaming and Shrieking essences should be corrupted. Use arrows to move entries between Corrupt and Don't Corrupt lists.");
+            DrawInlineTooltip("Configure which Screaming, Shrieking, and Deafening essences should be corrupted. Use arrows to move entries between Corrupt and Don't Corrupt lists.");
             if (!sectionOpen)
                 return;
 
