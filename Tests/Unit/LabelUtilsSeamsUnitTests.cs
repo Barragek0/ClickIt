@@ -36,10 +36,8 @@ namespace ClickIt.Tests.Unit
             // Any missing/invalid fundamentals make it invalid
             LabelUtils.IsValidClickableLabelForTests(false, true, true, true, true, EntityType.WorldItem, null, false, false).Should().BeFalse();
             LabelUtils.IsValidClickableLabelForTests(true, false, true, true, true, EntityType.WorldItem, null, false, false).Should().BeFalse();
+            LabelUtils.IsValidClickableLabelForTests(true, true, false, true, true, EntityType.WorldItem, null, false, false).Should().BeFalse();
             LabelUtils.IsValidClickableLabelForTests(true, true, true, false, true, EntityType.WorldItem, null, false, false).Should().BeFalse();
-
-            // Label visibility alone does not block when center-point area and element validity checks pass.
-            LabelUtils.IsValidClickableLabelForTests(true, true, false, true, true, EntityType.WorldItem, null, false, false).Should().BeTrue();
 
             // Not in clickable area
             LabelUtils.IsValidClickableLabelForTests(true, true, true, true, false, EntityType.WorldItem, null, false, false).Should().BeFalse();
