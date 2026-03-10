@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using System.Threading;
+using ClickIt.Definitions;
 using ClickIt.Utils;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
@@ -35,7 +36,7 @@ namespace ClickIt.Services
         private static bool IsUltimatumPath(string? path)
         {
             return !string.IsNullOrWhiteSpace(path)
-                && path.Contains("Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", StringComparison.OrdinalIgnoreCase);
+                && path.Contains(Constants.UltimatumChallengeInteractablePath, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsUltimatumLabel(LabelOnGround? label)

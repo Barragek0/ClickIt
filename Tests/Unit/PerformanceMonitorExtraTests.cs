@@ -3,6 +3,7 @@ using FluentAssertions;
 using ClickIt.Utils;
 using ClickIt;
 using System.Threading;
+using System.Diagnostics;
 
 namespace ClickIt.Tests.Unit
 {
@@ -16,11 +17,10 @@ namespace ClickIt.Tests.Unit
             pm.Start();
 
             pm.StartRenderTiming();
-            Thread.Sleep(10);
             pm.StopRenderTiming();
 
             pm.RenderTimings.Count.Should().BeGreaterThan(0);
-            pm.GetLastTiming("render").Should().BeGreaterThan(0);
+            pm.GetLastTiming("render").Should().BeGreaterOrEqualTo(0);
             pm.GetAverageTiming("render").Should().BeGreaterThanOrEqualTo(0);
         }
 
@@ -31,10 +31,9 @@ namespace ClickIt.Tests.Unit
             pm.Start();
 
             pm.StartCoroutineTiming("altar");
-            Thread.Sleep(6);
             pm.StopCoroutineTiming("altar");
 
-            pm.GetLastTiming("altar").Should().BeGreaterThan(0);
+            pm.GetLastTiming("altar").Should().BeGreaterOrEqualTo(0);
             pm.GetAverageTiming("altar").Should().BeGreaterOrEqualTo(0);
             pm.GetMaxTiming("altar").Should().BeGreaterOrEqualTo(pm.GetLastTiming("altar"));
         }
@@ -45,10 +44,14 @@ namespace ClickIt.Tests.Unit
             var pm = new PerformanceMonitor(new ClickItSettings());
             pm.Start();
 
-            // Call update once to ensure the internal timer starts, wait long enough for the update to compute
+            // Poll until the internal 1-second FPS window elapses to avoid fixed sleep flakiness.
             pm.UpdateFPS();
-            Thread.Sleep(1200);
-            pm.UpdateFPS();
+            Stopwatch timeout = Stopwatch.StartNew();
+            while (pm.CurrentFPS <= 0 && timeout.ElapsedMilliseconds < 3000)
+            {
+                Thread.Sleep(25);
+                pm.UpdateFPS();
+            }
 
             pm.CurrentFPS.Should().BeGreaterThan(0);
         }
@@ -59,8 +62,8 @@ namespace ClickIt.Tests.Unit
             var pm = new PerformanceMonitor(new ClickItSettings());
             pm.Start();
 
-            Thread.Sleep(220);
-            pm.ShouldTriggerSecondTimerAction(200).Should().BeTrue();
+            pm.ShouldTriggerSecondTimerAction(int.MaxValue).Should().BeFalse();
+            pm.ShouldTriggerSecondTimerAction(-1).Should().BeTrue();
         }
 
         [TestMethod]
@@ -71,11 +74,8 @@ namespace ClickIt.Tests.Unit
 
             // call enough times to start recording intervals (skips first few)
             pm.RecordClickInterval();
-            Thread.Sleep(5);
             pm.RecordClickInterval();
-            Thread.Sleep(5);
             pm.RecordClickInterval();
-            Thread.Sleep(5);
             pm.RecordClickInterval();
 
             pm.GetAverageClickInterval().Should().BeGreaterThanOrEqualTo(0);

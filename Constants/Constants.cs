@@ -1,6 +1,6 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Collections.Immutable;
-namespace ClickIt.Constants
+namespace ClickIt.Definitions
 {
     public static class Constants
     {
@@ -15,6 +15,7 @@ namespace ClickIt.Constants
         public const string Verisium = "Verisium";
         public const string ClosedDoorPast = "ClosedDoorPast";
         public const string LegionInitiator = "LegionInitiator";
+        public const string UltimatumChallengeInteractablePath = "Leagues/Ultimatum/Objects/UltimatumChallengeInteractable";
         #endregion
 
         #region Target Type Strings

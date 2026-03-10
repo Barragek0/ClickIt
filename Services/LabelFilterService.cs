@@ -1,10 +1,11 @@
-﻿using ExileCore.PoEMemory.Components;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ClickIt.Utils;
+using ClickIt.Definitions;
 using ExileCore;
 #nullable enable
 namespace ClickIt.Services
@@ -15,15 +16,6 @@ namespace ClickIt.Services
         private readonly EssenceService _essenceService = essenceService;
         private readonly ErrorHandler _errorHandler = errorHandler;
         private readonly ExileCore.GameController? _gameController = gameController;
-        private const string CleansingFireAltar = "CleansingFireAltar";
-        private const string TangleAltar = "TangleAltar";
-        private const string Brequel = "Brequel";
-        private const string CrimsonIron = "CrimsonIron";
-        private const string CopperAltar = "copper_altar";
-        private const string PetrifiedWood = "PetrifiedWood";
-        private const string Bismuth = "Bismuth";
-        private const string ClosedDoorPast = "ClosedDoorPast";
-        private const string LegionInitiator = "LegionInitiator";
 
 
 
@@ -49,7 +41,7 @@ namespace ClickIt.Services
 
                     // Check for restricted items: locked chest or settlers tree
                     var chestComponent = label.ItemOnGround.GetComponent<Chest>();
-                    if (path.Contains(PetrifiedWood) || (chestComponent?.IsLocked == true && !chestComponent.IsStrongbox))
+                    if (path.Contains(Constants.PetrifiedWood) || (chestComponent?.IsLocked == true && !chestComponent.IsStrongbox))
                     {
                         _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
                         return true;
@@ -265,7 +257,7 @@ namespace ClickIt.Services
 
         private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
         {
-            return ContainsAnyMetadataIdentifier(metadataPath, itemName, null, identifiers);
+            return ContainsAnyMetadataIdentifier(metadataPath, itemName, item: null, identifiers);
         }
 
         private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, IReadOnlyList<string> identifiers)
@@ -281,17 +273,6 @@ namespace ClickIt.Services
                 string identifier = identifiers[i] ?? string.Empty;
                 if (identifier.Length == 0)
                     continue;
-
-                if (identifier.StartsWith("name:", StringComparison.OrdinalIgnoreCase))
-                {
-                    string nameFragment = identifier.Substring("name:".Length).Trim();
-                    if (!string.IsNullOrEmpty(itemName)
-                        && !string.IsNullOrEmpty(nameFragment)
-                        && itemName.IndexOf(nameFragment, StringComparison.OrdinalIgnoreCase) >= 0)
-                        return true;
-
-                    continue;
-                }
 
                 if (identifier.StartsWith("special:", StringComparison.OrdinalIgnoreCase))
                 {
@@ -323,11 +304,7 @@ namespace ClickIt.Services
                     continue;
                 }
 
-                if (metadataPath.IndexOf(identifier, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-
-                if (identifier.StartsWith("Items/", StringComparison.OrdinalIgnoreCase)
-                    && metadataPath.IndexOf("Metadata/" + identifier, StringComparison.OrdinalIgnoreCase) >= 0)
+                if (MetadataIdentifierMatcher.ContainsSingle(metadataPath, itemName, identifier))
                     return true;
             }
 
@@ -353,14 +330,14 @@ namespace ClickIt.Services
         private static bool IsHeistQuestContract(string itemName)
         {
             return !string.IsNullOrWhiteSpace(itemName)
-                && Constants.Constants.HeistQuestContractNames.Contains(itemName);
+                && Constants.HeistQuestContractNames.Contains(itemName);
         }
 
         private static bool IsHeistNonQuestContract(string itemName)
         {
             return !string.IsNullOrWhiteSpace(itemName)
                 && itemName.StartsWith("Contract:", StringComparison.OrdinalIgnoreCase)
-                && !Constants.Constants.HeistQuestContractNames.Contains(itemName);
+                && !Constants.HeistQuestContractNames.Contains(itemName);
         }
 
         private static bool IsInscribedUltimatum(Entity item)
@@ -414,18 +391,29 @@ namespace ClickIt.Services
         }
 
         // Overload to check stackable currency directly from an Entity (when label isn't available)
-        public static bool IsStackableCurrency(Entity item, ExileCore.GameController? gameController)
+        private static bool IsStackableCurrencyCore(Entity? itemEntity, ExileCore.GameController? gameController)
         {
             try
             {
-                // (debug logging moved to instance method body below)
                 if (gameController == null) return false;
-                var world = item?.GetComponent<WorldItem>();
-                var itemEntity = world?.ItemEntity;
                 if (itemEntity == null) return false;
                 var baseItemType = gameController.Files.BaseItemTypes.Translate(itemEntity.Path ?? string.Empty);
                 if (baseItemType == null) return false;
                 return string.Equals(baseItemType.ClassName, "StackableCurrency", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Overload to check stackable currency directly from an Entity (when label isn't available)
+        public static bool IsStackableCurrency(Entity item, ExileCore.GameController? gameController)
+        {
+            try
+            {
+                var world = item?.GetComponent<WorldItem>();
+                return IsStackableCurrencyCore(world?.ItemEntity, gameController);
             }
             catch
             {
@@ -439,13 +427,8 @@ namespace ClickIt.Services
         {
             try
             {
-                if (gameController == null) return false;
                 var world = label.ItemOnGround?.GetComponent<WorldItem>();
-                var itemEntity = world?.ItemEntity;
-                if (itemEntity == null) return false;
-                var baseItemType = gameController.Files.BaseItemTypes.Translate(itemEntity.Path ?? string.Empty);
-                if (baseItemType == null) return false;
-                return string.Equals(baseItemType.ClassName, "StackableCurrency", StringComparison.OrdinalIgnoreCase);
+                return IsStackableCurrencyCore(world?.ItemEntity, gameController);
             }
             catch
             {
@@ -485,13 +468,13 @@ namespace ClickIt.Services
                 (settings.ClickSanctum, p => p.Contains("Sanctum")),
                 (settings.ClickBetrayal, p => p.Contains("BetrayalMakeChoice")),
                 (settings.ClickBlight, p => p.Contains("BlightPump")),
-                (settings.ClickAlvaTempleDoors, p => p.Contains(ClosedDoorPast)),
-                (settings.ClickLegionPillars, p => p.Contains(LegionInitiator)),
+                (settings.ClickAlvaTempleDoors, p => p.Contains(Constants.ClosedDoorPast)),
+                (settings.ClickLegionPillars, p => p.Contains(Constants.LegionInitiator)),
                 (settings.ClickAzurite, p => p.Contains("AzuriteEncounterController")),
                 (settings.ClickUltimatum, p => IsUltimatumPath(p)),
                 (settings.ClickDelveSpawners, p => p.Contains("Delve/Objects/Encounter")),
                 (settings.ClickCrafting, p => p.Contains("CraftingUnlocks")),
-                (settings.ClickBreach, p => p.Contains(Brequel)),
+                (settings.ClickBreach, p => p.Contains(Constants.Brequel)),
                 (settings.ClickSettlersOre, p => IsSettlersOrePath(p))
             };
 
@@ -505,17 +488,22 @@ namespace ClickIt.Services
         }
 
         private static bool IsHarvestPath(string path) => path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor");
-        private static bool IsSettlersOrePath(string path) => path.Contains(CrimsonIron) || path.Contains(CopperAltar) || path.Contains(PetrifiedWood) || path.Contains(Bismuth);
+        private static bool IsSettlersOrePath(string path) =>
+            path.Contains(Constants.CrimsonIron)
+            || path.Contains(Constants.CopperAltar)
+            || path.Contains(Constants.PetrifiedWood)
+            || path.Contains(Constants.Bismuth);
         private static bool IsUltimatumPath(string path)
         {
-            return path.Contains("Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", StringComparison.OrdinalIgnoreCase);
+            return path.Contains(Constants.UltimatumChallengeInteractablePath, StringComparison.OrdinalIgnoreCase);
         }
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
             return (highlightEater || highlightExarch || clickEater || clickExarch) &&
-                   (path.Contains(CleansingFireAltar) || path.Contains(TangleAltar));
+                   (path.Contains(Constants.CleansingFireAltar)
+                    || path.Contains(Constants.TangleAltar));
         }
         private static bool ShouldClickEssence(bool clickEssences, LabelOnGround label)
         {

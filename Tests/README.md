@@ -6,9 +6,14 @@ Keep tests small, deterministic, and readable. Prefer test seams to avoid invoki
 
 Patterns & conventions
 - Use `Tests/TestUtils/TestBuilders.cs` and small stubs in `Tests/TestUtils` to construct test data.
+- Prefer seam-first access order for implementation details:
+- 1) Public API.
+- 2) Existing `*ForTests` seam methods.
+- 3) Shared reflection helpers in `Tests/TestUtils` (for example `PrivateFieldAccessor`).
+- 4) Direct ad-hoc reflection only when no seam/helper can be used.
 - Prefer parameterized tests (`[DataTestMethod]` + `[DataRow(...)]`) for small logic branches — they are easier to read and increase coverage with minimal code.
 - Avoid calling ExileCore native methods in tests. Where production code requires complex runtime objects, prefer seams (e.g., `TryGetVisibleLabelRect_ForTests`) or uninitialized placeholders where explicitly safe.
-- When a test needs to call a private implementation for edge-case coverage, prefer the `_ForTests` seam method if available. If you must reflect into private members, keep tests clearly documented.
+- When a test needs to call a private implementation for edge-case coverage, prefer the `_ForTests` seam method if available. If you must reflect into private members, use a shared helper in `Tests/TestUtils` and keep the reason clearly documented.
 
 Running tests locally
 - Run unit+integration tests (Debug):

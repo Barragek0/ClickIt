@@ -1,4 +1,4 @@
-﻿namespace ClickIt.Constants
+namespace ClickIt.Definitions
 {
     internal static class AltarModsConstants
     {

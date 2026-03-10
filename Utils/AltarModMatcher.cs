@@ -1,4 +1,4 @@
-using ClickIt.Constants;
+using ClickIt.Definitions;
 
 namespace ClickIt.Utils
 {

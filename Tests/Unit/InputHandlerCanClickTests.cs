@@ -1,0 +1,32 @@
+using ClickIt.Utils;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace ClickIt.Tests.Unit
+{
+    [TestClass]
+    public class InputHandlerCanClickTests
+    {
+        [TestMethod]
+        public void CanClick_ReturnsFalse_WhenGameControllerIsNull()
+        {
+            var settings = new ClickItSettings();
+            var perf = new PerformanceMonitor(settings);
+            var handler = new InputHandler(settings, perf);
+
+            handler.CanClick(null!).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void GetCanClickFailureReason_ReturnsDefault_WhenStateUnavailable()
+        {
+            var settings = new ClickItSettings();
+            var perf = new PerformanceMonitor(settings);
+            var handler = new InputHandler(settings, perf);
+
+            string reason = handler.GetCanClickFailureReason(null!);
+
+            reason.Should().NotBeNullOrWhiteSpace();
+        }
+    }
+}

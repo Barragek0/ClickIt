@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ClickIt.Constants;
+using ClickIt.Definitions;
 using ClickIt.Services;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

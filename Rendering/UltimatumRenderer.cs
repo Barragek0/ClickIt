@@ -1,4 +1,4 @@
-using ClickIt.Constants;
+using ClickIt.Definitions;
 using ClickIt.Services;
 using ClickIt.Utils;
 using SharpDX;

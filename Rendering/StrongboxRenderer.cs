@@ -94,43 +94,15 @@ namespace ClickIt.Rendering
             return true;
         }
 
-        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
-        {
-            if (identifiers == null || identifiers.Count == 0)
-                return false;
-
-            for (int i = 0; i < identifiers.Count; i++)
-            {
-                string identifier = identifiers[i] ?? string.Empty;
-                if (identifier.Length == 0)
-                    continue;
-
-                if (identifier.StartsWith("name:", StringComparison.OrdinalIgnoreCase))
-                {
-                    string nameFragment = identifier.Substring("name:".Length).Trim();
-                    if (!string.IsNullOrWhiteSpace(nameFragment)
-                        && itemName.IndexOf(nameFragment, StringComparison.OrdinalIgnoreCase) >= 0)
-                        return true;
-
-                    continue;
-                }
-
-                if (metadataPath.IndexOf(identifier, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-            }
-
-            return false;
-        }
-
         private static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata)
         {
             if (string.IsNullOrEmpty(path) || clickMetadata == null || clickMetadata.Count == 0)
                 return false;
 
-            if (ContainsAnyMetadataIdentifier(path, itemName, dontClickMetadata))
+            if (MetadataIdentifierMatcher.ContainsAny(path, itemName, dontClickMetadata))
                 return false;
 
-            return ContainsAnyMetadataIdentifier(path, itemName, clickMetadata);
+            return MetadataIdentifierMatcher.ContainsAny(path, itemName, clickMetadata);
         }
 
     }

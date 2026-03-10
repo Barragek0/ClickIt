@@ -62,45 +62,59 @@ namespace ClickIt.Utils
         {
             if (gameController == null) return false;
 
-            // Lazy mode is active when:
-            // - Lazy mode is enabled
-            // - No restricted items are on screen  
-            // - Lazy mode disable hotkey is NOT being held
-            bool lazyModeActive = _settings?.LazyMode != null &&
-                                 _settings.LazyMode.Value &&
-                                 !hasLazyModeRestrictedItemsOnScreen &&
-                                 !Input.GetKeyState(_settings.LazyModeDisableKey.Value);
-
-            // In lazy mode, always allow clicking (ignore hotkey state)
-            // When not in lazy mode, check hotkey state normally
-            bool keyState = lazyModeActive || (_settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value));
-
-            // Holding the click hotkey should override ritual-in-progress blocking.
-            bool clickHotkeyHeld = _settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value);
+            bool keyState = IsClickKeyStateActive(hasLazyModeRestrictedItemsOnScreen);
+            bool clickHotkeyHeld = IsClickHotkeyHeld();
 
             return keyState &&
                 IsPOEActive(gameController) &&
                 (_settings?.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
                 !IsInTownOrHideout(gameController) &&
-                !gameController.IngameState.IngameUi.ChatTitlePanel.IsVisible &&
                 // Allow clicking during a ritual if the click hotkey is being held
                 (!isRitualActive || clickHotkeyHeld) &&
-                !gameController.Game.IsEscapeState &&
-                !gameController.IngameState.IngameUi.AtlasPanel.IsVisible &&
-                !gameController.IngameState.IngameUi.AtlasTreePanel.IsVisible &&
-                !gameController.IngameState.IngameUi.TreePanel.IsVisible &&
-                (!gameController.IngameState.IngameUi.UltimatumPanel.IsVisible || _settings.ClickUltimatum.Value) &&
-                !gameController.IngameState.IngameUi.BetrayalWindow.IsVisible &&
-                !gameController.IngameState.IngameUi.SyndicatePanel.IsVisible &&
-                !gameController.IngameState.IngameUi.SyndicateTree.IsVisible &&
-                !gameController.IngameState.IngameUi.IncursionWindow.IsVisible &&
-                !gameController.IngameState.IngameUi.RitualWindow.IsVisible &&
-                !gameController.IngameState.IngameUi.SanctumFloorWindow.IsVisible &&
-                !gameController.IngameState.IngameUi.SanctumRewardWindow.IsVisible &&
-                !gameController.IngameState.IngameUi.MicrotransactionShopWindow.IsVisible &&
-                !gameController.IngameState.IngameUi.ResurrectPanel.IsVisible &&
-                !gameController.IngameState.IngameUi.NpcDialog.IsVisible &&
-                !gameController.IngameState.IngameUi.KalandraTabletWindow.IsVisible;
+                !IsBlockedByUiOrEscapeState(gameController);
+        }
+
+        private bool IsClickKeyStateActive(bool hasLazyModeRestrictedItemsOnScreen)
+        {
+            // Lazy mode is active when:
+            // - Lazy mode is enabled
+            // - No restricted items are on screen
+            // - Lazy mode disable hotkey is NOT being held
+            bool lazyModeActive = _settings?.LazyMode != null
+                && _settings.LazyMode.Value
+                && !hasLazyModeRestrictedItemsOnScreen
+                && !Input.GetKeyState(_settings.LazyModeDisableKey.Value);
+
+            // In lazy mode, always allow clicking (ignore hotkey state)
+            // When not in lazy mode, check hotkey state normally
+            return lazyModeActive || IsClickHotkeyHeld();
+        }
+
+        private bool IsClickHotkeyHeld()
+        {
+            return _settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value);
+        }
+
+        private bool IsBlockedByUiOrEscapeState(GameController gameController)
+        {
+            var ui = gameController.IngameState.IngameUi;
+            return gameController.Game.IsEscapeState
+                || ui.ChatTitlePanel.IsVisible
+                || ui.AtlasPanel.IsVisible
+                || ui.AtlasTreePanel.IsVisible
+                || ui.TreePanel.IsVisible
+                || (ui.UltimatumPanel.IsVisible && !_settings.ClickUltimatum.Value)
+                || ui.BetrayalWindow.IsVisible
+                || ui.SyndicatePanel.IsVisible
+                || ui.SyndicateTree.IsVisible
+                || ui.IncursionWindow.IsVisible
+                || ui.RitualWindow.IsVisible
+                || ui.SanctumFloorWindow.IsVisible
+                || ui.SanctumRewardWindow.IsVisible
+                || ui.MicrotransactionShopWindow.IsVisible
+                || ui.ResurrectPanel.IsVisible
+                || ui.NpcDialog.IsVisible
+                || ui.KalandraTabletWindow.IsVisible;
         }
         public string GetCanClickFailureReason(GameController gameController)
         {

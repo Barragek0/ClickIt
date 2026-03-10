@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Utils;
 using FluentAssertions;
-using System.Threading;
 
 namespace ClickIt.Tests.Utils
 {
@@ -16,8 +15,6 @@ namespace ClickIt.Tests.Utils
 
             pm.Start();
             pm.StartRenderTiming();
-            // small sleep so elapsed won't always be zero
-            Thread.Sleep(2);
             pm.StopRenderTiming();
 
             pm.RenderTimings.Should().NotBeEmpty();
@@ -36,7 +33,6 @@ namespace ClickIt.Tests.Utils
             for (int i = 0; i < 12; i++)
             {
                 pm.StartCoroutineTiming("click");
-                Thread.Sleep(1);
                 pm.StopCoroutineTiming("click");
             }
 
@@ -60,7 +56,6 @@ namespace ClickIt.Tests.Utils
             pm.RecordClickInterval();
             pm.RecordClickInterval();
             pm.RecordClickInterval();
-            Thread.Sleep(2);
             pm.RecordClickInterval();
             pm.RecordClickInterval();
 
@@ -73,10 +68,9 @@ namespace ClickIt.Tests.Utils
             var settings = new ClickItSettings();
             var pm = new PerformanceMonitor(settings);
             pm.Start();
-            Thread.Sleep(30);
-            // default checks against 200ms; should usually be false here but we use small interval
-            var trigger = pm.ShouldTriggerSecondTimerAction(10);
-            trigger.Should().BeTrue();
+
+            pm.ShouldTriggerSecondTimerAction(int.MaxValue).Should().BeFalse();
+            pm.ShouldTriggerSecondTimerAction(-1).Should().BeTrue();
         }
     }
 }

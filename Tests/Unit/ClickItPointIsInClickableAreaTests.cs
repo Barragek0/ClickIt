@@ -1,8 +1,8 @@
 using FluentAssertions;
 using ClickIt.Services;
+using ClickIt.Tests.TestUtils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
-using System.Reflection;
 
 namespace ClickIt.Tests.Unit
 {
@@ -17,8 +17,7 @@ namespace ClickIt.Tests.Unit
 
             clickIt.State.AreaService = null; // explicit
 
-            var mi = typeof(ClickIt).GetMethod("PointIsInClickableArea", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var res = (bool)mi.Invoke(clickIt, [new Vector2(10, 10), null]);
+            var res = PrivateMethodAccessor.Invoke<bool>(clickIt, "PointIsInClickableArea", new Vector2(10, 10), null);
             res.Should().BeFalse();
         }
 
@@ -36,20 +35,22 @@ namespace ClickIt.Tests.Unit
             var mana = new RectangleF(300, 300, 10, 10);
             var buffs = new RectangleF(300, 0, 10, 10);
 
-            var t = typeof(AreaService);
-            t.GetField("_fullScreenRectangle", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, full);
-            t.GetField("_healthAndFlaskRectangle", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, health);
-            t.GetField("_manaAndSkillsRectangle", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, mana);
-            t.GetField("_buffsAndDebuffsRectangle", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, buffs);
+            SetAreaRectangles(svc, full, health, mana, buffs);
 
             clickIt.State.AreaService = svc;
 
-            var mi = typeof(ClickIt).GetMethod("PointIsInClickableArea", BindingFlags.Instance | BindingFlags.NonPublic)!;
-
             // choose a point inside the full screen rectangle and not in any blocked area
             var p = new Vector2(20, 20);
-            var res = (bool)mi.Invoke(clickIt, [p, null]);
+            var res = PrivateMethodAccessor.Invoke<bool>(clickIt, "PointIsInClickableArea", p, null);
             res.Should().BeTrue();
+        }
+
+        private static void SetAreaRectangles(AreaService svc, RectangleF full, RectangleF health, RectangleF mana, RectangleF buffs)
+        {
+            PrivateFieldAccessor.Set(svc, "_fullScreenRectangle", full);
+            PrivateFieldAccessor.Set(svc, "_healthAndFlaskRectangle", health);
+            PrivateFieldAccessor.Set(svc, "_manaAndSkillsRectangle", mana);
+            PrivateFieldAccessor.Set(svc, "_buffsAndDebuffsRectangle", buffs);
         }
     }
 }

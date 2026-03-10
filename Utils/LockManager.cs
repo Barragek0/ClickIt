@@ -31,19 +31,30 @@ namespace ClickIt.Utils
             public void Dispose() { }
         }
 
+        private static IDisposable AcquireEntered(object lockObj)
+        {
+            Monitor.Enter(lockObj);
+            return new Releaser(lockObj);
+        }
+
+        private static bool ShouldNoop(object? lockObj, bool requireInstance)
+        {
+            if (lockObj == null)
+                return true;
+
+            return requireInstance && Instance == null;
+        }
+
         /// <summary>
         /// Instance Acquire method — use via instance: using(var d = lm.Acquire(obj)) { ... }
         /// Always performs a Monitor.Enter for non-null objects to enforce thread-safety.
         /// </summary>
         public static IDisposable Acquire(object? lockObj)
         {
-            if (lockObj == null)
-            {
+            if (ShouldNoop(lockObj, requireInstance: false))
                 return NoopReleaser.Value;
-            }
 
-            Monitor.Enter(lockObj);
-            return new Releaser(lockObj);
+            return AcquireEntered(lockObj!);
         }
 
         /// <summary>
@@ -53,9 +64,10 @@ namespace ClickIt.Utils
         public static IDisposable AcquireStatic(object? lockObj)
         {
             // If there is no global LockManager instance configured, treat AcquireStatic as a no-op.
-            if (Instance == null || lockObj == null) return NoopReleaser.Value;
-            Monitor.Enter(lockObj);
-            return new Releaser(lockObj);
+            if (ShouldNoop(lockObj, requireInstance: true))
+                return NoopReleaser.Value;
+
+            return AcquireEntered(lockObj!);
         }
 
         // Note: static AcquireStatic is provided for type-qualified call sites; instance Acquire honors settings.

@@ -5,7 +5,6 @@ using ClickIt.Utils;
 using ClickIt.Tests.TestUtils;
 using ClickIt.Components;
 using System.Linq;
-using System.Reflection;
 
 namespace ClickIt.Tests.Unit
 {
@@ -46,8 +45,7 @@ namespace ClickIt.Tests.Unit
             repo.GetAltarComponents().Should().BeEmpty();
 
             // Verify private _cachedWeights is null after ClearAltarComponents (InvalidateCache called)
-            var field = typeof(PrimaryAltarComponent).GetField("_cachedWeights", BindingFlags.NonPublic | BindingFlags.Instance);
-            var cached = field.GetValue(comp);
+            var cached = PrivateFieldAccessor.Get<object?>(comp, "_cachedWeights");
             cached.Should().BeNull();
         }
     }

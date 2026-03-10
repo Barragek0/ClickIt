@@ -1,7 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
-using ClickIt.Constants;
+using ClickIt.Definitions;
 
 namespace ClickIt.Tests.Unit
 {

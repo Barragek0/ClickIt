@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
-using System.Threading;
 
 namespace ClickIt.Tests.Utils
 {
@@ -20,7 +19,6 @@ namespace ClickIt.Tests.Utils
             foreach (var k in keys)
             {
                 pm.StartCoroutineTiming(k);
-                Thread.Sleep(1);
                 pm.StopCoroutineTiming(k);
                 pm.GetLastTiming(k).Should().BeGreaterOrEqualTo(0);
                 pm.GetAverageTiming(k).Should().BeGreaterOrEqualTo(0);

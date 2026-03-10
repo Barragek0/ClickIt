@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
+using ClickIt.Tests.TestUtils;
 using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -69,11 +70,7 @@ namespace ClickIt.Tests.Unit
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-
-            var mi = cm.GetType().GetMethod("IsShrineClickBlockedInLazyMode", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
-            var res = (bool)mi!.Invoke(cm, Array.Empty<object>());
+            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
             res.Should().BeFalse();
         }
 
@@ -97,10 +94,7 @@ namespace ClickIt.Tests.Unit
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            var mi = cm.GetType().GetMethod("IsShrineClickBlockedInLazyMode", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
-            var res = (bool)mi!.Invoke(cm, Array.Empty<object>());
+            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
             res.Should().BeTrue();
         }
 
@@ -124,10 +118,7 @@ namespace ClickIt.Tests.Unit
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            var mi = cm.GetType().GetMethod("IsShrineClickBlockedInLazyMode", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
-            var res = (bool)mi!.Invoke(cm, Array.Empty<object>());
+            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
             res.Should().BeTrue();
         }
 
@@ -149,11 +140,7 @@ namespace ClickIt.Tests.Unit
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-
-            var mi = cm.GetType().GetMethod("IsShrineClickBlockedInLazyMode", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
-            var res = (bool)mi!.Invoke(cm, Array.Empty<object>());
+            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
             res.Should().BeFalse();
         }
 
@@ -167,13 +154,11 @@ namespace ClickIt.Tests.Unit
 
             // No altar service -> false
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            var mi = cm.GetType().GetMethod("HasClickableAltars", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-            ((bool)mi!.Invoke(cm, Array.Empty<object>())).Should().BeFalse();
+            PrivateMethodAccessor.Invoke<bool>(cm, "HasClickableAltars").Should().BeFalse();
 
             // Provide an altar service object (uninitialized) but no click service -> still false
             ctx.AltarService = (Services.AltarService)RuntimeHelpers.GetUninitializedObject(typeof(Services.AltarService));
-            ((bool)mi.Invoke(cm, Array.Empty<object>())).Should().BeFalse();
+            PrivateMethodAccessor.Invoke<bool>(cm, "HasClickableAltars").Should().BeFalse();
         }
 
         [TestMethod]
@@ -186,17 +171,12 @@ namespace ClickIt.Tests.Unit
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
 
-            var healthMi = cm.GetType().GetMethod("GetPlayerHealthPercent", BindingFlags.NonPublic | BindingFlags.Instance);
-            var esMi = cm.GetType().GetMethod("GetPlayerEnergyShieldPercent", BindingFlags.NonPublic | BindingFlags.Instance);
-            healthMi.Should().NotBeNull();
-            esMi.Should().NotBeNull();
-
             // Depending on build flags / available ExileCore runtime, these methods may either return 100f
             // (when runtime is not present) or attempt to access GameController.Player and throw.
             try
             {
-                ((float)healthMi!.Invoke(cm, Array.Empty<object>())).Should().BeApproximately(100f, 0.001f);
-                ((float)esMi!.Invoke(cm, Array.Empty<object>())).Should().BeApproximately(100f, 0.001f);
+                PrivateMethodAccessor.Invoke<float>(cm, "GetPlayerHealthPercent").Should().BeApproximately(100f, 0.001f);
+                PrivateMethodAccessor.Invoke<float>(cm, "GetPlayerEnergyShieldPercent").Should().BeApproximately(100f, 0.001f);
             }
             catch (TargetInvocationException tie) when (tie.InnerException is NullReferenceException)
             {
@@ -243,17 +223,14 @@ namespace ClickIt.Tests.Unit
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
 
-            var mi = cm.GetType().GetMethod("IsClickHotkeyPressed", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
             global::ClickIt.Utils.CoroutineManager.KeyStateProvider = (k) => true;
 
             settings.LazyMode.Value = false;
-            var resNormal = (bool)mi!.Invoke(cm, Array.Empty<object>());
+            var resNormal = PrivateMethodAccessor.Invoke<bool>(cm, "IsClickHotkeyPressed");
             resNormal.Should().BeTrue();
 
             settings.LazyMode.Value = true;
-            var resInverted = (bool)mi.Invoke(cm, Array.Empty<object>());
+            var resInverted = PrivateMethodAccessor.Invoke<bool>(cm, "IsClickHotkeyPressed");
             resInverted.Should().BeFalse();
         }
 
@@ -278,10 +255,7 @@ namespace ClickIt.Tests.Unit
             ctx.Timer.Stop();
             ctx.Timer.Reset();
 
-            var mi = cm.GetType().GetMethod("ClickLabel", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
-            var enumerator = mi!.Invoke(cm, Array.Empty<object>()) as System.Collections.IEnumerator;
+            var enumerator = PrivateMethodAccessor.Invoke<System.Collections.IEnumerator>(cm, "ClickLabel");
             enumerator.Should().NotBeNull();
 
             enumerator!.MoveNext();
@@ -299,10 +273,7 @@ namespace ClickIt.Tests.Unit
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
 
             bool ran = false;
-            var mi = cm.GetType().GetMethod("ExecuteWithElementAccessLock", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
-            mi!.Invoke(cm, [new Action(() => ran = true)]);
+            PrivateMethodAccessor.Invoke(cm, "ExecuteWithElementAccessLock", new Action(() => ran = true));
             ran.Should().BeTrue();
         }
     }

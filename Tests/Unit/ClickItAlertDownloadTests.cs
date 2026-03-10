@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
+using ClickIt.Tests.TestUtils;
 using System.IO;
 
 namespace ClickIt.Tests.Unit
@@ -22,8 +23,7 @@ namespace ClickIt.Tests.Unit
 
             clickIt.ReloadAlertSound();
 
-            var field = clickIt.GetType().GetField("_alertSoundPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var val = (string?)field!.GetValue(clickIt);
+            var val = PrivateFieldAccessor.Get<string?>(clickIt, "_alertSoundPath");
             val.Should().BeNull();
         }
 
@@ -42,8 +42,7 @@ namespace ClickIt.Tests.Unit
 
             clickIt.ReloadAlertSound();
 
-            var field = clickIt.GetType().GetField("_alertSoundPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var val = (string?)field!.GetValue(clickIt);
+            var val = PrivateFieldAccessor.Get<string?>(clickIt, "_alertSoundPath");
             val.Should().NotBeNullOrEmpty();
             val!.Should().Be(target);
 
@@ -64,8 +63,7 @@ namespace ClickIt.Tests.Unit
 
             clickIt.ReloadAlertSound();
 
-            var field = clickIt.GetType().GetField("_alertSoundPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var val = (string?)field!.GetValue(clickIt);
+            var val = PrivateFieldAccessor.Get<string?>(clickIt, "_alertSoundPath");
             val.Should().BeNull();
         }
     }

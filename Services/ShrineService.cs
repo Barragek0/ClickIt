@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace ClickIt.Services
 {
-    public class ShrineService(GameController gameController, Camera camera)
+    public partial class ShrineService(GameController gameController, Camera camera)
     {
         private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
         private readonly Camera _camera = camera ?? throw new ArgumentNullException(nameof(camera));

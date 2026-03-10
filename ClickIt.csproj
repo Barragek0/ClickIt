@@ -125,6 +125,7 @@
     <Compile Include="Services\LabelFilterService.Seams.cs" />
     <Compile Include="Services\LabelService.cs" />
     <Compile Include="Services\ShrineService.cs" />
+    <Compile Include="Services\ShrineService.Seams.cs" />
 
     <!-- Rendering -->
     <Compile Include="Rendering\AltarDisplayRenderer.cs" />
@@ -146,13 +147,16 @@
     <Compile Include="Utils\IndexConstants.cs" />
     <Compile Include="Utils\InputHandler.cs" />
     <Compile Include="Utils\Keyboard.cs" />
+    <Compile Include="Utils\MetadataIdentifierMatcher.cs" />
     <Compile Include="Utils\LabelUtils.Seams.Adapter.cs" />
     <Compile Include="Utils\LabelUtils.Seams.cs" />
     <Compile Include="Utils\LabelUtils.cs" />
+    <Compile Include="Utils\LabelUtils.Elements.cs" />
     <Compile Include="Utils\LockManager.cs" />
     <Compile Include="Utils\ModIndexConstants.cs" />
     <Compile Include="Utils\Mouse.cs" />
     <Compile Include="Utils\PerformanceMonitor.cs" />
+    <Compile Include="Utils\PerformanceMonitor.Timings.cs" />
     <Compile Include="Utils\TextHelpers.cs" />
     <Compile Include="Utils\WeightCalculator.cs" />
   </ItemGroup>

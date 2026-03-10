@@ -69,6 +69,7 @@ namespace ClickIt.Tests.Utils
             var obj = new object();
             using var n2 = global::ClickIt.Utils.LockManager.AcquireStatic(obj);
             n2.Should().NotBeNull();
+            n2.Should().BeSameAs(n);
             // No exception and no hang
         }
 

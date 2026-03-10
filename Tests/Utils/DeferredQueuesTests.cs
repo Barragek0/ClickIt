@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
+using ClickIt.Tests.TestUtils;
 using SharpDX;
 using ExileCore.Shared.Enums;
 
@@ -60,16 +61,12 @@ namespace ClickIt.Tests.Utils
         {
             var q = new DeferredTextQueue();
 
-            // Reflect into private _items to assert the contents
-            var itemsField = typeof(DeferredTextQueue).GetField("_items", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            itemsField.Should().NotBeNull();
-
-            var initial = (System.Collections.ICollection)itemsField.GetValue(q);
+            var initial = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(q, "_items");
             initial.Count.Should().Be(0);
 
             q.Enqueue("hello", new Vector2(1, 2), Color.White, 12, FontAlign.Left);
 
-            var after = (System.Collections.ICollection)itemsField.GetValue(q);
+            var after = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(q, "_items");
             after.Count.Should().Be(1);
         }
 
@@ -102,12 +99,10 @@ namespace ClickIt.Tests.Utils
             tt.Flush(gfx, (s, f) => { });
 
             // After flush both internal queues should be empty
-            var itemsField = typeof(DeferredFrameQueue).GetField("_items", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var items = (System.Collections.ICollection)itemsField.GetValue(tf)!;
+            var items = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(tf, "_items");
             items.Count.Should().Be(0);
 
-            var itemsField2 = typeof(DeferredTextQueue).GetField("_items", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var items2 = (System.Collections.ICollection)itemsField2.GetValue(tt)!;
+            var items2 = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(tt, "_items");
             items2.Count.Should().Be(0);
         }
     }

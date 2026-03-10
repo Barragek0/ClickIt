@@ -4,7 +4,7 @@ using ExileCore.Shared.Nodes;
 using ImGuiNET;
 using Newtonsoft.Json;
 using System.Numerics;
-using ClickIt.Constants;
+using ClickIt.Definitions;
 
 namespace ClickIt
 {

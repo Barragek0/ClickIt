@@ -2,7 +2,8 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Services;
 using ClickIt.Utils;
-using ClickIt.Constants;
+using ClickIt.Definitions;
+using ClickIt.Tests.TestUtils;
 
 namespace ClickIt.Tests.Unit
 {
@@ -86,11 +87,9 @@ namespace ClickIt.Tests.Unit
             string negativeModType = "Player gains:";
 
             // Pre-populate private cache with an entry lacking the 'Type|' prefix
-            var cacheField = typeof(AltarMatcher).GetField("_modMatchCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var cache = cacheField?.GetValue(matcher) as System.Collections.IDictionary;
+            var cache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_modMatchCache");
             string cacheKey = $"{modText}|{negativeModType}";
-            if (cache != null)
-                cache[cacheKey] = (true, "SomeModId");
+            cache[cacheKey] = (true, "SomeModId");
 
             bool result = matcher.TryMatchModCached(modText, negativeModType, out bool isUpside, out string matchedId);
 
@@ -112,8 +111,7 @@ namespace ClickIt.Tests.Unit
             first.Should().Be(second);
 
             // inspect private cache to ensure the entry was stored
-            var textCacheField = typeof(AltarMatcher).GetField("_textCleanCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var textCache = textCacheField?.GetValue(matcher) as System.Collections.IDictionary;
+            var textCache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_textCleanCache");
             textCache.Should().NotBeNull();
             textCache.Contains(input).Should().BeTrue();
         }

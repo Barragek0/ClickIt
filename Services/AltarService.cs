@@ -1,7 +1,8 @@
-﻿using ExileCore.PoEMemory;
+using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
 using ClickIt.Components;
+using ClickIt.Definitions;
 using ClickIt.Utils;
 namespace ClickIt.Services
 {
@@ -27,8 +28,6 @@ namespace ClickIt.Services
         private readonly ClickItSettings _settings = settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels = cachedLabels;
         private readonly AltarRepository _altarRepository = new();
-        private const string CleansingFireAltar = "CleansingFireAltar";
-        private const string TangleAltar = "TangleAltar";
 
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
 
@@ -81,7 +80,9 @@ namespace ClickIt.Services
             List<LabelOnGround>? labelsFromCache = _cachedLabels?.Value;
             if (labelsFromCache == null)
                 return result;
-            string typeStr = type == ClickIt.AltarType.SearingExarch ? CleansingFireAltar : TangleAltar;
+            string typeStr = type == ClickIt.AltarType.SearingExarch
+                ? Constants.CleansingFireAltar
+                : Constants.TangleAltar;
             for (int i = 0; i < labelsFromCache.Count; i++)
             {
                 LabelOnGround label = labelsFromCache[i];
@@ -287,12 +288,12 @@ namespace ClickIt.Services
             if (string.IsNullOrEmpty(path)) return ClickIt.AltarType.Unknown;
 
             // Use OrdinalIgnoreCase for robust, culture-insensitive matching
-            if (path.Contains(CleansingFireAltar, StringComparison.OrdinalIgnoreCase))
+            if (path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase))
             {
                 return ClickIt.AltarType.SearingExarch;
             }
 
-            if (path.Contains(TangleAltar, StringComparison.OrdinalIgnoreCase))
+            if (path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase))
             {
                 return ClickIt.AltarType.EaterOfWorlds;
             }

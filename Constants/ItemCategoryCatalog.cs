@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ClickIt.Constants
+namespace ClickIt.Definitions
 {
     internal enum ItemListKind
     {

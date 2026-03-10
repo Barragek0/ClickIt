@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace ClickIt.Constants
+namespace ClickIt.Definitions
 {
     internal static class UltimatumModifiersConstants
     {

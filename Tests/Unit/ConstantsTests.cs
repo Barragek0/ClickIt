@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
+using ClickIt.Definitions;
 
 namespace ClickIt.Tests.Unit
 {
@@ -9,19 +10,19 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void BasicConstants_AreSet()
         {
-            Constants.Constants.CleansingFireAltar.Should().Be("CleansingFireAltar");
-            Constants.Constants.MouseEventLeftDown.Should().Be(0x02);
-            Constants.Constants.KeyPressed.Should().Be(0x8000);
-            Constants.Constants.PipeSeparator.Should().Be("|");
-            Constants.Constants.MinModWeight.Should().BeGreaterThan(0);
-            Constants.Constants.MaxModWeight.Should().BeGreaterOrEqualTo(Constants.Constants.MinModWeight);
+            Constants.CleansingFireAltar.Should().Be("CleansingFireAltar");
+            Constants.MouseEventLeftDown.Should().Be(0x02);
+            Constants.KeyPressed.Should().Be(0x8000);
+            Constants.PipeSeparator.Should().Be("|");
+            Constants.MinModWeight.Should().BeGreaterThan(0);
+            Constants.MaxModWeight.Should().BeGreaterOrEqualTo(Constants.MinModWeight);
         }
 
         [TestMethod]
         public void HeistContractNames_ContainsExpectedEntries()
         {
-            Constants.Constants.HeistQuestContractNames.Should().Contain("Contract: Trial Run");
-            Constants.Constants.HeistQuestContractNames.Should().Contain("Contract: The Finest Costumes");
+            Constants.HeistQuestContractNames.Should().Contain("Contract: Trial Run");
+            Constants.HeistQuestContractNames.Should().Contain("Contract: The Finest Costumes");
         }
     }
 }

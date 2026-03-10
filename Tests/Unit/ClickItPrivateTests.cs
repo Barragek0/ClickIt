@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using System.Reflection;
+using ClickIt.Tests.TestUtils;
 
 namespace ClickIt.Tests.Unit
 {
@@ -22,14 +22,11 @@ namespace ClickIt.Tests.Unit
             settings.ModAlerts.Clear();
             settings.ModAlerts["upsides|foo"] = true;
 
-            var mi = clickIt.GetType().GetMethod("ResolveCompositeKey", BindingFlags.NonPublic | BindingFlags.Instance);
-            mi.Should().NotBeNull();
-
-            var key = mi!.Invoke(clickIt, ["foo"]) as string;
+            var key = PrivateMethodAccessor.Invoke<string?>(clickIt, "ResolveCompositeKey", "foo");
             key.Should().Be("upsides|foo");
 
             settings.ModAlerts["foo"] = true;
-            var key2 = (string?)mi.Invoke(clickIt, ["foo"]);
+            var key2 = PrivateMethodAccessor.Invoke<string?>(clickIt, "ResolveCompositeKey", "foo");
             key2.Should().Be("foo");
         }
 
@@ -44,29 +41,20 @@ namespace ClickIt.Tests.Unit
             settings.ModAlerts.Clear();
             settings.ModAlerts["alpha"] = true;
 
-            var isEnabledMi = clickIt.GetType().GetMethod("IsAlertEnabledForKey", BindingFlags.NonPublic | BindingFlags.Instance);
-            isEnabledMi.Should().NotBeNull();
-
-            ((bool)isEnabledMi!.Invoke(clickIt, ["alpha"])).Should().BeTrue();
-            ((bool)isEnabledMi.Invoke(clickIt, ["unknown"])).Should().BeFalse();
-
-            var canTriggerMi = clickIt.GetType().GetMethod("CanTriggerForKey", BindingFlags.NonPublic | BindingFlags.Instance);
-            canTriggerMi.Should().NotBeNull();
-
-            var lastField = clickIt.GetType().GetField("_lastAlertTimes", BindingFlags.NonPublic | BindingFlags.Instance);
-            lastField.Should().NotBeNull();
+            PrivateMethodAccessor.Invoke<bool>(clickIt, "IsAlertEnabledForKey", "alpha").Should().BeTrue();
+            PrivateMethodAccessor.Invoke<bool>(clickIt, "IsAlertEnabledForKey", "unknown").Should().BeFalse();
 
             var dict = new System.Collections.Generic.Dictionary<string, System.DateTime>(System.StringComparer.OrdinalIgnoreCase)
             {
                 ["alpha"] = System.DateTime.UtcNow
             };
-            lastField!.SetValue(clickIt, dict);
+            PrivateFieldAccessor.Set(clickIt, "_lastAlertTimes", dict);
 
-            ((bool)canTriggerMi!.Invoke(clickIt, ["alpha"])).Should().BeFalse();
+            PrivateMethodAccessor.Invoke<bool>(clickIt, "CanTriggerForKey", "alpha").Should().BeFalse();
 
             dict["alpha"] = System.DateTime.UtcNow.AddSeconds(-60);
-            lastField.SetValue(clickIt, dict);
-            ((bool)canTriggerMi.Invoke(clickIt, ["alpha"])).Should().BeTrue();
+            PrivateFieldAccessor.Set(clickIt, "_lastAlertTimes", dict);
+            PrivateMethodAccessor.Invoke<bool>(clickIt, "CanTriggerForKey", "alpha").Should().BeTrue();
         }
     }
 }
