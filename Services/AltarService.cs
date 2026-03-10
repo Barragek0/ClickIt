@@ -24,6 +24,8 @@ namespace ClickIt.Services
 
     public partial class AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
     {
+        private const int AltarModsTextReadLength = 4096;
+
         private readonly ClickIt _clickIt = clickIt;
         private readonly ClickItSettings _settings = settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels = cachedLabels;
@@ -105,7 +107,7 @@ namespace ClickIt.Services
         {
             string negativeModType = "";
             List<string> mods = [];
-            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(512));
+            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(AltarModsTextReadLength));
             int lineCount = TextHelpers.CountLines(altarMods);
             for (int i = 0; i < lineCount; i++)
             {
@@ -156,7 +158,7 @@ namespace ClickIt.Services
         private void RecordUnmatchedMod(string mod, string negativeModType)
         {
             DebugInfo.ModsUnmatched++;
-            string cleanedMod = new(mod.Where(char.IsLetter).ToArray());
+            string cleanedMod = AltarModMatcher.NormalizeLetters(mod);
             string unmatchedInfo = $"{cleanedMod} ({negativeModType})";
             if (!DebugInfo.RecentUnmatchedMods.Contains(unmatchedInfo))
             {
@@ -350,7 +352,7 @@ namespace ClickIt.Services
         {
             string negativeModType = "";
             var mods = new List<string>();
-            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(512));
+            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(AltarModsTextReadLength));
             int lineCount = TextHelpers.CountLines(altarMods);
             for (int i = 0; i < lineCount; i++)
             {
