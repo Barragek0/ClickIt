@@ -1,4 +1,4 @@
-using ExileCore;
+﻿using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
@@ -39,7 +39,6 @@ namespace ClickIt.Utils
             return EntityHelpers.IsRitualActive(_gameController);
         }
 
-
         private bool IsShrineClickBlockedInLazyMode()
         {
             if (!_settings.LazyMode.Value) return false;
@@ -53,6 +52,11 @@ namespace ClickIt.Utils
         private bool HasClickableAltars()
         {
             return _state.ClickService?.HasClickableAltars() == true;
+        }
+
+        private double GetTargetTime(double frequencyTarget, double averageTiming)
+        {
+            return (frequencyTarget - averageTiming) + _state.Random.Next(0, 6);
         }
 
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
@@ -119,17 +123,14 @@ namespace ClickIt.Utils
             // Determine if lazy mode is active (enabled and no restricted items on screen and no ritual active)
             bool isRitualActive = IsRitualActive();
             var cached = _state.CachedLabels?.Value;
-            bool lazyModeActive = _settings.LazyMode.Value &&
-                !(_state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false) &&
-            !isRitualActive;
-
-            // Check if there are lazy mode restricted items on screen
             bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
+            bool lazyModeActive = _settings.LazyMode.Value &&
+                                  !hasLazyModeRestrictedItemsOnScreen &&
+                                  !isRitualActive;
 
             // Use lazy mode click limiting when lazy mode is active, otherwise use normal frequency target
             double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
-            double baseTarget = frequencyTarget - avgClickTime;
-            double targetTime = baseTarget + _state.Random.Next(0, 6);
+            double targetTime = GetTargetTime(frequencyTarget, avgClickTime);
             if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive) != true)
             {
                 _state.WorkFinished = true;
@@ -178,8 +179,7 @@ namespace ClickIt.Utils
 
             if (_state.PerformanceMonitor == null) yield break;
             double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Shrine);
-            double baseTarget = _settings.ClickFrequencyTarget.Value - avgShrineTime;
-            double targetTime = baseTarget + _state.Random.Next(0, 6);
+            double targetTime = GetTargetTime(_settings.ClickFrequencyTarget.Value, avgShrineTime);
 
             bool isRitualActive = IsRitualActive();
             if (IsShrineClickBlockedInLazyMode())
@@ -299,3 +299,4 @@ namespace ClickIt.Utils
         }
     }
 }
+

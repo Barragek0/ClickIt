@@ -1,4 +1,4 @@
-using ExileCore.PoEMemory;
+﻿using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
 using ClickIt.Components;
@@ -173,7 +173,6 @@ namespace ClickIt.Services
             }
         }
 
-
         private static void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element? element,
             List<string> upsides, List<string> downsides, bool hasUnmatchedMods)
         {
@@ -188,7 +187,6 @@ namespace ClickIt.Services
                 altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
             }
         }
-
 
         public void ProcessAltarScanningLogic()
         {
@@ -380,3 +378,4 @@ namespace ClickIt.Services
         }
     }
 }
+

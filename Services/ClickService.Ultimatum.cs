@@ -33,28 +33,20 @@ namespace ClickIt.Services
             public int PriorityIndex { get; } = priorityIndex;
         }
 
-        private static bool IsUltimatumPath(string? path)
-        {
-            return Constants.IsUltimatumInteractablePath(path);
-        }
+        private static bool IsUltimatumPath(string? path) => Constants.IsUltimatumInteractablePath(path);
 
         private static bool IsUltimatumLabel(LabelOnGround? label)
         {
             if (!IsUltimatumPath(label?.ItemOnGround?.Path))
                 return false;
 
-            // The top-level Ultimatum label can remain present after encounter end, but
-            // Child(0).IsVisible is a reliable active-state signal for whether choices are live.
             Element? child0 = label?.Label?.GetChildAtIndex(0);
             return child0?.IsVisible == true;
         }
 
         private static bool ShouldSuppressInactiveUltimatumLabel(LabelOnGround? label)
         {
-            if (!IsUltimatumPath(label?.ItemOnGround?.Path))
-                return false;
-
-            return !IsUltimatumLabel(label);
+            return IsUltimatumPath(label?.ItemOnGround?.Path) && !IsUltimatumLabel(label);
         }
 
         private bool TryHandleUltimatumPanelUi(Vector2 windowTopLeft)
@@ -72,14 +64,12 @@ namespace ClickIt.Services
             if (TryClickUltimatumPanelChoice(panelObj, windowTopLeft))
             {
                 clickedAny = true;
-                // Match ground-label pacing: let UI update after selecting a modifier.
                 Thread.Sleep(UltimatumChoiceToBeginDelayMs);
             }
 
             if (TryClickUltimatumPanelConfirm(panelObj, windowTopLeft))
             {
                 clickedAny = true;
-                // Match ground-label pacing: short settle time after confirm.
                 Thread.Sleep(UltimatumPostBeginDelayMs);
             }
 
@@ -124,10 +114,8 @@ namespace ClickIt.Services
             if (!settings.ClickUltimatum.Value)
                 return false;
 
-            if (TryGetUltimatumPanelOptionPreview(out previews) && previews.Count > 0)
-                return true;
-
-            return TryGetUltimatumGroundLabelOptionPreview(out previews);
+            return (TryGetUltimatumPanelOptionPreview(out previews) && previews.Count > 0)
+                || TryGetUltimatumGroundLabelOptionPreview(out previews);
         }
 
         private bool TryGetUltimatumGroundLabelOptionPreview(out List<UltimatumPanelOptionPreview> previews)
@@ -575,11 +563,7 @@ namespace ClickIt.Services
 
             List<string> diagnostics = new(16);
             List<(Element OptionElement, string ModifierName)> options = GetUltimatumOptions(label, diagnostics);
-            for (int i = 0; i < diagnostics.Count; i++)
-            {
-                string msg = diagnostics[i];
-                DebugLog(() => $"[TryClickPreferredUltimatumModifier] {msg}");
-            }
+            LogDiagnostics("[TryClickPreferredUltimatumModifier]", diagnostics);
 
             if (options.Count == 0)
             {
@@ -598,11 +582,7 @@ namespace ClickIt.Services
 
                 diagnostics.Clear();
                 List<(Element OptionElement, string ModifierName)> refreshedOptions = GetUltimatumOptions(label, diagnostics);
-                for (int i = 0; i < diagnostics.Count; i++)
-                {
-                    string msg = diagnostics[i];
-                    DebugLog(() => $"[TryClickPreferredUltimatumModifier] {msg}");
-                }
+                LogDiagnostics("[TryClickPreferredUltimatumModifier]", diagnostics);
 
                 if (refreshedOptions.Count > 0)
                 {
@@ -652,8 +632,6 @@ namespace ClickIt.Services
 
             // Let the panel state update before attempting to click Begin.
             Thread.Sleep(UltimatumChoiceToBeginDelayMs);
-
-            // Attempt to click Begin immediately after selecting a modifier.
             TryClickUltimatumBeginButton(label, windowTopLeft);
 
             return true;
@@ -708,11 +686,7 @@ namespace ClickIt.Services
         {
             List<string> diagnostics = new(8);
             Element? beginButton = GetUltimatumBeginButton(label, diagnostics);
-            for (int i = 0; i < diagnostics.Count; i++)
-            {
-                string msg = diagnostics[i];
-                DebugLog(() => $"[TryClickUltimatumBeginButton] {msg}");
-            }
+            LogDiagnostics("[TryClickUltimatumBeginButton]", diagnostics);
 
             if (beginButton == null)
             {
@@ -732,6 +706,15 @@ namespace ClickIt.Services
 
             // Give the encounter UI a brief moment to transition after Begin.
             Thread.Sleep(UltimatumPostBeginDelayMs);
+        }
+
+        private void LogDiagnostics(string prefix, List<string> diagnostics)
+        {
+            for (int i = 0; i < diagnostics.Count; i++)
+            {
+                string msg = diagnostics[i];
+                DebugLog(() => $"{prefix} {msg}");
+            }
         }
 
         private static List<(Element OptionElement, string ModifierName)> GetUltimatumOptions(LabelOnGround label, List<string>? diagnostics = null)
@@ -789,8 +772,6 @@ namespace ClickIt.Services
                 string modifierName = GetUltimatumModifierName(option);
                 if (string.IsNullOrWhiteSpace(modifierName))
                 {
-                    // Keep the option for overlay/click candidate evaluation even when text is unavailable
-                    // (text can be hover-populated on some Ultimatum UI states).
                     modifierName = $"Unknown Option {i + 1}";
                     diagnostics?.Add($"Option[{i}] text unavailable, using fallback name '{modifierName}'. option=0x{option.Address:X}");
                 }

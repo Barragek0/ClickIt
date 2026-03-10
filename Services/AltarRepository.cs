@@ -1,5 +1,4 @@
-
-using ClickIt.Components;
+﻿using ClickIt.Components;
 
 namespace ClickIt.Services
 {
@@ -43,12 +42,10 @@ namespace ClickIt.Services
             {
                 string newKey = BuildAltarKey(component);
                 bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
-                if (!exists)
-                {
-                    _altarComponents.Add(component);
-                    return true;
-                }
-                return false;
+                if (exists) return false;
+
+                _altarComponents.Add(component);
+                return true;
             }
         }
 
@@ -71,7 +68,7 @@ namespace ClickIt.Services
             if (component == null)
                 return new string[8];
 
-            var arr = new string[8];
+            string[] arr = new string[8];
             for (int i = 0; i < 8; i++)
             {
                 arr[i] = isDownside ? component.GetDownsideByIndex(i) : component.GetUpsideByIndex(i);
@@ -80,3 +77,4 @@ namespace ClickIt.Services
         }
     }
 }
+

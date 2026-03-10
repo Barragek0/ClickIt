@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace ClickIt.Utils
 {
@@ -87,12 +87,10 @@ namespace ClickIt.Utils
             _lastTickTimer.Start();
         }
 
-
         public double GetClickTargetInterval()
         {
             return _settings.ClickFrequencyTarget.Value;
         }
-
 
         public bool ShouldTriggerSecondTimerAction(int intervalMs = 200)
         {

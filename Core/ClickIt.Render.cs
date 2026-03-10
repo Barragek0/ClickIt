@@ -1,5 +1,4 @@
-
-namespace ClickIt
+﻿namespace ClickIt
 {
     public partial class ClickIt
     {
@@ -15,7 +14,6 @@ namespace ClickIt
 
             int altarCount = State.AltarService?.GetAltarComponents()?.Count ?? 0;
             bool hasAltars = altarCount > 0;
-
 
             // Start timing only when actually rendering
             State.PerformanceMonitor?.StartRenderTiming();
@@ -53,9 +51,7 @@ namespace ClickIt
             State.DeferredFrameQueue?.Flush(Graphics, (msg, frame) => { });
         }
 
-
-
-
-
     }
 }
+
+

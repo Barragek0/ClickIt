@@ -1,4 +1,4 @@
-using ExileCore.PoEMemory.Components;
+﻿using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
@@ -16,8 +16,6 @@ namespace ClickIt.Services
         private readonly EssenceService _essenceService = essenceService;
         private readonly ErrorHandler _errorHandler = errorHandler;
         private readonly ExileCore.GameController? _gameController = gameController;
-
-
 
         public bool HasLazyModeRestrictedItemsOnScreen(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
@@ -592,9 +590,6 @@ namespace ClickIt.Services
             return GeometryHelpers.RectanglesOverlapExclusive(a, b);
         }
 
-
-
-
         // (moved to IsBasicChestName)
 
         // Name-only helper used by IsBasicChest and by tests
@@ -612,3 +607,4 @@ namespace ClickIt.Services
         }
     }
 }
+

@@ -26,8 +26,7 @@ namespace ClickIt.Utils
 
         public void Flush(ExileCore.Graphics graphics, Action<string, int> logMessage)
         {
-            if (graphics == null) return;
-            if (_items.Count == 0) return;
+            if (graphics == null || _items.Count == 0) return;
 
             // Move items into the spare list and clear the main list. This avoids allocating
             // a new array each frame while preserving safety if Enqueue is called during Flush
@@ -36,25 +35,16 @@ namespace ClickIt.Utils
             _spare.AddRange(_items);
             _items.Clear();
 
-            // Silently handle errors to prevent logging during render loop
-            // which can cause recursive calls and freeze/crash ExileCore
-            try
+            foreach (var entry in _spare)
             {
-                foreach (var entry in _spare)
+                try
                 {
-                    try
-                    {
-                        graphics.DrawText(entry.Text, entry.Position, entry.Color, entry.Size, entry.Align);
-                    }
-                    catch
-                    {
-                        // Intentionally empty - logging here causes recursive issues
-                    }
+                    graphics.DrawText(entry.Text, entry.Position, entry.Color, entry.Size, entry.Align);
                 }
-            }
-            catch
-            {
-                // Intentionally empty - logging here causes recursive issues
+                catch
+                {
+                    // Intentionally empty - logging here causes recursive issues
+                }
             }
 
             // Clear spare after drawing; keep capacity for reuse.

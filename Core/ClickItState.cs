@@ -1,6 +1,4 @@
-
-
-namespace ClickIt
+﻿namespace ClickIt
 {
     public class ClickItState
     {

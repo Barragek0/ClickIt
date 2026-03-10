@@ -1,5 +1,4 @@
-
-using ClickIt.Utils;
+﻿using ClickIt.Utils;
 
 namespace ClickIt.Services
 {
@@ -71,3 +70,4 @@ namespace ClickIt.Services
         }
     }
 }
+

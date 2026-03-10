@@ -1,5 +1,4 @@
-﻿
-using System.Collections;
+﻿using System.Collections;
 using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
@@ -173,19 +172,13 @@ namespace ClickIt.Services
 
         public Element? GetAltarElementToClick(PrimaryAltarComponent altar)
         {
-            // All validation is now done in ShouldClickAltar, so we can proceed directly
             var altarWeights = altar.GetCachedWeights(pc => weightCalculator.CalculateAltarWeights(pc));
             if (!altarWeights.HasValue) return null;
 
             RectangleF topModsRect = altar.GetTopModsRect();
             RectangleF bottomModsRect = altar.GetBottomModsRect();
-
             Vector2 topModsTopLeft = topModsRect.TopLeft;
-
-            // We know this will succeed since ShouldClickAltar already validated it
-            Element? boxToClick = altarDisplayRenderer.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
-
-            return boxToClick;
+            return altarDisplayRenderer.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
         }
 
         private IEnumerator ClickAltarElement(Element element, bool leftHanded)
@@ -354,7 +347,6 @@ namespace ClickIt.Services
             {
                 MarkLeverClicked(nextLabel);
             }
-
 
             if (inputHandler.TriggerToggleItems())
             {
@@ -573,3 +565,5 @@ namespace ClickIt.Services
         }
     }
 }
+
+
