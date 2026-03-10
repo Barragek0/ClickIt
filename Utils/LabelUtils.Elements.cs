@@ -28,33 +28,41 @@ namespace ClickIt.Utils
             if (label == null)
                 return elementsList;
 
-            string rootText = label.GetText(512);
-            if (!string.IsNullOrEmpty(rootText) && rootText.Contains(str))
-                elementsList.Add(label);
+            AddIfTextContains(label, str, elementsList);
 
             for (int containerIndex = 0; containerIndex <= 1; containerIndex++)
             {
-                Element? container = label.GetChildAtIndex(containerIndex);
-                if (container == null)
-                    continue;
-
-                IList<Element> children = container.Children;
-                if (children == null)
-                    continue;
-
-                for (int i = 0; i < children.Count; i++)
-                {
-                    Element? child = children[i];
-                    if (child == null)
-                        continue;
-
-                    string childText = child.GetText(512);
-                    if (!string.IsNullOrEmpty(childText) && childText.Contains(str))
-                        elementsList.Add(child);
-                }
+                AddMatchingChildrenFromContainer(label.GetChildAtIndex(containerIndex), str, elementsList);
             }
 
             return elementsList;
+        }
+
+        private static void AddMatchingChildrenFromContainer(Element? container, string str, List<Element> elementsList)
+        {
+            if (container == null)
+                return;
+
+            IList<Element> children = container.Children;
+            if (children == null)
+                return;
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                AddIfTextContains(children[i], str, elementsList);
+            }
+        }
+
+        private static void AddIfTextContains(Element? element, string str, List<Element> elements)
+        {
+            if (element == null)
+                return;
+
+            string text = element.GetText(512);
+            if (!string.IsNullOrEmpty(text) && text.Contains(str))
+            {
+                elements.Add(element);
+            }
         }
 
         public static Element? GetElementByString(Element? root, string str)
@@ -103,28 +111,43 @@ namespace ClickIt.Utils
             while (stack.Count > 0)
             {
                 Element el = stack.Pop();
-                string text = el.GetText(512);
-                if (!string.IsNullOrEmpty(text))
-                {
-                    for (int i = 0; i < patList.Length; i++)
-                    {
-                        if (text.Contains(patList[i]))
-                            return true;
-                    }
-                }
+                if (ElementTextContainsAnyPattern(el, patList))
+                    return true;
 
-                IList<Element> children = el.Children;
-                if (children != null)
-                {
-                    foreach (Element c in children)
-                    {
-                        if (c != null)
-                            stack.Push(c);
-                    }
-                }
+                PushChildren(el, stack);
             }
 
             return false;
+        }
+
+        private static bool ElementTextContainsAnyPattern(Element element, string[] patterns)
+        {
+            string text = element.GetText(512);
+            if (string.IsNullOrEmpty(text))
+                return false;
+
+            for (int i = 0; i < patterns.Length; i++)
+            {
+                if (text.Contains(patterns[i]))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void PushChildren(Element element, Stack<Element> stack)
+        {
+            IList<Element> children = element.Children;
+            if (children == null)
+                return;
+
+            foreach (Element child in children)
+            {
+                if (child != null)
+                {
+                    stack.Push(child);
+                }
+            }
         }
     }
 }

@@ -223,12 +223,6 @@ namespace ClickIt.Services
             return (clickDoors && isDoor) || (clickLevers && isLever);
         }
 
-        // Kept for test compatibility; legacy parameters are ignored because filtering is table-driven.
-        private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, bool ignoreInscribedUltimatums, bool onlyPickupCurrencyItems, EntityType type, Entity item, ExileCore.GameController? gameController)
-        {
-            return ShouldClickWorldItemCore(clickItems, type, item);
-        }
-
         private static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)
         {
             if (!clickItems || type != EntityType.WorldItem)
@@ -238,6 +232,14 @@ namespace ClickIt.Services
             if (!string.IsNullOrEmpty(itemPath) && itemPath.ToLowerInvariant().Contains("strongbox"))
                 return false;
             return true;
+        }
+
+        // Kept for reflection-based unit tests; legacy parameters are ignored.
+#pragma warning disable IDE0051 // Used via reflection in tests
+        private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, bool ignoreInscribedUltimatums, bool onlyPickupCurrencyItems, EntityType type, Entity item, ExileCore.GameController? gameController)
+#pragma warning restore IDE0051
+        {
+            return ShouldClickWorldItemCore(clickItems, type, item);
         }
 
         private static bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item)
@@ -274,31 +276,9 @@ namespace ClickIt.Services
                 if (identifier.Length == 0)
                     continue;
 
-                if (identifier.StartsWith("special:", StringComparison.OrdinalIgnoreCase))
+                if (TryGetSpecialRule(identifier, out string specialRule))
                 {
-                    string specialRule = identifier.Substring("special:".Length).Trim();
-                    if (specialRule.Equals("unique-items", StringComparison.OrdinalIgnoreCase)
-                        && item != null
-                        && IsUniqueItem(item))
-                        return true;
-
-                    if (specialRule.Equals("heist-quest-contract", StringComparison.OrdinalIgnoreCase)
-                        && IsHeistQuestContract(itemName))
-                        return true;
-
-                    if (specialRule.Equals("heist-non-quest-contract", StringComparison.OrdinalIgnoreCase)
-                        && IsHeistNonQuestContract(itemName))
-                        return true;
-
-                    if (specialRule.Equals("inscribed-ultimatum", StringComparison.OrdinalIgnoreCase)
-                        && ((item != null && IsInscribedUltimatum(item))
-                            || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0))
-                        return true;
-
-                    if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase)
-                        && metadataPath.IndexOf("Items/Jewels/", StringComparison.OrdinalIgnoreCase) >= 0
-                        && metadataPath.IndexOf("Items/Jewels/JewelAbyss", StringComparison.OrdinalIgnoreCase) < 0
-                        && metadataPath.IndexOf("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase) < 0)
+                    if (MatchesSpecialRule(specialRule, metadataPath, itemName, item))
                         return true;
 
                     continue;
@@ -309,6 +289,54 @@ namespace ClickIt.Services
             }
 
             return false;
+        }
+
+        private static bool TryGetSpecialRule(string identifier, out string specialRule)
+        {
+            specialRule = string.Empty;
+            if (!identifier.StartsWith("special:", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            specialRule = identifier.Substring("special:".Length).Trim();
+            return specialRule.Length > 0;
+        }
+
+        private static bool MatchesSpecialRule(string specialRule, string metadataPath, string itemName, Entity? item)
+        {
+            if (specialRule.Equals("unique-items", StringComparison.OrdinalIgnoreCase))
+            {
+                return item != null && IsUniqueItem(item);
+            }
+
+            if (specialRule.Equals("heist-quest-contract", StringComparison.OrdinalIgnoreCase))
+            {
+                return IsHeistQuestContract(itemName);
+            }
+
+            if (specialRule.Equals("heist-non-quest-contract", StringComparison.OrdinalIgnoreCase))
+            {
+                return IsHeistNonQuestContract(itemName);
+            }
+
+            if (specialRule.Equals("inscribed-ultimatum", StringComparison.OrdinalIgnoreCase))
+            {
+                return (item != null && IsInscribedUltimatum(item))
+                    || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+
+            if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase))
+            {
+                return IsRegularJewelsMetadataPath(metadataPath);
+            }
+
+            return false;
+        }
+
+        private static bool IsRegularJewelsMetadataPath(string metadataPath)
+        {
+            return metadataPath.IndexOf("Items/Jewels/", StringComparison.OrdinalIgnoreCase) >= 0
+                && metadataPath.IndexOf("Items/Jewels/JewelAbyss", StringComparison.OrdinalIgnoreCase) < 0
+                && metadataPath.IndexOf("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase) < 0;
         }
 
         private static bool IsUniqueItem(Entity item)
@@ -561,11 +589,7 @@ namespace ClickIt.Services
 
         private static bool DoRectanglesOverlap(RectangleF a, RectangleF b)
         {
-            if (a.Right <= b.Left) return false;
-            if (a.Left >= b.Right) return false;
-            if (a.Bottom <= b.Top) return false;
-            if (a.Top >= b.Bottom) return false;
-            return true;
+            return GeometryHelpers.RectanglesOverlapExclusive(a, b);
         }
 
 

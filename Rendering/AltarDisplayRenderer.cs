@@ -39,7 +39,7 @@ namespace ClickIt.Rendering
             Vector2 offset120_Minus60 = Offset120_Minus60;
             Vector2 offset120_Minus25 = Offset120_Minus25;
 
-            if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect))
+            if (!IsValidRectangles(topModsRect, bottomModsRect))
             {
                 _deferredTextQueue.Enqueue("Invalid altar rectangles detected", topModsTopLeft + offset120_Minus60, Color.Red, 30);
                 return null;
@@ -82,31 +82,35 @@ namespace ClickIt.Rendering
         }
         private Element? EvaluateAltarWeights(AltarWeights weights, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos1, Vector2 textPos2)
         {
-            bool topHasDangerousDownside = _settings.DangerousDownside.Value && HasAnyWeightOverThreshold(weights, true, false, _settings.DangerousDownsideThreshold.Value);
-            bool bottomHasDangerousDownside = _settings.DangerousDownside.Value && HasAnyWeightOverThreshold(weights, false, false, _settings.DangerousDownsideThreshold.Value);
-            bool topHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, true, true, _settings.ValuableUpsideThreshold.Value);
-            bool bottomHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, false, true, _settings.ValuableUpsideThreshold.Value);
-            bool topHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, true, true, _settings.UnvaluableUpsideThreshold.Value);
-            bool bottomHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, false, true, _settings.UnvaluableUpsideThreshold.Value);
+            int dangerousThreshold = _settings.DangerousDownsideThreshold.Value;
+            int valuableThreshold = _settings.ValuableUpsideThreshold.Value;
+            int lowValueThreshold = _settings.UnvaluableUpsideThreshold.Value;
+
+            bool topHasDangerousDownside = _settings.DangerousDownside.Value && HasAnyWeightOverThreshold(weights, true, false, dangerousThreshold);
+            bool bottomHasDangerousDownside = _settings.DangerousDownside.Value && HasAnyWeightOverThreshold(weights, false, false, dangerousThreshold);
+            bool topHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, true, true, valuableThreshold);
+            bool bottomHasHighValueUpside = _settings.ValuableUpside.Value && HasAnyWeightOverThreshold(weights, false, true, valuableThreshold);
+            bool topHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, true, true, lowValueThreshold);
+            bool bottomHasLowValue = _settings.UnvaluableUpside.Value && HasAnyWeightAtOrBelowThreshold(weights, false, true, lowValueThreshold);
 
             if (topHasHighValueUpside || bottomHasHighValueUpside)
             {
-                return HandleHighValueOverride(topHasHighValueUpside, altar, topModsRect, bottomModsRect, textPos1);
+                return HandleHighValueOverride(topHasHighValueUpside, altar, topModsRect, bottomModsRect, textPos1, valuableThreshold);
             }
 
             if (topHasDangerousDownside && bottomHasDangerousDownside)
             {
-                return HandleBothDangerousCase(altar, topModsRect, bottomModsRect, textPos1);
+                return HandleBothDangerousCase(altar, topModsRect, bottomModsRect, textPos1, dangerousThreshold);
             }
 
             if (topHasDangerousDownside || bottomHasDangerousDownside)
             {
-                return HandleDangerousDownside(topHasDangerousDownside, altar, topModsRect, bottomModsRect, textPos1);
+                return HandleDangerousDownside(topHasDangerousDownside, altar, topModsRect, bottomModsRect, textPos1, dangerousThreshold);
             }
 
             if (topHasLowValue || bottomHasLowValue)
             {
-                return HandleLowValueOverride(topHasLowValue, bottomHasLowValue, altar, topModsRect, bottomModsRect, textPos1);
+                return HandleLowValueOverride(topHasLowValue, bottomHasLowValue, altar, topModsRect, bottomModsRect, textPos1, lowValueThreshold);
             }
 
             if (TryHandleMinWeightThreshold(weights, altar, topModsRect, bottomModsRect, textPos1, out Element? thresholdChoice))
@@ -156,9 +160,8 @@ namespace ClickIt.Rendering
             return false;
         }
 
-        private Element? HandleBothDangerousCase(PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        private Element? HandleBothDangerousCase(PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos, int dangerThreshold)
         {
-            int dangerThreshold = _settings.DangerousDownsideThreshold.Value;
             _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nBoth options have downsides with a weight of {dangerThreshold}+ that may brick your build.", textPos, Color.Orange, 30);
             _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
             _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
@@ -169,11 +172,10 @@ namespace ClickIt.Rendering
             return null;
         }
 
-        private Element? HandleHighValueOverride(bool topChosen, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        private Element? HandleHighValueOverride(bool topChosen, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos, int highValueThreshold)
         {
             if (topChosen)
             {
-                int highValueThreshold = _settings.ValuableUpsideThreshold.Value;
                 _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because one of the top upsides has a weight of {highValueThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 3);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 2);
@@ -181,7 +183,6 @@ namespace ClickIt.Rendering
             }
             else
             {
-                int highValueThreshold = _settings.ValuableUpsideThreshold.Value;
                 _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because one of the bottom upsides has a weight of {highValueThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 3);
@@ -189,12 +190,11 @@ namespace ClickIt.Rendering
             }
         }
 
-        private Element? HandleLowValueOverride(bool topHasLowValue, bool bottomHasLowValue, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        private Element? HandleLowValueOverride(bool topHasLowValue, bool bottomHasLowValue, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos, int lowValueThreshold)
         {
             // If both sides have low value, treat as equal and let user choose
             if (topHasLowValue && bottomHasLowValue)
             {
-                int lowValueThreshold = _settings.UnvaluableUpsideThreshold.Value;
                 _deferredTextQueue.Enqueue($"Both options have low value modifiers (weight <= {lowValueThreshold}), you should choose.", textPos, Color.Orange, 30);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
@@ -202,7 +202,6 @@ namespace ClickIt.Rendering
 
             if (topHasLowValue)
             {
-                int lowValueThreshold = _settings.UnvaluableUpsideThreshold.Value;
                 _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nBottom has been chosen because top has a modifier with weight <= {lowValueThreshold}", textPos, Color.Yellow, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
@@ -210,7 +209,6 @@ namespace ClickIt.Rendering
             }
             else
             {
-                int lowValueThreshold = _settings.UnvaluableUpsideThreshold.Value;
                 _deferredTextQueue.Enqueue($"Weighting has been overridden\n\nTop has been chosen because bottom has a modifier with weight <= {lowValueThreshold}", textPos, Color.Yellow, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
@@ -218,11 +216,10 @@ namespace ClickIt.Rendering
             }
         }
 
-        private Element? HandleDangerousDownside(bool topHasDanger, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos)
+        private Element? HandleDangerousDownside(bool topHasDanger, PrimaryAltarComponent altar, RectangleF topModsRect, RectangleF bottomModsRect, Vector2 textPos, int dangerThreshold)
         {
             if (topHasDanger)
             {
-                int dangerThreshold = _settings.DangerousDownsideThreshold.Value;
                 _deferredTextQueue.Enqueue($"Weighting overridden\n\nBottom chosen due to top downside {dangerThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.OrangeRed, 3);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.LawnGreen, 2);
@@ -230,7 +227,6 @@ namespace ClickIt.Rendering
             }
             else
             {
-                int dangerThreshold = _settings.DangerousDownsideThreshold.Value;
                 _deferredTextQueue.Enqueue($"Weighting overridden\n\nTop chosen due to bottom downside {dangerThreshold}+", textPos, Color.LawnGreen, 30);
                 _deferredFrameQueue.Enqueue(topModsRect, Color.LawnGreen, 2);
                 _deferredFrameQueue.Enqueue(bottomModsRect, Color.OrangeRed, 3);
@@ -268,7 +264,7 @@ namespace ClickIt.Rendering
                     _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName} is null", 10);
                     return null;
                 }
-                Element el = button.Element;
+                Element? el = button.Element;
                 if (el == null)
                 {
                     _logMessage?.Invoke($"[EvaluateAltarWeights] CRITICAL: {buttonName}.Element is null", 10);
@@ -347,13 +343,13 @@ namespace ClickIt.Rendering
         }
         private void DrawRedFrames(RectangleF topModsRect, RectangleF bottomModsRect)
         {
-            if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect)) return;
+            if (!IsValidRectangles(topModsRect, bottomModsRect)) return;
             _deferredFrameQueue.Enqueue(topModsRect, Color.Red, 2);
             _deferredFrameQueue.Enqueue(bottomModsRect, Color.Red, 2);
         }
         private void DrawYellowFrames(RectangleF topModsRect, RectangleF bottomModsRect)
         {
-            if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect)) return;
+            if (!IsValidRectangles(topModsRect, bottomModsRect)) return;
             _deferredFrameQueue.Enqueue(topModsRect, Color.Yellow, 2);
             _deferredFrameQueue.Enqueue(bottomModsRect, Color.Yellow, 2);
         }
@@ -413,7 +409,7 @@ namespace ClickIt.Rendering
             RectangleF topModsRect = altar.GetTopModsRect();
             RectangleF bottomModsRect = altar.GetBottomModsRect();
 
-            if (!IsValidRectangle(topModsRect) || !IsValidRectangle(bottomModsRect))
+            if (!IsValidRectangles(topModsRect, bottomModsRect))
             {
                 return;
             }
@@ -432,6 +428,11 @@ namespace ClickIt.Rendering
             return rect.Width > 0 && rect.Height > 0 &&
                    !float.IsNaN(rect.X) && !float.IsNaN(rect.Y) &&
                    !float.IsInfinity(rect.X) && !float.IsInfinity(rect.Y);
+        }
+
+        private static bool IsValidRectangles(RectangleF first, RectangleF second)
+        {
+            return IsValidRectangle(first) && IsValidRectangle(second);
         }
 
         private static Color GetWeightColor(decimal weight1, decimal weight2, Color winColor, Color loseColor, Color tieColor)

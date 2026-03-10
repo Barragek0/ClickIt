@@ -134,26 +134,7 @@ namespace ClickIt.Services
         {
             previews = [];
 
-            var labels = cachedLabels?.Value;
-            if (labels == null || labels.Count == 0)
-                return false;
-
-            LabelOnGround? ultimatumLabel = null;
-            for (int i = 0; i < labels.Count; i++)
-            {
-                LabelOnGround? label = labels[i];
-                if (label == null)
-                    continue;
-                if (!IsUltimatumLabel(label))
-                    continue;
-                if (label.Label == null || !label.Label.IsValid)
-                    continue;
-
-                ultimatumLabel = label;
-                break;
-            }
-
-            if (ultimatumLabel == null)
+            if (!TryGetActiveUltimatumGroundLabel(out LabelOnGround? ultimatumLabel) || ultimatumLabel == null)
                 return false;
 
             List<(Element OptionElement, string ModifierName)> options = GetUltimatumOptions(ultimatumLabel);
@@ -161,22 +142,7 @@ namespace ClickIt.Services
                 return false;
 
             var priorities = settings.GetUltimatumModifierPriority();
-            int bestIndex = int.MaxValue;
-            Element? bestOption = null;
-
-            for (int i = 0; i < options.Count; i++)
-            {
-                Element optionElement = options[i].OptionElement;
-                if (!optionElement.IsValid)
-                    continue;
-
-                int priorityIndex = GetModifierPriorityIndex(options[i].ModifierName, priorities);
-                if (priorityIndex < bestIndex)
-                {
-                    bestIndex = priorityIndex;
-                    bestOption = optionElement;
-                }
-            }
+            Element? bestOption = GetBestUltimatumGroundOptionElement(options, priorities);
 
             for (int i = 0; i < options.Count; i++)
             {
@@ -194,6 +160,55 @@ namespace ClickIt.Services
             }
 
             return previews.Count > 0;
+        }
+
+        private bool TryGetActiveUltimatumGroundLabel(out LabelOnGround? ultimatumLabel)
+        {
+            ultimatumLabel = null;
+
+            var labels = cachedLabels?.Value;
+            if (labels == null || labels.Count == 0)
+                return false;
+
+            for (int i = 0; i < labels.Count; i++)
+            {
+                LabelOnGround? label = labels[i];
+                if (label == null)
+                    continue;
+                if (!IsUltimatumLabel(label))
+                    continue;
+                if (label.Label == null || !label.Label.IsValid)
+                    continue;
+
+                ultimatumLabel = label;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static Element? GetBestUltimatumGroundOptionElement(
+            List<(Element OptionElement, string ModifierName)> options,
+            IReadOnlyList<string> priorities)
+        {
+            int bestIndex = int.MaxValue;
+            Element? bestOption = null;
+
+            for (int i = 0; i < options.Count; i++)
+            {
+                Element optionElement = options[i].OptionElement;
+                if (!optionElement.IsValid)
+                    continue;
+
+                int priorityIndex = GetModifierPriorityIndex(options[i].ModifierName, priorities);
+                if (priorityIndex < bestIndex)
+                {
+                    bestIndex = priorityIndex;
+                    bestOption = optionElement;
+                }
+            }
+
+            return bestOption;
         }
 
         private bool TryGetVisibleUltimatumPanel(out object? panelObj)
@@ -223,19 +238,8 @@ namespace ClickIt.Services
         {
             candidates = [];
 
-            if (!TryGetPropertyValue(panelObj, "ChoicesPanel", out object? choicesPanelObj) || choicesPanelObj == null)
-            {
-                if (logFailures)
-                    DebugLog(() => "[TryClickUltimatumPanelChoice] ChoicesPanel missing.");
+            if (!TryGetUltimatumChoiceElements(panelObj, out object? choiceElementsObj, logFailures))
                 return false;
-            }
-
-            if (!TryGetPropertyValue(choicesPanelObj, "ChoiceElements", out object? choiceElementsObj) || choiceElementsObj == null)
-            {
-                if (logFailures)
-                    DebugLog(() => "[TryClickUltimatumPanelChoice] ChoiceElements missing.");
-                return false;
-            }
 
             List<string> modifierNamesByIndex = GetUltimatumPanelModifierNames(panelObj);
 
@@ -243,61 +247,101 @@ namespace ClickIt.Services
             int seen = 0;
             foreach (object? choiceObj in EnumerateObjects(choiceElementsObj))
             {
-                if (!TryExtractElement(choiceObj, out Element? choiceEl) || choiceEl == null)
+                if (TryCreateUltimatumPanelChoiceCandidate(
+                    choiceObj,
+                    seen,
+                    modifierNamesByIndex,
+                    priorities,
+                    logFailures,
+                    out UltimatumPanelChoiceCandidate candidate))
                 {
-                    if (logFailures)
-                        DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] is not an Element.");
-                    seen++;
-                    continue;
+                    candidates.Add(candidate);
                 }
 
-                if (!choiceEl.IsValid)
-                {
-                    if (logFailures)
-                        DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - valid={choiceEl.IsValid}");
-                    seen++;
-                    continue;
-                }
-
-                RectangleF choiceRect = choiceEl.GetClientRect();
-                if (choiceRect.Width <= 0 || choiceRect.Height <= 0)
-                {
-                    if (logFailures)
-                        DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - empty rect {choiceRect}.");
-                    seen++;
-                    continue;
-                }
-
-                string modifierName = string.Empty;
-                if (seen < modifierNamesByIndex.Count)
-                {
-                    string modifierFromPanel = modifierNamesByIndex[seen];
-                    if (!string.IsNullOrWhiteSpace(modifierFromPanel))
-                    {
-                        modifierName = modifierFromPanel;
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(modifierName))
-                {
-                    // Minimal fallback for safety if panel Modifiers list is unavailable.
-                    modifierName = GetUltimatumModifierName(choiceEl);
-                    if (string.IsNullOrWhiteSpace(modifierName))
-                    {
-                        modifierName = NormalizeModifierText(choiceEl.GetText(1024) ?? string.Empty);
-                    }
-                }
-
-                int priorityIndex = GetModifierPriorityIndex(modifierName, priorities);
-
-                if (logFailures)
-                    DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] modifier='{modifierName}', priority={priorityIndex}, center={choiceRect.Center}, visible={choiceEl.IsVisible}, valid={choiceEl.IsValid}");
-
-                candidates.Add(new UltimatumPanelChoiceCandidate(choiceEl, modifierName, priorityIndex));
                 seen++;
             }
 
             return candidates.Count > 0;
+        }
+
+        private bool TryGetUltimatumChoiceElements(object panelObj, out object? choiceElementsObj, bool logFailures)
+        {
+            choiceElementsObj = null;
+
+            if (!TryGetPropertyValue(panelObj, "ChoicesPanel", out object? choicesPanelObj) || choicesPanelObj == null)
+            {
+                if (logFailures)
+                    DebugLog(() => "[TryClickUltimatumPanelChoice] ChoicesPanel missing.");
+                return false;
+            }
+
+            if (!TryGetPropertyValue(choicesPanelObj, "ChoiceElements", out choiceElementsObj) || choiceElementsObj == null)
+            {
+                if (logFailures)
+                    DebugLog(() => "[TryClickUltimatumPanelChoice] ChoiceElements missing.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryCreateUltimatumPanelChoiceCandidate(
+            object? choiceObj,
+            int seen,
+            List<string> modifierNamesByIndex,
+            IReadOnlyList<string> priorities,
+            bool logFailures,
+            out UltimatumPanelChoiceCandidate candidate)
+        {
+            candidate = default;
+
+            if (!TryExtractElement(choiceObj, out Element? choiceEl) || choiceEl == null)
+            {
+                if (logFailures)
+                    DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] is not an Element.");
+                return false;
+            }
+
+            if (!choiceEl.IsValid)
+            {
+                if (logFailures)
+                    DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - valid={choiceEl.IsValid}");
+                return false;
+            }
+
+            RectangleF choiceRect = choiceEl.GetClientRect();
+            if (choiceRect.Width <= 0 || choiceRect.Height <= 0)
+            {
+                if (logFailures)
+                    DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - empty rect {choiceRect}.");
+                return false;
+            }
+
+            string modifierName = ResolveUltimatumPanelModifierName(choiceEl, seen, modifierNamesByIndex);
+            int priorityIndex = GetModifierPriorityIndex(modifierName, priorities);
+
+            if (logFailures)
+                DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] modifier='{modifierName}', priority={priorityIndex}, center={choiceRect.Center}, visible={choiceEl.IsVisible}, valid={choiceEl.IsValid}");
+
+            candidate = new UltimatumPanelChoiceCandidate(choiceEl, modifierName, priorityIndex);
+            return true;
+        }
+
+        private static string ResolveUltimatumPanelModifierName(Element choiceEl, int seen, List<string> modifierNamesByIndex)
+        {
+            if (seen < modifierNamesByIndex.Count)
+            {
+                string modifierFromPanel = modifierNamesByIndex[seen];
+                if (!string.IsNullOrWhiteSpace(modifierFromPanel))
+                    return modifierFromPanel;
+            }
+
+            // Minimal fallback for safety if panel Modifiers list is unavailable.
+            string modifierName = GetUltimatumModifierName(choiceEl);
+            if (!string.IsNullOrWhiteSpace(modifierName))
+                return modifierName;
+
+            return NormalizeModifierText(choiceEl.GetText(1024) ?? string.Empty);
         }
 
         private static List<string> GetUltimatumPanelModifierNames(object panelObj)
@@ -423,8 +467,11 @@ namespace ClickIt.Services
                 "[TryClickUltimatumPanelConfirm] Clicking ConfirmButton at");
         }
 
-        private static IEnumerable<object?> EnumerateObjects(object source)
+        private static IEnumerable<object?> EnumerateObjects(object? source)
         {
+            if (source == null)
+                yield break;
+
             if (source is IEnumerable enumerable)
             {
                 foreach (object? item in enumerable)
@@ -504,8 +551,14 @@ namespace ClickIt.Services
 
         private bool TryClickPreferredUltimatumModifier(LabelOnGround label, Vector2 windowTopLeft)
         {
-            string labelPath = label?.ItemOnGround?.Path ?? string.Empty;
-            ulong labelAddress = unchecked((ulong)(label?.Label?.Address ?? 0));
+            if (label == null)
+            {
+                DebugLog(() => "[TryClickPreferredUltimatumModifier] Label was null.");
+                return false;
+            }
+
+            string labelPath = label.ItemOnGround?.Path ?? string.Empty;
+            ulong labelAddress = unchecked((ulong)(label.Label?.Address ?? 0));
             DebugLog(() => $"[TryClickPreferredUltimatumModifier] Entered. ClickUltimatum={settings.ClickUltimatum.Value}, Path='{labelPath}', LabelAddr=0x{labelAddress:X}");
 
             if (!settings.ClickUltimatum.Value)
@@ -651,7 +704,7 @@ namespace ClickIt.Services
             }
         }
 
-        private bool TryClickUltimatumBeginButton(LabelOnGround label, Vector2 windowTopLeft)
+        private void TryClickUltimatumBeginButton(LabelOnGround label, Vector2 windowTopLeft)
         {
             List<string> diagnostics = new(8);
             Element? beginButton = GetUltimatumBeginButton(label, diagnostics);
@@ -664,7 +717,7 @@ namespace ClickIt.Services
             if (beginButton == null)
             {
                 DebugLog(() => "[TryClickUltimatumBeginButton] Begin button not found.");
-                return false;
+                return;
             }
 
             if (!TryClickUltimatumElement(
@@ -674,13 +727,11 @@ namespace ClickIt.Services
                 "[TryClickUltimatumBeginButton] Rejected by clickable-area check.",
                 "[TryClickUltimatumBeginButton] Clicking Begin at"))
             {
-                return false;
+                return;
             }
 
             // Give the encounter UI a brief moment to transition after Begin.
             Thread.Sleep(UltimatumPostBeginDelayMs);
-
-            return true;
         }
 
         private static List<(Element OptionElement, string ModifierName)> GetUltimatumOptions(LabelOnGround label, List<string>? diagnostics = null)

@@ -21,7 +21,7 @@ namespace ClickIt.Services
 
                 if (!string.IsNullOrEmpty(matchedId) && !matchedId.Contains('|'))
                 {
-                    string cleanedNegative = new(negativeModType.Where(char.IsLetter).ToArray());
+                    string cleanedNegative = AltarModMatcher.NormalizeLetters(negativeModType);
                     string modTarget = AltarModMatcher.GetModTarget(cleanedNegative);
                     if (!string.IsNullOrEmpty(modTarget))
                         matchedId = $"{modTarget}|{matchedId}";

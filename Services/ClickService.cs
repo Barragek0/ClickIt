@@ -10,6 +10,7 @@ using RectangleF = SharpDX.RectangleF;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
+using System.Diagnostics.CodeAnalysis;
 
 #nullable enable
 
@@ -72,26 +73,9 @@ namespace ClickIt.Services
             bool clickExarch = settings.ClickExarchAltars;
             bool leftHanded = settings.LeftHanded;
 
-            // Avoid materializing a list just to check presence; do a quick indexed scan instead
-            bool anyAltarToClick = false;
-            for (int i = 0; i < altarSnapshot.Count; i++)
-            {
-                if (ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
-                {
-                    anyAltarToClick = true;
-                    break;
-                }
-            }
-            if (!anyAltarToClick)
-                yield break;
-
             foreach (PrimaryAltarComponent altar in altarSnapshot)
             {
-                if (!ShouldClickAltar(altar, clickEater, clickExarch))
-                    continue;
-
-                Element? boxToClick = GetAltarElementToClick(altar);
-                if (boxToClick == null)
+                if (!TryGetClickableAltarElement(altar, clickEater, clickExarch, out Element? boxToClick))
                     continue;
 
                 yield return ClickAltarElement(boxToClick, leftHanded);
@@ -112,7 +96,7 @@ namespace ClickIt.Services
 
             for (int i = 0; i < altarSnapshot.Count; i++)
             {
-                if (ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
+                if (TryGetClickableAltarElement(altarSnapshot[i], clickEater, clickExarch, out _))
                 {
                     return true;
                 }
@@ -123,6 +107,13 @@ namespace ClickIt.Services
 
         public bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
         {
+            return TryGetClickableAltarElement(altar, clickEater, clickExarch, out _);
+        }
+
+        private bool TryGetClickableAltarElement(PrimaryAltarComponent altar, bool clickEater, bool clickExarch, [NotNullWhen(true)] out Element? boxToClick)
+        {
+            boxToClick = null;
+
             // First check if altar type is enabled
             bool isEnabledType = (altar.AltarType == ClickIt.AltarType.EaterOfWorlds && clickEater) ||
                                 (altar.AltarType == ClickIt.AltarType.SearingExarch && clickExarch);
@@ -161,7 +152,7 @@ namespace ClickIt.Services
             Vector2 topModsTopLeft = topModsRect.TopLeft;
 
             // Check if we can determine a valid choice
-            Element? boxToClick = altarDisplayRenderer.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
+            boxToClick = altarDisplayRenderer.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
 
             if (boxToClick == null)
             {
@@ -346,25 +337,7 @@ namespace ClickIt.Services
             }
 
             var allLabels = cachedLabels?.Value;
-            LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
-
-            // For essences: use the game's UIHoverElement as the authoritative front-most target.
-            // If the player's current UIHover element corresponds to a visible label, prefer it
-            // over our candidate.
-            if (nextLabel != null && IsEssenceLabel(nextLabel))
-            {
-                var uiHover = gameController?.IngameState?.UIHoverElement;
-                if (uiHover != null && allLabels != null)
-                {
-                    // Prefer the hovered label (if it matches any label in our scan)
-                    var hovered = allLabels.FirstOrDefault(l => l?.Label != null && l.Label.Address == uiHover.Address);
-                    if (hovered != null && !ReferenceEquals(hovered, nextLabel) && IsEssenceLabel(hovered))
-                    {
-                        DebugLog(() => "[ProcessRegularClick] UIHover-first: switching target to UIHover label");
-                        nextLabel = hovered;
-                    }
-                }
-            }
+            LabelOnGround? nextLabel = ResolveNextLabelCandidate(allLabels);
 
             if (nextLabel == null)
             {
@@ -372,25 +345,8 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            if (IsAltarLabel(nextLabel))
-            {
-                DebugLog(() => "[ProcessRegularClick] Item is an altar, breaking");
+            if (ShouldSkipOrHandleSpecialLabel(nextLabel, windowTopLeft))
                 yield break;
-            }
-
-
-            if (TryCorruptEssence(nextLabel, windowTopLeft))
-                yield break;
-
-            bool isUltimatumLabel = IsUltimatumLabel(nextLabel);
-            if (settings.ClickUltimatum.Value && isUltimatumLabel)
-            {
-                if (TryClickPreferredUltimatumModifier(nextLabel, windowTopLeft))
-                    yield break;
-
-                DebugLog(() => "[ProcessRegularClick] Ultimatum label detected but no preferred modifier matched; skipping generic label click");
-                yield break;
-            }
 
             Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
             bool clicked = PerformLabelClick(clickPos, nextLabel.Label, gameController);
@@ -404,6 +360,54 @@ namespace ClickIt.Services
             {
                 yield return new WaitTime(20);
             }
+        }
+
+        private LabelOnGround? ResolveNextLabelCandidate(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
+            return PreferUiHoverEssenceLabel(nextLabel, allLabels);
+        }
+
+        private LabelOnGround? PreferUiHoverEssenceLabel(LabelOnGround? nextLabel, System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            // For essences: use the game's UIHoverElement as the authoritative front-most target.
+            // If the player's current UIHover element corresponds to a visible label, prefer it over our candidate.
+            if (nextLabel == null || !IsEssenceLabel(nextLabel) || allLabels == null)
+                return nextLabel;
+
+            var uiHover = gameController?.IngameState?.UIHoverElement;
+            if (uiHover == null)
+                return nextLabel;
+
+            var hovered = allLabels.FirstOrDefault(l => l?.Label != null && l.Label.Address == uiHover.Address);
+            if (hovered != null && !ReferenceEquals(hovered, nextLabel) && IsEssenceLabel(hovered))
+            {
+                DebugLog(() => "[ProcessRegularClick] UIHover-first: switching target to UIHover label");
+                return hovered;
+            }
+
+            return nextLabel;
+        }
+
+        private bool ShouldSkipOrHandleSpecialLabel(LabelOnGround nextLabel, Vector2 windowTopLeft)
+        {
+            if (IsAltarLabel(nextLabel))
+            {
+                DebugLog(() => "[ProcessRegularClick] Item is an altar, breaking");
+                return true;
+            }
+
+            if (TryCorruptEssence(nextLabel, windowTopLeft))
+                return true;
+
+            if (!settings.ClickUltimatum.Value || !IsUltimatumLabel(nextLabel))
+                return false;
+
+            if (TryClickPreferredUltimatumModifier(nextLabel, windowTopLeft))
+                return true;
+
+            DebugLog(() => "[ProcessRegularClick] Ultimatum label detected but no preferred modifier matched; skipping generic label click");
+            return true;
         }
 
         private static bool IsEssenceLabel(LabelOnGround lbl)
@@ -420,40 +424,32 @@ namespace ClickIt.Services
             foreach (int cap in caps)
             {
                 int limit = Math.Min(cap, allLabels.Count);
-                int start = 0;
-                while (start < limit)
-                {
-                    var label = labelFilterService.GetNextLabelToClick(allLabels, start, limit - start);
-                    if (label == null)
-                        break;
-
-                    if (!ShouldSuppressLeverClick(label) && !ShouldSuppressInactiveUltimatumLabel(label))
-                        return label;
-
-                    int idx = IndexOfLabelReference(allLabels, label, start, limit);
-                    if (idx < 0)
-                        break;
-
-                    start = idx + 1;
-                }
+                LabelOnGround? candidate = FindLabelInRange(allLabels, 0, limit);
+                if (candidate != null)
+                    return candidate;
             }
 
             // Fallback to full scan (rare)
-            int fullStart = 0;
-            while (fullStart < allLabels.Count)
+            return FindLabelInRange(allLabels, 0, allLabels.Count);
+        }
+
+        private LabelOnGround? FindLabelInRange(System.Collections.Generic.IReadOnlyList<LabelOnGround> allLabels, int start, int endExclusive)
+        {
+            int currentStart = start;
+            while (currentStart < endExclusive)
             {
-                var label = labelFilterService.GetNextLabelToClick(allLabels, fullStart, allLabels.Count - fullStart);
+                var label = labelFilterService.GetNextLabelToClick(allLabels, currentStart, endExclusive - currentStart);
                 if (label == null)
                     return null;
 
                 if (!ShouldSuppressLeverClick(label) && !ShouldSuppressInactiveUltimatumLabel(label))
                     return label;
 
-                int idx = IndexOfLabelReference(allLabels, label, fullStart, allLabels.Count);
+                int idx = IndexOfLabelReference(allLabels, label, currentStart, endExclusive);
                 if (idx < 0)
                     return null;
 
-                fullStart = idx + 1;
+                currentStart = idx + 1;
             }
 
             return null;
@@ -538,15 +534,6 @@ namespace ClickIt.Services
             var item = label.ItemOnGround;
             string path = item.Path ?? "";
             return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
-        }
-
-        // Helper used by unit tests (private static) to determine rectangle intersection
-#pragma warning disable IDE0051 // Method is used via reflection in tests
-        private static bool AreRectanglesOverlapping(SharpDX.RectangleF a, SharpDX.RectangleF b)
-#pragma warning restore IDE0051
-        {
-            if (a.Width <= 0 || a.Height <= 0 || b.Width <= 0 || b.Height <= 0) return false;
-            return !(a.X + a.Width < b.X || b.X + b.Width < a.X || a.Y + a.Height < b.Y || b.Y + b.Height < a.Y);
         }
 
         private bool TryCorruptEssence(LabelOnGround label, Vector2 windowTopLeft)

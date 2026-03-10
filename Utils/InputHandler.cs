@@ -97,49 +97,23 @@ namespace ClickIt.Utils
 
         private bool IsBlockedByUiOrEscapeState(GameController gameController)
         {
-            var ui = gameController.IngameState.IngameUi;
-            return gameController.Game.IsEscapeState
-                || ui.ChatTitlePanel.IsVisible
-                || ui.AtlasPanel.IsVisible
-                || ui.AtlasTreePanel.IsVisible
-                || ui.TreePanel.IsVisible
-                || (ui.UltimatumPanel.IsVisible && !_settings.ClickUltimatum.Value)
-                || ui.BetrayalWindow.IsVisible
-                || ui.SyndicatePanel.IsVisible
-                || ui.SyndicateTree.IsVisible
-                || ui.IncursionWindow.IsVisible
-                || ui.RitualWindow.IsVisible
-                || ui.SanctumFloorWindow.IsVisible
-                || ui.SanctumRewardWindow.IsVisible
-                || ui.MicrotransactionShopWindow.IsVisible
-                || ui.ResurrectPanel.IsVisible
-                || ui.NpcDialog.IsVisible
-                || ui.KalandraTabletWindow.IsVisible;
+            if (gameController.Game.IsEscapeState)
+                return true;
+
+            return GetUiBlockingReason(gameController) != null;
         }
-        public string GetCanClickFailureReason(GameController gameController)
+
+        private string? GetUiBlockingReason(GameController? gameController)
         {
-            if (gameController?.Window?.IsForeground() == false)
-                return "PoE not in focus.";
-
-            var area = gameController?.Area?.CurrentArea;
-            if (_settings.BlockOnOpenLeftRightPanel.Value)
-            {
-                var ui = gameController?.IngameState?.IngameUi;
-                if (ui?.OpenLeftPanel?.Address != 0 || ui?.OpenRightPanel?.Address != 0)
-                    return "Panel is open.";
-            }
-
-            if (area?.IsTown == true || area?.IsHideout == true)
-                return "In town/hideout.";
-
             var uiState = gameController?.IngameState?.IngameUi;
+
             var checks = new (bool Condition, string Message)[]
             {
                 (uiState?.ChatTitlePanel?.IsVisible == true, "Chat is open."),
                 (uiState?.AtlasPanel?.IsVisible == true, "Atlas panel is open."),
                 (uiState?.AtlasTreePanel?.IsVisible == true, "Atlas tree panel is open."),
                 (uiState?.TreePanel?.IsVisible == true, "Passive tree panel is open."),
-                (uiState?.UltimatumPanel?.IsVisible == true && _settings.ClickUltimatum.Value == false, "Ultimatum panel is open (ClickUltimatum is disabled)."),
+                (uiState?.UltimatumPanel?.IsVisible == true && !_settings.ClickUltimatum.Value, "Ultimatum panel is open (ClickUltimatum is disabled)."),
                 (uiState?.BetrayalWindow?.IsVisible == true, "Betrayal window is open."),
                 (uiState?.SyndicatePanel?.IsVisible == true, "Syndicate panel is open."),
                 (uiState?.SyndicateTree?.IsVisible == true, "Syndicate tree panel is open."),
@@ -158,6 +132,29 @@ namespace ClickIt.Utils
                 if (check.Condition)
                     return check.Message;
             }
+
+            return null;
+        }
+
+        public string GetCanClickFailureReason(GameController gameController)
+        {
+            if (gameController?.Window?.IsForeground() == false)
+                return "PoE not in focus.";
+
+            var area = gameController?.Area?.CurrentArea;
+            if (_settings.BlockOnOpenLeftRightPanel.Value)
+            {
+                var ui = gameController?.IngameState?.IngameUi;
+                if (ui?.OpenLeftPanel?.Address != 0 || ui?.OpenRightPanel?.Address != 0)
+                    return "Panel is open.";
+            }
+
+            if (area?.IsTown == true || area?.IsHideout == true)
+                return "In town/hideout.";
+
+            string? uiReason = GetUiBlockingReason(gameController);
+            if (!string.IsNullOrEmpty(uiReason))
+                return uiReason;
 
             if (gameController?.Game?.IsEscapeState == true)
                 return "Escape menu is open.";
@@ -238,7 +235,6 @@ namespace ClickIt.Utils
             }
             sw.Stop();
 
-            var after = Mouse.GetCursorPosition();
             //UIHover needs time to update so we sleep longer in lazy mode, we still sleep in normal mode to give cursor time to move
             if (_settings?.LazyMode?.Value == true)
             {

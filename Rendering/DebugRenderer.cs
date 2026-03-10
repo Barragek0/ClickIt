@@ -234,112 +234,77 @@ namespace ClickIt.Rendering
             // Top Mods: Show both upsides and downsides
             if (altar?.TopMods != null)
             {
-                yPos = RenderTopModsSection(xPos, yPos, lineHeight, altar.TopMods, weights);
+                decimal[]? topUpsideWeights = null;
+                decimal[]? topDownsideWeights = null;
+                if (weights.HasValue)
+                {
+                    var localWeights = weights.Value;
+                    topUpsideWeights = localWeights.GetTopUpsideWeights();
+                    topDownsideWeights = localWeights.GetTopDownsideWeights();
+                }
+
+                yPos = RenderModsSection(xPos, yPos, lineHeight, "Top", altar.TopMods, topUpsideWeights, topDownsideWeights);
             }
 
             // Bottom Mods: Show both upsides and downsides
             if (altar?.BottomMods != null)
             {
-                yPos = RenderBottomModsSection(xPos, yPos, lineHeight, altar.BottomMods, weights);
+                decimal[]? bottomUpsideWeights = null;
+                decimal[]? bottomDownsideWeights = null;
+                if (weights.HasValue)
+                {
+                    var localWeights = weights.Value;
+                    bottomUpsideWeights = localWeights.GetBottomUpsideWeights();
+                    bottomDownsideWeights = localWeights.GetBottomDownsideWeights();
+                }
+
+                yPos = RenderModsSection(xPos, yPos, lineHeight, "Bottom", altar.BottomMods, bottomUpsideWeights, bottomDownsideWeights);
             }
 
             return yPos;
         }
 
-        private int RenderTopModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent topMods, AltarWeights? weights)
+        private int RenderModsSection(
+            int xPos,
+            int yPos,
+            int lineHeight,
+            string sectionName,
+            SecondaryAltarComponent mods,
+            decimal[]? upsideWeights,
+            decimal[]? downsideWeights)
         {
-            int topUpsidesCount = topMods.Upsides?.Count ?? 0;
-            int topDownsidesCount = topMods.Downsides?.Count ?? 0;
-            _deferredTextQueue.Enqueue($"  Top Mods (Upsides: {topUpsidesCount}, Downsides: {topDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
+            int upsideCount = mods.Upsides?.Count ?? 0;
+            int downsideCount = mods.Downsides?.Count ?? 0;
+            _deferredTextQueue.Enqueue($"  {sectionName} Mods (Upsides: {upsideCount}, Downsides: {downsideCount}):", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
-            // Show top mod upsides
-            for (int i = 0; i < topUpsidesCount && i < 8; i++)
-            {
-                string mod = topMods.Upsides?[i] ?? "";
-                if (!string.IsNullOrEmpty(mod))
-                {
-                    Color color = Color.LightBlue;
-                    string prefix = $"{i + 1}";
-                    string weightText = weights.HasValue ? $" ({GetTopUpsideWeight(weights.Value, i)})" : "";
-                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
-                }
-            }
-
-            // Show top mod downsides
-            for (int i = 0; i < topDownsidesCount && i < 8; i++)
-            {
-                string mod = topMods.Downsides?[i] ?? "";
-                if (!string.IsNullOrEmpty(mod))
-                {
-                    Color color = Color.LightCoral;
-                    string prefix = $"{i + 1}";
-                    string weightText = weights.HasValue ? $" ({GetTopDownsideWeight(weights.Value, i)})" : "";
-                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
-                }
-            }
+            yPos = RenderModsList(xPos, yPos, lineHeight, mods.Upsides, upsideWeights, Color.LightBlue);
+            yPos = RenderModsList(xPos, yPos, lineHeight, mods.Downsides, downsideWeights, Color.LightCoral);
 
             return yPos;
         }
 
-        private int RenderBottomModsSection(int xPos, int yPos, int lineHeight, SecondaryAltarComponent bottomMods, AltarWeights? weights)
+        private int RenderModsList(
+            int xPos,
+            int yPos,
+            int lineHeight,
+            IReadOnlyList<string>? mods,
+            decimal[]? weights,
+            Color color)
         {
-            int bottomUpsidesCount = bottomMods.Upsides?.Count ?? 0;
-            int bottomDownsidesCount = bottomMods.Downsides?.Count ?? 0;
-            _deferredTextQueue.Enqueue($"  Bottom Mods (Upsides: {bottomUpsidesCount}, Downsides: {bottomDownsidesCount}):", new Vector2(xPos, yPos), Color.White, 14);
-            yPos += lineHeight;
-
-            // Show bottom mod upsides
-            for (int i = 0; i < bottomUpsidesCount && i < 8; i++)
+            int count = Math.Min(mods?.Count ?? 0, 8);
+            for (int i = 0; i < count; i++)
             {
-                string mod = bottomMods.Upsides?[i] ?? "";
+                string mod = mods?[i] ?? string.Empty;
                 if (!string.IsNullOrEmpty(mod))
                 {
-                    Color color = Color.LightBlue;
-                    string prefix = $"{i + 1}";
-                    string weightText = weights.HasValue ? $" ({GetBottomUpsideWeight(weights.Value, i)})" : "";
-                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
-                }
-            }
-
-            // Show bottom mod downsides
-            for (int i = 0; i < bottomDownsidesCount && i < 8; i++)
-            {
-                string mod = bottomMods.Downsides?[i] ?? "";
-                if (!string.IsNullOrEmpty(mod))
-                {
-                    Color color = Color.LightCoral;
-                    string prefix = $"{i + 1}";
-                    string weightText = weights.HasValue ? $" ({GetBottomDownsideWeight(weights.Value, i)})" : "";
-                    yPos = RenderWrappedText($"    {prefix}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
+                    decimal weight = (weights != null && i >= 0 && i < weights.Length) ? weights[i] : 0m;
+                    string weightText = weights != null ? $" ({weight})" : string.Empty;
+                    yPos = RenderWrappedText($"    {i + 1}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
                 }
             }
 
             return yPos;
-        }
-
-        private static decimal GetTopUpsideWeight(AltarWeights weights, int index)
-        {
-            var arr = weights.GetTopUpsideWeights();
-            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
-        }
-
-        private static decimal GetTopDownsideWeight(AltarWeights weights, int index)
-        {
-            var arr = weights.GetTopDownsideWeights();
-            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
-        }
-
-        private static decimal GetBottomUpsideWeight(AltarWeights weights, int index)
-        {
-            var arr = weights.GetBottomUpsideWeights();
-            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
-        }
-
-        private static decimal GetBottomDownsideWeight(AltarWeights weights, int index)
-        {
-            var arr = weights.GetBottomDownsideWeights();
-            return (index >= 0 && index < arr.Length) ? arr[index] : 0;
         }
         public int RenderWrappedText(string text, Vector2 position, Color color, int fontSize, int lineHeight, int maxCharsPerLine)
         {

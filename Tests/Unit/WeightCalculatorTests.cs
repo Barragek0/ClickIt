@@ -162,6 +162,18 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void CalculateUpsideWeight_UsesDefaultTier_WhenTypedModHasTrailingSeparator()
+        {
+            var settings = new ClickItSettings();
+            settings.ModTiers["Player|"] = 11;
+            var calc = new WeightCalculator(settings);
+
+            var result = calc.CalculateUpsideWeight(["Player|"]);
+
+            result.Should().Be(1m);
+        }
+
+        [TestMethod]
         public void CalculateDownsideWeight_IncludesConfiguredTiers()
         {
             var settings = new ClickItSettings();

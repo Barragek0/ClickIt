@@ -4,6 +4,8 @@ namespace ClickIt.Utils
 {
     public static class AltarModMatcher
     {
+        private static readonly Dictionary<string, (bool IsUpside, string MatchedId)> ModLookup = BuildModLookup();
+
         // Attempt to match an altar mod to known mod IDs.
         // Returns true if matched and outputs isUpside + matchedId (format: "Type|Id").
         public static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
@@ -12,32 +14,72 @@ namespace ClickIt.Utils
             matchedId = string.Empty;
             if (string.IsNullOrEmpty(mod)) return false;
 
-            string cleanedMod = new(mod.Where(char.IsLetter).ToArray());
-            string cleanedNegativeModType = new(negativeModType.Where(char.IsLetter).ToArray());
+            string cleanedMod = NormalizeLetters(mod);
+            if (cleanedMod.Length == 0)
+                return false;
+
+            string cleanedNegativeModType = NormalizeLetters(negativeModType);
             string modTarget = GetModTarget(cleanedNegativeModType);
+            if (modTarget.Length == 0)
+                return false;
 
-            var searchLists = new[]
-            {
-                new { List = AltarModsConstants.UpsideMods, IsUpside = true },
-                new { List = AltarModsConstants.DownsideMods, IsUpside = false }
-            };
+            if (!ModLookup.TryGetValue(BuildLookupKey(cleanedMod, modTarget), out var match))
+                return false;
 
-            foreach (var searchList in searchLists)
+            isUpside = match.IsUpside;
+            matchedId = match.MatchedId;
+            return true;
+        }
+
+        private static Dictionary<string, (bool IsUpside, string MatchedId)> BuildModLookup()
+        {
+            var lookup = new Dictionary<string, (bool IsUpside, string MatchedId)>(StringComparer.OrdinalIgnoreCase);
+            AddMods(lookup, AltarModsConstants.UpsideMods, isUpside: true);
+            AddMods(lookup, AltarModsConstants.DownsideMods, isUpside: false);
+            return lookup;
+        }
+
+        private static void AddMods(Dictionary<string, (bool IsUpside, string MatchedId)> lookup, IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> mods, bool isUpside)
+        {
+            foreach (var (id, _, type, _) in mods)
             {
-                foreach (var (Id, _, Type, _) in searchList.List)
+                string cleanedId = NormalizeLetters(id);
+                if (cleanedId.Length == 0 || string.IsNullOrWhiteSpace(type))
+                    continue;
+
+                string key = BuildLookupKey(cleanedId, type);
+                if (!lookup.ContainsKey(key))
                 {
-                    string cleanedId = new(Id.Where(char.IsLetter).ToArray());
-                    if (cleanedId.Equals(cleanedMod, StringComparison.OrdinalIgnoreCase) &&
-                        Type.Equals(modTarget, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isUpside = searchList.IsUpside;
-                        matchedId = $"{Type}|{Id}";
-                        return true;
-                    }
+                    lookup[key] = (isUpside, $"{type}|{id}");
+                }
+            }
+        }
+
+        private static string BuildLookupKey(string cleanedId, string type)
+        {
+            return $"{cleanedId}|{type}";
+        }
+
+        public static string NormalizeLetters(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            char[] buffer = new char[value.Length];
+            int length = 0;
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                if (char.IsLetter(c))
+                {
+                    buffer[length++] = c;
                 }
             }
 
-            return false;
+            if (length == 0)
+                return string.Empty;
+
+            return new string(buffer, 0, length);
         }
 
         public static string GetModTarget(string cleanedNegativeModType)

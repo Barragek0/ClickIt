@@ -96,8 +96,7 @@ namespace ClickIt
                 ImGui.Spacing();
 
                 DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref itemTypeSearchFilter);
-                ImGui.SameLine();
-                if (ImGui.Button("Reset Defaults##ItemTypeDefaults"))
+                if (DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
                 {
                     ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
                     ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
@@ -173,10 +172,7 @@ namespace ClickIt
                 }
             }
 
-            if (!hasEntries)
-            {
-                ImGui.TextDisabled("No entries");
-            }
+            DrawNoEntriesPlaceholder(hasEntries);
 
             ImGui.PopID();
         }
@@ -265,9 +261,7 @@ namespace ClickIt
             try
             {
                 DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref essenceSearchFilter);
-
-                ImGui.SameLine();
-                if (ImGui.Button("Reset Defaults##EssenceResetDefaults"))
+                if (DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
                 {
                     EssenceCorruptNames = BuildDefaultCorruptEssenceNames();
                     EssenceDontCorruptNames = BuildDefaultDontCorruptEssenceNames();
@@ -318,27 +312,7 @@ namespace ClickIt
                     continue;
 
                 hasEntries = true;
-                float availableWidth = Math.Max(80f, ImGui.GetContentRegionAvail().X);
-                const float arrowWidth = 28f;
-                float rowWidth = Math.Max(40f, availableWidth - arrowWidth - 6f);
-
-                bool arrowClicked;
-                if (moveToCorrupt)
-                {
-                    arrowClicked = ImGui.Button($"<-##Move_{id}_{essenceName}", new Vector2(arrowWidth, 0));
-                    ImGui.SameLine();
-                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-                    ImGui.Selectable($"{essenceName}##{id}_{essenceName}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
-                    ImGui.PopStyleColor();
-                }
-                else
-                {
-                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-                    ImGui.Selectable($"{essenceName}##{id}_{essenceName}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
-                    ImGui.PopStyleColor();
-                    ImGui.SameLine();
-                    arrowClicked = ImGui.Button($"->##Move_{id}_{essenceName}", new Vector2(arrowWidth, 0));
-                }
+                bool arrowClicked = DrawTransferListRow(id, essenceName, essenceName, moveToCorrupt, textColor);
 
                 if (arrowClicked)
                 {
@@ -347,10 +321,7 @@ namespace ClickIt
                 }
             }
 
-            if (!hasEntries)
-            {
-                ImGui.TextDisabled("No entries");
-            }
+            DrawNoEntriesPlaceholder(hasEntries);
 
             ImGui.PopID();
         }
@@ -368,9 +339,7 @@ namespace ClickIt
             try
             {
                 DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref strongboxSearchFilter);
-
-                ImGui.SameLine();
-                if (ImGui.Button("Reset Defaults##StrongboxResetDefaults"))
+                if (DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
                 {
                     StrongboxClickIds = BuildDefaultClickStrongboxIds();
                     StrongboxDontClickIds = BuildDefaultDontClickStrongboxIds();
@@ -421,27 +390,7 @@ namespace ClickIt
                     continue;
 
                 hasEntries = true;
-                float availableWidth = Math.Max(80f, ImGui.GetContentRegionAvail().X);
-                const float arrowWidth = 28f;
-                float rowWidth = Math.Max(40f, availableWidth - arrowWidth - 6f);
-
-                bool arrowClicked;
-                if (moveToClick)
-                {
-                    arrowClicked = ImGui.Button($"<-##Move_{id}_{entry.Id}", new Vector2(arrowWidth, 0));
-                    ImGui.SameLine();
-                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-                    ImGui.Selectable($"{entry.DisplayName}##{id}_{entry.Id}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
-                    ImGui.PopStyleColor();
-                }
-                else
-                {
-                    ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-                    ImGui.Selectable($"{entry.DisplayName}##{id}_{entry.Id}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
-                    ImGui.PopStyleColor();
-                    ImGui.SameLine();
-                    arrowClicked = ImGui.Button($"->##Move_{id}_{entry.Id}", new Vector2(arrowWidth, 0));
-                }
+                bool arrowClicked = DrawTransferListRow(id, entry.Id, entry.DisplayName, moveToClick, textColor);
 
                 if (arrowClicked)
                 {
@@ -450,12 +399,35 @@ namespace ClickIt
                 }
             }
 
-            if (!hasEntries)
-            {
-                ImGui.TextDisabled("No entries");
-            }
+            DrawNoEntriesPlaceholder(hasEntries);
 
             ImGui.PopID();
+        }
+
+        private static bool DrawTransferListRow(string listId, string key, string displayText, bool moveToPrimaryList, Vector4 textColor)
+        {
+            float rowWidth = CalculateItemTypeRowWidth();
+            const float arrowWidth = 28f;
+
+            if (moveToPrimaryList)
+            {
+                bool leftArrowClicked = ImGui.Button($"<-##Move_{listId}_{key}", new Vector2(arrowWidth, 0));
+                ImGui.SameLine();
+                DrawTransferListSelectable(listId, key, displayText, rowWidth, textColor);
+                return leftArrowClicked;
+            }
+
+            DrawTransferListSelectable(listId, key, displayText, rowWidth, textColor);
+            ImGui.SameLine();
+            bool rightArrowClicked = ImGui.Button($"->##Move_{listId}_{key}", new Vector2(arrowWidth, 0));
+            return rightArrowClicked;
+        }
+
+        private static void DrawTransferListSelectable(string listId, string key, string displayText, float rowWidth, Vector4 textColor)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+            ImGui.Selectable($"{displayText}##{listId}_{key}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
+            ImGui.PopStyleColor();
         }
 
         private void MoveStrongboxFilter(string strongboxId, bool moveToClick)
@@ -506,27 +478,65 @@ namespace ClickIt
         public IReadOnlyList<string> GetStrongboxClickMetadataIdentifiers()
         {
             EnsureStrongboxFiltersInitialized();
-            return StrongboxClickIds
-                .SelectMany(id => TryGetStrongboxFilterById(id)?.MetadataIdentifiers ?? Array.Empty<string>())
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            return BuildStrongboxMetadataIdentifiers(StrongboxClickIds);
         }
 
         public IReadOnlyList<string> GetStrongboxDontClickMetadataIdentifiers()
         {
             EnsureStrongboxFiltersInitialized();
-            return StrongboxDontClickIds
-                .SelectMany(id => TryGetStrongboxFilterById(id)?.MetadataIdentifiers ?? Array.Empty<string>())
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            return BuildStrongboxMetadataIdentifiers(StrongboxDontClickIds);
+        }
+
+        private static string[] BuildStrongboxMetadataIdentifiers(HashSet<string> strongboxIds)
+        {
+            HashSet<string> metadataIdentifiers = new(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string id in strongboxIds)
+            {
+                StrongboxFilterEntry? entry = TryGetStrongboxFilterById(id);
+                if (entry?.MetadataIdentifiers == null)
+                    continue;
+
+                foreach (string metadataIdentifier in entry.MetadataIdentifiers)
+                {
+                    if (!string.IsNullOrWhiteSpace(metadataIdentifier))
+                    {
+                        metadataIdentifiers.Add(metadataIdentifier);
+                    }
+                }
+            }
+
+            return metadataIdentifiers.ToArray();
         }
 
         public IReadOnlyList<string> GetUltimatumModifierPriority()
         {
             EnsureUltimatumModifiersInitialized();
-            return UltimatumModifierPriority.ToArray();
+
+            if (HasMatchingUltimatumSnapshot())
+            {
+                return _ultimatumPrioritySnapshot;
+            }
+
+            _ultimatumPrioritySnapshot = UltimatumModifierPriority.ToArray();
+            return _ultimatumPrioritySnapshot;
+        }
+
+        private bool HasMatchingUltimatumSnapshot()
+        {
+            if (_ultimatumPrioritySnapshot == null)
+                return false;
+
+            if (_ultimatumPrioritySnapshot.Length != UltimatumModifierPriority.Count)
+                return false;
+
+            for (int i = 0; i < UltimatumModifierPriority.Count; i++)
+            {
+                if (!string.Equals(_ultimatumPrioritySnapshot[i], UltimatumModifierPriority[i], StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return true;
         }
 
         private void DrawUltimatumModifierTablePanel()
@@ -542,9 +552,7 @@ namespace ClickIt
             try
             {
                 DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref ultimatumSearchFilter);
-
-                ImGui.SameLine();
-                if (ImGui.Button("Reset Defaults##UltimatumResetDefaults"))
+                if (DrawResetDefaultsButton("Reset Defaults##UltimatumResetDefaults"))
                 {
                     UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
                 }
@@ -790,23 +798,53 @@ namespace ClickIt
         public IReadOnlyList<string> GetItemTypeWhitelistMetadataIdentifiers()
         {
             EnsureItemTypeFiltersInitialized();
-            return ItemTypeWhitelistIds
-                .SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: true, includeOppositeSubtypeSelections: false))
-                .Concat(ItemTypeBlacklistIds.SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: false, includeOppositeSubtypeSelections: true)))
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            return BuildItemTypeMetadataIdentifiers(
+                primaryIds: ItemTypeWhitelistIds,
+                primaryIsWhitelist: true,
+                oppositeIds: ItemTypeBlacklistIds,
+                oppositeIsWhitelist: false);
         }
 
         public IReadOnlyList<string> GetItemTypeBlacklistMetadataIdentifiers()
         {
             EnsureItemTypeFiltersInitialized();
-            return ItemTypeBlacklistIds
-                .SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: false, includeOppositeSubtypeSelections: false))
-                .Concat(ItemTypeWhitelistIds.SelectMany(id => GetEffectiveMetadataIdentifiers(id, isWhitelist: true, includeOppositeSubtypeSelections: true)))
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            return BuildItemTypeMetadataIdentifiers(
+                primaryIds: ItemTypeBlacklistIds,
+                primaryIsWhitelist: false,
+                oppositeIds: ItemTypeWhitelistIds,
+                oppositeIsWhitelist: true);
+        }
+
+        private string[] BuildItemTypeMetadataIdentifiers(
+            HashSet<string> primaryIds,
+            bool primaryIsWhitelist,
+            HashSet<string> oppositeIds,
+            bool oppositeIsWhitelist)
+        {
+            HashSet<string> metadataIdentifiers = new(StringComparer.OrdinalIgnoreCase);
+
+            AddEffectiveMetadataIdentifiers(metadataIdentifiers, primaryIds, primaryIsWhitelist, includeOppositeSubtypeSelections: false);
+            AddEffectiveMetadataIdentifiers(metadataIdentifiers, oppositeIds, oppositeIsWhitelist, includeOppositeSubtypeSelections: true);
+
+            return metadataIdentifiers.ToArray();
+        }
+
+        private void AddEffectiveMetadataIdentifiers(
+            HashSet<string> target,
+            HashSet<string> categoryIds,
+            bool isWhitelist,
+            bool includeOppositeSubtypeSelections)
+        {
+            foreach (string categoryId in categoryIds)
+            {
+                foreach (string metadataIdentifier in GetEffectiveMetadataIdentifiers(categoryId, isWhitelist, includeOppositeSubtypeSelections))
+                {
+                    if (!string.IsNullOrWhiteSpace(metadataIdentifier))
+                    {
+                        target.Add(metadataIdentifier);
+                    }
+                }
+            }
         }
 
         private IEnumerable<string> GetEffectiveMetadataIdentifiers(string categoryId, bool isWhitelist, bool includeOppositeSubtypeSelections)
@@ -1077,6 +1115,20 @@ namespace ClickIt
             if (ImGui.Button(clearId))
             {
                 searchFilter = "";
+            }
+        }
+
+        private static bool DrawResetDefaultsButton(string buttonId)
+        {
+            ImGui.SameLine();
+            return ImGui.Button(buttonId);
+        }
+
+        private static void DrawNoEntriesPlaceholder(bool hasEntries)
+        {
+            if (!hasEntries)
+            {
+                ImGui.TextDisabled("No entries");
             }
         }
 

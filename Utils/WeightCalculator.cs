@@ -44,10 +44,10 @@ namespace ClickIt.Utils
                 bottomUpsideWeights[i] = GetModWeightFromString(bottomUpMod);
             }
 
-            decimal topUpsideWeight = topUpsideWeights.Sum();
-            decimal topDownsideWeight = topDownsideWeights.Sum();
-            decimal bottomUpsideWeight = bottomUpsideWeights.Sum();
-            decimal bottomDownsideWeight = bottomDownsideWeights.Sum();
+            decimal topUpsideWeight = SumFixed8(topUpsideWeights);
+            decimal topDownsideWeight = SumFixed8(topDownsideWeights);
+            decimal bottomUpsideWeight = SumFixed8(bottomUpsideWeights);
+            decimal bottomDownsideWeight = SumFixed8(bottomDownsideWeights);
 
             var result = new AltarWeights();
             result.InitializeFromArrays(topDownsideWeights, bottomDownsideWeights, topUpsideWeights, bottomUpsideWeights);
@@ -65,9 +65,20 @@ namespace ClickIt.Utils
         private static string GetModString(SecondaryAltarComponent component, int index, bool isDownside)
         {
             if (component == null)
-                return "";
+                return string.Empty;
 
             return isDownside ? component.GetDownsideByIndex(index) : component.GetUpsideByIndex(index);
+        }
+
+        private static decimal SumFixed8(decimal[] values)
+        {
+            decimal total = 0m;
+            for (int i = 0; i < values.Length; i++)
+            {
+                total += values[i];
+            }
+
+            return total;
         }
         public decimal CalculateUpsideWeight(List<string> upsides)
         {
@@ -94,13 +105,17 @@ namespace ClickIt.Utils
         private decimal GetModWeightFromString(string mod)
         {
             if (string.IsNullOrEmpty(mod)) return 0m;
-            if (mod.Contains('|'))
+
+            int separatorIndex = mod.IndexOf('|');
+            if (separatorIndex >= 0)
             {
-                var parts = mod.Split(['|'], 2);
-                string type = parts[0];
-                string id = parts.Length > 1 ? parts[1] : parts[0];
+                string type = mod.Substring(0, separatorIndex);
+                string id = separatorIndex + 1 < mod.Length
+                    ? mod.Substring(separatorIndex + 1)
+                    : string.Empty;
                 return _settings.GetModTier(id, type);
             }
+
             return _settings.GetModTier(mod);
         }
     }
@@ -137,30 +152,17 @@ namespace ClickIt.Utils
         {
             get
             {
-                var self = this;
-                return WithWeightsLock(() => self.GetArrayElement(weightType, index));
+                using (LockManager.AcquireStatic(_weightsLock))
+                {
+                    return GetArrayElement(weightType, index);
+                }
             }
             set
             {
-                var self = this;
-                WithWeightsLock(() => self.SetArrayElement(weightType, index, value));
-            }
-        }
-
-        // Helper to centralize LockManager usage for weight array operations
-        private readonly T WithWeightsLock<T>(Func<T> func)
-        {
-            using (LockManager.AcquireStatic(_weightsLock))
-            {
-                return func();
-            }
-        }
-
-        private readonly void WithWeightsLock(Action action)
-        {
-            using (LockManager.AcquireStatic(_weightsLock))
-            {
-                action();
+                using (LockManager.AcquireStatic(_weightsLock))
+                {
+                    SetArrayElement(weightType, index, value);
+                }
             }
         }
 
@@ -208,41 +210,45 @@ namespace ClickIt.Utils
 
         private readonly decimal GetArrayElement(string weightType, int index)
         {
-            string key = weightType ?? string.Empty;
-            if (string.Equals(key, WeightTypeConstants.TopDownside, StringComparison.OrdinalIgnoreCase))
-                return _topDownsideWeights?[index] ?? 0;
-            if (string.Equals(key, WeightTypeConstants.BottomDownside, StringComparison.OrdinalIgnoreCase))
-                return _bottomDownsideWeights?[index] ?? 0;
-            if (string.Equals(key, WeightTypeConstants.TopUpside, StringComparison.OrdinalIgnoreCase))
-                return _topUpsideWeights?[index] ?? 0;
-            if (string.Equals(key, WeightTypeConstants.BottomUpside, StringComparison.OrdinalIgnoreCase))
-                return _bottomUpsideWeights?[index] ?? 0;
-            return 0;
+            decimal[]? array = GetWeightArrayByType(weightType);
+            return array?[index] ?? 0m;
         }
 
         private void SetArrayElement(string weightType, int index, decimal value)
         {
+            decimal[]? array = GetOrCreateWeightArrayByType(weightType);
+            if (array == null)
+                return;
+
+            array[index] = value;
+        }
+
+        private readonly decimal[]? GetWeightArrayByType(string weightType)
+        {
             string key = weightType ?? string.Empty;
             if (string.Equals(key, WeightTypeConstants.TopDownside, StringComparison.OrdinalIgnoreCase))
-            {
-                if (_topDownsideWeights == null) _topDownsideWeights = new decimal[8];
-                _topDownsideWeights[index] = value;
-            }
-            else if (string.Equals(key, WeightTypeConstants.BottomDownside, StringComparison.OrdinalIgnoreCase))
-            {
-                if (_bottomDownsideWeights == null) _bottomDownsideWeights = new decimal[8];
-                _bottomDownsideWeights[index] = value;
-            }
-            else if (string.Equals(key, WeightTypeConstants.TopUpside, StringComparison.OrdinalIgnoreCase))
-            {
-                if (_topUpsideWeights == null) _topUpsideWeights = new decimal[8];
-                _topUpsideWeights[index] = value;
-            }
-            else if (string.Equals(key, WeightTypeConstants.BottomUpside, StringComparison.OrdinalIgnoreCase))
-            {
-                if (_bottomUpsideWeights == null) _bottomUpsideWeights = new decimal[8];
-                _bottomUpsideWeights[index] = value;
-            }
+                return _topDownsideWeights;
+            if (string.Equals(key, WeightTypeConstants.BottomDownside, StringComparison.OrdinalIgnoreCase))
+                return _bottomDownsideWeights;
+            if (string.Equals(key, WeightTypeConstants.TopUpside, StringComparison.OrdinalIgnoreCase))
+                return _topUpsideWeights;
+            if (string.Equals(key, WeightTypeConstants.BottomUpside, StringComparison.OrdinalIgnoreCase))
+                return _bottomUpsideWeights;
+            return null;
+        }
+
+        private decimal[]? GetOrCreateWeightArrayByType(string weightType)
+        {
+            string key = weightType ?? string.Empty;
+            if (string.Equals(key, WeightTypeConstants.TopDownside, StringComparison.OrdinalIgnoreCase))
+                return _topDownsideWeights ??= new decimal[8];
+            if (string.Equals(key, WeightTypeConstants.BottomDownside, StringComparison.OrdinalIgnoreCase))
+                return _bottomDownsideWeights ??= new decimal[8];
+            if (string.Equals(key, WeightTypeConstants.TopUpside, StringComparison.OrdinalIgnoreCase))
+                return _topUpsideWeights ??= new decimal[8];
+            if (string.Equals(key, WeightTypeConstants.BottomUpside, StringComparison.OrdinalIgnoreCase))
+                return _bottomUpsideWeights ??= new decimal[8];
+            return null;
         }
     }
 }
