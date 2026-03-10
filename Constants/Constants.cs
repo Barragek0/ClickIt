@@ -16,6 +16,12 @@ namespace ClickIt.Definitions
         public const string ClosedDoorPast = "ClosedDoorPast";
         public const string LegionInitiator = "LegionInitiator";
         public const string UltimatumChallengeInteractablePath = "Leagues/Ultimatum/Objects/UltimatumChallengeInteractable";
+
+        public static bool IsUltimatumInteractablePath(string? path)
+        {
+            return !string.IsNullOrWhiteSpace(path)
+                && path.Contains(UltimatumChallengeInteractablePath, StringComparison.OrdinalIgnoreCase);
+        }
         #endregion
 
         #region Target Type Strings

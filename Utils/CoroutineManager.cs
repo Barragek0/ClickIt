@@ -52,17 +52,7 @@ namespace ClickIt.Utils
 
         private bool HasClickableAltars()
         {
-            if (_state.AltarService == null || _state.ClickService == null) return false;
-            var altarSnapshot = _state.AltarService.GetAltarComponentsReadOnly();
-            if (altarSnapshot.Count == 0) return false;
-            bool clickEater = _settings.ClickEaterAltars;
-            bool clickExarch = _settings.ClickExarchAltars;
-            for (int i = 0; i < altarSnapshot.Count; i++)
-            {
-                if (_state.ClickService.ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
-                    return true;
-            }
-            return false;
+            return _state.ClickService?.HasClickableAltars() == true;
         }
 
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
@@ -96,9 +86,9 @@ namespace ClickIt.Utils
         {
             if (_state.PerformanceMonitor == null) yield break;
 
-            _state.PerformanceMonitor.StartCoroutineTiming("altar");
+            _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Altar);
             _state.AltarService?.ProcessAltarScanningLogic();
-            _state.PerformanceMonitor.StopCoroutineTiming("altar");
+            _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Altar);
 
             _state.AltarCoroutine?.Pause();
         }
@@ -127,7 +117,7 @@ namespace ClickIt.Utils
             }
 
             if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
-            double avgClickTime = _state.PerformanceMonitor.GetAverageTiming("click");
+            double avgClickTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
             // Determine if lazy mode is active (enabled and no restricted items on screen and no ritual active)
             bool isRitualActive = IsRitualActive();
@@ -150,9 +140,9 @@ namespace ClickIt.Utils
             }
 
             _state.Timer.Restart();
-            _state.PerformanceMonitor.StartCoroutineTiming("click");
+            _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             yield return _state.ClickService.ProcessRegularClick();
-            _state.PerformanceMonitor.StopCoroutineTiming("click");
+            _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             _state.WorkFinished = true;
         }
@@ -163,11 +153,11 @@ namespace ClickIt.Utils
 
             while (_settings.Enable)
             {
-                _state.PerformanceMonitor.StartCoroutineTiming("shrine");
+                _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Shrine);
 
                 yield return HandleShrine();
 
-                _state.PerformanceMonitor.StopCoroutineTiming("shrine");
+                _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Shrine);
             }
         }
 
@@ -190,7 +180,7 @@ namespace ClickIt.Utils
             }
 
             if (_state.PerformanceMonitor == null) yield break;
-            double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming("shrine");
+            double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Shrine);
             double baseTarget = _settings.ClickFrequencyTarget.Value - avgShrineTime;
             double targetTime = baseTarget + _state.Random.Next(0, 6);
 
@@ -252,11 +242,11 @@ namespace ClickIt.Utils
 
             while (_settings.Enable)
             {
-                _state.PerformanceMonitor.StartCoroutineTiming("flare");
+                _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Flare);
 
                 yield return ProcessFlare();
 
-                _state.PerformanceMonitor.StopCoroutineTiming("flare");
+                _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Flare);
 
                 yield return new WaitTime(100);
             }

@@ -98,6 +98,29 @@ namespace ClickIt.Services
             }
         }
 
+        public bool HasClickableAltars()
+        {
+            if (altarService == null)
+                return false;
+
+            var altarSnapshot = altarService.GetAltarComponentsReadOnly();
+            if (altarSnapshot.Count == 0)
+                return false;
+
+            bool clickEater = settings.ClickEaterAltars;
+            bool clickExarch = settings.ClickExarchAltars;
+
+            for (int i = 0; i < altarSnapshot.Count; i++)
+            {
+                if (ShouldClickAltar(altarSnapshot[i], clickEater, clickExarch))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
         {
             // First check if altar type is enabled
@@ -253,10 +276,29 @@ namespace ClickIt.Services
                 }
                 RectangleF r = el.GetClientRect();
                 Vector2 clickPos = r.Center + windowTopLeft;
-                inputHandler.PerformClick(clickPos, el, gameController);
+                PerformLockedClick(clickPos, el, gameController);
                 performanceMonitor.RecordClickInterval();
                 DebugLog(() => "[ClickAltarElement] Click performed");
                 return true;
+            }
+        }
+
+        private bool EnsureCursorInsideGameWindowForClick(string outsideWindowLogMessage)
+        {
+            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+            {
+                DebugLog(() => outsideWindowLogMessage);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void PerformLockedClick(Vector2 clickPos, Element? expectedElement, GameController? controller)
+        {
+            using (LockManager.AcquireStatic(_elementAccessLock))
+            {
+                inputHandler.PerformClick(clickPos, expectedElement, controller);
             }
         }
 
@@ -279,13 +321,7 @@ namespace ClickIt.Services
         public IEnumerator ProcessRegularClick()
         {
 
-            // Check if there are clickable altars
-            var altarSnapshot = altarService.GetAltarComponentsReadOnly();
-            bool clickEater = settings.ClickEaterAltars;
-            bool clickExarch = settings.ClickExarchAltars;
-            bool hasClickableAltars = altarSnapshot.Any(altar => ShouldClickAltar(altar, clickEater, clickExarch));
-
-            if (hasClickableAltars)
+            if (HasClickableAltars())
             {
                 // If altars are present and clickable, only do altar clicking
                 yield return ProcessAltarClicking();
@@ -521,16 +557,12 @@ namespace ClickIt.Services
                 if (corruptionPos.HasValue)
                 {
                     // Respect setting: ensure cursor currently in PoE window before attempting a click
-                    if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+                    if (!EnsureCursorInsideGameWindowForClick("[TryCorruptEssence] Skipping corruption click - cursor outside PoE window"))
                     {
-                        DebugLog(() => "[TryCorruptEssence] Skipping corruption click - cursor outside PoE window");
                         return false;
                     }
                     DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");
-                    using (LockManager.AcquireStatic(_elementAccessLock))
-                    {
-                        inputHandler.PerformClick(corruptionPos.Value, null, gameController);
-                    }
+                    PerformLockedClick(corruptionPos.Value, null, gameController);
                     performanceMonitor.RecordClickInterval();
                     return true;
                 }
@@ -541,15 +573,11 @@ namespace ClickIt.Services
         private bool PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? gameController)
         {
             // Optionally skip clicks if the OS cursor is outside the PoE window
-            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+            if (!EnsureCursorInsideGameWindowForClick("[PerformLabelClick] Skipping label click - cursor outside PoE window"))
             {
-                DebugLog(() => "[PerformLabelClick] Skipping label click - cursor outside PoE window");
                 return false;
             }
-            using (LockManager.AcquireStatic(_elementAccessLock))
-            {
-                inputHandler.PerformClick(clickPos, expectedElement, gameController);
-            }
+            PerformLockedClick(clickPos, expectedElement, gameController);
 
             // Record the click interval after the actual click
             // This ensures we measure time between actual clicks, not between hotkey presses

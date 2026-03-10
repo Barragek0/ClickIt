@@ -358,16 +358,7 @@ namespace ClickIt.Services
         {
             try
             {
-                WorldItem? worldItemComp = item.GetComponent<WorldItem>();
-                Entity? itemEntity = worldItemComp?.ItemEntity;
-                if (itemEntity == null)
-                    return string.Empty;
-
-                var metadataProperty = itemEntity.GetType().GetProperty("Metadata", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                if (metadataProperty?.GetValue(itemEntity) is string metadata && !string.IsNullOrWhiteSpace(metadata))
-                    return metadata;
-
-                return itemEntity.Path ?? string.Empty;
+                return EntityHelpers.ResolveWorldItemMetadataPath(item);
             }
             catch
             {
@@ -495,7 +486,7 @@ namespace ClickIt.Services
             || path.Contains(Constants.Bismuth);
         private static bool IsUltimatumPath(string path)
         {
-            return path.Contains(Constants.UltimatumChallengeInteractablePath, StringComparison.OrdinalIgnoreCase);
+            return Constants.IsUltimatumInteractablePath(path);
         }
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {

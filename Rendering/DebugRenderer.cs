@@ -6,8 +6,8 @@ using SharpDX;
 using Color = SharpDX.Color;
 using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics;
-using ClickIt.Components;
 using System.Reflection;
+using ClickIt.Components;
 using ClickIt.Services;
 using ClickIt.Utils;
 
@@ -526,20 +526,11 @@ namespace ClickIt.Rendering
         {
             try
             {
-                var item = label.ItemOnGround;
-                if (item == null)
-                    return "<missing item>";
-
-                WorldItem? world = item.GetComponent<WorldItem>();
-                var itemEntity = world?.ItemEntity;
-                if (itemEntity == null)
-                    return "<missing WorldItem.ItemEntity>";
-
-                var metadataProp = itemEntity.GetType().GetProperty("Metadata", BindingFlags.Instance | BindingFlags.Public);
-                if (metadataProp?.GetValue(itemEntity) is string metadata && !string.IsNullOrWhiteSpace(metadata))
-                    return metadata;
-
-                return itemEntity.Path ?? "<missing metadata/path>";
+                return EntityHelpers.ResolveWorldItemMetadataPath(
+                    label.ItemOnGround,
+                    missingItemFallback: "<missing item>",
+                    missingItemEntityFallback: "<missing WorldItem.ItemEntity>",
+                    missingMetadataFallback: "<missing metadata/path>");
             }
             catch (Exception ex)
             {
@@ -604,14 +595,14 @@ namespace ClickIt.Rendering
 
         private int RenderCoroutineTimings(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
-            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "altar", "Altar Coroutine");
-            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "click", "Click Coroutine");
-            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "flare", "Flare Coroutine");
-            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, "shrine", "Shrine Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Altar, "Altar Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Click, "Click Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Flare, "Flare Coroutine");
+            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Shrine, "Shrine Coroutine");
             return yPos;
         }
 
-        private int RenderCoroutineTiming(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor, string timingType, string label)
+        private int RenderCoroutineTiming(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor, TimingChannel timingType, string label)
         {
             double current = performanceMonitor.GetLastTiming(timingType);
             double avg = performanceMonitor.GetAverageTiming(timingType);

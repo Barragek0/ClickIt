@@ -2,6 +2,16 @@ using System.Diagnostics;
 
 namespace ClickIt.Utils
 {
+    public enum TimingChannel
+    {
+        Unknown = 0,
+        Click = 1,
+        Altar = 2,
+        Flare = 3,
+        Shrine = 4,
+        Render = 5
+    }
+
     /// <summary>
     /// Handles all performance monitoring, timing, and FPS calculations for the ClickIt plugin.
     /// Provides thread-safe access to timing queues and performance metrics.

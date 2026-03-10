@@ -31,51 +31,56 @@ namespace ClickIt.Utils
             EnqueueTiming(_renderTimings, timing, 60, _renderTimingsLock);
         }
 
-        public void StartCoroutineTiming(string coroutineName)
+        public void StartCoroutineTiming(TimingChannel channel)
         {
-            switch (coroutineName)
+            switch (channel)
             {
-                case "altar":
+                case TimingChannel.Altar:
                     _altarCoroutineTimer.Restart();
                     break;
-                case "click":
+                case TimingChannel.Click:
                     _clickCoroutineTimer.Restart();
                     break;
-                case "flare":
+                case TimingChannel.Flare:
                     _flareCoroutineTimer.Restart();
                     break;
-                case "shrine":
+                case TimingChannel.Shrine:
                     _shrineCoroutineTimer.Restart();
                     break;
             }
         }
 
-        public void StopCoroutineTiming(string coroutineName)
+        public void StartCoroutineTiming(string coroutineName)
         {
-            switch (coroutineName)
+            StartCoroutineTiming(MapTimingChannel(coroutineName));
+        }
+
+        public void StopCoroutineTiming(TimingChannel channel)
+        {
+            switch (channel)
             {
-                case "altar":
+                case TimingChannel.Altar:
                     _altarCoroutineTimer.Stop();
                     long altarTiming = _altarCoroutineTimer.ElapsedMilliseconds;
                     _lastAltarTiming = altarTiming;
                     _maxAltarTiming = Math.Max(_maxAltarTiming, altarTiming);
                     EnqueueTiming(_altarCoroutineTimings, altarTiming, 10, _altarTimingsLock);
                     break;
-                case "click":
+                case TimingChannel.Click:
                     _clickCoroutineTimer.Stop();
                     long clickTiming = _clickCoroutineTimer.ElapsedMilliseconds;
                     _lastClickTiming = clickTiming;
                     _maxClickTiming = Math.Max(_maxClickTiming, clickTiming);
                     EnqueueTiming(_clickCoroutineTimings, clickTiming, 10, _clickTimingsLock);
                     break;
-                case "flare":
+                case TimingChannel.Flare:
                     _flareCoroutineTimer.Stop();
                     long flareTiming = _flareCoroutineTimer.ElapsedMilliseconds;
                     _lastFlareTiming = flareTiming;
                     _maxFlareTiming = Math.Max(_maxFlareTiming, flareTiming);
                     EnqueueTiming(_flareCoroutineTimings, flareTiming, 10, _flareTimingsLock);
                     break;
-                case "shrine":
+                case TimingChannel.Shrine:
                     _shrineCoroutineTimer.Stop();
                     long shrineTiming = _shrineCoroutineTimer.ElapsedMilliseconds;
                     _lastShrineTiming = shrineTiming;
@@ -85,49 +90,59 @@ namespace ClickIt.Utils
             }
         }
 
-        public double GetLastTiming(string timingType)
+        public void StopCoroutineTiming(string coroutineName)
         {
-            switch (timingType)
+            StopCoroutineTiming(MapTimingChannel(coroutineName));
+        }
+
+        public double GetLastTiming(TimingChannel channel)
+        {
+            switch (channel)
             {
-                case "click":
+                case TimingChannel.Click:
                     return _lastClickTiming;
-                case "altar":
+                case TimingChannel.Altar:
                     return _lastAltarTiming;
-                case "flare":
+                case TimingChannel.Flare:
                     return _lastFlareTiming;
-                case "shrine":
+                case TimingChannel.Shrine:
                     return _lastShrineTiming;
-                case "render":
+                case TimingChannel.Render:
                     return _lastRenderTiming;
                 default:
                     return 0;
             }
         }
 
-        public double GetAverageTiming(string timingType)
+        public double GetLastTiming(string timingType)
+        {
+            return GetLastTiming(MapTimingChannel(timingType));
+        }
+
+        public double GetAverageTiming(TimingChannel channel)
         {
             Queue<long> queue;
             object lockObj;
 
-            switch (timingType)
+            switch (channel)
             {
-                case "click":
+                case TimingChannel.Click:
                     queue = _clickCoroutineTimings;
                     lockObj = _clickTimingsLock;
                     break;
-                case "altar":
+                case TimingChannel.Altar:
                     queue = _altarCoroutineTimings;
                     lockObj = _altarTimingsLock;
                     break;
-                case "flare":
+                case TimingChannel.Flare:
                     queue = _flareCoroutineTimings;
                     lockObj = _flareTimingsLock;
                     break;
-                case "shrine":
+                case TimingChannel.Shrine:
                     queue = _shrineCoroutineTimings;
                     lockObj = _shrineTimingsLock;
                     break;
-                case "render":
+                case TimingChannel.Render:
                     queue = _renderTimings;
                     lockObj = _renderTimingsLock;
                     break;
@@ -141,20 +156,49 @@ namespace ClickIt.Utils
             }
         }
 
+        public double GetAverageTiming(string timingType)
+        {
+            return GetAverageTiming(MapTimingChannel(timingType));
+        }
+
+        public double GetMaxTiming(TimingChannel channel)
+        {
+            switch (channel)
+            {
+                case TimingChannel.Click:
+                    return _maxClickTiming;
+                case TimingChannel.Altar:
+                    return _maxAltarTiming;
+                case TimingChannel.Flare:
+                    return _maxFlareTiming;
+                case TimingChannel.Shrine:
+                    return _maxShrineTiming;
+                default:
+                    return 0;
+            }
+        }
+
         public double GetMaxTiming(string timingType)
+        {
+            return GetMaxTiming(MapTimingChannel(timingType));
+        }
+
+        private static TimingChannel MapTimingChannel(string? timingType)
         {
             switch (timingType)
             {
                 case "click":
-                    return _maxClickTiming;
+                    return TimingChannel.Click;
                 case "altar":
-                    return _maxAltarTiming;
+                    return TimingChannel.Altar;
                 case "flare":
-                    return _maxFlareTiming;
+                    return TimingChannel.Flare;
                 case "shrine":
-                    return _maxShrineTiming;
+                    return TimingChannel.Shrine;
+                case "render":
+                    return TimingChannel.Render;
                 default:
-                    return 0;
+                    return TimingChannel.Unknown;
             }
         }
 

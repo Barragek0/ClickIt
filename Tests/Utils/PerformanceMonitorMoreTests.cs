@@ -14,15 +14,15 @@ namespace ClickIt.Tests.Utils
             var pm = new PerformanceMonitor(settings);
             pm.Start();
 
-            // test multiple coroutine keys
-            var keys = new[] { "click", "altar", "flare", "shrine" };
-            foreach (var k in keys)
+            // test multiple coroutine channels via typed API
+            var channels = new[] { TimingChannel.Click, TimingChannel.Altar, TimingChannel.Flare, TimingChannel.Shrine };
+            foreach (var channel in channels)
             {
-                pm.StartCoroutineTiming(k);
-                pm.StopCoroutineTiming(k);
-                pm.GetLastTiming(k).Should().BeGreaterOrEqualTo(0);
-                pm.GetAverageTiming(k).Should().BeGreaterOrEqualTo(0);
-                pm.GetMaxTiming(k).Should().BeGreaterOrEqualTo(0);
+                pm.StartCoroutineTiming(channel);
+                pm.StopCoroutineTiming(channel);
+                pm.GetLastTiming(channel).Should().BeGreaterOrEqualTo(0);
+                pm.GetAverageTiming(channel).Should().BeGreaterOrEqualTo(0);
+                pm.GetMaxTiming(channel).Should().BeGreaterOrEqualTo(0);
             }
         }
 

@@ -35,8 +35,7 @@ namespace ClickIt.Services
 
         private static bool IsUltimatumPath(string? path)
         {
-            return !string.IsNullOrWhiteSpace(path)
-                && path.Contains(Constants.UltimatumChallengeInteractablePath, StringComparison.OrdinalIgnoreCase);
+            return Constants.IsUltimatumInteractablePath(path);
         }
 
         private static bool IsUltimatumLabel(LabelOnGround? label)
@@ -347,6 +346,33 @@ namespace ClickIt.Services
             return found && bestIndex != int.MaxValue;
         }
 
+        private bool TryClickUltimatumElement(
+            Element element,
+            Vector2 windowTopLeft,
+            string outsideWindowLog,
+            string rejectedClickableAreaLogPrefix,
+            string clickLog)
+        {
+            if (!EnsureCursorInsideGameWindowForClick(outsideWindowLog))
+            {
+                return false;
+            }
+
+            RectangleF rect = element.GetClientRect();
+            if (!pointIsInClickableArea(rect.Center, "Ultimatum"))
+            {
+                DebugLog(() => $"{rejectedClickableAreaLogPrefix} center={rect.Center}");
+                return false;
+            }
+
+            Vector2 clickPos = rect.Center + windowTopLeft;
+            DebugLog(() => $"{clickLog} {clickPos}");
+
+            PerformLockedClick(clickPos, element, gameController);
+            performanceMonitor.RecordClickInterval();
+            return true;
+        }
+
         private bool TryClickUltimatumPanelChoice(object panelObj, Vector2 windowTopLeft)
         {
             if (!TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, logFailures: true) || candidates == null)
@@ -361,29 +387,12 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
-            {
-                DebugLog(() => "[TryClickUltimatumPanelChoice] Skipping click - cursor outside PoE window.");
-                return false;
-            }
-
-            RectangleF bestRect = best.ChoiceElement.GetClientRect();
-            if (!pointIsInClickableArea(bestRect.Center, "Ultimatum"))
-            {
-                DebugLog(() => $"[TryClickUltimatumPanelChoice] Rejected by clickable-area check. best='{best.ModifierName}', center={bestRect.Center}");
-                return false;
-            }
-
-            Vector2 clickPos = bestRect.Center + windowTopLeft;
-            DebugLog(() => $"[TryClickUltimatumPanelChoice] Clicking choice '{best.ModifierName}' (priority={best.PriorityIndex}) at {clickPos}");
-
-            using (LockManager.AcquireStatic(_elementAccessLock))
-            {
-                inputHandler.PerformClick(clickPos, best.ChoiceElement, gameController);
-            }
-
-            performanceMonitor.RecordClickInterval();
-            return true;
+            return TryClickUltimatumElement(
+                best.ChoiceElement,
+                windowTopLeft,
+                "[TryClickUltimatumPanelChoice] Skipping click - cursor outside PoE window.",
+                $"[TryClickUltimatumPanelChoice] Rejected by clickable-area check. best='{best.ModifierName}',",
+                $"[TryClickUltimatumPanelChoice] Clicking choice '{best.ModifierName}' (priority={best.PriorityIndex}) at");
         }
 
         private bool TryClickUltimatumPanelConfirm(object panelObj, Vector2 windowTopLeft)
@@ -406,29 +415,12 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
-            {
-                DebugLog(() => "[TryClickUltimatumPanelConfirm] Skipping click - cursor outside PoE window.");
-                return false;
-            }
-
-            RectangleF confirmRect = confirmEl.GetClientRect();
-            if (!pointIsInClickableArea(confirmRect.Center, "Ultimatum"))
-            {
-                DebugLog(() => $"[TryClickUltimatumPanelConfirm] Rejected by clickable-area check. center={confirmRect.Center}");
-                return false;
-            }
-
-            Vector2 confirmClick = confirmRect.Center + windowTopLeft;
-            DebugLog(() => $"[TryClickUltimatumPanelConfirm] Clicking ConfirmButton at {confirmClick}");
-
-            using (LockManager.AcquireStatic(_elementAccessLock))
-            {
-                inputHandler.PerformClick(confirmClick, confirmEl, gameController);
-            }
-
-            performanceMonitor.RecordClickInterval();
-            return true;
+            return TryClickUltimatumElement(
+                confirmEl,
+                windowTopLeft,
+                "[TryClickUltimatumPanelConfirm] Skipping click - cursor outside PoE window.",
+                "[TryClickUltimatumPanelConfirm] Rejected by clickable-area check.",
+                "[TryClickUltimatumPanelConfirm] Clicking ConfirmButton at");
         }
 
         private static IEnumerable<object?> EnumerateObjects(object source)
@@ -593,25 +585,16 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+            bool clicked = TryClickUltimatumElement(
+                bestOption,
+                windowTopLeft,
+                "[TryClickPreferredUltimatumModifier] Skipping click - cursor outside PoE window",
+                $"[TryClickPreferredUltimatumModifier] Rejected by clickable-area check. best='{bestModifier}',",
+                $"[TryClickPreferredUltimatumModifier] Clicking '{bestModifier}' (priority index {bestIndex}) at");
+
+            if (!clicked)
             {
-                DebugLog(() => "[TryClickPreferredUltimatumModifier] Skipping click - cursor outside PoE window");
                 return false;
-            }
-
-            RectangleF optionRect = bestOption.GetClientRect();
-            if (!pointIsInClickableArea(optionRect.Center, "Ultimatum"))
-            {
-                DebugLog(() => $"[TryClickPreferredUltimatumModifier] Rejected by clickable-area check. best='{bestModifier}', center={optionRect.Center}");
-                return false;
-            }
-
-            Vector2 clickPos = optionRect.Center + windowTopLeft;
-            DebugLog(() => $"[TryClickPreferredUltimatumModifier] Clicking '{bestModifier}' (priority index {bestIndex})");
-
-            using (LockManager.AcquireStatic(_elementAccessLock))
-            {
-                inputHandler.PerformClick(clickPos, bestOption, gameController);
             }
 
             // Let the panel state update before attempting to click Begin.
@@ -620,7 +603,6 @@ namespace ClickIt.Services
             // Attempt to click Begin immediately after selecting a modifier.
             TryClickUltimatumBeginButton(label, windowTopLeft);
 
-            performanceMonitor.RecordClickInterval();
             return true;
         }
 
@@ -685,25 +667,14 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+            if (!TryClickUltimatumElement(
+                beginButton,
+                windowTopLeft,
+                "[TryClickUltimatumBeginButton] Skipping click - cursor outside PoE window",
+                "[TryClickUltimatumBeginButton] Rejected by clickable-area check.",
+                "[TryClickUltimatumBeginButton] Clicking Begin at"))
             {
-                DebugLog(() => "[TryClickUltimatumBeginButton] Skipping click - cursor outside PoE window");
                 return false;
-            }
-
-            RectangleF beginRect = beginButton.GetClientRect();
-            if (!pointIsInClickableArea(beginRect.Center, "Ultimatum"))
-            {
-                DebugLog(() => $"[TryClickUltimatumBeginButton] Rejected by clickable-area check. center={beginRect.Center}");
-                return false;
-            }
-
-            Vector2 beginClickPos = beginRect.Center + windowTopLeft;
-            DebugLog(() => $"[TryClickUltimatumBeginButton] Clicking Begin at {beginClickPos}");
-
-            using (LockManager.AcquireStatic(_elementAccessLock))
-            {
-                inputHandler.PerformClick(beginClickPos, beginButton, gameController);
             }
 
             // Give the encounter UI a brief moment to transition after Begin.

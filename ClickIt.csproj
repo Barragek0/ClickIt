@@ -86,6 +86,8 @@
     <Compile Include="Core\ClickIt.Render.cs" />
     <Compile Include="Core\ClickIt.Input.cs" />
     <Compile Include="Core\ClickItSettings.cs" />
+    <Compile Include="Core\ClickItSettings.Defaults.cs" />
+    <Compile Include="Core\ClickItSettings.Methods.cs" />
     <Compile Include="Core\PluginContext.cs" />
 
     <!-- Constants -->
