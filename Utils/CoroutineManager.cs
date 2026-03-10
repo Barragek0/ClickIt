@@ -106,14 +106,11 @@ namespace ClickIt.Utils
             // Check for clickable altars first (highest priority)
             bool hasClickableAltars = HasClickableAltars();
 
-            if (!hasClickableAltars)
+            // No clickable altars, check for shrines.
+            if (!hasClickableAltars && _settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea((pos) => _pointIsInClickableArea(pos)))
             {
-                // No clickable altars, check for shrines
-                if (_settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea((pos) => _pointIsInClickableArea(pos)))
-                {
-                    yield return new WaitTime(25);
-                    yield break;
-                }
+                yield return new WaitTime(25);
+                yield break;
             }
 
             if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
@@ -225,6 +222,7 @@ namespace ClickIt.Utils
             _state.ShrineService?.InvalidateCache();
         }
 
+        // Retained as a test seam for reflection-based unit tests.
         private bool IsClickHotkeyPressed()
         {
             bool actual = KeyStateProvider(_settings.ClickLabelKey.Value);
@@ -233,6 +231,7 @@ namespace ClickIt.Utils
                 // In lazy mode, invert hotkey behaviour: released -> active, held -> inactive
                 return !actual;
             }
+
             return actual;
         }
 
