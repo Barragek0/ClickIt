@@ -89,7 +89,7 @@ namespace ClickIt
             new("ornate", "Ornate Strongbox (+ rarity)", ["StrongBoxes/Ornate"]),
             new("operative", "Operative Strongbox (scarabs)", ["StrongBoxes/StrongboxScarab"]),
             new("opalescent", "Opalescent Strongbox (jewels)", ["StrongBox/StrongboxJewels", "StrongBoxes/StrongboxJewels"]),
-            new("unique-strongbox", "Unique Strongbox", ["special:strongbox-unique"])
+            new("unique-strongbox", "Unique Strongboxes", ["special:strongbox-unique"])
         ];
 
         private static readonly string[] StrongboxDefaultClickIds =
