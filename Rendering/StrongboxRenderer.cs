@@ -1,5 +1,7 @@
 using ExileCore;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
+using ExileCore.Shared.Enums;
 using Color = SharpDX.Color;
 using ClickIt.Utils;
 
@@ -8,6 +10,7 @@ namespace ClickIt.Rendering
     // Responsible for drawing debug frames around strongboxes (locked/unlocked)
     public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
     {
+        private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
         private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
         private readonly ClickItSettings _settings = settings;
 
@@ -44,7 +47,8 @@ namespace ClickIt.Rendering
                     continue;
 
                 string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
-                bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, renderName, clickMetadata, dontClickMetadata);
+                bool isUniqueStrongbox = label?.ItemOnGround?.GetComponent<Mods>()?.ItemRarity == ItemRarity.Unique;
+                bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, renderName, clickMetadata, dontClickMetadata, isUniqueStrongbox);
                 if (!isClickableBySettings || !showFrames)
                     continue;
 
@@ -93,15 +97,33 @@ namespace ClickIt.Rendering
             return true;
         }
 
-        private static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata)
+        private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)
+        {
+            if (metadataIdentifiers == null || metadataIdentifiers.Count == 0)
+                return false;
+
+            for (int i = 0; i < metadataIdentifiers.Count; i++)
+            {
+                if (string.Equals(metadataIdentifiers[i], StrongboxUniqueIdentifier, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata, bool isUniqueStrongbox)
         {
             if (string.IsNullOrEmpty(path) || clickMetadata == null || clickMetadata.Count == 0)
                 return false;
 
-            if (MetadataIdentifierMatcher.ContainsAny(path, itemName, dontClickMetadata))
+            bool dontClickMatch = MetadataIdentifierMatcher.ContainsAny(path, itemName, dontClickMetadata)
+                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(dontClickMetadata));
+
+            if (dontClickMatch)
                 return false;
 
-            return MetadataIdentifierMatcher.ContainsAny(path, itemName, clickMetadata);
+            return MetadataIdentifierMatcher.ContainsAny(path, itemName, clickMetadata)
+                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(clickMetadata));
         }
 
     }

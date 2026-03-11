@@ -102,6 +102,8 @@ namespace ClickIt
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
         [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 6, 1100)]
         public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
+        [Menu("Avoid overlapping labels when clicking", "When enabled, the plugin attempts to click a visible, non-overlapped part of the target label instead of always clicking center. Helps when one label partially covers another.", 7, 1100)]
+        public ToggleNode AvoidOverlappingLabelClickPoints { get; set; } = new ToggleNode(true);
 
         // ----- Lazy Mode -----
         [Menu("Lazy Mode", 1200)]

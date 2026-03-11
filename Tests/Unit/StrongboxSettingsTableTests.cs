@@ -28,9 +28,7 @@ namespace ClickIt.Tests.Unit
 
             var dontClickMetadata = settings.GetStrongboxDontClickMetadataIdentifiers();
 
-            dontClickMetadata.Should().Contain("name:Perandus Bank");
-            dontClickMetadata.Should().Contain("name:Weylam's War Chest");
-            dontClickMetadata.Should().Contain("name:Empyrean Apparatus");
+            dontClickMetadata.Should().Contain("special:strongbox-unique");
         }
 
         [TestMethod]
@@ -72,7 +70,7 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
 
             const string movedToDontClick = "arcanist";
-            const string movedToClick = "unique-perandus-bank";
+            const string movedToClick = "unique-strongbox";
 
             settings.StrongboxClickIds.Remove(movedToDontClick);
             settings.StrongboxDontClickIds.Add(movedToDontClick);

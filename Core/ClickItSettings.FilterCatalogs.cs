@@ -89,29 +89,7 @@ namespace ClickIt
             new("ornate", "Ornate Strongbox (+ rarity)", ["StrongBoxes/Ornate"]),
             new("operative", "Operative Strongbox (scarabs)", ["StrongBoxes/StrongboxScarab"]),
             new("opalescent", "Opalescent Strongbox (jewels)", ["StrongBox/StrongboxJewels", "StrongBoxes/StrongboxJewels"]),
-            new("unique-strange-barrel", "Strange Barrel (unique strongbox)", ["name:Strange Barrel"]),
-            new("unique-ashes-of-the-condemned", "Ashes of the Condemned (unique strongbox)", ["name:Ashes of the Condemned"]),
-            new("unique-redblade-cache", "Redblade Cache (unique strongbox)", ["name:Redblade Cache"]),
-            new("unique-brinerot-cache", "Brinerot Cache (unique strongbox)", ["name:Brinerot Cache"]),
-            new("unique-mutewind-cache", "Mutewind Cache (unique strongbox)", ["name:Mutewind Cache"]),
-            new("unique-renegades-cache", "Renegades Cache (unique strongbox)", ["name:Renegades Cache"]),
-            new("unique-deshrets-storm", "Deshret's Storm (unique strongbox)", ["name:Deshret's Storm"]),
-            new("unique-perandus-bank", "Perandus Bank (unique strongbox)", ["name:Perandus Bank"]),
-            new("unique-empyrean-apparatus", "Empyrean Apparatus (unique strongbox)", ["name:Empyrean Apparatus"]),
-            new("unique-grandmasters-arcanist-cache", "Grandmaster's Arcanist Cache (unique strongbox)", ["name:Grandmaster's Arcanist Cache"]),
-            new("unique-grandmasters-cartography-cache", "Grandmaster's Cartography Cache (unique strongbox)", ["name:Grandmaster's Cartography Cache"]),
-            new("unique-grandmasters-corrupted-cache", "Grandmaster's Corrupted Cache (unique strongbox)", ["name:Grandmaster's Corrupted Cache"]),
-            new("unique-grandmasters-gemcutting-cache", "Grandmaster's Gemcutting Cache (unique strongbox)", ["name:Grandmaster's Gemcutting Cache"]),
-            new("unique-grandmasters-large-cache", "Grandmaster's Large Cache (unique strongbox)", ["name:Grandmaster's Large Cache"]),
-            new("unique-grandmasters-ornate-cache", "Grandmaster's Ornate Cache (unique strongbox)", ["name:Grandmaster's Ornate Cache"]),
-            new("unique-grandmasters-treasury", "Grandmaster's Treasury (unique strongbox)", ["name:Grandmaster's Treasury"]),
-            new("unique-grandmasters-trove", "Grandmaster's Trove (unique strongbox)", ["name:Grandmaster's Trove"]),
-            new("unique-kaoms-cache", "Kaom's Cache (unique strongbox)", ["name:Kaom's Cache"]),
-            new("unique-maelstrom-cell", "The Maelstrom Cell (unique strongbox)", ["name:The Maelstrom Cell", "name:Maelstrom Cell"]),
-            new("unique-obas-glittering-stash", "Oba's Glittering Stash (unique strongbox)", ["name:Oba's Glittering Stash"]),
-            new("unique-obas-prized-cache", "Oba's Prized Cache (unique strongbox)", ["name:Oba's Prized Cache"]),
-            new("unique-obas-riches", "Oba's Riches (unique strongbox)", ["name:Oba's Riches"]),
-            new("unique-weylams-war-chest", "Weylam's War Chest (unique strongbox)", ["name:Weylam's War Chest"])
+            new("unique-strongbox", "Unique Strongbox", ["special:strongbox-unique"])
         ];
 
         private static readonly string[] StrongboxDefaultClickIds =

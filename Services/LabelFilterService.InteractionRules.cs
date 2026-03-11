@@ -11,6 +11,7 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
+        private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
         private const string MechanicItems = "items";
         private const string MechanicBasicChests = "basic-chests";
         private const string MechanicLeagueChests = "league-chests";
@@ -229,13 +230,37 @@ namespace ClickIt.Services
             IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? Array.Empty<string>();
             IReadOnlyList<string> dontClickMetadata = settings.StrongboxDontClickMetadata ?? Array.Empty<string>();
             string renderName = label.ItemOnGround.RenderName ?? string.Empty;
+            bool isUniqueStrongbox = IsUniqueStrongbox(label);
 
             if (clickMetadata.Count == 0)
                 return false;
-            if (ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata))
+            bool dontClickMatch = ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata)
+                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(dontClickMetadata));
+
+            if (dontClickMatch)
                 return false;
 
-            return ContainsAnyMetadataIdentifier(path, renderName, clickMetadata);
+            return ContainsAnyMetadataIdentifier(path, renderName, clickMetadata)
+                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(clickMetadata));
+        }
+
+        private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)
+        {
+            if (metadataIdentifiers == null || metadataIdentifiers.Count == 0)
+                return false;
+
+            for (int i = 0; i < metadataIdentifiers.Count; i++)
+            {
+                if (string.Equals(metadataIdentifiers[i], StrongboxUniqueIdentifier, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsUniqueStrongbox(LabelOnGround? label)
+        {
+            return label?.ItemOnGround?.GetComponent<Mods>()?.ItemRarity == ItemRarity.Unique;
         }
 
         private static bool IsBasicChestName(string name)

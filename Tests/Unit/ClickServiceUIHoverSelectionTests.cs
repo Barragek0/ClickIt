@@ -30,5 +30,53 @@ namespace ClickIt.Tests.Unit
             var chosen = Services.ClickServiceSeams.ChooseLabelIndexByUIHoverForTests(labels, 1, 0UL);
             chosen.Should().Be(1);
         }
+
+        [TestMethod]
+        public void ShouldPreferHoveredEssenceLabel_ReturnsTrue_WhenHoveredEssenceOverlapsAndDiffers()
+        {
+            bool result = Services.ClickService.ShouldPreferHoveredEssenceLabel(
+                hoveredIsEssence: true,
+                hoveredHasOverlappingEssence: true,
+                nextIsEssence: false,
+                hoveredDiffersFromNext: true);
+
+            result.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldPreferHoveredEssenceLabel_ReturnsTrue_WhenBothAreEssenceAndHoveredDiffers()
+        {
+            bool result = Services.ClickService.ShouldPreferHoveredEssenceLabel(
+                hoveredIsEssence: true,
+                hoveredHasOverlappingEssence: false,
+                nextIsEssence: true,
+                hoveredDiffersFromNext: true);
+
+            result.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldPreferHoveredEssenceLabel_ReturnsFalse_WhenHoveredIsNotEssence()
+        {
+            bool result = Services.ClickService.ShouldPreferHoveredEssenceLabel(
+                hoveredIsEssence: false,
+                hoveredHasOverlappingEssence: true,
+                nextIsEssence: true,
+                hoveredDiffersFromNext: true);
+
+            result.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPreferHoveredEssenceLabel_ReturnsFalse_WhenHoveredIsSameAsNext()
+        {
+            bool result = Services.ClickService.ShouldPreferHoveredEssenceLabel(
+                hoveredIsEssence: true,
+                hoveredHasOverlappingEssence: true,
+                nextIsEssence: true,
+                hoveredDiffersFromNext: false);
+
+            result.Should().BeFalse();
+        }
     }
 }

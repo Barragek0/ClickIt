@@ -28,25 +28,197 @@ namespace ClickIt.Utils
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
-        // helper removed — not used
-        public Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft)
+        private static bool TryGetLabelClientRect(LabelOnGround? label, out RectangleF rect)
         {
-            // Use null-conditional operator for safe memory access
-            if (label.Label?.GetClientRect() is not RectangleF rect)
+            rect = default;
+
+            Element? element = label?.Label;
+            if (element == null || !element.IsValid)
+                return false;
+
+            object? maybeRect = element.GetClientRect();
+            if (maybeRect is not RectangleF r)
+                return false;
+
+            if (r.Width <= 0 || r.Height <= 0)
+                return false;
+
+            rect = r;
+            return true;
+        }
+
+        private static bool TryGetIntersection(RectangleF a, RectangleF b, out RectangleF intersection)
+        {
+            intersection = default;
+
+            float left = Math.Max(a.Left, b.Left);
+            float top = Math.Max(a.Top, b.Top);
+            float right = Math.Min(a.Right, b.Right);
+            float bottom = Math.Min(a.Bottom, b.Bottom);
+
+            if (right <= left || bottom <= top)
+                return false;
+
+            intersection = new RectangleF(left, top, right - left, bottom - top);
+            return true;
+        }
+
+        private static bool IsPointInsideRect(Vector2 point, RectangleF rect)
+        {
+            return point.X >= rect.Left
+                && point.X <= rect.Right
+                && point.Y >= rect.Top
+                && point.Y <= rect.Bottom;
+        }
+
+        private static bool IsPointBlocked(Vector2 point, IReadOnlyList<RectangleF> blockedAreas)
+        {
+            for (int i = 0; i < blockedAreas.Count; i++)
+            {
+                if (IsPointInsideRect(point, blockedAreas[i]))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static Vector2 ClampPointToRect(Vector2 point, RectangleF rect)
+        {
+            return new Vector2(
+                Math.Clamp(point.X, rect.Left, rect.Right),
+                Math.Clamp(point.Y, rect.Top, rect.Bottom));
+        }
+
+        internal static bool TryResolveVisibleClickPoint(RectangleF targetRect, Vector2 preferredPoint, IReadOnlyList<RectangleF> blockedAreas, out Vector2 resolvedPoint)
+        {
+            Vector2 clampedPreferred = ClampPointToRect(preferredPoint, targetRect);
+            if (blockedAreas == null || blockedAreas.Count == 0 || !IsPointBlocked(clampedPreferred, blockedAreas))
+            {
+                resolvedPoint = clampedPreferred;
+                return true;
+            }
+
+            // Sample a small deterministic grid and keep the nearest unblocked point to preserve click intent.
+            const int cols = 7;
+            const int rows = 5;
+            float stepX = targetRect.Width / cols;
+            float stepY = targetRect.Height / rows;
+
+            Vector2 best = clampedPreferred;
+            float bestDistanceSq = float.MaxValue;
+
+            for (int y = 0; y < rows; y++)
+            {
+                float sampleY = targetRect.Top + ((y + 0.5f) * stepY);
+                for (int x = 0; x < cols; x++)
+                {
+                    float sampleX = targetRect.Left + ((x + 0.5f) * stepX);
+                    Vector2 candidate = new(sampleX, sampleY);
+                    if (IsPointBlocked(candidate, blockedAreas))
+                        continue;
+
+                    float dx = candidate.X - clampedPreferred.X;
+                    float dy = candidate.Y - clampedPreferred.Y;
+                    float distanceSq = dx * dx + dy * dy;
+                    if (distanceSq < bestDistanceSq)
+                    {
+                        bestDistanceSq = distanceSq;
+                        best = candidate;
+                    }
+                }
+            }
+
+            if (bestDistanceSq < float.MaxValue)
+            {
+                resolvedPoint = best;
+                return true;
+            }
+
+            resolvedPoint = clampedPreferred;
+            return false;
+        }
+
+        internal static Vector2 ResolveVisibleClickPoint(RectangleF targetRect, Vector2 preferredPoint, IReadOnlyList<RectangleF> blockedAreas)
+        {
+            TryResolveVisibleClickPoint(targetRect, preferredPoint, blockedAreas, out Vector2 resolvedPoint);
+            return resolvedPoint;
+        }
+
+        private static List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            List<RectangleF> blockedAreas = new();
+            if (allLabels == null || allLabels.Count == 0)
+                return blockedAreas;
+
+            for (int i = 0; i < allLabels.Count; i++)
+            {
+                LabelOnGround? other = allLabels[i];
+                if (other == null || ReferenceEquals(other, targetLabel))
+                    continue;
+
+                if (!TryGetLabelClientRect(other, out RectangleF otherRect))
+                    continue;
+
+                if (TryGetIntersection(targetRect, otherRect, out RectangleF overlap))
+                {
+                    blockedAreas.Add(overlap);
+                }
+            }
+
+            return blockedAreas;
+        }
+
+        public bool IsLabelFullyOverlapped(LabelOnGround label, IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;
+            if (!avoidOverlapsEnabled)
+                return false;
+
+            if (!TryGetLabelClientRect(label, out RectangleF rect))
+                return false;
+
+            Vector2 preferredPoint = rect.Center;
+            if (label.ItemOnGround.Type == EntityType.Chest)
+            {
+                preferredPoint.Y -= _settings.ChestHeightOffset;
+            }
+
+            List<RectangleF> blockedAreas = CollectBlockingOverlaps(label, rect, allLabels);
+            return !TryResolveVisibleClickPoint(rect, preferredPoint, blockedAreas, out _);
+        }
+
+        public Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels = null)
+        {
+            if (!TryGetLabelClientRect(label, out RectangleF rect))
             {
                 throw new InvalidOperationException("Label element is invalid");
+            }
+
+            Vector2 preferredPoint = rect.Center;
+            if (label.ItemOnGround.Type == EntityType.Chest)
+            {
+                preferredPoint.Y -= _settings.ChestHeightOffset;
+            }
+
+            Vector2 resolvedPoint = preferredPoint;
+            bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;
+            if (avoidOverlapsEnabled)
+            {
+                List<RectangleF> blockedAreas = CollectBlockingOverlaps(label, rect, allLabels);
+                resolvedPoint = ResolveVisibleClickPoint(rect, preferredPoint, blockedAreas);
             }
 
             float jitterRange = 2f;
             float jitterX = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
             float jitterY = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
 
-            if (label.ItemOnGround.Type == EntityType.Chest)
+            Vector2 jitteredPoint = resolvedPoint + new Vector2(jitterX, jitterY);
+            if (!IsPointInsideRect(jitteredPoint, rect))
             {
-                jitterY -= _settings.ChestHeightOffset;
+                jitteredPoint = resolvedPoint;
             }
 
-            return rect.Center + windowTopLeft + new Vector2(jitterX, jitterY);
+            return jitteredPoint + windowTopLeft;
         }
         public bool TriggerToggleItems()
         {

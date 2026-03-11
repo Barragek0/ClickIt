@@ -71,7 +71,7 @@ namespace ClickIt.Services
             if (ShouldSkipOrHandleSpecialLabel(nextLabel, windowTopLeft))
                 yield break;
 
-            Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft);
+            Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft, allLabels);
             bool clicked = PerformLabelClick(clickPos, nextLabel.Label, gameController);
             if (clicked)
             {
@@ -217,9 +217,7 @@ namespace ClickIt.Services
 
         private LabelOnGround? PreferUiHoverEssenceLabel(LabelOnGround? nextLabel, IReadOnlyList<LabelOnGround>? allLabels)
         {
-            // For essences: use the game's UIHoverElement as the authoritative front-most target.
-            // If the player's current UIHover element corresponds to a visible label, prefer it over our candidate.
-            if (nextLabel == null || !IsEssenceLabel(nextLabel) || allLabels == null)
+            if (allLabels == null)
                 return nextLabel;
 
             var uiHover = gameController?.IngameState?.UIHoverElement;
@@ -227,13 +225,78 @@ namespace ClickIt.Services
                 return nextLabel;
 
             LabelOnGround? hovered = FindLabelByAddress(allLabels, uiHover.Address);
-            if (hovered != null && !ReferenceEquals(hovered, nextLabel) && IsEssenceLabel(hovered))
+            if (hovered == null)
+                return nextLabel;
+
+            bool hoveredIsEssence = IsEssenceLabel(hovered);
+            bool nextIsEssence = nextLabel != null && IsEssenceLabel(nextLabel);
+            bool hoveredHasOverlappingEssence = hoveredIsEssence && HasOverlappingEssenceLabel(hovered, allLabels);
+            bool hoveredDiffersFromNext = !ReferenceEquals(hovered, nextLabel);
+
+            if (ShouldPreferHoveredEssenceLabel(hoveredIsEssence, hoveredHasOverlappingEssence, nextIsEssence, hoveredDiffersFromNext))
             {
                 DebugLog(() => "[ProcessRegularClick] UIHover-first: switching target to UIHover label");
                 return hovered;
             }
 
             return nextLabel;
+        }
+
+        internal static bool ShouldPreferHoveredEssenceLabel(
+            bool hoveredIsEssence,
+            bool hoveredHasOverlappingEssence,
+            bool nextIsEssence,
+            bool hoveredDiffersFromNext)
+        {
+            if (!hoveredIsEssence)
+                return false;
+
+            if (!hoveredDiffersFromNext)
+                return false;
+
+            if (hoveredHasOverlappingEssence)
+                return true;
+
+            return nextIsEssence;
+        }
+
+        private static bool HasOverlappingEssenceLabel(LabelOnGround hoveredEssence, IReadOnlyList<LabelOnGround> allLabels)
+        {
+            if (!TryGetLabelRect(hoveredEssence, out RectangleF hoveredRect))
+                return false;
+
+            for (int i = 0; i < allLabels.Count; i++)
+            {
+                LabelOnGround? candidate = allLabels[i];
+                if (candidate == null || ReferenceEquals(candidate, hoveredEssence) || !IsEssenceLabel(candidate))
+                    continue;
+
+                if (!TryGetLabelRect(candidate, out RectangleF candidateRect))
+                    continue;
+
+                if (hoveredRect.Intersects(candidateRect))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetLabelRect(LabelOnGround? label, out RectangleF rect)
+        {
+            rect = default;
+            Element? element = label?.Label;
+            if (element == null || !element.IsValid)
+                return false;
+
+            object? maybeRect = element.GetClientRect();
+            if (maybeRect is not RectangleF r)
+                return false;
+
+            if (r.Width <= 0 || r.Height <= 0)
+                return false;
+
+            rect = r;
+            return true;
         }
 
         private bool ShouldSkipOrHandleSpecialLabel(LabelOnGround nextLabel, Vector2 windowTopLeft)
@@ -303,8 +366,17 @@ namespace ClickIt.Services
                 if (label == null)
                     return null;
 
-                if (!ShouldSuppressLeverClick(label) && !ShouldSuppressInactiveUltimatumLabel(label))
+                bool fullyOverlapped = inputHandler.IsLabelFullyOverlapped(label, allLabels);
+
+                if (!ShouldSuppressLeverClick(label)
+                    && !ShouldSuppressInactiveUltimatumLabel(label)
+                    && !fullyOverlapped)
                     return label;
+
+                if (fullyOverlapped)
+                {
+                    DebugLog(() => "[ProcessRegularClick] Skipping fully-overlapped label");
+                }
 
                 int idx = IndexOfLabelReference(allLabels, label, currentStart, endExclusive);
                 if (idx < 0)
