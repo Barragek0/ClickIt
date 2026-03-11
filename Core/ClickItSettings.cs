@@ -98,10 +98,10 @@ namespace ClickIt
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
         [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels", 4, 1100)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 5, 1100)]
-        public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 6, 1100)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 5, 1100)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
+        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 6, 1100)]
+        public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
 
         // ----- Lazy Mode -----
         [Menu("Lazy Mode", 1200)]
