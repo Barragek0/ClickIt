@@ -16,7 +16,7 @@ namespace ClickIt.Tests.Unit
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh);
 
             var mi = cm.GetType().GetMethod("GetPlayerHealthPercent", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             mi.Should().NotBeNull();
@@ -42,7 +42,7 @@ namespace ClickIt.Tests.Unit
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh);
 
             var mi = cm.GetType().GetMethod("GetPlayerEnergyShieldPercent", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             mi.Should().NotBeNull();

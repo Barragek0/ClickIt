@@ -107,40 +107,52 @@ namespace ClickIt.Utils
         {
             var uiState = gameController?.IngameState?.IngameUi;
 
-            if (uiState?.ChatTitlePanel?.IsVisible == true)
-                return "Chat is open.";
-            if (uiState?.AtlasPanel?.IsVisible == true)
-                return "Atlas panel is open.";
-            if (uiState?.AtlasTreePanel?.IsVisible == true)
-                return "Atlas tree panel is open.";
-            if (uiState?.TreePanel?.IsVisible == true)
-                return "Passive tree panel is open.";
-            if (uiState?.UltimatumPanel?.IsVisible == true && !_settings.ClickUltimatum.Value)
-                return "Ultimatum panel is open (ClickUltimatum is disabled).";
-            if (uiState?.BetrayalWindow?.IsVisible == true)
-                return "Betrayal window is open.";
-            if (uiState?.SyndicatePanel?.IsVisible == true)
-                return "Syndicate panel is open.";
-            if (uiState?.SyndicateTree?.IsVisible == true)
-                return "Syndicate tree panel is open.";
-            if (uiState?.IncursionWindow?.IsVisible == true)
-                return "Incursion window is open.";
-            if (uiState?.RitualWindow?.IsVisible == true)
-                return "Ritual window is open.";
-            if (uiState?.SanctumFloorWindow?.IsVisible == true)
-                return "Sanctum floor window is open.";
-            if (uiState?.SanctumRewardWindow?.IsVisible == true)
-                return "Sanctum reward window is open.";
-            if (uiState?.MicrotransactionShopWindow?.IsVisible == true)
-                return "Microtransaction shop window is open.";
-            if (uiState?.ResurrectPanel?.IsVisible == true)
-                return "Resurrect panel is open.";
-            if (uiState?.NpcDialog?.IsVisible == true)
-                return "NPC dialog is open.";
-            if (uiState?.KalandraTabletWindow?.IsVisible == true)
-                return "Kalandra tablet window is open.";
+            var rules = new (string PropertyName, string Message, bool RequiresUltimatumDisabled)[]
+            {
+                ("ChatTitlePanel", "Chat is open.", false),
+                ("AtlasPanel", "Atlas panel is open.", false),
+                ("AtlasTreePanel", "Atlas tree panel is open.", false),
+                ("TreePanel", "Passive tree panel is open.", false),
+                ("UltimatumPanel", "Ultimatum panel is open (ClickUltimatum is disabled).", true),
+                ("BetrayalWindow", "Betrayal window is open.", false),
+                ("SyndicatePanel", "Syndicate panel is open.", false),
+                ("SyndicateTree", "Syndicate tree panel is open.", false),
+                ("IncursionWindow", "Incursion window is open.", false),
+                ("RitualWindow", "Ritual window is open.", false),
+                ("SanctumFloorWindow", "Sanctum floor window is open.", false),
+                ("SanctumRewardWindow", "Sanctum reward window is open.", false),
+                ("MicrotransactionShopWindow", "Microtransaction shop window is open.", false),
+                ("ResurrectPanel", "Resurrect panel is open.", false),
+                ("NpcDialog", "NPC dialog is open.", false),
+                ("KalandraTabletWindow", "Kalandra tablet window is open.", false)
+            };
+
+            foreach ((string propertyName, string message, bool requiresUltimatumDisabled) in rules)
+            {
+                if (requiresUltimatumDisabled && _settings.ClickUltimatum.Value)
+                    continue;
+                if (IsUiPanelVisible(uiState, propertyName))
+                    return message;
+            }
 
             return null;
+        }
+
+        private static bool IsUiPanelVisible(object? uiState, string panelPropertyName)
+        {
+            if (uiState == null || string.IsNullOrWhiteSpace(panelPropertyName))
+                return false;
+
+            var panelProperty = uiState.GetType().GetProperty(panelPropertyName);
+            var panelObject = panelProperty?.GetValue(uiState);
+            if (panelObject == null)
+                return false;
+
+            var isVisibleProperty = panelObject.GetType().GetProperty("IsVisible");
+            if (isVisibleProperty?.GetValue(panelObject) is bool isVisible)
+                return isVisible;
+
+            return false;
         }
 
         public string GetCanClickFailureReason(GameController gameController)

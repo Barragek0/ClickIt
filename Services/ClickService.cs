@@ -26,6 +26,7 @@ namespace ClickIt.Services
         Func<Vector2, string, bool> pointIsInClickableArea,
         InputHandler inputHandler,
         LabelFilterService labelFilterService,
+        ShrineService shrineService,
         Func<bool> groundItemsVisible,
         TimeCache<List<LabelOnGround>> cachedLabels,
         PerformanceMonitor performanceMonitor)
@@ -39,6 +40,7 @@ namespace ClickIt.Services
         private readonly Func<Vector2, string, bool> pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
         private readonly InputHandler inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
         private readonly LabelFilterService labelFilterService = labelFilterService ?? throw new ArgumentNullException(nameof(labelFilterService));
+        private readonly ShrineService shrineService = shrineService ?? throw new ArgumentNullException(nameof(shrineService));
         private readonly Func<bool> groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));

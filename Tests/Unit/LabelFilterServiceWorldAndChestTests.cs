@@ -68,30 +68,30 @@ namespace ClickIt.Tests.Unit
         // note: Instance private invocations aren't needed in these tests
 
         [TestMethod]
-        public void ShouldClickWorldItem_ReturnsFalse_WhenClickItemsDisabled()
+        public void ShouldClickWorldItemCore_ReturnsFalse_WhenClickItemsDisabled()
         {
             // clickItems=false should short-circuit (no need to set entity fields)
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", false, false, false, false, false, EntityType.WorldItem, null, null)!;
+            var res = (bool)InvokePrivateStatic("ShouldClickWorldItemCore", false, EntityType.WorldItem, null)!;
             res.Should().BeFalse();
         }
 
         [TestMethod]
-        public void ShouldClickWorldItem_ReturnsFalse_WhenPathContainsStrongbox()
+        public void ShouldClickWorldItemCore_ReturnsFalse_WhenPathContainsStrongbox()
         {
             var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             SetMemberValue(ent, "Path", "some/StrongBoxes/Strongbox/x");
 
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", true, false, false, false, false, EntityType.WorldItem, ent, null)!;
+            var res = (bool)InvokePrivateStatic("ShouldClickWorldItemCore", true, EntityType.WorldItem, ent)!;
             res.Should().BeFalse();
         }
 
         [TestMethod]
-        public void ShouldClickWorldItem_ReturnsTrue_WhenEnabledAndNotStrongbox()
+        public void ShouldClickWorldItemCore_ReturnsTrue_WhenEnabledAndNotStrongbox()
         {
             var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             SetMemberValue(ent, "Path", "some/Item/Name");
 
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItem", true, false, false, false, false, EntityType.WorldItem, ent, null)!;
+            var res = (bool)InvokePrivateStatic("ShouldClickWorldItemCore", true, EntityType.WorldItem, ent)!;
             res.Should().BeTrue();
         }
 
@@ -107,8 +107,8 @@ namespace ClickIt.Tests.Unit
         public void ShouldClickChest_RecognizesBasicChest_WhenSettingsAllow()
         {
             // Call internal helper directly - pass primitive path and renderName to avoid mutating ExileCore objects
-            var res = (bool)InvokePrivateStatic("ShouldClickChestInternal", true, false, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
-            res.Should().BeTrue();
+            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
+            res.Should().Be("basic-chests");
         }
 
         [TestMethod]

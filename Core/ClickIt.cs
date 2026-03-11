@@ -85,7 +85,7 @@ namespace ClickIt
             State.LazyModeRenderer = new Rendering.LazyModeRenderer(Settings, State.DeferredTextQueue, State.InputHandler, labelFilterService);
             State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, LogMessage);
             LockManager.Instance = new LockManager(Settings);
-            State.ClickService = new Services.ClickService(Settings, GameController, State.ErrorHandler, State.AltarService, weightCalculator, State.AltarDisplayRenderer, PointIsInClickableArea, State.InputHandler, labelFilterService, new Func<bool>(State.LabelService.GroundItemsVisible), State.CachedLabels, State.PerformanceMonitor);
+            State.ClickService = new Services.ClickService(Settings, GameController, State.ErrorHandler, State.AltarService, weightCalculator, State.AltarDisplayRenderer, PointIsInClickableArea, State.InputHandler, labelFilterService, State.ShrineService, new Func<bool>(State.LabelService.GroundItemsVisible), State.CachedLabels, State.PerformanceMonitor);
             State.UltimatumRenderer = new Rendering.UltimatumRenderer(Settings, State.ClickService, State.DeferredFrameQueue);
             State.PerformanceMonitor.Start();
 
@@ -93,8 +93,7 @@ namespace ClickIt
                 State,
                 Settings,
                 GameController,
-                State.ErrorHandler,
-                point => PointIsInClickableArea(point));
+                State.ErrorHandler);
             coroutineManager.StartCoroutines(this);
 
             Settings.EnsureAllModsHaveWeights();

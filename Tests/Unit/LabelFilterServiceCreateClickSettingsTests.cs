@@ -19,9 +19,8 @@ namespace ClickIt.Tests.Unit
 
             var svc = new LabelFilterService(settings, ess, err, null);
 
-            // Avoid native Win32 key queries in tests by overriding the static provider via reflection
-            var ksField = typeof(LabelFilterService).GetField("KeyStateProvider", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            ksField.SetValue(null, new Func<System.Windows.Forms.Keys, bool>((k) => false));
+            // Avoid native Win32 key queries in tests by overriding the key-state seam
+            LabelFilterService.KeyStateProvider = (k) => false;
 
             // Short-circuit the lazy-mode restricted check in tests so we don't need to manipulate ExileCore.Memory objects
             // LazyModeRestrictedChecker is a static property - assign directly in tests for determinism

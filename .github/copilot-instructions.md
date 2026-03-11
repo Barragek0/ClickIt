@@ -158,6 +158,11 @@ When refactoring for deduplication or merge-first cleanup:
 - Utility-only shared logic: `Utils/`.
 - Tests: matching category under `Tests/`.
 
+### Settings UI ordering rule
+
+- For ClickIt settings menus, on-screen order follows declaration order in `Core/ClickItSettings.cs` (and related partial settings files), not menu numeric id alone.
+- When a setting must render above/below another control, move the property declaration accordingly.
+
 ## Success Criteria Before Hand-Off
 
 1. Workspace default build task completes successfully (including build, tests, and DLL copy step).

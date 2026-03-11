@@ -11,36 +11,71 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
-        private static bool ShouldClickLabel(LabelOnGround label, Entity item, ClickSettings settings, ExileCore.GameController? gameController)
+        private const string MechanicItems = "items";
+        private const string MechanicBasicChests = "basic-chests";
+        private const string MechanicLeagueChests = "league-chests";
+        private const string MechanicDoors = "doors";
+        private const string MechanicLevers = "levers";
+        private const string MechanicAreaTransitions = "area-transitions";
+        private const string MechanicHarvest = "harvest";
+        private const string MechanicSulphiteVeins = "sulphite-veins";
+        private const string MechanicStrongboxes = "strongboxes";
+        private const string MechanicSanctum = "sanctum";
+        private const string MechanicBetrayal = "betrayal";
+        private const string MechanicBlight = "blight";
+        private const string MechanicAlvaTempleDoors = "alva-temple-doors";
+        private const string MechanicLegionPillars = "legion-pillars";
+        private const string MechanicAzuriteVeins = "azurite-veins";
+        private const string MechanicUltimatum = "ultimatum";
+        private const string MechanicDelveSpawners = "delve-spawners";
+        private const string MechanicCraftingRecipes = "crafting-recipes";
+        private const string MechanicBreachNodes = "breach-nodes";
+        private const string MechanicSettlersOre = "settlers-ore";
+        private const string MechanicAltars = "altars";
+        private const string MechanicEssences = "essences";
+        private const string MechanicRitualInitiate = "ritual-initiate";
+        private const string MechanicRitualCompleted = "ritual-completed";
+
+        private static string? GetClickableMechanicId(LabelOnGround label, Entity item, ClickSettings settings, ExileCore.GameController? gameController)
         {
             string path = item.Path;
             EntityType type = item.Type;
 
             if (type == EntityType.WorldItem && !ShouldAllowWorldItemByMetadata(settings, item))
-                return false;
+                return null;
             if (ShouldClickWorldItemCore(settings.ClickItems, type, item))
-                return true;
-            if (ShouldClickChest(settings.ClickBasicChests, settings.ClickLeagueChests, type, label))
-                return true;
-            if (ShouldClickNamedInteractable(settings.ClickDoors, settings.ClickLevers, item.RenderName, path))
-                return true;
+                return MechanicItems;
+
+            string? chestMechanicId = GetChestMechanicId(settings.ClickBasicChests, settings.ClickLeagueChests, type, label);
+            if (!string.IsNullOrWhiteSpace(chestMechanicId))
+                return chestMechanicId;
+
+            string? namedMechanicId = GetNamedInteractableMechanicId(settings.ClickDoors, settings.ClickLevers, item.RenderName, path);
+            if (!string.IsNullOrWhiteSpace(namedMechanicId))
+                return namedMechanicId;
+
             if (settings.ClickAreaTransitions && (type == EntityType.AreaTransition || path.Contains("AreaTransition")))
-                return true;
+                return MechanicAreaTransitions;
 
             // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround.
-            if (ShouldClickSpecialPath(settings, path, label))
-                return true;
-            if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
-                return true;
-            if (ShouldClickEssence(settings.ClickEssences, label))
-                return true;
-            if (ShouldClickRitual(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label))
-                return true;
+            string? specialMechanicId = GetSpecialPathMechanicId(settings, path, label);
+            if (!string.IsNullOrWhiteSpace(specialMechanicId))
+                return specialMechanicId;
 
-            return false;
+            if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
+                return MechanicAltars;
+
+            if (ShouldClickEssence(settings.ClickEssences, label))
+                return MechanicEssences;
+
+            string? ritualMechanicId = GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
+            if (!string.IsNullOrWhiteSpace(ritualMechanicId))
+                return ritualMechanicId;
+
+            return null;
         }
 
-        private static bool ShouldClickNamedInteractable(bool clickDoors, bool clickLevers, string? renderName, string? metadataPath)
+        private static string? GetNamedInteractableMechanicId(bool clickDoors, bool clickLevers, string? renderName, string? metadataPath)
         {
             string path = string.IsNullOrWhiteSpace(metadataPath) ? string.Empty : metadataPath.Trim();
 
@@ -48,7 +83,12 @@ namespace ClickIt.Services
                 || path.Contains("MiscellaneousObjects/Door", StringComparison.OrdinalIgnoreCase);
             bool isLever = path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
 
-            return (clickDoors && isDoor) || (clickLevers && isLever);
+            if (clickDoors && isDoor)
+                return MechanicDoors;
+            if (clickLevers && isLever)
+                return MechanicLevers;
+
+            return null;
         }
 
         private static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)
@@ -64,67 +104,65 @@ namespace ClickIt.Services
             return true;
         }
 
-#pragma warning disable IDE0051 // Used via reflection in tests
-        private static bool ShouldClickWorldItem(bool clickItems, bool ignoreUniques, bool ignoreHeistQuestContracts, bool ignoreInscribedUltimatums, bool onlyPickupCurrencyItems, EntityType type, Entity item, ExileCore.GameController? gameController)
-#pragma warning restore IDE0051
-        {
-            return ShouldClickWorldItemCore(clickItems, type, item);
-        }
-
-        private static bool ShouldClickChest(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)
+        private static string? GetChestMechanicId(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)
         {
             string? path = label.ItemOnGround?.Path;
             string renderName = label.ItemOnGround?.RenderName ?? string.Empty;
-            return ShouldClickChestInternal(clickBasicChests, clickLeagueChests, type, path, renderName);
+            return GetChestMechanicIdInternal(clickBasicChests, clickLeagueChests, type, path, renderName);
         }
 
-        private static bool ShouldClickChestInternal(bool clickBasicChests, bool clickLeagueChests, EntityType type, string? path, string renderName)
+        private static string? GetChestMechanicIdInternal(bool clickBasicChests, bool clickLeagueChests, EntityType type, string? path, string renderName)
         {
             if (type != EntityType.Chest)
-                return false;
+                return null;
 
             // Avoid treating strongboxes as generic chests; strongboxes have their own settings.
             if (!string.IsNullOrEmpty(path) && path.ToLowerInvariant().Contains("strongbox"))
-                return false;
+                return null;
 
             bool isBasicChest = IsBasicChestName(renderName);
-            return (clickBasicChests && isBasicChest) || (clickLeagueChests && !isBasicChest);
+            if (clickBasicChests && isBasicChest)
+                return MechanicBasicChests;
+            if (clickLeagueChests && !isBasicChest)
+                return MechanicLeagueChests;
+
+            return null;
         }
 
-        private static bool ShouldClickSpecialPath(ClickSettings settings, string path, LabelOnGround label)
+        private static string? GetSpecialPathMechanicId(ClickSettings settings, string path, LabelOnGround label)
         {
             if (string.IsNullOrEmpty(path))
-                return false;
+                return null;
 
             bool strongboxesEnabled = settings.StrongboxClickMetadata?.Count > 0;
 
-            var checks = new (bool On, Func<string, bool> Matches)[]
+            var checks = new (bool On, string MechanicId, Func<string, bool> Matches)[]
             {
-                (settings.NearestHarvest, static p => IsHarvestPath(p)),
-                (settings.ClickSulphite, static p => p.Contains("DelveMineral")),
-                (strongboxesEnabled, p => ShouldClickStrongbox(settings, p, label)),
-                (settings.ClickSanctum, static p => p.Contains("Sanctum")),
-                (settings.ClickBetrayal, static p => p.Contains("BetrayalMakeChoice")),
-                (settings.ClickBlight, static p => p.Contains("BlightPump")),
-                (settings.ClickAlvaTempleDoors, static p => p.Contains(Constants.ClosedDoorPast)),
-                (settings.ClickLegionPillars, static p => p.Contains(Constants.LegionInitiator)),
-                (settings.ClickAzurite, static p => p.Contains("AzuriteEncounterController")),
-                (settings.ClickUltimatum, static p => IsUltimatumPath(p)),
-                (settings.ClickDelveSpawners, static p => p.Contains("Delve/Objects/Encounter")),
-                (settings.ClickCrafting, static p => p.Contains("CraftingUnlocks")),
-                (settings.ClickBreach, static p => p.Contains(Constants.Brequel)),
-                (settings.ClickSettlersOre, static p => IsSettlersOrePath(p))
+                (settings.NearestHarvest, MechanicHarvest, static p => IsHarvestPath(p)),
+                (settings.ClickSulphite, MechanicSulphiteVeins, static p => p.Contains("DelveMineral")),
+                (strongboxesEnabled, MechanicStrongboxes, p => ShouldClickStrongbox(settings, p, label)),
+                (settings.ClickSanctum, MechanicSanctum, static p => p.Contains("Sanctum")),
+                (settings.ClickBetrayal, MechanicBetrayal, static p => p.Contains("BetrayalMakeChoice")),
+                (settings.ClickBlight, MechanicBlight, static p => p.Contains("BlightPump")),
+                (settings.ClickAlvaTempleDoors, MechanicAlvaTempleDoors, static p => p.Contains(Constants.ClosedDoorPast)),
+                (settings.ClickLegionPillars, MechanicLegionPillars, static p => p.Contains(Constants.LegionInitiator)),
+                (settings.ClickAzurite, MechanicAzuriteVeins, static p => p.Contains("AzuriteEncounterController")),
+                (settings.ClickUltimatum, MechanicUltimatum, static p => IsUltimatumPath(p)),
+                (settings.ClickDelveSpawners, MechanicDelveSpawners, static p => p.Contains("Delve/Objects/Encounter")),
+                (settings.ClickCrafting, MechanicCraftingRecipes, static p => p.Contains("CraftingUnlocks")),
+                (settings.ClickBreach, MechanicBreachNodes, static p => p.Contains(Constants.Brequel)),
+                (settings.ClickSettlersOre, MechanicSettlersOre, static p => IsSettlersOrePath(p))
             };
 
-            foreach ((bool on, Func<string, bool> matches) in checks)
+            foreach ((bool on, string mechanicId, Func<string, bool> matches) in checks)
             {
                 if (!on)
                     continue;
                 if (matches(path))
-                    return true;
+                    return mechanicId;
             }
 
-            return false;
+            return null;
         }
 
         private static bool IsHarvestPath(string path)
@@ -163,18 +201,18 @@ namespace ClickIt.Services
             return LabelUtils.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
         }
 
-        private static bool ShouldClickRitual(bool clickRitualInitiate, bool clickRitualCompleted, string path, LabelOnGround label)
+        private static string? GetRitualMechanicId(bool clickRitualInitiate, bool clickRitualCompleted, string path, LabelOnGround label)
         {
             if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual"))
-                return false;
+                return null;
 
             bool hasFavoursText = LabelUtils.GetElementByString(label.Label, "Interact to view Favours") != null;
             if (clickRitualInitiate && !hasFavoursText)
-                return true;
+                return MechanicRitualInitiate;
             if (clickRitualCompleted && hasFavoursText)
-                return true;
+                return MechanicRitualCompleted;
 
-            return false;
+            return null;
         }
 
         private static bool ShouldClickStrongbox(ClickSettings settings, string path, LabelOnGround label)

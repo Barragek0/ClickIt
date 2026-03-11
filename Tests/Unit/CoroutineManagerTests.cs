@@ -10,26 +10,7 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class CoroutineManagerTests
     {
-        private Func<System.Windows.Forms.Keys, bool>? _originalKeyStateProvider;
-        private Func<Services.LabelFilterService, System.Collections.Generic.IReadOnlyList<ExileCore.PoEMemory.Elements.LabelOnGround>?, bool>? _originalLazyModeChecker;
 
-        [TestInitialize]
-        public void Init()
-        {
-            // Save original static seams
-            _originalKeyStateProvider = global::ClickIt.Utils.CoroutineManager.KeyStateProvider;
-            _originalLazyModeChecker = Services.LabelFilterService.LazyModeRestrictedChecker;
-        }
-
-        [TestCleanup]
-        public void Cleanup()
-        {
-            // Restore saved static seams so tests are isolated
-            if (_originalKeyStateProvider != null)
-                global::ClickIt.Utils.CoroutineManager.KeyStateProvider = _originalKeyStateProvider;
-            if (_originalLazyModeChecker != null)
-                Services.LabelFilterService.LazyModeRestrictedChecker = _originalLazyModeChecker;
-        }
         [TestMethod]
         public void Constructor_Throws_OnNullArgs()
         {
@@ -39,126 +20,20 @@ namespace ClickIt.Tests.Unit
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
             // Null state
-            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(null!, settings, gc!, eh, p => true))
+            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(null!, settings, gc!, eh))
                 .Should().Throw<ArgumentNullException>();
 
             // Null settings
-            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, null!, gc!, eh, p => true))
+            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, null!, gc!, eh))
                 .Should().Throw<ArgumentNullException>();
 
             // Null game controller
-            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, settings, null!, eh, p => true))
+            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, settings, null!, eh))
                 .Should().Throw<ArgumentNullException>();
 
             // Null error handler
-            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, null!, p => true))
+            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, null!))
                 .Should().Throw<ArgumentNullException>();
-
-            // Null point checker
-            FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, null!))
-                .Should().Throw<ArgumentNullException>();
-        }
-
-        [TestMethod]
-        public void IsShrineClickBlockedInLazyMode_False_WhenLazyModeDisabled()
-        {
-            var settings = new ClickItSettings();
-            settings.LazyMode.Value = false; // should short-circuit and return false
-
-            var ctx = new PluginContext();
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
-            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
-            res.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void IsShrineClickBlockedInLazyMode_ReturnsTrue_WhenLeftClickHeldAndDisabled()
-        {
-            var settings = new ClickItSettings();
-            settings.LazyMode.Value = true; // enter lazy-mode code path
-            settings.DisableLazyModeLeftClickHeld.Value = true;
-
-            var ctx = new PluginContext();
-            // Provide LabelFilterService that reports no restricted items present
-            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
-            Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
-            ctx.LabelFilterService = lfs;
-
-            // deterministic key state: left button held
-            global::ClickIt.Utils.CoroutineManager.KeyStateProvider = (k) => k == System.Windows.Forms.Keys.LButton;
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
-            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
-            res.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void IsShrineClickBlockedInLazyMode_ReturnsTrue_WhenRightClickHeldAndDisabled()
-        {
-            var settings = new ClickItSettings();
-            settings.LazyMode.Value = true; // enter lazy-mode code path
-            settings.DisableLazyModeRightClickHeld.Value = true;
-
-            var ctx = new PluginContext();
-            // Provide LabelFilterService that reports no restricted items present
-            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
-            Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => false;
-            ctx.LabelFilterService = lfs;
-
-            // deterministic key state: right button held
-            global::ClickIt.Utils.CoroutineManager.KeyStateProvider = (k) => k == System.Windows.Forms.Keys.RButton;
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
-            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
-            res.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void IsShrineClickBlockedInLazyMode_False_WhenRestrictedItemsPresent()
-        {
-            var settings = new ClickItSettings();
-            settings.LazyMode.Value = true; // enter lazy-mode code path
-
-            var ctx = new PluginContext();
-            // Provide a LabelFilterService and override the lazy-check to return true (restricted items present)
-            var lfs = new Services.LabelFilterService(settings, new Services.EssenceService(settings), new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { }), null);
-            // Override test seam so the implementation reports restricted items present
-            Services.LabelFilterService.LazyModeRestrictedChecker = (svc, labels) => true;
-
-            ctx.LabelFilterService = lfs;
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
-            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            var res = PrivateMethodAccessor.Invoke<bool>(cm, "IsShrineClickBlockedInLazyMode");
-            res.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void HasClickableAltars_ReturnsFalse_IfServicesMissingOrNoAltars()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
-            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-
-            // No altar service -> false
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-            PrivateMethodAccessor.Invoke<bool>(cm, "HasClickableAltars").Should().BeFalse();
-
-            // Provide an altar service object (uninitialized) but no click service -> still false
-            ctx.AltarService = (Services.AltarService)RuntimeHelpers.GetUninitializedObject(typeof(Services.AltarService));
-            PrivateMethodAccessor.Invoke<bool>(cm, "HasClickableAltars").Should().BeFalse();
         }
 
         [TestMethod]
@@ -169,7 +44,7 @@ namespace ClickIt.Tests.Unit
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh);
 
             // Depending on build flags / available ExileCore runtime, these methods may either return 100f
             // (when runtime is not present) or attempt to access GameController.Player and throw.
@@ -194,7 +69,7 @@ namespace ClickIt.Tests.Unit
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh);
 
             var pluginMock = new Moq.Mock<ExileCore.BaseSettingsPlugin<ClickItSettings>>();
             var plugin = pluginMock.Object;
@@ -213,28 +88,6 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void IsClickHotkeyPressed_RespectsLazyMode_InversionBehaviour()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
-            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-
-            global::ClickIt.Utils.CoroutineManager.KeyStateProvider = (k) => true;
-
-            settings.LazyMode.Value = false;
-            var resNormal = PrivateMethodAccessor.Invoke<bool>(cm, "IsClickHotkeyPressed");
-            resNormal.Should().BeTrue();
-
-            settings.LazyMode.Value = true;
-            var resInverted = PrivateMethodAccessor.Invoke<bool>(cm, "IsClickHotkeyPressed");
-            resInverted.Should().BeFalse();
-        }
-
-        [TestMethod]
         public void ClickLabel_SetsWorkFinished_WhenTimerBelowTarget_OrCanClickFalse()
         {
             var settings = new ClickItSettings();
@@ -249,7 +102,7 @@ namespace ClickIt.Tests.Unit
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
+            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh);
 
             ctx.Timer.Restart();
             ctx.Timer.Stop();
@@ -262,19 +115,5 @@ namespace ClickIt.Tests.Unit
             ctx.WorkFinished.Should().BeTrue();
         }
 
-        [TestMethod]
-        public void ExecuteWithElementAccessLock_RunsAction()
-        {
-            var settings = new ClickItSettings();
-            var ctx = new PluginContext();
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
-            var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
-
-            var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh, p => true);
-
-            bool ran = false;
-            PrivateMethodAccessor.Invoke(cm, "ExecuteWithElementAccessLock", new Action(() => ran = true));
-            ran.Should().BeTrue();
-        }
     }
 }

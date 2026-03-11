@@ -118,6 +118,57 @@ namespace ClickIt
             }
         }
 
+        private void EnsureMechanicPrioritiesInitialized()
+        {
+            MechanicPriorityOrder ??= new List<string>();
+            MechanicPriorityIgnoreDistanceIds ??= new HashSet<string>(PriorityComparer);
+
+            HashSet<string> valid = new(MechanicPriorityIds, PriorityComparer);
+
+            bool applyDefaultIgnoreDistance = MechanicPriorityIgnoreDistanceIds.Count == 0;
+            MechanicPriorityOrder = BuildSanitizedMechanicPriorityOrder(valid);
+            SanitizeMechanicIgnoreDistance(valid, applyDefaultIgnoreDistance);
+        }
+
+        private List<string> BuildSanitizedMechanicPriorityOrder(HashSet<string> validMechanicIds)
+        {
+            var sanitizedOrder = new List<string>(MechanicPriorityEntries.Length);
+            HashSet<string> seen = new(PriorityComparer);
+
+            AddValidUniqueMechanicIds(MechanicPriorityOrder, validMechanicIds, seen, sanitizedOrder);
+            AddValidUniqueMechanicIds(MechanicPriorityDefaultOrderIds, validMechanicIds, seen, sanitizedOrder);
+
+            foreach (MechanicPriorityEntry entry in MechanicPriorityEntries)
+            {
+                if (seen.Add(entry.Id))
+                    sanitizedOrder.Add(entry.Id);
+            }
+
+            return sanitizedOrder;
+        }
+
+        private static void AddValidUniqueMechanicIds(IEnumerable<string> sourceIds, HashSet<string> validMechanicIds, HashSet<string> seen, List<string> destination)
+        {
+            foreach (string mechanicId in sourceIds)
+            {
+                if (string.IsNullOrWhiteSpace(mechanicId))
+                    continue;
+                if (!validMechanicIds.Contains(mechanicId))
+                    continue;
+                if (!seen.Add(mechanicId))
+                    continue;
+
+                destination.Add(mechanicId);
+            }
+        }
+
+        private void SanitizeMechanicIgnoreDistance(HashSet<string> validMechanicIds, bool applyDefaultIgnoreDistance)
+        {
+            MechanicPriorityIgnoreDistanceIds.RemoveWhere(id => string.IsNullOrWhiteSpace(id) || !validMechanicIds.Contains(id));
+            if (applyDefaultIgnoreDistance)
+                MechanicPriorityIgnoreDistanceIds.Add("shrines");
+        }
+
         private void EnsureStrongboxFiltersInitialized()
         {
             StrongboxClickIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);

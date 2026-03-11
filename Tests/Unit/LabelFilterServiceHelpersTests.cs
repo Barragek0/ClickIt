@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Reflection;
-using SharpDX;
 using ClickIt.Services;
 
 namespace ClickIt.Tests.Unit
@@ -10,25 +9,25 @@ namespace ClickIt.Tests.Unit
     public class LabelFilterServiceHelpersTests
     {
         [TestMethod]
-        public void ShouldClickChestInternal_Behaves_Correctly_ForVariousNames()
+        public void GetChestMechanicIdInternal_Behaves_Correctly_ForVariousNames()
         {
-            var mi = typeof(LabelFilterService).GetMethod("ShouldClickChestInternal", BindingFlags.NonPublic | BindingFlags.Static)!;
+            var mi = typeof(LabelFilterService).GetMethod("GetChestMechanicIdInternal", BindingFlags.NonPublic | BindingFlags.Static)!;
 
-            // Not a chest -> false
-            var res1 = (bool)mi.Invoke(null, new object?[] { true, true, ExileCore.Shared.Enums.EntityType.Monster, "some/path", "chest" });
-            res1.Should().BeFalse();
+            // Not a chest -> null
+            var res1 = (string?)mi.Invoke(null, new object?[] { true, true, ExileCore.Shared.Enums.EntityType.Monster, "some/path", "chest" });
+            res1.Should().BeNull();
 
-            // Basic chest by name -> true when clickBasicChests enabled
-            var res2 = (bool)mi.Invoke(null, new object?[] { true, false, ExileCore.Shared.Enums.EntityType.Chest, null, "Chest" });
-            res2.Should().BeTrue();
+            // Basic chest by name -> basic-chests when clickBasicChests enabled
+            var res2 = (string?)mi.Invoke(null, new object?[] { true, false, ExileCore.Shared.Enums.EntityType.Chest, null, "Chest" });
+            res2.Should().Be("basic-chests");
 
-            // League chest (non-basic) -> true when clickLeagueChests enabled
-            var res3 = (bool)mi.Invoke(null, new object?[] { false, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Some League" });
-            res3.Should().BeTrue();
+            // League chest (non-basic) -> league-chests when clickLeagueChests enabled
+            var res3 = (string?)mi.Invoke(null, new object?[] { false, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Some League" });
+            res3.Should().Be("league-chests");
 
-            // Strongbox path should be treated as not a basic chest
-            var res4 = (bool)mi.Invoke(null, new object?[] { true, true, ExileCore.Shared.Enums.EntityType.Chest, "StrongBoxes/Strongbox", "strongbox" });
-            res4.Should().BeFalse();
+            // Strongbox path should be excluded from generic chest mechanics
+            var res4 = (string?)mi.Invoke(null, new object?[] { true, true, ExileCore.Shared.Enums.EntityType.Chest, "StrongBoxes/Strongbox", "strongbox" });
+            res4.Should().BeNull();
         }
 
         [TestMethod]
@@ -66,27 +65,6 @@ namespace ClickIt.Tests.Unit
             ra3.Should().BeTrue();
             var ra4 = (bool)mi.Invoke(null, new object?[] { false, true, false, false, "This/TangleAltar" });
             ra4.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void RectangleOverlap_Detects_OverlappingRects()
-        {
-            var mi = typeof(LabelFilterService).GetMethod("DoRectanglesOverlap", BindingFlags.NonPublic | BindingFlags.Static)!;
-
-            var a = new RectangleF(0, 0, 10, 10);
-            var b = new RectangleF(5, 5, 10, 10); // overlap
-            var c = new RectangleF(20, 20, 5, 5); // no overlap
-
-            var overlapTrue = (bool)mi.Invoke(null, new object?[] { a, b });
-            overlapTrue.Should().BeTrue();
-            var overlapFalse = (bool)mi.Invoke(null, new object?[] { a, c });
-            overlapFalse.Should().BeFalse();
-
-            // Edges that just touch -> should be non-overlapping
-            var leftTouch = new RectangleF(0, 0, 10, 10);
-            var rightTouch = new RectangleF(10, 0, 5, 5);
-            var overlapEdge = (bool)mi.Invoke(null, new object?[] { leftTouch, rightTouch });
-            overlapEdge.Should().BeFalse();
         }
 
         [TestMethod]

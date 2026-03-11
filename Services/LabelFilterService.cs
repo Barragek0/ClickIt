@@ -7,6 +7,7 @@ using RectangleF = SharpDX.RectangleF;
 using ClickIt.Utils;
 using ClickIt.Definitions;
 using ExileCore;
+using System.Diagnostics.CodeAnalysis;
 #nullable enable
 namespace ClickIt.Services
 {
@@ -16,6 +17,10 @@ namespace ClickIt.Services
         private readonly EssenceService _essenceService = essenceService;
         private readonly ErrorHandler _errorHandler = errorHandler;
         private readonly ExileCore.GameController? _gameController = gameController;
+        private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
+        private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
+        private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public bool HasLazyModeRestrictedItemsOnScreen(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
@@ -71,18 +76,7 @@ namespace ClickIt.Services
                 return null;
             var clickSettings = CreateClickSettings(allLabels);
 
-            for (int i = 0; i < allLabels.Count; i++)
-            {
-                LabelOnGround label = allLabels[i];
-                Entity item = label.ItemOnGround;
-                if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
-                    continue;
-                if (ShouldClickLabel(label, item, clickSettings, _gameController))
-                {
-                    return label;
-                }
-            }
-            return null;
+            return SelectNextLabelByPriority(allLabels, 0, allLabels.Count, clickSettings);
         }
 
         // Overload to search only a slice of the provided label list without allocating a new list.
@@ -91,19 +85,181 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0) return null;
             var clickSettings = CreateClickSettings(allLabels);
             int end = Math.Min(allLabels.Count, startIndex + Math.Max(0, maxCount));
-            for (int i = startIndex; i < end; i++)
+
+            return SelectNextLabelByPriority(allLabels, startIndex, end, clickSettings);
+        }
+
+        public string? GetMechanicIdForLabel(LabelOnGround? label)
+        {
+            if (label?.ItemOnGround == null)
+                return null;
+
+            var clickSettings = CreateClickSettings(null);
+            return GetClickableMechanicId(label, label.ItemOnGround, clickSettings, _gameController);
+        }
+
+        private LabelOnGround? SelectNextLabelByPriority(System.Collections.Generic.IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
+        {
+            if (allLabels == null || allLabels.Count == 0)
+                return null;
+
+            startIndex = Math.Max(0, startIndex);
+            endExclusive = Math.Min(allLabels.Count, endExclusive);
+            if (startIndex >= endExclusive)
+                return null;
+
+            LabelOnGround? bestNonIgnoredByDistance = null;
+            string? bestNonIgnoredMechanicId = null;
+            float bestNonIgnoredDistance = float.MaxValue;
+            float bestNonIgnoredWeightedScore = float.MaxValue;
+
+            LabelOnGround? bestIgnoredByPriority = null;
+            int bestIgnoredPriority = int.MaxValue;
+
+            for (int i = startIndex; i < endExclusive; i++)
             {
                 LabelOnGround label = allLabels[i];
-                Entity item = label.ItemOnGround;
-                if (item == null || item.DistancePlayer > _settings.ClickDistance.Value)
+                if (!TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId))
                     continue;
-                if (ShouldClickLabel(label, item, clickSettings, _gameController))
-                {
-                    return label;
-                }
+
+                if (TryPromoteIgnoredCandidate(label, mechanicId, clickSettings, ref bestIgnoredByPriority, ref bestIgnoredPriority))
+                    continue;
+
+                PromoteNonIgnoredCandidate(
+                    label,
+                    mechanicId,
+                    item.DistancePlayer,
+                    clickSettings,
+                    ref bestNonIgnoredByDistance,
+                    ref bestNonIgnoredMechanicId,
+                    ref bestNonIgnoredDistance,
+                    ref bestNonIgnoredWeightedScore);
             }
-            return null;
+
+            return ResolveWinningCandidate(bestNonIgnoredByDistance, bestNonIgnoredMechanicId, bestIgnoredByPriority, bestIgnoredPriority, clickSettings);
         }
+
+        private bool TryBuildLabelCandidate(
+            LabelOnGround label,
+            ClickSettings clickSettings,
+            [NotNullWhen(true)] out Entity? item,
+            [NotNullWhen(true)] out string? mechanicId)
+        {
+            item = label.ItemOnGround;
+            mechanicId = null;
+            if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
+                return false;
+
+            mechanicId = GetClickableMechanicId(label, item, clickSettings, _gameController);
+            return !string.IsNullOrWhiteSpace(mechanicId);
+        }
+
+        private static bool TryPromoteIgnoredCandidate(
+            LabelOnGround label,
+            string mechanicId,
+            ClickSettings clickSettings,
+            ref LabelOnGround? bestIgnoredByPriority,
+            ref int bestIgnoredPriority)
+        {
+            if (!clickSettings.IgnoreDistanceMechanicIds.Contains(mechanicId))
+                return false;
+
+            int candidatePriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
+            if (candidatePriority < bestIgnoredPriority)
+            {
+                bestIgnoredPriority = candidatePriority;
+                bestIgnoredByPriority = label;
+            }
+
+            return true;
+        }
+
+        private static void PromoteNonIgnoredCandidate(
+            LabelOnGround label,
+            string mechanicId,
+            float distance,
+            ClickSettings clickSettings,
+            ref LabelOnGround? bestNonIgnoredByDistance,
+            ref string? bestNonIgnoredMechanicId,
+            ref float bestNonIgnoredDistance,
+            ref float bestNonIgnoredWeightedScore)
+        {
+            int nonIgnoredPriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
+            float weightedScore = CalculateNonIgnoredWeightedScore(distance, nonIgnoredPriority, clickSettings.MechanicPriorityDistancePenalty);
+
+            bool better = weightedScore < bestNonIgnoredWeightedScore
+                || (Math.Abs(weightedScore - bestNonIgnoredWeightedScore) < 0.001f && distance < bestNonIgnoredDistance);
+            if (!better)
+                return;
+
+            bestNonIgnoredByDistance = label;
+            bestNonIgnoredMechanicId = mechanicId;
+            bestNonIgnoredDistance = distance;
+            bestNonIgnoredWeightedScore = weightedScore;
+        }
+
+        private static LabelOnGround? ResolveWinningCandidate(
+            LabelOnGround? bestNonIgnoredByDistance,
+            string? bestNonIgnoredMechanicId,
+            LabelOnGround? bestIgnoredByPriority,
+            int bestIgnoredPriority,
+            ClickSettings clickSettings)
+        {
+            if (bestIgnoredByPriority == null)
+                return bestNonIgnoredByDistance;
+            if (bestNonIgnoredByDistance == null)
+                return bestIgnoredByPriority;
+
+            int bestNonIgnoredPriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, bestNonIgnoredMechanicId);
+            return bestIgnoredPriority <= bestNonIgnoredPriority ? bestIgnoredByPriority : bestNonIgnoredByDistance;
+        }
+
+        private static int GetMechanicPriorityIndex(IReadOnlyDictionary<string, int> priorityMap, string? mechanicId)
+        {
+            if (string.IsNullOrWhiteSpace(mechanicId))
+                return int.MaxValue;
+
+            return priorityMap.TryGetValue(mechanicId, out int index) ? index : int.MaxValue;
+        }
+
+        private static float CalculateNonIgnoredWeightedScore(float distance, int priorityIndex, int penalty)
+        {
+            if (priorityIndex == int.MaxValue)
+                return float.MaxValue;
+
+            return distance + (priorityIndex * Math.Max(0, penalty));
+        }
+
+        private static Dictionary<string, int> BuildMechanicPriorityIndexMap(IReadOnlyList<string> priorities)
+        {
+            var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < priorities.Count; i++)
+            {
+                string id = priorities[i] ?? string.Empty;
+                if (id.Length == 0 || map.ContainsKey(id))
+                    continue;
+
+                map[id] = i;
+            }
+
+            return map;
+        }
+
+        private void RefreshMechanicPriorityCaches(IReadOnlyList<string> mechanicPriorities, IReadOnlyCollection<string> ignoreDistance)
+        {
+            if (!ReferenceEquals(_cachedMechanicPriorityOrder, mechanicPriorities))
+            {
+                _cachedMechanicPriorityOrder = mechanicPriorities;
+                _cachedMechanicPriorityIndexMap = BuildMechanicPriorityIndexMap(mechanicPriorities);
+            }
+
+            if (!ReferenceEquals(_cachedMechanicIgnoreDistanceIds, ignoreDistance))
+            {
+                _cachedMechanicIgnoreDistanceIds = ignoreDistance;
+                _cachedMechanicIgnoreDistanceSet = new HashSet<string>(ignoreDistance, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
         private ClickSettings CreateClickSettings(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
         {
             var s = _settings;
@@ -112,6 +268,9 @@ namespace ClickIt.Services
             bool hasRestricted = LazyModeRestrictedChecker(this, allLabels);
             bool hotkeyHeld = KeyStateProvider(s.ClickLabelKey.Value);
             bool applyLazyModeRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
+            IReadOnlyList<string> mechanicPriorities = s.GetMechanicPriorityOrder();
+            IReadOnlyCollection<string> ignoreDistance = s.GetMechanicPriorityIgnoreDistanceIds();
+            RefreshMechanicPriorityCaches(mechanicPriorities, ignoreDistance);
 
             return new ClickSettings
             {
@@ -146,6 +305,9 @@ namespace ClickIt.Services
                 ClickRitualInitiate = s.ClickRitualInitiate.Value,
                 ClickRitualCompleted = s.ClickRitualCompleted.Value,
                 ClickUltimatum = s.ClickUltimatum.Value,
+                MechanicPriorityIndexMap = _cachedMechanicPriorityIndexMap,
+                IgnoreDistanceMechanicIds = _cachedMechanicIgnoreDistanceSet,
+                MechanicPriorityDistancePenalty = s.MechanicPriorityDistancePenalty.Value
             };
         }
         private struct ClickSettings
@@ -181,6 +343,9 @@ namespace ClickIt.Services
             public IReadOnlyList<string> StrongboxDontClickMetadata { get; set; }
             public bool ClickSanctum { get; set; }
             public bool ClickBetrayal { get; set; }
+            public IReadOnlyDictionary<string, int> MechanicPriorityIndexMap { get; set; }
+            public IReadOnlySet<string> IgnoreDistanceMechanicIds { get; set; }
+            public int MechanicPriorityDistancePenalty { get; set; }
         }
 
 
@@ -192,16 +357,6 @@ namespace ClickIt.Services
         public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
             return EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
-        }
-
-        // Note: overlap heuristics are preserved for tests via the seam helper
-        // IsLabelObscuredByCloserLabelForTests in LabelFilterService.Seams.cs.  The
-        // runtime click resolution now uses UIHover verification in ClickService
-        // so we avoid filtering essence labels here.
-
-        private static bool DoRectanglesOverlap(RectangleF a, RectangleF b)
-        {
-            return GeometryHelpers.RectanglesOverlapExclusive(a, b);
         }
 
     }

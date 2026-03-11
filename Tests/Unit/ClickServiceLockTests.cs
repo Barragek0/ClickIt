@@ -23,6 +23,7 @@ namespace ClickIt.Tests.Unit
             var renderer = (AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(AltarDisplayRenderer));
             var inputHandler = (InputHandler)RuntimeHelpers.GetUninitializedObject(typeof(InputHandler));
             var lf = (LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterService));
+            var shrineSvc = (ShrineService)RuntimeHelpers.GetUninitializedObject(typeof(ShrineService));
             var perf = (PerformanceMonitor)RuntimeHelpers.GetUninitializedObject(typeof(PerformanceMonitor));
             var cached = (TimeCache<System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>>)RuntimeHelpers.GetUninitializedObject(typeof(TimeCache<System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>>));
 
@@ -36,6 +37,7 @@ namespace ClickIt.Tests.Unit
                 new System.Func<SharpDX.Vector2, string, bool>((v, s) => true),
                 inputHandler,
                 lf,
+                shrineSvc,
                 new System.Func<bool>(() => false),
                 cached,
                 perf

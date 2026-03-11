@@ -91,7 +91,6 @@ namespace ClickIt
 
             try
             {
-
                 ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Click a table row to open subtype filter options.");
                 ImGui.Spacing();
 
@@ -663,6 +662,204 @@ namespace ClickIt
             }
 
             return clicked;
+        }
+
+        public IReadOnlyList<string> GetMechanicPriorityOrder()
+        {
+            EnsureMechanicPrioritiesInitialized();
+
+            if (HasMatchingMechanicPrioritySnapshot())
+            {
+                return _mechanicPrioritySnapshot;
+            }
+
+            _mechanicPrioritySnapshot = MechanicPriorityOrder.ToArray();
+            return _mechanicPrioritySnapshot;
+        }
+
+        public IReadOnlyCollection<string> GetMechanicPriorityIgnoreDistanceIds()
+        {
+            EnsureMechanicPrioritiesInitialized();
+
+            if (HasMatchingMechanicIgnoreDistanceSnapshot())
+            {
+                return _mechanicIgnoreDistanceSnapshot;
+            }
+
+            _mechanicIgnoreDistanceSnapshot = MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, PriorityComparer).ToArray();
+            return _mechanicIgnoreDistanceSnapshot;
+        }
+
+        private bool HasMatchingMechanicPrioritySnapshot()
+        {
+            if (_mechanicPrioritySnapshot == null)
+                return false;
+            if (_mechanicPrioritySnapshot.Length != MechanicPriorityOrder.Count)
+                return false;
+
+            for (int i = 0; i < MechanicPriorityOrder.Count; i++)
+            {
+                if (!string.Equals(_mechanicPrioritySnapshot[i], MechanicPriorityOrder[i], StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private bool HasMatchingMechanicIgnoreDistanceSnapshot()
+        {
+            if (_mechanicIgnoreDistanceSnapshot == null)
+                return false;
+            if (_mechanicIgnoreDistanceSnapshot.Length != MechanicPriorityIgnoreDistanceIds.Count)
+                return false;
+
+            var current = MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, PriorityComparer).ToArray();
+            for (int i = 0; i < current.Length; i++)
+            {
+                if (!string.Equals(current[i], _mechanicIgnoreDistanceSnapshot[i], StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private void DrawMechanicPriorityTablePanel()
+        {
+            EnsureMechanicPrioritiesInitialized();
+
+            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
+            bool sectionOpen = ImGui.TreeNode("Mechanic Priorities");
+            DrawInlineTooltip("Top rows are preferred first. Click a row to configure Ignore Distance.");
+            if (!sectionOpen)
+                return;
+
+            try
+            {
+                if (DrawResetDefaultsButton("Reset Defaults##MechanicPriorityResetDefaults"))
+                {
+                    MechanicPriorityOrder = MechanicPriorityDefaultOrderIds.ToList();
+                    MechanicPriorityIgnoreDistanceIds = new HashSet<string>(PriorityComparer)
+                    {
+                        "shrines"
+                    };
+                }
+
+                DrawMechanicPrioritySectionDescription();
+
+                float tableWidth = Math.Min(700f, Math.Max(160f, ImGui.GetContentRegionAvail().X));
+                if (!ImGui.BeginTable("MechanicPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
+                    return;
+
+                try
+                {
+                    ImGui.TableSetupColumn("Mechanics", ImGuiTableColumnFlags.WidthFixed, tableWidth);
+                    DrawMechanicPriorityTableHeader();
+                    DrawMechanicPriorityRows();
+                }
+                finally
+                {
+                    ImGui.EndTable();
+                }
+            }
+            finally
+            {
+                ImGui.TreePop();
+            }
+        }
+
+        private static void DrawMechanicPriorityTableHeader()
+        {
+            ImGui.TableNextRow(ImGuiTableRowFlags.None);
+            ImGui.TableSetColumnIndex(0);
+            ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.6f, 0.3f)));
+            ImGui.TextColored(new Vector4(1f, 1f, 1f, 1f), "Mechanics");
+        }
+
+        private static void DrawMechanicPrioritySectionDescription()
+        {
+            ImGui.Spacing();
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Priority: top row is highest, bottom row is lowest.");
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Click a table row to open Ignore Distance options.");
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
+            ImGui.TextWrapped("Non-ignored mechanics use distance + (priority index * Priority Distance Penalty). Ignore Distance mechanics still use priority-first comparison.");
+            ImGui.PopStyleColor();
+            ImGui.Spacing();
+        }
+
+        private void DrawMechanicPriorityRows()
+        {
+            for (int i = 0; i < MechanicPriorityOrder.Count; i++)
+            {
+                string mechanicId = MechanicPriorityOrder[i];
+                if (!TryGetMechanicPriorityEntry(mechanicId, out MechanicPriorityEntry? entry) || entry == null)
+                    continue;
+
+                if (TryDrawMechanicPriorityMoveRow(i, mechanicId, entry))
+                    continue;
+
+                DrawMechanicPriorityExpandedOptions(mechanicId);
+            }
+        }
+
+        private bool TryDrawMechanicPriorityMoveRow(int index, string mechanicId, MechanicPriorityEntry entry)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+
+            Vector4 priorityColor = GetUltimatumPriorityRowColor(index, MechanicPriorityOrder.Count);
+            ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(priorityColor));
+
+            if (DrawUltimatumArrowButton(ImGuiDir.Up, $"MechanicPriorityUp_{index}", enabled: index > 0))
+            {
+                (MechanicPriorityOrder[index], MechanicPriorityOrder[index - 1]) = (MechanicPriorityOrder[index - 1], MechanicPriorityOrder[index]);
+                return true;
+            }
+
+            ImGui.SameLine();
+            if (DrawUltimatumArrowButton(ImGuiDir.Down, $"MechanicPriorityDown_{index}", enabled: index < MechanicPriorityOrder.Count - 1))
+            {
+                (MechanicPriorityOrder[index], MechanicPriorityOrder[index + 1]) = (MechanicPriorityOrder[index + 1], MechanicPriorityOrder[index]);
+                return true;
+            }
+
+            ImGui.SameLine();
+            bool isExpanded = string.Equals(_expandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase);
+            bool rowClicked = ImGui.Selectable($"{entry.DisplayName}##MechanicPriority_{mechanicId}", isExpanded, ImGuiSelectableFlags.AllowDoubleClick, new Vector2(0, 0));
+            if (rowClicked)
+                _expandedMechanicPriorityRowId = isExpanded ? string.Empty : mechanicId;
+
+            return false;
+        }
+
+        private void DrawMechanicPriorityExpandedOptions(string mechanicId)
+        {
+            if (!string.Equals(_expandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+            ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(new Vector4(0.12f, 0.12f, 0.12f, 0.85f)));
+            ImGui.Indent(34f);
+
+            bool ignoreDistance = MechanicPriorityIgnoreDistanceIds.Contains(mechanicId);
+            if (ImGui.Checkbox($"Ignore Distance##IgnoreDistance_{mechanicId}", ref ignoreDistance))
+            {
+                if (ignoreDistance)
+                    MechanicPriorityIgnoreDistanceIds.Add(mechanicId);
+                else
+                    MechanicPriorityIgnoreDistanceIds.Remove(mechanicId);
+            }
+
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
+            ImGui.TextWrapped("When enabled, this mechanic bypasses distance sorting and is resolved from configured priority order.");
+            ImGui.PopStyleColor();
+            ImGui.Unindent(34f);
+        }
+
+        private static bool TryGetMechanicPriorityEntry(string id, out MechanicPriorityEntry? entry)
+        {
+            entry = MechanicPriorityEntries.FirstOrDefault(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+            return entry != null;
         }
 
         private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)

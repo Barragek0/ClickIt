@@ -49,7 +49,7 @@ namespace ClickIt.Tests.Unit
             Stopwatch timeout = Stopwatch.StartNew();
             while (pm.CurrentFPS <= 0 && timeout.ElapsedMilliseconds < 3000)
             {
-                Thread.Sleep(25);
+                SpinWait.SpinUntil(static () => false, 25);
                 pm.UpdateFPS();
             }
 

@@ -7,7 +7,7 @@ namespace ClickIt.Services
     public partial class LabelFilterService
     {
         // Test seam - delegate used to query key state so test environments don't need native Win32
-        internal static Func<Keys, bool> KeyStateProvider = Keyboard.IsKeyDown;
+        internal static Func<Keys, bool> KeyStateProvider { get; set; } = Keyboard.IsKeyDown;
 
         // Test seam - allows tests to short-circuit the expensive/native dependent check
         internal static Func<LabelFilterService, IReadOnlyList<LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
@@ -26,45 +26,6 @@ namespace ClickIt.Services
             if (clickRitualCompleted && hasFavoursText)
                 return true;
 
-            return false;
-        }
-
-        // Test seam: deterministic helper for unit tests that avoids touching runtime memory objects.
-        // distances: array of ints where a negative value indicates no item, otherwise value is distance from player.
-        // This method is invoked via reflection from unit tests. Disable the "unused private member"
-        // analyzer (IDE0051) around the method so the analyzer won't remove it.
-#pragma warning disable IDE0051 // Remove unused private members - used via reflection in tests
-        private static int? GetNextLabelToClickIndexForTests(int[] distances, int startIndex, int maxCount, int clickDistance)
-#pragma warning restore IDE0051
-        {
-            if (distances == null || distances.Length == 0) return null;
-            int end = Math.Min(distances.Length, startIndex + Math.Max(0, maxCount));
-            for (int i = startIndex; i < end; i++)
-            {
-                int d = distances[i];
-                if (d >= 0 && d <= clickDistance) return i;
-            }
-            return null;
-        }
-
-        // Test seam - simplified simulation to assert obscured-label logic without needing runtime LabelOnGround
-        // Test seam for IsLabelObscuredByCloserLabel - invoked via reflection from tests
-#pragma warning disable IDE0051 // unused private member - used via reflection in tests
-        private static bool IsLabelObscuredByCloserLabelForTests(SharpDX.RectangleF[] rects, int[] distances, int candidateIndex)
-#pragma warning restore IDE0051
-        {
-            if (rects == null || distances == null) return false;
-            if (candidateIndex < 0 || candidateIndex >= rects.Length) return false;
-
-            var r = rects[candidateIndex];
-            int candDistance = distances[candidateIndex];
-
-            for (int i = 0; i < rects.Length; i++)
-            {
-                if (i == candidateIndex) continue;
-                var other = rects[i];
-                if (DoRectanglesOverlap(r, other) && distances[i] <= candDistance) return true;
-            }
             return false;
         }
 

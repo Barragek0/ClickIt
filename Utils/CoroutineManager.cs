@@ -11,25 +11,12 @@ namespace ClickIt.Utils
         PluginContext state,
         ClickItSettings settings,
         GameController gameController,
-        ErrorHandler errorHandler,
-        Func<Vector2, bool> pointIsInClickableArea)
+        ErrorHandler errorHandler)
     {
         private readonly PluginContext _state = state ?? throw new ArgumentNullException(nameof(state));
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
         private readonly ErrorHandler _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
-        private readonly Func<Vector2, bool> _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
-
-        /// <summary>
-        /// Helper to execute an action while holding the click-element access lock (if LockManager enabled)
-        /// </summary>
-        private void ExecuteWithElementAccessLock(Action action)
-        {
-            using (LockManager.AcquireStatic(_state.ClickService?.GetElementAccessLock()))
-            {
-                action();
-            }
-        }
 
         /// <summary>
         /// Check if a ritual is currently active by looking for RitualBlocker entities
@@ -37,21 +24,6 @@ namespace ClickIt.Utils
         private bool IsRitualActive()
         {
             return EntityHelpers.IsRitualActive(_gameController);
-        }
-
-        private bool IsShrineClickBlockedInLazyMode()
-        {
-            if (!_settings.LazyMode.Value) return false;
-            var cached = _state.CachedLabels?.Value;
-            bool hasRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
-            if (hasRestrictedItems) return false;
-            var (_, _, mouseButtonBlocks) = InputHandler.GetMouseButtonBlockingState(_settings, KeyStateProvider);
-            return mouseButtonBlocks;
-        }
-
-        private bool HasClickableAltars()
-        {
-            return _state.ClickService?.HasClickableAltars() == true;
         }
 
         private double GetTargetTime(double frequencyTarget, double averageTiming)
@@ -107,16 +79,6 @@ namespace ClickIt.Utils
 
         private IEnumerator ClickLabel()
         {
-            // Check for clickable altars first (highest priority)
-            bool hasClickableAltars = HasClickableAltars();
-
-            // No clickable altars, check for shrines.
-            if (!hasClickableAltars && _settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea(_pointIsInClickableArea))
-            {
-                yield return new WaitTime(25);
-                yield break;
-            }
-
             if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
@@ -161,78 +123,9 @@ namespace ClickIt.Utils
 
         private IEnumerator HandleShrine()
         {
-            if (!_settings.ClickShrines.Value || _state.ShrineService == null)
-            {
-                yield return new WaitTime(500); // Check less frequently when disabled
-                yield break;
-            }
-
-            yield return ProcessShrineClicking();
-        }
-
-        private IEnumerator ProcessShrineClicking()
-        {
-            if (_state.ShrineService == null || _state.InputHandler == null)
-            {
-                yield break;
-            }
-
-            if (_state.PerformanceMonitor == null) yield break;
-            double avgShrineTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Shrine);
-            double targetTime = GetTargetTime(_settings.ClickFrequencyTarget.Value, avgShrineTime);
-
-            bool isRitualActive = IsRitualActive();
-            if (IsShrineClickBlockedInLazyMode())
-            {
-                yield break;
-            }
-
-            if (_state.ShrineTimer.ElapsedMilliseconds < targetTime || !_state.InputHandler.CanClick(_gameController, false, isRitualActive))
-            {
-                yield break;
-            }
-
-            if (HasClickableAltars())
-            {
-                yield break;
-            }
-
-            var nearestShrine = _state.ShrineService.GetNearestShrineInRange(_settings.ClickDistance.Value, _pointIsInClickableArea);
-            if (nearestShrine == null)
-            {
-                yield break;
-            }
-
-            _errorHandler.LogMessage($"Clicking shrine at distance: {nearestShrine.DistancePlayer:F1}", 5);
-
-            if (_state.Camera == null)
-            {
-                yield break;
-            }
-
-            var screen = _state.Camera.WorldToScreen(nearestShrine.PosNum);
-            Vector2 clickPos = new(screen.X, screen.Y);
-
-            _state.ShrineTimer.Restart();
-
-            ExecuteWithElementAccessLock(() => _state.InputHandler?.PerformClick(clickPos));
-
-            _state.PerformanceMonitor?.RecordClickInterval();
-
-            _state.ShrineService?.InvalidateCache();
-        }
-
-        // Retained as a test seam for reflection-based unit tests.
-        private bool IsClickHotkeyPressed()
-        {
-            bool actual = KeyStateProvider(_settings.ClickLabelKey.Value);
-            if (_settings?.LazyMode != null && _settings.LazyMode.Value)
-            {
-                // In lazy mode, invert hotkey behaviour: released -> active, held -> inactive
-                return !actual;
-            }
-
-            return actual;
+            // Shrine arbitration is handled in ClickService.ProcessRegularClick alongside labels.
+            // Keep this coroutine lightweight to avoid duplicate shrine click decision paths.
+            yield return new WaitTime(500);
         }
 
         private IEnumerator FlareCoroutine()

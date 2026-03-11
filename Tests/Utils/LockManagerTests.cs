@@ -12,7 +12,7 @@ namespace ClickIt.Tests.Utils
         public void Acquire_Null_ReturnsNoopReleaser()
         {
             var settings = new ClickItSettings();
-            var lm = new global::ClickIt.Utils.LockManager(settings);
+            _ = new global::ClickIt.Utils.LockManager(settings);
 
             using var d = global::ClickIt.Utils.LockManager.Acquire(null);
             d.Should().NotBeNull();
@@ -26,7 +26,7 @@ namespace ClickIt.Tests.Utils
         public void Acquire_WithObject_EntersMonitorAndExitsOnDispose()
         {
             var settings = new ClickItSettings();
-            var lm = new global::ClickIt.Utils.LockManager(settings);
+            _ = new global::ClickIt.Utils.LockManager(settings);
 
             var lockObj = new object();
 

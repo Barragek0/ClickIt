@@ -2,6 +2,7 @@ using System.Collections;
 using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
+using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ClickIt.Utils;
 using SharpDX;
@@ -13,7 +14,13 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
+        private const string ShrineMechanicId = "shrines";
+
         private static readonly int[] LabelSearchCaps = [1, 5, 25, 100];
+        private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
+        private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
+        private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public IEnumerator ProcessRegularClick()
         {
@@ -39,6 +46,21 @@ namespace ClickIt.Services
 
             var allLabels = cachedLabels?.Value;
             LabelOnGround? nextLabel = ResolveNextLabelCandidate(allLabels);
+            var nextShrine = ResolveNextShrineCandidate();
+
+            bool useShrine = ShouldPreferShrineOverLabel(nextLabel, nextShrine);
+            if (useShrine && nextShrine != null)
+            {
+                var shrineScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(nextShrine.PosNum);
+                SharpDX.Vector2 shrineClickPos = new SharpDX.Vector2(shrineScreenRaw.X, shrineScreenRaw.Y);
+                bool shrineClicked = PerformLabelClick(shrineClickPos, null, gameController);
+                if (shrineClicked)
+                {
+                    shrineService.InvalidateCache();
+                }
+
+                yield break;
+            }
 
             if (nextLabel == null)
             {
@@ -60,6 +82,115 @@ namespace ClickIt.Services
             {
                 yield return new WaitTime(20);
             }
+        }
+
+        private Entity? ResolveNextShrineCandidate()
+        {
+            if (!settings.ClickShrines.Value)
+                return null;
+
+            return shrineService.GetNearestShrineInRange(settings.ClickDistance.Value, pos => pointIsInClickableArea(pos, ShrineMechanicId));
+        }
+
+        private bool ShouldPreferShrineOverLabel(LabelOnGround? label, Entity? shrine)
+        {
+            if (shrine == null)
+                return false;
+            if (label == null)
+                return true;
+
+            string? labelMechanicId = labelFilterService.GetMechanicIdForLabel(label);
+            if (string.IsNullOrWhiteSpace(labelMechanicId))
+                return true;
+
+            RefreshMechanicPriorityCaches();
+
+            float labelDistance = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;
+            float shrineDistance = shrine.DistancePlayer;
+
+            var labelRank = BuildMechanicRank(labelDistance, labelMechanicId);
+            var shrineRank = BuildMechanicRank(shrineDistance, ShrineMechanicId);
+
+            return CompareMechanicRanks(shrineRank, labelRank) < 0;
+        }
+
+        private readonly struct MechanicRank(bool ignored, int priorityIndex, float weightedDistance, float rawDistance)
+        {
+            public bool Ignored { get; } = ignored;
+            public int PriorityIndex { get; } = priorityIndex;
+            public float WeightedDistance { get; } = weightedDistance;
+            public float RawDistance { get; } = rawDistance;
+        }
+
+        private MechanicRank BuildMechanicRank(float distance, string? mechanicId)
+        {
+            int priorityIndex = GetMechanicPriorityIndex(mechanicId);
+            bool ignored = !string.IsNullOrWhiteSpace(mechanicId) && _cachedMechanicIgnoreDistanceSet.Contains(mechanicId);
+            float weightedDistance = distance + (priorityIndex == int.MaxValue ? float.MaxValue : priorityIndex * Math.Max(0, settings.MechanicPriorityDistancePenalty.Value));
+            return new MechanicRank(ignored, priorityIndex, weightedDistance, distance);
+        }
+
+        private static int CompareMechanicRanks(MechanicRank left, MechanicRank right)
+        {
+            if (left.Ignored && right.Ignored)
+            {
+                int priorityCompare = left.PriorityIndex.CompareTo(right.PriorityIndex);
+                if (priorityCompare != 0)
+                    return priorityCompare;
+                return left.RawDistance.CompareTo(right.RawDistance);
+            }
+
+            if (left.Ignored != right.Ignored)
+            {
+                return left.Ignored
+                    ? (left.PriorityIndex <= right.PriorityIndex ? -1 : 1)
+                    : (right.PriorityIndex <= left.PriorityIndex ? 1 : -1);
+            }
+
+            int weightedCompare = left.WeightedDistance.CompareTo(right.WeightedDistance);
+            if (weightedCompare != 0)
+                return weightedCompare;
+
+            int distanceCompare = left.RawDistance.CompareTo(right.RawDistance);
+            if (distanceCompare != 0)
+                return distanceCompare;
+
+            return left.PriorityIndex.CompareTo(right.PriorityIndex);
+        }
+
+        private void RefreshMechanicPriorityCaches()
+        {
+            IReadOnlyList<string> priorityOrder = settings.GetMechanicPriorityOrder();
+            if (!ReferenceEquals(_cachedMechanicPriorityOrder, priorityOrder))
+            {
+                _cachedMechanicPriorityOrder = priorityOrder;
+
+                var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < priorityOrder.Count; i++)
+                {
+                    string id = priorityOrder[i] ?? string.Empty;
+                    if (id.Length == 0 || map.ContainsKey(id))
+                        continue;
+                    map[id] = i;
+                }
+
+                _cachedMechanicPriorityIndexMap = map;
+            }
+
+            IReadOnlyCollection<string> ignoreDistanceIds = settings.GetMechanicPriorityIgnoreDistanceIds();
+            if (!ReferenceEquals(_cachedMechanicIgnoreDistanceIds, ignoreDistanceIds))
+            {
+                _cachedMechanicIgnoreDistanceIds = ignoreDistanceIds;
+                _cachedMechanicIgnoreDistanceSet = new HashSet<string>(ignoreDistanceIds, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+        private int GetMechanicPriorityIndex(string? mechanicId)
+        {
+            if (string.IsNullOrWhiteSpace(mechanicId))
+                return int.MaxValue;
+
+            return _cachedMechanicPriorityIndexMap.TryGetValue(mechanicId, out int index) ? index : int.MaxValue;
         }
 
         private LabelOnGround? ResolveNextLabelCandidate(IReadOnlyList<LabelOnGround>? allLabels)
