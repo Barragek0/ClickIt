@@ -130,7 +130,7 @@ namespace ClickIt
         [Menu("Priorities", 1450)]
         public EmptyNode PrioritiesCategory { get; set; } = new EmptyNode();
 
-        [Menu("Priority Distance Penalty", "Applies an extra distance cost per lower-priority row when comparing non-ignored mechanics. Higher values make table order matter more while still considering distance.", 2, 1450)]
+        [Menu("Priority Distance Penalty", "Applies an extra distance cost per lower-priority row when comparing non-ignored mechanics.\n\nHigher values make table order matter more while still considering distance.\n\nSetting this to 0 will effectively disable the priorities feature, however, Ignore Distance values will still be respected.\n\nWhen priorities are disabled, distance will be the only factor considered in what to click.", 2, 1450)]
         public RangeNode<int> MechanicPriorityDistancePenalty { get; set; } = new RangeNode<int>(25, 0, 100);
 
         [Menu("Mechanic Priority Table", "", 1, 1450)]
