@@ -57,5 +57,17 @@ namespace ClickIt.Tests.Unit
 
             result.Should().BeFalse();
         }
+
+        [TestMethod]
+        public void IsStrongboxClickableBySettings_OperativeDoesNotMatchRegularStrongboxRule()
+        {
+            bool result = InvokeIsStrongboxClickableBySettings(
+                "Metadata/Chests/StrongBoxes/StrongboxScarab",
+                "Operative's Strongbox",
+                new[] { "StrongBoxes/StrongboxScarab" },
+                new[] { "StrongBoxes/Strongbox" });
+
+            result.Should().BeTrue();
+        }
     }
 }

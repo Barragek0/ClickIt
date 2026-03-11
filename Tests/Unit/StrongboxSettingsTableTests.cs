@@ -17,7 +17,7 @@ namespace ClickIt.Tests.Unit
             clickMetadata.Should().Contain("StrongBoxes/Arcanist");
             clickMetadata.Should().Contain("StrongBoxes/Strongbox");
             clickMetadata.Should().Contain("StrongBoxes/Ornate");
-            clickMetadata.Should().Contain("StrongBoxes/Operative");
+            clickMetadata.Should().Contain("StrongBoxes/StrongboxScarab");
         }
 
         [TestMethod]
