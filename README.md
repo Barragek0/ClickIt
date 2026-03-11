@@ -4,119 +4,67 @@
 
 ## What is ClickIt?
 
-ClickIt is a Path of Exile automation plugin that makes grinding way less tedious. Built for ExileAPI, it automatically clicks stuff for you - items, chests, shrines, essences, and even makes smart decisions on Eater/Exarch altars.
+ClickIt is a Path of Exile automation plugin for ExileAPI.
 
-### What it does
-- **Picks up items** automatically (can ignore uniques if you want)
-- **Opens chests** - basic ones and all the league-specific ones
-- **Clicks shrines** so you don't have to
-- **Corrupts essences** and spam clicks to awaken them
-- **Smart altar clicking** - analyzes Eater/Exarch modifiers and picks the best ones based on weights you provide
-- **Lazy mode** - clicks for you without you needing to press a button
-- **Lots of settings** - 200+ options to tweak everything
-
-### League-specific stuff it handles
-- Alva temple doors
-- Betrayal encounters
-- Blight pumps
-- Breach nodes
-- Legion pillars
-- Sanctum
-- Settlers ore deposits (Crimson Iron, Petrified Wood, etc.)
+It can automatically click labels such as items, chests, shrines, strongboxes, and essences, and can also make altar decisions based on your configured weights.
 
 ## Quick Start
 
-1. **Get ExileAPI** - https://www.ownedcore.com/forums/mmo/path-of-exile/poe-bots-programs/1000594-exileapi-3-23-beyond-plugin-framework.html
-2. **Download latest release** - https://github.com/Barragek0/ClickIt/releases/latest
-3. **Copy DLL** to ExileAPI/Plugins/Compiled/ClickIt
-4. **Launch ExileAPI**
-5. **Press F1** (default hotkey) to start clicking
+1. Install ExileAPI: https://www.ownedcore.com/forums/mmo/path-of-exile/poe-bots-programs/1000594-exileapi-3-23-beyond-plugin-framework.html
+2. Download the latest ClickIt release: https://github.com/Barragek0/ClickIt/releases/latest
+3. Copy `ClickIt.dll` to `ExileAPI/Plugins/Compiled/ClickIt`.
+4. Launch ExileAPI.
+5. Hold `F1` (default) to enable clicking.
 
-## Settings Overview
+Recommended first settings:
+- Search Radius: `100` for 1080p (adjust for your resolution)
+- Click Frequency Target: start around `80`
+- Keep Lazy Mode off until basic behavior looks correct
 
-### Basic Stuff
-- **Hotkey**: F1 by default, hold to click
-- **Range**: How far it looks for stuff (100 for 1080p)
-- **Click frequency target**: The amount of time the plugin aims to maintain between clicks
+## How It Works
 
-### What to Click
-- Items (with unique filtering)
-- Basic chests vs League chests
-- Shrines, area transitions, crafting recipes
-- All individual strongbox types
-- Essences with corruption settings
-- Harvest nodes
+ClickIt evaluates visible labels and picks what to click using:
+- Mechanic priority order
+- Distance and clickability checks
+- Feature-specific rules (strongboxes, essences, ultimatums, altars)
 
-### Advanced Features
+Core design:
+- Service-based architecture
+- Cached snapshots for hot paths
+- Safety checks before click execution
+- Debug overlay for timing and visibility diagnostics
 
-**Lazy Mode**:
-- Runs automatically without holding hotkey
-- Won't click locked chests or settlers tree, but will click everything else
-- If these are on-screen, you need to hold the hotkey to override the blacklist behaviour
+## Building
 
-**Altar AI**:
-- Analyzes 300+ modifier combinations
-- Lets you weight modifiers based on how good or bad they are
-- Highlights or auto-clicks the best choice
-- Works for both Eater and Exarch altars
+```powershell
+# Run tests only (no ExileCore binaries required)
+dotnet test Tests\ClickIt.Tests.csproj -c Debug
 
-## How it Works (Tech Stuff)
-
-### Architecture
-- **Service-based**: Clean separation of concerns
-- **Coroutine magic**: Non-blocking async operations
-- **Caching**: Updates labels every 50ms, altars every 100ms
-- **Thread-safe**: Uses ThreadLocal for multi-threading
-- **Performance focused**: Minimal CPU impact
-
-### Debug Tools
-- **Debug overlay**: FPS, timing stats, cache hit rates
-- **Visual debugging**: Shows clickable areas on screen
-
-## Development
-
-### Building
-```bash
-# Tests only (no ExileCore needed)
-dotnet test Tests\ClickIt.Tests.csproj
-
-# Full build (needs ExileCore path)
-msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\ExileCore"
+# Full solution build (requires local ExileCore package path)
+msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\PoeHelper\net48"
 ```
 
-### Testing
-- **A lot of tests** covering almost everything
-- **CI** runs on every commit
-- Tests game logic, performance, edge cases
-
-### Code Quality
-- Modern C# with .NET 8.0
-- Comprehensive error handling
-- Performance monitoring built-in
-- Thread-safe everywhere
+If you are using VS Code tasks, run the default build/test workflow so tests and DLL copy steps run in sequence.
 
 ## Troubleshooting
 
-**Plugin not working?**
-- Make sure ExileAPI is running as admin
-- Enable debug mode and additional debug information - render
-- Check debug overlay for errors
-- Adjust search radius if it's not clicking things that are on-screen
-
-**Missing clicks?**
-- Tweak chest height offset
-- Check if UI panels are blocking
-
-**Performance issues?**
-- Debug overlay shows timing stats
-- Reduce search radius / click frequency target, higher radius and higher click frequency means higher performance impact
+- Plugin not clicking:
+	- Confirm ExileAPI is running and plugin is loaded
+	- Make sure you're clicking the correct hotkey, this can be changed at the top of the settings `Click Hotkey`
+    - Enable `Debug Mode`, `Additional Debug Information` and `Debug Frames`. The boxes should fit nicely around the UI elements in-game. If they are not, swap to `borderless windowed` in-game, or position your window at the top-left of your monitor. This window positioning issue is a bug with ExileAPI itself.
+- Missed chest clicks:
+	- Adjust Chest Height Offset
+- Performance drops:
+	- Lower search radius
+	- Increase click frequency target
 
 ## Contributing
 
-1. Fork it
-2. Make your changes
-3. PR it
-4. I'll add tests for new stuff where appropriate
+1. Fork the repo.
+2. Create a branch for your change.
+3. Keep changes merge-first and avoid duplicate logic paths.
+4. Add or update tests for behavior changes (optional).
+5. Open a PR with a summary of the changes
 
 ## Credits
 
