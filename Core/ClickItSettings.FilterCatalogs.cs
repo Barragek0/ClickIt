@@ -88,6 +88,7 @@ namespace ClickIt
             new("large", "Large Strongbox (+ quantity)", ["StrongBoxes/Large"]),
             new("ornate", "Ornate Strongbox (+ rarity)", ["StrongBoxes/Ornate"]),
             new("operative", "Operative Strongbox (scarabs)", ["StrongBoxes/StrongboxScarab"]),
+            new("opalescent", "Opalescent Strongbox (jewels)", ["StrongBox/StrongboxJewels", "StrongBoxes/StrongboxJewels"]),
             new("unique-strange-barrel", "Strange Barrel (unique strongbox)", ["name:Strange Barrel"]),
             new("unique-ashes-of-the-condemned", "Ashes of the Condemned (unique strongbox)", ["name:Ashes of the Condemned"]),
             new("unique-redblade-cache", "Redblade Cache (unique strongbox)", ["name:Redblade Cache"]),
@@ -126,7 +127,8 @@ namespace ClickIt
             "jeweller",
             "large",
             "ornate",
-            "operative"
+            "operative",
+            "opalescent"
         ];
 
         private sealed record MechanicPriorityEntry(string Id, string DisplayName);
