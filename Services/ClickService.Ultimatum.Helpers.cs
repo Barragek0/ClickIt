@@ -111,6 +111,11 @@ namespace ClickIt.Services
                 return results;
             }
 
+            if (TryGetUltimatumOptionsFromChoicePanelObject(root, diagnostics, out List<(Element OptionElement, string ModifierName)> panelResults))
+            {
+                return panelResults;
+            }
+
             // Verified tree:
             // ItemsOnGroundLabelsVisible -> UltimatumChallengeInteractable -> Label
             // -> Child(0) -> Child(0) -> Child(2) -> Child(0) -> Child(0..2)
@@ -165,6 +170,64 @@ namespace ClickIt.Services
             }
 
             return results;
+        }
+
+        private static bool TryGetUltimatumOptionsFromChoicePanelObject(
+            Element root,
+            List<string>? diagnostics,
+            out List<(Element OptionElement, string ModifierName)> results)
+        {
+            results = new List<(Element OptionElement, string ModifierName)>(3);
+
+            Element? panelElement = root.GetChildAtIndex(0)?.GetChildAtIndex(0)?.GetChildAtIndex(2);
+            if (panelElement == null)
+            {
+                diagnostics?.Add("ChoicePanel fail: Label->Child(0)->Child(0)->Child(2) is null.");
+                return false;
+            }
+
+            UltimatumChoicePanel? choicePanel = panelElement.AsObject<UltimatumChoicePanel>();
+            if (choicePanel == null)
+            {
+                diagnostics?.Add($"ChoicePanel fail: AsObject<UltimatumChoicePanel> returned null for 0x{panelElement.Address:X}.");
+                return false;
+            }
+
+            if (!TryGetPropertyValue(choicePanel, "IsVisible", out object? visibleObj) || visibleObj is not bool isVisible || !isVisible)
+            {
+                diagnostics?.Add("ChoicePanel fail: panel object exists but is not visible.");
+                return false;
+            }
+
+            if (!TryGetPropertyValue(choicePanel, "ChoiceElements", out object? choiceElementsObj) || choiceElementsObj == null)
+            {
+                diagnostics?.Add("ChoicePanel fail: ChoiceElements missing.");
+                return false;
+            }
+
+            List<string> modifierNamesByIndex = GetUltimatumPanelModifierNames(choicePanel);
+            int seen = 0;
+            foreach (object? choiceObj in EnumerateObjects(choiceElementsObj))
+            {
+                if (!TryExtractElement(choiceObj, out Element? option) || option == null)
+                {
+                    diagnostics?.Add($"ChoicePanel option[{seen}] is not an Element.");
+                    seen++;
+                    continue;
+                }
+
+                string modifierName = ResolveUltimatumPanelModifierName(option, seen, modifierNamesByIndex);
+                if (string.IsNullOrWhiteSpace(modifierName))
+                {
+                    modifierName = $"Unknown Option {seen + 1}";
+                }
+
+                diagnostics?.Add($"ChoicePanel option[{seen}] modifier='{modifierName}', option=0x{option.Address:X}, visible={option.IsVisible}, valid={option.IsValid}");
+                results.Add((option, modifierName));
+                seen++;
+            }
+
+            return results.Count > 0;
         }
 
         private static Element? GetUltimatumBeginButton(LabelOnGround label, List<string>? diagnostics = null)
@@ -258,18 +321,5 @@ namespace ClickIt.Services
             return int.MaxValue;
         }
 
-        private static bool ShouldPrimeUltimatumGroundLabelTooltips(IEnumerable<string> modifierNames, IReadOnlyList<string> priorities)
-        {
-            foreach (string modifierName in modifierNames)
-            {
-                if (string.IsNullOrWhiteSpace(modifierName))
-                    return true;
-
-                if (GetModifierPriorityIndex(modifierName, priorities) == int.MaxValue)
-                    return true;
-            }
-
-            return false;
-        }
     }
 }

@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Threading;
 using ClickIt.Definitions;
 using ClickIt.Utils;
@@ -15,7 +14,6 @@ namespace ClickIt.Services
     {
         private const int UltimatumChoiceToBeginDelayMs = 150;
         private const int UltimatumPostBeginDelayMs = 60;
-        private const int UltimatumPreHoverDelayMs = 30;
 
         public readonly struct UltimatumPanelOptionPreview(RectangleF rect, string modifierName, int priorityIndex, bool isSelected)
         {
@@ -204,27 +202,6 @@ namespace ClickIt.Services
             }
 
             var priorities = settings.GetUltimatumModifierPriority();
-            bool shouldPrimeTooltips = ShouldPrimeUltimatumGroundLabelTooltips(options.Select(static o => o.ModifierName), priorities);
-
-            // Ground-label Ultimatum text is often hover-initialized, so pre-hover only when
-            // at least one option is still unresolved (gray overlay / unknown priority).
-            if (shouldPrimeTooltips)
-            {
-                PrimeUltimatumGroundLabelOptionTooltips(options, windowTopLeft);
-
-                diagnostics.Clear();
-                List<(Element OptionElement, string ModifierName)> refreshedOptions = GetUltimatumOptions(label, diagnostics);
-                LogDiagnostics("[TryClickPreferredUltimatumModifier]", diagnostics);
-
-                if (refreshedOptions.Count > 0)
-                {
-                    options = refreshedOptions;
-                }
-            }
-            else
-            {
-                DebugLog(() => "[TryClickPreferredUltimatumModifier] Skipping pre-hover: all Ultimatum modifiers are already recognized.");
-            }
 
             DebugLog(() => $"[TryClickPreferredUltimatumModifier] Found {options.Count} Ultimatum option(s).");
             int bestIndex = int.MaxValue;
@@ -270,37 +247,6 @@ namespace ClickIt.Services
             TryClickUltimatumBeginButton(label, windowTopLeft);
 
             return true;
-        }
-
-        private void PrimeUltimatumGroundLabelOptionTooltips(List<(Element OptionElement, string ModifierName)> options, Vector2 windowTopLeft)
-        {
-            if (options == null || options.Count == 0)
-                return;
-
-            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
-            {
-                DebugLog(() => "[PrimeUltimatumGroundLabelOptionTooltips] Skipping pre-hover - cursor outside PoE window");
-                return;
-            }
-
-            int[] hoverIndices = ClickServiceSeams.GetUltimatumPreHoverIndices(options.Count);
-            for (int i = 0; i < hoverIndices.Length; i++)
-            {
-                int index = hoverIndices[i];
-                if (index < 0 || index >= options.Count)
-                    continue;
-
-                Element optionElement = options[index].OptionElement;
-                if (optionElement == null || !optionElement.IsValid || !optionElement.IsVisible)
-                    continue;
-
-                RectangleF optionRect = optionElement.GetClientRect();
-                if (optionRect.Width <= 0 || optionRect.Height <= 0)
-                    continue;
-
-                Vector2 hoverPoint = optionRect.Center + windowTopLeft;
-                inputHandler.HoverAndGetUIHover(hoverPoint, gameController, UltimatumPreHoverDelayMs);
-            }
         }
 
         private void TryClickUltimatumBeginButton(LabelOnGround label, Vector2 windowTopLeft)

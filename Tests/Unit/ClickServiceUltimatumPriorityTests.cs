@@ -17,13 +17,6 @@ namespace ClickIt.Tests.Unit
             return (int)method!.Invoke(null, new object[] { modifier, priorities })!;
         }
 
-        private static bool InvokeShouldPrimeUltimatumGroundLabelTooltips(IReadOnlyList<string> modifierNames, IReadOnlyList<string> priorities)
-        {
-            var method = typeof(ClickService).GetMethod("ShouldPrimeUltimatumGroundLabelTooltips", BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-            return (bool)method!.Invoke(null, new object[] { modifierNames, priorities })!;
-        }
-
         private static bool InvokeIsUltimatumPath(string path)
         {
             var method = typeof(ClickService).GetMethod("IsUltimatumPath", BindingFlags.NonPublic | BindingFlags.Static);
@@ -63,51 +56,6 @@ namespace ClickIt.Tests.Unit
 
             success.Should().BeFalse();
             args[2].Should().BeNull();
-        }
-
-        [TestMethod]
-        public void GetUltimatumPreHoverIndices_ReturnsFirstThree_WhenMoreThanThreeOptions()
-        {
-            int[] indices = ClickServiceSeams.GetUltimatumPreHoverIndices(5);
-
-            indices.Should().Equal(0, 1, 2);
-        }
-
-        [TestMethod]
-        public void GetUltimatumPreHoverIndices_ReturnsAllAvailable_WhenThreeOrFewerOptions()
-        {
-            ClickServiceSeams.GetUltimatumPreHoverIndices(3).Should().Equal(0, 1, 2);
-            ClickServiceSeams.GetUltimatumPreHoverIndices(2).Should().Equal(0, 1);
-            ClickServiceSeams.GetUltimatumPreHoverIndices(1).Should().Equal(0);
-        }
-
-        [TestMethod]
-        public void GetUltimatumPreHoverIndices_ReturnsEmpty_WhenNoOptions()
-        {
-            ClickServiceSeams.GetUltimatumPreHoverIndices(0).Should().BeEmpty();
-            ClickServiceSeams.GetUltimatumPreHoverIndices(-2).Should().BeEmpty();
-        }
-
-        [TestMethod]
-        public void ShouldPrimeUltimatumGroundLabelTooltips_ReturnsTrue_WhenAnyModifierIsUnknown()
-        {
-            var priorities = new List<string> { "Resistant Monsters", "Choking Miasma", "Ruin" };
-            var modifierNames = new List<string> { "Resistant Monsters", "Unknown Option 2", "Ruin" };
-
-            bool shouldPrime = InvokeShouldPrimeUltimatumGroundLabelTooltips(modifierNames, priorities);
-
-            shouldPrime.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void ShouldPrimeUltimatumGroundLabelTooltips_ReturnsFalse_WhenAllModifiersAreKnown()
-        {
-            var priorities = new List<string> { "Resistant Monsters", "Choking Miasma", "Ruin" };
-            var modifierNames = new List<string> { "Resistant Monsters", "Choking Miasma", "Ruin" };
-
-            bool shouldPrime = InvokeShouldPrimeUltimatumGroundLabelTooltips(modifierNames, priorities);
-
-            shouldPrime.Should().BeFalse();
         }
 
         [TestMethod]

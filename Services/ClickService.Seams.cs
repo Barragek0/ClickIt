@@ -19,21 +19,5 @@ namespace ClickIt.Services
             }
             return candidateIndex;
         }
-
-        // Ground-label Ultimatum exposes exactly three options; clamp pre-hover work accordingly.
-        internal static int[] GetUltimatumPreHoverIndices(int optionCount)
-        {
-            if (optionCount <= 0)
-                return [];
-
-            int count = optionCount > 3 ? 3 : optionCount;
-            int[] result = new int[count];
-            for (int i = 0; i < count; i++)
-            {
-                result[i] = i;
-            }
-
-            return result;
-        }
     }
 }
