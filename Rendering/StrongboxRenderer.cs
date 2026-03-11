@@ -1,5 +1,4 @@
 using ExileCore;
-using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Enums;
 using Color = SharpDX.Color;
@@ -47,7 +46,7 @@ namespace ClickIt.Rendering
                     continue;
 
                 string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
-                bool isUniqueStrongbox = label?.ItemOnGround?.GetComponent<Mods>()?.ItemRarity == ItemRarity.Unique;
+                bool isUniqueStrongbox = IsUniqueStrongbox(label);
                 bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, renderName, clickMetadata, dontClickMetadata, isUniqueStrongbox);
                 if (!isClickableBySettings || !showFrames)
                     continue;
@@ -111,19 +110,30 @@ namespace ClickIt.Rendering
             return false;
         }
 
+        private static bool IsUniqueStrongbox(LabelOnGround? label)
+        {
+            return label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
+        }
+
         private static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata, bool isUniqueStrongbox)
         {
             if (string.IsNullOrEmpty(path) || clickMetadata == null || clickMetadata.Count == 0)
                 return false;
 
-            bool dontClickMatch = MetadataIdentifierMatcher.ContainsAny(path, itemName, dontClickMetadata)
-                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(dontClickMetadata));
+            if (isUniqueStrongbox)
+            {
+                if (ContainsStrongboxUniqueIdentifier(dontClickMetadata))
+                    return false;
+
+                return ContainsStrongboxUniqueIdentifier(clickMetadata);
+            }
+
+            bool dontClickMatch = MetadataIdentifierMatcher.ContainsAny(path, itemName, dontClickMetadata);
 
             if (dontClickMatch)
                 return false;
 
-            return MetadataIdentifierMatcher.ContainsAny(path, itemName, clickMetadata)
-                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(clickMetadata));
+            return MetadataIdentifierMatcher.ContainsAny(path, itemName, clickMetadata);
         }
 
     }

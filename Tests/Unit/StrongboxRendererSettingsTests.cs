@@ -115,5 +115,31 @@ namespace ClickIt.Tests.Unit
 
             result.Should().BeFalse();
         }
+
+        [TestMethod]
+        public void IsStrongboxClickableBySettings_UniqueStrongbox_DoesNotMatchNonUniqueRule()
+        {
+            bool result = InvokeIsStrongboxClickableBySettings(
+                "Metadata/Chests/StrongBoxes/Strongbox",
+                "Armourer's Strongbox",
+                new[] { "StrongBoxes/Armory" },
+                System.Array.Empty<string>(),
+                isUniqueStrongbox: true);
+
+            result.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsStrongboxClickableBySettings_UniqueStrongbox_UsesUniqueRuleEvenWithNonUniqueDontClick()
+        {
+            bool result = InvokeIsStrongboxClickableBySettings(
+                "Metadata/Chests/StrongBoxes/Strongbox",
+                "Armourer's Strongbox",
+                new[] { "special:strongbox-unique" },
+                new[] { "StrongBoxes/Armory" },
+                isUniqueStrongbox: true);
+
+            result.Should().BeTrue();
+        }
     }
 }

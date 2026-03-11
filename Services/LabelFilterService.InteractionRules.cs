@@ -234,14 +234,21 @@ namespace ClickIt.Services
 
             if (clickMetadata.Count == 0)
                 return false;
-            bool dontClickMatch = ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata)
-                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(dontClickMetadata));
+
+            if (isUniqueStrongbox)
+            {
+                if (ContainsStrongboxUniqueIdentifier(dontClickMetadata))
+                    return false;
+
+                return ContainsStrongboxUniqueIdentifier(clickMetadata);
+            }
+
+            bool dontClickMatch = ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata);
 
             if (dontClickMatch)
                 return false;
 
-            return ContainsAnyMetadataIdentifier(path, renderName, clickMetadata)
-                || (isUniqueStrongbox && ContainsStrongboxUniqueIdentifier(clickMetadata));
+            return ContainsAnyMetadataIdentifier(path, renderName, clickMetadata);
         }
 
         private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)
@@ -260,7 +267,7 @@ namespace ClickIt.Services
 
         private static bool IsUniqueStrongbox(LabelOnGround? label)
         {
-            return label?.ItemOnGround?.GetComponent<Mods>()?.ItemRarity == ItemRarity.Unique;
+            return label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
         }
 
         private static bool IsBasicChestName(string name)
