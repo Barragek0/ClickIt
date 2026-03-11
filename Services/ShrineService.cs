@@ -136,7 +136,8 @@ namespace ClickIt.Services
                 // If a clickable area checker is provided, ensure the shrine is on screen
                 if (isInClickableArea != null && _camera != null)
                 {
-                    Vector2 screenPos = new(_camera.WorldToScreen(shrine.PosNum).X, _camera.WorldToScreen(shrine.PosNum).Y);
+                    var screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
+                    Vector2 screenPos = new(screenPosRaw.X, screenPosRaw.Y);
                     if (!isInClickableArea(screenPos))
                     {
                         continue; // Skip shrines that aren't in the clickable area

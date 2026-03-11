@@ -111,7 +111,7 @@ namespace ClickIt.Utils
             bool hasClickableAltars = HasClickableAltars();
 
             // No clickable altars, check for shrines.
-            if (!hasClickableAltars && _settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea((pos) => _pointIsInClickableArea(pos)))
+            if (!hasClickableAltars && _settings.ClickShrines.Value && _state.ShrineService != null && _state.ShrineService.AreShrinesPresentInClickableArea(_pointIsInClickableArea))
             {
                 yield return new WaitTime(25);
                 yield break;
@@ -197,7 +197,7 @@ namespace ClickIt.Utils
                 yield break;
             }
 
-            var nearestShrine = _state.ShrineService.GetNearestShrineInRange(_settings.ClickDistance.Value, point => _pointIsInClickableArea(point));
+            var nearestShrine = _state.ShrineService.GetNearestShrineInRange(_settings.ClickDistance.Value, _pointIsInClickableArea);
             if (nearestShrine == null)
             {
                 yield break;

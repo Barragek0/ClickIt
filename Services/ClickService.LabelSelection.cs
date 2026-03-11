@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Linq;
 using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
@@ -14,6 +13,8 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
+        private static readonly int[] LabelSearchCaps = [1, 5, 25, 100];
+
         public IEnumerator ProcessRegularClick()
         {
             if (HasClickableAltars())
@@ -78,7 +79,7 @@ namespace ClickIt.Services
             if (uiHover == null)
                 return nextLabel;
 
-            LabelOnGround? hovered = allLabels.FirstOrDefault(l => l?.Label != null && l.Label.Address == uiHover.Address);
+            LabelOnGround? hovered = FindLabelByAddress(allLabels, uiHover.Address);
             if (hovered != null && !ReferenceEquals(hovered, nextLabel) && IsEssenceLabel(hovered))
             {
                 DebugLog(() => "[ProcessRegularClick] UIHover-first: switching target to UIHover label");
@@ -122,8 +123,7 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0)
                 return null;
 
-            int[] caps = [1, 5, 25, 100];
-            foreach (int cap in caps)
+            foreach (int cap in LabelSearchCaps)
             {
                 int limit = Math.Min(cap, allLabels.Count);
                 LabelOnGround? candidate = FindLabelInRange(allLabels, 0, limit);
@@ -133,6 +133,18 @@ namespace ClickIt.Services
 
             // Fallback to full scan (rare).
             return FindLabelInRange(allLabels, 0, allLabels.Count);
+        }
+
+        private static LabelOnGround? FindLabelByAddress(IReadOnlyList<LabelOnGround> labels, long address)
+        {
+            for (int i = 0; i < labels.Count; i++)
+            {
+                LabelOnGround? label = labels[i];
+                if (label?.Label != null && label.Label.Address == address)
+                    return label;
+            }
+
+            return null;
         }
 
         private LabelOnGround? FindLabelInRange(IReadOnlyList<LabelOnGround> allLabels, int start, int endExclusive)

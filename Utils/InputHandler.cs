@@ -107,31 +107,38 @@ namespace ClickIt.Utils
         {
             var uiState = gameController?.IngameState?.IngameUi;
 
-            var checks = new (bool Condition, string Message)[]
-            {
-                (uiState?.ChatTitlePanel?.IsVisible == true, "Chat is open."),
-                (uiState?.AtlasPanel?.IsVisible == true, "Atlas panel is open."),
-                (uiState?.AtlasTreePanel?.IsVisible == true, "Atlas tree panel is open."),
-                (uiState?.TreePanel?.IsVisible == true, "Passive tree panel is open."),
-                (uiState?.UltimatumPanel?.IsVisible == true && !_settings.ClickUltimatum.Value, "Ultimatum panel is open (ClickUltimatum is disabled)."),
-                (uiState?.BetrayalWindow?.IsVisible == true, "Betrayal window is open."),
-                (uiState?.SyndicatePanel?.IsVisible == true, "Syndicate panel is open."),
-                (uiState?.SyndicateTree?.IsVisible == true, "Syndicate tree panel is open."),
-                (uiState?.IncursionWindow?.IsVisible == true, "Incursion window is open."),
-                (uiState?.RitualWindow?.IsVisible == true, "Ritual window is open."),
-                (uiState?.SanctumFloorWindow?.IsVisible == true, "Sanctum floor window is open."),
-                (uiState?.SanctumRewardWindow?.IsVisible == true, "Sanctum reward window is open."),
-                (uiState?.MicrotransactionShopWindow?.IsVisible == true, "Microtransaction shop window is open."),
-                (uiState?.ResurrectPanel?.IsVisible == true, "Resurrect panel is open."),
-                (uiState?.NpcDialog?.IsVisible == true, "NPC dialog is open."),
-                (uiState?.KalandraTabletWindow?.IsVisible == true, "Kalandra tablet window is open.")
-            };
-
-            foreach (var check in checks)
-            {
-                if (check.Condition)
-                    return check.Message;
-            }
+            if (uiState?.ChatTitlePanel?.IsVisible == true)
+                return "Chat is open.";
+            if (uiState?.AtlasPanel?.IsVisible == true)
+                return "Atlas panel is open.";
+            if (uiState?.AtlasTreePanel?.IsVisible == true)
+                return "Atlas tree panel is open.";
+            if (uiState?.TreePanel?.IsVisible == true)
+                return "Passive tree panel is open.";
+            if (uiState?.UltimatumPanel?.IsVisible == true && !_settings.ClickUltimatum.Value)
+                return "Ultimatum panel is open (ClickUltimatum is disabled).";
+            if (uiState?.BetrayalWindow?.IsVisible == true)
+                return "Betrayal window is open.";
+            if (uiState?.SyndicatePanel?.IsVisible == true)
+                return "Syndicate panel is open.";
+            if (uiState?.SyndicateTree?.IsVisible == true)
+                return "Syndicate tree panel is open.";
+            if (uiState?.IncursionWindow?.IsVisible == true)
+                return "Incursion window is open.";
+            if (uiState?.RitualWindow?.IsVisible == true)
+                return "Ritual window is open.";
+            if (uiState?.SanctumFloorWindow?.IsVisible == true)
+                return "Sanctum floor window is open.";
+            if (uiState?.SanctumRewardWindow?.IsVisible == true)
+                return "Sanctum reward window is open.";
+            if (uiState?.MicrotransactionShopWindow?.IsVisible == true)
+                return "Microtransaction shop window is open.";
+            if (uiState?.ResurrectPanel?.IsVisible == true)
+                return "Resurrect panel is open.";
+            if (uiState?.NpcDialog?.IsVisible == true)
+                return "NPC dialog is open.";
+            if (uiState?.KalandraTabletWindow?.IsVisible == true)
+                return "Kalandra tablet window is open.";
 
             return null;
         }
