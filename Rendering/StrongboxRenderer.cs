@@ -22,7 +22,6 @@ namespace ClickIt.Rendering
             RenderFromLabels((IEnumerable<LabelOnGround>)(dynamic)labels, gameController.Window.GetWindowRectangleTimeCache);
         }
 
-
         // Exposed for tests — pass in the current window rectangle so we can determine on-screen intersection.
         public void RenderFromLabels(IEnumerable<LabelOnGround> labels, SharpDX.RectangleF windowArea)
         {

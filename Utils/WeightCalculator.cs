@@ -2,14 +2,6 @@
 using ClickIt;
 namespace ClickIt.Utils
 {
-    internal static class WeightTypeConstants
-    {
-        public const string TopDownside = "topdownside";
-        public const string BottomDownside = "bottomdownside";
-        public const string TopUpside = "topupside";
-        public const string BottomUpside = "bottomupside";
-    }
-
     public class WeightCalculator(ClickItSettings settings)
     {
         private readonly ClickItSettings _settings = settings;

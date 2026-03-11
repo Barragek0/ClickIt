@@ -2,7 +2,6 @@ using System.Reflection;
 
 namespace ClickIt
 {
-    // Test seam helpers extracted to a separate partial file so the main plugin file stays focused.
     // These APIs are internal-only and intended for the test project (InternalsVisibleTo).
     public partial class ClickIt
     {
