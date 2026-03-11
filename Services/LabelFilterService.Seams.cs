@@ -12,23 +12,6 @@ namespace ClickIt.Services
         // Test seam - allows tests to short-circuit the expensive/native dependent check
         internal static Func<LabelFilterService, IReadOnlyList<LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
 
-        // Test seam: allow tests to exercise ritual text detection using the IElementAdapter test adapter
-        internal static bool ShouldClickRitualForTests(bool clickRitualInitiate, bool clickRitualCompleted, string path, IElementAdapter? labelAdapter)
-        {
-            if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual"))
-                return false;
-
-            bool hasFavoursText = LabelUtils.GetElementByStringForTests(labelAdapter, "Interact to view Favours") != null;
-
-            if (clickRitualInitiate && !hasFavoursText)
-                return true;
-
-            if (clickRitualCompleted && hasFavoursText)
-                return true;
-
-            return false;
-        }
-
         internal static bool MatchesMetadataFiltersForTests(string metadataPath, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)
         {
             return MatchesMetadataFiltersForTests(metadataPath, string.Empty, whitelist, blacklist);

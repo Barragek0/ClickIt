@@ -6,7 +6,7 @@ namespace ClickIt.Services
 {
     public static class AltarScanner
     {
-        public static List<(Element element, string path)> CollectElementsFromLabels(List<LabelOnGround> altarLabels)
+        public static List<(Element element, string path)> CollectElementsFromLabels(List<LabelOnGround>? altarLabels)
         {
             var elementsToProcess = new List<(Element element, string path)>((altarLabels?.Count ?? 0) * 2);
 
