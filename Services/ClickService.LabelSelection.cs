@@ -38,26 +38,26 @@ namespace ClickIt.Services
             if (TryHandleUltimatumPanelUi(windowTopLeft))
                 yield break;
 
+            var nextShrine = ResolveNextShrineCandidate();
+
             if (!groundItemsVisible())
             {
+                if (nextShrine != null && ShouldClickShrineWhenGroundItemsHidden(nextShrine))
+                {
+                    TryClickShrine(nextShrine);
+                }
+
                 DebugLog(() => "[ProcessRegularClick] Ground items not visible, breaking");
                 yield break;
             }
 
             var allLabels = cachedLabels?.Value;
             LabelOnGround? nextLabel = ResolveNextLabelCandidate(allLabels);
-            var nextShrine = ResolveNextShrineCandidate();
 
             bool useShrine = ShouldPreferShrineOverLabel(nextLabel, nextShrine);
             if (useShrine && nextShrine != null)
             {
-                var shrineScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(nextShrine.PosNum);
-                SharpDX.Vector2 shrineClickPos = new SharpDX.Vector2(shrineScreenRaw.X, shrineScreenRaw.Y);
-                bool shrineClicked = PerformLabelClick(shrineClickPos, null, gameController);
-                if (shrineClicked)
-                {
-                    shrineService.InvalidateCache();
-                }
+                TryClickShrine(nextShrine);
 
                 yield break;
             }
@@ -81,6 +81,22 @@ namespace ClickIt.Services
             if (inputHandler.TriggerToggleItems())
             {
                 yield return new WaitTime(20);
+            }
+        }
+
+        internal static bool ShouldClickShrineWhenGroundItemsHidden(Entity? shrine)
+        {
+            return shrine != null;
+        }
+
+        private void TryClickShrine(Entity shrine)
+        {
+            var shrineScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
+            SharpDX.Vector2 shrineClickPos = new SharpDX.Vector2(shrineScreenRaw.X, shrineScreenRaw.Y);
+            bool shrineClicked = PerformLabelClick(shrineClickPos, null, gameController);
+            if (shrineClicked)
+            {
+                shrineService.InvalidateCache();
             }
         }
 

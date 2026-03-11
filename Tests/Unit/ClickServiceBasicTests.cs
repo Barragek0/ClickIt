@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
 using FluentAssertions;
 using ClickIt.Services;
+using ExileCore.PoEMemory.MemoryObjects;
 
 namespace ClickIt.Tests.Unit
 {
@@ -28,6 +29,19 @@ namespace ClickIt.Tests.Unit
             // but the important behaviour is that repeated calls return the same instance.
             lock1.Should().BeSameAs(lock2);
             lock1.Should().BeSameAs(lock2);
+        }
+
+        [TestMethod]
+        public void ShouldClickShrineWhenGroundItemsHidden_ReturnsFalse_WhenShrineMissing()
+        {
+            ClickService.ShouldClickShrineWhenGroundItemsHidden(null).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldClickShrineWhenGroundItemsHidden_ReturnsTrue_WhenShrineExists()
+        {
+            var shrine = (Entity)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Entity));
+            ClickService.ShouldClickShrineWhenGroundItemsHidden(shrine).Should().BeTrue();
         }
     }
 }
