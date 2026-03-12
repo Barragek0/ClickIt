@@ -76,9 +76,9 @@ namespace ClickIt.Services
 
                 if (IsValidAltarComponent(altarComponent))
                 {
-                    PreCacheAltarData(altarComponent);
-
                     bool wasAdded = AddAltarComponent(altarComponent);
+                    WarmAddedAltarData(altarComponent, wasAdded);
+
                     if (wasAdded)
                         DebugInfo.ComponentsAdded++;
                     else
@@ -103,6 +103,14 @@ namespace ClickIt.Services
             _ = altar.IsValidCached();
             _ = altar.GetTopModsRect();
             _ = altar.GetBottomModsRect();
+        }
+
+        private static void WarmAddedAltarData(PrimaryAltarComponent altar, bool wasAdded)
+        {
+            if (!wasAdded)
+                return;
+
+            PreCacheAltarData(altar);
         }
 
         private static ClickIt.AltarType DetermineAltarType(string path)

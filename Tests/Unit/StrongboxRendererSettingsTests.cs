@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Collections.Generic;
+using System;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -140,6 +141,39 @@ namespace ClickIt.Tests.Unit
                 isUniqueStrongbox: true);
 
             result.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void EnsureStrongboxMetadataCache_Refreshes_WhenStrongboxIdsChange()
+        {
+            var settings = new ClickItSettings
+            {
+                StrongboxClickIds = new HashSet<string>(new[] { "arcanist" }, StringComparer.OrdinalIgnoreCase),
+                StrongboxDontClickIds = new HashSet<string>(new[] { "regular" }, StringComparer.OrdinalIgnoreCase)
+            };
+
+            var renderer = new Rendering.StrongboxRenderer(settings, new global::ClickIt.Utils.DeferredFrameQueue());
+
+            MethodInfo? ensureCache = typeof(Rendering.StrongboxRenderer)
+                .GetMethod("EnsureStrongboxMetadataCache", BindingFlags.NonPublic | BindingFlags.Instance);
+            ensureCache.Should().NotBeNull();
+
+            var cachedClickMetadataField = typeof(Rendering.StrongboxRenderer)
+                .GetField("_cachedClickMetadata", BindingFlags.NonPublic | BindingFlags.Instance);
+            cachedClickMetadataField.Should().NotBeNull();
+
+            ensureCache!.Invoke(renderer, null);
+            var firstMetadata = (IReadOnlyList<string>)cachedClickMetadataField!.GetValue(renderer)!;
+            firstMetadata.Should().Contain("StrongBoxes/Arcanist");
+            firstMetadata.Should().NotContain("StrongBoxes/CartographerEndMaps");
+
+            settings.StrongboxClickIds = new HashSet<string>(new[] { "cartographer" }, StringComparer.OrdinalIgnoreCase);
+            settings.StrongboxDontClickIds = new HashSet<string>(new[] { "regular" }, StringComparer.OrdinalIgnoreCase);
+
+            ensureCache.Invoke(renderer, null);
+            var secondMetadata = (IReadOnlyList<string>)cachedClickMetadataField.GetValue(renderer)!;
+            secondMetadata.Should().Contain("StrongBoxes/CartographerEndMaps");
+            secondMetadata.Should().NotContain("StrongBoxes/Arcanist");
         }
     }
 }

@@ -12,6 +12,10 @@ namespace ClickIt.Rendering
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
         private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
         private readonly ClickItSettings _settings = settings;
+        private IReadOnlyList<string> _cachedClickMetadata = Array.Empty<string>();
+        private IReadOnlyList<string> _cachedDontClickMetadata = Array.Empty<string>();
+        private HashSet<string>? _clickIdsSnapshot;
+        private HashSet<string>? _dontClickIdsSnapshot;
 
         public void Render(GameController? gameController, object? state)
         {
@@ -29,9 +33,11 @@ namespace ClickIt.Rendering
         {
             if (labels == null) return;
 
+            EnsureStrongboxMetadataCache();
+
             bool showFrames = _settings.ShowStrongboxFrames.Value;
-            IReadOnlyList<string> clickMetadata = _settings.GetStrongboxClickMetadataIdentifiers();
-            IReadOnlyList<string> dontClickMetadata = _settings.GetStrongboxDontClickMetadataIdentifiers();
+            IReadOnlyList<string> clickMetadata = _cachedClickMetadata;
+            IReadOnlyList<string> dontClickMetadata = _cachedDontClickMetadata;
             bool anyTypeEnabled = clickMetadata.Count > 0;
 
             if (!showFrames && !anyTypeEnabled)
@@ -134,6 +140,34 @@ namespace ClickIt.Rendering
                 return false;
 
             return MetadataIdentifierMatcher.ContainsAny(path, itemName, clickMetadata);
+        }
+
+        private static bool HasMatchingSnapshot(HashSet<string>? currentIds, HashSet<string>? snapshot)
+        {
+            if (currentIds == null)
+                return snapshot == null || snapshot.Count == 0;
+
+            if (snapshot == null)
+                return false;
+
+            return snapshot.SetEquals(currentIds);
+        }
+
+        private void EnsureStrongboxMetadataCache()
+        {
+            if (HasMatchingSnapshot(_settings.StrongboxClickIds, _clickIdsSnapshot)
+                && HasMatchingSnapshot(_settings.StrongboxDontClickIds, _dontClickIdsSnapshot))
+            {
+                return;
+            }
+
+            _cachedClickMetadata = _settings.GetStrongboxClickMetadataIdentifiers();
+            _cachedDontClickMetadata = _settings.GetStrongboxDontClickMetadataIdentifiers();
+
+            var currentClickIds = _settings.StrongboxClickIds ?? [];
+            var currentDontClickIds = _settings.StrongboxDontClickIds ?? [];
+            _clickIdsSnapshot = new HashSet<string>(currentClickIds, StringComparer.OrdinalIgnoreCase);
+            _dontClickIdsSnapshot = new HashSet<string>(currentDontClickIds, StringComparer.OrdinalIgnoreCase);
         }
 
     }

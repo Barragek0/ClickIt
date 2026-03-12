@@ -47,5 +47,6 @@ namespace ClickIt.Tests.Unit
             Action act = () => primary.GetTopModsRect();
             act.Should().Throw<InvalidOperationException>();
         }
+
     }
 }

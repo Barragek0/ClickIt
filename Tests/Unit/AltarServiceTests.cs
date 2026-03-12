@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -101,7 +102,6 @@ namespace ClickIt.Tests.Unit
         {
             var clickIt = new ClickIt();
             var settings = new ClickItSettings();
-            var service = new AltarService(clickIt, settings, null);
 
             var primary = TestUtils.TestBuilders.BuildPrimary();
 
@@ -121,6 +121,22 @@ namespace ClickIt.Tests.Unit
             primary.TopButton.Should().NotBeNull();
             primary.TopMods.HasUnmatchedMods.Should().BeTrue();
             primary.TopMods.Upsides.Should().Contain("up1");
+        }
+
+        [TestMethod]
+        public void WarmAddedAltarData_DoesNotPrecache_WhenComponentNotAdded()
+        {
+            var mi = typeof(AltarService).GetMethod("WarmAddedAltarData", BindingFlags.NonPublic | BindingFlags.Static);
+            mi.Should().NotBeNull();
+
+            var primary = TestUtils.TestBuilders.BuildPrimary();
+
+            Action noWarmup = () => mi!.Invoke(null, [primary, false]);
+            noWarmup.Should().NotThrow();
+
+            Action warmup = () => mi!.Invoke(null, [primary, true]);
+            warmup.Should().Throw<TargetInvocationException>()
+                .WithInnerException<InvalidOperationException>();
         }
     }
 }
