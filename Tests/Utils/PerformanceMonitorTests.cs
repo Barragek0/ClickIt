@@ -120,5 +120,54 @@ namespace ClickIt.Tests.Utils
             stats.MaxMs.Should().Be(3.0);
             stats.SampleCount.Should().Be(2);
         }
+
+        [TestMethod]
+        public void RenderSectionStats_TracksEachSectionIndependently()
+        {
+            var settings = new ClickItSettings();
+            var pm = new PerformanceMonitor(settings);
+
+            pm.RecordRenderSectionTiming(RenderSection.DebugOverlay, 2.0);
+            pm.RecordRenderSectionTiming(RenderSection.DebugOverlay, 6.0);
+            pm.RecordRenderSectionTiming(RenderSection.TextFlush, 1.0);
+            pm.RecordRenderSectionTiming(RenderSection.TextFlush, 3.0);
+            pm.RecordRenderSectionTiming(RenderSection.FrameFlush, 5.0);
+
+            var debugStats = pm.GetRenderSectionStats(RenderSection.DebugOverlay);
+            debugStats.LastMs.Should().Be(6.0);
+            debugStats.AverageMs.Should().Be(4.0);
+            debugStats.MaxMs.Should().Be(6.0);
+            debugStats.SampleCount.Should().Be(2);
+
+            var textStats = pm.GetRenderSectionStats(RenderSection.TextFlush);
+            textStats.LastMs.Should().Be(3.0);
+            textStats.AverageMs.Should().Be(2.0);
+            textStats.MaxMs.Should().Be(3.0);
+            textStats.SampleCount.Should().Be(2);
+
+            var frameStats = pm.GetRenderSectionStats(RenderSection.FrameFlush);
+            frameStats.LastMs.Should().Be(5.0);
+            frameStats.AverageMs.Should().Be(5.0);
+            frameStats.MaxMs.Should().Be(5.0);
+            frameStats.SampleCount.Should().Be(1);
+
+            pm.GetRenderSectionStats(RenderSection.AltarOverlay).SampleCount.Should().Be(0);
+            pm.GetRenderSectionStats(RenderSection.StrongboxOverlay).SampleCount.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void RecordRenderSectionTiming_IgnoresUnknownSection()
+        {
+            var settings = new ClickItSettings();
+            var pm = new PerformanceMonitor(settings);
+
+            pm.RecordRenderSectionTiming(RenderSection.Unknown, 99.0);
+
+            var unknownStats = pm.GetRenderSectionStats(RenderSection.Unknown);
+            unknownStats.LastMs.Should().Be(0);
+            unknownStats.AverageMs.Should().Be(0);
+            unknownStats.MaxMs.Should().Be(0);
+            unknownStats.SampleCount.Should().Be(0);
+        }
     }
 }
