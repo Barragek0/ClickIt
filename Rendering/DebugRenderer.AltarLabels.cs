@@ -41,7 +41,7 @@ namespace ClickIt.Rendering
             AltarWeights? weights = null;
             if (_weightCalculator != null)
             {
-                weights = _weightCalculator.CalculateAltarWeights(altar);
+                weights = altar.GetCachedWeights(pc => _weightCalculator.CalculateAltarWeights(pc));
             }
 
             if (altar?.TopMods != null)
@@ -207,6 +207,12 @@ namespace ClickIt.Rendering
             RectangleF winRect = gameController?.Window.GetWindowRectangleTimeCache ?? RectangleF.Empty;
             var cursorPos = Mouse.GetCursorPosition();
 
+            if (!IsCursorInsideWindow(winRect, cursorPos.X, cursorPos.Y))
+            {
+                _deferredTextQueue.Enqueue("Hover a ground-item label to inspect metadata", new Vector2(xPos, yPos), Color.Gray, 16);
+                return yPos + lineHeight;
+            }
+
             LabelOnGround? hovered = null;
             float bestDistance = float.MaxValue;
 
@@ -220,13 +226,7 @@ namespace ClickIt.Rendering
                 if (rectObj is not RectangleF labelRect)
                     continue;
 
-                var screenRect = new RectangleF(
-                    labelRect.X + winRect.X,
-                    labelRect.Y + winRect.Y,
-                    labelRect.Width,
-                    labelRect.Height);
-
-                if (!IsPointInRect(cursorPos.X, cursorPos.Y, screenRect))
+                if (!IsCursorOverLabelRect(labelRect, winRect, cursorPos.X, cursorPos.Y))
                     continue;
 
                 float dist = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;

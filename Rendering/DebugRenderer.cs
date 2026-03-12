@@ -1,11 +1,9 @@
 ﻿using ExileCore;
-using ExileCore.Shared.Cache;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using ClickIt.Utils;
 using Color = SharpDX.Color;
 using RectangleF = SharpDX.RectangleF;
-using System.Reflection;
 using ClickIt.Services;
 
 #nullable enable
@@ -21,7 +19,6 @@ namespace ClickIt.Rendering
         private readonly WeightCalculator? _weightCalculator;
         private readonly DeferredTextQueue _deferredTextQueue;
         private readonly DeferredFrameQueue _deferredFrameQueue;
-        private static readonly PropertyInfo? CachedLabelsPropertyInfo = typeof(ClickIt).GetProperty("CachedLabels", BindingFlags.NonPublic | BindingFlags.Instance);
 
         public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin,
                              AltarService? altarService = null,
@@ -56,9 +53,7 @@ namespace ClickIt.Rendering
             if (settings == null || performanceMonitor == null) return;
 
             // avoid doing any work if nothing to render
-            if (!settings.DebugShowStatus && !settings.DebugShowGameState && !settings.DebugShowPerformance &&
-                !settings.DebugShowClickFrequencyTarget && !settings.DebugShowAltarDetection && !settings.DebugShowAltarService &&
-                !settings.DebugShowLabels && !settings.DebugShowHoveredItemMetadata && !settings.DebugShowRecentErrors)
+            if (!settings.IsAnyDetailedDebugSectionEnabled())
             {
                 return;
             }
@@ -159,7 +154,8 @@ namespace ClickIt.Rendering
             // Show cached labels information
             if (_plugin is ClickIt clickItPlugin)
             {
-                if (CachedLabelsPropertyInfo?.GetValue(clickItPlugin) is TimeCache<List<LabelOnGround>> cachedLabels)
+                var cachedLabels = clickItPlugin.State.CachedLabels;
+                if (cachedLabels != null)
                 {
                     var labels = cachedLabels.Value;
                     int cachedCount = labels?.Count ?? 0;
@@ -202,25 +198,29 @@ namespace ClickIt.Rendering
                 leadingSpaces++;
             }
             string indentation = new(' ', leadingSpaces);
-            string content = text.Substring(leadingSpaces);
+            ReadOnlySpan<char> content = text.AsSpan(leadingSpaces);
+            int contentLength = content.Length;
 
-            while (startIndex < content.Length)
+            while (startIndex < contentLength)
             {
-                int endIndex = Math.Min(startIndex + maxCharsPerLine, content.Length);
-                if (endIndex < content.Length)
+                int endIndex = Math.Min(startIndex + maxCharsPerLine, contentLength);
+                if (endIndex < contentLength)
                 {
-                    int lastSpaceIndex = content.LastIndexOf(' ', endIndex - 1, Math.Min(maxCharsPerLine, endIndex - startIndex));
-                    if (lastSpaceIndex > startIndex)
+                    ReadOnlySpan<char> segment = content.Slice(startIndex, endIndex - startIndex);
+                    int lastSpaceOffset = segment.LastIndexOf(' ');
+                    if (lastSpaceOffset > 0)
                     {
-                        endIndex = lastSpaceIndex;
+                        endIndex = startIndex + lastSpaceOffset;
                     }
                 }
-                string line = content.Substring(startIndex, endIndex - startIndex).TrimEnd();
+
+                ReadOnlySpan<char> lineSpan = content.Slice(startIndex, endIndex - startIndex).TrimEnd();
+                string line = lineSpan.ToString();
                 // Add back the indentation
                 _deferredTextQueue.Enqueue(indentation + line, new Vector2(position.X, currentY), color, fontSize);
                 currentY += lineHeight;
                 startIndex = endIndex;
-                if (startIndex < content.Length && content[startIndex] == ' ')
+                if (startIndex < contentLength && content[startIndex] == ' ')
                 {
                     startIndex++;
                 }
@@ -230,6 +230,24 @@ namespace ClickIt.Rendering
         private static bool IsPointInRect(int x, int y, RectangleF rect)
         {
             return x >= rect.Left && x <= rect.Right && y >= rect.Top && y <= rect.Bottom;
+        }
+
+        private static bool IsCursorInsideWindow(RectangleF windowRect, int cursorX, int cursorY)
+        {
+            return windowRect != RectangleF.Empty && IsPointInRect(cursorX, cursorY, windowRect);
+        }
+
+        private static bool IsCursorOverLabelRect(RectangleF labelRect, RectangleF windowRect, int cursorX, int cursorY)
+        {
+            if (labelRect.Width <= 0 || labelRect.Height <= 0)
+                return false;
+
+            float left = labelRect.Left + windowRect.X;
+            float right = labelRect.Right + windowRect.X;
+            float top = labelRect.Top + windowRect.Y;
+            float bottom = labelRect.Bottom + windowRect.Y;
+
+            return cursorX >= left && cursorX <= right && cursorY >= top && cursorY <= bottom;
         }
 
         private static string ResolveHoveredItemMetadataPath(LabelOnGround label)
