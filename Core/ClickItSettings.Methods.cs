@@ -52,6 +52,19 @@ namespace ClickIt
             return IsInitialUltimatumClickEnabled() || IsOtherUltimatumClickEnabled();
         }
 
+        public bool IsAnyDetailedDebugSectionEnabled()
+        {
+            return DebugShowStatus
+                || DebugShowGameState
+                || DebugShowPerformance
+                || DebugShowClickFrequencyTarget
+                || DebugShowAltarDetection
+                || DebugShowAltarService
+                || DebugShowLabels
+                || DebugShowHoveredItemMetadata
+                || DebugShowRecentErrors;
+        }
+
         private void DrawAltarsPanel()
         {
             DrawExarchSection();

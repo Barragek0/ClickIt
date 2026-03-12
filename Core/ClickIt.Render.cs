@@ -37,7 +37,9 @@ namespace ClickIt
             {
                 long sectionStart = Stopwatch.GetTimestamp();
                 State.DebugRenderer?.RenderDebugFrames(effective);
-                if (State.DebugRenderer != null && State.PerformanceMonitor != null)
+                if (State.DebugRenderer != null
+                    && State.PerformanceMonitor != null
+                    && effective.IsAnyDetailedDebugSectionEnabled())
                 {
                     State.DebugRenderer.RenderDetailedDebugInfo(effective, State.PerformanceMonitor);
                 }

@@ -167,5 +167,31 @@ namespace ClickIt.Tests.Unit
             settings.IsInitialUltimatumClickEnabled().Should().BeFalse();
             settings.IsOtherUltimatumClickEnabled().Should().BeTrue();
         }
+
+        [TestMethod]
+        public void DetailedDebugSections_DefaultToEnabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.IsAnyDetailedDebugSectionEnabled().Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void DetailedDebugSections_ReturnFalse_WhenAllDisabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.DebugShowStatus.Value = false;
+            settings.DebugShowGameState.Value = false;
+            settings.DebugShowPerformance.Value = false;
+            settings.DebugShowClickFrequencyTarget.Value = false;
+            settings.DebugShowAltarDetection.Value = false;
+            settings.DebugShowAltarService.Value = false;
+            settings.DebugShowLabels.Value = false;
+            settings.DebugShowHoveredItemMetadata.Value = false;
+            settings.DebugShowRecentErrors.Value = false;
+
+            settings.IsAnyDetailedDebugSectionEnabled().Should().BeFalse();
+        }
     }
 }
