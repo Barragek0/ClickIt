@@ -33,6 +33,14 @@ namespace ClickIt.Rendering
         // Common offsets used for text positioning (avoid constructing every frame)
         private static readonly Vector2 Offset120_Minus60 = new(120, -80);
         private static readonly Vector2 Offset120_Minus25 = new(120, -25);
+        private static readonly Vector2 Offset5_Minus32 = new(5, -32);
+        private static readonly Vector2 Offset5_Minus20 = new(5, -20);
+        private static readonly Vector2 Offset10_Minus32 = new(10, -32);
+        private static readonly Vector2 Offset10_Minus20 = new(10, -20);
+        private static readonly Vector2 Offset10_5 = new(10, 5);
+        private static readonly Color WeightWinColor = Color.LawnGreen;
+        private static readonly Color WeightLoseColor = Color.OrangeRed;
+        private static readonly Color WeightTieColor = Color.Yellow;
 
         private void DrawUnrecognizedWeightText(string weightType, string[] mods, Vector2 position)
         {
@@ -76,23 +84,14 @@ namespace ClickIt.Rendering
 
         public void DrawWeightTexts(AltarWeights weights, Vector2 topModsTopLeft, Vector2 bottomModsTopLeft)
         {
-
-            Vector2 offset5_Minus32 = new(5, -32);
-            Vector2 offset5_Minus20 = new(5, -20);
-            Vector2 offset10_Minus32 = new(10, -32);
-            Vector2 offset10_Minus20 = new(10, -20);
-            Vector2 offset10_5 = new(10, 5);
-            Color colorLawnGreen = Color.LawnGreen;
-            Color colorOrangeRed = Color.OrangeRed;
-            Color colorYellow = Color.Yellow;
-            _deferredTextQueue.Enqueue("Upside: " + weights.TopUpsideWeight, topModsTopLeft + offset5_Minus32, colorLawnGreen, 14);
-            _deferredTextQueue.Enqueue("Downside: " + weights.TopDownsideWeight, topModsTopLeft + offset5_Minus20, colorOrangeRed, 14);
-            _deferredTextQueue.Enqueue("Upside: " + weights.BottomUpsideWeight, bottomModsTopLeft + offset10_Minus32, colorLawnGreen, 14);
-            _deferredTextQueue.Enqueue("Downside: " + weights.BottomDownsideWeight, bottomModsTopLeft + offset10_Minus20, colorOrangeRed, 14);
-            Color topWeightColor = GetWeightColor(weights.TopWeight, weights.BottomWeight, colorLawnGreen, colorOrangeRed, colorYellow);
-            Color bottomWeightColor = GetWeightColor(weights.BottomWeight, weights.TopWeight, colorLawnGreen, colorOrangeRed, colorYellow);
-            _deferredTextQueue.Enqueue("" + weights.TopWeight, topModsTopLeft + offset10_5, topWeightColor, 18);
-            _deferredTextQueue.Enqueue("" + weights.BottomWeight, bottomModsTopLeft + offset10_5, bottomWeightColor, 18);
+            _deferredTextQueue.Enqueue($"Upside: {weights.TopUpsideWeight}", topModsTopLeft + Offset5_Minus32, WeightWinColor, 14);
+            _deferredTextQueue.Enqueue($"Downside: {weights.TopDownsideWeight}", topModsTopLeft + Offset5_Minus20, WeightLoseColor, 14);
+            _deferredTextQueue.Enqueue($"Upside: {weights.BottomUpsideWeight}", bottomModsTopLeft + Offset10_Minus32, WeightWinColor, 14);
+            _deferredTextQueue.Enqueue($"Downside: {weights.BottomDownsideWeight}", bottomModsTopLeft + Offset10_Minus20, WeightLoseColor, 14);
+            Color topWeightColor = GetWeightColor(weights.TopWeight, weights.BottomWeight, WeightWinColor, WeightLoseColor, WeightTieColor);
+            Color bottomWeightColor = GetWeightColor(weights.BottomWeight, weights.TopWeight, WeightWinColor, WeightLoseColor, WeightTieColor);
+            _deferredTextQueue.Enqueue($"{weights.TopWeight}", topModsTopLeft + Offset10_5, topWeightColor, 18);
+            _deferredTextQueue.Enqueue($"{weights.BottomWeight}", bottomModsTopLeft + Offset10_5, bottomWeightColor, 18);
         }
 
         public void RenderAltarComponents()
