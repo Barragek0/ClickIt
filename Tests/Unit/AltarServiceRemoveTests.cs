@@ -18,7 +18,7 @@ namespace ClickIt.Tests.Unit
             service.AddAltarComponent(component).Should().BeTrue();
 
             // Removing by null should return early and leave components intact
-            service.RemoveAltarComponentsByElement(null);
+            service.RemoveAltarComponentsByElement(null!);
 
             service.GetAltarComponentsReadOnly().Should().Contain(component);
         }

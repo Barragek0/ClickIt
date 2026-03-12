@@ -48,13 +48,19 @@ namespace ClickIt.Tests.Unit
             var mi = typeof(AltarService).GetMethod("DetermineAltarType", BindingFlags.NonPublic | BindingFlags.Static);
             mi.Should().NotBeNull();
 
-            var searing = (AltarType)mi.Invoke(null, ["SomePath/CleansingFireAltar/Other"]);
+            var searingObj = mi!.Invoke(null, ["SomePath/CleansingFireAltar/Other"]);
+            searingObj.Should().NotBeNull();
+            var searing = (AltarType)searingObj!;
             searing.Should().Be(AltarType.SearingExarch);
 
-            var eater = (AltarType)mi.Invoke(null, ["prefix/TangleAltar/suffix"]);
+            var eaterObj = mi.Invoke(null, ["prefix/TangleAltar/suffix"]);
+            eaterObj.Should().NotBeNull();
+            var eater = (AltarType)eaterObj!;
             eater.Should().Be(AltarType.EaterOfWorlds);
 
-            var unknown = (AltarType)mi.Invoke(null, [string.Empty]);
+            var unknownObj = mi.Invoke(null, [string.Empty]);
+            unknownObj.Should().NotBeNull();
+            var unknown = (AltarType)unknownObj!;
             unknown.Should().Be(AltarType.Unknown);
         }
 
@@ -85,8 +91,8 @@ namespace ClickIt.Tests.Unit
             mockBottomAltarAdapter.Setup(a => a.GetText(It.IsAny<int>())).Returns(string.Empty);
 
             // Underlying elements can be null for adapter-based tests (SecondaryAltarComponent accepts Element?)
-            mockTopAltarAdapter.SetupGet(a => a.Underlying).Returns((Element)null);
-            mockBottomAltarAdapter.SetupGet(a => a.Underlying).Returns((Element)null);
+            mockTopAltarAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
+            mockBottomAltarAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
 
             // Call the internal adapter-based creator directly
             var created = service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, AltarType.SearingExarch);
@@ -109,7 +115,7 @@ namespace ClickIt.Tests.Unit
             // Parent used by AltarButton is retrieved from adapter.Parent.Underlying; provide a parent adapter with null underlying
             var parentAdapter = new Mock<IElementAdapter>();
             mockElementAdapter.SetupGet(a => a.Parent).Returns(parentAdapter.Object);
-            parentAdapter.SetupGet(a => a.Underlying).Returns((Element)null);
+            parentAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
 
             var ups = new List<string> { "up1" };
             var downs = new List<string> { "down1" };

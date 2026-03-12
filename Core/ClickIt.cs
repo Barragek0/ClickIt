@@ -15,6 +15,7 @@ namespace ClickIt
 
             CanUseMultiThreading = true;
         }
+
         public override void OnClose()
         {
             // Remove event handlers to prevent issues during DLL reload
@@ -65,15 +66,18 @@ namespace ClickIt
                 base.OnClose();
             }
         }
+
         public override bool Initialise()
         {
             Settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
             State.PerformanceMonitor = new PerformanceMonitor(Settings);
             State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage);
-            State.LabelService = new Services.LabelService(GameController!, point => PointIsInClickableArea(point));
-            State.CachedLabels = State.LabelService.CachedLabels;
             State.AreaService = new Services.AreaService();
             State.AreaService.UpdateScreenAreas(GameController);
+            State.LabelService = new Services.LabelService(
+                GameController!,
+                point => State.AreaService?.PointIsInClickableArea(GameController, point) ?? false);
+            State.CachedLabels = State.LabelService.CachedLabels;
             State.Camera = GameController?.Game?.IngameState?.Camera;
             State.AltarService = new Services.AltarService(this, Settings, State.CachedLabels);
             var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings), State.ErrorHandler, GameController);
@@ -88,7 +92,20 @@ namespace ClickIt
             State.LazyModeRenderer = new Rendering.LazyModeRenderer(Settings, State.DeferredTextQueue, State.InputHandler, labelFilterService);
             State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, LogMessage);
             LockManager.Instance = new LockManager(Settings);
-            State.ClickService = new Services.ClickService(Settings, GameController, State.ErrorHandler, State.AltarService, weightCalculator, State.AltarDisplayRenderer, PointIsInClickableArea, State.InputHandler, labelFilterService, State.ShrineService, new Func<bool>(State.LabelService.GroundItemsVisible), State.CachedLabels, State.PerformanceMonitor);
+            State.ClickService = new Services.ClickService(
+                Settings,
+                GameController,
+                State.ErrorHandler,
+                State.AltarService,
+                weightCalculator,
+                State.AltarDisplayRenderer,
+                (point, path) => State.AreaService?.PointIsInClickableArea(GameController, point) ?? false,
+                State.InputHandler,
+                labelFilterService,
+                State.ShrineService,
+                new Func<bool>(State.LabelService.GroundItemsVisible),
+                State.CachedLabels,
+                State.PerformanceMonitor);
             State.UltimatumRenderer = new Rendering.UltimatumRenderer(Settings, State.ClickService, State.DeferredFrameQueue);
             var alertService = GetOrCreateAlertService();
             State.PerformanceMonitor.Start();
@@ -133,16 +150,6 @@ namespace ClickIt
             {
                 State.IsRendering = false;
             }
-        }
-
-        private bool PointIsInClickableArea(SharpDX.Vector2 point, string? path = null)
-        {
-            if (GameController != null)
-            {
-                State.AreaService?.UpdateScreenAreas(GameController);
-            }
-
-            return State.AreaService?.PointIsInClickableArea(point) ?? false;
         }
 
         public void LogMessage(string message, int frame = 5)

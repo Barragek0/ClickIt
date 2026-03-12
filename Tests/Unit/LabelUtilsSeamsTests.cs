@@ -11,10 +11,10 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void SortByDistanceForTests_Throws_WhenArgsNull()
         {
-            FluentActions.Invoking(() => LabelUtils.SortByDistanceForTests<object>(null, _ => 0f))
+            FluentActions.Invoking(() => LabelUtils.SortByDistanceForTests<object>(null!, _ => 0f))
                 .Should().Throw<System.ArgumentNullException>();
 
-            FluentActions.Invoking(() => LabelUtils.SortByDistanceForTests(new List<int>(), null))
+            FluentActions.Invoking(() => LabelUtils.SortByDistanceForTests(new List<int>(), null!))
                 .Should().Throw<System.ArgumentNullException>();
         }
 

@@ -12,12 +12,12 @@ namespace ClickIt.Services
         private RectangleF _manaAndSkillsRectangle;
         private RectangleF _buffsAndDebuffsRectangle;
 
-        // Thread safety lock for screen area updates
         private readonly object _screenAreasLock = new();
         public RectangleF FullScreenRectangle => _fullScreenRectangle;
         public RectangleF HealthAndFlaskRectangle => _healthAndFlaskRectangle;
         public RectangleF ManaAndSkillsRectangle => _manaAndSkillsRectangle;
         public RectangleF BuffsAndDebuffsRectangle => _buffsAndDebuffsRectangle;
+
         public void UpdateScreenAreas(GameController gameController)
         {
             using (LockManager.AcquireStatic(_screenAreasLock))
@@ -52,6 +52,7 @@ namespace ClickIt.Services
                 }
             }
         }
+
         public bool PointIsInClickableArea(Vector2 point)
         {
             using (LockManager.AcquireStatic(_screenAreasLock))
@@ -61,6 +62,16 @@ namespace ClickIt.Services
                        !point.PointInRectangle(_manaAndSkillsRectangle) &&
                        !point.PointInRectangle(_buffsAndDebuffsRectangle);
             }
+        }
+
+        public bool PointIsInClickableArea(GameController? gameController, Vector2 point)
+        {
+            if (gameController != null)
+            {
+                UpdateScreenAreas(gameController);
+            }
+
+            return PointIsInClickableArea(point);
         }
     }
 }

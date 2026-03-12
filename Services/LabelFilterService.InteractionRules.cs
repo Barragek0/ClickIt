@@ -227,8 +227,8 @@ namespace ClickIt.Services
             if (chest?.IsLocked != false)
                 return false;
 
-            IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? Array.Empty<string>();
-            IReadOnlyList<string> dontClickMetadata = settings.StrongboxDontClickMetadata ?? Array.Empty<string>();
+            IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? [];
+            IReadOnlyList<string> dontClickMetadata = settings.StrongboxDontClickMetadata ?? [];
             string renderName = label.ItemOnGround.RenderName ?? string.Empty;
             bool isUniqueStrongbox = IsUniqueStrongbox(label);
 

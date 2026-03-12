@@ -1,14 +1,12 @@
 ﻿using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared.Enums;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ClickIt.Utils;
 using ClickIt.Definitions;
-using ExileCore;
 using System.Diagnostics.CodeAnalysis;
-#nullable enable
+
 namespace ClickIt.Services
 {
     public partial class LabelFilterService(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler, ExileCore.GameController? gameController)
@@ -22,11 +20,12 @@ namespace ClickIt.Services
         private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        public bool HasLazyModeRestrictedItemsOnScreen(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
+        public bool HasLazyModeRestrictedItemsOnScreen(IReadOnlyList<LabelOnGround>? allLabels)
         {
             return LazyModeRestrictedChecker(this, allLabels);
         }
-        private bool HasLazyModeRestrictedItemsOnScreenImpl(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
+
+        private bool HasLazyModeRestrictedItemsOnScreenImpl(IReadOnlyList<LabelOnGround>? allLabels)
         {
             if (allLabels == null)
                 return false;
@@ -52,7 +51,8 @@ namespace ClickIt.Services
             }
             return false;
         }
-        public static List<LabelOnGround> FilterHarvestLabels(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels, Func<Vector2, bool> isInClickableArea)
+
+        public static List<LabelOnGround> FilterHarvestLabels(IReadOnlyList<LabelOnGround>? allLabels, Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = [];
             if (allLabels == null)
@@ -69,14 +69,6 @@ namespace ClickIt.Services
             if (result.Count > 1)
                 result.Sort((a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
             return result;
-        }
-        public LabelOnGround? GetNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (allLabels == null || allLabels.Count == 0)
-                return null;
-            var clickSettings = CreateClickSettings(allLabels);
-
-            return SelectNextLabelByPriority(allLabels, 0, allLabels.Count, clickSettings);
         }
 
         // Overload to search only a slice of the provided label list without allocating a new list.
@@ -260,7 +252,7 @@ namespace ClickIt.Services
             }
         }
 
-        private ClickSettings CreateClickSettings(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels)
+        private ClickSettings CreateClickSettings(IReadOnlyList<LabelOnGround>? allLabels)
         {
             var s = _settings;
 
@@ -311,6 +303,7 @@ namespace ClickIt.Services
                 MechanicPriorityDistancePenalty = s.MechanicPriorityDistancePenalty.Value
             };
         }
+
         private struct ClickSettings
         {
             public int ClickDistance { get; set; }
@@ -349,7 +342,6 @@ namespace ClickIt.Services
             public IReadOnlySet<string> IgnoreDistanceMechanicIds { get; set; }
             public int MechanicPriorityDistancePenalty { get; set; }
         }
-
 
         public bool ShouldCorruptEssence(LabelOnGround label)
         {

@@ -83,8 +83,9 @@ namespace ClickIt.Tests.Unit
                 // The StartCoroutines implementation may call into runtime-specific threads; ignore reflection errors but assert that at least the altar coroutine was created.
             }
 
-            ctx.AltarCoroutine.Should().NotBeNull();
-            ctx.AltarCoroutine.Priority.Should().Be(ExileCore.Shared.Enums.CoroutinePriority.Normal);
+            var altarCoroutine = ctx.AltarCoroutine;
+            altarCoroutine.Should().NotBeNull();
+            altarCoroutine!.Priority.Should().Be(ExileCore.Shared.Enums.CoroutinePriority.Normal);
         }
 
         [TestMethod]

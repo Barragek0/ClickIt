@@ -30,15 +30,22 @@ namespace ClickIt.Tests.Unit
             var method = typeof(LabelFilterService).GetMethod("CreateClickSettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             method.Should().NotBeNull();
 
-            var result = method.Invoke(svc, [null]);
+            var result = method!.Invoke(svc, [null]);
             result.Should().NotBeNull();
 
             // ClickSettings is a private nested type - reflect its properties to assert mapping
-            var clickSettingsType = result.GetType();
+            var clickSettingsType = result!.GetType();
 
-            int clickDistance = (int)clickSettingsType.GetProperty("ClickDistance").GetValue(result)!;
-            bool clickLeagueChests = (bool)clickSettingsType.GetProperty("ClickLeagueChests").GetValue(result)!;
-            bool clickSettlersOre = (bool)clickSettingsType.GetProperty("ClickSettlersOre").GetValue(result)!;
+            var clickDistanceProperty = clickSettingsType.GetProperty("ClickDistance");
+            var clickLeagueChestsProperty = clickSettingsType.GetProperty("ClickLeagueChests");
+            var clickSettlersOreProperty = clickSettingsType.GetProperty("ClickSettlersOre");
+            clickDistanceProperty.Should().NotBeNull();
+            clickLeagueChestsProperty.Should().NotBeNull();
+            clickSettlersOreProperty.Should().NotBeNull();
+
+            int clickDistance = (int)clickDistanceProperty!.GetValue(result)!;
+            bool clickLeagueChests = (bool)clickLeagueChestsProperty!.GetValue(result)!;
+            bool clickSettlersOre = (bool)clickSettlersOreProperty!.GetValue(result)!;
 
             clickDistance.Should().Be(settings.ClickDistance.Value);
             clickLeagueChests.Should().Be(settings.ClickLeagueChests.Value);
@@ -68,12 +75,18 @@ namespace ClickIt.Tests.Unit
 
             // Invoke private CreateClickSettings
             var method = typeof(LabelFilterService).GetMethod("CreateClickSettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var result = method.Invoke(svc, [list]);
+            var result = method!.Invoke(svc, [list]);
+            result.Should().NotBeNull();
 
-            var clickSettingsType = result.GetType();
+            var clickSettingsType = result!.GetType();
 
-            bool clickLeagueChests = (bool)clickSettingsType.GetProperty("ClickLeagueChests").GetValue(result)!;
-            bool clickSettlersOre = (bool)clickSettingsType.GetProperty("ClickSettlersOre").GetValue(result)!;
+            var clickLeagueChestsProperty = clickSettingsType.GetProperty("ClickLeagueChests");
+            var clickSettlersOreProperty = clickSettingsType.GetProperty("ClickSettlersOre");
+            clickLeagueChestsProperty.Should().NotBeNull();
+            clickSettlersOreProperty.Should().NotBeNull();
+
+            bool clickLeagueChests = (bool)clickLeagueChestsProperty!.GetValue(result)!;
+            bool clickSettlersOre = (bool)clickSettlersOreProperty!.GetValue(result)!;
 
             // Since lazy mode is active, and we placed a restricted item (PetrifiedWood) within click distance,
             // CreateClickSettings should apply lazy-mode restrictions and disable both ClickLeagueChests and ClickSettlersOre.

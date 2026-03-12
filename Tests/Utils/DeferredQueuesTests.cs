@@ -168,7 +168,7 @@ namespace ClickIt.Tests.Utils
             // Create uninitialized Graphics instances - calling instance methods on these objects
             // will likely throw, but Deferred*Queue.Flush swallows exceptions around Draw* calls.
             var gfxType = typeof(ExileCore.Graphics);
-            var gfx = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(gfxType) as ExileCore.Graphics;
+            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(gfxType);
 
             // Should not throw even if DrawFrame/DrawText throws internally due to uninitialized object state
             tf.Flush(gfx, (s, f) => { });

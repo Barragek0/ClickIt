@@ -172,17 +172,6 @@ namespace ClickIt.Services
             return true;
         }
 
-        public Element? GetAltarElementToClick(PrimaryAltarComponent altar)
-        {
-            var altarWeights = altar.GetCachedWeights(pc => weightCalculator.CalculateAltarWeights(pc));
-            if (!altarWeights.HasValue) return null;
-
-            RectangleF topModsRect = altar.GetTopModsRect();
-            RectangleF bottomModsRect = altar.GetBottomModsRect();
-            Vector2 topModsTopLeft = topModsRect.TopLeft;
-            return altarDisplayRenderer.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
-        }
-
         private IEnumerator ClickAltarElement(Element element, bool leftHanded)
         {
             DebugLog(() => "[ClickAltarElement] Starting");

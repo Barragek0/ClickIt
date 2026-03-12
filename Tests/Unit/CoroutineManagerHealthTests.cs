@@ -23,7 +23,9 @@ namespace ClickIt.Tests.Unit
 
             try
             {
-                var res = (float)mi!.Invoke(cm, Array.Empty<object>());
+                var resObj = mi!.Invoke(cm, Array.Empty<object>());
+                resObj.Should().NotBeNull();
+                var res = (float)resObj!;
                 res.Should().Be(100f);
             }
             catch (System.Reflection.TargetInvocationException tie) when (tie.InnerException is NullReferenceException)
@@ -49,7 +51,9 @@ namespace ClickIt.Tests.Unit
 
             try
             {
-                var res = (float)mi!.Invoke(cm, Array.Empty<object>());
+                var resObj = mi!.Invoke(cm, Array.Empty<object>());
+                resObj.Should().NotBeNull();
+                var res = (float)resObj!;
                 res.Should().Be(100f);
             }
             catch (System.Reflection.TargetInvocationException tie) when (tie.InnerException is NullReferenceException)

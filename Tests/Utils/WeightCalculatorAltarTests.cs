@@ -14,7 +14,7 @@ namespace ClickIt.Tests.Utils
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
 
-            Assert.ThrowsException<System.ArgumentException>(() => calc.CalculateAltarWeights(null));
+            Assert.ThrowsException<System.ArgumentException>(() => calc.CalculateAltarWeights(null!));
         }
 
         [TestMethod]

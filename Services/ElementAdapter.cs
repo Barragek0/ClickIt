@@ -2,14 +2,9 @@ using ExileCore.PoEMemory;
 
 namespace ClickIt.Services
 {
-    public class ElementAdapter : IElementAdapter
+    public class ElementAdapter(Element? element) : IElementAdapter
     {
-        public ElementAdapter(Element? element)
-        {
-            Underlying = element;
-        }
-
-        public Element? Underlying { get; }
+        public Element? Underlying { get; } = element;
 
         private IElementAdapter? _parent;
         public IElementAdapter? Parent

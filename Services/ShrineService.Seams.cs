@@ -9,11 +9,6 @@ namespace ClickIt.Services
             _threadLocalShrineList = null;
         }
 
-        internal static int GetThreadLocalShrineListCountForTests()
-        {
-            return GetThreadLocalShrineList().Count;
-        }
-
         internal static int GetThreadLocalShrineListInstanceIdForTests()
         {
             return RuntimeHelpers.GetHashCode(GetThreadLocalShrineList());

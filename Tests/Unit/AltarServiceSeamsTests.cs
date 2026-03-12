@@ -16,7 +16,7 @@ namespace ClickIt.Tests.Unit
             var primary = TestUtils.TestBuilders.BuildPrimary();
 
             // Passing null for the element parameter should throw ArgumentNullException
-            FluentActions.Invoking(() => AltarService.UpdateAltarComponentFromAdapter(true, primary, null, [], [], false))
+            FluentActions.Invoking(() => AltarService.UpdateAltarComponentFromAdapter(true, primary, null!, [], [], false))
                 .Should().Throw<System.ArgumentNullException>();
         }
 
@@ -49,12 +49,13 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var svc = new AltarService(clickIt, settings, null);
 
-            var mi = typeof(AltarService).GetMethod("RecordUnmatchedMod", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var mi = typeof(AltarService).GetMethod("RecordUnmatchedMod", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                     ?? throw new System.InvalidOperationException("RecordUnmatchedMod method not found.");
             mi.Should().NotBeNull();
 
             // Add six unique unmatched mods -> should trim to last 5
             string neg = "N";
-            mi.Invoke(svc, ["a1", neg]);
+            _ = mi.Invoke(svc, ["a1", neg]);
             mi.Invoke(svc, ["b2", neg]);
             mi.Invoke(svc, ["c3", neg]);
             mi.Invoke(svc, ["d4", neg]);
@@ -77,7 +78,8 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var svc = new AltarService(clickIt, settings, null);
 
-            var mi = typeof(AltarService).GetMethod("RecordUnmatchedMod", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var mi = typeof(AltarService).GetMethod("RecordUnmatchedMod", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                     ?? throw new System.InvalidOperationException("RecordUnmatchedMod method not found.");
             mi.Should().NotBeNull();
 
             string neg = "X";

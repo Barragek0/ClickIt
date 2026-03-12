@@ -12,8 +12,8 @@ namespace ClickIt.Rendering
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
         private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
         private readonly ClickItSettings _settings = settings;
-        private IReadOnlyList<string> _cachedClickMetadata = Array.Empty<string>();
-        private IReadOnlyList<string> _cachedDontClickMetadata = Array.Empty<string>();
+        private IReadOnlyList<string> _cachedClickMetadata = [];
+        private IReadOnlyList<string> _cachedDontClickMetadata = [];
         private HashSet<string>? _clickIdsSnapshot;
         private HashSet<string>? _dontClickIdsSnapshot;
 

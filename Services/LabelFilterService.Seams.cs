@@ -19,8 +19,8 @@ namespace ClickIt.Services
 
         internal static bool MatchesMetadataFiltersForTests(string metadataPath, string itemName, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)
         {
-            whitelist ??= Array.Empty<string>();
-            blacklist ??= Array.Empty<string>();
+            whitelist ??= [];
+            blacklist ??= [];
 
             bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, whitelist);
             if (!whitelistPass)

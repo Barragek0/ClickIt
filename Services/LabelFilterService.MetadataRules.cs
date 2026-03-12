@@ -6,8 +6,6 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 
-#nullable enable
-
 namespace ClickIt.Services
 {
     public partial class LabelFilterService
@@ -16,8 +14,8 @@ namespace ClickIt.Services
         {
             string metadata = GetWorldItemMetadataPath(item);
             string itemName = GetWorldItemBaseName(item);
-            IReadOnlyList<string> whitelist = settings.ItemTypeWhitelistMetadata ?? Array.Empty<string>();
-            IReadOnlyList<string> blacklist = settings.ItemTypeBlacklistMetadata ?? Array.Empty<string>();
+            IReadOnlyList<string> whitelist = settings.ItemTypeWhitelistMetadata ?? [];
+            IReadOnlyList<string> blacklist = settings.ItemTypeBlacklistMetadata ?? [];
 
             bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadata, itemName, item, whitelist);
             if (!whitelistPass)
@@ -185,32 +183,6 @@ namespace ClickIt.Services
                     return false;
 
                 return string.Equals(baseItemType.ClassName, "StackableCurrency", StringComparison.OrdinalIgnoreCase);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static bool IsStackableCurrency(Entity item, GameController? gameController)
-        {
-            try
-            {
-                WorldItem? world = item?.GetComponent<WorldItem>();
-                return IsStackableCurrencyCore(world?.ItemEntity, gameController);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static bool IsStackableCurrency(LabelOnGround label, GameController? gameController)
-        {
-            try
-            {
-                WorldItem? world = label.ItemOnGround?.GetComponent<WorldItem>();
-                return IsStackableCurrencyCore(world?.ItemEntity, gameController);
             }
             catch
             {

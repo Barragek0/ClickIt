@@ -31,25 +31,25 @@ namespace ClickIt.Rendering
 
             if (weights.TopUpsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Top upside", altar.TopMods?.GetAllUpsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Top upside", altar.TopMods?.GetAllUpsides() ?? [], topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.TopDownsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Top downside", altar.TopMods?.GetAllDownsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Top downside", altar.TopMods?.GetAllDownsides() ?? [], topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.BottomUpsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Bottom upside", altar.BottomMods?.GetAllUpsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Bottom upside", altar.BottomMods?.GetAllUpsides() ?? [], topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }
             if (weights.BottomDownsideWeight <= 0)
             {
-                DrawUnrecognizedWeightText("Bottom downside", altar.BottomMods?.GetAllDownsides() ?? Array.Empty<string>(), topModsTopLeft + offset120_Minus60);
+                DrawUnrecognizedWeightText("Bottom downside", altar.BottomMods?.GetAllDownsides() ?? [], topModsTopLeft + offset120_Minus60);
                 DrawYellowFrames(topModsRect, bottomModsRect);
                 return null;
             }

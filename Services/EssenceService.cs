@@ -21,6 +21,7 @@ namespace ClickIt.Services
 
             return LabelUtils.ElementContainsAnyStrings(label, selectedEssences);
         }
+
         public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
         {
             Element? corruptElement = label.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);

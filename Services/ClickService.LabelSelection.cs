@@ -8,8 +8,6 @@ using ClickIt.Utils;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 
-#nullable enable
-
 namespace ClickIt.Services
 {
     public partial class ClickService

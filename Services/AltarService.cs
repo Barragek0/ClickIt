@@ -30,14 +30,12 @@ namespace ClickIt.Services
         private readonly ClickItSettings _settings = settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels = cachedLabels;
         private readonly AltarRepository _altarRepository = new();
-
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
-
         private readonly AltarMatcher _altarMatcher = new();
-
         public List<PrimaryAltarComponent> GetAltarComponents() => _altarRepository.GetAltarComponents();
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarRepository.GetAltarComponentsReadOnly();
         public int GetAltarComponentCount() => _altarRepository.GetAltarComponentCount();
+
         public void ClearAltarComponents()
         {
             _altarRepository.ClearAltarComponents();
@@ -77,6 +75,7 @@ namespace ClickIt.Services
 
             _altarRepository.RemoveAltarComponentsByElement(ShouldRemove);
         }
+
         public List<LabelOnGround> GetAltarLabels(AltarType type)
         {
             List<LabelOnGround> result = [];
@@ -97,33 +96,7 @@ namespace ClickIt.Services
             return result;
         }
         public bool AddAltarComponent(PrimaryAltarComponent component) => _altarRepository.AddAltarComponent(component);
-        public void UpdateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
-            Element ElementToExtractDataFrom, AltarType altarType)
-        {
-            var (negativeModType, mods) = ExtractModsFromElement(ElementToExtractDataFrom);
-            var (upsides, downsides, hasUnmatchedMods) = ProcessMods(mods, negativeModType);
-            UpdateAltarComponent(top, altarComponent, ElementToExtractDataFrom, upsides, downsides, hasUnmatchedMods);
-        }
-        private (string negativeModType, List<string> mods) ExtractModsFromElement(Element element)
-        {
-            string negativeModType = "";
-            List<string> mods = [];
-            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(AltarModsTextReadLength));
-            int lineCount = TextHelpers.CountLines(altarMods);
-            for (int i = 0; i < lineCount; i++)
-            {
-                string line = TextHelpers.GetLine(altarMods, i);
-                if (i == 0)
-                {
-                    negativeModType = line;
-                }
-                else if (line != null)
-                {
-                    mods.Add(line);
-                }
-            }
-            return (negativeModType, mods);
-        }
+
         private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {
             var (upsides, downsides, unmatched) = AltarParser.ProcessMods(mods, negativeModType, (mod, neg) =>

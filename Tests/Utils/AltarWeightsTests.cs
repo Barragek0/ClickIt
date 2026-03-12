@@ -13,7 +13,7 @@ namespace ClickIt.Tests.Utils
         {
             var aw = new AltarWeights();
 
-            aw.InitializeFromArrays(null, null, null, null);
+            aw.InitializeFromArrays(null!, null!, null!, null!);
 
             var topUps = aw.GetTopUpsideWeights();
             topUps.Should().HaveCount(8);
@@ -27,7 +27,7 @@ namespace ClickIt.Tests.Utils
         public void Indexer_SetGet_WorksAcrossTypes()
         {
             var aw = new AltarWeights();
-            aw.InitializeFromArrays(null, null, null, null);
+            aw.InitializeFromArrays(null!, null!, null!, null!);
 
             aw["topdownside", 1] = 11m;
             aw["bottomupside", 1] = 22m;
@@ -42,7 +42,7 @@ namespace ClickIt.Tests.Utils
         public void Indexer_OutOfRange_ThrowsIndexOutOfRangeException()
         {
             var aw = new AltarWeights();
-            aw.InitializeFromArrays(null, null, null, null);
+            aw.InitializeFromArrays(null!, null!, null!, null!);
 
             Action act = () => { _ = aw["topupside", 8]; };
             act.Should().Throw<IndexOutOfRangeException>();
@@ -52,7 +52,7 @@ namespace ClickIt.Tests.Utils
         public void Indexer_UnknownType_ReturnsZero()
         {
             var aw = new AltarWeights();
-            aw.InitializeFromArrays(null, null, null, null);
+            aw.InitializeFromArrays(null!, null!, null!, null!);
 
             // unknown key should yield 0 rather than throwing
             aw["notatype", 2].Should().Be(0m);

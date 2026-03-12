@@ -16,8 +16,10 @@ namespace ClickIt.Tests.Unit
             // Provide minimal settings + error handler to avoid DebugLog NRE when method reaches logging
             var settingsField = typeof(Services.ClickService).GetField("settings", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var errorField = typeof(Services.ClickService).GetField("errorHandler", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            settingsField.SetValue(svc, new ClickItSettings());
-            errorField.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
+            settingsField.Should().NotBeNull();
+            errorField.Should().NotBeNull();
+            settingsField!.SetValue(svc, new ClickItSettings());
+            errorField!.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
 
             // Primary constructed as Unknown type
             var primary = TestBuilders.BuildPrimary();
@@ -33,8 +35,10 @@ namespace ClickIt.Tests.Unit
             // Provide minimal settings + error handler to avoid DebugLog NRE when method reaches logging
             var settingsField2 = typeof(Services.ClickService).GetField("settings", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var errorField2 = typeof(Services.ClickService).GetField("errorHandler", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            settingsField2.SetValue(svc, new ClickItSettings());
-            errorField2.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
+            settingsField2.Should().NotBeNull();
+            errorField2.Should().NotBeNull();
+            settingsField2!.SetValue(svc, new ClickItSettings());
+            errorField2!.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
 
             // Construct an Eater altar with missing element data -> IsValidCached should be false
             var top = TestBuilders.BuildSecondary();
@@ -53,8 +57,10 @@ namespace ClickIt.Tests.Unit
             // Provide minimal settings + error handler to avoid DebugLog NRE when method reaches logging
             var settingsField3 = typeof(Services.ClickService).GetField("settings", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var errorField3 = typeof(Services.ClickService).GetField("errorHandler", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            settingsField3.SetValue(svc, new ClickItSettings());
-            errorField3.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
+            settingsField3.Should().NotBeNull();
+            errorField3.Should().NotBeNull();
+            settingsField3!.SetValue(svc, new ClickItSettings());
+            errorField3!.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
 
             var top = TestBuilders.BuildSecondary();
             var bottom = TestBuilders.BuildSecondary();
@@ -65,8 +71,10 @@ namespace ClickIt.Tests.Unit
             // Force internal cache state to appear valid (so IsValidCached returns true)
             var cacheField = typeof(PrimaryAltarComponent).GetField("_isValidCache", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var timeField = typeof(PrimaryAltarComponent).GetField("_lastValidationTime", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            cacheField.SetValue(primary, (bool?)true);
-            timeField.SetValue(primary, long.MaxValue);
+            cacheField.Should().NotBeNull();
+            timeField.Should().NotBeNull();
+            cacheField!.SetValue(primary, (bool?)true);
+            timeField!.SetValue(primary, long.MaxValue);
 
             // Elements remain null on the secondary components, so element validity check should fail
             svc.ShouldClickAltar(primary, clickEater: true, clickExarch: false).Should().BeFalse();

@@ -10,23 +10,16 @@ namespace ClickIt.Tests.Unit
     public class ClickItPointIsInClickableAreaTests
     {
         [TestMethod]
-        public void PointIsInClickableArea_ReturnsFalse_WhenAreaServiceMissing()
+        public void PointIsInClickableArea_ReturnsFalse_WhenAreasAreNotInitialized()
         {
-            var clickIt = new ClickIt();
-            clickIt.__Test_SetSettings(new ClickItSettings());
-
-            clickIt.State.AreaService = null; // explicit
-
-            var res = PrivateMethodAccessor.Invoke<bool>(clickIt, "PointIsInClickableArea", new Vector2(10, 10), null);
+            var svc = new AreaService();
+            var res = svc.PointIsInClickableArea(null, new Vector2(10, 10));
             res.Should().BeFalse();
         }
 
         [TestMethod]
-        public void PointIsInClickableArea_DelegatesToAreaService_WhenPresent()
+        public void PointIsInClickableArea_UsesAreaService_WhenPresent()
         {
-            var clickIt = new ClickIt();
-            clickIt.__Test_SetSettings(new ClickItSettings());
-
             // Create and configure AreaService directly so we avoid GameController dependency
             var svc = new AreaService();
             // Set private rectangles via reflection to define the allowed area
@@ -37,11 +30,9 @@ namespace ClickIt.Tests.Unit
 
             SetAreaRectangles(svc, full, health, mana, buffs);
 
-            clickIt.State.AreaService = svc;
-
             // choose a point inside the full screen rectangle and not in any blocked area
             var p = new Vector2(20, 20);
-            var res = PrivateMethodAccessor.Invoke<bool>(clickIt, "PointIsInClickableArea", p, null);
+            var res = svc.PointIsInClickableArea(null, p);
             res.Should().BeTrue();
         }
 

@@ -126,7 +126,6 @@ namespace ClickIt.Tests.Unit
                     long ticks = TimeSpan.FromMilliseconds(500).Ticks;
                     f.SetValue(sw, ticks);
                     break;
-                    break;
                 }
             }
             // As a sanity check ensure the timer now claims to be past the threshold

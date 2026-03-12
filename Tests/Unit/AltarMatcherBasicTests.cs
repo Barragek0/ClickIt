@@ -11,7 +11,7 @@ namespace ClickIt.Tests.Unit
         public void CleanAltarModsText_ReturnsEmpty_ForNullInput()
         {
             var matcher = new AltarMatcher();
-            string result = matcher.CleanAltarModsText(null);
+            string result = matcher.CleanAltarModsText(null!);
             result.Should().Be(string.Empty);
         }
 

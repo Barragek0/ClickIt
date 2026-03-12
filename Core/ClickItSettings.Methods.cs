@@ -1081,14 +1081,14 @@ namespace ClickIt
         {
             if (!ItemCategoryCatalog.TryGet(categoryId, out ItemCategoryDefinition? category))
             {
-                return Array.Empty<string>();
+                return [];
             }
 
             if (!TryGetSubtypeDefinitions(categoryId, out ItemSubtypeDefinition[] subtypeDefinitions))
             {
                 if (includeOppositeSubtypeSelections)
                 {
-                    return Array.Empty<string>();
+                    return [];
                 }
 
                 return category.MetadataIdentifiers;
@@ -1099,7 +1099,7 @@ namespace ClickIt
             {
                 if (includeOppositeSubtypeSelections)
                 {
-                    return Array.Empty<string>();
+                    return [];
                 }
 
                 return category.MetadataIdentifiers;

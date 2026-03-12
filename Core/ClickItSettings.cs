@@ -356,9 +356,9 @@ namespace ClickIt
         private string strongboxSearchFilter = "";
         private string ultimatumSearchFilter = "";
         private string _lastSettingsUiError = string.Empty;
-        private string[] _ultimatumPrioritySnapshot = Array.Empty<string>();
-        private string[] _mechanicPrioritySnapshot = Array.Empty<string>();
-        private string[] _mechanicIgnoreDistanceSnapshot = Array.Empty<string>();
+        private string[] _ultimatumPrioritySnapshot = [];
+        private string[] _mechanicPrioritySnapshot = [];
+        private string[] _mechanicIgnoreDistanceSnapshot = [];
         public ClickItSettings()
         {
             InitializeDefaultWeights();
