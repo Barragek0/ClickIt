@@ -304,7 +304,8 @@ namespace ClickIt.Services
                 ClickLegionPillars = s.ClickLegionPillars.Value,
                 ClickRitualInitiate = s.ClickRitualInitiate.Value,
                 ClickRitualCompleted = s.ClickRitualCompleted.Value,
-                ClickUltimatum = s.ClickUltimatum.Value,
+                ClickInitialUltimatum = s.IsInitialUltimatumClickEnabled(),
+                ClickOtherUltimatum = s.IsOtherUltimatumClickEnabled(),
                 MechanicPriorityIndexMap = _cachedMechanicPriorityIndexMap,
                 IgnoreDistanceMechanicIds = _cachedMechanicIgnoreDistanceSet,
                 MechanicPriorityDistancePenalty = s.MechanicPriorityDistancePenalty.Value
@@ -328,7 +329,8 @@ namespace ClickIt.Services
             public bool ClickLegionPillars { get; set; }
             public bool ClickRitualInitiate { get; set; }
             public bool ClickRitualCompleted { get; set; }
-            public bool ClickUltimatum { get; set; }
+            public bool ClickInitialUltimatum { get; set; }
+            public bool ClickOtherUltimatum { get; set; }
             public bool ClickAzurite { get; set; }
             public bool ClickDelveSpawners { get; set; }
             public bool HighlightEater { get; set; }

@@ -148,7 +148,7 @@ namespace ClickIt.Services
                 (settings.ClickAlvaTempleDoors, MechanicAlvaTempleDoors, static p => p.Contains(Constants.ClosedDoorPast)),
                 (settings.ClickLegionPillars, MechanicLegionPillars, static p => p.Contains(Constants.LegionInitiator)),
                 (settings.ClickAzurite, MechanicAzuriteVeins, static p => p.Contains("AzuriteEncounterController")),
-                (settings.ClickUltimatum, MechanicUltimatum, static p => IsUltimatumPath(p)),
+                (settings.ClickInitialUltimatum, MechanicUltimatum, static p => IsUltimatumPath(p)),
                 (settings.ClickDelveSpawners, MechanicDelveSpawners, static p => p.Contains("Delve/Objects/Encounter")),
                 (settings.ClickCrafting, MechanicCraftingRecipes, static p => p.Contains("CraftingUnlocks")),
                 (settings.ClickBreach, MechanicBreachNodes, static p => p.Contains(Constants.Brequel)),

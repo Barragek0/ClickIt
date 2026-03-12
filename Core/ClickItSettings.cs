@@ -114,15 +114,19 @@ namespace ClickIt
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
         [Menu("Disable Hotkey", "When Lazy Mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1200)]
         public HotkeyNode LazyModeDisableKey { get; set; } = new HotkeyNode(Keys.F2);
-        [Menu("Restore cursor position after each click", "When enabled, restores cursor to original position after clicking in lazy mode.", 4, 1200)]
+        [Menu("Disable Hotkey Toggle Mode", "When enabled, pressing the Disable Hotkey toggles lazy mode clicking on/off until you press it again.\nWhen disabled, the hotkey works as hold-to-disable.", 4, 1200)]
+        public ToggleNode LazyModeDisableKeyToggleMode { get; set; } = new ToggleNode(false);
+        [Menu("Restore cursor position after each click", "When enabled, restores cursor to original position after clicking in lazy mode.", 5, 1200)]
         public ToggleNode RestoreCursorInLazyMode { get; set; } = new ToggleNode(true);
-        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 5, 1200)]
+        [Menu("Restore Cursor Delay (ms)", "Delay before restoring cursor position after a lazy-mode click when cursor restore is enabled.", 6, 1200)]
+        public RangeNode<int> LazyModeRestoreCursorDelayMs { get; set; } = new RangeNode<int>(10, 0, 30);
+        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 7, 1200)]
         public RangeNode<int> LazyModeUIHoverSleep { get; set; } = new RangeNode<int>(20, 20, 40);
-        [Menu("Disable lazy mode while left click held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 6, 1200)]
+        [Menu("Disable lazy mode while left click held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 8, 1200)]
         public ToggleNode DisableLazyModeLeftClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Disable lazy mode while right click held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 7, 1200)]
+        [Menu("Disable lazy mode while right click held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 9, 1200)]
         public ToggleNode DisableLazyModeRightClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Lever Reclick Delay (ms)", "When Lazy Mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 8, 1200)]
+        [Menu("Lever Reclick Delay (ms)", "When Lazy Mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 10, 1200)]
         public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
 
 
@@ -225,11 +229,13 @@ namespace ClickIt
         // ----- Ultimatum -----
         [Menu("Ultimatum", 1700)]
         public EmptyNode Ultimatum { get; set; } = new EmptyNode();
-        [Menu("Click Ultimatum", "Click and select Ultimatum modifier options by configured priority.", 1, 1700)]
-        public ToggleNode ClickUltimatum { get; set; } = new ToggleNode(false);
-        [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 2, 1700)]
+        [Menu("Click Initial Ultimatum", "Click the first Ultimatum interaction from the ground label, then click Begin using configured modifier priority.", 1, 1700)]
+        public ToggleNode ClickInitialUltimatum { get; set; } = new ToggleNode(false);
+        [Menu("Click Ultimatum Choices", "Click later Ultimatum panel choices/confirm interactions using configured modifier priority.", 2, 1700)]
+        public ToggleNode ClickUltimatumChoices { get; set; } = new ToggleNode(false);
+        [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 3, 1700)]
         public ToggleNode ShowUltimatumOptionOverlay { get; set; } = new ToggleNode(true);
-        [Menu("Modifier Priority Table", "", 3, 1700)]
+        [Menu("Modifier Priority Table", "", 4, 1700)]
         [JsonIgnore]
         public CustomNode UltimatumModifierTablePanel { get; }
 

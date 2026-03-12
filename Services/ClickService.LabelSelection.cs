@@ -310,7 +310,7 @@ namespace ClickIt.Services
             if (TryCorruptEssence(nextLabel, windowTopLeft))
                 return true;
 
-            if (!settings.ClickUltimatum.Value || !IsUltimatumLabel(nextLabel))
+            if (!settings.IsInitialUltimatumClickEnabled() || !IsUltimatumLabel(nextLabel))
                 return false;
 
             if (TryClickPreferredUltimatumModifier(nextLabel, windowTopLeft))

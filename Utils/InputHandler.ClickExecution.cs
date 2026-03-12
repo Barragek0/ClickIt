@@ -142,13 +142,15 @@ namespace ClickIt.Utils
             {
                 try
                 {
+                    int restoreDelayMs = _settings?.LazyModeRestoreCursorDelayMs?.Value ?? 10;
+                    Thread.Sleep(restoreDelayMs);
+
                     Vector2 beforeVec = new(before.X, before.Y);
                     if (!Mouse.DisableNativeInput)
                     {
                         Input.SetCursorPos(beforeVec);
                     }
 
-                    Thread.Sleep(5);
                     _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);
                 }
                 catch (Exception ex)

@@ -114,10 +114,16 @@ namespace ClickIt.Rendering
             {
                 var gameController = _plugin.GameController;
                 LabelFilterService? labelFilterService = clickItPlugin.State.LabelFilterService;
+                InputHandler? inputHandler = clickItPlugin.State.InputHandler;
                 if (labelFilterService != null)
                 {
                     var allLabels = (IReadOnlyList<LabelOnGround>?)gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
                     hasRestrictedItems = labelFilterService.HasLazyModeRestrictedItemsOnScreen(allLabels);
+                }
+
+                if (inputHandler != null)
+                {
+                    lazyModeDisableKeyHeld = inputHandler.IsLazyModeDisableActiveForCurrentInputState();
                 }
             }
 

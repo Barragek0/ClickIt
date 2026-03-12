@@ -13,5 +13,21 @@ namespace ClickIt.Tests.Unit
 
             settings.AvoidOverlappingLabelClickPoints.Value.Should().BeTrue();
         }
+
+        [TestMethod]
+        public void LazyModeDisableKeyToggleMode_DefaultsToDisabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.LazyModeDisableKeyToggleMode.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void LazyModeRestoreCursorDelayMs_DefaultsToTen()
+        {
+            var settings = new ClickItSettings();
+
+            settings.LazyModeRestoreCursorDelayMs.Value.Should().Be(10);
+        }
     }
 }

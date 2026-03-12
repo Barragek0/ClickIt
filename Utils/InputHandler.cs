@@ -18,6 +18,8 @@ namespace ClickIt.Utils
         private readonly PerformanceMonitor _performanceMonitor = performanceMonitor;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
+        private bool _lazyModeDisableToggled;
+        private bool _lazyModeDisableKeyWasDown;
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -255,7 +257,7 @@ namespace ClickIt.Utils
             bool lazyModeActive = _settings?.LazyMode != null
                 && _settings.LazyMode.Value
                 && !hasLazyModeRestrictedItemsOnScreen
-                && !Input.GetKeyState(_settings.LazyModeDisableKey.Value);
+                && !IsLazyModeDisableActiveForCurrentInputState();
 
             // In lazy mode, always allow clicking (ignore hotkey state)
             // When not in lazy mode, check hotkey state normally
@@ -285,7 +287,7 @@ namespace ClickIt.Utils
                 (uiState?.AtlasPanel?.IsVisible ?? false, "Atlas panel is open."),
                 (uiState?.AtlasTreePanel?.IsVisible ?? false, "Atlas tree panel is open."),
                 (uiState?.TreePanel?.IsVisible ?? false, "Passive tree panel is open."),
-                ((uiState?.UltimatumPanel?.IsVisible ?? false) && !_settings.ClickUltimatum.Value, "Ultimatum panel is open (ClickUltimatum is disabled)."),
+                ((uiState?.UltimatumPanel?.IsVisible ?? false) && !_settings.IsOtherUltimatumClickEnabled(), "Ultimatum panel is open (Click Ultimatum Choices is disabled)."),
                 (uiState?.BetrayalWindow?.IsVisible ?? false, "Betrayal window is open."),
                 (uiState?.SyndicatePanel?.IsVisible ?? false, "Syndicate panel is open."),
                 (uiState?.SyndicateTree?.IsVisible ?? false, "Syndicate tree panel is open."),
@@ -344,7 +346,7 @@ namespace ClickIt.Utils
 
             var labels = cachedLabels?.Value;
             bool hasRestricted = labelFilterService?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
-            bool disableKeyHeld = Input.GetKeyState(_settings.LazyModeDisableKey.Value);
+            bool disableKeyHeld = IsLazyModeDisableActiveForCurrentInputState();
             var (_, _, mouseButtonBlocks) = GetMouseButtonBlockingState(_settings, Input.GetKeyState);
 
             if (hotkeyHeld)
@@ -353,6 +355,35 @@ namespace ClickIt.Utils
             }
 
             return !hasRestricted && !disableKeyHeld && !mouseButtonBlocks;
+        }
+
+        public bool IsLazyModeDisableActiveForCurrentInputState()
+        {
+            if (!_settings.LazyMode.Value)
+            {
+                _lazyModeDisableToggled = false;
+            }
+
+            bool toggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
+            bool keyDown = Input.GetKeyState(_settings.LazyModeDisableKey.Value);
+            return ResolveLazyModeDisableActive(toggleMode, keyDown, ref _lazyModeDisableToggled, ref _lazyModeDisableKeyWasDown);
+        }
+
+        public static bool ResolveLazyModeDisableActive(bool toggleModeEnabled, bool disableKeyPressed, ref bool toggledState, ref bool wasPressedLastFrame)
+        {
+            if (!toggleModeEnabled)
+            {
+                wasPressedLastFrame = disableKeyPressed;
+                return disableKeyPressed;
+            }
+
+            if (disableKeyPressed && !wasPressedLastFrame)
+            {
+                toggledState = !toggledState;
+            }
+
+            wasPressedLastFrame = disableKeyPressed;
+            return toggledState;
         }
 
         public static (bool leftClickBlocks, bool rightClickBlocks, bool mouseButtonBlocks)

@@ -131,5 +131,41 @@ namespace ClickIt.Tests.Unit
 
             topLuminance.Should().BeGreaterThan(bottomLuminance);
         }
+
+        [TestMethod]
+        public void UltimatumClickModes_DefaultToDisabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.IsInitialUltimatumClickEnabled().Should().BeFalse();
+            settings.IsOtherUltimatumClickEnabled().Should().BeFalse();
+            settings.IsAnyUltimatumClickEnabled().Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void UltimatumClickModes_InitialToggleEnablesAnyMode()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickInitialUltimatum.Value = true;
+
+            settings.IsInitialUltimatumClickEnabled().Should().BeTrue();
+            settings.IsOtherUltimatumClickEnabled().Should().BeFalse();
+            settings.IsAnyUltimatumClickEnabled().Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void UltimatumClickModes_SplitTogglesCanBeEnabledIndependently()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ClickInitialUltimatum.Value = true;
+            settings.IsInitialUltimatumClickEnabled().Should().BeTrue();
+            settings.IsOtherUltimatumClickEnabled().Should().BeFalse();
+
+            settings.ClickInitialUltimatum.Value = false;
+            settings.ClickUltimatumChoices.Value = true;
+            settings.IsInitialUltimatumClickEnabled().Should().BeFalse();
+            settings.IsOtherUltimatumClickEnabled().Should().BeTrue();
+        }
     }
 }

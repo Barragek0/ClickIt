@@ -32,6 +32,26 @@ namespace ClickIt
             }
         }
 
+        public bool IsLazyModeDisableHotkeyToggleModeEnabled()
+        {
+            return LazyModeDisableKeyToggleMode?.Value == true;
+        }
+
+        public bool IsInitialUltimatumClickEnabled()
+        {
+            return ClickInitialUltimatum?.Value == true;
+        }
+
+        public bool IsOtherUltimatumClickEnabled()
+        {
+            return ClickUltimatumChoices?.Value == true;
+        }
+
+        public bool IsAnyUltimatumClickEnabled()
+        {
+            return IsInitialUltimatumClickEnabled() || IsOtherUltimatumClickEnabled();
+        }
+
         private void DrawAltarsPanel()
         {
             DrawExarchSection();

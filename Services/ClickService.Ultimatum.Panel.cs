@@ -12,7 +12,7 @@ namespace ClickIt.Services
     {
         private bool TryHandleUltimatumPanelUi(Vector2 windowTopLeft)
         {
-            if (!settings.ClickUltimatum.Value)
+            if (!settings.IsOtherUltimatumClickEnabled())
                 return false;
 
             if (!TryGetVisibleUltimatumPanel(out object? panelObj) || panelObj == null)
@@ -41,7 +41,7 @@ namespace ClickIt.Services
         {
             previews = [];
 
-            if (!settings.ClickUltimatum.Value)
+            if (!settings.IsOtherUltimatumClickEnabled())
                 return false;
 
             if (!TryGetVisibleUltimatumPanel(out object? panelObj) || panelObj == null)

@@ -25,14 +25,15 @@ namespace ClickIt.Rendering
                 InputHandler.GetMouseButtonBlockingState(_settings, Input.GetKeyState);
 
             var clickLabelKey = _settings.ClickLabelKey.Value;
-            var lazyModeDisableKey = _settings.LazyModeDisableKey.Value;
             bool hotkeyHeld = Input.GetKeyState(clickLabelKey);
-            bool lazyModeDisableHeld = Input.GetKeyState(lazyModeDisableKey);
+            bool lazyModeDisableHeld = _inputHandler.IsLazyModeDisableActiveForCurrentInputState();
+            bool lazyModeDisableToggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
 
             var (textColor, line1, line2, line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,
                 hotkeyHeld,
                 lazyModeDisableHeld,
+                lazyModeDisableToggleMode,
                 mouseButtonBlocks,
                 leftClickBlocks,
                 rightClickBlocks,
@@ -46,33 +47,32 @@ namespace ClickIt.Rendering
             bool hasRestrictedItems,
             bool hotkeyHeld,
             bool lazyModeDisableHeld,
+            bool lazyModeDisableToggleMode,
             bool mouseButtonBlocks,
             bool leftClickBlocks,
             bool rightClickBlocks,
             GameController gameController,
             Keys clickLabelKey)
         {
-            _ = (SharpDX.Color.White, string.Empty, string.Empty, string.Empty);
-
             if (hasRestrictedItems)
             {
                 return hotkeyHeld
-                    ? (SharpDX.Color.LawnGreen, "Blocking overridden by hotkey.", string.Empty, string.Empty)
+                    ? BuildBlockedOverrideStatus()
                     : (SharpDX.Color.Red, "Locked chest or tree detected.", $"Hold {clickLabelKey} to click them.", string.Empty);
             }
 
             if (lazyModeDisableHeld)
             {
-                return (SharpDX.Color.Red, "Lazy mode disabled by hotkey.", "Release to resume lazy clicking.", string.Empty);
+                string resumeHint = lazyModeDisableToggleMode
+                    ? $"Press {_settings.LazyModeDisableKey.Value} again to resume lazy clicking."
+                    : "Release to resume lazy clicking.";
+
+                return (SharpDX.Color.Red, "Lazy mode disabled by hotkey.", resumeHint, string.Empty);
             }
 
             if (mouseButtonBlocks)
             {
-                string buttonName = leftClickBlocks && rightClickBlocks
-                    ? "both mouse buttons"
-                    : leftClickBlocks ? "Left mouse button" : "Right mouse button";
-
-                return (SharpDX.Color.Red, $"{buttonName} held.", "Release to resume lazy clicking.", string.Empty);
+                return (SharpDX.Color.Red, $"{GetBlockingMouseButtonName(leftClickBlocks, rightClickBlocks)} held.", "Release to resume lazy clicking.", string.Empty);
             }
 
             bool isRitualActive = EntityHelpers.IsRitualActive(gameController);
@@ -80,7 +80,7 @@ namespace ClickIt.Rendering
             if (isRitualActive)
             {
                 return hotkeyHeld
-                    ? (SharpDX.Color.LawnGreen, "Blocking overridden by hotkey.", string.Empty, string.Empty)
+                    ? BuildBlockedOverrideStatus()
                     : (SharpDX.Color.Red, "Ritual in progress.", "Complete it to resume lazy clicking.", string.Empty);
             }
 
@@ -91,6 +91,19 @@ namespace ClickIt.Rendering
             }
 
             return (SharpDX.Color.LawnGreen, string.Empty, string.Empty, string.Empty);
+        }
+
+        private static (SharpDX.Color color, string line1, string line2, string line3) BuildBlockedOverrideStatus()
+        {
+            return (SharpDX.Color.LawnGreen, "Blocking overridden by hotkey.", string.Empty, string.Empty);
+        }
+
+        private static string GetBlockingMouseButtonName(bool leftClickBlocks, bool rightClickBlocks)
+        {
+            if (leftClickBlocks && rightClickBlocks)
+                return "both mouse buttons";
+
+            return leftClickBlocks ? "Left mouse button" : "Right mouse button";
         }
 
         private void RenderLazyModeText(float centerX, float topY, SharpDX.Color color, string line1, string line2, string line3)

@@ -51,11 +51,13 @@ namespace ClickIt.Services
         {
             previews = [];
 
-            if (!settings.ClickUltimatum.Value)
+            bool initialEnabled = settings.IsInitialUltimatumClickEnabled();
+            bool otherEnabled = settings.IsOtherUltimatumClickEnabled();
+            if (!initialEnabled && !otherEnabled)
                 return false;
 
-            return (TryGetUltimatumPanelOptionPreview(out previews) && previews.Count > 0)
-                || TryGetUltimatumGroundLabelOptionPreview(out previews);
+            return (otherEnabled && TryGetUltimatumPanelOptionPreview(out previews) && previews.Count > 0)
+                || (initialEnabled && TryGetUltimatumGroundLabelOptionPreview(out previews));
         }
 
         private bool TryGetUltimatumGroundLabelOptionPreview(out List<UltimatumPanelOptionPreview> previews)
@@ -177,9 +179,11 @@ namespace ClickIt.Services
 
             string labelPath = label.ItemOnGround?.Path ?? string.Empty;
             ulong labelAddress = unchecked((ulong)(label.Label?.Address ?? 0));
-            DebugLog(() => $"[TryClickPreferredUltimatumModifier] Entered. ClickUltimatum={settings.ClickUltimatum.Value}, Path='{labelPath}', LabelAddr=0x{labelAddress:X}");
+            bool clickInitialUltimatum = settings.IsInitialUltimatumClickEnabled();
+            bool clickOtherUltimatum = settings.IsOtherUltimatumClickEnabled();
+            DebugLog(() => $"[TryClickPreferredUltimatumModifier] Entered. ClickInitialUltimatum={clickInitialUltimatum}, ClickUltimatumChoices={clickOtherUltimatum}, Path='{labelPath}', LabelAddr=0x{labelAddress:X}");
 
-            if (!settings.ClickUltimatum.Value)
+            if (!clickInitialUltimatum)
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] Disabled by settings.");
                 return false;
