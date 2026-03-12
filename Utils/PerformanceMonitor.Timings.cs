@@ -13,6 +13,9 @@ namespace ClickIt.Utils
             if (_fpsTimer.ElapsedMilliseconds >= 1000)
             {
                 _currentFps = _frameCount / (_fpsTimer.ElapsedMilliseconds / 1000.0);
+                _fpsSampleSum += _currentFps;
+                _fpsSampleCount++;
+                _maxFps = Math.Max(_maxFps, _currentFps);
                 _frameCount = 0;
                 _fpsTimer.Restart();
             }

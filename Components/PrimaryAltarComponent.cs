@@ -28,6 +28,7 @@ namespace ClickIt.Components
         private long _lastWeightCalculationTime;
         private readonly Stopwatch _cacheTimer;
         private const long CACHE_DURATION_MS = 1000;
+        private const long WEIGHT_CACHE_DURATION_MS = 5000;
 
         // Thread safety lock for cache operations
         private readonly object _cacheLock = new();
@@ -74,7 +75,7 @@ namespace ClickIt.Components
             return WithCacheLock(() =>
             {
                 long currentTime = _cacheTimer.ElapsedMilliseconds;
-                if (_cachedWeights.HasValue && (currentTime - _lastWeightCalculationTime) < CACHE_DURATION_MS)
+                if (_cachedWeights.HasValue && (currentTime - _lastWeightCalculationTime) < WEIGHT_CACHE_DURATION_MS)
                 {
                     return _cachedWeights.Value;
                 }

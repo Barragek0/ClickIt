@@ -72,5 +72,53 @@ namespace ClickIt.Tests.Utils
             pm.ShouldTriggerSecondTimerAction(int.MaxValue).Should().BeFalse();
             pm.ShouldTriggerSecondTimerAction(-1).Should().BeTrue();
         }
+
+        [TestMethod]
+        public void GetRenderTimingStats_ReturnsExpectedValues()
+        {
+            var settings = new ClickItSettings();
+            var pm = new PerformanceMonitor(settings);
+            pm.Start();
+
+            pm.StartRenderTiming();
+            pm.StopRenderTiming();
+
+            var stats = pm.GetRenderTimingStats();
+            stats.SampleCount.Should().BeGreaterThan(0);
+            stats.LastMs.Should().BeGreaterOrEqualTo(0);
+            stats.AverageMs.Should().BeGreaterOrEqualTo(0);
+            stats.MaxMs.Should().BeGreaterOrEqualTo(stats.LastMs);
+        }
+
+        [TestMethod]
+        public void GetFpsStats_TracksCurrentAverageAndMax()
+        {
+            var settings = new ClickItSettings();
+            var pm = new PerformanceMonitor(settings);
+
+            pm.RecordFpsSampleForTests(120.0);
+            pm.RecordFpsSampleForTests(80.0);
+
+            var fpsStats = pm.GetFpsStats();
+            fpsStats.Current.Should().Be(80.0);
+            fpsStats.Average.Should().Be(100.0);
+            fpsStats.Max.Should().Be(120.0);
+        }
+
+        [TestMethod]
+        public void RenderSectionStats_TracksLastAverageAndMax()
+        {
+            var settings = new ClickItSettings();
+            var pm = new PerformanceMonitor(settings);
+
+            pm.RecordRenderSectionTiming(RenderSection.FrameFlush, 1.0);
+            pm.RecordRenderSectionTiming(RenderSection.FrameFlush, 3.0);
+
+            var stats = pm.GetRenderSectionStats(RenderSection.FrameFlush);
+            stats.LastMs.Should().Be(3.0);
+            stats.AverageMs.Should().Be(2.0);
+            stats.MaxMs.Should().Be(3.0);
+            stats.SampleCount.Should().Be(2);
+        }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using ClickIt.Components;
+using System.Collections.ObjectModel;
 
 namespace ClickIt.Services
 {
@@ -6,9 +7,19 @@ namespace ClickIt.Services
     {
         private readonly List<PrimaryAltarComponent> _altarComponents = [];
         private readonly object _altarComponentsLock = new();
+        private volatile PrimaryAltarComponent[] _altarSnapshot = [];
+        private volatile ReadOnlyCollection<PrimaryAltarComponent> _altarReadOnlySnapshot = Array.AsReadOnly(Array.Empty<PrimaryAltarComponent>());
 
-        public List<PrimaryAltarComponent> GetAltarComponents() => _altarComponents.ToList();
-        public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarComponents.AsReadOnly();
+        public List<PrimaryAltarComponent> GetAltarComponents() => [.. _altarSnapshot];
+        public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarReadOnlySnapshot;
+        public int GetAltarComponentCount() => _altarSnapshot.Length;
+
+        private void RefreshSnapshotUnderLock()
+        {
+            PrimaryAltarComponent[] snapshot = [.. _altarComponents];
+            _altarSnapshot = snapshot;
+            _altarReadOnlySnapshot = Array.AsReadOnly(snapshot);
+        }
 
         public void ClearAltarComponents()
         {
@@ -17,6 +28,7 @@ namespace ClickIt.Services
                 foreach (var component in _altarComponents)
                     component.InvalidateCache();
                 _altarComponents.Clear();
+                RefreshSnapshotUnderLock();
             }
         }
 
@@ -32,6 +44,8 @@ namespace ClickIt.Services
                         c.InvalidateCache();
                     return remove;
                 });
+
+                RefreshSnapshotUnderLock();
             }
         }
 
@@ -45,6 +59,7 @@ namespace ClickIt.Services
                 if (exists) return false;
 
                 _altarComponents.Add(component);
+                RefreshSnapshotUnderLock();
                 return true;
             }
         }

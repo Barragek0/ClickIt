@@ -8,7 +8,10 @@ namespace ClickIt.Utils
         // Internal helper used by tests to inspect queued frames
         internal (RectangleF Rectangle, Color Color, int Thickness)[] GetSnapshotForTests()
         {
-            return _items.ToArray();
+            lock (_queueLock)
+            {
+                return _items.ToArray();
+            }
         }
     }
 }

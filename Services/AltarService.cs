@@ -37,6 +37,7 @@ namespace ClickIt.Services
 
         public List<PrimaryAltarComponent> GetAltarComponents() => _altarRepository.GetAltarComponents();
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarRepository.GetAltarComponentsReadOnly();
+        public int GetAltarComponentCount() => _altarRepository.GetAltarComponentCount();
         public void ClearAltarComponents()
         {
             _altarRepository.ClearAltarComponents();

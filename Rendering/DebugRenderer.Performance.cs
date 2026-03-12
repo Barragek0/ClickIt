@@ -21,62 +21,104 @@ namespace ClickIt.Rendering
         private const double COROUTINE_MEDIUM_THRESHOLD = 25;
         private const double TARGET_DEVIATION_LOW = 0.05;
         private const double TARGET_DEVIATION_MEDIUM = 0.10;
+        private const int MEMORY_SAMPLE_INTERVAL_MS = 500;
+
+        private readonly Stopwatch _memorySampleStopwatch = Stopwatch.StartNew();
+        private long _cachedMemoryUsageMb;
 
         public int RenderPerformanceDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
             _deferredTextQueue.Enqueue("--- Performance ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            yPos = RenderFps(xPos, yPos, lineHeight, performanceMonitor.CurrentFPS);
+            yPos = RenderFps(xPos, yPos, lineHeight, performanceMonitor.GetFpsStats());
             yPos = RenderMemory(xPos, yPos, lineHeight);
             yPos = RenderRenderTime(xPos, yPos, lineHeight, performanceMonitor);
+            yPos = RenderRenderSectionBreakdown(xPos, yPos, lineHeight, performanceMonitor);
+            yPos = RenderQueueDepthDebug(xPos, yPos, lineHeight);
             yPos = RenderCoroutineTimings(xPos, yPos, lineHeight, performanceMonitor);
 
             return yPos;
         }
 
-        private int RenderFps(int xPos, int yPos, int lineHeight, double fps)
+        private int RenderFps(int xPos, int yPos, int lineHeight, (double Current, double Average, double Max) fpsStats)
         {
-            Color fpsColor = fps >= FPS_HIGH_THRESHOLD ? Color.LawnGreen : fps >= FPS_MEDIUM_THRESHOLD ? Color.Yellow : Color.Red;
-            _deferredTextQueue.Enqueue($"FPS: {fps:F1}", new Vector2(xPos, yPos), fpsColor, 16);
+            double currentFps = fpsStats.Current;
+            Color fpsColor = currentFps >= FPS_HIGH_THRESHOLD ? Color.LawnGreen : currentFps >= FPS_MEDIUM_THRESHOLD ? Color.Yellow : Color.Red;
+            _deferredTextQueue.Enqueue($"FPS: {currentFps:F1} (avg: {fpsStats.Average:F1}, max: {fpsStats.Max:F1})", new Vector2(xPos, yPos), fpsColor, 16);
             return yPos + lineHeight;
         }
 
         private int RenderMemory(int xPos, int yPos, int lineHeight)
         {
-            Process process = Process.GetCurrentProcess();
-            long memoryUsage = process.WorkingSet64 / 1024 / 1024;
-            _deferredTextQueue.Enqueue($"Memory Usage: {memoryUsage} MB", new Vector2(xPos, yPos), Color.Yellow, 16);
+            if (_memorySampleStopwatch.ElapsedMilliseconds >= MEMORY_SAMPLE_INTERVAL_MS || _cachedMemoryUsageMb == 0)
+            {
+                Process process = Process.GetCurrentProcess();
+                _cachedMemoryUsageMb = process.WorkingSet64 / 1024 / 1024;
+                _memorySampleStopwatch.Restart();
+            }
+
+            _deferredTextQueue.Enqueue($"Memory Usage: {_cachedMemoryUsageMb} MB", new Vector2(xPos, yPos), Color.Yellow, 16);
             return yPos + lineHeight;
         }
 
         private int RenderRenderTime(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
-            var renderTimings = performanceMonitor.GetRenderTimingsSnapshot();
-            if (renderTimings == null || renderTimings.Count == 0)
+            var stats = performanceMonitor.GetRenderTimingStats();
+            if (stats.SampleCount == 0)
                 return yPos;
 
-            long lastRenderTime = 0;
-            long sum = 0;
-            long maxRenderTime = long.MinValue;
-            int count = 0;
-            foreach (long t in renderTimings)
-            {
-                lastRenderTime = t;
-                sum += t;
-                if (t > maxRenderTime)
-                    maxRenderTime = t;
-                count++;
-            }
-
-            double avgRenderTime = count > 0 ? (double)sum / count : 0.0;
+            double avgRenderTime = stats.AverageMs;
             Color renderColor = avgRenderTime <= RENDER_TIME_LOW_THRESHOLD
                 ? Color.LawnGreen
                 : avgRenderTime <= RENDER_TIME_MEDIUM_THRESHOLD
                     ? Color.Yellow
                     : Color.Red;
 
-            _deferredTextQueue.Enqueue($"Render: {lastRenderTime} ms (avg: {avgRenderTime:F2}, max: {maxRenderTime})", new Vector2(xPos, yPos), renderColor, 16);
+            double avgRenderFps = avgRenderTime > 0 ? 1000.0 / avgRenderTime : 0.0;
+            double worstFrameFps = stats.MaxMs > 0 ? 1000.0 / stats.MaxMs : 0.0;
+
+            _deferredTextQueue.Enqueue($"Render: {stats.LastMs} ms (avg: {avgRenderTime:F2} ms {avgRenderFps:F1} FPS, max: {stats.MaxMs} ms {worstFrameFps:F1} FPS)", new Vector2(xPos, yPos), renderColor, 16);
+            return yPos + lineHeight;
+        }
+
+        private int RenderRenderSectionBreakdown(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
+        {
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.LazyMode, "Render.Lazy");
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.DebugOverlay, "Render.Debug");
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.AltarOverlay, "Render.Altar");
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.UltimatumOverlay, "Render.Ultimatum");
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.StrongboxOverlay, "Render.Strongbox");
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.TextFlush, "Flush.Text");
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.FrameFlush, "Flush.Frame");
+            return yPos;
+        }
+
+        private int RenderSectionLine(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor, RenderSection section, string label)
+        {
+            var stats = performanceMonitor.GetRenderSectionStats(section);
+            if (stats.SampleCount == 0)
+                return yPos;
+
+            Color color = stats.AverageMs <= RENDER_TIME_LOW_THRESHOLD
+                ? Color.LawnGreen
+                : stats.AverageMs <= RENDER_TIME_MEDIUM_THRESHOLD
+                    ? Color.Yellow
+                    : Color.Red;
+
+            _deferredTextQueue.Enqueue($"{label}: {stats.LastMs:F2} ms (avg: {stats.AverageMs:F2}, max: {stats.MaxMs:F2})", new Vector2(xPos, yPos), color, 14);
+            return yPos + lineHeight;
+        }
+
+        private int RenderQueueDepthDebug(int xPos, int yPos, int lineHeight)
+        {
+            if (_plugin is not ClickIt clickIt)
+                return yPos;
+
+            int pendingText = clickIt.State.DeferredTextQueue?.GetPendingCount() ?? 0;
+            int pendingFrames = clickIt.State.DeferredFrameQueue?.GetPendingCount() ?? 0;
+            Color color = (pendingText + pendingFrames) > 200 ? Color.OrangeRed : Color.LightGray;
+            _deferredTextQueue.Enqueue($"Queue: text={pendingText}, frames={pendingFrames}", new Vector2(xPos, yPos), color, 14);
             return yPos + lineHeight;
         }
 
