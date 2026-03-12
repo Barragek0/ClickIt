@@ -18,6 +18,7 @@ namespace ClickIt.Utils
         private readonly PerformanceMonitor _performanceMonitor = performanceMonitor;
         // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
+        private long _lastToggleItemsTimestampMs = 0;
         private bool _lazyModeDisableToggled;
         private bool _lazyModeDisableKeyWasDown;
 
@@ -224,13 +225,38 @@ namespace ClickIt.Utils
         }
         public bool TriggerToggleItems()
         {
-            if (_settings.ToggleItems.Value && _random.Next(0, 20) == 0)
+            if (!_settings.ToggleItems.Value)
+                return false;
+
+            int intervalMs = Math.Max(100, _settings.ToggleItemsIntervalMs.Value);
+            long now = Environment.TickCount64;
+
+            if (_lastToggleItemsTimestampMs > 0)
             {
-                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
-                Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
-                return true;
+                long elapsed = now - _lastToggleItemsTimestampMs;
+                if (elapsed >= 0 && elapsed < intervalMs)
+                    return false;
             }
-            return false;
+
+            Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
+            Keyboard.KeyPress(_settings.ToggleItemsHotkey, 20);
+            _lastToggleItemsTimestampMs = now;
+            return true;
+        }
+
+        public int GetToggleItemsPostClickBlockMs()
+        {
+            return Math.Max(0, _settings.ToggleItemsPostToggleClickBlockMs.Value);
+        }
+
+        private bool IsInToggleItemsPostClickBlockWindow()
+        {
+            int blockMs = GetToggleItemsPostClickBlockMs();
+            if (blockMs <= 0 || _lastToggleItemsTimestampMs <= 0)
+                return false;
+
+            long elapsed = Environment.TickCount64 - _lastToggleItemsTimestampMs;
+            return elapsed >= 0 && elapsed < blockMs;
         }
         public bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen = false, bool isRitualActive = false)
         {
@@ -245,6 +271,7 @@ namespace ClickIt.Utils
                 !IsInTownOrHideout(gameController) &&
                 // Allow clicking during a ritual if the click hotkey is being held
                 (!isRitualActive || clickHotkeyHeld) &&
+                !IsInToggleItemsPostClickBlockWindow() &&
                 !IsBlockedByUiOrEscapeState(gameController);
         }
 
@@ -325,6 +352,9 @@ namespace ClickIt.Utils
 
             if (area?.IsTown == true || area?.IsHideout == true)
                 return "In town/hideout.";
+
+            if (IsInToggleItemsPostClickBlockWindow())
+                return "Waiting after Toggle Item View.";
 
             string? uiReason = GetUiBlockingReason(gameController);
             if (!string.IsNullOrEmpty(uiReason))

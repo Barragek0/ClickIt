@@ -77,7 +77,14 @@ namespace ClickIt.Utils
         private int _clickCount = 0;
 
         public double CurrentFPS => _currentFps;
-        public Queue<long> RenderTimings => _renderTimings;
+
+        public Queue<long> GetRenderTimingsSnapshot()
+        {
+            lock (_renderTimingsLock)
+            {
+                return new Queue<long>(_renderTimings);
+            }
+        }
 
         public void Start()
         {

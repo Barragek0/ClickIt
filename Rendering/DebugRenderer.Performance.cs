@@ -52,7 +52,7 @@ namespace ClickIt.Rendering
 
         private int RenderRenderTime(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
-            var renderTimings = performanceMonitor.RenderTimings;
+            var renderTimings = performanceMonitor.GetRenderTimingsSnapshot();
             if (renderTimings == null || renderTimings.Count == 0)
                 return yPos;
 

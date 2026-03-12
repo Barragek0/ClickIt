@@ -19,7 +19,7 @@ namespace ClickIt.Tests.Unit
             pm.StartRenderTiming();
             pm.StopRenderTiming();
 
-            pm.RenderTimings.Count.Should().BeGreaterThan(0);
+            pm.GetRenderTimingsSnapshot().Count.Should().BeGreaterThan(0);
             pm.GetLastTiming("render").Should().BeGreaterOrEqualTo(0);
             pm.GetAverageTiming("render").Should().BeGreaterThanOrEqualTo(0);
         }

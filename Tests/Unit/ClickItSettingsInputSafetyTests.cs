@@ -23,11 +23,27 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void LazyModeRestoreCursorDelayMs_DefaultsToTen()
+        public void LazyModeRestoreCursorDelayMs_DefaultsToTwenty()
         {
             var settings = new ClickItSettings();
 
-            settings.LazyModeRestoreCursorDelayMs.Value.Should().Be(10);
+            settings.LazyModeRestoreCursorDelayMs.Value.Should().Be(20);
+        }
+
+        [TestMethod]
+        public void ToggleItemsIntervalMs_DefaultsToFifteenHundred()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ToggleItemsIntervalMs.Value.Should().Be(1500);
+        }
+
+        [TestMethod]
+        public void ToggleItemsPostToggleClickBlockMs_DefaultsToTwenty()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ToggleItemsPostToggleClickBlockMs.Value.Should().Be(20);
         }
     }
 }

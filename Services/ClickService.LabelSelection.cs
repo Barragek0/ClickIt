@@ -80,7 +80,11 @@ namespace ClickIt.Services
 
             if (inputHandler.TriggerToggleItems())
             {
-                yield return new WaitTime(20);
+                int blockMs = inputHandler.GetToggleItemsPostClickBlockMs();
+                if (blockMs > 0)
+                {
+                    yield return new WaitTime(blockMs);
+                }
             }
         }
 

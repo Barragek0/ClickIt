@@ -68,6 +68,7 @@ namespace ClickIt.Utils
             Thread.Sleep(10);
 
             RestoreCursorIfLazyMode(before);
+            MarkLazyModeClickCompleted();
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
 
             swTotal.Stop();
@@ -129,11 +130,17 @@ namespace ClickIt.Utils
                     _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping click due to LazyMode limiter ({elapsed}ms < {limiterMs}ms)", 5);
                     return false;
                 }
-
-                _lastClickTimestampMs = now;
             }
 
             return true;
+        }
+
+        private void MarkLazyModeClickCompleted()
+        {
+            if (_settings?.LazyMode?.Value == true)
+            {
+                _lastClickTimestampMs = Environment.TickCount64;
+            }
         }
 
         private void RestoreCursorIfLazyMode(System.Drawing.Point before)

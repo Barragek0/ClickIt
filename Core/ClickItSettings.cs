@@ -100,9 +100,13 @@ namespace ClickIt
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
         [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels", 5, 1100)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
-        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 6, 1100)]
+        [Menu("Toggle Item View Interval (ms)", "How often Toggle Item View is allowed to trigger.\n1000 ms = 1 second.", 6, 1100)]
+        public RangeNode<int> ToggleItemsIntervalMs { get; set; } = new RangeNode<int>(1500, 500, 10000);
+        [Menu("Disable Clicking After Toggle Items (ms)", "Temporarily blocks further clicks after Toggle Item View triggers.\n\nIncrease this if clicks right after toggling are clicking incorrect labels.", 7, 1100)]
+        public RangeNode<int> ToggleItemsPostToggleClickBlockMs { get; set; } = new RangeNode<int>(20, 0, 250);
+        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while NOT in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 8, 1100)]
         public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
-        [Menu("Avoid overlapping labels when clicking", "When enabled, the plugin attempts to click a visible, non-overlapped part of the target label instead of always clicking center. Helps when one label partially covers another.", 7, 1100)]
+        [Menu("Avoid overlapping labels when clicking", "When enabled, the plugin attempts to click a visible, non-overlapped part of the target label instead of always clicking center. Helps when one label partially covers another.", 9, 1100)]
         public ToggleNode AvoidOverlappingLabelClickPoints { get; set; } = new ToggleNode(true);
 
         // ----- Lazy Mode -----

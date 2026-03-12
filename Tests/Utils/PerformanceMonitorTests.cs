@@ -17,7 +17,7 @@ namespace ClickIt.Tests.Utils
             pm.StartRenderTiming();
             pm.StopRenderTiming();
 
-            pm.RenderTimings.Should().NotBeEmpty();
+            pm.GetRenderTimingsSnapshot().Should().NotBeEmpty();
             pm.GetLastTiming("render").Should().BeGreaterOrEqualTo(0);
             pm.GetAverageTiming("render").Should().BeGreaterOrEqualTo(0);
         }
