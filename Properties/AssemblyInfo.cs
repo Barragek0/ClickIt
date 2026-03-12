@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 [assembly: AssemblyTitle("ClickIt")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
@@ -13,3 +14,4 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("ClickIt.Tests")]
+[assembly: SupportedOSPlatform("windows7.0")]
