@@ -88,9 +88,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include=".editorconfig" />
-    <None Include="app.config" />
-    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -99,7 +96,7 @@
 
   <Target Name="AfterBuild">
     <Copy SourceFiles="$(ProjectDir)$(OutputPath)ClickIt.dll" DestinationFolder="C:\1.Path stuff\PoeHelper\net48\Plugins\Compiled\ClickIt" ContinueOnError="true" />
-    <Exec Command="&quot;$(ProjectDir)run-tests.bat&quot;" Condition="Exists('$(ProjectDir)Tests\ClickIt.Tests.csproj') and '$(Configuration)' == 'Debug' and '$(SkipRunTests)' != 'true'" ContinueOnError="false" WorkingDirectory="$(ProjectDir)" />
+    <Exec Command="&quot;$(ProjectDir).scripts\run-tests.bat&quot;" Condition="Exists('$(ProjectDir)Tests\ClickIt.Tests.csproj') and Exists('$(ProjectDir).scripts\run-tests.bat') and '$(Configuration)' == 'Debug' and '$(SkipRunTests)' != 'true'" ContinueOnError="false" WorkingDirectory="$(ProjectDir)" />
   </Target>
 
   <!-- Allow the test project to access internal types without reflection -->

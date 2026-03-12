@@ -125,8 +125,17 @@ CoverageReport*/
 # Local build artifacts and logs
 build.log
 
+# Local-only repository files
+.editorconfig
+GlobalSuppressions.cs
+
 # Local CI stubs / workflows (if present)
 .github/ci-stubs/
+
+# Local helper scripts
+!.scripts/
+.scripts/*
+!.scripts/run-tests.bat
 
 # Local assistant / continuation state
 .continue/
