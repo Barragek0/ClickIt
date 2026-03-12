@@ -51,13 +51,8 @@ namespace ClickIt.Services
         {
             previews = [];
 
-            bool initialEnabled = settings.IsInitialUltimatumClickEnabled();
-            bool otherEnabled = settings.IsOtherUltimatumClickEnabled();
-            if (!initialEnabled && !otherEnabled)
-                return false;
-
-            return (otherEnabled && TryGetUltimatumPanelOptionPreview(out previews) && previews.Count > 0)
-                || (initialEnabled && TryGetUltimatumGroundLabelOptionPreview(out previews));
+            return (TryGetUltimatumPanelOptionPreview(out previews) && previews.Count > 0)
+                || TryGetUltimatumGroundLabelOptionPreview(out previews);
         }
 
         private bool TryGetUltimatumGroundLabelOptionPreview(out List<UltimatumPanelOptionPreview> previews)

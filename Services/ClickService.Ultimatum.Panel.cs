@@ -41,9 +41,6 @@ namespace ClickIt.Services
         {
             previews = [];
 
-            if (!settings.IsOtherUltimatumClickEnabled())
-                return false;
-
             if (!TryGetVisibleUltimatumPanel(out object? panelObj) || panelObj == null)
                 return false;
 
