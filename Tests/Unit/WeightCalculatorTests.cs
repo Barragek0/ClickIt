@@ -278,7 +278,7 @@ namespace ClickIt.Tests.Unit
             var topMods = new SecondaryAltarComponent(elTop, [], []);
             var bottomMods = new SecondaryAltarComponent(elBottom, [], []);
 
-            var primary = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
+            var primary = new PrimaryAltarComponent(AltarType.Unknown, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 
             var weights = calc.CalculateAltarWeights(primary);
 
@@ -300,7 +300,7 @@ namespace ClickIt.Tests.Unit
             // TopMods.Element == null should cause an ArgumentException
             var top = new SecondaryAltarComponent(null, [], []);
             var bottom = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
-            var primary = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
+            var primary = new PrimaryAltarComponent(AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
 
             Action act = () => calc.CalculateAltarWeights(primary);
             act.Should().Throw<ArgumentException>();
@@ -308,7 +308,7 @@ namespace ClickIt.Tests.Unit
             // Bottom.Element == null
             var top2 = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
             var bottom2 = new SecondaryAltarComponent(null, [], []);
-            var primary2 = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, top2, new AltarButton(null), bottom2, new AltarButton(null));
+            var primary2 = new PrimaryAltarComponent(AltarType.Unknown, top2, new AltarButton(null), bottom2, new AltarButton(null));
 
             Action act2 = () => calc.CalculateAltarWeights(primary2);
             act2.Should().Throw<ArgumentException>();
@@ -332,7 +332,7 @@ namespace ClickIt.Tests.Unit
             var topMods = new SecondaryAltarComponent(elTop, ["modTop1", "modTop2"], ["modTopD1"]);
             var bottomMods = new SecondaryAltarComponent(elBottom, ["modBottomU1"], ["modBottom1"]);
 
-            var primary = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
+            var primary = new PrimaryAltarComponent(AltarType.Unknown, topMods, new AltarButton(null), bottomMods, new AltarButton(null));
 
             var weights = calc.CalculateAltarWeights(primary);
 

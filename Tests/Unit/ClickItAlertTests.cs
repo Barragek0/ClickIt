@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using System.Reflection;
 using System.IO;
 
 namespace ClickIt.Tests.Unit
@@ -18,14 +17,12 @@ namespace ClickIt.Tests.Unit
             settings.ModAlerts.Clear();
             settings.ModAlerts["alpha"] = true;
 
-            // ensure no _alertSoundPath set
-            var field = clickIt.GetType().GetField("_alertSoundPath", BindingFlags.Instance | BindingFlags.NonPublic);
-            field!.SetValue(clickIt, null);
+            var alertService = clickIt.__Test_GetAlertService();
+            alertService.SetAlertSoundPathForTests(null);
 
-            clickIt.TryTriggerAlertForMatchedMod("alpha");
+            alertService.TryTriggerAlertForMatchedMod("alpha");
 
-            var lastField = clickIt.GetType().GetField("_lastAlertTimes", BindingFlags.Instance | BindingFlags.NonPublic);
-            var dict = (System.Collections.Generic.Dictionary<string, System.DateTime>)lastField!.GetValue(clickIt)!;
+            var dict = alertService.LastAlertTimes;
             dict.ContainsKey("alpha").Should().BeFalse();
         }
 
@@ -43,19 +40,18 @@ namespace ClickIt.Tests.Unit
             string tmp = Path.GetTempFileName();
             try
             {
-                var fieldPath = clickIt.GetType().GetField("_alertSoundPath", BindingFlags.Instance | BindingFlags.NonPublic);
-                fieldPath!.SetValue(clickIt, tmp);
+                var alertService = clickIt.__Test_GetAlertService();
+                alertService.SetAlertSoundPathForTests(tmp);
 
-                clickIt.TryTriggerAlertForMatchedMod("alpha");
+                alertService.TryTriggerAlertForMatchedMod("alpha");
 
-                var lastField = clickIt.GetType().GetField("_lastAlertTimes", BindingFlags.Instance | BindingFlags.NonPublic);
-                var dict = (System.Collections.Generic.Dictionary<string, System.DateTime>)lastField!.GetValue(clickIt)!;
+                var dict = alertService.LastAlertTimes;
                 dict.ContainsKey("alpha").Should().BeTrue();
 
                 var first = dict["alpha"];
 
                 // second immediate call should respect cooldown and not update the timestamp
-                clickIt.TryTriggerAlertForMatchedMod("alpha");
+                alertService.TryTriggerAlertForMatchedMod("alpha");
                 var second = dict["alpha"];
                 second.Should().Be(first);
             }

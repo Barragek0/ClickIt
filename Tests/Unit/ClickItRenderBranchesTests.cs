@@ -34,7 +34,7 @@ namespace ClickIt.Tests.Unit
 
             // prepare a minimal altar service and add a primary component
             var altarSvc = new Services.AltarService(plugin, settings, null);
-            var p = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, new SecondaryAltarComponent(null, [], []), new AltarButton(null), new SecondaryAltarComponent(null, [], []), new AltarButton(null));
+            var p = new PrimaryAltarComponent(AltarType.Unknown, new SecondaryAltarComponent(null, [], []), new AltarButton(null), new SecondaryAltarComponent(null, [], []), new AltarButton(null));
             altarSvc.AddAltarComponent(p);
 
             plugin.State.AltarService = altarSvc;

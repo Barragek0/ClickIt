@@ -1,5 +1,4 @@
-﻿using static ClickIt.ClickIt;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using ClickIt.Utils;
 using RectangleF = SharpDX.RectangleF;
 namespace ClickIt.Components

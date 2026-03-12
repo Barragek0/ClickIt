@@ -1,4 +1,4 @@
-﻿using ExileCore.PoEMemory;
+using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
 using ClickIt.Components;
@@ -77,13 +77,13 @@ namespace ClickIt.Services
 
             _altarRepository.RemoveAltarComponentsByElement(ShouldRemove);
         }
-        public List<LabelOnGround> GetAltarLabels(ClickIt.AltarType type)
+        public List<LabelOnGround> GetAltarLabels(AltarType type)
         {
             List<LabelOnGround> result = [];
             List<LabelOnGround>? labelsFromCache = _cachedLabels?.Value;
             if (labelsFromCache == null)
                 return result;
-            string typeStr = type == ClickIt.AltarType.SearingExarch
+            string typeStr = type == AltarType.SearingExarch
                 ? Constants.CleansingFireAltar
                 : Constants.TangleAltar;
             for (int i = 0; i < labelsFromCache.Count; i++)
@@ -98,7 +98,7 @@ namespace ClickIt.Services
         }
         public bool AddAltarComponent(PrimaryAltarComponent component) => _altarRepository.AddAltarComponent(component);
         public void UpdateComponentFromElementData(bool top, Element altarParent, PrimaryAltarComponent altarComponent,
-            Element ElementToExtractDataFrom, ClickIt.AltarType altarType)
+            Element ElementToExtractDataFrom, AltarType altarType)
         {
             var (negativeModType, mods) = ExtractModsFromElement(ElementToExtractDataFrom);
             var (upsides, downsides, hasUnmatchedMods) = ProcessMods(mods, negativeModType);
@@ -141,7 +141,7 @@ namespace ClickIt.Services
             {
                 foreach (var matchedId in upsides)
                 {
-                    _clickIt.TryTriggerAlertForMatchedMod(matchedId);
+                    _clickIt.GetAlertService().TryTriggerAlertForMatchedMod(matchedId);
                 }
             }
 

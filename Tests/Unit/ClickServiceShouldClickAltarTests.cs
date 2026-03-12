@@ -41,7 +41,7 @@ namespace ClickIt.Tests.Unit
             var bottom = TestBuilders.BuildSecondary();
             var topButton = new AltarButton(null);
             var bottomButton = new AltarButton(null);
-            var primary = new PrimaryAltarComponent(ClickIt.AltarType.EaterOfWorlds, top, topButton, bottom, bottomButton);
+            var primary = new PrimaryAltarComponent(AltarType.EaterOfWorlds, top, topButton, bottom, bottomButton);
 
             svc.ShouldClickAltar(primary, clickEater: true, clickExarch: false).Should().BeFalse();
         }
@@ -60,7 +60,7 @@ namespace ClickIt.Tests.Unit
             var bottom = TestBuilders.BuildSecondary();
             var topButton = new AltarButton(null);
             var bottomButton = new AltarButton(null);
-            var primary = new PrimaryAltarComponent(ClickIt.AltarType.EaterOfWorlds, top, topButton, bottom, bottomButton);
+            var primary = new PrimaryAltarComponent(AltarType.EaterOfWorlds, top, topButton, bottom, bottomButton);
 
             // Force internal cache state to appear valid (so IsValidCached returns true)
             var cacheField = typeof(PrimaryAltarComponent).GetField("_isValidCache", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);

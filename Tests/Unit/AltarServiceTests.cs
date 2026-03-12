@@ -28,7 +28,7 @@ namespace ClickIt.Tests.Unit
             var topButton = new AltarButton(null);
             var bottomButton = new AltarButton(null);
 
-            var component = new PrimaryAltarComponent(ClickIt.AltarType.Unknown, topMods, topButton, bottomMods, bottomButton);
+            var component = new PrimaryAltarComponent(AltarType.Unknown, topMods, topButton, bottomMods, bottomButton);
 
             // Add and ensure it's present
             bool added = service.AddAltarComponent(component);
@@ -48,14 +48,14 @@ namespace ClickIt.Tests.Unit
             var mi = typeof(AltarService).GetMethod("DetermineAltarType", BindingFlags.NonPublic | BindingFlags.Static);
             mi.Should().NotBeNull();
 
-            var searing = (ClickIt.AltarType)mi.Invoke(null, ["SomePath/CleansingFireAltar/Other"]);
-            searing.Should().Be(ClickIt.AltarType.SearingExarch);
+            var searing = (AltarType)mi.Invoke(null, ["SomePath/CleansingFireAltar/Other"]);
+            searing.Should().Be(AltarType.SearingExarch);
 
-            var eater = (ClickIt.AltarType)mi.Invoke(null, ["prefix/TangleAltar/suffix"]);
-            eater.Should().Be(ClickIt.AltarType.EaterOfWorlds);
+            var eater = (AltarType)mi.Invoke(null, ["prefix/TangleAltar/suffix"]);
+            eater.Should().Be(AltarType.EaterOfWorlds);
 
-            var unknown = (ClickIt.AltarType)mi.Invoke(null, [string.Empty]);
-            unknown.Should().Be(ClickIt.AltarType.Unknown);
+            var unknown = (AltarType)mi.Invoke(null, [string.Empty]);
+            unknown.Should().Be(AltarType.Unknown);
         }
 
         [TestMethod]
@@ -89,10 +89,10 @@ namespace ClickIt.Tests.Unit
             mockBottomAltarAdapter.SetupGet(a => a.Underlying).Returns((Element)null);
 
             // Call the internal adapter-based creator directly
-            var created = service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, ClickIt.AltarType.SearingExarch);
+            var created = service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, AltarType.SearingExarch);
 
             created.Should().NotBeNull();
-            created.AltarType.Should().Be(ClickIt.AltarType.SearingExarch);
+            created.AltarType.Should().Be(AltarType.SearingExarch);
             created.TopMods.Should().NotBeNull();
             created.BottomMods.Should().NotBeNull();
         }

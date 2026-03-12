@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Tests.TestUtils;
 
 namespace ClickIt.Tests.Unit
 {
@@ -22,11 +21,12 @@ namespace ClickIt.Tests.Unit
             settings.ModAlerts.Clear();
             settings.ModAlerts["upsides|foo"] = true;
 
-            var key = PrivateMethodAccessor.Invoke<string?>(clickIt, "ResolveCompositeKey", "foo");
+            var alertService = clickIt.__Test_GetAlertService();
+            var key = alertService.ResolveCompositeKey("foo");
             key.Should().Be("upsides|foo");
 
             settings.ModAlerts["foo"] = true;
-            var key2 = PrivateMethodAccessor.Invoke<string?>(clickIt, "ResolveCompositeKey", "foo");
+            var key2 = alertService.ResolveCompositeKey("foo");
             key2.Should().Be("foo");
         }
 
@@ -40,21 +40,17 @@ namespace ClickIt.Tests.Unit
             settings.Should().NotBeNull();
             settings.ModAlerts.Clear();
             settings.ModAlerts["alpha"] = true;
+            var alertService = clickIt.__Test_GetAlertService();
 
-            PrivateMethodAccessor.Invoke<bool>(clickIt, "IsAlertEnabledForKey", "alpha").Should().BeTrue();
-            PrivateMethodAccessor.Invoke<bool>(clickIt, "IsAlertEnabledForKey", "unknown").Should().BeFalse();
+            alertService.IsAlertEnabledForKey("alpha").Should().BeTrue();
+            alertService.IsAlertEnabledForKey("unknown").Should().BeFalse();
 
-            var dict = new System.Collections.Generic.Dictionary<string, System.DateTime>(System.StringComparer.OrdinalIgnoreCase)
-            {
-                ["alpha"] = System.DateTime.UtcNow
-            };
-            PrivateFieldAccessor.Set(clickIt, "_lastAlertTimes", dict);
+            alertService.LastAlertTimes["alpha"] = System.DateTime.UtcNow;
 
-            PrivateMethodAccessor.Invoke<bool>(clickIt, "CanTriggerForKey", "alpha").Should().BeFalse();
+            alertService.CanTriggerForKey("alpha").Should().BeFalse();
 
-            dict["alpha"] = System.DateTime.UtcNow.AddSeconds(-60);
-            PrivateFieldAccessor.Set(clickIt, "_lastAlertTimes", dict);
-            PrivateMethodAccessor.Invoke<bool>(clickIt, "CanTriggerForKey", "alpha").Should().BeTrue();
+            alertService.LastAlertTimes["alpha"] = System.DateTime.UtcNow.AddSeconds(-60);
+            alertService.CanTriggerForKey("alpha").Should().BeTrue();
         }
     }
 }

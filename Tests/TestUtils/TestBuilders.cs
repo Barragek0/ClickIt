@@ -21,7 +21,7 @@ namespace ClickIt.Tests.TestUtils
             // AltarButton isn't used in many unit tests; construct minimal instance via default constructor if present
             var topButton = new AltarButton(null);
             var bottomButton = new AltarButton(null);
-            return new PrimaryAltarComponent(ClickIt.AltarType.Unknown, t, topButton, b, bottomButton);
+            return new PrimaryAltarComponent(AltarType.Unknown, t, topButton, b, bottomButton);
         }
 
         public static AltarWeights BuildAltarWeights(decimal[]? topDown = null, decimal[]? bottomDown = null, decimal[]? topUp = null, decimal[]? bottomUp = null, int topWeight = 0, int bottomWeight = 0)

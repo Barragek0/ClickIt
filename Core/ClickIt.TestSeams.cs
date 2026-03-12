@@ -1,3 +1,4 @@
+using System.IO;
 using System.Reflection;
 
 namespace ClickIt
@@ -94,28 +95,5 @@ namespace ClickIt
             return false;
         }
 
-        // Test seam: disable auto-download behavior during tests so unit tests do not attempt network I/O
-        private bool _testDisableAutoDownload = false;
-        internal void __Test_SetDisableAutoDownload(bool value)
-        {
-            _testDisableAutoDownload = value;
-        }
-
-        internal bool __Test_GetDisableAutoDownload()
-        {
-            return _testDisableAutoDownload;
-        }
-
-        // Test seam: optionally override the ConfigDirectory used by the plugin during tests
-        private string? _testConfigDirectory = null;
-        internal void __Test_SetConfigDirectory(string? path)
-        {
-            _testConfigDirectory = path;
-        }
-
-        internal string? __Test_GetConfigDirectory()
-        {
-            return _testConfigDirectory;
-        }
     }
 }

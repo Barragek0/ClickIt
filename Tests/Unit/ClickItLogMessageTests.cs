@@ -16,14 +16,13 @@ namespace ClickIt.Tests.Unit
             clickIt.State.IsRendering = false;
 
             // No exception should be thrown, this verifies the method forwards correctly.
-            var lastField = clickIt.GetType().GetField("_lastAlertTimes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var dictBefore = (System.Collections.Generic.Dictionary<string, System.DateTime>)lastField!.GetValue(clickIt)!;
+            var alertService = clickIt.__Test_GetAlertService();
+            var countBefore = alertService.LastAlertTimes.Count;
 
             // Use localDebug=false to avoid reading Settings which may be null in some test harness scenarios
             clickIt.LogMessage(false, "test-message", 0);
 
-            var dictAfter = (System.Collections.Generic.Dictionary<string, System.DateTime>)lastField!.GetValue(clickIt)!;
-            dictAfter.Count.Should().Be(dictBefore.Count);
+            alertService.LastAlertTimes.Count.Should().Be(countBefore);
         }
 
         [TestMethod]
@@ -35,13 +34,12 @@ namespace ClickIt.Tests.Unit
             clickIt.State.IsRendering = true;
 
             // Should return quickly and not throw — assert nothing changed in last-alert timestamps.
-            var lastField = clickIt.GetType().GetField("_lastAlertTimes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var before = (System.Collections.Generic.Dictionary<string, System.DateTime>)lastField!.GetValue(clickIt)!;
+            var alertService = clickIt.__Test_GetAlertService();
+            var countBefore = alertService.LastAlertTimes.Count;
 
             clickIt.LogMessage(false, "should-not-log", 0);
 
-            var after = (System.Collections.Generic.Dictionary<string, System.DateTime>)lastField!.GetValue(clickIt)!;
-            after.Count.Should().Be(before.Count);
+            alertService.LastAlertTimes.Count.Should().Be(countBefore);
         }
     }
 }

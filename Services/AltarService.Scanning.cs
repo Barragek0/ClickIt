@@ -36,7 +36,7 @@ namespace ClickIt.Services
             List<LabelOnGround> altarLabels = [];
             if (_settings.HighlightExarchAltars)
             {
-                List<LabelOnGround> exarchLabels = GetAltarLabels(ClickIt.AltarType.SearingExarch);
+                List<LabelOnGround> exarchLabels = GetAltarLabels(AltarType.SearingExarch);
                 DebugInfo.LastScanExarchLabels = exarchLabels.Count;
                 if (exarchLabels.Count > 0)
                 {
@@ -46,7 +46,7 @@ namespace ClickIt.Services
 
             if (_settings.HighlightEaterAltars)
             {
-                List<LabelOnGround> eaterLabels = GetAltarLabels(ClickIt.AltarType.EaterOfWorlds);
+                List<LabelOnGround> eaterLabels = GetAltarLabels(AltarType.EaterOfWorlds);
                 DebugInfo.LastScanEaterLabels = eaterLabels.Count;
                 if (eaterLabels.Count > 0)
                 {
@@ -70,7 +70,7 @@ namespace ClickIt.Services
                     continue;
 
                 DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
-                ClickIt.AltarType altarType = DetermineAltarType(path);
+                AltarType altarType = DetermineAltarType(path);
                 PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
                 DebugInfo.ComponentsProcessed++;
 
@@ -113,26 +113,26 @@ namespace ClickIt.Services
             PreCacheAltarData(altar);
         }
 
-        private static ClickIt.AltarType DetermineAltarType(string path)
+        private static AltarType DetermineAltarType(string path)
         {
             if (string.IsNullOrEmpty(path))
-                return ClickIt.AltarType.Unknown;
+                return AltarType.Unknown;
 
             if (path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase))
-                return ClickIt.AltarType.SearingExarch;
+                return AltarType.SearingExarch;
             if (path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase))
-                return ClickIt.AltarType.EaterOfWorlds;
+                return AltarType.EaterOfWorlds;
 
-            return ClickIt.AltarType.Unknown;
+            return AltarType.Unknown;
         }
 
-        private PrimaryAltarComponent CreateAltarComponent(Element element, ClickIt.AltarType altarType)
+        private PrimaryAltarComponent CreateAltarComponent(Element element, AltarType altarType)
         {
             var adapter = new ElementAdapter(element);
             return CreateAltarComponentFromAdapter(adapter, altarType);
         }
 
-        internal PrimaryAltarComponent CreateAltarComponentFromAdapter(IElementAdapter elementAdapter, ClickIt.AltarType altarType)
+        internal PrimaryAltarComponent CreateAltarComponentFromAdapter(IElementAdapter elementAdapter, AltarType altarType)
         {
             if (elementAdapter == null || elementAdapter.Parent?.Parent == null)
                 throw new InvalidOperationException("Failed to create valid altar component - missing required elements");

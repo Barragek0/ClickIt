@@ -21,8 +21,7 @@ namespace ClickIt.Tests.Unit
             var setMethod = typeof(ClickIt).GetMethod("__Test_SetSettings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
             setMethod.Invoke(plugin, [settings]);
 
-            var method = typeof(ClickIt).GetMethod("ResolveCompositeKey", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var res = method.Invoke(plugin, ["xmod"]);
+            var res = plugin.__Test_GetAlertService().ResolveCompositeKey("xmod");
             Assert.AreEqual("downside|xmod", res);
         }
 
@@ -43,28 +42,17 @@ namespace ClickIt.Tests.Unit
             string soundPath = Path.Combine(tmp, "alert.wav");
             File.WriteAllText(soundPath, "");
 
-            // Set the private _alertSoundPath field directly so EnsureAlertLoaded will find our file
-            var soundField = typeof(ClickIt).GetField("_alertSoundPath", BindingFlags.Instance | BindingFlags.NonPublic);
-            soundField!.SetValue(plugin, soundPath);
+            var alertService = plugin.__Test_GetAlertService();
+            alertService.SetAlertSoundPathForTests(soundPath);
 
             // Ensure any previous alert time isn't present
-            var lastField = typeof(ClickIt).GetField("_lastAlertTimes", BindingFlags.Instance | BindingFlags.NonPublic);
-            var dict = (System.Collections.IDictionary?)lastField!.GetValue(plugin);
-            if (dict == null)
-            {
-                // initialize if not present
-                var newDict = new System.Collections.Generic.Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
-                lastField.SetValue(plugin, newDict);
-                dict = newDict as System.Collections.IDictionary;
-            }
+            var dict = alertService.LastAlertTimes;
             dict.Clear();
 
-            // Call the public API
-            typeof(ClickIt).GetMethod("TryTriggerAlertForMatchedMod", BindingFlags.Instance | BindingFlags.Public)!
-                .Invoke(plugin, ["mymod"]);
+            alertService.TryTriggerAlertForMatchedMod("mymod");
 
             // After invocation, the lastAlertTimes should contain the key
-            Assert.IsTrue(dict.Contains("mymod"));
+            Assert.IsTrue(dict.ContainsKey("mymod"));
 
             // Cleanup
             try { File.Delete(soundPath); Directory.Delete(tmp); } catch { }

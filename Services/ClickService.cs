@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
@@ -116,8 +116,8 @@ namespace ClickIt.Services
             boxToClick = null;
 
             // First check if altar type is enabled
-            bool isEnabledType = (altar.AltarType == ClickIt.AltarType.EaterOfWorlds && clickEater) ||
-                                (altar.AltarType == ClickIt.AltarType.SearingExarch && clickExarch);
+            bool isEnabledType = (altar.AltarType == AltarType.EaterOfWorlds && clickEater) ||
+                                (altar.AltarType == AltarType.SearingExarch && clickExarch);
 
             if (!isEnabledType)
                 return false;

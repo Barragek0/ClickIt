@@ -34,6 +34,7 @@ namespace ClickIt
         public Services.LabelFilterService? LabelFilterService { get; set; }
         public Services.LabelService? LabelService { get; set; }
         public Services.ClickService? ClickService { get; set; }
+        public Services.AlertService? AlertService { get; set; }
         public Camera? Camera { get; set; }
         public bool WorkFinished { get; set; } = false;
 

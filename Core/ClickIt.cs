@@ -21,8 +21,11 @@ namespace ClickIt
             // Unsubscribe the report-bug event handler (use EffectiveSettings so tests that inject settings succeed)
             EffectiveSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
             // Unsubscribe alert sound handlers
-            EffectiveSettings.OpenConfigDirectory.OnPressed -= OpenConfigDirectoryPressed;
-            EffectiveSettings.ReloadAlertSound.OnPressed -= ReloadAlertSound;
+            if (State.AlertService != null)
+            {
+                EffectiveSettings.OpenConfigDirectory.OnPressed -= State.AlertService.OpenConfigDirectory;
+                EffectiveSettings.ReloadAlertSound.OnPressed -= State.AlertService.ReloadAlertSound;
+            }
 
             // Clear static instances
             LockManager.Instance = null;
@@ -47,6 +50,7 @@ namespace ClickIt
             State.DeferredTextQueue = null;
             State.DeferredFrameQueue = null;
             State.AltarDisplayRenderer = null;
+            State.AlertService = null;
 
             // Stop coroutines to prevent issues during DLL reload
             State.AltarCoroutine?.Done();
@@ -86,6 +90,7 @@ namespace ClickIt
             LockManager.Instance = new LockManager(Settings);
             State.ClickService = new Services.ClickService(Settings, GameController, State.ErrorHandler, State.AltarService, weightCalculator, State.AltarDisplayRenderer, PointIsInClickableArea, State.InputHandler, labelFilterService, State.ShrineService, new Func<bool>(State.LabelService.GroundItemsVisible), State.CachedLabels, State.PerformanceMonitor);
             State.UltimatumRenderer = new Rendering.UltimatumRenderer(Settings, State.ClickService, State.DeferredFrameQueue);
+            var alertService = GetOrCreateAlertService();
             State.PerformanceMonitor.Start();
 
             var coroutineManager = new CoroutineManager(
@@ -97,9 +102,9 @@ namespace ClickIt
 
             Settings.EnsureAllModsHaveWeights();
 
-            Settings.OpenConfigDirectory.OnPressed += OpenConfigDirectoryPressed;
-            Settings.ReloadAlertSound.OnPressed += ReloadAlertSound;
-            ReloadAlertSound();
+            Settings.OpenConfigDirectory.OnPressed += alertService.OpenConfigDirectory;
+            Settings.ReloadAlertSound.OnPressed += alertService.ReloadAlertSound;
+            alertService.ReloadAlertSound();
 
             State.LastRenderTimer.Start();
             State.LastTickTimer.Start();
@@ -164,140 +169,5 @@ namespace ClickIt
             base.LogError(message, frame);
         }
 
-        // --- Alert sound playback / cooldown ---
-        private readonly Dictionary<string, DateTime> _lastAlertTimes = new(StringComparer.OrdinalIgnoreCase);
-        private const string AlertFileName = "alert.wav";
-        // Raw URL used to fetch the default alert sound from the repository when missing
-        private const string AlertDownloadUrl = "https://raw.githubusercontent.com/Barragek0/ClickIt/main/alert.wav";
-        private string? _alertSoundPath = null;
-
-        public void ReloadAlertSound()
-        {
-            try
-            {
-                var configDir = __Test_GetConfigDirectory() ?? ConfigDirectory;
-                var file = Path.Join(configDir, AlertFileName);
-                if (!File.Exists(file))
-                {
-                    LogMessage("Alert sound not found in config directory.", 5);
-
-                    // Optionally attempt to auto-download the default alert sound from GitHub
-                    bool tryDownload = Settings?.AutoDownloadAlertSound?.Value == true;
-                    // Tests can disable network via the test seam
-                    tryDownload = tryDownload && !__Test_GetDisableAutoDownload();
-
-                    if (tryDownload)
-                    {
-                        try
-                        {
-                            LogMessage("Attempting to download default alert sound from GitHub...", 10);
-                            using (var http = new HttpClient())
-                            {
-                                http.Timeout = TimeSpan.FromSeconds(5);
-                                var resp = http.GetAsync(AlertDownloadUrl).GetAwaiter().GetResult();
-                                if (resp.IsSuccessStatusCode)
-                                {
-                                    var bytes = resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
-                                    File.WriteAllBytes(file, bytes);
-                                    LogMessage($"Downloaded default alert sound to {file}", 20);
-                                    _alertSoundPath = file;
-                                    return;
-                                }
-                                else
-                                {
-                                    LogError($"Failed to download alert sound: server returned {(int)resp.StatusCode}", 20);
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            LogError($"Downloading alert sound failed: {ex.Message}", 20);
-                        }
-                    }
-
-                    _alertSoundPath = null;
-                    return;
-                }
-
-                _alertSoundPath = file;
-                LogMessage($"Alert sound loaded: {file}", 5);
-            }
-            catch (Exception ex)
-            {
-                LogError("Failed to reload alert sound: " + ex.Message, 5);
-            }
-        }
-
-        private void OpenConfigDirectoryPressed()
-        {
-            Process.Start("explorer.exe", ConfigDirectory);
-        }
-
-        public void TryTriggerAlertForMatchedMod(string matchedId)
-        {
-            if (string.IsNullOrEmpty(matchedId)) return;
-
-            string? key = ResolveCompositeKey(matchedId);
-            if (string.IsNullOrEmpty(key)) return;
-
-            if (!IsAlertEnabledForKey(key)) return;
-
-            if (!CanTriggerForKey(key)) return;
-
-            EnsureAlertLoaded();
-            if (string.IsNullOrEmpty(_alertSoundPath) || !File.Exists(_alertSoundPath))
-            {
-                LogError($"No alert sound loaded (expected '{AlertFileName}' in the config directory or plugin folder).", 20);
-                return;
-            }
-            PlaySoundFile(_alertSoundPath!);
-            _lastAlertTimes[key] = DateTime.UtcNow;
-        }
-
-        private string? ResolveCompositeKey(string matchedId)
-        {
-            string key = matchedId;
-            if (!EffectiveSettings.ModAlerts.ContainsKey(key))
-            {
-                var found = EffectiveSettings.ModAlerts.Keys.FirstOrDefault(k => k.EndsWith("|" + matchedId, StringComparison.OrdinalIgnoreCase));
-                if (!string.IsNullOrEmpty(found)) key = found;
-            }
-
-            return key;
-        }
-
-        private bool IsAlertEnabledForKey(string key)
-        {
-            return EffectiveSettings.ModAlerts.TryGetValue(key, out bool enabled) && enabled;
-        }
-
-        private bool CanTriggerForKey(string key)
-        {
-            var now = DateTime.UtcNow;
-            if (_lastAlertTimes.TryGetValue(key, out DateTime last) && (now - last).TotalSeconds < 30)
-                return false;
-            return true;
-        }
-
-        private void EnsureAlertLoaded()
-        {
-            if (!string.IsNullOrEmpty(_alertSoundPath) && File.Exists(_alertSoundPath)) return;
-            ReloadAlertSound();
-        }
-
-        private void PlaySoundFile(string path)
-        {
-            if (GameController?.SoundController != null)
-            {
-                GameController.SoundController.PlaySound(path, EffectiveSettings?.AlertSoundVolume?.Value ?? 5);
-            }
-        }
-
-        public enum AltarType
-        {
-            SearingExarch,
-            EaterOfWorlds,
-            Unknown
-        }
     }
 }

@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Tests.TestUtils;
 using System.IO;
 
 namespace ClickIt.Tests.Unit
@@ -21,9 +20,9 @@ namespace ClickIt.Tests.Unit
             // Ensure test seam prevents network just in case
             clickIt.__Test_SetDisableAutoDownload(true);
 
-            clickIt.ReloadAlertSound();
+            clickIt.__Test_GetAlertService().ReloadAlertSound();
 
-            var val = PrivateFieldAccessor.Get<string?>(clickIt, "_alertSoundPath");
+            var val = clickIt.__Test_GetAlertService().CurrentAlertSoundPath;
             val.Should().BeNull();
         }
 
@@ -40,9 +39,9 @@ namespace ClickIt.Tests.Unit
             var target = Path.Combine(configDir, "alert.wav");
             File.WriteAllText(target, "empty");
 
-            clickIt.ReloadAlertSound();
+            clickIt.__Test_GetAlertService().ReloadAlertSound();
 
-            var val = PrivateFieldAccessor.Get<string?>(clickIt, "_alertSoundPath");
+            var val = clickIt.__Test_GetAlertService().CurrentAlertSoundPath;
             val.Should().NotBeNullOrEmpty();
             val!.Should().Be(target);
 
@@ -61,9 +60,9 @@ namespace ClickIt.Tests.Unit
             settings.AutoDownloadAlertSound.Value = true;
             clickIt.__Test_SetDisableAutoDownload(true);
 
-            clickIt.ReloadAlertSound();
+            clickIt.__Test_GetAlertService().ReloadAlertSound();
 
-            var val = PrivateFieldAccessor.Get<string?>(clickIt, "_alertSoundPath");
+            var val = clickIt.__Test_GetAlertService().CurrentAlertSoundPath;
             val.Should().BeNull();
         }
     }
