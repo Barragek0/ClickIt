@@ -8,8 +8,7 @@ namespace ClickIt.Utils
         Click = 1,
         Altar = 2,
         Flare = 3,
-        Shrine = 4,
-        Render = 5
+        Render = 4
     }
 
     public enum RenderSection
@@ -41,13 +40,11 @@ namespace ClickIt.Utils
         private readonly Stopwatch _altarCoroutineTimer = new();
         private readonly Stopwatch _clickCoroutineTimer = new();
         private readonly Stopwatch _flareCoroutineTimer = new();
-        private readonly Stopwatch _shrineCoroutineTimer = new();
 
         // Performance tracking queues with thread-safe access
         private readonly Queue<long> _clickCoroutineTimings = new(10);
         private readonly Queue<long> _altarCoroutineTimings = new(10);
         private readonly Queue<long> _flareCoroutineTimings = new(10);
-        private readonly Queue<long> _shrineCoroutineTimings = new(10);
         private readonly Queue<long> _renderTimings = new(60);
         private readonly Queue<long> _clickIntervals = new(10);
         private readonly Queue<long> _successfulClickTimings = new(10);
@@ -56,7 +53,6 @@ namespace ClickIt.Utils
         private readonly object _clickTimingsLock = new();
         private readonly object _altarTimingsLock = new();
         private readonly object _flareTimingsLock = new();
-        private readonly object _shrineTimingsLock = new();
         private readonly object _renderTimingsLock = new();
         private readonly object _clickIntervalsLock = new();
         private readonly object _successfulClickTimingsLock = new();
@@ -73,14 +69,12 @@ namespace ClickIt.Utils
         private long _lastAltarTiming = 0;
         private long _lastClickTiming = 0;
         private long _lastFlareTiming = 0;
-        private long _lastShrineTiming = 0;
         private long _lastRenderTiming = 0;
 
         // Max timing values for display
         private long _maxAltarTiming = 0;
         private long _maxClickTiming = 0;
         private long _maxFlareTiming = 0;
-        private long _maxShrineTiming = 0;
 
         // Input safety timing
         private readonly Stopwatch _lastHotkeyReleaseTimer = new();

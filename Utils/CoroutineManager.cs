@@ -41,10 +41,6 @@ namespace ClickIt.Utils
             _ = Core.ParallelRunner.Run(_state.ClickLabelCoroutine);
             _state.ClickLabelCoroutine.Priority = CoroutinePriority.High;
 
-            _state.ShrineCoroutine = new Coroutine(MainShrineCoroutine(), plugin, "ClickIt.ShrineLogic", true);
-            _ = Core.ParallelRunner.Run(_state.ShrineCoroutine);
-            _state.ShrineCoroutine.Priority = CoroutinePriority.High;
-
             _state.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
             _ = Core.ParallelRunner.Run(_state.DelveFlareCoroutine);
             _state.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
@@ -105,27 +101,6 @@ namespace ClickIt.Utils
             _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             _state.WorkFinished = true;
-        }
-
-        private IEnumerator MainShrineCoroutine()
-        {
-            if (_state.PerformanceMonitor == null) yield break;
-
-            while (_settings.Enable)
-            {
-                _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Shrine);
-
-                yield return HandleShrine();
-
-                _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Shrine);
-            }
-        }
-
-        private IEnumerator HandleShrine()
-        {
-            // Shrine arbitration is handled in ClickService.ProcessRegularClick alongside labels.
-            // Keep this coroutine lightweight to avoid duplicate shrine click decision paths.
-            yield return new WaitTime(500);
         }
 
         private IEnumerator FlareCoroutine()

@@ -52,7 +52,6 @@ namespace ClickIt
             State.AltarCoroutine?.Done();
             State.ClickLabelCoroutine?.Done();
             State.DelveFlareCoroutine?.Done();
-            State.ShrineCoroutine?.Done();
 
             // Base OnClose will attempt to save plugin settings which relies on the actual base-class storage for Settings.
             // In some test scenarios the Settings property isn't populated on the base class even though tests inject settings via the test seam.
@@ -106,7 +105,6 @@ namespace ClickIt
             State.LastTickTimer.Start();
             State.Timer.Start();
             State.SecondTimer.Start();
-            State.ShrineTimer.Start();
 
             return true;
         }

@@ -118,7 +118,7 @@ namespace ClickIt.Rendering
             int pendingText = clickIt.State.DeferredTextQueue?.GetPendingCount() ?? 0;
             int pendingFrames = clickIt.State.DeferredFrameQueue?.GetPendingCount() ?? 0;
             Color color = (pendingText + pendingFrames) > 200 ? Color.OrangeRed : Color.LightGray;
-            _deferredTextQueue.Enqueue($"Queue: text={pendingText}, frames={pendingFrames}", new Vector2(xPos, yPos), color, 14);
+            _deferredTextQueue.Enqueue($"  Queue: text={pendingText}, frames={pendingFrames}", new Vector2(xPos, yPos), color, 14);
             return yPos + lineHeight;
         }
 
@@ -127,7 +127,6 @@ namespace ClickIt.Rendering
             yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Altar, "Altar Coroutine");
             yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Click, "Click Coroutine");
             yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Flare, "Flare Coroutine");
-            yPos = RenderCoroutineTiming(xPos, yPos, lineHeight, performanceMonitor, TimingChannel.Shrine, "Shrine Coroutine");
             return yPos;
         }
 

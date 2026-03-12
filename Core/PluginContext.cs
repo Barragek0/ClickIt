@@ -15,13 +15,10 @@ namespace ClickIt
         public Coroutine? AltarCoroutine { get; set; }
         public Coroutine? ClickLabelCoroutine { get; set; }
         public Coroutine? DelveFlareCoroutine { get; set; }
-        public Coroutine? ShrineCoroutine { get; set; }
-        // Input safety fields removed
         public Stopwatch LastRenderTimer { get; } = new Stopwatch();
         public Stopwatch LastTickTimer { get; } = new Stopwatch();
         public Stopwatch Timer { get; } = new Stopwatch();
         public Stopwatch SecondTimer { get; } = new Stopwatch();
-        public Stopwatch ShrineTimer { get; } = new Stopwatch();
         public bool LastHotkeyState { get; set; } = false;
         public Services.AreaService? AreaService { get; set; }
         public Services.AltarService? AltarService { get; set; }

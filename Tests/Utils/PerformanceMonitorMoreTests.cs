@@ -15,7 +15,7 @@ namespace ClickIt.Tests.Utils
             pm.Start();
 
             // test multiple coroutine channels via typed API
-            var channels = new[] { TimingChannel.Click, TimingChannel.Altar, TimingChannel.Flare, TimingChannel.Shrine };
+            var channels = new[] { TimingChannel.Click, TimingChannel.Altar, TimingChannel.Flare };
             foreach (var channel in channels)
             {
                 pm.StartCoroutineTiming(channel);

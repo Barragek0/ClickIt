@@ -47,9 +47,6 @@ namespace ClickIt.Utils
                 case TimingChannel.Flare:
                     _flareCoroutineTimer.Restart();
                     break;
-                case TimingChannel.Shrine:
-                    _shrineCoroutineTimer.Restart();
-                    break;
             }
         }
 
@@ -83,13 +80,6 @@ namespace ClickIt.Utils
                     _maxFlareTiming = Math.Max(_maxFlareTiming, flareTiming);
                     EnqueueTiming(_flareCoroutineTimings, flareTiming, 10, _flareTimingsLock);
                     break;
-                case TimingChannel.Shrine:
-                    _shrineCoroutineTimer.Stop();
-                    long shrineTiming = _shrineCoroutineTimer.ElapsedMilliseconds;
-                    _lastShrineTiming = shrineTiming;
-                    _maxShrineTiming = Math.Max(_maxShrineTiming, shrineTiming);
-                    EnqueueTiming(_shrineCoroutineTimings, shrineTiming, 10, _shrineTimingsLock);
-                    break;
             }
         }
 
@@ -108,8 +98,6 @@ namespace ClickIt.Utils
                     return _lastAltarTiming;
                 case TimingChannel.Flare:
                     return _lastFlareTiming;
-                case TimingChannel.Shrine:
-                    return _lastShrineTiming;
                 case TimingChannel.Render:
                     return _lastRenderTiming;
                 default:
@@ -141,10 +129,6 @@ namespace ClickIt.Utils
                     queue = _flareCoroutineTimings;
                     lockObj = _flareTimingsLock;
                     break;
-                case TimingChannel.Shrine:
-                    queue = _shrineCoroutineTimings;
-                    lockObj = _shrineTimingsLock;
-                    break;
                 case TimingChannel.Render:
                     queue = _renderTimings;
                     lockObj = _renderTimingsLock;
@@ -174,8 +158,6 @@ namespace ClickIt.Utils
                     return _maxAltarTiming;
                 case TimingChannel.Flare:
                     return _maxFlareTiming;
-                case TimingChannel.Shrine:
-                    return _maxShrineTiming;
                 default:
                     return 0;
             }
@@ -196,8 +178,6 @@ namespace ClickIt.Utils
                     return TimingChannel.Altar;
                 case "flare":
                     return TimingChannel.Flare;
-                case "shrine":
-                    return TimingChannel.Shrine;
                 case "render":
                     return TimingChannel.Render;
                 default:
