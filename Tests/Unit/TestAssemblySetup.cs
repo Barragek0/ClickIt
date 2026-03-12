@@ -1,5 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Utils;
+using System.Runtime.Versioning;
+
+[assembly: SupportedOSPlatform("windows7.0")]
 
 namespace ClickIt.Tests.Unit
 {
