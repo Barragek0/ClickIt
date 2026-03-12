@@ -82,7 +82,7 @@ namespace ClickIt.Utils
         public static bool IsValidClickableLabel(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
             if (label == null || label.ItemOnGround == null ||
-                !label.IsVisible || !IsLabelElementValid(label, pointIsInClickableArea))
+                !label.IsVisible || !IsLabelElementValid(label))
             {
                 return false;
             }
@@ -97,19 +97,42 @@ namespace ClickIt.Utils
                 || HasEssenceImprisonmentText(label);
         }
 
-        public static bool IsLabelElementValid(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
+        public static bool IsLabelElementValid(LabelOnGround label)
         {
             RectangleF? labelRect = label.Label?.GetClientRect();
-            return labelRect is RectangleF rect &&
+            return labelRect is RectangleF &&
                    label.Label?.IsValid == true &&
-                   label.Label?.IsVisible == true &&
-                   pointIsInClickableArea(rect.Center);
+                   label.Label?.IsVisible == true;
         }
 
         public static bool IsLabelInClickableArea(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
             RectangleF? labelRect = label.Label?.GetClientRect();
-            return labelRect is RectangleF rect && pointIsInClickableArea(rect.Center);
+            return labelRect is RectangleF rect && HasClickablePoint(rect, pointIsInClickableArea);
+        }
+
+        private static bool HasClickablePoint(RectangleF rect, Func<Vector2, bool> pointIsInClickableArea)
+        {
+            if (pointIsInClickableArea(rect.Center))
+                return true;
+
+            const int cols = 7;
+            const int rows = 5;
+            float stepX = rect.Width / cols;
+            float stepY = rect.Height / rows;
+
+            for (int y = 0; y < rows; y++)
+            {
+                float sampleY = rect.Top + ((y + 0.5f) * stepY);
+                for (int x = 0; x < cols; x++)
+                {
+                    float sampleX = rect.Left + ((x + 0.5f) * stepX);
+                    if (pointIsInClickableArea(new Vector2(sampleX, sampleY)))
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         public static bool IsValidEntityType(Entity item)

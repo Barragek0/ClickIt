@@ -85,6 +85,11 @@ namespace ClickIt.Utils
             return false;
         }
 
+        private static bool IsPointClickable(Vector2 point, Func<Vector2, bool>? isClickableArea)
+        {
+            return isClickableArea == null || isClickableArea(point);
+        }
+
         private static Vector2 ClampPointToRect(Vector2 point, RectangleF rect)
         {
             return new Vector2(
@@ -118,6 +123,64 @@ namespace ClickIt.Utils
                     float sampleX = targetRect.Left + ((x + 0.5f) * stepX);
                     Vector2 candidate = new(sampleX, sampleY);
                     if (IsPointBlocked(candidate, blockedAreas))
+                        continue;
+
+                    float dx = candidate.X - clampedPreferred.X;
+                    float dy = candidate.Y - clampedPreferred.Y;
+                    float distanceSq = dx * dx + dy * dy;
+                    if (distanceSq < bestDistanceSq)
+                    {
+                        bestDistanceSq = distanceSq;
+                        best = candidate;
+                    }
+                }
+            }
+
+            if (bestDistanceSq < float.MaxValue)
+            {
+                resolvedPoint = best;
+                return true;
+            }
+
+            resolvedPoint = clampedPreferred;
+            return false;
+        }
+
+        internal static bool TryResolveVisibleClickablePoint(
+            RectangleF targetRect,
+            Vector2 preferredPoint,
+            IReadOnlyList<RectangleF> blockedAreas,
+            Func<Vector2, bool>? isClickableArea,
+            out Vector2 resolvedPoint)
+        {
+            Vector2 clampedPreferred = ClampPointToRect(preferredPoint, targetRect);
+            if ((blockedAreas == null || blockedAreas.Count == 0 || !IsPointBlocked(clampedPreferred, blockedAreas))
+                && IsPointClickable(clampedPreferred, isClickableArea))
+            {
+                resolvedPoint = clampedPreferred;
+                return true;
+            }
+
+            const int cols = 7;
+            const int rows = 5;
+            float stepX = targetRect.Width / cols;
+            float stepY = targetRect.Height / rows;
+
+            Vector2 best = clampedPreferred;
+            float bestDistanceSq = float.MaxValue;
+
+            for (int y = 0; y < rows; y++)
+            {
+                float sampleY = targetRect.Top + ((y + 0.5f) * stepY);
+                for (int x = 0; x < cols; x++)
+                {
+                    float sampleX = targetRect.Left + ((x + 0.5f) * stepX);
+                    Vector2 candidate = new(sampleX, sampleY);
+
+                    if (blockedAreas != null && blockedAreas.Count > 0 && IsPointBlocked(candidate, blockedAreas))
+                        continue;
+
+                    if (!IsPointClickable(candidate, isClickableArea))
                         continue;
 
                     float dx = candidate.X - clampedPreferred.X;
@@ -223,6 +286,49 @@ namespace ClickIt.Utils
 
             return jitteredPoint + windowTopLeft;
         }
+
+        public bool TryCalculateClickPosition(
+            LabelOnGround label,
+            Vector2 windowTopLeft,
+            IReadOnlyList<LabelOnGround>? allLabels,
+            Func<Vector2, bool>? isClickableArea,
+            out Vector2 clickPosition)
+        {
+            clickPosition = default;
+
+            if (!TryGetLabelClientRect(label, out RectangleF rect))
+                return false;
+
+            Vector2 preferredPoint = rect.Center;
+            if (label.ItemOnGround.Type == EntityType.Chest)
+            {
+                preferredPoint.Y -= _settings.ChestHeightOffset;
+            }
+
+            List<RectangleF> blockedAreas = [];
+            bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;
+            if (avoidOverlapsEnabled)
+            {
+                blockedAreas = CollectBlockingOverlaps(label, rect, allLabels);
+            }
+
+            if (!TryResolveVisibleClickablePoint(rect, preferredPoint, blockedAreas, isClickableArea, out Vector2 resolvedPoint))
+                return false;
+
+            float jitterRange = 2f;
+            float jitterX = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
+            float jitterY = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
+
+            Vector2 jitteredPoint = resolvedPoint + new Vector2(jitterX, jitterY);
+            if (!IsPointInsideRect(jitteredPoint, rect) || !IsPointClickable(jitteredPoint, isClickableArea))
+            {
+                jitteredPoint = resolvedPoint;
+            }
+
+            clickPosition = jitteredPoint + windowTopLeft;
+            return true;
+        }
+
         public bool TriggerToggleItems()
         {
             if (!_settings.ToggleItems.Value)

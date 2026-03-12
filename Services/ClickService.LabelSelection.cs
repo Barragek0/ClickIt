@@ -69,7 +69,17 @@ namespace ClickIt.Services
             if (ShouldSkipOrHandleSpecialLabel(nextLabel, windowTopLeft))
                 yield break;
 
-            Vector2 clickPos = inputHandler.CalculateClickPosition(nextLabel, windowTopLeft, allLabels);
+            if (!inputHandler.TryCalculateClickPosition(
+                nextLabel,
+                windowTopLeft,
+                allLabels,
+                point => pointIsInClickableArea(point, nextLabel.ItemOnGround?.Path ?? string.Empty),
+                out Vector2 clickPos))
+            {
+                DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
+                yield break;
+            }
+
             bool clicked = PerformLabelClick(clickPos, nextLabel.Label, gameController);
             if (clicked)
             {

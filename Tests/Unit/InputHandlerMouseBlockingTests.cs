@@ -91,7 +91,7 @@ namespace ClickIt.Tests.Unit
             settings.DisableLazyModeLeftClickHeld.Value = true;
             settings.DisableLazyModeRightClickHeld.Value = true;
 
-            bool KeyProvider(Keys key) => key == Keys.LButton;
+            static bool KeyProvider(Keys key) => key == Keys.LButton;
 
             var (left, right, any) = InputHandler.GetMouseButtonBlockingState(settings, KeyProvider);
 
@@ -107,7 +107,7 @@ namespace ClickIt.Tests.Unit
             settings.DisableLazyModeLeftClickHeld.Value = false;
             settings.DisableLazyModeRightClickHeld.Value = false;
 
-            bool KeyProvider(Keys key) => key == Keys.LButton || key == Keys.RButton;
+            static bool KeyProvider(Keys key) => key == Keys.LButton || key == Keys.RButton;
 
             var (left, right, any) = InputHandler.GetMouseButtonBlockingState(settings, KeyProvider);
 

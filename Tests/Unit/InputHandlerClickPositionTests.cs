@@ -49,5 +49,38 @@ namespace ClickIt.Tests.Unit
             hasVisiblePoint.Should().BeFalse();
             resolved.Should().Be(preferred);
         }
+
+        [TestMethod]
+        public void TryResolveVisibleClickablePoint_UsesClickableSubregion_WhenCenterIsNotClickable()
+        {
+            var target = new RectangleF(0, 0, 100, 40);
+            var preferred = new Vector2(50, 20);
+            var blocked = new List<RectangleF>();
+
+            // Simulate non-clickable center band but clickable edges.
+            static bool IsClickable(Vector2 p) => p.X < 40 || p.X > 60;
+
+            bool ok = InputHandler.TryResolveVisibleClickablePoint(target, preferred, blocked, IsClickable, out Vector2 resolved);
+
+            ok.Should().BeTrue();
+            resolved.X.Should().NotBeInRange(40f, 60f);
+            resolved.Y.Should().BeGreaterThanOrEqualTo(target.Top);
+            resolved.Y.Should().BeLessThanOrEqualTo(target.Bottom);
+        }
+
+        [TestMethod]
+        public void TryResolveVisibleClickablePoint_ReturnsFalse_WhenNoClickablePointExists()
+        {
+            var target = new RectangleF(0, 0, 100, 40);
+            var preferred = new Vector2(50, 20);
+            var blocked = new List<RectangleF>();
+
+            static bool IsClickable(Vector2 _) => false;
+
+            bool ok = InputHandler.TryResolveVisibleClickablePoint(target, preferred, blocked, IsClickable, out Vector2 resolved);
+
+            ok.Should().BeFalse();
+            resolved.Should().Be(preferred);
+        }
     }
 }
