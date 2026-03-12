@@ -129,9 +129,6 @@ build.log
 .editorconfig
 GlobalSuppressions.cs
 
-# Local CI stubs / workflows (if present)
-.github/ci-stubs/
-
 # Local helper scripts
 !.scripts/
 .scripts/*
