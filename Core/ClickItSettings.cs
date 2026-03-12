@@ -118,8 +118,8 @@ namespace ClickIt
         public ToggleNode LazyModeDisableKeyToggleMode { get; set; } = new ToggleNode(false);
         [Menu("Restore cursor position after each click", "When enabled, restores cursor to original position after clicking in lazy mode.", 5, 1200)]
         public ToggleNode RestoreCursorInLazyMode { get; set; } = new ToggleNode(true);
-        [Menu("Restore Cursor Delay (ms)", "Delay before restoring cursor position after a lazy-mode click when cursor restore is enabled.", 6, 1200)]
-        public RangeNode<int> LazyModeRestoreCursorDelayMs { get; set; } = new RangeNode<int>(10, 0, 30);
+        [Menu("Restore Cursor Delay (ms)", "Delay before restoring cursor position after a lazy-mode click when cursor restore is enabled.\n\nWhen set below 20, this may cause the plugin to have to click an item multiple times to pick it up.", 6, 1200)]
+        public RangeNode<int> LazyModeRestoreCursorDelayMs { get; set; } = new RangeNode<int>(20, 0, 40);
         [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 7, 1200)]
         public RangeNode<int> LazyModeUIHoverSleep { get; set; } = new RangeNode<int>(20, 20, 40);
         [Menu("Disable lazy mode while left click held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 8, 1200)]
