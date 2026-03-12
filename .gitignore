@@ -136,4 +136,4 @@ build.log
 !ThirdParty/*.dll
 
 # Copilot
-copilot-instructions.md
+.github/copilot-instructions.md

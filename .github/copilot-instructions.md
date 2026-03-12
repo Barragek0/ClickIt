@@ -12,8 +12,9 @@
 2. Do not ask the user to choose between implementation options unless truly blocked.
 3. Choose the simplest safe approach that is fast to implement and easy to maintain.
 4. Continue independently until all requested work is complete.
-5. Ask for help only when required (missing credentials, destructive-risk approval, ambiguous policy).
-6. If a step fails, stop, report the exact failure, and propose a concrete fix plan.
+5. For multi-step plans, execute all steps sequentially from start to finish without pausing for user input between steps.
+6. Only interrupt a multi-step plan when truly blocked (missing credentials, destructive-risk approval, or ambiguous policy).
+7. If a step fails, stop, report the exact failure, and propose a concrete fix plan.
 
 ## Non-Negotiable Quality Gates
 
@@ -68,6 +69,15 @@ Before adding code, inspect existing services/helpers and integrate there if pos
 - Workspace default build task has run successfully so build + tests complete and the latest DLL is copied/reloaded.
 - No avoidable duplication introduced.
 - Safety behavior preserved (especially click/input safety).
+
+### Final report requirements for multi-step plans
+
+- Execute all planned steps in one uninterrupted run unless a true blocker is hit.
+- After all steps are complete, provide one consolidated final report.
+- Include an overview of the full set of changes.
+- Include a summary of additions (new files, methods, settings, tests, behaviors).
+- Include a summary of removals (deleted code, deprecated paths removed, replaced behaviors).
+- Include validation outcomes (build/tests/tasks) and any remaining risks.
 
 ## Commands and Validation
 
