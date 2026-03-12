@@ -1,5 +1,6 @@
 using SharpDX;
 using ExileCore.Shared.Enums;
+using System.Threading;
 
 namespace ClickIt.Utils
 {
@@ -10,6 +11,7 @@ namespace ClickIt.Utils
         private readonly object _queueLock = new();
         private List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = [];
         private List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _spare = [];
+        private int _pendingCount;
 
         public void Enqueue(string text, Vector2 pos, SharpDX.Color color, int size, FontAlign align = FontAlign.Left)
         {
@@ -22,6 +24,7 @@ namespace ClickIt.Utils
                 lock (_queueLock)
                 {
                     _items.Add((text, pos, color, size, align));
+                    _pendingCount = _items.Count;
                 }
             }
             catch
@@ -44,6 +47,7 @@ namespace ClickIt.Utils
                 _items = _spare;
                 _spare = pending;
                 _items.Clear();
+                _pendingCount = 0;
             }
 
             for (int i = 0; i < _spare.Count; i++)
@@ -65,10 +69,7 @@ namespace ClickIt.Utils
 
         public int GetPendingCount()
         {
-            lock (_queueLock)
-            {
-                return _items.Count;
-            }
+            return Volatile.Read(ref _pendingCount);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using RectangleF = SharpDX.RectangleF;
 using Color = SharpDX.Color;
 using Graphics = ExileCore.Graphics;
+using System.Threading;
 
 namespace ClickIt.Utils
 {
@@ -11,6 +12,7 @@ namespace ClickIt.Utils
         private readonly object _queueLock = new();
         private List<(RectangleF Rectangle, Color Color, int Thickness)> _items = [];
         private List<(RectangleF Rectangle, Color Color, int Thickness)> _spare = [];
+        private int _pendingCount;
 
         private static bool IsValidRect(RectangleF rectangle)
         {
@@ -41,6 +43,7 @@ namespace ClickIt.Utils
                         return;
 
                     _items.Add(frame);
+                    _pendingCount = _items.Count;
                 }
             }
             catch
@@ -63,6 +66,7 @@ namespace ClickIt.Utils
                 _items = _spare;
                 _spare = pending;
                 _items.Clear();
+                _pendingCount = 0;
             }
 
             for (int i = 0; i < _spare.Count; i++)
@@ -84,10 +88,7 @@ namespace ClickIt.Utils
 
         public int GetPendingCount()
         {
-            lock (_queueLock)
-            {
-                return _items.Count;
-            }
+            return Volatile.Read(ref _pendingCount);
         }
     }
 }

@@ -71,6 +71,24 @@ namespace ClickIt.Tests.Utils
         }
 
         [TestMethod]
+        public void DeferredTextQueue_GetPendingCount_TracksEnqueueAndFlush()
+        {
+            var q = new DeferredTextQueue();
+            q.GetPendingCount().Should().Be(0);
+
+            q.Enqueue("a", new Vector2(1, 2), Color.White, 12);
+            q.Enqueue("b", new Vector2(2, 3), Color.White, 12);
+            q.GetPendingCount().Should().Be(2);
+
+            q.Flush(null!, (s, f) => { });
+            q.GetPendingCount().Should().Be(2);
+
+            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            q.Flush(gfx, (s, f) => { });
+            q.GetPendingCount().Should().Be(0);
+        }
+
+        [TestMethod]
         public void DeferredFrameQueue_FlushWithNullGraphics_DoesNotThrow()
         {
             var q = new DeferredFrameQueue();
@@ -78,6 +96,64 @@ namespace ClickIt.Tests.Utils
             q.Flush(null!, (s, f) => { });
             // reached safely
             true.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_GetPendingCount_TracksEnqueueAndFlush()
+        {
+            var q = new DeferredFrameQueue();
+            q.GetPendingCount().Should().Be(0);
+
+            q.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
+            q.Enqueue(new RectangleF(5, 6, 7, 8), Color.Blue, 1);
+            q.GetPendingCount().Should().Be(2);
+
+            q.Flush(null!, (s, f) => { });
+            q.GetPendingCount().Should().Be(2);
+
+            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            q.Flush(gfx, (s, f) => { });
+            q.GetPendingCount().Should().Be(0);
+        }
+
+        [TestMethod]
+        public void DeferredTextQueue_Load_PendingCountStaysAccurate_AcrossFlushes()
+        {
+            var q = new DeferredTextQueue();
+
+            for (int i = 0; i < 1000; i++)
+            {
+                q.Enqueue($"item-{i}", new Vector2(i, i + 1), Color.White, 12);
+            }
+
+            q.GetPendingCount().Should().Be(1000);
+
+            q.Flush(null!, (s, f) => { });
+            q.GetPendingCount().Should().Be(1000);
+
+            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            q.Flush(gfx, (s, f) => { });
+            q.GetPendingCount().Should().Be(0);
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_Load_PendingCountStaysAccurate_AcrossFlushes()
+        {
+            var q = new DeferredFrameQueue();
+
+            for (int i = 0; i < 1000; i++)
+            {
+                q.Enqueue(new RectangleF(i, i + 1, 10, 10), Color.Blue, 1);
+            }
+
+            q.GetPendingCount().Should().Be(1000);
+
+            q.Flush(null!, (s, f) => { });
+            q.GetPendingCount().Should().Be(1000);
+
+            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            q.Flush(gfx, (s, f) => { });
+            q.GetPendingCount().Should().Be(0);
         }
 
         [TestMethod]
