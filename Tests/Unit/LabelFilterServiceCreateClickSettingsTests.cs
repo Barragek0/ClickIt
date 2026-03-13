@@ -39,17 +39,21 @@ namespace ClickIt.Tests.Unit
             var clickDistanceProperty = clickSettingsType.GetProperty("ClickDistance");
             var clickLeagueChestsProperty = clickSettingsType.GetProperty("ClickLeagueChests");
             var clickSettlersOreProperty = clickSettingsType.GetProperty("ClickSettlersOre");
+            var clickLabyrinthTrialsProperty = clickSettingsType.GetProperty("ClickLabyrinthTrials");
             clickDistanceProperty.Should().NotBeNull();
             clickLeagueChestsProperty.Should().NotBeNull();
             clickSettlersOreProperty.Should().NotBeNull();
+            clickLabyrinthTrialsProperty.Should().NotBeNull();
 
             int clickDistance = (int)clickDistanceProperty!.GetValue(result)!;
             bool clickLeagueChests = (bool)clickLeagueChestsProperty!.GetValue(result)!;
             bool clickSettlersOre = (bool)clickSettlersOreProperty!.GetValue(result)!;
+            bool clickLabyrinthTrials = (bool)clickLabyrinthTrialsProperty!.GetValue(result)!;
 
             clickDistance.Should().Be(settings.ClickDistance.Value);
             clickLeagueChests.Should().Be(settings.ClickLeagueChests.Value);
             clickSettlersOre.Should().Be(settings.ClickSettlersOre.Value);
+            clickLabyrinthTrials.Should().Be(settings.ClickLabyrinthTrials.Value);
         }
 
         [TestMethod]

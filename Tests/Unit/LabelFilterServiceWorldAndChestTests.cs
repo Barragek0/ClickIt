@@ -121,5 +121,51 @@ namespace ClickIt.Tests.Unit
             var ok = (bool)InvokePrivateStatic("IsSettlersOrePath", "some/CrimsonIron/path")!;
             ok.Should().BeTrue();
         }
+
+        [TestMethod]
+        public void GetAreaTransitionMechanicId_UsesLabyrinthToggleForTrialPortals()
+        {
+            string path = "Metadata/Terrain/Labyrinth/Objects/LabyrinthTrialPortalAreaTransition";
+
+            var disabled = (string?)InvokePrivateStatic(
+                "GetAreaTransitionMechanicId",
+                true,
+                false,
+                EntityType.AreaTransition,
+                path);
+
+            var enabled = (string?)InvokePrivateStatic(
+                "GetAreaTransitionMechanicId",
+                false,
+                true,
+                EntityType.AreaTransition,
+                path);
+
+            disabled.Should().BeNull();
+            enabled.Should().Be("labyrinth-trials");
+        }
+
+        [TestMethod]
+        public void GetAreaTransitionMechanicId_UsesAreaTransitionToggleForNonLabyrinthTransitions()
+        {
+            string path = "Metadata/Terrain/Leagues/Delve/Objects/SomeAreaTransition";
+
+            var disabled = (string?)InvokePrivateStatic(
+                "GetAreaTransitionMechanicId",
+                false,
+                true,
+                EntityType.AreaTransition,
+                path);
+
+            var enabled = (string?)InvokePrivateStatic(
+                "GetAreaTransitionMechanicId",
+                true,
+                false,
+                EntityType.AreaTransition,
+                path);
+
+            disabled.Should().BeNull();
+            enabled.Should().Be("area-transitions");
+        }
     }
 }

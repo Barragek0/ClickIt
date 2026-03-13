@@ -18,6 +18,7 @@ namespace ClickIt.Services
         private const string MechanicDoors = "doors";
         private const string MechanicLevers = "levers";
         private const string MechanicAreaTransitions = "area-transitions";
+        private const string MechanicLabyrinthTrials = "labyrinth-trials";
         private const string MechanicHarvest = "harvest";
         private const string MechanicSulphiteVeins = "sulphite-veins";
         private const string MechanicStrongboxes = "strongboxes";
@@ -55,8 +56,9 @@ namespace ClickIt.Services
             if (!string.IsNullOrWhiteSpace(namedMechanicId))
                 return namedMechanicId;
 
-            if (settings.ClickAreaTransitions && (type == EntityType.AreaTransition || path.Contains("AreaTransition")))
-                return MechanicAreaTransitions;
+            string? transitionMechanicId = GetAreaTransitionMechanicId(settings.ClickAreaTransitions, settings.ClickLabyrinthTrials, type, path);
+            if (!string.IsNullOrWhiteSpace(transitionMechanicId))
+                return transitionMechanicId;
 
             // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround.
             string? specialMechanicId = GetSpecialPathMechanicId(settings, path, label);
@@ -90,6 +92,30 @@ namespace ClickIt.Services
                 return MechanicLevers;
 
             return null;
+        }
+
+        private static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
+        {
+            bool isAreaTransition = type == EntityType.AreaTransition || path.Contains("AreaTransition", StringComparison.OrdinalIgnoreCase);
+            if (!isAreaTransition)
+                return null;
+
+            if (IsLabyrinthTrialTransitionPath(path))
+            {
+                return clickLabyrinthTrials ? MechanicLabyrinthTrials : null;
+            }
+
+            return clickAreaTransitions ? MechanicAreaTransitions : null;
+        }
+
+        private static bool IsLabyrinthTrialTransitionPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            return path.Contains("LabyrinthTrial", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("Labyrinth/Trial", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("TrialPortal", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)

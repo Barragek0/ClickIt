@@ -164,11 +164,13 @@ namespace ClickIt
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
         [Menu("Area Transitions", "Click area transitions", 4, 1300)]
         public ToggleNode ClickAreaTransitions { get; set; } = new ToggleNode(false);
-        [Menu("Crafting Recipes", "Click crafting recipes", 5, 1300)]
+        [Menu("Labyrinth Trials", "Click labyrinth trial portals", 5, 1300)]
+        public ToggleNode ClickLabyrinthTrials { get; set; } = new ToggleNode(false);
+        [Menu("Crafting Recipes", "Click crafting recipes", 6, 1300)]
         public ToggleNode ClickCraftingRecipes { get; set; } = new ToggleNode(true);
-        [Menu("Doors", "Click doors", 6, 1300)]
+        [Menu("Doors", "Click doors", 7, 1300)]
         public ToggleNode ClickDoors { get; set; } = new ToggleNode(false);
-        [Menu("Levers", "Click levers", 7, 1300)]
+        [Menu("Levers", "Click levers", 8, 1300)]
         public ToggleNode ClickLevers { get; set; } = new ToggleNode(false);
 
         // ----- Mechanics -----

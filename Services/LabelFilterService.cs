@@ -275,6 +275,7 @@ namespace ClickIt.Services
                 ClickDoors = s.ClickDoors.Value,
                 ClickLevers = s.ClickLevers.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
+                ClickLabyrinthTrials = s.ClickLabyrinthTrials.Value,
                 NearestHarvest = s.NearestHarvest.Value,
                 ClickSulphite = s.ClickSulphiteVeins.Value,
                 ClickAzurite = s.ClickAzuriteVeins.Value,
@@ -315,6 +316,7 @@ namespace ClickIt.Services
             public bool ClickDoors { get; set; }
             public bool ClickLevers { get; set; }
             public bool ClickAreaTransitions { get; set; }
+            public bool ClickLabyrinthTrials { get; set; }
             public bool NearestHarvest { get; set; }
             public bool ClickSulphite { get; set; }
             public bool ClickBlight { get; set; }
