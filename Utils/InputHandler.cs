@@ -430,8 +430,7 @@ namespace ClickIt.Utils
                 (uiState?.SanctumRewardWindow?.IsVisible ?? false, "Sanctum reward window is open."),
                 (uiState?.MicrotransactionShopWindow?.IsVisible ?? false, "Microtransaction shop window is open."),
                 (uiState?.ResurrectPanel?.IsVisible ?? false, "Resurrect panel is open."),
-                (uiState?.NpcDialog?.IsVisible ?? false, "NPC dialog is open."),
-                (uiState?.KalandraTabletWindow?.IsVisible ?? false, "Kalandra tablet window is open.")
+                (uiState?.NpcDialog?.IsVisible ?? false, "NPC dialog is open.")
             };
 
             foreach ((bool isBlocked, string message) in rules)
@@ -537,6 +536,7 @@ namespace ClickIt.Utils
         {
             return gameController.Window.IsForeground();
         }
+
         private static bool IsPanelOpen(GameController gameController)
         {
             if (gameController == null) return false;
