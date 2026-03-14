@@ -1,6 +1,5 @@
-namespace ClickIt.Utils
+﻿namespace ClickIt.Utils
 {
-    // Adapter-focused test seams to make LabelUtils traversal testable without ExileCore.Element
     internal static partial class LabelUtils
     {
         internal static bool ElementContainsAnyStringsForTests(Services.IElementAdapter? root, IEnumerable<string> patterns)
@@ -64,10 +63,8 @@ namespace ClickIt.Utils
             return null;
         }
 
-        // enumerate children by probing GetChildFromIndices(containerIndex, childIndex)
         private static IEnumerable<Services.IElementAdapter> EnumerateChildren(Services.IElementAdapter parent)
         {
-            // Some adapters may return the same child for multiple container indexes.
             // Keep track of yielded instances to avoid duplicates.
             var seen = new HashSet<Services.IElementAdapter>();
             for (int containerIndex = 0; containerIndex <= 1; containerIndex++)

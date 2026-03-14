@@ -4,6 +4,11 @@ namespace ClickIt.Services
 {
     public partial class ShrineService
     {
+        internal static void ClearThreadLocalStorageForCurrentThread()
+        {
+            _threadLocalShrineList = null;
+        }
+
         internal static void ClearThreadLocalStorageForTests()
         {
             _threadLocalShrineList = null;

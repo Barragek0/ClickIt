@@ -78,7 +78,7 @@ namespace ClickIt.Rendering
             double avgRenderFps = avgRenderTime > 0 ? 1000.0 / avgRenderTime : 0.0;
             double worstFrameFps = stats.MaxMs > 0 ? 1000.0 / stats.MaxMs : 0.0;
 
-            _deferredTextQueue.Enqueue($"Render: {stats.LastMs} ms (avg: {avgRenderTime:F2} ms {avgRenderFps:F1} FPS, max: {stats.MaxMs} ms {worstFrameFps:F1} FPS)", new Vector2(xPos, yPos), renderColor, 16);
+            _deferredTextQueue.Enqueue($"Render: {stats.LastMs} ms (avg: {avgRenderTime:F2} ms, max: {stats.MaxMs} ms)", new Vector2(xPos, yPos), renderColor, 16);
             return yPos + lineHeight;
         }
 
@@ -89,6 +89,7 @@ namespace ClickIt.Rendering
             yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.AltarOverlay, "Render.Altar");
             yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.UltimatumOverlay, "Render.Ultimatum");
             yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.StrongboxOverlay, "Render.Strongbox");
+            yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.PathfindingOverlay, "Render.Pathfinding");
             yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.TextFlush, "Flush.Text");
             yPos = RenderSectionLine(xPos, yPos, lineHeight, performanceMonitor, RenderSection.FrameFlush, "Flush.Frame");
             return yPos;
@@ -140,7 +141,7 @@ namespace ClickIt.Rendering
             return yPos + lineHeight;
         }
 
-        private void RenderClickFrequencyTargetDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
+        private int RenderClickFrequencyTargetDebug(int xPos, int yPos, int lineHeight, PerformanceMonitor performanceMonitor)
         {
             _deferredTextQueue.Enqueue("--- Click Frequency Target ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
@@ -193,6 +194,8 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
+
+            return yPos + lineHeight;
         }
 
         public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)

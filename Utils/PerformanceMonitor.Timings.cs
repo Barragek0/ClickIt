@@ -1,4 +1,4 @@
-namespace ClickIt.Utils
+﻿namespace ClickIt.Utils
 {
     public partial class PerformanceMonitor
     {
@@ -185,7 +185,6 @@ namespace ClickIt.Utils
             }
         }
 
-        // Helper to enqueue timing measurements and keep a fixed-length queue
         private static void EnqueueTiming(Queue<long> queue, long value, int maxLength, object lockObject)
         {
             lock (lockObject)

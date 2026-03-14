@@ -1,7 +1,5 @@
-namespace ClickIt.Utils
+﻿namespace ClickIt.Utils
 {
-    // Partial file containing test-only seams for LabelUtils.
-    // These are intentionally internal and used by the unit tests only.
     internal static partial class LabelUtils
     {
         internal static void SortByDistanceForTests<T>(List<T> items, Func<T, float> getDistance)
@@ -14,7 +12,6 @@ namespace ClickIt.Utils
 
             if (n <= 50)
             {
-                // insertion sort
                 for (int i = 1; i < n; i++)
                 {
                     T key = items[i];
@@ -53,7 +50,6 @@ namespace ClickIt.Utils
                 if (getDistance(items[j]) <= pivotValue)
                 {
                     i++;
-                    // swap
                     T tmp = items[i];
                     items[i] = items[j];
                     items[j] = tmp;
@@ -65,12 +61,9 @@ namespace ClickIt.Utils
             return i + 1;
         }
 
-        // --- Test-only helper methods ---
-        // These make it possible to deterministically test label/entity logic
         // without constructing complex runtime ExileCore objects.
         internal static bool IsValidEntityTypeForTests(ExileCore.Shared.Enums.EntityType type, string? path, bool chestOpenOnDamage)
         {
-            // Mirror the production logic in IsValidEntityType
             string p = path ?? string.Empty;
             if (type == ExileCore.Shared.Enums.EntityType.WorldItem)
                 return true;
@@ -85,7 +78,6 @@ namespace ClickIt.Utils
 
         internal static bool IsValidClickableLabelForTests(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, ExileCore.Shared.Enums.EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment)
         {
-            // Replicate production IsValidClickableLabel behavior using simple inputs
             if (!labelNotNull || !itemNotNull || !isVisible || !labelElementValid)
                 return false;
 
@@ -105,7 +97,6 @@ namespace ClickIt.Utils
 
         internal static void AddNullElementToThreadLocalForTests()
         {
-            // Add a null placeholder to emulate a previously-populated list in tests.
             _threadLocalElementsList.Value?.Add(null!);
         }
     }

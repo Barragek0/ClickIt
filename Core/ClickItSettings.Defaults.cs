@@ -122,12 +122,14 @@ namespace ClickIt
         {
             MechanicPriorityOrder ??= new List<string>();
             MechanicPriorityIgnoreDistanceIds ??= new HashSet<string>(PriorityComparer);
+            MechanicPriorityIgnoreDistanceWithinById ??= new Dictionary<string, int>(PriorityComparer);
 
             HashSet<string> valid = new(MechanicPriorityIds, PriorityComparer);
 
             bool applyDefaultIgnoreDistance = MechanicPriorityIgnoreDistanceIds.Count == 0;
             MechanicPriorityOrder = BuildSanitizedMechanicPriorityOrder(valid);
             SanitizeMechanicIgnoreDistance(valid, applyDefaultIgnoreDistance);
+            SanitizeMechanicIgnoreDistanceWithin(valid);
         }
 
         private List<string> BuildSanitizedMechanicPriorityOrder(HashSet<string> validMechanicIds)
@@ -167,6 +169,32 @@ namespace ClickIt
             MechanicPriorityIgnoreDistanceIds.RemoveWhere(id => string.IsNullOrWhiteSpace(id) || !validMechanicIds.Contains(id));
             if (applyDefaultIgnoreDistance)
                 MechanicPriorityIgnoreDistanceIds.Add("shrines");
+        }
+
+        private void SanitizeMechanicIgnoreDistanceWithin(HashSet<string> validMechanicIds)
+        {
+            string[] invalidKeys = MechanicPriorityIgnoreDistanceWithinById.Keys
+                .Where(id => string.IsNullOrWhiteSpace(id) || !validMechanicIds.Contains(id))
+                .ToArray();
+
+            foreach (string invalidKey in invalidKeys)
+            {
+                MechanicPriorityIgnoreDistanceWithinById.Remove(invalidKey);
+            }
+
+            foreach (string mechanicId in validMechanicIds)
+            {
+                if (!MechanicPriorityIgnoreDistanceWithinById.TryGetValue(mechanicId, out int value))
+                {
+                    MechanicPriorityIgnoreDistanceWithinById[mechanicId] = MechanicIgnoreDistanceWithinDefault;
+                    continue;
+                }
+
+                MechanicPriorityIgnoreDistanceWithinById[mechanicId] = Math.Clamp(
+                    value,
+                    MechanicIgnoreDistanceWithinMin,
+                    MechanicIgnoreDistanceWithinMax);
+            }
         }
 
         private void EnsureStrongboxFiltersInitialized()

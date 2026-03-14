@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using ClickIt.Definitions;
 using ClickIt.Utils;
 using ExileCore.PoEMemory;
@@ -14,6 +14,7 @@ namespace ClickIt.Services
     {
         private const int UltimatumChoiceToBeginDelayMs = 150;
         private const int UltimatumPostBeginDelayMs = 60;
+        private const int UltimatumPostBeginAdditionalClickDelayMs = 200;
 
         public readonly struct UltimatumPanelOptionPreview(RectangleF rect, string modifierName, int priorityIndex, bool isSelected)
         {
@@ -150,7 +151,7 @@ namespace ClickIt.Services
             }
 
             RectangleF rect = element.GetClientRect();
-            if (!pointIsInClickableArea(rect.Center, "Ultimatum"))
+            if (!IsClickableInEitherSpace(rect.Center, "Ultimatum"))
             {
                 DebugLog(() => $"{rejectedClickableAreaLogPrefix} center={rect.Center}");
                 return false;
@@ -241,7 +242,6 @@ namespace ClickIt.Services
                 return false;
             }
 
-            // Let the panel state update before attempting to click Begin.
             Thread.Sleep(UltimatumChoiceToBeginDelayMs);
             TryClickUltimatumBeginButton(label, windowTopLeft);
 
@@ -270,8 +270,7 @@ namespace ClickIt.Services
                 return;
             }
 
-            // Give the encounter UI a brief moment to transition after Begin.
-            Thread.Sleep(UltimatumPostBeginDelayMs);
+            Thread.Sleep(UltimatumPostBeginDelayMs + UltimatumPostBeginAdditionalClickDelayMs);
         }
 
     }

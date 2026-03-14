@@ -8,7 +8,6 @@ namespace ClickIt.Utils
     {
         // Under normal runtime we call into user32.dll to change the OS cursor.
         // For unit tests we want to avoid touching native input. Use the wrapper
-        // `SetCursorPos` and toggle `DisableNativeInput` to suppress native calls.
         public static bool DisableNativeInput = false;
         [DllImport("user32.dll")]
         private static extern bool NativeSetCursorPos(int x, int y);

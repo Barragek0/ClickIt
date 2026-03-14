@@ -1,4 +1,4 @@
-
+﻿
 using ClickIt.Utils;
 using System.Text.RegularExpressions;
 
@@ -8,7 +8,6 @@ namespace ClickIt.Services
     {
         private static readonly Regex RgbRegex = new(@"<[^>]*>", RegexOptions.Compiled);
 
-        // Stateless cleaning logic — does not include any caching.
         public static string CleanAltarModsText_NoCache(string text)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
@@ -40,8 +39,6 @@ namespace ClickIt.Services
             return (negativeModType, mods);
         }
 
-        // Process a list of mod strings using a supplied matcher delegate.
-        // matcher(mod, negativeModType) -> (matched, isUpside, matchedId)
         public static (List<string> upsides, List<string> downsides, List<string> unmatched) ProcessMods(
             List<string> mods,
             string negativeModType,

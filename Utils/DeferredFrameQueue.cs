@@ -5,8 +5,6 @@ using System.Threading;
 
 namespace ClickIt.Utils
 {
-    // Small helper to centralize deferred DrawFrame rendering so other classes can enqueue frames
-    // and a single Flush call will draw them with a provided Graphics instance.
     public partial class DeferredFrameQueue
     {
         private readonly object _queueLock = new();
@@ -48,7 +46,6 @@ namespace ClickIt.Utils
             }
             catch
             {
-                // Intentionally empty - do not log during render operations
             }
         }
 
@@ -56,7 +53,6 @@ namespace ClickIt.Utils
         {
             if (graphics == null) return;
 
-            // Swap pending and spare lists under lock so Flush can iterate without copying.
             lock (_queueLock)
             {
                 if (_items.Count == 0)
@@ -82,7 +78,6 @@ namespace ClickIt.Utils
                 }
             }
 
-            // Clear spare after drawing; keep capacity for reuse.
             _spare.Clear();
         }
 

@@ -1,15 +1,12 @@
-using ExileCore.PoEMemory.Elements;
+﻿using ExileCore.PoEMemory.Elements;
 using ClickIt.Utils;
 
 namespace ClickIt.Services
 {
-    // Seams and helpers kept in a separate partial file so production code remains focused.
     public partial class LabelFilterService
     {
-        // Test seam - delegate used to query key state so test environments don't need native Win32
         internal static Func<Keys, bool> KeyStateProvider { get; set; } = Keyboard.IsKeyDown;
 
-        // Test seam - allows tests to short-circuit the expensive/native dependent check
         internal static Func<LabelFilterService, IReadOnlyList<LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
 
         internal static bool MatchesMetadataFiltersForTests(string metadataPath, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)

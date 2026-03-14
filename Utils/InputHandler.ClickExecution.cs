@@ -1,4 +1,4 @@
-using ExileCore;
+﻿using ExileCore;
 using ExileCore.PoEMemory;
 using SharpDX;
 using System.Diagnostics;
@@ -15,6 +15,12 @@ namespace ClickIt.Utils
 
             if (!_settings.LazyMode.Value && !Input.GetKeyState(_settings.ClickLabelKey.Value))
                 return;
+
+            if (!TryValidateAutomationScreenPoint(position, gameController, out string invalidPointReason))
+            {
+                _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping click at {position} ({invalidPointReason}).", 10);
+                return;
+            }
 
             var swTotal = Stopwatch.StartNew();
             var before = Mouse.GetCursorPosition();
@@ -45,7 +51,7 @@ namespace ClickIt.Utils
             if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress))
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification failed for current mode. Skipping click.", 5);
-                RestoreCursorIfLazyMode(before);
+                RestoreCursorIfLazyMode(before, gameController);
                 return;
             }
 
@@ -67,8 +73,9 @@ namespace ClickIt.Utils
 
             Thread.Sleep(10);
 
-            RestoreCursorIfLazyMode(before);
+            RestoreCursorIfLazyMode(before, gameController);
             MarkLazyModeClickCompleted();
+            Interlocked.Increment(ref _successfulClickSequence);
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
 
             swTotal.Stop();
@@ -90,10 +97,12 @@ namespace ClickIt.Utils
             return hoverAddress == 0 || hoverAddress != expectedAddress;
         }
 
-        // Moves cursor (if enabled), waits for UI update, then returns UI hover element.
         public Element? HoverAndGetUIHover(Vector2 screenPoint, GameController? gameController, int delayMs = -1)
         {
             if (gameController == null)
+                return null;
+
+            if (!TryValidateAutomationScreenPoint(screenPoint, gameController, out _))
                 return null;
 
             int sleepMs = delayMs;
@@ -143,7 +152,7 @@ namespace ClickIt.Utils
             }
         }
 
-        private void RestoreCursorIfLazyMode(System.Drawing.Point before)
+        private void RestoreCursorIfLazyMode(System.Drawing.Point before, GameController? gameController)
         {
             if (_settings?.LazyMode?.Value == true && _settings.RestoreCursorInLazyMode?.Value == true)
             {
@@ -153,6 +162,9 @@ namespace ClickIt.Utils
                     Thread.Sleep(restoreDelayMs);
 
                     Vector2 beforeVec = new(before.X, before.Y);
+                    if (!TryValidateAutomationScreenPoint(beforeVec, gameController, out _))
+                        return;
+
                     if (!Mouse.DisableNativeInput)
                     {
                         Input.SetCursorPos(beforeVec);

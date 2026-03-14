@@ -1,4 +1,4 @@
-using ClickIt;
+﻿using ClickIt;
 
 namespace ClickIt.Utils
 {
@@ -46,7 +46,7 @@ namespace ClickIt.Utils
         }
 
         /// <summary>
-        /// Instance Acquire method — use via instance: using(var d = lm.Acquire(obj)) { ... }
+        /// Instance Acquire method â€” use via instance: using(var d = lm.Acquire(obj)) { ... }
         /// Always performs a Monitor.Enter for non-null objects to enforce thread-safety.
         /// </summary>
         public static IDisposable Acquire(object? lockObj)
@@ -63,20 +63,16 @@ namespace ClickIt.Utils
         /// </summary>
         public static IDisposable AcquireStatic(object? lockObj)
         {
-            // If there is no global LockManager instance configured, treat AcquireStatic as a no-op.
             if (ShouldNoop(lockObj, requireInstance: true))
                 return NoopReleaser.Value;
 
             return AcquireEntered(lockObj!);
         }
 
-        // Note: static AcquireStatic is provided for type-qualified call sites; instance Acquire honors settings.
 
-        // Global instance holder for convenience. Set this during plugin initialization.
         public static LockManager? Instance { get; set; }
     }
 
-    // Backwards-compatible wrapper so older code that references GlobalLockManager still works.
     public static class GlobalLockManager
     {
         public static LockManager? Instance

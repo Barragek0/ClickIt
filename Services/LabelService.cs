@@ -36,11 +36,18 @@ namespace ClickIt.Services
             }
 
             List<LabelOnGround> validLabels = new(Math.Min(groundLabels.Count, 1000));
+            var win = _gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(win.X, win.Y);
+
+            bool IsClickableInEitherSpace(Vector2 point)
+            {
+                return _pointIsInClickableArea(point) || _pointIsInClickableArea(point + windowTopLeft);
+            }
 
             for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
             {
                 LabelOnGround label = groundLabels[i];
-                if (LabelUtils.IsValidClickableLabel(label, _pointIsInClickableArea))
+                if (LabelUtils.IsValidClickableLabel(label, IsClickableInEitherSpace))
                 {
                     validLabels.Add(label);
                 }

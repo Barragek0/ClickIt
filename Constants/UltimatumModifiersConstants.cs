@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -6,11 +6,8 @@ namespace ClickIt.Definitions
 {
     internal static class UltimatumModifiersConstants
     {
-        // Ordered by practical danger for most builds: top is usually safer, bottom is usually riskier.
-        // Reranked modifier-by-modifier from current Ultimatum effects and related PoE mechanics.
         public static readonly string[] AllModifierNames =
         [
-            // Lower danger: mostly throughput checks that many builds can absorb.
             "Resistant Monsters",
             "Shielding Monsters",
             "Impenetrable Monsters",
@@ -25,7 +22,6 @@ namespace ClickIt.Definitions
             "Totem of Costly Might",
             "Totem of Costly Potency",
 
-            // Medium danger: real pressure, but usually not instant run-ending alone.
             "Prismatic Monsters",
             "Profane Monsters",
             "Lethal Rare Monsters",
@@ -42,7 +38,6 @@ namespace ClickIt.Definitions
             "Razor Dance",
             "Choking Miasma",
 
-            // High danger: heavy layering, sustain denial, or direct control loss.
             "Escalating Monster Speed",
             "Escalating Damage Taken",
             "Hindering Flasks",
@@ -54,12 +49,10 @@ namespace ClickIt.Definitions
             "Treacherous Auras",
             "Occasional Impotence",
 
-            // Very high danger: frequent lethal spikes and hard fail-state overlap.
             "Stormcaller Runes",
             "Deadly Monsters",
             "Impurity",
 
-            // Hard fail-state mods.
             "Ruin",
             "Stalking Ruin"
         ];
@@ -128,7 +121,6 @@ namespace ClickIt.Definitions
 
             float t = Math.Clamp(index / (float)(totalCount - 1), 0f, 1f);
 
-            // Brighter gradient: top priorities are vivid yellow-green and lowest trend toward orange-red.
             float r = 0.25f + (0.70f * t);
             float g = 1.00f - (0.72f * t);
             float b = 0.20f - (0.12f * t);

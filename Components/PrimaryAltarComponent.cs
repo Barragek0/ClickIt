@@ -32,7 +32,6 @@ namespace ClickIt.Components
         // Thread safety lock for cache operations
         private readonly object _cacheLock = new();
 
-        // Helper to execute a Func<T> under the configured LockManager if present
         private T WithCacheLock<T>(Func<T> func)
         {
             using (LockManager.AcquireStatic(_cacheLock))
@@ -41,7 +40,6 @@ namespace ClickIt.Components
             }
         }
 
-        // Helper to execute an Action under the configured LockManager if present
         private void WithCacheLock(Action action)
         {
             using (LockManager.AcquireStatic(_cacheLock))

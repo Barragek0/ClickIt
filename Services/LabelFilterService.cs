@@ -17,8 +17,10 @@ namespace ClickIt.Services
         private readonly ExileCore.GameController? _gameController = gameController;
         private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
         private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
+        private IReadOnlyDictionary<string, int>? _cachedMechanicIgnoreDistanceWithinById;
         private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         public bool HasLazyModeRestrictedItemsOnScreen(IReadOnlyList<LabelOnGround>? allLabels)
         {
@@ -40,7 +42,6 @@ namespace ClickIt.Services
                     if (string.IsNullOrEmpty(path))
                         continue;
 
-                    // Check for restricted items: locked chest or settlers tree
                     var chestComponent = label.ItemOnGround.GetComponent<Chest>();
                     if (path.Contains(Constants.PetrifiedWood) || (chestComponent?.IsLocked == true && !chestComponent.IsStrongbox))
                     {
@@ -71,7 +72,6 @@ namespace ClickIt.Services
             return result;
         }
 
-        // Overload to search only a slice of the provided label list without allocating a new list.
         public LabelOnGround? GetNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
             if (allLabels == null || allLabels.Count == 0) return null;
@@ -114,7 +114,7 @@ namespace ClickIt.Services
                 if (!TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId))
                     continue;
 
-                if (TryPromoteIgnoredCandidate(label, mechanicId, clickSettings, ref bestIgnoredByPriority, ref bestIgnoredPriority))
+                if (TryPromoteIgnoredCandidate(label, mechanicId, item.DistancePlayer, clickSettings, ref bestIgnoredByPriority, ref bestIgnoredPriority))
                     continue;
 
                 PromoteNonIgnoredCandidate(
@@ -149,11 +149,16 @@ namespace ClickIt.Services
         private static bool TryPromoteIgnoredCandidate(
             LabelOnGround label,
             string mechanicId,
+            float distance,
             ClickSettings clickSettings,
             ref LabelOnGround? bestIgnoredByPriority,
             ref int bestIgnoredPriority)
         {
-            if (!clickSettings.IgnoreDistanceMechanicIds.Contains(mechanicId))
+            if (!IsIgnoreDistanceActiveForMechanic(
+                    mechanicId,
+                    distance,
+                    clickSettings.IgnoreDistanceMechanicIds,
+                    clickSettings.IgnoreDistanceWithinByMechanicId))
                 return false;
 
             int candidatePriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
@@ -164,6 +169,23 @@ namespace ClickIt.Services
             }
 
             return true;
+        }
+
+        private static bool IsIgnoreDistanceActiveForMechanic(
+            string? mechanicId,
+            float distance,
+            IReadOnlySet<string> ignoreDistanceMechanicIds,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
+        {
+            if (string.IsNullOrWhiteSpace(mechanicId))
+                return false;
+            if (!ignoreDistanceMechanicIds.Contains(mechanicId))
+                return false;
+
+            int maxDistance = ignoreDistanceWithinByMechanicId.TryGetValue(mechanicId, out int configured)
+                ? configured
+                : 100;
+            return distance <= maxDistance;
         }
 
         private static void PromoteNonIgnoredCandidate(
@@ -237,7 +259,10 @@ namespace ClickIt.Services
             return map;
         }
 
-        private void RefreshMechanicPriorityCaches(IReadOnlyList<string> mechanicPriorities, IReadOnlyCollection<string> ignoreDistance)
+        private void RefreshMechanicPriorityCaches(
+            IReadOnlyList<string> mechanicPriorities,
+            IReadOnlyCollection<string> ignoreDistance,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
         {
             if (!ReferenceEquals(_cachedMechanicPriorityOrder, mechanicPriorities))
             {
@@ -250,19 +275,25 @@ namespace ClickIt.Services
                 _cachedMechanicIgnoreDistanceIds = ignoreDistance;
                 _cachedMechanicIgnoreDistanceSet = new HashSet<string>(ignoreDistance, StringComparer.OrdinalIgnoreCase);
             }
+
+            if (!ReferenceEquals(_cachedMechanicIgnoreDistanceWithinById, ignoreDistanceWithinByMechanicId))
+            {
+                _cachedMechanicIgnoreDistanceWithinById = ignoreDistanceWithinByMechanicId;
+                _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(ignoreDistanceWithinByMechanicId, StringComparer.OrdinalIgnoreCase);
+            }
         }
 
         private ClickSettings CreateClickSettings(IReadOnlyList<LabelOnGround>? allLabels)
         {
             var s = _settings;
 
-            // Check if lazy mode restrictions should be applied (only when lazy mode active, restricted items present, and hotkey NOT held)
             bool hasRestricted = LazyModeRestrictedChecker(this, allLabels);
             bool hotkeyHeld = KeyStateProvider(s.ClickLabelKey.Value);
             bool applyLazyModeRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
             IReadOnlyList<string> mechanicPriorities = s.GetMechanicPriorityOrder();
             IReadOnlyCollection<string> ignoreDistance = s.GetMechanicPriorityIgnoreDistanceIds();
-            RefreshMechanicPriorityCaches(mechanicPriorities, ignoreDistance);
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId = s.GetMechanicPriorityIgnoreDistanceWithinById();
+            RefreshMechanicPriorityCaches(mechanicPriorities, ignoreDistance, ignoreDistanceWithinByMechanicId);
 
             return new ClickSettings
             {
@@ -301,6 +332,7 @@ namespace ClickIt.Services
                 ClickOtherUltimatum = s.IsOtherUltimatumClickEnabled(),
                 MechanicPriorityIndexMap = _cachedMechanicPriorityIndexMap,
                 IgnoreDistanceMechanicIds = _cachedMechanicIgnoreDistanceSet,
+                IgnoreDistanceWithinByMechanicId = _cachedMechanicIgnoreDistanceWithinMap,
                 MechanicPriorityDistancePenalty = s.MechanicPriorityDistancePenalty.Value
             };
         }
@@ -342,6 +374,7 @@ namespace ClickIt.Services
             public bool ClickBetrayal { get; set; }
             public IReadOnlyDictionary<string, int> MechanicPriorityIndexMap { get; set; }
             public IReadOnlySet<string> IgnoreDistanceMechanicIds { get; set; }
+            public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; set; }
             public int MechanicPriorityDistancePenalty { get; set; }
         }
 

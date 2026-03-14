@@ -12,6 +12,7 @@ namespace ClickIt.Definitions
         public const string CopperAltar = "copper_altar";
         public const string PetrifiedWood = "PetrifiedWood";
         public const string Bismuth = "Bismuth";
+        public const string Hourglass = "hourglass_altar";
         public const string Verisium = "Verisium";
         public const string ClosedDoorPast = "ClosedDoorPast";
         public const string LegionInitiator = "LegionInitiator";

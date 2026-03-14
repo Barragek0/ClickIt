@@ -1,4 +1,4 @@
-using ExileCore;
+﻿using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
@@ -11,7 +11,6 @@ namespace ClickIt.Services
         private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
         private readonly Camera _camera = camera ?? throw new ArgumentNullException(nameof(camera));
 
-        // Performance caching - shrines update less frequently than labels
         private const int SHRINE_CACHE_DURATION_MS = 200; // 200ms cache for shrines
         private readonly Stopwatch _shrineCacheTimer = new();
         private List<Entity>? _cachedShrines;
@@ -40,12 +39,23 @@ namespace ClickIt.Services
             return !string.IsNullOrEmpty(item.Path) && item.Path.Contains("DarkShrine");
         }
 
+        public static bool IsClickableShrineCandidate(Entity? item)
+        {
+            if (item == null)
+                return false;
+
+            return IsShrine(item)
+                && !item.IsOpened
+                && item.IsTargetable
+                && !item.IsHidden
+                && item.IsValid;
+        }
+
         /// <summary>
         /// Get cached list of shrine entities, updating cache if expired
         /// </summary>
         private List<Entity> GetCachedShrineEntities()
         {
-            // Ensure timer is running
             if (!_shrineCacheTimer.IsRunning)
                 _shrineCacheTimer.Start();
 
@@ -71,7 +81,6 @@ namespace ClickIt.Services
 
             var validEntities = _gameController.EntityListWrapper.ValidEntitiesByType;
 
-            // Find all shrine entities for potential clicking
             foreach (var entityType in validEntities)
             {
                 if (entityType.Value == null) continue;
@@ -79,7 +88,7 @@ namespace ClickIt.Services
                 var entities = entityType.Value;
                 foreach (var entity in entities)
                 {
-                    if (entity != null && IsShrine(entity) && !entity.IsOpened && entity.IsTargetable && !entity.IsHidden && entity.IsValid)
+                    if (IsClickableShrineCandidate(entity))
                         shrines.Add(entity);
                 }
             }
@@ -100,7 +109,6 @@ namespace ClickIt.Services
             {
                 if (shrine == null) continue;
 
-                // Check if the shrine is in a clickable area (on screen)
                 var screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
                 Vector2 clickPos = new(screenPosRaw.X, screenPosRaw.Y);
                 if (isInClickableArea(clickPos))
@@ -127,7 +135,6 @@ namespace ClickIt.Services
                 if (distance > clickDistance || distance >= minDistance)
                     continue;
 
-                // If a clickable area checker is provided, ensure the shrine is on screen
                 if (isInClickableArea != null && _camera != null)
                 {
                     var screenPosRaw = _camera.WorldToScreen(shrine.PosNum);

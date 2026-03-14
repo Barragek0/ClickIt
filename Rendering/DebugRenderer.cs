@@ -41,11 +41,65 @@ namespace ClickIt.Rendering
 
             if (settings.DebugShowFrames)
             {
-                _deferredFrameQueue.Enqueue(_areaService.FullScreenRectangle, Color.Green, 1);
-                _deferredFrameQueue.Enqueue(_areaService.HealthAndFlaskRectangle, Color.Orange, 1);
-                _deferredFrameQueue.Enqueue(_areaService.ManaAndSkillsRectangle, Color.Cyan, 1);
-                _deferredFrameQueue.Enqueue(_areaService.BuffsAndDebuffsRectangle, Color.Yellow, 1);
+                var healthSquare = _areaService.HealthSquareRectangle;
+                var flaskRect = _areaService.FlaskRectangle;
+                var manaSquare = _areaService.ManaSquareRectangle;
+                var skillsRect = _areaService.SkillsRectangle;
+
+                // Fallback: derive split rectangles from combined regions if cached split fields are empty.
+                if (IsEmptyRect(healthSquare) || IsEmptyRect(flaskRect))
+                {
+                    (healthSquare, flaskRect) = AreaService.SplitBottomAnchoredRectangleFromLeft(_areaService.HealthAndFlaskRectangle, 0.6f);
+                }
+
+                if (IsEmptyRect(manaSquare) || IsEmptyRect(skillsRect))
+                {
+                    (manaSquare, skillsRect) = AreaService.SplitBottomAnchoredRectangleFromRight(_areaService.ManaAndSkillsRectangle, 0.6f);
+                }
+
+                RectangleF healthSquareDraw = ToDrawRectangleFromLtrb(healthSquare);
+                RectangleF flaskRectDraw = ToDrawRectangleFromLtrb(flaskRect);
+                RectangleF skillsRectDraw = ToDrawRectangleFromLtrb(skillsRect);
+                RectangleF manaSquareDraw = ToDrawRectangleFromLtrb(manaSquare);
+
+                _deferredFrameQueue.Enqueue(_areaService.FullScreenRectangle, Color.LightSkyBlue, 1);
+                _deferredFrameQueue.Enqueue(healthSquareDraw, Color.Red, 1);
+                _deferredFrameQueue.Enqueue(flaskRectDraw, Color.OrangeRed, 1);
+                _deferredFrameQueue.Enqueue(skillsRectDraw, Color.DeepSkyBlue, 1);
+                _deferredFrameQueue.Enqueue(manaSquareDraw, Color.DeepSkyBlue, 1);
+                var buffsAndDebuffsRects = _areaService.BuffsAndDebuffsRectangles;
+                if (buffsAndDebuffsRects.Count > 0)
+                {
+                    for (int i = 0; i < buffsAndDebuffsRects.Count; i++)
+                    {
+                        _deferredFrameQueue.Enqueue(buffsAndDebuffsRects[i], Color.Plum, 1);
+                    }
+                }
+                else
+                {
+                    _deferredFrameQueue.Enqueue(_areaService.BuffsAndDebuffsRectangle, Color.Plum, 1);
+                }
+                _deferredFrameQueue.Enqueue(_areaService.ChatPanelBlockedRectangle, Color.Green, 1);
+                _deferredFrameQueue.Enqueue(_areaService.MapPanelBlockedRectangle, Color.Pink, 1);
+                _deferredFrameQueue.Enqueue(_areaService.GameUiPanelBlockedRectangle, Color.Orange, 1);
+                var questTrackerRects = _areaService.QuestTrackerBlockedRectangles;
+                for (int i = 0; i < questTrackerRects.Count; i++)
+                {
+                    _deferredFrameQueue.Enqueue(questTrackerRects[i], Color.Lavender, 1);
+                }
             }
+        }
+
+        private static bool IsEmptyRect(RectangleF rect)
+        {
+            return rect.X == 0f && rect.Y == 0f && rect.Width == 0f && rect.Height == 0f;
+        }
+
+        private static RectangleF ToDrawRectangleFromLtrb(RectangleF rect)
+        {
+            float width = Math.Max(0f, rect.Width - rect.X);
+            float height = Math.Max(0f, rect.Height - rect.Y);
+            return new RectangleF(rect.X, rect.Y, width, height);
         }
 
         public void RenderDetailedDebugInfo(ClickItSettings settings, PerformanceMonitor performanceMonitor)
@@ -58,61 +112,75 @@ namespace ClickIt.Rendering
                 return;
             }
 
-            int startY = 120;
-            int lineHeight = 18;
-            int columnWidth = 380;
-            int col1X = 10;
+            const int startY = 120;
+            const int lineHeight = 18;
+            const int baseX = 10;
+            const int linesPerColumn = 28;
+            const int columnShiftPx = 405;
+            const int maxColumns = 4;
+
+            int currentColumn = 0;
+            int xPos = baseX;
             int yPos = startY;
 
-            // Column 1: Plugin status, game state, performance, and click frequency
-            if (settings.DebugShowStatus)
+            void RenderSectionIfEnabled(bool enabled, Func<int, int, int, int> renderSection)
             {
-                yPos = RenderPluginStatusDebug(col1X, yPos, lineHeight);
-                yPos += lineHeight;
-            }
-            if (settings.DebugShowGameState)
-            {
-                yPos = RenderGameStateDebug(col1X, yPos, lineHeight);
-                yPos += lineHeight;
-            }
-            if (settings.DebugShowPerformance)
-            {
-                yPos = RenderPerformanceDebug(col1X, yPos, lineHeight, performanceMonitor);
-                yPos += lineHeight;
-            }
-            if (settings.DebugShowClickFrequencyTarget)
-            {
-                RenderClickFrequencyTargetDebug(col1X, yPos, lineHeight, performanceMonitor);
+                if (!enabled)
+                {
+                    return;
+                }
+
+                (currentColumn, xPos, yPos) = ResolveDebugColumnForNextSection(
+                    currentColumn,
+                    xPos,
+                    yPos,
+                    startY,
+                    lineHeight,
+                    linesPerColumn,
+                    maxColumns,
+                    baseX,
+                    columnShiftPx);
+
+                yPos = renderSection(xPos, yPos, lineHeight);
             }
 
-            // Column 2: Altar detection, labels, altar service, and errors
-            int col2X = col1X + columnWidth;
-            yPos = startY;
-            if (settings.DebugShowAltarDetection)
+            RenderSectionIfEnabled(settings.DebugShowStatus, (x, y, h) => RenderPluginStatusDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowGameState, (x, y, h) => RenderGameStateDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowPerformance, (x, y, h) => RenderPerformanceDebug(x, y, h, performanceMonitor));
+            RenderSectionIfEnabled(settings.DebugShowClickFrequencyTarget, (x, y, h) => RenderClickFrequencyTargetDebug(x, y, h, performanceMonitor));
+            RenderSectionIfEnabled(settings.DebugShowAltarDetection, (x, y, h) => RenderAltarDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowAltarService, (x, y, h) => RenderAltarServiceDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowLabels, (x, y, h) => RenderLabelsDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowHoveredItemMetadata, (x, y, h) => RenderHoveredItemMetadataDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowPathfinding, (x, y, h) => RenderPathfindingDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowRecentErrors, (x, y, h) => RenderErrorsDebug(x, y, h));
+        }
+
+        private static (int NextColumn, int NextX, int NextY) ResolveDebugColumnForNextSection(
+            int currentColumn,
+            int currentX,
+            int currentY,
+            int startY,
+            int lineHeight,
+            int linesPerColumn,
+            int maxColumns,
+            int baseX,
+            int columnShiftPx)
+        {
+            if (lineHeight <= 0 || linesPerColumn <= 0 || maxColumns <= 0)
             {
-                yPos = RenderAltarDebug(col2X, yPos, lineHeight);
-                yPos += lineHeight;
+                return (currentColumn, currentX, currentY);
             }
-            if (settings.DebugShowAltarService)
+
+            int usedLines = Math.Max(0, (currentY - startY) / lineHeight);
+            if (usedLines < linesPerColumn || currentColumn >= maxColumns - 1)
             {
-                yPos = RenderAltarServiceDebug(col2X, yPos, lineHeight);
-                yPos += lineHeight;
+                return (currentColumn, currentX, currentY);
             }
-            if (settings.DebugShowLabels)
-            {
-                yPos = RenderLabelsDebug(col2X, yPos, lineHeight);
-                yPos += lineHeight;
-            }
-            if (settings.DebugShowHoveredItemMetadata)
-            {
-                yPos = RenderHoveredItemMetadataDebug(col2X, yPos, lineHeight);
-                yPos += lineHeight;
-            }
-            if (settings.DebugShowRecentErrors)
-            {
-                _ = RenderErrorsDebug(col2X, yPos, lineHeight);
-                // No line break needed after the last category
-            }
+
+            int nextColumn = currentColumn + 1;
+            int nextX = baseX + (nextColumn * columnShiftPx);
+            return (nextColumn, nextX, startY);
         }
 
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)
@@ -151,7 +219,6 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Items on Ground: {itemCount}", new Vector2(xPos, yPos), itemColor, 16);
             yPos += lineHeight;
 
-            // Show cached labels information
             if (_plugin is ClickIt clickItPlugin)
             {
                 var cachedLabels = clickItPlugin.State.CachedLabels;
@@ -169,7 +236,6 @@ namespace ClickIt.Rendering
                 yPos += lineHeight;
             }
 
-            // Show player state
             bool playerValid = gameController?.Player != null;
             Color playerColor = playerValid ? Color.LightGreen : Color.Red;
             _deferredTextQueue.Enqueue($"Player Valid: {playerValid}", new Vector2(xPos, yPos), playerColor, 16);
@@ -191,7 +257,6 @@ namespace ClickIt.Rendering
             int currentY = (int)position.Y;
             int startIndex = 0;
 
-            // Count leading spaces to preserve indentation
             int leadingSpaces = 0;
             while (leadingSpaces < text.Length && text[leadingSpaces] == ' ')
             {
@@ -216,7 +281,6 @@ namespace ClickIt.Rendering
 
                 ReadOnlySpan<char> lineSpan = content.Slice(startIndex, endIndex - startIndex).TrimEnd();
                 string line = lineSpan.ToString();
-                // Add back the indentation
                 _deferredTextQueue.Enqueue(indentation + line, new Vector2(position.X, currentY), color, fontSize);
                 currentY += lineHeight;
                 startIndex = endIndex;
@@ -264,6 +328,114 @@ namespace ClickIt.Rendering
             {
                 return $"<error: {ex.GetType().Name}>";
             }
+        }
+
+        private int RenderPathfindingDebug(int xPos, int yPos, int lineHeight)
+        {
+            _deferredTextQueue.Enqueue("--- Pathfinding ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+
+            if (_plugin is not ClickIt clickIt || clickIt.State.PathfindingService == null)
+            {
+                _deferredTextQueue.Enqueue("Pathfinding service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            var snap = clickIt.State.PathfindingService.GetDebugSnapshot();
+            Color terrainColor = snap.TerrainLoaded ? Color.LightGreen : Color.Red;
+            _deferredTextQueue.Enqueue($"Terrain Loaded: {snap.TerrainLoaded}", new Vector2(xPos, yPos), terrainColor, 14);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Grid: {snap.AreaWidth} x {snap.AreaHeight}", new Vector2(xPos, yPos), Color.White, 14);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Expanded Nodes: {snap.LastExpandedNodes}", new Vector2(xPos, yPos), Color.White, 14);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Path Length: {snap.LastPathLength}", new Vector2(xPos, yPos), Color.White, 14);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Compute: {snap.LastComputeMs} ms", new Vector2(xPos, yPos), Color.White, 14);
+            yPos += lineHeight;
+
+            string targetPath = string.IsNullOrWhiteSpace(snap.LastTargetPath) ? "<none>" : snap.LastTargetPath;
+            yPos = RenderWrappedText($"Target Path: {targetPath}", new Vector2(xPos, yPos), Color.LightBlue, 14, lineHeight, 46);
+
+            if (!string.IsNullOrWhiteSpace(snap.LastFailureReason))
+            {
+                yPos = RenderWrappedText($"Failure: {snap.LastFailureReason}", new Vector2(xPos, yPos), Color.OrangeRed, 14, lineHeight, 46);
+            }
+
+            var movement = clickIt.State.PathfindingService.GetLatestOffscreenMovementDebug();
+            if (!movement.HasData)
+            {
+                _deferredTextQueue.Enqueue("Offscreen Movement: <no data>", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            Vector2 gridDelta = movement.TargetGrid - movement.PlayerGrid;
+            Vector2 targetDelta = movement.TargetScreen - movement.WindowCenter;
+            Vector2 clickDelta = movement.ClickScreen - movement.WindowCenter;
+
+            _deferredTextQueue.Enqueue(
+                $"Offscreen Stage: {movement.Stage} | built={movement.BuiltPath} | fromPath={movement.ResolvedFromPath} | clickPoint={movement.ResolvedClickPoint}",
+                new Vector2(xPos, yPos),
+                Color.White,
+                14);
+            yPos += lineHeight;
+
+            if (!string.IsNullOrWhiteSpace(movement.MovementSkillDebug))
+            {
+                yPos = RenderWrappedText(
+                    $"Movement Skill Debug: {movement.MovementSkillDebug}",
+                    new Vector2(xPos, yPos),
+                    Color.Yellow,
+                    14,
+                    lineHeight,
+                    46);
+            }
+
+            yPos = RenderWrappedText(
+                $"Offscreen Target: {TrimPath(movement.TargetPath)}",
+                new Vector2(xPos, yPos),
+                Color.LightBlue,
+                14,
+                lineHeight,
+                46);
+
+            _deferredTextQueue.Enqueue(
+                $"Grid P=({movement.PlayerGrid.X:0},{movement.PlayerGrid.Y:0}) T=({movement.TargetGrid.X:0},{movement.TargetGrid.Y:0}) d=({gridDelta.X:0},{gridDelta.Y:0})",
+                new Vector2(xPos, yPos),
+                Color.Orange,
+                14);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue(
+                $"Target Delta=({targetDelta.X:0.0},{targetDelta.Y:0.0}) dir={PathfindingRenderer.ToCompass(targetDelta)}",
+                new Vector2(xPos, yPos),
+                Color.Cyan,
+                14);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue(
+                $"Click Delta=({clickDelta.X:0.0},{clickDelta.Y:0.0}) dir={PathfindingRenderer.ToCompass(clickDelta)}",
+                new Vector2(xPos, yPos),
+                Color.Lime,
+                14);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue(
+                $"Center=({movement.WindowCenter.X:0.0},{movement.WindowCenter.Y:0.0}) Target=({movement.TargetScreen.X:0.0},{movement.TargetScreen.Y:0.0}) Click=({movement.ClickScreen.X:0.0},{movement.ClickScreen.Y:0.0})",
+                new Vector2(xPos, yPos),
+                Color.Gray,
+                14);
+            yPos += lineHeight;
+
+            return yPos;
+        }
+
+        private static string TrimPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return "<none>";
+
+            return path.Length <= 80 ? path : path[^80..];
         }
 
     }

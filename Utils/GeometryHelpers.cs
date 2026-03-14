@@ -1,10 +1,9 @@
-using RectangleF = SharpDX.RectangleF;
+﻿using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Utils
 {
     public static class GeometryHelpers
     {
-        // Treat edge-touching rectangles as non-overlapping to match existing click/filter semantics.
         public static bool RectanglesOverlapExclusive(RectangleF a, RectangleF b)
         {
             if (a.Right <= b.Left) return false;

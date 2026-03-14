@@ -1,18 +1,14 @@
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 
 namespace ClickIt
 {
-    // These APIs are internal-only and intended for the test project (InternalsVisibleTo).
     public partial class ClickIt
     {
-        // Test seam: allow tests to inject a Settings instance when reflection into the base class is brittle
         private ClickItSettings? _testSettingsForTests = null;
 
-        // Preserve existing behaviour — prefer an injected instance for tests, otherwise fall back to framework-provided Settings
         private ClickItSettings EffectiveSettings => _testSettingsForTests ?? Settings;
 
-        // Test seam: read back the overridden settings instance (used by tests via InternalsVisibleTo)
         internal ClickItSettings __Test_GetSettings()
         {
             return _testSettingsForTests ?? Settings ?? new ClickItSettings();
@@ -20,7 +16,6 @@ namespace ClickIt
 
         internal void __Test_SetSettings(ClickItSettings settings)
         {
-            // Prefer to use an injected settings instance for tests
             _testSettingsForTests = settings;
 
             // Try the property setter (public or non-public) as a fallback so older tests relying on reflection keep working
@@ -77,14 +72,12 @@ namespace ClickIt
             var fields = current.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
             foreach (var field in fields)
             {
-                // Match fields by assignability instead of fragile FullName checks so we can find base-class backing fields reliably
                 if (field.FieldType != null && field.FieldType.IsInstanceOfType(settings))
                 {
                     field.SetValue(this, settings);
                     return true;
                 }
 
-                // As a last resort, match any field whose name looks like it stores settings (handles odd backing-field naming)
                 if (!string.IsNullOrEmpty(field.Name) && field.Name.IndexOf("setting", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     field.SetValue(this, settings);

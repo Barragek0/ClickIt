@@ -1,8 +1,7 @@
-namespace ClickIt.Utils
+﻿namespace ClickIt.Utils
 {
     public static class ModIndexConstants
     {
-        // Mod position indices (0-7)
         public const int First = 0;
         public const int Second = 1;
         public const int Third = 2;

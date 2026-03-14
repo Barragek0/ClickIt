@@ -1,8 +1,7 @@
-using ExileCore.PoEMemory;
+﻿using ExileCore.PoEMemory;
 
 namespace ClickIt.Services
 {
-    // Adapter interface to abstract ExileCore Element for easier unit testing
     public interface IElementAdapter
     {
         Element? Underlying { get; }

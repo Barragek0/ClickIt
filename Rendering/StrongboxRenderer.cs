@@ -1,4 +1,4 @@
-using ExileCore;
+﻿using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Enums;
 using Color = SharpDX.Color;
@@ -6,7 +6,6 @@ using ClickIt.Utils;
 
 namespace ClickIt.Rendering
 {
-    // Responsible for drawing debug frames around strongboxes (locked/unlocked)
     public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
@@ -24,11 +23,9 @@ namespace ClickIt.Rendering
             if (labels == null) return;
 
             // Cast via dynamic to avoid assembly type conflicts when the test project
-            // provides its own mock ExileCore types (tests include lightweight fakes).
             RenderFromLabels((IEnumerable<LabelOnGround>)(dynamic)labels, gameController.Window.GetWindowRectangleTimeCache);
         }
 
-        // Exposed for tests — pass in the current window rectangle so we can determine on-screen intersection.
         public void RenderFromLabels(IEnumerable<LabelOnGround> labels, SharpDX.RectangleF windowArea)
         {
             if (labels == null) return;
@@ -42,7 +39,6 @@ namespace ClickIt.Rendering
 
             if (!showFrames && !anyTypeEnabled)
             {
-                // Nothing to display or click for strongboxes
                 return;
             }
 
@@ -75,17 +71,10 @@ namespace ClickIt.Rendering
             var elem = label?.Label;
             if (elem == null || !elem.IsValid) return false;
 
-            // ExileCore's Element.GetClientRect sometimes returns a nullable RectangleF
             // and in other contexts (or different runtime assemblies) it returns a
-            // non-nullable RectangleF. To remain compatible with both, retrieve the
-            // raw boxed result and handle both cases safely.
             object? maybeRectObj = elem.GetClientRect();
             if (maybeRectObj == null) return false;
 
-            // If getClientRect returned either RectangleF (boxed) or a nullable
-            // RectangleF with a value (which boxes to RectangleF), the `is`
-            // pattern above will match and we can extract it. Any other value
-            // (including a boxed null) means there's no valid rect.
             if (maybeRectObj is SharpDX.RectangleF rectVal)
             {
                 rect = rectVal;

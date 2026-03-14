@@ -3,7 +3,6 @@ namespace ClickIt.Utils
 {
     internal static class Keyboard
     {
-        // The DisableNativeInput flag lives in Keyboard.Seams.cs for test-only configuration
         private const int KEYEVENTF_EXTENDEDKEY = 0x0001;
         private const int KEYEVENTF_KEYUP = 0x0002;
         private const int KEY_PRESSED = 0x8000;

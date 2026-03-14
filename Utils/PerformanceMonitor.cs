@@ -19,8 +19,9 @@ namespace ClickIt.Utils
         AltarOverlay = 3,
         UltimatumOverlay = 4,
         StrongboxOverlay = 5,
-        TextFlush = 6,
-        FrameFlush = 7
+        PathfindingOverlay = 6,
+        TextFlush = 7,
+        FrameFlush = 8
     }
 
     /// <summary>
@@ -31,17 +32,14 @@ namespace ClickIt.Utils
     {
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
-        // Primary timing controls
         private readonly Stopwatch _mainTimer = new();
         private readonly Stopwatch _secondTimer = new();
 
-        // Coroutine timing
         private readonly Stopwatch _renderTimer = new();
         private readonly Stopwatch _altarCoroutineTimer = new();
         private readonly Stopwatch _clickCoroutineTimer = new();
         private readonly Stopwatch _flareCoroutineTimer = new();
 
-        // Performance tracking queues with thread-safe access
         private readonly Queue<long> _clickCoroutineTimings = new(10);
         private readonly Queue<long> _altarCoroutineTimings = new(10);
         private readonly Queue<long> _flareCoroutineTimings = new(10);
@@ -57,7 +55,6 @@ namespace ClickIt.Utils
         private readonly object _clickIntervalsLock = new();
         private readonly object _successfulClickTimingsLock = new();
 
-        // FPS calculation
         private readonly Stopwatch _fpsTimer = new();
         private int _frameCount = 0;
         private double _currentFps = 0;
@@ -65,13 +62,11 @@ namespace ClickIt.Utils
         private double _fpsSampleSum = 0;
         private int _fpsSampleCount = 0;
 
-        // Last timing values for display
         private long _lastAltarTiming = 0;
         private long _lastClickTiming = 0;
         private long _lastFlareTiming = 0;
         private long _lastRenderTiming = 0;
 
-        // Max timing values for display
         private long _maxAltarTiming = 0;
         private long _maxClickTiming = 0;
         private long _maxFlareTiming = 0;
@@ -81,11 +76,9 @@ namespace ClickIt.Utils
         private readonly Stopwatch _lastRenderTimer = new();
         private readonly Stopwatch _lastTickTimer = new();
 
-        // Click interval tracking
         private long _lastClickTime = 0;
         private int _clickCount = 0;
 
-        // Render section timing tracking
         private double _lastLazyModeMs = 0;
         private double _avgLazyModeMs = 0;
         private double _maxLazyModeMs = 0;
@@ -115,6 +108,11 @@ namespace ClickIt.Utils
         private double _avgTextFlushMs = 0;
         private double _maxTextFlushMs = 0;
         private long _textFlushSamples = 0;
+
+        private double _lastPathfindingOverlayMs = 0;
+        private double _avgPathfindingOverlayMs = 0;
+        private double _maxPathfindingOverlayMs = 0;
+        private long _pathfindingOverlaySamples = 0;
 
         private double _lastFrameFlushMs = 0;
         private double _avgFrameFlushMs = 0;
@@ -176,6 +174,9 @@ namespace ClickIt.Utils
                 case RenderSection.TextFlush:
                     RecordSample(ref _lastTextFlushMs, ref _avgTextFlushMs, ref _maxTextFlushMs, ref _textFlushSamples, ms);
                     break;
+                case RenderSection.PathfindingOverlay:
+                    RecordSample(ref _lastPathfindingOverlayMs, ref _avgPathfindingOverlayMs, ref _maxPathfindingOverlayMs, ref _pathfindingOverlaySamples, ms);
+                    break;
                 case RenderSection.FrameFlush:
                     RecordSample(ref _lastFrameFlushMs, ref _avgFrameFlushMs, ref _maxFrameFlushMs, ref _frameFlushSamples, ms);
                     break;
@@ -191,6 +192,7 @@ namespace ClickIt.Utils
                 RenderSection.AltarOverlay => (_lastAltarOverlayMs, _avgAltarOverlayMs, _maxAltarOverlayMs, _altarOverlaySamples),
                 RenderSection.UltimatumOverlay => (_lastUltimatumOverlayMs, _avgUltimatumOverlayMs, _maxUltimatumOverlayMs, _ultimatumOverlaySamples),
                 RenderSection.StrongboxOverlay => (_lastStrongboxOverlayMs, _avgStrongboxOverlayMs, _maxStrongboxOverlayMs, _strongboxOverlaySamples),
+                RenderSection.PathfindingOverlay => (_lastPathfindingOverlayMs, _avgPathfindingOverlayMs, _maxPathfindingOverlayMs, _pathfindingOverlaySamples),
                 RenderSection.TextFlush => (_lastTextFlushMs, _avgTextFlushMs, _maxTextFlushMs, _textFlushSamples),
                 RenderSection.FrameFlush => (_lastFrameFlushMs, _avgFrameFlushMs, _maxFrameFlushMs, _frameFlushSamples),
                 _ => (0, 0, 0, 0)
@@ -283,7 +285,6 @@ namespace ClickIt.Utils
             if (_lastClickTime != 0 && _clickCount > 3) // Skip the first few clicks to avoid irregular intervals
             {
                 long interval = currentTime - _lastClickTime;
-                // Only record reasonable intervals (not too large, probably from stale timer state)
                 if (interval > 0 && interval < 10000) // Max 10 seconds to avoid stale data
                 {
                     EnqueueTiming(_clickIntervals, interval, 10, _clickIntervalsLock);

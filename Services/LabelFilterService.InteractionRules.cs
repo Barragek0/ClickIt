@@ -1,4 +1,4 @@
-using ClickIt.Definitions;
+﻿using ClickIt.Definitions;
 using ClickIt.Utils;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
@@ -43,7 +43,7 @@ namespace ClickIt.Services
             string path = item.Path;
             EntityType type = item.Type;
 
-            if (type == EntityType.WorldItem && !ShouldAllowWorldItemByMetadata(settings, item))
+            if (type == EntityType.WorldItem && !ShouldAllowWorldItemByMetadata(settings, item, gameController))
                 return null;
             if (ShouldClickWorldItemCore(settings.ClickItems, type, item))
                 return MechanicItems;
@@ -60,7 +60,6 @@ namespace ClickIt.Services
             if (!string.IsNullOrWhiteSpace(transitionMechanicId))
                 return transitionMechanicId;
 
-            // Note: Shrines are not ground items - they are detected through entity list, not LabelOnGround.
             string? specialMechanicId = GetSpecialPathMechanicId(settings, path, label);
             if (!string.IsNullOrWhiteSpace(specialMechanicId))
                 return specialMechanicId;
@@ -202,7 +201,8 @@ namespace ClickIt.Services
             return path.Contains(Constants.CrimsonIron)
                 || path.Contains(Constants.CopperAltar)
                 || path.Contains(Constants.PetrifiedWood)
-                || path.Contains(Constants.Bismuth);
+                || path.Contains(Constants.Bismuth)
+                || path.Contains(Constants.Hourglass);
         }
 
         private static bool IsUltimatumPath(string path)

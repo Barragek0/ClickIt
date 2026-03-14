@@ -1,4 +1,4 @@
-using ExileCore.PoEMemory;
+﻿using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
 using ClickIt.Components;
@@ -44,7 +44,6 @@ namespace ClickIt.Services
         {
             if (element == null) return;
 
-            // Local predicate to determine if an altar references the provided element
             static bool MatchesElement(PrimaryAltarComponent altar, Element element)
             {
                 try
@@ -62,7 +61,6 @@ namespace ClickIt.Services
                 }
             }
 
-            // Wrapper used by RemoveAll so we can invalidate cache on matched items
             bool ShouldRemove(PrimaryAltarComponent altar)
             {
                 bool match = MatchesElement(altar, element);
@@ -106,10 +104,8 @@ namespace ClickIt.Services
                 return (false, false, string.Empty);
             });
 
-            // Update debug counters and record unmatched mods
             DebugInfo.ModsMatched += upsides.Count + downsides.Count;
 
-            // Trigger alert sound for any matched upside mods with alerts enabled
             if (upsides?.Count > 0)
             {
                 foreach (var matchedId in upsides)
@@ -128,7 +124,6 @@ namespace ClickIt.Services
             return (upsides ?? [], downsides ?? [], false);
         }
 
-        // Records unmatched mod info into debug structures and logs when in debug mode.
         private void RecordUnmatchedMod(string mod, string negativeModType)
         {
             DebugInfo.ModsUnmatched++;

@@ -1,4 +1,4 @@
-using ClickIt.Definitions;
+﻿using ClickIt.Definitions;
 
 namespace ClickIt.Utils
 {
@@ -6,8 +6,6 @@ namespace ClickIt.Utils
     {
         private static readonly Dictionary<string, (bool IsUpside, string MatchedId)> ModLookup = BuildModLookup();
 
-        // Attempt to match an altar mod to known mod IDs.
-        // Returns true if matched and outputs isUpside + matchedId (format: "Type|Id").
         public static bool TryMatchMod(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
             isUpside = false;

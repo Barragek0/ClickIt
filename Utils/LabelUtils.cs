@@ -1,4 +1,4 @@
-using ExileCore.PoEMemory;
+﻿using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
@@ -78,7 +78,6 @@ namespace ClickIt.Utils
             }
         }
 
-        // The label validity helpers accept a delegate for clickable-area checks
         public static bool IsValidClickableLabel(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
             if (label == null || label.ItemOnGround == null ||

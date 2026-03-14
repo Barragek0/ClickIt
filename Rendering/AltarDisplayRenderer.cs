@@ -14,7 +14,6 @@ namespace ClickIt.Rendering
 {
     public partial class AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, DeferredTextQueue deferredTextQueue, DeferredFrameQueue deferredFrameQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
     {
-        // Optional external lock to synchronize element access with ClickService
         public object? ElementAccessLock { get; set; }
 
         private readonly Graphics _graphics = graphics;
@@ -99,7 +98,6 @@ namespace ClickIt.Rendering
             var altarSnapshot = _altarService?.GetAltarComponentsReadOnly();
             if (altarSnapshot == null || altarSnapshot.Count == 0) return;
 
-            // Cache frequently accessed settings
             bool clickEater = _settings.ClickEaterAltars;
             bool clickExarch = _settings.ClickExarchAltars;
             bool leftHanded = _settings.LeftHanded;
@@ -139,7 +137,6 @@ namespace ClickIt.Rendering
             DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
 
             DrawWeightTexts(altarWeights.Value, topModsTopLeft, bottomModsTopLeft);
-            // Deferred text rendering is flushed at the end of the main Render method
         }
 
         private static bool IsValidRectangle(RectangleF rect)

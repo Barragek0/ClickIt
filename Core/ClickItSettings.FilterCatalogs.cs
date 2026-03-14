@@ -115,6 +115,7 @@ namespace ClickIt
         [
             new("altars", "Altars"),
             new("shrines", "Shrines"),
+            new("lost-shipment", "Lost Shipment"),
             new("ultimatum", "Ultimatum"),
             new("essences", "Essences"),
             new("items", "Items"),
@@ -144,6 +145,7 @@ namespace ClickIt
         private static readonly string[] MechanicPriorityDefaultOrderIds =
         [
             "shrines",
+            "lost-shipment",
             "items",
             "altars",
             "essences",

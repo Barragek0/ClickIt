@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
@@ -27,6 +27,7 @@ namespace ClickIt.Services
         InputHandler inputHandler,
         LabelFilterService labelFilterService,
         ShrineService shrineService,
+        PathfindingService pathfindingService,
         Func<bool> groundItemsVisible,
         TimeCache<List<LabelOnGround>> cachedLabels,
         PerformanceMonitor performanceMonitor)
@@ -41,15 +42,20 @@ namespace ClickIt.Services
         private readonly InputHandler inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
         private readonly LabelFilterService labelFilterService = labelFilterService ?? throw new ArgumentNullException(nameof(labelFilterService));
         private readonly ShrineService shrineService = shrineService ?? throw new ArgumentNullException(nameof(shrineService));
+        private readonly PathfindingService pathfindingService = pathfindingService ?? throw new ArgumentNullException(nameof(pathfindingService));
         private readonly Func<bool> groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
         private ulong _lastLeverKey;
         private long _lastLeverClickTimestampMs;
+        private long _stickyOffscreenTargetAddress;
+        private long _lastMovementSkillUseTimestampMs;
+        private long _movementSkillPostCastClickBlockUntilTimestampMs;
+        private long _movementSkillStatusPollUntilTimestampMs;
+        private object? _lastUsedMovementSkillEntry;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
-        // Public method to expose the lock for external synchronization
         public object GetElementAccessLock()
         {
             return _elementAccessLock;
@@ -62,6 +68,29 @@ namespace ClickIt.Services
             {
                 errorHandler.LogMessage(messageFactory());
             }
+        }
+
+        private bool IsClickableInEitherSpace(Vector2 clientPoint, string path)
+        {
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            return IsClickableInEitherSpace(clientPoint, windowTopLeft, pointIsInClickableArea, path);
+        }
+
+        public void CancelOffscreenPathingState()
+        {
+            ClearStickyOffscreenTarget();
+            pathfindingService.ClearLatestPath();
+        }
+
+        internal static bool IsClickableInEitherSpace(
+            Vector2 clientPoint,
+            Vector2 windowTopLeft,
+            Func<Vector2, string, bool> clickabilityCheck,
+            string path)
+        {
+            return clickabilityCheck(clientPoint, path)
+                || clickabilityCheck(clientPoint + windowTopLeft, path);
         }
 
         public IEnumerator ProcessAltarClicking()
@@ -115,7 +144,6 @@ namespace ClickIt.Services
         {
             boxToClick = null;
 
-            // First check if altar type is enabled
             bool isEnabledType = (altar.AltarType == AltarType.EaterOfWorlds && clickEater) ||
                                 (altar.AltarType == AltarType.SearingExarch && clickExarch);
 
@@ -134,7 +162,6 @@ namespace ClickIt.Services
                 return false;
             }
 
-            // Check for unmatched mods
             if ((altar.TopMods?.HasUnmatchedMods == true) || (altar.BottomMods?.HasUnmatchedMods == true))
             {
                 DebugLog(() => "Skipping altar - Unmatched mods present");
@@ -152,7 +179,6 @@ namespace ClickIt.Services
             RectangleF bottomModsRect = altar.GetBottomModsRect();
             Vector2 topModsTopLeft = topModsRect.TopLeft;
 
-            // Check if we can determine a valid choice
             boxToClick = altarDisplayRenderer.DetermineAltarChoice(altar, altarWeights.Value, topModsRect, bottomModsRect, topModsTopLeft);
 
             if (boxToClick == null)
@@ -161,8 +187,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            // Final check: ensure the choice is clickable
-            if (!pointIsInClickableArea(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) ||
+            if (!IsClickableInEitherSpace(boxToClick.GetClientRect().Center, altar.AltarType.ToString()) ||
                 !boxToClick.IsVisible)
             {
                 DebugLog(() => "Skipping altar - Choice is not clickable or visible");
@@ -192,7 +217,6 @@ namespace ClickIt.Services
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
 
             bool clicked = false;
-            // Verify cursor is inside game window before clicking when setting enabled
             if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true)
             {
                 if (!IsCursorInsideGameWindow())

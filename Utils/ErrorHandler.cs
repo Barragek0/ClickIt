@@ -1,4 +1,4 @@
-namespace ClickIt.Utils
+﻿namespace ClickIt.Utils
 {
     /// <summary>
     /// Centralized error handling and logging system for the ClickIt plugin.
@@ -13,6 +13,7 @@ namespace ClickIt.Utils
         private readonly Action<string, int> _logError = logError ?? throw new ArgumentNullException(nameof(logError));
         private readonly Action<string, int> _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
         private readonly List<string> _recentErrors = [];
+        private bool _globalHandlersRegistered;
         private const int MAX_ERRORS_TO_TRACK = 10;
 
         public IReadOnlyList<string> RecentErrors => _recentErrors.AsReadOnly();
@@ -22,11 +23,24 @@ namespace ClickIt.Utils
         /// </summary>
         public void RegisterGlobalExceptionHandlers()
         {
-            // Register global unhandled exception handler
+            if (_globalHandlersRegistered)
+                return;
+
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
 
-            // Register unobserved task exception handler
             TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+
+            _globalHandlersRegistered = true;
+        }
+
+        public void UnregisterGlobalExceptionHandlers()
+        {
+            if (!_globalHandlersRegistered)
+                return;
+
+            AppDomain.CurrentDomain.UnhandledException -= HandleUnhandledException;
+            TaskScheduler.UnobservedTaskException -= HandleUnobservedTaskException;
+            _globalHandlersRegistered = false;
         }
 
         private void HandleUnhandledException(object? sender, UnhandledExceptionEventArgs e)

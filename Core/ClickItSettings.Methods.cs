@@ -1,4 +1,4 @@
-using ExileCore.Shared.Attributes;
+﻿using ExileCore.Shared.Attributes;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
 using ImGuiNET;
@@ -62,6 +62,7 @@ namespace ClickIt
                 || DebugShowAltarService
                 || DebugShowLabels
                 || DebugShowHoveredItemMetadata
+                || DebugShowPathfinding
                 || DebugShowRecentErrors;
         }
 
@@ -84,17 +85,33 @@ namespace ClickIt
                 RenderDebug,
                 "Provides more debug text related to rendering the overlay.");
 
+            DrawToggleNodeControl(
+                "Auto-Copy Additional Debug Information",
+                AutoCopyAdditionalDebugInfoToClipboard,
+                "Automatically copies the current Additional Debug Information text to clipboard.");
+
+            if (AutoCopyAdditionalDebugInfoToClipboard.Value)
+            {
+                DrawRangeNodeControl(
+                    "Auto-Copy Interval (ms)",
+                    AutoCopyAdditionalDebugInfoIntervalMs,
+                    250,
+                    10000,
+                    "Minimum delay between clipboard updates when auto-copy is enabled.");
+            }
+
             if (RenderDebug.Value)
             {
                 ImGui.Indent();
-                DrawToggleNodeControl("Status", DebugShowStatus, "Show/hide the Status debug section");
+                DrawToggleNodeControl("Status", DebugShowStatus, "Show/hide the status debug section");
                 DrawToggleNodeControl("Game State", DebugShowGameState, "Show/hide the Game State debug section");
-                DrawToggleNodeControl("Performance", DebugShowPerformance, "Show/hide the Performance debug section");
+                DrawToggleNodeControl("Performance", DebugShowPerformance, "Show/hide the performance debug section");
                 DrawToggleNodeControl("Click Frequency Target", DebugShowClickFrequencyTarget, "Show/hide the Click Frequency Target debug section");
                 DrawToggleNodeControl("Altar Detection", DebugShowAltarDetection, "Show/hide the Altar Detection debug section");
                 DrawToggleNodeControl("Altar Service", DebugShowAltarService, "Show/hide the Altar Service debug section");
-                DrawToggleNodeControl("Labels", DebugShowLabels, "Show/hide the Labels debug section");
+                DrawToggleNodeControl("Labels", DebugShowLabels, "Show/hide the labels debug section");
                 DrawToggleNodeControl("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section");
+                DrawToggleNodeControl("Pathfinding", DebugShowPathfinding, "Show/hide offscreen pathfinding debug section");
                 DrawToggleNodeControl("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section");
                 DrawToggleNodeControl("Debug Frames", DebugShowFrames, "Show/hide the debug screen area frames");
                 ImGui.Unindent();
@@ -116,57 +133,45 @@ namespace ClickIt
         {
             EnsureItemTypeFiltersInitialized();
 
-            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
-            bool sectionOpen = ImGui.TreeNode("Item Filters");
-            DrawInlineTooltip("Configure item whitelist/blacklist behavior. Use arrows to move entries between lists and click a row to open subtype options.");
-            if (!sectionOpen)
+
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open subtype filter options.");
+            ImGui.Spacing();
+
+            DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref itemTypeSearchFilter);
+            if (DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
+            {
+                ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
+                ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
+                ItemTypeWhitelistSubtypeIds.Clear();
+                ItemTypeBlacklistSubtypeIds.Clear();
+                _expandedItemTypeRowKey = string.Empty;
+            }
+
+            ImGui.Spacing();
+
+            bool tableOpen = ImGui.BeginTable("ItemTypeFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable);
+            if (!tableOpen)
                 return;
 
             try
             {
-                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Click a table row to open subtype filter options.");
-                ImGui.Spacing();
+                SetupTwoColumnFilterTableHeader(
+                    leftHeader: "Click",
+                    rightHeader: "Don't Click",
+                    leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                    rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
 
-                DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref itemTypeSearchFilter);
-                if (DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
-                {
-                    ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
-                    ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
-                    ItemTypeWhitelistSubtypeIds.Clear();
-                    ItemTypeBlacklistSubtypeIds.Clear();
-                    _expandedItemTypeRowKey = string.Empty;
-                }
+                ImGui.TableNextRow();
 
-                ImGui.Spacing();
+                ImGui.TableSetColumnIndex(0);
+                DrawItemTypeList("Click##ItemType", ItemTypeWhitelistIds, moveToWhitelist: false, textColor: WhitelistTextColor);
 
-                bool tableOpen = ImGui.BeginTable("ItemTypeFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable);
-                if (!tableOpen)
-                    return;
-
-                try
-                {
-                    SetupTwoColumnFilterTableHeader(
-                        leftHeader: "Whitelist",
-                        rightHeader: "Blacklist",
-                        leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                        rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
-
-                    ImGui.TableNextRow();
-
-                    ImGui.TableSetColumnIndex(0);
-                    DrawItemTypeList("Whitelist##ItemType", ItemTypeWhitelistIds, moveToWhitelist: false, textColor: WhitelistTextColor);
-
-                    ImGui.TableSetColumnIndex(1);
-                    DrawItemTypeList("Blacklist##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true, textColor: BlacklistTextColor);
-                }
-                finally
-                {
-                    ImGui.EndTable();
-                }
+                ImGui.TableSetColumnIndex(1);
+                DrawItemTypeList("Don't Click##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true, textColor: BlacklistTextColor);
             }
             finally
             {
-                ImGui.TreePop();
+                ImGui.EndTable();
             }
         }
 
@@ -284,50 +289,38 @@ namespace ClickIt
         {
             EnsureEssenceCorruptionFiltersInitialized();
 
-            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
-            bool sectionOpen = ImGui.TreeNode("Corruption Filters");
-            DrawInlineTooltip("Configure which Screaming, Shrieking, and Deafening essences should be corrupted. Use arrows to move entries between Corrupt and Don't Corrupt lists.");
-            if (!sectionOpen)
+
+            DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref essenceSearchFilter);
+            if (DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
+            {
+                EssenceCorruptNames = BuildDefaultCorruptEssenceNames();
+                EssenceDontCorruptNames = BuildDefaultDontCorruptEssenceNames();
+            }
+
+            ImGui.Spacing();
+
+            if (!ImGui.BeginTable("EssenceCorruptionLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
                 return;
 
             try
             {
-                DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref essenceSearchFilter);
-                if (DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
-                {
-                    EssenceCorruptNames = BuildDefaultCorruptEssenceNames();
-                    EssenceDontCorruptNames = BuildDefaultDontCorruptEssenceNames();
-                }
+                SetupTwoColumnFilterTableHeader(
+                    leftHeader: "Corrupt",
+                    rightHeader: "Don't Corrupt",
+                    leftBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                    rightBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f));
 
-                ImGui.Spacing();
+                ImGui.TableNextRow();
 
-                if (!ImGui.BeginTable("EssenceCorruptionLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
-                    return;
+                ImGui.TableSetColumnIndex(0);
+                DrawEssenceCorruptionList("Corrupt##Essence", EssenceCorruptNames, moveToCorrupt: false, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
 
-                try
-                {
-                    SetupTwoColumnFilterTableHeader(
-                        leftHeader: "Corrupt",
-                        rightHeader: "Don't Corrupt",
-                        leftBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
-                        rightBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f));
-
-                    ImGui.TableNextRow();
-
-                    ImGui.TableSetColumnIndex(0);
-                    DrawEssenceCorruptionList("Corrupt##Essence", EssenceCorruptNames, moveToCorrupt: false, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
-
-                    ImGui.TableSetColumnIndex(1);
-                    DrawEssenceCorruptionList("DontCorrupt##Essence", EssenceDontCorruptNames, moveToCorrupt: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
-                }
-                finally
-                {
-                    ImGui.EndTable();
-                }
+                ImGui.TableSetColumnIndex(1);
+                DrawEssenceCorruptionList("DontCorrupt##Essence", EssenceDontCorruptNames, moveToCorrupt: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
             }
             finally
             {
-                ImGui.TreePop();
+                ImGui.EndTable();
             }
         }
 
@@ -362,50 +355,38 @@ namespace ClickIt
         {
             EnsureStrongboxFiltersInitialized();
 
-            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
-            bool sectionOpen = ImGui.TreeNode("Strongbox Filters");
-            DrawInlineTooltip("Configure which strongboxes should be clicked. Use arrows to move entries between Click and Don't Click lists.");
-            if (!sectionOpen)
+
+            DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref strongboxSearchFilter);
+            if (DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
+            {
+                StrongboxClickIds = BuildDefaultClickStrongboxIds();
+                StrongboxDontClickIds = BuildDefaultDontClickStrongboxIds();
+            }
+
+            ImGui.Spacing();
+
+            if (!ImGui.BeginTable("StrongboxFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
                 return;
 
             try
             {
-                DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref strongboxSearchFilter);
-                if (DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
-                {
-                    StrongboxClickIds = BuildDefaultClickStrongboxIds();
-                    StrongboxDontClickIds = BuildDefaultDontClickStrongboxIds();
-                }
+                SetupTwoColumnFilterTableHeader(
+                    leftHeader: "Click",
+                    rightHeader: "Don't Click",
+                    leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                    rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
 
-                ImGui.Spacing();
+                ImGui.TableNextRow();
 
-                if (!ImGui.BeginTable("StrongboxFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
-                    return;
+                ImGui.TableSetColumnIndex(0);
+                DrawStrongboxFilterList("Click##Strongbox", StrongboxClickIds, moveToClick: false, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
 
-                try
-                {
-                    SetupTwoColumnFilterTableHeader(
-                        leftHeader: "Click",
-                        rightHeader: "Don't Click",
-                        leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                        rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
-
-                    ImGui.TableNextRow();
-
-                    ImGui.TableSetColumnIndex(0);
-                    DrawStrongboxFilterList("Click##Strongbox", StrongboxClickIds, moveToClick: false, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
-
-                    ImGui.TableSetColumnIndex(1);
-                    DrawStrongboxFilterList("DontClick##Strongbox", StrongboxDontClickIds, moveToClick: true, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
-                }
-                finally
-                {
-                    ImGui.EndTable();
-                }
+                ImGui.TableSetColumnIndex(1);
+                DrawStrongboxFilterList("DontClick##Strongbox", StrongboxDontClickIds, moveToClick: true, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
             }
             finally
             {
-                ImGui.TreePop();
+                ImGui.EndTable();
             }
         }
 
@@ -434,6 +415,320 @@ namespace ClickIt
             DrawNoEntriesPlaceholder(hasEntries);
 
             ImGui.PopID();
+        }
+
+        private sealed record MechanicToggleGroupEntry(string Id, string DisplayName);
+        private sealed record MechanicToggleTableEntry(string Id, string DisplayName, ToggleNode Node, string? GroupId = null);
+
+        private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
+        [
+            new("delve", "Delve"),
+            new("ultimatum", "Ultimatum"),
+            new("altars", "Altars")
+        ];
+
+        private void DrawMechanicsTablePanel()
+        {
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open subtype filter options.");
+
+            ImGui.Spacing();
+
+            DrawSearchBar("##MechanicsSearch", "Clear##MechanicsSearchClear", ref mechanicsSearchFilter);
+            if (DrawResetDefaultsButton("Reset Defaults##MechanicsResetDefaults"))
+            {
+                ResetMechanicsTableDefaults();
+                _expandedMechanicsTableRowId = string.Empty;
+            }
+
+            ImGui.Spacing();
+
+            if (!ImGui.BeginTable("MechanicsFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
+                return;
+
+            try
+            {
+                SetupTwoColumnFilterTableHeader(
+                    leftHeader: "Click",
+                    rightHeader: "Don't Click",
+                    leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                    rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
+
+                ImGui.TableNextRow();
+
+                ImGui.TableSetColumnIndex(0);
+                DrawMechanicsTableList("Click##Mechanics", moveToClick: false, WhitelistTextColor);
+
+                ImGui.TableSetColumnIndex(1);
+                DrawMechanicsTableList("DontClick##Mechanics", moveToClick: true, BlacklistTextColor);
+            }
+            finally
+            {
+                ImGui.EndTable();
+            }
+        }
+
+        private void DrawMechanicsTableList(string listId, bool moveToClick, Vector4 textColor)
+        {
+            ImGui.PushID(listId);
+
+            MechanicToggleTableEntry[] entries = BuildMechanicTableEntries();
+            bool hasEntries = false;
+
+            foreach (MechanicToggleTableEntry entry in entries)
+            {
+                if (!string.IsNullOrEmpty(entry.GroupId))
+                    continue;
+                if (!ShouldRenderMechanicEntry(entry, moveToClick, mechanicsSearchFilter))
+                    continue;
+
+                hasEntries = true;
+                bool arrowClicked = DrawTransferListRow(listId, entry.Id, entry.DisplayName, moveToClick, textColor);
+                if (arrowClicked)
+                {
+                    entry.Node.Value = moveToClick;
+                    _expandedMechanicsTableRowId = string.Empty;
+                    break;
+                }
+            }
+
+            foreach (MechanicToggleGroupEntry group in MechanicToggleGroups)
+            {
+                if (!ShouldRenderMechanicGroup(group, entries, moveToClick, mechanicsSearchFilter))
+                    continue;
+
+                hasEntries = true;
+                MechanicGroupRowRenderState rowState = DrawMechanicGroupRow(listId, group, moveToClick, textColor);
+                if (rowState.ArrowClicked)
+                {
+                    SetMechanicGroupState(group.Id, entries, moveToClick);
+                    _expandedMechanicsTableRowId = string.Empty;
+                    break;
+                }
+
+                if (rowState.RowClicked)
+                {
+                    ToggleExpandedMechanicTableRow(listId, group.Id);
+                }
+
+                if (IsExpandedMechanicTableRow(listId, group.Id))
+                {
+                    DrawMechanicGroupSubmenu(listId, group, entries);
+                }
+            }
+
+            DrawNoEntriesPlaceholder(hasEntries);
+
+            ImGui.PopID();
+        }
+
+        private readonly struct MechanicGroupRowRenderState(bool rowClicked, bool arrowClicked)
+        {
+            public bool RowClicked { get; } = rowClicked;
+            public bool ArrowClicked { get; } = arrowClicked;
+        }
+
+        private MechanicGroupRowRenderState DrawMechanicGroupRow(string listId, MechanicToggleGroupEntry group, bool moveToClick, Vector4 textColor)
+        {
+            string label = $"{group.DisplayName} [v]##{listId}_{group.Id}";
+            float rowWidth = CalculateItemTypeRowWidth();
+            const float arrowWidth = 28f;
+
+            if (moveToClick)
+            {
+                bool leftArrowClicked = ImGui.Button($"<-##MoveGroup_{listId}_{group.Id}", new Vector2(arrowWidth, 0));
+                ImGui.SameLine();
+                bool rowClicked = DrawMechanicGroupSelectable(listId, group.Id, label, rowWidth, textColor);
+                return new MechanicGroupRowRenderState(rowClicked, leftArrowClicked);
+            }
+
+            bool clicked = DrawMechanicGroupSelectable(listId, group.Id, label, rowWidth, textColor);
+            ImGui.SameLine();
+            bool rightArrowClicked = ImGui.Button($"->##MoveGroup_{listId}_{group.Id}", new Vector2(arrowWidth, 0));
+            return new MechanicGroupRowRenderState(clicked, rightArrowClicked);
+        }
+
+        private bool DrawMechanicGroupSelectable(string listId, string groupId, string label, float rowWidth, Vector4 textColor)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+            bool clicked = ImGui.Selectable(label, IsExpandedMechanicTableRow(listId, groupId), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+            ImGui.PopStyleColor();
+            return clicked;
+        }
+
+        private void DrawMechanicGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
+        {
+            ImGui.Indent();
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.75f, 0.75f, 0.75f, 1f));
+            ImGui.TextWrapped($"{group.DisplayName} submenu: toggle individual mechanics in this group.");
+            ImGui.PopStyleColor();
+
+            foreach (MechanicToggleTableEntry entry in entries)
+            {
+                if (!string.Equals(entry.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!MatchesMechanicsSearch(entry.DisplayName, mechanicsSearchFilter) && !MatchesMechanicsSearch(group.DisplayName, mechanicsSearchFilter))
+                    continue;
+
+                bool enabled = entry.Node.Value;
+                Vector4 rowColor = enabled ? WhitelistTextColor : BlacklistTextColor;
+                ImGui.PushStyleColor(ImGuiCol.Text, rowColor);
+                if (ImGui.Checkbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{group.Id}_{entry.Id}", ref enabled))
+                {
+                    entry.Node.Value = enabled;
+                }
+                ImGui.PopStyleColor();
+            }
+
+            ImGui.Unindent();
+        }
+
+        private static bool ShouldRenderMechanicEntry(MechanicToggleTableEntry entry, bool moveToClick, string filter)
+        {
+            bool inSourceSet = moveToClick ? !entry.Node.Value : entry.Node.Value;
+            return inSourceSet && MatchesMechanicsSearch(entry.DisplayName, filter);
+        }
+
+        private static bool ShouldRenderMechanicGroup(MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries, bool moveToClick, string filter)
+        {
+            bool hasMatchingChild = false;
+            bool matchesFilter = MatchesMechanicsSearch(group.DisplayName, filter);
+
+            foreach (MechanicToggleTableEntry entry in entries)
+            {
+                if (!string.Equals(entry.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                bool inSourceSet = moveToClick ? !entry.Node.Value : entry.Node.Value;
+                bool childMatchesFilter = MatchesMechanicsSearch(entry.DisplayName, filter);
+                if (inSourceSet && (matchesFilter || childMatchesFilter))
+                {
+                    hasMatchingChild = true;
+                    break;
+                }
+            }
+
+            return hasMatchingChild;
+        }
+
+        private static bool MatchesMechanicsSearch(string name, string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+                return true;
+
+            return name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string BuildExpandedMechanicTableRowKey(string listId, string rowId)
+        {
+            return $"{listId}:{rowId}";
+        }
+
+        private bool IsExpandedMechanicTableRow(string listId, string rowId)
+        {
+            return string.Equals(_expandedMechanicsTableRowId, BuildExpandedMechanicTableRowKey(listId, rowId), StringComparison.Ordinal);
+        }
+
+        private void ToggleExpandedMechanicTableRow(string listId, string rowId)
+        {
+            string rowKey = BuildExpandedMechanicTableRowKey(listId, rowId);
+            if (string.Equals(_expandedMechanicsTableRowId, rowKey, StringComparison.Ordinal))
+            {
+                _expandedMechanicsTableRowId = string.Empty;
+            }
+            else
+            {
+                _expandedMechanicsTableRowId = rowKey;
+            }
+        }
+
+        private static void SetMechanicGroupState(string groupId, IReadOnlyList<MechanicToggleTableEntry> entries, bool enabled)
+        {
+            foreach (MechanicToggleTableEntry entry in entries)
+            {
+                if (!string.Equals(entry.GroupId, groupId, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                entry.Node.Value = enabled;
+            }
+        }
+
+        private void ResetMechanicsTableDefaults()
+        {
+            foreach (MechanicToggleTableEntry entry in BuildMechanicTableEntries())
+            {
+                entry.Node.Value = GetDefaultMechanicToggleState(entry.Id);
+            }
+        }
+
+        private static bool GetDefaultMechanicToggleState(string id)
+        {
+            return id switch
+            {
+                "shrines" => true,
+                "lost-shipment" => true,
+                "basic-chests" => false,
+                "league-chests" => true,
+                "area-transitions" => false,
+                "labyrinth-trials" => false,
+                "crafting-recipes" => true,
+                "doors" => false,
+                "levers" => false,
+                "alva-temple-doors" => true,
+                "betrayal" => false,
+                "blight" => true,
+                "breach-nodes" => false,
+                "legion-pillars" => true,
+                "harvest" => true,
+                "sanctum" => true,
+                "settlers-ore" => true,
+                "items" => true,
+                "essences" => true,
+                "ritual-initiate" => true,
+                "ritual-completed" => true,
+                "delve-azurite-veins" => true,
+                "delve-sulphite-veins" => true,
+                "delve-encounter-initiators" => true,
+                "ultimatum-initial-overlay" => false,
+                "ultimatum-window" => false,
+                "altars-searing-exarch" => false,
+                "altars-eater-of-worlds" => false,
+                _ => false
+            };
+        }
+
+        private MechanicToggleTableEntry[] BuildMechanicTableEntries()
+        {
+            return
+            [
+                new("basic-chests", "Basic Chests", ClickBasicChests),
+                new("league-chests", "League Mechanic Chests", ClickLeagueChests),
+                new("shrines", "Shrines", ClickShrines),
+                new("lost-shipment", "Lost Shipment", ClickLostShipmentCrates),
+                new("area-transitions", "Area Transitions", ClickAreaTransitions),
+                new("labyrinth-trials", "Labyrinth Trials", ClickLabyrinthTrials),
+                new("crafting-recipes", "Crafting Recipes", ClickCraftingRecipes),
+                new("doors", "Doors", ClickDoors),
+                new("levers", "Levers", ClickLevers),
+                new("alva-temple-doors", "Alva Temple Doors", ClickAlvaTempleDoors),
+                new("betrayal", "Betrayal", ClickBetrayal),
+                new("blight", "Blight", ClickBlight),
+                new("breach-nodes", "Breach Nodes", ClickBreachNodes),
+                new("legion-pillars", "Legion Pillars", ClickLegionPillars),
+                new("harvest", "Nearest Harvest Plot", NearestHarvest),
+                new("sanctum", "Sanctum", ClickSanctum),
+                new("settlers-ore", "Settlers Ore Deposits", ClickSettlersOre),
+                new("items", "Items", ClickItems),
+                new("essences", "Essences", ClickEssences),
+                new("ritual-initiate", "Ritual Altars", ClickRitualInitiate),
+                new("ritual-completed", "Completed Ritual Altars", ClickRitualCompleted),
+                new("delve-azurite-veins", "Azurite Veins", ClickAzuriteVeins, "delve"),
+                new("delve-sulphite-veins", "Sulphite Veins", ClickSulphiteVeins, "delve"),
+                new("delve-encounter-initiators", "Encounter Initiators", ClickDelveSpawners, "delve"),
+                new("ultimatum-initial-overlay", "Initial Ultimatum Overlay", ClickInitialUltimatum, "ultimatum"),
+                new("ultimatum-window", "Ultimatum Window", ClickUltimatumChoices, "ultimatum"),
+                new("altars-searing-exarch", "Searing Exarch", ClickExarchAltars, "altars"),
+                new("altars-eater-of-worlds", "Eater of Worlds", ClickEaterAltars, "altars")
+            ];
         }
 
         private static bool DrawTransferListRow(string listId, string key, string displayText, bool moveToPrimaryList, Vector4 textColor)
@@ -575,94 +870,82 @@ namespace ClickIt
         {
             EnsureUltimatumModifiersInitialized();
 
-            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
-            bool sectionOpen = ImGui.TreeNode("Modifier Priorities");
-            DrawInlineTooltip("Top rows are preferred first. Example: if the options are Resistant Monsters, Reduced Recovery, and Ruin, the plugin picks whichever appears highest in this table.");
-            if (!sectionOpen)
+
+            DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref ultimatumSearchFilter);
+            if (DrawResetDefaultsButton("Reset Defaults##UltimatumResetDefaults"))
+            {
+                UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
+            }
+
+            ImGui.Spacing();
+
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Priority: top row is highest, bottom row is lowest.");
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
+            ImGui.TextWrapped("Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.");
+            ImGui.PopStyleColor();
+            ImGui.Spacing();
+
+            float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
+            if (!ImGui.BeginTable("UltimatumModifierPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
                 return;
 
             try
             {
-                DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref ultimatumSearchFilter);
-                if (DrawResetDefaultsButton("Reset Defaults##UltimatumResetDefaults"))
+                ImGui.TableSetupColumn("Modifiers", ImGuiTableColumnFlags.WidthFixed, tableWidth);
+
+                ImGui.TableNextRow(ImGuiTableRowFlags.None);
+                ImGui.TableSetColumnIndex(0);
+                ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.6f, 0.3f)));
+                ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Modifiers");
+
+                for (int i = 0; i < UltimatumModifierPriority.Count; i++)
                 {
-                    UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
-                }
+                    string modifier = UltimatumModifierPriority[i];
+                    if (!MatchesUltimatumSearch(modifier, ultimatumSearchFilter))
+                        continue;
 
-                ImGui.Spacing();
-
-                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Priority: top row is highest, bottom row is lowest.");
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
-                ImGui.TextWrapped("Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.");
-                ImGui.PopStyleColor();
-                ImGui.Spacing();
-
-                float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
-                if (!ImGui.BeginTable("UltimatumModifierPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
-                    return;
-
-                try
-                {
-                    ImGui.TableSetupColumn("Modifiers", ImGuiTableColumnFlags.WidthFixed, tableWidth);
-
-                    ImGui.TableNextRow(ImGuiTableRowFlags.None);
+                    ImGui.TableNextRow();
                     ImGui.TableSetColumnIndex(0);
-                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.6f, 0.3f)));
-                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Modifiers");
 
-                    for (int i = 0; i < UltimatumModifierPriority.Count; i++)
+                    Vector4 priorityColor = GetUltimatumPriorityRowColor(i, UltimatumModifierPriority.Count);
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(priorityColor));
+
+                    if (DrawUltimatumArrowButton(ImGuiDir.Up, $"UltimatumUp_{i}", enabled: i > 0))
                     {
-                        string modifier = UltimatumModifierPriority[i];
-                        if (!MatchesUltimatumSearch(modifier, ultimatumSearchFilter))
-                            continue;
+                        (UltimatumModifierPriority[i], UltimatumModifierPriority[i - 1]) = (UltimatumModifierPriority[i - 1], UltimatumModifierPriority[i]);
+                        continue;
+                    }
 
-                        ImGui.TableNextRow();
-                        ImGui.TableSetColumnIndex(0);
+                    ImGui.SameLine();
 
-                        Vector4 priorityColor = GetUltimatumPriorityRowColor(i, UltimatumModifierPriority.Count);
-                        ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(priorityColor));
+                    if (DrawUltimatumArrowButton(ImGuiDir.Down, $"UltimatumDown_{i}", enabled: i < UltimatumModifierPriority.Count - 1))
+                    {
+                        (UltimatumModifierPriority[i], UltimatumModifierPriority[i + 1]) = (UltimatumModifierPriority[i + 1], UltimatumModifierPriority[i]);
+                        continue;
+                    }
 
-                        if (DrawUltimatumArrowButton(ImGuiDir.Up, $"UltimatumUp_{i}", enabled: i > 0))
+                    ImGui.SameLine();
+                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.95f, 0.95f, 1f));
+                    ImGui.Selectable($"{modifier}##UltimatumModifier_{i}", false, ImGuiSelectableFlags.None, new Vector2(0, 0));
+                    ImGui.PopStyleColor();
+
+                    if (ImGui.IsItemHovered())
+                    {
+                        string description = UltimatumModifiersConstants.GetDescription(modifier);
+                        if (!string.IsNullOrWhiteSpace(description))
                         {
-                            (UltimatumModifierPriority[i], UltimatumModifierPriority[i - 1]) = (UltimatumModifierPriority[i - 1], UltimatumModifierPriority[i]);
-                            continue;
-                        }
-
-                        ImGui.SameLine();
-
-                        if (DrawUltimatumArrowButton(ImGuiDir.Down, $"UltimatumDown_{i}", enabled: i < UltimatumModifierPriority.Count - 1))
-                        {
-                            (UltimatumModifierPriority[i], UltimatumModifierPriority[i + 1]) = (UltimatumModifierPriority[i + 1], UltimatumModifierPriority[i]);
-                            continue;
-                        }
-
-                        ImGui.SameLine();
-                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.95f, 0.95f, 1f));
-                        ImGui.Selectable($"{modifier}##UltimatumModifier_{i}", false, ImGuiSelectableFlags.None, new Vector2(0, 0));
-                        ImGui.PopStyleColor();
-
-                        if (ImGui.IsItemHovered())
-                        {
-                            string description = UltimatumModifiersConstants.GetDescription(modifier);
-                            if (!string.IsNullOrWhiteSpace(description))
-                            {
-                                ImGui.TableNextRow();
-                                ImGui.TableSetColumnIndex(0);
-                                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-                                ImGui.TextWrapped(description);
-                                ImGui.PopStyleColor();
-                            }
+                            ImGui.TableNextRow();
+                            ImGui.TableSetColumnIndex(0);
+                            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
+                            ImGui.TextWrapped(description);
+                            ImGui.PopStyleColor();
                         }
                     }
-                }
-                finally
-                {
-                    ImGui.EndTable();
                 }
             }
             finally
             {
-                ImGui.TreePop();
+                ImGui.EndTable();
             }
         }
 
@@ -723,6 +1006,24 @@ namespace ClickIt
             return _mechanicIgnoreDistanceSnapshot;
         }
 
+        public IReadOnlyDictionary<string, int> GetMechanicPriorityIgnoreDistanceWithinById()
+        {
+            EnsureMechanicPrioritiesInitialized();
+
+            if (HasMatchingMechanicIgnoreDistanceWithinSnapshot())
+            {
+                return _mechanicIgnoreDistanceWithinMapSnapshot;
+            }
+
+            _mechanicIgnoreDistanceWithinSnapshot = MechanicPriorityIgnoreDistanceWithinById
+                .OrderBy(static x => x.Key, PriorityComparer)
+                .ToArray();
+            _mechanicIgnoreDistanceWithinMapSnapshot = new Dictionary<string, int>(
+                _mechanicIgnoreDistanceWithinSnapshot.ToDictionary(static x => x.Key, static x => x.Value, PriorityComparer),
+                PriorityComparer);
+            return _mechanicIgnoreDistanceWithinMapSnapshot;
+        }
+
         private bool HasMatchingMechanicPrioritySnapshot()
         {
             if (_mechanicPrioritySnapshot == null)
@@ -756,47 +1057,58 @@ namespace ClickIt
             return true;
         }
 
+        private bool HasMatchingMechanicIgnoreDistanceWithinSnapshot()
+        {
+            if (_mechanicIgnoreDistanceWithinSnapshot == null)
+                return false;
+            if (_mechanicIgnoreDistanceWithinSnapshot.Length != MechanicPriorityIgnoreDistanceWithinById.Count)
+                return false;
+
+            var current = MechanicPriorityIgnoreDistanceWithinById
+                .OrderBy(static x => x.Key, PriorityComparer)
+                .ToArray();
+            for (int i = 0; i < current.Length; i++)
+            {
+                if (!string.Equals(current[i].Key, _mechanicIgnoreDistanceWithinSnapshot[i].Key, StringComparison.OrdinalIgnoreCase))
+                    return false;
+                if (current[i].Value != _mechanicIgnoreDistanceWithinSnapshot[i].Value)
+                    return false;
+            }
+
+            return true;
+        }
+
         private void DrawMechanicPriorityTablePanel()
         {
             EnsureMechanicPrioritiesInitialized();
 
-            ImGui.SetNextItemOpen(false, ImGuiCond.Once);
-            bool sectionOpen = ImGui.TreeNode("Mechanic Priorities");
-            DrawInlineTooltip("Top rows are preferred first. Click a row to configure Ignore Distance.");
-            if (!sectionOpen)
+
+            if (DrawResetDefaultsButton("Reset Defaults##MechanicPriorityResetDefaults"))
+            {
+                MechanicPriorityOrder = MechanicPriorityDefaultOrderIds.ToList();
+                MechanicPriorityIgnoreDistanceIds = new HashSet<string>(PriorityComparer)
+                {
+                    "shrines"
+                };
+                MechanicPriorityIgnoreDistanceWithinById = MechanicPriorityIds
+                    .ToDictionary(static x => x, static _ => MechanicIgnoreDistanceWithinDefault, PriorityComparer);
+            }
+
+            DrawMechanicPrioritySectionDescription();
+
+            float tableWidth = Math.Min(700f, Math.Max(160f, ImGui.GetContentRegionAvail().X));
+            if (!ImGui.BeginTable("MechanicPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
                 return;
 
             try
             {
-                if (DrawResetDefaultsButton("Reset Defaults##MechanicPriorityResetDefaults"))
-                {
-                    MechanicPriorityOrder = MechanicPriorityDefaultOrderIds.ToList();
-                    MechanicPriorityIgnoreDistanceIds = new HashSet<string>(PriorityComparer)
-                    {
-                        "shrines"
-                    };
-                }
-
-                DrawMechanicPrioritySectionDescription();
-
-                float tableWidth = Math.Min(700f, Math.Max(160f, ImGui.GetContentRegionAvail().X));
-                if (!ImGui.BeginTable("MechanicPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
-                    return;
-
-                try
-                {
-                    ImGui.TableSetupColumn("Mechanics", ImGuiTableColumnFlags.WidthFixed, tableWidth);
-                    DrawMechanicPriorityTableHeader();
-                    DrawMechanicPriorityRows();
-                }
-                finally
-                {
-                    ImGui.EndTable();
-                }
+                ImGui.TableSetupColumn("Mechanics", ImGuiTableColumnFlags.WidthFixed, tableWidth);
+                DrawMechanicPriorityTableHeader();
+                DrawMechanicPriorityRows();
             }
             finally
             {
-                ImGui.TreePop();
+                ImGui.EndTable();
             }
         }
 
@@ -886,6 +1198,23 @@ namespace ClickIt
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
             ImGui.TextWrapped("When enabled, this mechanic bypasses distance sorting and is resolved from configured priority order.");
             ImGui.PopStyleColor();
+
+            if (ignoreDistance)
+            {
+                int currentWithin = MechanicPriorityIgnoreDistanceWithinById.TryGetValue(mechanicId, out int configuredWithin)
+                    ? configuredWithin
+                    : MechanicIgnoreDistanceWithinDefault;
+                ImGui.SetNextItemWidth(400f);
+                if (ImGui.SliderInt($"Ignore Distance Within##IgnoreDistanceWithin_{mechanicId}", ref currentWithin, MechanicIgnoreDistanceWithinMin, MechanicIgnoreDistanceWithinMax))
+                {
+                    MechanicPriorityIgnoreDistanceWithinById[mechanicId] = currentWithin;
+                }
+
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
+                ImGui.TextWrapped("Ignore Distance applies only while this mechanic is within the configured distance from the player.");
+                ImGui.PopStyleColor();
+            }
+
             ImGui.Unindent(34f);
         }
 
@@ -1116,44 +1445,33 @@ namespace ClickIt
 
         private void DrawExarchSection()
         {
-            if (!ImGui.TreeNode("Searing Exarch"))
-                return;
-
             DrawToggleNodeControl(
-                "Click recommended option##Exarch",
-                ClickExarchAltars,
-                "Clicks searing exarch altars for you based on a decision tree created from your settings.\n\nIf both options are as good as each other (according to your weights), this won't click for you.");
-
-            DrawToggleNodeControl(
-                "Highlight recommended option##Exarch",
+                "Show Searing Exarch Overlay##Exarch",
                 HighlightExarchAltars,
                 "Highlights the recommended option for you to choose for searing exarch altars, based on a decision tree created from your settings below.");
-
-            ImGui.TreePop();
         }
         private void DrawEaterSection()
         {
-            if (!ImGui.TreeNode("Eater of Worlds"))
-                return;
-
             DrawToggleNodeControl(
-                "Click recommended option##Eater",
-                ClickEaterAltars,
-                "Clicks eater of worlds altars for you based on a decision tree created from your settings.\n\nIf both options are as good as each other (according to your weights), this won't click for you.");
-
-            DrawToggleNodeControl(
-                "Highlight recommended option##Eater",
+                "Show Eater of Worlds Overlay##Eater",
                 HighlightEaterAltars,
                 "Highlights the recommended option for you to choose for eater of worlds altars, based on a decision tree created from your settings below.");
-
-            ImGui.TreePop();
         }
         private void DrawAltarWeightingSection()
         {
-            if (!ImGui.TreeNode("Altar Weighting"))
+            if (!ImGui.TreeNode("Altar Weights"))
                 return;
 
             DrawAltarModWeights();
+            DrawAltarWeightOverridesSection();
+
+            ImGui.TreePop();
+        }
+
+        private void DrawAltarWeightOverridesSection()
+        {
+            if (!ImGui.TreeNode("Altar Weight Overrides"))
+                return;
 
             DrawToggleNodeControl(
                 "Valuable Upside",
@@ -1173,7 +1491,7 @@ namespace ClickIt
                 "When enabled, automatically chooses the opposite altar option when modifiers have weights at or below the threshold, avoiding potentially undesirable choices.");
 
             DrawRangeNodeControl(
-                "Unvaluable Threshold",
+                "Unvaluable Upside Threshold",
                 UnvaluableUpsideThreshold,
                 1,
                 100,
@@ -1192,12 +1510,12 @@ namespace ClickIt
                 "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.");
 
             DrawToggleNodeControl(
-                "Minimum Weight Threshold",
+                "Minimum Weight",
                 MinWeightThresholdEnabled,
                 "When enabled, the plugin will enforce a minimum final weight for altar options. If an option's final weight is below this value the plugin will avoid picking it (and will choose the opposite option if available).");
 
             DrawRangeNodeControl(
-                "Minimum Weight Value",
+                "Minimum Weight Threshold",
                 MinWeightThreshold,
                 1,
                 100,
@@ -1245,9 +1563,25 @@ namespace ClickIt
             }
             DrawInlineTooltip(tooltip);
         }
-        private static void DrawRangeNodeControl(string label, RangeNode<int> node, int min, int max, string tooltip)
+
+        private static void PushStandardSliderWidth()
+        {
+            ImGui.PushItemWidth(400f);
+        }
+
+        private static void PopStandardSliderWidth()
+        {
+            ImGui.PopItemWidth();
+        }
+
+        private static void DrawRangeNodeControl(string label, RangeNode<int> node, int min, int max, string tooltip, bool useStandardWidth = true)
         {
             int value = node.Value;
+            if (useStandardWidth)
+            {
+                ImGui.SetNextItemWidth(400f);
+            }
+
             if (ImGui.SliderInt(label, ref value, min, max))
             {
                 node.Value = value;
@@ -1270,34 +1604,11 @@ namespace ClickIt
 
             try
             {
-                var buttonType = buttonNode.GetType();
-                var candidateMethods = new[] { "Press", "Click", "Invoke", "Trigger" };
-                foreach (var methodName in candidateMethods)
-                {
-                    var method = buttonType.GetMethod(methodName);
-                    if (method != null && method.GetParameters().Length == 0)
-                    {
-                        method.Invoke(buttonNode, null);
-                        return;
-                    }
-                }
-
-                var onPressedProperty = buttonType.GetProperty("OnPressed");
-                if (onPressedProperty?.GetValue(buttonNode) is Delegate propertyDelegate)
-                {
-                    propertyDelegate.DynamicInvoke();
-                    return;
-                }
-
-                var onPressedField = buttonType.GetField("OnPressed");
-                if (onPressedField?.GetValue(buttonNode) is Delegate fieldDelegate)
-                {
-                    fieldDelegate.DynamicInvoke();
-                }
+                buttonNode.OnPressed?.Invoke();
             }
             catch
             {
-                // Best effort fallback: button invocation API may vary by ExileCore build.
+                // Best effort invocation.
             }
         }
         private void DrawAltarModWeights()
@@ -1307,7 +1618,7 @@ namespace ClickIt
         }
         private void DrawUpsideModsSection()
         {
-            bool isOpen = ImGui.TreeNode("Altar Upside Weights");
+            bool isOpen = ImGui.TreeNode("Altar Weight Upsides");
             DrawInlineTooltip("Set weights for upside modifiers. Higher values are more desirable and can influence recommended altar choices.");
             if (!isOpen) return;
             ImGui.Spacing();
@@ -1323,7 +1634,7 @@ namespace ClickIt
         }
         private void DrawDownsideModsSection()
         {
-            bool isOpen = ImGui.TreeNode("Altar Downside Weights");
+            bool isOpen = ImGui.TreeNode("Altar Weight Downsides");
             DrawInlineTooltip("Set weights for downside modifiers. Higher values are more dangerous and can influence recommended altar choices.");
             if (!isOpen) return;
             ImGui.Spacing();
@@ -1379,9 +1690,6 @@ namespace ClickIt
         }
         private void DrawUpsideModsTable()
         {
-            // Upside table includes an extra "Alert" checkbox column
-            // Use NoHostExtendX + NoPadOuterX so the table keeps the fixed column widths
-            // and doesn't stretch to the window width when the settings window is resized.
             if (!ImGui.BeginTable("UpsideModsConfig", 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
                 return;
             SetupModTableColumns(isUpside: true);
@@ -1521,11 +1829,9 @@ namespace ClickIt
             DrawModWeightSliderCell(id, type);
             DrawModNameAndTypeCells(name, type, 760, GetUpsideModTextColor(type));
 
-            // Final column: Alert checkbox for upside mods
             if (ModAlerts != null)
             {
                 _ = ImGui.TableNextColumn();
-                // center the checkbox inside the fixed-width alert cell
                 var avail = ImGui.GetContentRegionAvail();
                 float checkboxSize = 18f; // small visual estimate for a checkbox
                 float currentX = ImGui.GetCursorPosX();
@@ -1536,7 +1842,6 @@ namespace ClickIt
                 }
 
                 bool currentAlert = GetModAlert(id, type);
-                // Use a unique internal id for the checkbox so it doesn't share an id with the slider
                 if (ImGui.Checkbox("##alert", ref currentAlert))
                 {
                     ModAlerts[BuildCompositeKey(type, id)] = currentAlert;
@@ -1599,7 +1904,6 @@ namespace ClickIt
         }
         internal void InitializeDefaultWeights()
         {
-            // Initialize composite (type|id) defaults only. Do NOT migrate or remove legacy id-only keys.
             foreach ((string id, _, string type, int defaultValue) in AltarModsConstants.UpsideMods)
             {
                 string compositeKey = BuildCompositeKey(type, id);
@@ -1617,14 +1921,11 @@ namespace ClickIt
 
                 ModTiers[compositeKey] = defaultValue;
             }
-            // Add per-upside mod alert defaults - most are off by default, but enable
-            // a couple of very-high-value mods (Divine Orb drops) by default.
             foreach ((string id, _, string type, int _) in AltarModsConstants.UpsideMods)
             {
                 var compositeKey = BuildCompositeKey(type, id);
                 if (!ModAlerts.ContainsKey(compositeKey))
                 {
-                    // Default to enabled for Divine Orb related modifiers
                     if ((type == AltarTypeMinion && id == "#% chance to drop an additional Divine Orb") ||
                         (type == AltarTypeBoss && id == "Final Boss drops # additional Divine Orbs"))
                     {
@@ -1646,15 +1947,12 @@ namespace ClickIt
         {
             InitializeDefaultWeights();
         }
-        // Backward compatible single-argument lookup (tries id-only then returns 1)
         public int GetModTier(string modId)
         {
             if (string.IsNullOrEmpty(modId)) return 1;
             return ModTiers.TryGetValue(modId, out int value) ? value : 1;
         }
 
-        // New getter that queries by both type and id. Does NOT fall back to id-only lookup
-        // to ensure per-type weights are independent. Returns 1 if composite key not present.
         public int GetModTier(string modId, string type)
         {
             if (string.IsNullOrEmpty(modId)) return 1;
@@ -1673,7 +1971,6 @@ namespace ClickIt
             return false;
         }
         public Dictionary<string, int> ModTiers { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        // Per-upside mod alert flags (composite key = "type|id")
         public Dictionary<string, bool> ModAlerts { get; set; } = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
         {

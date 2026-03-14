@@ -113,13 +113,11 @@ namespace ClickIt.Utils
     }
     public struct AltarWeights
     {
-        // Core totals
         public decimal TopUpsideWeight { get; set; }
         public decimal TopDownsideWeight { get; set; }
         public decimal BottomUpsideWeight { get; set; }
         public decimal BottomDownsideWeight { get; set; }
 
-        // Individual mod weights stored in arrays for cleaner management
         private decimal[] _topDownsideWeights;
         private decimal[] _bottomDownsideWeights;
         private decimal[] _topUpsideWeights;
@@ -139,7 +137,6 @@ namespace ClickIt.Utils
         public int TopWeight { get; set; }
         public int BottomWeight { get; set; }
 
-        // Indexers for convenient access - much cleaner than individual properties
         public decimal this[string weightType, int index]
         {
             get
@@ -158,7 +155,6 @@ namespace ClickIt.Utils
             }
         }
 
-        // Helper methods for cleaner access
         public readonly decimal[] GetTopDownsideWeights()
         {
             using (LockManager.AcquireStatic(_weightsLock))
@@ -188,7 +184,6 @@ namespace ClickIt.Utils
             }
         }
 
-        // Method to initialize all weights from arrays (for cleaner construction)
         public void InitializeFromArrays(decimal[] topDownside, decimal[] bottomDownside, decimal[] topUpside, decimal[] bottomUpside)
         {
             using (LockManager.AcquireStatic(_weightsLock))

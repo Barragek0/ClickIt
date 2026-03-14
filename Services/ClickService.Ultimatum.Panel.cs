@@ -15,7 +15,7 @@ namespace ClickIt.Services
             if (!settings.IsOtherUltimatumClickEnabled())
                 return false;
 
-            if (!TryGetVisibleUltimatumPanel(out object? panelObj) || panelObj == null)
+            if (!TryGetVisibleUltimatumPanel(out UltimatumPanel? panelObj) || panelObj == null)
                 return false;
 
             DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel detected.");
@@ -41,7 +41,7 @@ namespace ClickIt.Services
         {
             previews = [];
 
-            if (!TryGetVisibleUltimatumPanel(out object? panelObj) || panelObj == null)
+            if (!TryGetVisibleUltimatumPanel(out UltimatumPanel? panelObj, logFailures: false) || panelObj == null)
                 return false;
 
             if (!TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, logFailures: false) || candidates == null || candidates.Count == 0)
@@ -65,30 +65,29 @@ namespace ClickIt.Services
             return previews.Count > 0;
         }
 
-        private bool TryGetVisibleUltimatumPanel(out object? panelObj)
+        private bool TryGetVisibleUltimatumPanel(out UltimatumPanel? panelObj, bool logFailures = true)
         {
             panelObj = null;
 
-            object? ingameUi = gameController?.IngameState?.IngameUi;
-            if (ingameUi == null)
-                return false;
-
-            if (!TryGetPropertyValue(ingameUi, "UltimatumPanel", out panelObj) || panelObj == null)
+            panelObj = gameController?.IngameState?.IngameUi?.UltimatumPanel;
+            if (panelObj == null)
             {
-                DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel not available.");
+                if (logFailures)
+                    DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel not available.");
                 return false;
             }
 
-            if (!TryGetPropertyValue(panelObj, "IsVisible", out object? visibleObj) || visibleObj is not bool isVisible || !isVisible)
+            if (!panelObj.IsVisible)
             {
-                DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel exists but is not visible.");
+                if (logFailures)
+                    DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel exists but is not visible.");
                 return false;
             }
 
             return true;
         }
 
-        private bool TryGetUltimatumPanelChoiceCandidates(object panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, bool logFailures)
+        private bool TryGetUltimatumPanelChoiceCandidates(UltimatumPanel panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, bool logFailures)
         {
             candidates = [];
 
@@ -118,18 +117,20 @@ namespace ClickIt.Services
             return candidates.Count > 0;
         }
 
-        private bool TryGetUltimatumChoiceElements(object panelObj, out object? choiceElementsObj, bool logFailures)
+        private bool TryGetUltimatumChoiceElements(UltimatumPanel panelObj, out object? choiceElementsObj, bool logFailures)
         {
             choiceElementsObj = null;
 
-            if (!TryGetPropertyValue(panelObj, "ChoicesPanel", out object? choicesPanelObj) || choicesPanelObj == null)
+            var choicesPanelObj = panelObj.ChoicesPanel;
+            if (choicesPanelObj == null)
             {
                 if (logFailures)
                     DebugLog(() => "[TryClickUltimatumPanelChoice] ChoicesPanel missing.");
                 return false;
             }
 
-            if (!TryGetPropertyValue(choicesPanelObj, "ChoiceElements", out choiceElementsObj) || choiceElementsObj == null)
+            choiceElementsObj = choicesPanelObj.ChoiceElements;
+            if (choiceElementsObj == null)
             {
                 if (logFailures)
                     DebugLog(() => "[TryClickUltimatumPanelChoice] ChoiceElements missing.");
@@ -197,26 +198,23 @@ namespace ClickIt.Services
             return NormalizeModifierText(choiceEl.GetText(1024) ?? string.Empty);
         }
 
-        private static List<string> GetUltimatumPanelModifierNames(object panelObj)
+        private static List<string> GetUltimatumPanelModifierNames(UltimatumPanel panelObj)
         {
             var names = new List<string>(3);
 
-            if (!TryGetPropertyValue(panelObj, "Modifiers", out object? modifiersObj) || modifiersObj == null)
+            var modifiersObj = panelObj.Modifiers;
+            if (modifiersObj == null)
                 return names;
 
             foreach (object? modifierObj in EnumerateObjects(modifiersObj))
             {
-                if (modifierObj == null)
-                    continue;
-
-                if (TryGetPropertyValue(modifierObj, "Name", out object? nameObj) && nameObj != null)
+                if (modifierObj is string modifierName)
                 {
-                    string normalized = NormalizeModifierText(nameObj.ToString() ?? string.Empty);
-                    names.Add(normalized);
+                    names.Add(NormalizeModifierText(modifierName));
                     continue;
                 }
 
-                names.Add(string.Empty);
+                names.Add(NormalizeModifierText(modifierObj?.ToString() ?? string.Empty));
             }
 
             return names;
@@ -242,7 +240,7 @@ namespace ClickIt.Services
             return found && bestIndex != int.MaxValue;
         }
 
-        private bool TryClickUltimatumPanelChoice(object panelObj, Vector2 windowTopLeft)
+        private bool TryClickUltimatumPanelChoice(UltimatumPanel panelObj, Vector2 windowTopLeft)
         {
             if (!TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, logFailures: true) || candidates == null)
             {
@@ -264,9 +262,10 @@ namespace ClickIt.Services
                 $"[TryClickUltimatumPanelChoice] Clicking choice '{best.ModifierName}' (priority={best.PriorityIndex}) at");
         }
 
-        private bool TryClickUltimatumPanelConfirm(object panelObj, Vector2 windowTopLeft)
+        private bool TryClickUltimatumPanelConfirm(UltimatumPanel panelObj, Vector2 windowTopLeft)
         {
-            if (!TryGetPropertyValue(panelObj, "ConfirmButton", out object? confirmObj) || confirmObj == null)
+            var confirmObj = panelObj.ConfirmButton;
+            if (confirmObj == null)
             {
                 DebugLog(() => "[TryClickUltimatumPanelConfirm] ConfirmButton missing.");
                 return false;

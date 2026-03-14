@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using ClickIt.Definitions;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
@@ -35,60 +35,6 @@ namespace ClickIt.Services
                 element = direct;
                 return true;
             }
-
-            if (TryGetPropertyValue(source, "Element", out object? nested) && nested is Element nestedElement)
-            {
-                element = nestedElement;
-                return true;
-            }
-
-            return false;
-        }
-
-        private static bool TryGetPropertyValue(object source, string propertyName, out object? value)
-        {
-            value = null;
-            if (source == null)
-                return false;
-
-            const System.Reflection.BindingFlags flags =
-                System.Reflection.BindingFlags.Instance |
-                System.Reflection.BindingFlags.Public |
-                System.Reflection.BindingFlags.NonPublic |
-                System.Reflection.BindingFlags.IgnoreCase;
-
-            Type sourceType = source.GetType();
-
-            var prop = sourceType.GetProperty(propertyName, flags);
-            if (prop != null)
-            {
-                try
-                {
-                    value = prop.GetValue(source);
-                    return true;
-                }
-                catch
-                {
-                    value = null;
-                    return false;
-                }
-            }
-
-            var field = sourceType.GetField(propertyName, flags);
-            if (field != null)
-            {
-                try
-                {
-                    value = field.GetValue(source);
-                    return true;
-                }
-                catch
-                {
-                    value = null;
-                    return false;
-                }
-            }
-
             return false;
         }
 
@@ -116,9 +62,6 @@ namespace ClickIt.Services
                 return panelResults;
             }
 
-            // Verified tree:
-            // ItemsOnGroundLabelsVisible -> UltimatumChallengeInteractable -> Label
-            // -> Child(0) -> Child(0) -> Child(2) -> Child(0) -> Child(0..2)
             Element? n0 = root.GetChildAtIndex(0);
             if (n0 == null)
             {
@@ -179,7 +122,8 @@ namespace ClickIt.Services
         {
             results = new List<(Element OptionElement, string ModifierName)>(3);
 
-            Element? panelElement = root.GetChildAtIndex(0)?.GetChildAtIndex(0)?.GetChildAtIndex(2);
+            Element? panelElement = root.GetChildFromIndices(0, 0, 2)
+                ?? root.GetChildAtIndex(0)?.GetChildAtIndex(0)?.GetChildAtIndex(2);
             if (panelElement == null)
             {
                 diagnostics?.Add("ChoicePanel fail: Label->Child(0)->Child(0)->Child(2) is null.");
@@ -193,21 +137,23 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (!TryGetPropertyValue(choicePanel, "IsVisible", out object? visibleObj) || visibleObj is not bool isVisible || !isVisible)
+            if (!choicePanel.IsVisible)
             {
                 diagnostics?.Add("ChoicePanel fail: panel object exists but is not visible.");
                 return false;
             }
 
-            if (!TryGetPropertyValue(choicePanel, "ChoiceElements", out object? choiceElementsObj) || choiceElementsObj == null)
+            var choiceElements = choicePanel.ChoiceElements;
+            if (choiceElements == null)
             {
                 diagnostics?.Add("ChoicePanel fail: ChoiceElements missing.");
                 return false;
             }
 
-            List<string> modifierNamesByIndex = GetUltimatumPanelModifierNames(choicePanel);
+            List<string> modifierNamesByIndex = GetUltimatumChoicePanelModifierNames(choicePanel, diagnostics);
+
             int seen = 0;
-            foreach (object? choiceObj in EnumerateObjects(choiceElementsObj))
+            foreach (object? choiceObj in EnumerateObjects(choiceElements))
             {
                 if (!TryExtractElement(choiceObj, out Element? option) || option == null)
                 {
@@ -216,7 +162,7 @@ namespace ClickIt.Services
                     continue;
                 }
 
-                string modifierName = ResolveUltimatumPanelModifierName(option, seen, modifierNamesByIndex);
+                string modifierName = ResolveUltimatumChoiceModifierName(option, seen, modifierNamesByIndex);
                 if (string.IsNullOrWhiteSpace(modifierName))
                 {
                     modifierName = $"Unknown Option {seen + 1}";
@@ -230,6 +176,43 @@ namespace ClickIt.Services
             return results.Count > 0;
         }
 
+        private static List<string> GetUltimatumChoicePanelModifierNames(UltimatumChoicePanel choicePanel, List<string>? diagnostics)
+        {
+            var names = new List<string>(3);
+
+            var modifiersObj = choicePanel.Modifiers;
+            if (modifiersObj == null)
+            {
+                diagnostics?.Add("ChoicePanel: Modifiers missing.");
+                return names;
+            }
+
+            foreach (object? modifierObj in EnumerateObjects(modifiersObj))
+            {
+                if (modifierObj is string modifierName)
+                {
+                    names.Add(NormalizeModifierText(modifierName));
+                    continue;
+                }
+
+                names.Add(NormalizeModifierText(modifierObj?.ToString() ?? string.Empty));
+            }
+
+            return names;
+        }
+
+        private static string ResolveUltimatumChoiceModifierName(Element option, int seen, List<string> modifierNamesByIndex)
+        {
+            if (seen >= 0 && seen < modifierNamesByIndex.Count)
+            {
+                string modifierFromPanel = modifierNamesByIndex[seen];
+                if (!string.IsNullOrWhiteSpace(modifierFromPanel))
+                    return modifierFromPanel;
+            }
+
+            return GetUltimatumModifierName(option);
+        }
+
         private static Element? GetUltimatumBeginButton(LabelOnGround label, List<string>? diagnostics = null)
         {
             Element? root = label?.Label;
@@ -239,9 +222,6 @@ namespace ClickIt.Services
                 return null;
             }
 
-            // Verified tree:
-            // ItemsOnGroundLabelsVisible -> UltimatumChallengeInteractable -> Label
-            // -> Child(0) -> Child(0) -> Child(4) -> Child(0)
             Element? n0 = root.GetChildAtIndex(0);
             if (n0 == null)
             {
@@ -276,8 +256,37 @@ namespace ClickIt.Services
 
         private static string GetUltimatumModifierName(Element option)
         {
+            string text = NormalizeModifierText(option.GetText(1024) ?? string.Empty);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                return text;
+            }
+
+            // Ultimatum option text can sit in child labels before tooltip hydration.
+            for (int i = 0; i < 8; i++)
+            {
+                Element? child = option.GetChildAtIndex(i);
+                if (child == null)
+                    continue;
+
+                text = NormalizeModifierText(child.GetText(1024) ?? string.Empty);
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+
+                for (int j = 0; j < 8; j++)
+                {
+                    Element? grandChild = child.GetChildAtIndex(j);
+                    if (grandChild == null)
+                        continue;
+
+                    text = NormalizeModifierText(grandChild.GetText(1024) ?? string.Empty);
+                    if (!string.IsNullOrWhiteSpace(text))
+                        return text;
+                }
+            }
+
             Element? tooltipName = option.Tooltip?.GetChildAtIndex(1)?.GetChildAtIndex(3);
-            string text = tooltipName?.GetText(512) ?? string.Empty;
+            text = tooltipName?.GetText(512) ?? string.Empty;
             if (string.IsNullOrWhiteSpace(text))
             {
                 text = option.GetText(512) ?? string.Empty;

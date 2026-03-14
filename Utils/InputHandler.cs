@@ -1,4 +1,4 @@
-using ExileCore;
+﻿using ExileCore;
 using System.Diagnostics;
 using ExileCore.Shared.Cache;
 using System.Runtime.InteropServices;
@@ -8,6 +8,7 @@ using ExileCore.Shared.Enums;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ExileCore.PoEMemory;
+using System.Windows.Forms;
 namespace ClickIt.Utils
 {
     public partial class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
@@ -16,11 +17,16 @@ namespace ClickIt.Utils
         private readonly Random _random = new();
         private readonly ErrorHandler? _errorHandler = errorHandler;
         private readonly PerformanceMonitor _performanceMonitor = performanceMonitor;
-        // Timestamp in milliseconds of the last performed click. Used for Lazy Mode limiting.
         private long _lastClickTimestampMs = 0;
+        private long _successfulClickSequence = 0;
         private long _lastToggleItemsTimestampMs = 0;
         private bool _lazyModeDisableToggled;
         private bool _lazyModeDisableKeyWasDown;
+
+        public long GetSuccessfulClickSequence()
+        {
+            return Interlocked.Read(ref _successfulClickSequence);
+        }
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -90,6 +96,46 @@ namespace ClickIt.Utils
             return isClickableArea == null || isClickableArea(point);
         }
 
+        private static RectangleF GetVirtualScreenBounds()
+        {
+            var vs = SystemInformation.VirtualScreen;
+            return new RectangleF(vs.Left, vs.Top, vs.Width, vs.Height);
+        }
+
+        internal static bool IsSafeAutomationPoint(Vector2 point, RectangleF gameWindowRect, RectangleF virtualScreenRect)
+        {
+            if (!IsPointInsideRect(point, virtualScreenRect))
+                return false;
+
+            if (gameWindowRect.Width <= 0 || gameWindowRect.Height <= 0)
+                return true;
+
+            if (!TryGetIntersection(gameWindowRect, virtualScreenRect, out RectangleF allowedRect))
+                return false;
+
+            return IsPointInsideRect(point, allowedRect);
+        }
+
+        private static bool TryValidateAutomationScreenPoint(Vector2 point, GameController? gameController, out string reason)
+        {
+            RectangleF virtualScreenRect = GetVirtualScreenBounds();
+            if (!IsPointInsideRect(point, virtualScreenRect))
+            {
+                reason = $"outside virtual screen bounds {virtualScreenRect}";
+                return false;
+            }
+
+            RectangleF gameWindowRect = gameController?.Window?.GetWindowRectangleTimeCache ?? RectangleF.Empty;
+            if (!IsSafeAutomationPoint(point, gameWindowRect, virtualScreenRect))
+            {
+                reason = $"outside safe game window bounds {gameWindowRect}";
+                return false;
+            }
+
+            reason = string.Empty;
+            return true;
+        }
+
         private static Vector2 ClampPointToRect(Vector2 point, RectangleF rect)
         {
             return new Vector2(
@@ -106,7 +152,6 @@ namespace ClickIt.Utils
                 return true;
             }
 
-            // Sample a small deterministic grid and keep the nearest unblocked point to preserve click intent.
             const int cols = 7;
             const int rows = 5;
             float stepX = targetRect.Width / cols;
@@ -375,7 +420,6 @@ namespace ClickIt.Utils
                 IsPOEActive(gameController) &&
                 (_settings?.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController)) &&
                 !IsInTownOrHideout(gameController) &&
-                // Allow clicking during a ritual if the click hotkey is being held
                 (!isRitualActive || clickHotkeyHeld) &&
                 !IsInToggleItemsPostClickBlockWindow() &&
                 !IsBlockedByUiOrEscapeState(gameController);
@@ -383,17 +427,11 @@ namespace ClickIt.Utils
 
         private bool IsClickKeyStateActive(bool hasLazyModeRestrictedItemsOnScreen)
         {
-            // Lazy mode is active when:
-            // - Lazy mode is enabled
-            // - No restricted items are on screen
-            // - Lazy mode disable hotkey is NOT being held
             bool lazyModeActive = _settings?.LazyMode != null
                 && _settings.LazyMode.Value
                 && !hasLazyModeRestrictedItemsOnScreen
                 && !IsLazyModeDisableActiveForCurrentInputState();
 
-            // In lazy mode, always allow clicking (ignore hotkey state)
-            // When not in lazy mode, check hotkey state normally
             return lazyModeActive || IsClickHotkeyHeld();
         }
 

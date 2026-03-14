@@ -17,6 +17,7 @@ namespace ClickIt.Utils
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
         private readonly ErrorHandler _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        private long _lastCanClickFailureLogTimestampMs;
 
         /// <summary>
         /// Check if a ritual is currently active by looking for RitualBlocker entities
@@ -78,7 +79,6 @@ namespace ClickIt.Utils
             if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
-            // Determine if lazy mode is active (enabled and no restricted items on screen and no ritual active)
             bool isRitualActive = IsRitualActive();
             var cached = _state.CachedLabels?.Value;
             bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
@@ -86,21 +86,59 @@ namespace ClickIt.Utils
                                   !hasLazyModeRestrictedItemsOnScreen &&
                                   !isRitualActive;
 
-            // Use lazy mode click limiting when lazy mode is active, otherwise use normal frequency target
             double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
             double targetTime = GetTargetTime(frequencyTarget, avgClickTime);
-            if (_state.Timer.ElapsedMilliseconds < targetTime || _state.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive) != true)
+            bool readyByTime = _state.Timer.ElapsedMilliseconds >= targetTime;
+            bool canClick = _state.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive) == true;
+            if (!readyByTime || !canClick)
             {
+                bool hotkeyHeld = _state.InputHandler?.IsClickHotkeyPressed(_state.CachedLabels, _state.LabelFilterService) ?? true;
+                bool lazyModeEnabled = _settings.LazyMode?.Value == true;
+                if (ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled, hotkeyHeld))
+                {
+                    _state.ClickService?.CancelOffscreenPathingState();
+                }
+
+                if (_settings.DebugMode?.Value == true)
+                {
+                    long now = Environment.TickCount64;
+                    if (now - _lastCanClickFailureLogTimestampMs >= 500)
+                    {
+                        _lastCanClickFailureLogTimestampMs = now;
+                        string canClickReason = canClick
+                            ? "Timer gating"
+                            : (_state.InputHandler?.GetCanClickFailureReason(_gameController) ?? "Unknown click blocker");
+                        int labelCount = cached?.Count ?? 0;
+                        _errorHandler.LogMessage($"[ClickLogic] blocked: reason='{canClickReason}', readyByTime={readyByTime}, hasRestricted={hasLazyModeRestrictedItemsOnScreen}, ritualActive={isRitualActive}, labels={labelCount}", 10);
+                    }
+                }
+
                 _state.WorkFinished = true;
                 yield break;
             }
 
-            _state.Timer.Restart();
+            long clickSequenceBefore = _state.InputHandler?.GetSuccessfulClickSequence() ?? 0;
             _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             yield return _state.ClickService.ProcessRegularClick();
             _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
+            long clickSequenceAfter = _state.InputHandler?.GetSuccessfulClickSequence() ?? 0;
+            if (ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
+            {
+                _state.Timer.Restart();
+            }
+
             _state.WorkFinished = true;
+        }
+
+        internal static bool ShouldRestartClickTimerAfterSuccessfulClick(long clickSequenceBefore, long clickSequenceAfter)
+        {
+            return clickSequenceAfter > clickSequenceBefore;
+        }
+
+        internal static bool ShouldCancelOffscreenPathingForInputRelease(bool lazyModeEnabled, bool clickHotkeyHeld)
+        {
+            return !lazyModeEnabled && !clickHotkeyHeld;
         }
 
         private IEnumerator FlareCoroutine()

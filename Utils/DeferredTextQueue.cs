@@ -1,11 +1,9 @@
-using SharpDX;
+﻿using SharpDX;
 using ExileCore.Shared.Enums;
 using System.Threading;
 
 namespace ClickIt.Utils
 {
-    // Small helper to centralize deferred DrawText rendering so other classes can enqueue texts
-    // and a single Flush call will draw them with a provided Graphics instance.
     public class DeferredTextQueue
     {
         private readonly object _queueLock = new();
@@ -29,7 +27,6 @@ namespace ClickIt.Utils
             }
             catch
             {
-                // Intentionally empty - do not log during render operations
             }
         }
 
@@ -37,7 +34,6 @@ namespace ClickIt.Utils
         {
             if (graphics == null) return;
 
-            // Swap pending and spare lists under lock so Flush can iterate without copying.
             lock (_queueLock)
             {
                 if (_items.Count == 0)
@@ -63,13 +59,34 @@ namespace ClickIt.Utils
                 }
             }
 
-            // Clear spare after drawing; keep capacity for reuse.
             _spare.Clear();
         }
 
         public int GetPendingCount()
         {
             return Volatile.Read(ref _pendingCount);
+        }
+
+        public string[] GetPendingTextSnapshot(int startIndex = 0)
+        {
+            lock (_queueLock)
+            {
+                if (_items.Count == 0)
+                    return [];
+
+                int from = Math.Clamp(startIndex, 0, _items.Count);
+                int count = _items.Count - from;
+                if (count <= 0)
+                    return [];
+
+                string[] result = new string[count];
+                for (int i = 0; i < count; i++)
+                {
+                    result[i] = _items[from + i].Text;
+                }
+
+                return result;
+            }
         }
     }
 }
