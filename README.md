@@ -70,5 +70,6 @@ If you are using VS Code tasks, run the default build/test workflow so tests and
 
 - **Arecurius0** - Original pickit improvements that started this
 - **cheatingeagle / exapitools** - For keeping ExileAPI up to date and functional
+- **instantsc** - Author of the Radar plugin architecture that inspired terrain/pathfinding structure here
 
 ---
