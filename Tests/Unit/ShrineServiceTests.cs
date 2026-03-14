@@ -77,6 +77,12 @@ namespace ClickIt.Tests.Unit
             PrivateFieldAccessor.Get<long>(service, "_lastShrineCacheTime").Should().Be(0);
         }
 
+        [TestMethod]
+        public void IsClickableShrineCandidate_ReturnsFalse_ForNull()
+        {
+            ShrineService.IsClickableShrineCandidate(null).Should().BeFalse();
+        }
+
         private static ShrineService CreateService()
         {
             var gc = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));

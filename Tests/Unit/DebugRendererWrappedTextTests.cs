@@ -111,5 +111,52 @@ namespace ClickIt.Tests.Unit
 
             queue.GetPendingCount().Should().Be(0);
         }
+
+        [TestMethod]
+        public void ResolveDebugColumnForNextSection_DoesNotShift_WhenBelowTwentyEightLines()
+        {
+            MethodInfo? method = typeof(DebugRenderer).GetMethod("ResolveDebugColumnForNextSection", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            object? result = method!.Invoke(null, [0, 10, 120 + (27 * 18), 120, 18, 28, 4, 10, 405]);
+            result.Should().NotBeNull();
+
+            dynamic tuple = result!;
+            ((int)tuple.Item1).Should().Be(0);
+            ((int)tuple.Item2).Should().Be(10);
+            ((int)tuple.Item3).Should().Be(120 + (27 * 18));
+        }
+
+        [TestMethod]
+        public void ResolveDebugColumnForNextSection_ShiftsByFourHundredFive_WhenAtTwentyEightLines()
+        {
+            MethodInfo? method = typeof(DebugRenderer).GetMethod("ResolveDebugColumnForNextSection", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            object? result = method!.Invoke(null, [0, 10, 120 + (28 * 18), 120, 18, 28, 4, 10, 405]);
+            result.Should().NotBeNull();
+
+            dynamic tuple = result!;
+            ((int)tuple.Item1).Should().Be(1);
+            ((int)tuple.Item2).Should().Be(415);
+            ((int)tuple.Item3).Should().Be(120);
+        }
+
+        [TestMethod]
+        public void ResolveDebugColumnForNextSection_DoesNotShiftPastFourthColumn()
+        {
+            MethodInfo? method = typeof(DebugRenderer).GetMethod("ResolveDebugColumnForNextSection", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            int fourthColumnX = 10 + (3 * 405);
+            int yOverflow = 120 + (40 * 18);
+            object? result = method!.Invoke(null, [3, fourthColumnX, yOverflow, 120, 18, 28, 4, 10, 405]);
+            result.Should().NotBeNull();
+
+            dynamic tuple = result!;
+            ((int)tuple.Item1).Should().Be(3);
+            ((int)tuple.Item2).Should().Be(fourthColumnX);
+            ((int)tuple.Item3).Should().Be(yOverflow);
+        }
     }
 }

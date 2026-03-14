@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System;
 using System.Runtime.CompilerServices;
@@ -61,7 +61,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void IsValidClickableLabel_NullOrMissingParts_ReturnsFalse()
         {
-            // null label -> false
             LabelUtils.IsValidClickableLabel(null!, (v) => true).Should().BeFalse();
         }
 
@@ -69,17 +68,14 @@ namespace ClickIt.Tests.Unit
         public void IsValidEntityPath_DetectsClickablePathAndHandlesNull()
         {
             var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            // null path -> false
             SetMemberValue(ent, "Path", null);
             LabelUtils.IsValidEntityPath(ent).Should().BeFalse();
 
-            // path contains PetrifiedWood -> true
             SetMemberValue(ent, "Path", "some/thing/PetrifiedWood/abc");
             LabelUtils.IsValidEntityPath(ent).Should().BeTrue();
         }
 
         // NOTE: creating and mutating ExileCore runtime Element/LabelOnGround objects is unsafe inside unit tests.
-        // Similar behaviors are covered by the adapter-based tests (LabelUtilsAdapterTests.cs and LabelUtilsAdapterDedupTests.cs),
         // so we avoid constructing native-backed Element instances here and only assert the Sort/partition helper existence.
 
         [TestMethod]

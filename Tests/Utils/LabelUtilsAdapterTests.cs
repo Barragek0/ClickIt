@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using ClickIt.Services;
@@ -45,11 +45,9 @@ namespace ClickIt.Tests.Utils
             root.AddChild(child1);
             root.AddChild(child2);
 
-            // Basic properties
             root.IsValid.Should().BeTrue();
             root.GetText(512).Should().Be("root text");
 
-            // Children access
             var child = root.GetChildFromIndices(0, 0);
             child.Should().NotBeNull();
             child!.GetText(512).Should().Be("child1 text");
@@ -100,7 +98,6 @@ namespace ClickIt.Tests.Utils
             root.AddChild(child2);
 
             var found = LabelUtils.GetElementByStringForTests(root, "findme");
-            // The depth-first LIFO traversal will find the last child pushed first (child2)
             found.Should().Be(child2);
         }
 

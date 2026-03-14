@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Services;
 
@@ -17,7 +17,6 @@ namespace ClickIt.Tests.Unit
             var component = TestUtils.TestBuilders.BuildPrimary();
             service.AddAltarComponent(component).Should().BeTrue();
 
-            // Removing by null should return early and leave components intact
             service.RemoveAltarComponentsByElement(null!);
 
             service.GetAltarComponentsReadOnly().Should().Contain(component);

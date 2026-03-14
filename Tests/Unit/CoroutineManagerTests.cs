@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Tests.TestUtils;
 using System;
@@ -19,19 +19,15 @@ namespace ClickIt.Tests.Unit
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            // Null state
             FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(null!, settings, gc!, eh))
                 .Should().Throw<ArgumentNullException>();
 
-            // Null settings
             FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, null!, gc!, eh))
                 .Should().Throw<ArgumentNullException>();
 
-            // Null game controller
             FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, settings, null!, eh))
                 .Should().Throw<ArgumentNullException>();
 
-            // Null error handler
             FluentActions.Invoking(() => new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, null!))
                 .Should().Throw<ArgumentNullException>();
         }
@@ -55,7 +51,6 @@ namespace ClickIt.Tests.Unit
             }
             catch (TargetInvocationException tie) when (tie.InnerException is NullReferenceException)
             {
-                // Accessing ExileCore.GameController.Player on some test hosts may throw - treat as acceptable run-time-dependent behaviour.
                 tie.InnerException.Should().BeOfType<NullReferenceException>();
             }
         }
@@ -114,6 +109,46 @@ namespace ClickIt.Tests.Unit
 
             enumerator!.MoveNext();
             ctx.WorkFinished.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldRestartClickTimerAfterSuccessfulClick_ReturnsTrue_WhenSequenceIncreases()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldRestartClickTimerAfterSuccessfulClick(10, 11)
+                .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldRestartClickTimerAfterSuccessfulClick_ReturnsFalse_WhenSequenceUnchanged()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldRestartClickTimerAfterSuccessfulClick(10, 10)
+                .Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldCancelOffscreenPathingForInputRelease_ReturnsTrue_WhenNotLazyAndHotkeyReleased()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled: false, clickHotkeyHeld: false)
+                .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldCancelOffscreenPathingForInputRelease_ReturnsFalse_WhenLazyModeEnabled()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled: true, clickHotkeyHeld: false)
+                .Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldCancelOffscreenPathingForInputRelease_ReturnsFalse_WhenHotkeyHeld()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled: false, clickHotkeyHeld: true)
+                .Should().BeFalse();
         }
 
     }

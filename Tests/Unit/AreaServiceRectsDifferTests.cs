@@ -3,6 +3,7 @@ using FluentAssertions;
 using ClickIt.Services;
 using SharpDX;
 using System.Reflection;
+using System.Linq;
 
 namespace ClickIt.Tests.Unit
 {
@@ -11,7 +12,9 @@ namespace ClickIt.Tests.Unit
     {
         private static object? InvokeRectsDiffer(RectangleF a, RectangleF b, float eps)
         {
-            var method = typeof(AreaService).GetMethod("<UpdateScreenAreas>g__RectsDiffer|13_0", BindingFlags.NonPublic | BindingFlags.Static);
+            var method = typeof(AreaService)
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                .FirstOrDefault(m => m.Name == "RectsDiffer");
             method.Should().NotBeNull();
             return method!.Invoke(null, [a, b, eps]);
         }

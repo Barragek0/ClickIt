@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 using System.Collections.Generic;
@@ -57,7 +57,6 @@ namespace ClickIt.Tests.Unit
             var preferred = new Vector2(50, 20);
             var blocked = new List<RectangleF>();
 
-            // Simulate non-clickable center band but clickable edges.
             static bool IsClickable(Vector2 p) => p.X < 40 || p.X > 60;
 
             bool ok = InputHandler.TryResolveVisibleClickablePoint(target, preferred, blocked, IsClickable, out Vector2 resolved);
@@ -81,6 +80,36 @@ namespace ClickIt.Tests.Unit
 
             ok.Should().BeFalse();
             resolved.Should().Be(preferred);
+        }
+
+        [TestMethod]
+        public void IsSafeAutomationPoint_ReturnsTrue_WhenInsideWindowAndVirtualScreen()
+        {
+            var point = new Vector2(200, 200);
+            var gameWindow = new RectangleF(100, 100, 500, 400);
+            var virtualScreen = new RectangleF(0, 0, 1920, 1080);
+
+            InputHandler.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsSafeAutomationPoint_ReturnsFalse_WhenOutsideGameWindow()
+        {
+            var point = new Vector2(50, 50);
+            var gameWindow = new RectangleF(100, 100, 500, 400);
+            var virtualScreen = new RectangleF(0, 0, 1920, 1080);
+
+            InputHandler.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsSafeAutomationPoint_ReturnsFalse_WhenOutsideVirtualScreen()
+        {
+            var point = new Vector2(-5000, -5000);
+            var gameWindow = new RectangleF(0, 0, 1920, 1080);
+            var virtualScreen = new RectangleF(0, 0, 1920, 1080);
+
+            InputHandler.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
         }
     }
 }

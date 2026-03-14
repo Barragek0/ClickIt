@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 
@@ -14,7 +14,6 @@ namespace ClickIt.Tests.Utils
             var pm = new PerformanceMonitor(settings);
             pm.Start();
 
-            // test multiple coroutine channels via typed API
             var channels = new[] { TimingChannel.Click, TimingChannel.Altar, TimingChannel.Flare };
             foreach (var channel in channels)
             {
@@ -44,7 +43,6 @@ namespace ClickIt.Tests.Utils
             var settings = new ClickItSettings();
             var pm = new PerformanceMonitor(settings);
             pm.ResetMainTimer();
-            // Immediately after reset should usually be false for a small interval
             var triggered = pm.ShouldTriggerMainTimerAction(10000);
             triggered.Should().BeFalse();
         }

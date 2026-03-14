@@ -1,0 +1,178 @@
+using ClickIt.Services;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+
+namespace ClickIt.Tests.Unit
+{
+    [TestClass]
+    public class PathfindingServiceTests
+    {
+        [TestMethod]
+        public void FindPathAStar_FindsPath_OnSimpleWalkableGrid()
+        {
+            bool[][] grid =
+            [
+                [true, true, true],
+                [true, false, true],
+                [true, true, true]
+            ];
+
+            var path = PathfindingService.FindPathAStar(
+                grid,
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(2, 2),
+                500,
+                out int expanded);
+
+            path.Should().NotBeNull();
+            path!.Count.Should().BeGreaterThan(0);
+            path[0].Should().Be(new PathfindingService.GridPoint(0, 0));
+            path[^1].Should().Be(new PathfindingService.GridPoint(2, 2));
+            expanded.Should().BeGreaterThan(0);
+        }
+
+        [TestMethod]
+        public void FindPathAStar_RespectsSearchBudget_WhenTooLow()
+        {
+            bool[][] grid =
+            [
+                [true, true, true, true, true],
+                [true, true, true, true, true],
+                [true, true, true, true, true],
+                [true, true, true, true, true],
+                [true, true, true, true, true]
+            ];
+
+            var path = PathfindingService.FindPathAStar(
+                grid,
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(4, 4),
+                1,
+                out int expanded);
+
+            path.Should().BeNull();
+            expanded.Should().Be(1);
+        }
+
+        [TestMethod]
+        public void TryResolveWalkableGoal_ReturnsAdjacentWalkableTile_WhenDesiredGoalBlocked()
+        {
+            bool[][] grid =
+            [
+                [true, true, true],
+                [true, false, true],
+                [true, true, true]
+            ];
+
+            bool ok = PathfindingService.TryResolveWalkableGoal(
+                grid,
+                new PathfindingService.GridPoint(1, 1),
+                maxRadius: 2,
+                out PathfindingService.GridPoint resolved);
+
+            ok.Should().BeTrue();
+            resolved.Should().NotBe(new PathfindingService.GridPoint(1, 1));
+            grid[resolved.Y][resolved.X].Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void TryResolveWalkableGoal_ReturnsFalse_WhenNoWalkableTileInRadius()
+        {
+            bool[][] grid =
+            [
+                [false, false, false],
+                [false, false, false],
+                [false, false, false]
+            ];
+
+            bool ok = PathfindingService.TryResolveWalkableGoal(
+                grid,
+                new PathfindingService.GridPoint(1, 1),
+                maxRadius: 2,
+                out _);
+
+            ok.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ClearLatestPath_ResetsPathSnapshot()
+        {
+            var service = new PathfindingService(new ClickItSettings());
+
+            var gridField = typeof(PathfindingService).GetField("_lastGridPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var screenField = typeof(PathfindingService).GetField("_lastScreenPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var targetField = typeof(PathfindingService).GetField("_lastTargetPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            gridField.Should().NotBeNull();
+            screenField.Should().NotBeNull();
+            targetField.Should().NotBeNull();
+
+            gridField!.SetValue(service, new System.Collections.Generic.List<PathfindingService.GridPoint>
+            {
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 1)
+            });
+            screenField!.SetValue(service, new System.Collections.Generic.List<SharpDX.Vector2>
+            {
+                new SharpDX.Vector2(10, 10),
+                new SharpDX.Vector2(20, 20)
+            });
+            targetField!.SetValue(service, "Metadata/SomeTarget");
+
+            service.ClearLatestPath();
+
+            service.GetLatestGridPath().Count.Should().Be(0);
+            service.GetLatestScreenPath().Count.Should().Be(0);
+            service.GetDebugSnapshot().LastTargetPath.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void ClearPathIfStale_ClearsStoredPath_WhenTimeoutExceeded()
+        {
+            var service = new PathfindingService(new ClickItSettings());
+
+            var gridField = typeof(PathfindingService).GetField("_lastGridPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var tickField = typeof(PathfindingService).GetField("_lastPathBuildAttemptTickMs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            gridField.Should().NotBeNull();
+            tickField.Should().NotBeNull();
+
+            gridField!.SetValue(service, new System.Collections.Generic.List<PathfindingService.GridPoint>
+            {
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 0)
+            });
+            tickField!.SetValue(service, Environment.TickCount64 - 5000);
+
+            bool cleared = service.ClearPathIfStale(1000);
+
+            cleared.Should().BeTrue();
+            service.GetLatestGridPath().Count.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void ClearPathIfStale_DoesNotClearStoredPath_WhenStillRecent()
+        {
+            var service = new PathfindingService(new ClickItSettings());
+
+            var gridField = typeof(PathfindingService).GetField("_lastGridPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var tickField = typeof(PathfindingService).GetField("_lastPathBuildAttemptTickMs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            gridField.Should().NotBeNull();
+            tickField.Should().NotBeNull();
+
+            gridField!.SetValue(service, new System.Collections.Generic.List<PathfindingService.GridPoint>
+            {
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 0)
+            });
+            tickField!.SetValue(service, Environment.TickCount64);
+
+            bool cleared = service.ClearPathIfStale(1000);
+
+            cleared.Should().BeFalse();
+            service.GetLatestGridPath().Count.Should().Be(2);
+        }
+    }
+}

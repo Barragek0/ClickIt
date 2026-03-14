@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
@@ -22,18 +22,14 @@ namespace ClickIt.Tests.Unit
             // Avoid native Win32 key queries in tests by overriding the key-state seam
             LabelFilterService.KeyStateProvider = (k) => false;
 
-            // Short-circuit the lazy-mode restricted check in tests so we don't need to manipulate ExileCore.Memory objects
-            // LazyModeRestrictedChecker is a static property - assign directly in tests for determinism
             LabelFilterService.LazyModeRestrictedChecker = (svc2, labels) => true;
 
-            // CreateClickSettings is private - invoke via reflection
             var method = typeof(LabelFilterService).GetMethod("CreateClickSettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             method.Should().NotBeNull();
 
             var result = method!.Invoke(svc, [null]);
             result.Should().NotBeNull();
 
-            // ClickSettings is a private nested type - reflect its properties to assert mapping
             var clickSettingsType = result!.GetType();
 
             var clickDistanceProperty = clickSettingsType.GetProperty("ClickDistance");
@@ -60,7 +56,6 @@ namespace ClickIt.Tests.Unit
         public void CreateClickSettings_DisablesLeagueChestsAndSettlers_WhenLazyModeAndRestrictedItemOnScreen()
         {
             var settings = new ClickItSettings();
-            // enable lazy mode
             settings.LazyMode.Value = true;
             settings.ClickLeagueChests.Value = true;
             settings.ClickSettlersOre.Value = true;
@@ -69,15 +64,12 @@ namespace ClickIt.Tests.Unit
             var err = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
             var svc = new LabelFilterService(settings, ess, err, null);
 
-            // Build a fake LabelOnGround with a fake Entity.Path containing PetrifiedWood and small DistancePlayer
             var labelType = typeof(ExileCore.PoEMemory.Elements.LabelOnGround);
             var label = (ExileCore.PoEMemory.Elements.LabelOnGround)RuntimeHelpers.GetUninitializedObject(labelType);
 
-            // No need to populate the entity - the LazyModeRestrictedChecker is overridden to return true
 
             var list = new List<ExileCore.PoEMemory.Elements.LabelOnGround> { label };
 
-            // Invoke private CreateClickSettings
             var method = typeof(LabelFilterService).GetMethod("CreateClickSettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var result = method!.Invoke(svc, [list]);
             result.Should().NotBeNull();
@@ -92,8 +84,6 @@ namespace ClickIt.Tests.Unit
             bool clickLeagueChests = (bool)clickLeagueChestsProperty!.GetValue(result)!;
             bool clickSettlersOre = (bool)clickSettlersOreProperty!.GetValue(result)!;
 
-            // Since lazy mode is active, and we placed a restricted item (PetrifiedWood) within click distance,
-            // CreateClickSettings should apply lazy-mode restrictions and disable both ClickLeagueChests and ClickSettlersOre.
             clickLeagueChests.Should().BeFalse();
             clickSettlersOre.Should().BeFalse();
         }

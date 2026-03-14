@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Runtime.CompilerServices;
 using ClickIt.Utils;
@@ -54,7 +54,5 @@ namespace ClickIt.Tests.Unit
 
         // NOTE: we avoid constructing or mutating runtime-backed LabelOnGround/Element
         // instances in unit tests because their accessors perform native memory reads
-        // that will crash in the test runner. Higher-level adapter/seam tests cover
-        // element-driven behaviors instead.
     }
 }

@@ -45,5 +45,29 @@ namespace ClickIt.Tests.Unit
 
             settings.ToggleItemsPostToggleClickBlockMs.Value.Should().Be(20);
         }
+
+        [TestMethod]
+        public void UseMovementSkillsForOffscreenPathfinding_DefaultsToDisabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.UseMovementSkillsForOffscreenPathfinding.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void OffscreenMovementSkillMinPathSubsectionLength_DefaultsToEight()
+        {
+            var settings = new ClickItSettings();
+
+            settings.OffscreenMovementSkillMinPathSubsectionLength.Value.Should().Be(8);
+        }
+
+        [TestMethod]
+        public void OffscreenShieldChargePostCastClickDelayMs_DefaultsToOneHundred()
+        {
+            var settings = new ClickItSettings();
+
+            settings.OffscreenShieldChargePostCastClickDelayMs.Value.Should().Be(100);
+        }
     }
 }

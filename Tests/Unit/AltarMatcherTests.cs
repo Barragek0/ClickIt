@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Services;
 using ClickIt.Utils;
@@ -86,7 +86,6 @@ namespace ClickIt.Tests.Unit
             string modText = "SomeModId";
             string negativeModType = "Player gains:";
 
-            // Pre-populate private cache with an entry lacking the 'Type|' prefix
             var cache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_modMatchCache");
             string cacheKey = $"{modText}|{negativeModType}";
             cache[cacheKey] = (true, "SomeModId");
@@ -95,7 +94,6 @@ namespace ClickIt.Tests.Unit
 
             result.Should().BeTrue();
             isUpside.Should().BeTrue();
-            // cached matchedId lacked a pipe; TryMatchModCached should prefix the mod target (Player)
             matchedId.Should().Be("Player|SomeModId");
         }
 
@@ -110,7 +108,6 @@ namespace ClickIt.Tests.Unit
 
             first.Should().Be(second);
 
-            // inspect private cache to ensure the entry was stored
             var textCache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_textCleanCache");
             textCache.Should().NotBeNull();
             textCache.Contains(input).Should().BeTrue();

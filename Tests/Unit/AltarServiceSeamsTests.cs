@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Collections.Generic;
 using ClickIt.Services;
@@ -15,7 +15,6 @@ namespace ClickIt.Tests.Unit
         {
             var primary = TestUtils.TestBuilders.BuildPrimary();
 
-            // Passing null for the element parameter should throw ArgumentNullException
             FluentActions.Invoking(() => AltarService.UpdateAltarComponentFromAdapter(true, primary, null!, [], [], false))
                 .Should().Throw<System.ArgumentNullException>();
         }
@@ -33,7 +32,6 @@ namespace ClickIt.Tests.Unit
             var ups = new List<string> { "up1" };
             var downs = new List<string> { "down1" };
 
-            // call for bottom part
             AltarService.UpdateAltarComponentFromAdapter(false, primary, mockElementAdapter.Object, ups, downs, true);
 
             primary.BottomMods.Should().NotBeNull();
@@ -53,7 +51,6 @@ namespace ClickIt.Tests.Unit
                      ?? throw new System.InvalidOperationException("RecordUnmatchedMod method not found.");
             mi.Should().NotBeNull();
 
-            // Add six unique unmatched mods -> should trim to last 5
             string neg = "N";
             _ = mi.Invoke(svc, ["a1", neg]);
             mi.Invoke(svc, ["b2", neg]);
@@ -62,10 +59,8 @@ namespace ClickIt.Tests.Unit
             mi.Invoke(svc, ["e5", neg]);
             mi.Invoke(svc, ["f6", neg]);
 
-            // ModsUnmatched increments for every invocation
             svc.DebugInfo.ModsUnmatched.Should().Be(6);
 
-            // RecentUnmatchedMods should have been trimmed to last 5 entries (b..f)
             svc.DebugInfo.RecentUnmatchedMods.Count.Should().Be(5);
             svc.DebugInfo.RecentUnmatchedMods[0].Should().StartWith("b ");
             svc.DebugInfo.RecentUnmatchedMods[4].Should().StartWith("f ");
@@ -87,7 +82,6 @@ namespace ClickIt.Tests.Unit
             mi.Invoke(svc, ["dup1", neg]);
             mi.Invoke(svc, ["other1", neg]);
 
-            // Two invocations for 'dup1' increment ModsUnmatched twice but recent list only once
             svc.DebugInfo.ModsUnmatched.Should().Be(3);
             svc.DebugInfo.RecentUnmatchedMods.Count.Should().Be(2);
             svc.DebugInfo.RecentUnmatchedMods.Should().Contain(s => s.StartsWith("dup"));

@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -13,25 +13,17 @@ namespace ClickIt.Tests.Unit
         {
             var asm = typeof(ClickIt).Assembly;
 
-            // Target additional namespaces that contain large amounts of code we want to exercise
             var allowedNamespaces = new[] { "ClickIt.Services", "ClickIt.Utils", "ClickIt.Components", "ClickIt.Core", "ClickIt.Rendering" };
 
             // Expanded blacklist of risky name parts to avoid dangerous/native operations
             // Further expand blacklist to avoid invoking methods that have side-effects
-            // (native mouse movement / keyboard / blocking operations etc.)
             string[] riskyNameParts = [
-                // high-risk operations
                 "Report", "PlaySound", "OpenConfig", "StartNative", "Start", "Stop", "Run", "Process", "Parallel", "Thread", "Task", "Main", "Kill",
                 "File", "Directory", "Play", "Export", "Import", "Reload", "RemoveAltarComponentsByElement",
-                // Methods that cause UI/native input or click actions
                 "Perform", "Click", "Cursor", "SetCursor", "SetCuros", "Curos", "LeftClick", "RightClick", "mouse_event", "Mouse", "GetCursor", "Input",
-                // Keyboard input methods
                 "KeyPress", "KeyDown", "KeyUp", "Keyboard",
-                // Input blocking / force unblock
                 "BlockInput", "UnblockInput", "ForceUnblock",
-                // destructive / unmanaged operations
                 "Dispose", "Close", "Open", "Connect", "Attach", "Detach", "Shutdown", "Exit", "Kill", "Release",
-                // drawing / GUI / imgui / unsafe native helpers
                 "Draw", "ImGui", "TreeNode", "Render", "Renderer", "Unsafe", "Native", "Pointer", "GetUnmanaged",
             ];
 
@@ -70,7 +62,6 @@ namespace ClickIt.Tests.Unit
 
                         try { m.Invoke(instance, args); } catch { /* swallow */ }
 
-                        // If we have an instance, attempt to exercise simple property getters/setters
                         if (instance != null)
                         {
                             foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))

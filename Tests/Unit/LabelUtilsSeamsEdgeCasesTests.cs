@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using FluentAssertions;
 using ClickIt.Utils;
@@ -62,7 +62,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void SortByDistanceForTests_Boundary_50_51()
         {
-            // 50 elements should use insertion sort path
             var list50 = new List<DummyLabel>();
             for (int i = 50; i >= 1; i--) list50.Add(new DummyLabel(i));
             LabelUtils.SortByDistanceForTests(list50, x => x.Distance);
@@ -73,7 +72,6 @@ namespace ClickIt.Tests.Unit
                 prev = it.Distance;
             }
 
-            // 51 elements should use quicksort path
             var list51 = new List<DummyLabel>();
             for (int i = 51; i >= 1; i--) list51.Add(new DummyLabel(i));
             LabelUtils.SortByDistanceForTests(list51, x => x.Distance);

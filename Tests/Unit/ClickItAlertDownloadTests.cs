@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.IO;
 
@@ -14,7 +14,6 @@ namespace ClickIt.Tests.Unit
             clickIt.__Test_SetSettings(new ClickItSettings());
             var settings = clickIt.__Test_GetSettings();
 
-            // Ensure auto-download setting is disabled
             settings.AutoDownloadAlertSound.Value = false;
 
             // Ensure test seam prevents network just in case
@@ -32,7 +31,6 @@ namespace ClickIt.Tests.Unit
             var clickIt = new ClickIt();
             clickIt.__Test_SetSettings(new ClickItSettings());
 
-            // Use the test seam to override the config directory used by the plugin and create alert.wav there
             var configDir = Path.Combine(Path.GetTempPath(), "clickit_test_config");
             clickIt.__Test_SetConfigDirectory(configDir);
             Directory.CreateDirectory(configDir);
@@ -45,7 +43,6 @@ namespace ClickIt.Tests.Unit
             val.Should().NotBeNullOrEmpty();
             val!.Should().Be(target);
 
-            // cleanup
             File.Delete(target);
             try { Directory.Delete(configDir); } catch { }
         }

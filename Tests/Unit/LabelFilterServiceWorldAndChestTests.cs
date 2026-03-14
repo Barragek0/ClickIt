@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -23,7 +23,6 @@ namespace ClickIt.Tests.Unit
                 return;
             }
 
-            // Try common backing field patterns
             var backingField = type.GetField($"<{memberName}>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
             if (backingField != null)
             {
@@ -31,7 +30,6 @@ namespace ClickIt.Tests.Unit
                 return;
             }
 
-            // Try any private field that contains the member name
             var fuzzy = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
             foreach (var f in fuzzy)
             {
@@ -42,7 +40,6 @@ namespace ClickIt.Tests.Unit
                 }
             }
 
-            // Try any private field that matches the value type (useful when properties are computed)
             if (value != null)
             {
                 foreach (var f in fuzzy)
@@ -65,12 +62,10 @@ namespace ClickIt.Tests.Unit
             return method!.Invoke(null, args);
         }
 
-        // note: Instance private invocations aren't needed in these tests
 
         [TestMethod]
         public void ShouldClickWorldItemCore_ReturnsFalse_WhenClickItemsDisabled()
         {
-            // clickItems=false should short-circuit (no need to set entity fields)
             var res = (bool)InvokePrivateStatic("ShouldClickWorldItemCore", false, EntityType.WorldItem, null)!;
             res.Should().BeFalse();
         }
@@ -98,7 +93,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void IsBasicChest_DetectsSimpleNames_CaseInsensitive()
         {
-            // call the name-only helper directly via reflection
             var res = (bool)InvokePrivateStatic("IsBasicChestName", "chest")!;
             res.Should().BeTrue();
         }
@@ -166,6 +160,47 @@ namespace ClickIt.Tests.Unit
 
             disabled.Should().BeNull();
             enabled.Should().Be("area-transitions");
+        }
+
+        [TestMethod]
+        public void ShouldPickupWhenInventoryFullCore_OnlyAllowsMatchingPartialStacks()
+        {
+            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", true, false, false)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", true, true, false)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", true, true, true)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", false, false, false)!).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsPartialStackCore_ReturnsTrue_OnlyForStrictlyPartialStacks()
+        {
+            ((bool)InvokePrivateStatic("IsPartialStackCore", 11, 20)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("IsPartialStackCore", 0, 20)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("IsPartialStackCore", 20, 20)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("IsPartialStackCore", 25, 20)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("IsPartialStackCore", 5, 0)!).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void SelectBestWorldItemMetadataPath_PrefersComponentMetadata_ForMiscObjectsFallback()
+        {
+            string selected = (string)InvokePrivateStatic(
+                "SelectBestWorldItemMetadataPath",
+                "Metadata/MiscellaneousObjects/Monolith",
+                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst")!;
+
+            selected.Should().Be("Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
+        }
+
+        [TestMethod]
+        public void SelectBestWorldItemMetadataPath_KeepsResolvedMetadata_WhenAlreadySpecific()
+        {
+            string selected = (string)InvokePrivateStatic(
+                "SelectBestWorldItemMetadataPath",
+                "Metadata/Items/Currency/StackableCurrency/ChaosOrb",
+                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst")!;
+
+            selected.Should().Be("Metadata/Items/Currency/StackableCurrency/ChaosOrb");
         }
     }
 }

@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 
 namespace ClickIt.Tests.Unit
@@ -9,7 +9,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ChooseLabelIndexByUIHoverForTests_PicksHoveredLabel_WhenAddressMatchesDifferentLabel()
         {
-            // three labels: addresses 10, 20, 30. candidate initially index 0; uiHover is address 20 -> pick index 1
             var labels = new ulong[] { 10UL, 20UL, 30UL };
             var chosen = Services.ClickServiceSeams.ChooseLabelIndexByUIHoverForTests(labels, 0, 20UL);
             chosen.Should().Be(1);

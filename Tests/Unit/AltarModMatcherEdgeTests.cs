@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Utils;
 using ClickIt.Definitions;
@@ -21,7 +21,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void TryMatchMod_IgnoresNonLetters_WhenMatching()
         {
-            // Take a known downside mod id and inject punctuation/spaces
             var entry = AltarModsConstants.DownsideMods[0];
             string noisy = entry.Id + "!!! 123";
 

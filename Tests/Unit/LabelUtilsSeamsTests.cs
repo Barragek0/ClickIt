@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Collections.Generic;
 using ClickIt.Utils;
@@ -30,7 +30,6 @@ namespace ClickIt.Tests.Unit
         public void SortByDistanceForTests_QuickSort_WorksForLargeLists()
         {
             var items = new List<int>();
-            // create descending list of 100 items
             for (int i = 100; i >= 1; i--) items.Add(i);
 
             LabelUtils.SortByDistanceForTests(items, i => (float)i);

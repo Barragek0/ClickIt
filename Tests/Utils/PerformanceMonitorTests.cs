@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Utils;
 using FluentAssertions;
 
@@ -29,7 +29,6 @@ namespace ClickIt.Tests.Utils
             var pm = new PerformanceMonitor(settings);
             pm.Start();
 
-            // push more than capacity (10) for 'click' timings
             for (int i = 0; i < 12; i++)
             {
                 pm.StartCoroutineTiming("click");
@@ -39,7 +38,6 @@ namespace ClickIt.Tests.Utils
             pm.GetAverageTiming("click").Should().BeGreaterOrEqualTo(0);
             pm.GetMaxTiming("click").Should().BeGreaterOrEqualTo(0);
 
-            // check last timing retrieval for known keys
             pm.GetLastTiming("click").Should().BeGreaterOrEqualTo(0);
             pm.GetLastTiming("altar").Should().BeGreaterOrEqualTo(0);
         }
@@ -52,7 +50,6 @@ namespace ClickIt.Tests.Utils
             var pm = new PerformanceMonitor(settings);
             pm.Start();
 
-            // simulate several click intervals (skip first few as logic ignores early clicks)
             pm.RecordClickInterval();
             pm.RecordClickInterval();
             pm.RecordClickInterval();

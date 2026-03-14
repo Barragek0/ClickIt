@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Services;
 
@@ -20,13 +20,10 @@ namespace ClickIt.Tests.Unit
                 return (bool)value!;
             }
 
-            // when path null/empty -> false
             Invoke(false, false, false, false, string.Empty).Should().BeFalse();
 
-            // when flags false and path contains altar -> still false
             Invoke(false, false, false, false, "CleansingFireAltar").Should().BeFalse();
 
-            // when highlight or click flags true and path matches -> true
             Invoke(true, false, false, false, "CleansingFireAltar").Should().BeTrue();
             Invoke(false, true, false, false, "TangleAltar").Should().BeTrue();
             Invoke(false, false, true, false, "CleansingFireAltar").Should().BeTrue();

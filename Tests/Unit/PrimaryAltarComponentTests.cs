@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Components;
 using ClickIt.Utils;
@@ -14,7 +14,6 @@ namespace ClickIt.Tests.Unit
         public void IsValidCached_ReturnsFalseWhenElementsNull()
         {
             var primary = TestBuilders.BuildPrimary();
-            // When elements are null, IsValidCached should be false
             primary.IsValidCached().Should().BeFalse();
         }
 

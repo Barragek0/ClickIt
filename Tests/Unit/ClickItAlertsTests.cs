@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
 using System.Reflection;
@@ -17,7 +17,6 @@ namespace ClickIt.Tests.Unit
             settings.ModAlerts.Clear();
             settings.ModAlerts["downside|xmod"] = true;
 
-            // Use the test seam __Test_SetSettings to inject test settings (seam exists in ClickIt.TestSeams.cs)
             var setMethod = typeof(ClickIt).GetMethod("__Test_SetSettings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
             setMethod.Invoke(plugin, [settings]);
 
@@ -33,7 +32,6 @@ namespace ClickIt.Tests.Unit
             settings.ModAlerts.Clear();
             settings.ModAlerts["mymod"] = true;
 
-            // Set EffectiveSettings
             var setMethod = typeof(ClickIt).GetMethod("__Test_SetSettings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
             setMethod.Invoke(plugin, [settings]);
 
@@ -45,16 +43,13 @@ namespace ClickIt.Tests.Unit
             var alertService = plugin.__Test_GetAlertService();
             alertService.SetAlertSoundPathForTests(soundPath);
 
-            // Ensure any previous alert time isn't present
             var dict = alertService.LastAlertTimes;
             dict.Clear();
 
             alertService.TryTriggerAlertForMatchedMod("mymod");
 
-            // After invocation, the lastAlertTimes should contain the key
             Assert.IsTrue(dict.ContainsKey("mymod"));
 
-            // Cleanup
             try { File.Delete(soundPath); Directory.Delete(tmp); } catch { }
         }
     }

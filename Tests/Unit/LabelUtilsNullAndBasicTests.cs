@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 
@@ -22,12 +22,8 @@ namespace ClickIt.Tests.Unit
             result.Should().BeNull();
         }
 
-        // Note: we intentionally don't invoke HasEssenceImprisonmentText with a
         // RuntimeHelpers.GetUninitializedObject LabelOnGround here. The
-        // external ExileCore type performs unsafe native memory access when its
-        // properties are accessed on uninitialized instances which will cause a
         // runtime NullReferenceException in tests. This branch is validated
-        // indirectly by higher-level tests that exercise LabelFilterService and
         // other consumers of LabelUtils, so we avoid unsafe low-level calls here.
     }
 }

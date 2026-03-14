@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Components;
 using ClickIt.Utils;
@@ -15,16 +15,12 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void CalculateUpsideWeight_ReturnsSumOfModTiers()
         {
-            // Arrange
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
             var upsides = new List<string> { "mod_a", "mod_b" };
 
-            // Act
             var result = calc.CalculateUpsideWeight(upsides);
 
-            // Assert
-            // Default GetModTier returns 1 for unknown mods, so sum should be 2
             result.Should().Be(2m);
         }
 
@@ -33,9 +29,7 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
-            // null
             calc.CalculateDownsideWeight((List<string>?)null!).Should().Be(1m);
-            // empty
             calc.CalculateDownsideWeight([]).Should().Be(1m);
         }
 
@@ -53,17 +47,14 @@ namespace ClickIt.Tests.Unit
         public void CalculateAltarWeights_ReturnsExpectedWeights()
         {
             var settings = new ClickItSettings();
-            // Set explicit tiers for composite keys used by GetModWeightFromString
             settings.ModTiers["Player|upA"] = 50;
             settings.ModTiers["Boss|downA"] = 25;
 
             var calc = new WeightCalculator(settings);
 
-            // Build secondary components with one upside and one downside each
             var top = TestBuilders.BuildSecondary(["Player|upA"], ["Boss|downA"]);
             var bottom = TestBuilders.BuildSecondary(["Player|upA"], ["Boss|downA"]);
 
-            // Provide non-null Element instances for both components by creating uninitialized objects
             var elemType = typeof(Element);
             var topElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as Element;
             var bottomElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as Element;
@@ -74,10 +65,8 @@ namespace ClickIt.Tests.Unit
 
             var weights = calc.CalculateAltarWeights(primary);
 
-            // Expect sum weights equal configured tiers
             weights.TopUpsideWeight.Should().Be(50m);
             weights.TopDownsideWeight.Should().Be(25m);
-            // Ratio rounded to 2 decimals: 50 / 25 = 2.00
             weights.TopWeight.Should().Be(200);
         }
 
@@ -130,7 +119,6 @@ namespace ClickIt.Tests.Unit
             nullVal.Should().Be("");
         }
 
-        // --- Merged tests from WeightCalculatorParameterizedTests.cs ---
         [DataTestMethod]
         [DataRow(null, 0.0d)]
         [DataRow("", 0.0d)]
@@ -148,9 +136,7 @@ namespace ClickIt.Tests.Unit
         public void CalculateUpsideWeight_UsesModTiersAndCompositeKeys()
         {
             var settings = new ClickItSettings();
-            // set id-only tier
             settings.ModTiers["mod_a"] = 5;
-            // set composite tier
             settings.ModTiers["Player|special"] = 7;
 
             var calc = new WeightCalculator(settings);
@@ -182,7 +168,6 @@ namespace ClickIt.Tests.Unit
             var calc = new WeightCalculator(settings);
             var downsides = new List<string> { "d1" };
 
-            // downside weight should be 1 + sum(tiers)
             calc.CalculateDownsideWeight(downsides).Should().Be(3m);
         }
 
@@ -236,7 +221,6 @@ namespace ClickIt.Tests.Unit
             calc.CalculateUpsideWeight(list).Should().Be(0m);
         }
 
-        // --- Merged tests from WeightCalculatorZeroAndNegativeTests.cs ---
         [TestMethod]
         public void CalculateUpsideWeight_HandlesZeroAndNegative_Tiers()
         {
@@ -247,7 +231,6 @@ namespace ClickIt.Tests.Unit
             var calc = new WeightCalculator(settings);
             var list = new List<string> { "zero_mod", "neg_mod" };
 
-            // sum should be 0 + (-2) = -2
             calc.CalculateUpsideWeight(list).Should().Be(-2m);
         }
 
@@ -261,7 +244,6 @@ namespace ClickIt.Tests.Unit
             var calc = new WeightCalculator(settings);
             var list = new List<string> { "zero_mod", "neg_mod" };
 
-            // downside returns 1 + sum => 1 + (0 + -1) = 0
             calc.CalculateDownsideWeight(list).Should().Be(0m);
         }
 
@@ -271,7 +253,6 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
 
-            // prepare secondary components where every mod string is empty (-> weight 0)
             var elTop = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
             var elBottom = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
@@ -290,14 +271,12 @@ namespace ClickIt.Tests.Unit
             weights.BottomWeight.Should().Be(0);
         }
 
-        // --- Merged tests from WeightCalculatorDeepTests.cs ---
         [TestMethod]
         public void CalculateAltarWeights_Throws_WhenTopOrBottomElementNull()
         {
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
 
-            // TopMods.Element == null should cause an ArgumentException
             var top = new SecondaryAltarComponent(null, [], []);
             var bottom = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
             var primary = new PrimaryAltarComponent(AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
@@ -305,7 +284,6 @@ namespace ClickIt.Tests.Unit
             Action act = () => calc.CalculateAltarWeights(primary);
             act.Should().Throw<ArgumentException>();
 
-            // Bottom.Element == null
             var top2 = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
             var bottom2 = new SecondaryAltarComponent(null, [], []);
             var primary2 = new PrimaryAltarComponent(AltarType.Unknown, top2, new AltarButton(null), bottom2, new AltarButton(null));
@@ -318,7 +296,6 @@ namespace ClickIt.Tests.Unit
         public void CalculateAltarWeights_ComputesRatiosAndSums_Correctly()
         {
             var settings = new ClickItSettings();
-            // set tiers for mods used in this test
             settings.ModTiers["modTop1"] = 3;
             settings.ModTiers["modTop2"] = 2;
             settings.ModTiers["modBottom1"] = 4;
@@ -328,7 +305,6 @@ namespace ClickIt.Tests.Unit
             var elTop = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
             var elBottom = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
-            // Use first 3 positions for testing: top upsides/modTop1 and modTop2, bottom downside modBottom1
             var topMods = new SecondaryAltarComponent(elTop, ["modTop1", "modTop2"], ["modTopD1"]);
             var bottomMods = new SecondaryAltarComponent(elBottom, ["modBottomU1"], ["modBottom1"]);
 
@@ -336,22 +312,16 @@ namespace ClickIt.Tests.Unit
 
             var weights = calc.CalculateAltarWeights(primary);
 
-            // TopUpsideWeight should be sum of modTop1 + modTop2 => 3 + 2 = 5
             weights.TopUpsideWeight.Should().Be(5m);
 
-            // TopDownsideWeight is modTopD1 (not configured -> default 1)
             weights.TopDownsideWeight.Should().Be(1m);
 
-            // TopWeight = round(5 / 1, 2) -> 5.00
             weights.TopWeight.Should().Be(500);
 
-            // BottomDownsideWeight = modBottom1 => 4
             weights.BottomDownsideWeight.Should().Be(4m);
 
-            // BottomUpsideWeight was provided as unknown -> default mod tier 1
             weights.BottomUpsideWeight.Should().Be(1m);
 
-            // BottomWeight = 1 / 4 = 0.25
             weights.BottomWeight.Should().Be(25);
         }
     }

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System;
 using System.Reflection;
 using FluentAssertions;
@@ -19,10 +19,8 @@ namespace ClickIt.Tests.Unit
             var clickIt = new ClickIt();
             var settings = new ClickItSettings();
 
-            // Provide null cached labels so GetAltarLabels returns empty
             var service = new AltarService(clickIt, settings, null);
 
-            // Create a minimal PrimaryAltarComponent using nullable-friendly constructors
             var topMods = new SecondaryAltarComponent(null, [], []);
             var bottomMods = new SecondaryAltarComponent(null, [], []);
             var topButton = new AltarButton(null);
@@ -30,12 +28,10 @@ namespace ClickIt.Tests.Unit
 
             var component = new PrimaryAltarComponent(AltarType.Unknown, topMods, topButton, bottomMods, bottomButton);
 
-            // Add and ensure it's present
             bool added = service.AddAltarComponent(component);
             added.Should().BeTrue();
             service.GetAltarComponentsReadOnly().Should().Contain(component);
 
-            // When no labels are present ProcessAltarScanningLogic should clear the repository
             service.ProcessAltarScanningLogic();
 
             service.GetAltarComponentsReadOnly().Should().BeEmpty();
@@ -44,7 +40,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void DetermineAltarType_PrivateMethod_ReturnsExpected()
         {
-            // Use reflection to invoke the private static DetermineAltarType method
             var mi = typeof(AltarService).GetMethod("DetermineAltarType", BindingFlags.NonPublic | BindingFlags.Static);
             mi.Should().NotBeNull();
 
@@ -71,7 +66,6 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var service = new AltarService(clickIt, settings, null);
 
-            // Build a mock adapter graph: element -> parent -> altarParent -> (topAltar, bottomAltar)
             var mockElementAdapter = new Mock<IElementAdapter>();
             var mockParentAdapter = new Mock<IElementAdapter>();
             var mockAltarParentAdapter = new Mock<IElementAdapter>();
@@ -90,11 +84,9 @@ namespace ClickIt.Tests.Unit
             mockTopAltarAdapter.Setup(a => a.GetText(It.IsAny<int>())).Returns(string.Empty);
             mockBottomAltarAdapter.Setup(a => a.GetText(It.IsAny<int>())).Returns(string.Empty);
 
-            // Underlying elements can be null for adapter-based tests (SecondaryAltarComponent accepts Element?)
             mockTopAltarAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
             mockBottomAltarAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
 
-            // Call the internal adapter-based creator directly
             var created = service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, AltarType.SearingExarch);
 
             created.Should().NotBeNull();
@@ -112,7 +104,6 @@ namespace ClickIt.Tests.Unit
             var primary = TestUtils.TestBuilders.BuildPrimary();
 
             var mockElementAdapter = new Mock<IElementAdapter>();
-            // Parent used by AltarButton is retrieved from adapter.Parent.Underlying; provide a parent adapter with null underlying
             var parentAdapter = new Mock<IElementAdapter>();
             mockElementAdapter.SetupGet(a => a.Parent).Returns(parentAdapter.Object);
             parentAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
@@ -120,7 +111,6 @@ namespace ClickIt.Tests.Unit
             var ups = new List<string> { "up1" };
             var downs = new List<string> { "down1" };
 
-            // Call the internal static helper
             AltarService.UpdateAltarComponentFromAdapter(true, primary, mockElementAdapter.Object, ups, downs, true);
 
             primary.TopMods.Should().NotBeNull();

@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Runtime.CompilerServices;
 using ClickIt.Components;
@@ -21,10 +21,8 @@ namespace ClickIt.Tests.Unit
             settingsField!.SetValue(svc, new ClickItSettings());
             errorField!.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
 
-            // Primary constructed as Unknown type
             var primary = TestBuilders.BuildPrimary();
 
-            // Neither eater nor exarch clicking enabled
             svc.ShouldClickAltar(primary, clickEater: false, clickExarch: false).Should().BeFalse();
         }
 
@@ -40,7 +38,6 @@ namespace ClickIt.Tests.Unit
             settingsField2!.SetValue(svc, new ClickItSettings());
             errorField2!.SetValue(svc, new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), (s, f) => { }, (s, f) => { }));
 
-            // Construct an Eater altar with missing element data -> IsValidCached should be false
             var top = TestBuilders.BuildSecondary();
             var bottom = TestBuilders.BuildSecondary();
             var topButton = new AltarButton(null);
@@ -68,7 +65,6 @@ namespace ClickIt.Tests.Unit
             var bottomButton = new AltarButton(null);
             var primary = new PrimaryAltarComponent(AltarType.EaterOfWorlds, top, topButton, bottom, bottomButton);
 
-            // Force internal cache state to appear valid (so IsValidCached returns true)
             var cacheField = typeof(PrimaryAltarComponent).GetField("_isValidCache", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var timeField = typeof(PrimaryAltarComponent).GetField("_lastValidationTime", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             cacheField.Should().NotBeNull();
@@ -76,7 +72,6 @@ namespace ClickIt.Tests.Unit
             cacheField!.SetValue(primary, (bool?)true);
             timeField!.SetValue(primary, long.MaxValue);
 
-            // Elements remain null on the secondary components, so element validity check should fail
             svc.ShouldClickAltar(primary, clickEater: true, clickExarch: false).Should().BeFalse();
         }
     }

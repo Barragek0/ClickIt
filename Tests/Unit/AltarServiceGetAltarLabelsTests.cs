@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Collections.Generic;
 namespace ClickIt.Tests.Unit
@@ -13,15 +13,12 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var svc = new Services.AltarService(clickIt, settings, null);
 
-            // initially empty
             svc.GetAltarComponents().Should().BeEmpty();
 
-            // add primary component and verify present
             var comp = TestUtils.TestBuilders.BuildPrimary();
             svc.AddAltarComponent(comp).Should().BeTrue();
             svc.GetAltarComponentsReadOnly().Should().Contain(comp);
 
-            // clear repository -> empty
             svc.ClearAltarComponents();
             svc.GetAltarComponents().Should().BeEmpty();
         }

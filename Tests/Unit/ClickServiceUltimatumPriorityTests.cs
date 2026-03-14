@@ -45,17 +45,17 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void TryGetPropertyValue_ReturnsFalse_WhenGetterThrows()
+        public void TryExtractElement_ReturnsFalse_ForNonElementObject()
         {
-            var method = typeof(ClickService).GetMethod("TryGetPropertyValue", BindingFlags.NonPublic | BindingFlags.Static);
+            var method = typeof(ClickService).GetMethod("TryExtractElement", BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
 
-            object[] args = [new ThrowingGetterStub(), "Dangerous", null!];
+            object[] args = [new ThrowingGetterStub(), null!];
 
             bool success = (bool)method!.Invoke(null, args)!;
 
             success.Should().BeFalse();
-            args[2].Should().BeNull();
+            args[1].Should().BeNull();
         }
 
         [TestMethod]
@@ -66,6 +66,16 @@ namespace ClickIt.Tests.Unit
 
             matched.Should().BeTrue();
             nonMatch.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void UltimatumPostBeginAdditionalClickDelay_HasExpectedValue()
+        {
+            var field = typeof(ClickService).GetField("UltimatumPostBeginAdditionalClickDelayMs", BindingFlags.NonPublic | BindingFlags.Static);
+            field.Should().NotBeNull();
+
+            int value = (int)field!.GetValue(null)!;
+            value.Should().Be(200);
         }
 
         private sealed class ThrowingGetterStub

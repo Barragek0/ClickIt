@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using System.Collections.Generic;
@@ -49,15 +49,12 @@ namespace ClickIt.Tests.Utils
             var messages = new List<string>();
             var handler = new ErrorHandler(settings, (s, f) => logged.Add(s), (s, f) => messages.Add(s));
 
-            // requireLocalDebug=true and localDebug=false => should not log
             handler.LogMessage(true, false, "m1", 0);
             messages.Should().BeEmpty();
 
-            // localDebug=true and settings enable => should log
             handler.LogMessage(true, true, "m2", 0);
             messages.Should().Contain("m2");
 
-            // requireLocalDebug=false will log when settings allow
             handler.LogMessage(false, false, "m3", 0);
             messages.Should().Contain("m3");
         }
@@ -75,6 +72,21 @@ namespace ClickIt.Tests.Utils
             handler.RecentErrors.Should().HaveCountLessOrEqualTo(10);
             handler.RecentErrors.Should().Contain("err14");
             handler.RecentErrors.Should().NotContain("err0");
+        }
+
+        [TestMethod]
+        public void GlobalExceptionHandlers_RegisterAndUnregister_AreIdempotent()
+        {
+            var settings = new ClickItSettings { DebugMode = new ExileCore.Shared.Nodes.ToggleNode(true) };
+            var logged = new List<string>();
+            var messages = new List<string>();
+            var handler = new ErrorHandler(settings, (s, f) => logged.Add(s), (s, f) => messages.Add(s));
+
+            handler.RegisterGlobalExceptionHandlers();
+            handler.RegisterGlobalExceptionHandlers();
+
+            handler.UnregisterGlobalExceptionHandlers();
+            handler.UnregisterGlobalExceptionHandlers();
         }
     }
 }

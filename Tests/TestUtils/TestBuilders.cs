@@ -1,4 +1,4 @@
-using ClickIt.Components;
+﻿using ClickIt.Components;
 using ClickIt.Utils;
 using System.Collections.Generic;
 
@@ -10,7 +10,6 @@ namespace ClickIt.Tests.TestUtils
         {
             var upList = upsides != null ? [.. upsides] : new List<string>();
             var downList = downsides != null ? [.. downsides] : new List<string>();
-            // Use null Element by default; tests can pass a real Element if needed
             return new SecondaryAltarComponent(null, upList, downList, hasUnmatched);
         }
 
@@ -18,7 +17,6 @@ namespace ClickIt.Tests.TestUtils
         {
             var t = top ?? BuildSecondary();
             var b = bottom ?? BuildSecondary();
-            // AltarButton isn't used in many unit tests; construct minimal instance via default constructor if present
             var topButton = new AltarButton(null);
             var bottomButton = new AltarButton(null);
             return new PrimaryAltarComponent(AltarType.Unknown, t, topButton, b, bottomButton);
@@ -30,7 +28,6 @@ namespace ClickIt.Tests.TestUtils
             aw.InitializeFromArrays(topDown ?? new decimal[8], bottomDown ?? new decimal[8], topUp ?? new decimal[8], bottomUp ?? new decimal[8]);
             aw.TopWeight = topWeight;
             aw.BottomWeight = bottomWeight;
-            // compute sums for convenience when callers don't explicitly set the aggregate weights
             aw.TopUpsideWeight = 0m; foreach (var v in aw.GetTopUpsideWeights()) aw.TopUpsideWeight += v;
             aw.BottomUpsideWeight = 0m; foreach (var v in aw.GetBottomUpsideWeights()) aw.BottomUpsideWeight += v;
             aw.TopDownsideWeight = 0m; foreach (var v in aw.GetTopDownsideWeights()) aw.TopDownsideWeight += v;

@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Services;
 using ClickIt.Utils;
@@ -35,7 +35,6 @@ namespace ClickIt.Tests.Unit
             var repo = new AltarRepository();
             var comp = TestBuilders.BuildPrimary();
 
-            // Prime the cache by calling GetCachedWeights
             comp.GetCachedWeights(p => new AltarWeights { TopUpsideWeight = 5, TopDownsideWeight = 1 });
 
             repo.AddAltarComponent(comp);
@@ -44,7 +43,6 @@ namespace ClickIt.Tests.Unit
             repo.ClearAltarComponents();
             repo.GetAltarComponents().Should().BeEmpty();
 
-            // Verify private _cachedWeights is null after ClearAltarComponents (InvalidateCache called)
             var cached = PrivateFieldAccessor.Get<object?>(comp, "_cachedWeights");
             cached.Should().BeNull();
         }

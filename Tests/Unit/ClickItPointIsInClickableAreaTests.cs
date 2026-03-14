@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using ClickIt.Services;
 using ClickIt.Tests.TestUtils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -22,7 +22,6 @@ namespace ClickIt.Tests.Unit
         {
             // Create and configure AreaService directly so we avoid GameController dependency
             var svc = new AreaService();
-            // Set private rectangles via reflection to define the allowed area
             var full = new RectangleF(0, 0, 200, 200);
             var health = new RectangleF(0, 300, 10, 10); // off-screen so no overlap
             var mana = new RectangleF(300, 300, 10, 10);
@@ -30,7 +29,6 @@ namespace ClickIt.Tests.Unit
 
             SetAreaRectangles(svc, full, health, mana, buffs);
 
-            // choose a point inside the full screen rectangle and not in any blocked area
             var p = new Vector2(20, 20);
             var res = svc.PointIsInClickableArea(null, p);
             res.Should().BeTrue();

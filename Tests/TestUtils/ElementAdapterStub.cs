@@ -1,10 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using SharpDX;
 
 namespace ClickIt.Tests.TestUtils
 {
-    // Simple reusable test stub implementing Services.IElementAdapter so tests can
-    // construct element trees without referencing ExileCore types.
     internal class ElementAdapterStub : Services.IElementAdapter
     {
         private readonly List<Services.IElementAdapter> _children = [];

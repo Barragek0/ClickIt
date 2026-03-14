@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using ClickIt;
@@ -72,7 +72,6 @@ namespace ClickIt.Tests.Unit
             var pm = new PerformanceMonitor(new ClickItSettings());
             pm.Start();
 
-            // call enough times to start recording intervals (skips first few)
             pm.RecordClickInterval();
             pm.RecordClickInterval();
             pm.RecordClickInterval();
@@ -82,7 +81,6 @@ namespace ClickIt.Tests.Unit
 
             pm.ResetClickCount();
             pm.RecordClickInterval();
-            // After reset the counter is 1 so still no interval recorded
             pm.GetAverageClickInterval().Should().BeGreaterThanOrEqualTo(0);
         }
 

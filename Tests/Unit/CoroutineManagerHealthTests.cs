@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System;
 using System.Runtime.CompilerServices;
@@ -30,8 +30,6 @@ namespace ClickIt.Tests.Unit
             }
             catch (System.Reflection.TargetInvocationException tie) when (tie.InnerException is NullReferenceException)
             {
-                // In some test/build environments accessing GameController.Player on an
-                // uninitialized GameController can throw; this is acceptable for our
                 // purposes (the non-runtime behaviour is covered elsewhere).
             }
         }
@@ -58,7 +56,6 @@ namespace ClickIt.Tests.Unit
             }
             catch (System.Reflection.TargetInvocationException tie) when (tie.InnerException is NullReferenceException)
             {
-                // See note above — invocation may throw for uninitialized GameController.
             }
         }
     }

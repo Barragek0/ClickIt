@@ -28,5 +28,15 @@ namespace ClickIt.Tests.Unit
 
             reason.Should().NotBeNullOrWhiteSpace();
         }
+
+        [TestMethod]
+        public void GetSuccessfulClickSequence_StartsAtZero()
+        {
+            var settings = new ClickItSettings();
+            var perf = new PerformanceMonitor(settings);
+            var handler = new InputHandler(settings, perf);
+
+            handler.GetSuccessfulClickSequence().Should().Be(0);
+        }
     }
 }

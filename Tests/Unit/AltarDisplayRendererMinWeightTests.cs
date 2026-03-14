@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
@@ -16,7 +16,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void When_MinThreshold_Disabled_Normal_weight_selection_occurs()
         {
-            // Arrange
             var settings = new ClickItSettings(); // MinWeightThresholdEnabled defaults to false
             var (renderer, _, dfq) = AltarDisplayRendererTestHelper.CreateRendererWithQueues(settings);
 
@@ -31,10 +30,8 @@ namespace ClickIt.Tests.Unit
             var topRect = new RectangleF(0, 0, 100, 50);
             var bottomRect = new RectangleF(0, 60, 100, 50);
 
-            // Act
             renderer.DetermineAltarChoice(primary, weights, topRect, bottomRect, new Vector2(0, 0));
 
-            // Assert: top weight > bottom weight -> top highlighted (LawnGreen, thickness 3)
             AltarDisplayRendererTestHelper.FrameExists(dfq, topRect, Color.LawnGreen, 3).Should().BeTrue();
             AltarDisplayRendererTestHelper.FrameExists(dfq, bottomRect, Color.OrangeRed, 2).Should().BeTrue();
         }
@@ -42,7 +39,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void When_Top_below_min_threshold_Bottom_is_chosen()
         {
-            // Arrange
             var settings = new ClickItSettings();
             settings.MinWeightThresholdEnabled.Value = true;
             settings.MinWeightThreshold.Value = 25;
@@ -59,7 +55,6 @@ namespace ClickIt.Tests.Unit
             var topRect = new RectangleF(0, 0, 100, 50);
             var bottomRect = new RectangleF(0, 60, 100, 50);
 
-            // Act
             renderer.DetermineAltarChoice(primary, weights, topRect, bottomRect, new Vector2(0, 0));
             // Assert message and frames indicate bottom chosen because top below threshold
             AltarDisplayRendererTestHelper.AnyTextContains(dtq, "Bottom has been chosen").Should().BeTrue();
@@ -70,7 +65,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void When_Both_below_min_threshold_Neither_chosen_and_yellow_frames_drawn()
         {
-            // Arrange
             var settings = new ClickItSettings();
             settings.MinWeightThresholdEnabled.Value = true;
             settings.MinWeightThreshold.Value = 25;
@@ -87,9 +81,7 @@ namespace ClickIt.Tests.Unit
             var topRect = new RectangleF(0, 0, 100, 50);
             var bottomRect = new RectangleF(0, 60, 100, 50);
 
-            // Act
             renderer.DetermineAltarChoice(primary, weights, topRect, bottomRect, new Vector2(0, 0));
-            // Assert: both frames are yellow and no green/orange decision
             AltarDisplayRendererTestHelper.FrameExists(dfq, topRect, Color.Yellow).Should().BeTrue();
             AltarDisplayRendererTestHelper.FrameExists(dfq, bottomRect, Color.Yellow).Should().BeTrue();
         }

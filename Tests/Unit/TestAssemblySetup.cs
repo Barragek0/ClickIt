@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Utils;
 using System.Runtime.Versioning;
 
@@ -19,7 +19,6 @@ namespace ClickIt.Tests.Unit
         [AssemblyCleanup]
         public static void AssemblyCleanup()
         {
-            // Restore the default behavior after tests
             Mouse.DisableNativeInput = false;
         }
     }

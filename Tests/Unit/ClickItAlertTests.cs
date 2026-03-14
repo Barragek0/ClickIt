@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.IO;
 
@@ -36,7 +36,6 @@ namespace ClickIt.Tests.Unit
             settings.ModAlerts.Clear();
             settings.ModAlerts["alpha"] = true;
 
-            // create a temporary empty file to act as an alert.wav
             string tmp = Path.GetTempFileName();
             try
             {
@@ -50,7 +49,6 @@ namespace ClickIt.Tests.Unit
 
                 var first = dict["alpha"];
 
-                // second immediate call should respect cooldown and not update the timestamp
                 alertService.TryTriggerAlertForMatchedMod("alpha");
                 var second = dict["alpha"];
                 second.Should().Be(first);

@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using ClickIt.Tests.TestUtils;
@@ -50,9 +50,7 @@ namespace ClickIt.Tests.Utils
             var q = new DeferredTextQueue();
             q.Enqueue("hello", new Vector2(5, 5), Color.White, 12);
 
-            // Passing null graphics should be handled gracefully (no exception)
             q.Flush(null!, (s, f) => { });
-            // If we reached this point, flush handled null safely
             true.Should().BeTrue();
         }
 
@@ -94,7 +92,6 @@ namespace ClickIt.Tests.Utils
             var q = new DeferredFrameQueue();
             q.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
             q.Flush(null!, (s, f) => { });
-            // reached safely
             true.Should().BeTrue();
         }
 
@@ -165,16 +162,12 @@ namespace ClickIt.Tests.Utils
             var tt = new DeferredTextQueue();
             tt.Enqueue("a", new Vector2(1, 2), Color.Red, 10);
 
-            // Create uninitialized Graphics instances - calling instance methods on these objects
-            // will likely throw, but Deferred*Queue.Flush swallows exceptions around Draw* calls.
             var gfxType = typeof(ExileCore.Graphics);
             var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(gfxType);
 
-            // Should not throw even if DrawFrame/DrawText throws internally due to uninitialized object state
             tf.Flush(gfx, (s, f) => { });
             tt.Flush(gfx, (s, f) => { });
 
-            // After flush both internal queues should be empty
             var items = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(tf, "_items");
             items.Count.Should().Be(0);
 

@@ -24,6 +24,7 @@ namespace ClickIt.Tests.Unit
             var inputHandler = (InputHandler)RuntimeHelpers.GetUninitializedObject(typeof(InputHandler));
             var lf = (LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterService));
             var shrineSvc = (ShrineService)RuntimeHelpers.GetUninitializedObject(typeof(ShrineService));
+            var pathfindingSvc = (PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(PathfindingService));
             var perf = (PerformanceMonitor)RuntimeHelpers.GetUninitializedObject(typeof(PerformanceMonitor));
             var cached = (TimeCache<System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>>)RuntimeHelpers.GetUninitializedObject(typeof(TimeCache<System.Collections.Generic.List<ExileCore.PoEMemory.Elements.LabelOnGround>>));
 
@@ -38,6 +39,7 @@ namespace ClickIt.Tests.Unit
                 inputHandler,
                 lf,
                 shrineSvc,
+                pathfindingSvc,
                 new System.Func<bool>(() => false),
                 cached,
                 perf

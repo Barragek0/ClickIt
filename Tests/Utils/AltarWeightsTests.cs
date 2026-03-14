@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using System;
@@ -54,7 +54,6 @@ namespace ClickIt.Tests.Utils
             var aw = new AltarWeights();
             aw.InitializeFromArrays(null!, null!, null!, null!);
 
-            // unknown key should yield 0 rather than throwing
             aw["notatype", 2].Should().Be(0m);
         }
 

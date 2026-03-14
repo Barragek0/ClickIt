@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 
 namespace ClickIt.Tests.Unit
@@ -6,7 +6,6 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class ClickItPrivateTests
     {
-        // We use the plugin's internal test seam __Test_SetSettings to initialize Settings for tests
 
         [TestMethod]
         public void ResolveCompositeKey_FindsMatchingSuffixKey_WhenNeeded()

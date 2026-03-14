@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using SharpDX;
 using ClickIt.Utils;
@@ -21,7 +21,6 @@ namespace ClickIt.Tests.Unit
         public void DoRectanglesOverlap_ReturnsFalse_ForAdjacentNonOverlappingRects()
         {
             var a = new RectangleF(0, 0, 10, 10);
-            // Right edge == Left edge should be non-overlapping per implementation
             var b = new RectangleF(10, 0, 20, 10);
             var res = GeometryHelpers.RectanglesOverlapExclusive(a, b);
             res.Should().BeFalse();

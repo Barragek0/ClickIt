@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Components;
 using ClickIt.Services;
@@ -18,7 +18,6 @@ namespace ClickIt.Tests.Unit
             var service = new AltarService(clickIt, settings, null);
 
             var mockElementAdapter = new Mock<IElementAdapter>();
-            // Parent is null -> should throw
             mockElementAdapter.SetupGet(a => a.Parent).Returns((IElementAdapter?)null);
 
             FluentActions.Invoking(() => service.CreateAltarComponentFromAdapter(mockElementAdapter.Object, AltarType.Unknown))
@@ -39,15 +38,12 @@ namespace ClickIt.Tests.Unit
             mockElementAdapter.SetupGet(a => a.Parent).Returns(mockParentAdapter.Object);
             mockParentAdapter.SetupGet(a => a.Parent).Returns(mockAltarParentAdapter.Object);
 
-            // Fake the case where top child is present but bottom child is missing -> should throw
             var mockTopAltarAdapter = new Mock<IElementAdapter>();
             mockAltarParentAdapter.Setup(a => a.GetChildFromIndices(0, 1)).Returns(mockTopAltarAdapter.Object);
             mockAltarParentAdapter.Setup(a => a.GetChildFromIndices(1, 1)).Returns((IElementAdapter?)null);
 
-            // parent link for top child (the implementation expects Parent references)
             mockTopAltarAdapter.SetupGet(a => a.Parent).Returns(mockParentAdapter.Object);
 
-            // Top/bottom adapters return empty text and null underlying for simplicity
             mockTopAltarAdapter.Setup(a => a.GetText(It.IsAny<int>())).Returns(string.Empty);
             mockTopAltarAdapter.SetupGet(a => a.Underlying).Returns((Element?)null);
 

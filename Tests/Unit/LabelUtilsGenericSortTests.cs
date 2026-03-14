@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 using System.Collections.Generic;
@@ -21,7 +21,6 @@ namespace ClickIt.Tests.Unit
             for (int i = 5; i >= 1; i--)
                 list.Add(new DummyLabel(i));
 
-            // Use internal test seam
             LabelUtils.SortByDistanceForTests(list, (x) => x.Distance);
 
             float prev = -1f;
@@ -39,7 +38,6 @@ namespace ClickIt.Tests.Unit
             for (int i = 200; i >= 1; i--)
                 list.Add(new DummyLabel(i));
 
-            // Should take the quicksort branch
             LabelUtils.SortByDistanceForTests(list, (x) => x.Distance);
 
             float prev = -1f;

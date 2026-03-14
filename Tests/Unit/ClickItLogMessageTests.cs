@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 
 namespace ClickIt.Tests.Unit
@@ -12,10 +12,8 @@ namespace ClickIt.Tests.Unit
             var clickIt = new ClickIt();
             clickIt.__Test_SetSettings(new ClickItSettings());
 
-            // Previously this path recursed - ensure it completes (no exception).
             clickIt.State.IsRendering = false;
 
-            // No exception should be thrown, this verifies the method forwards correctly.
             var alertService = clickIt.__Test_GetAlertService();
             var countBefore = alertService.LastAlertTimes.Count;
 
@@ -33,7 +31,6 @@ namespace ClickIt.Tests.Unit
 
             clickIt.State.IsRendering = true;
 
-            // Should return quickly and not throw — assert nothing changed in last-alert timestamps.
             var alertService = clickIt.__Test_GetAlertService();
             var countBefore = alertService.LastAlertTimes.Count;
 

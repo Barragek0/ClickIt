@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
 namespace ClickIt.Tests.Unit
@@ -22,7 +22,6 @@ namespace ClickIt.Tests.Unit
                 Console.WriteLine(f.ToString());
             }
 
-            // Try to reflect the IngameState property type
             var prop = gcType.GetProperty("IngameState", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.FlattenHierarchy);
             if (prop != null)
             {
@@ -40,7 +39,6 @@ namespace ClickIt.Tests.Unit
                 }
             }
 
-            // Keep the test green - inspection output appears in the test runner logs
             Assert.IsTrue(true, "Inspection run completed - check output for types and members.");
         }
     }

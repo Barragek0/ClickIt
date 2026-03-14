@@ -1,6 +1,7 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using ClickIt.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Reflection;
 
 namespace ClickIt.Tests.Unit
 {
@@ -13,11 +14,9 @@ namespace ClickIt.Tests.Unit
             var clickIt = new ClickIt();
             clickIt.__Test_SetSettings(new ClickItSettings());
 
-            // Ensure performance monitor is null -> Render should return without change
             clickIt.State.PerformanceMonitor = null;
             clickIt.State.IsRendering = false;
 
-            // No exception, and IsRendering should remain false after call
             clickIt.Render();
             clickIt.State.IsRendering.Should().BeFalse();
         }
@@ -28,14 +27,11 @@ namespace ClickIt.Tests.Unit
             var clickIt = new ClickIt();
             clickIt.__Test_SetSettings(new ClickItSettings());
 
-            // Provide a simple PerformanceMonitor so Render proceeds into RenderInternal
             clickIt.State.PerformanceMonitor = new PerformanceMonitor(clickIt.__Test_GetSettings());
 
-            // Ensure required queues exist; Graphics can remain null (flush is no-op in that case)
             clickIt.State.DeferredTextQueue = new DeferredTextQueue();
             clickIt.State.DeferredFrameQueue = new DeferredFrameQueue();
 
-            // Sanity: Render should not throw and IsRendering should be false when Render returns
             clickIt.Render();
             clickIt.State.IsRendering.Should().BeFalse();
         }
@@ -123,7 +119,6 @@ namespace ClickIt.Tests.Unit
 
             clickIt.Render();
 
-            // DebugOverlay section timing still records the frame even when detailed sections are disabled.
             monitor.GetRenderSectionStats(RenderSection.DebugOverlay).SampleCount.Should().BeGreaterThan(0);
 
             var before = clickIt.State.DeferredTextQueue.GetPendingCount();
@@ -135,5 +130,84 @@ namespace ClickIt.Tests.Unit
             after.Should().BeGreaterThanOrEqualTo(before);
             monitor.GetRenderSectionStats(RenderSection.DebugOverlay).SampleCount.Should().BeGreaterThan(1);
         }
+
+        [TestMethod]
+        public void ShouldSkipAutoCopyForOffscreenMovementNoData_ReturnsTrue_WhenNoDataLinePresent()
+        {
+            var method = typeof(ClickIt).GetMethod("ShouldSkipAutoCopyForOffscreenMovementNoData", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            string[] lines =
+            [
+                "--- Pathfinding ---",
+                "Offscreen Movement: <no data>",
+                "Some other debug line"
+            ];
+
+            bool shouldSkip = (bool)method!.Invoke(null, [lines])!;
+            shouldSkip.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldSkipAutoCopyForOffscreenMovementNoData_ReturnsFalse_WhenMovementDataExists()
+        {
+            var method = typeof(ClickIt).GetMethod("ShouldSkipAutoCopyForOffscreenMovementNoData", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            string[] lines =
+            [
+                "--- Pathfinding ---",
+                "Offscreen Stage: Clicked | built=True | fromPath=True | clickPoint=True",
+                "Offscreen Target: Metadata/Terrain/Leagues/Ultimatum/Objects/UltimatumChallengeInteractable"
+            ];
+
+            bool shouldSkip = (bool)method!.Invoke(null, [lines])!;
+            shouldSkip.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldApplyOffscreenNoDataAutoCopySkip_ReturnsTrue_WhenPathfindingIsOnlyDetailedSectionEnabled()
+        {
+            var method = typeof(ClickIt).GetMethod("ShouldApplyOffscreenNoDataAutoCopySkip", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var settings = new ClickItSettings();
+            settings.DebugShowStatus.Value = false;
+            settings.DebugShowGameState.Value = false;
+            settings.DebugShowPerformance.Value = false;
+            settings.DebugShowClickFrequencyTarget.Value = false;
+            settings.DebugShowAltarDetection.Value = false;
+            settings.DebugShowAltarService.Value = false;
+            settings.DebugShowLabels.Value = false;
+            settings.DebugShowHoveredItemMetadata.Value = false;
+            settings.DebugShowRecentErrors.Value = false;
+            settings.DebugShowPathfinding.Value = true;
+
+            bool shouldApply = (bool)method!.Invoke(null, [settings])!;
+            shouldApply.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldApplyOffscreenNoDataAutoCopySkip_ReturnsFalse_WhenAnotherDetailedSectionIsEnabled()
+        {
+            var method = typeof(ClickIt).GetMethod("ShouldApplyOffscreenNoDataAutoCopySkip", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var settings = new ClickItSettings();
+            settings.DebugShowStatus.Value = true;
+            settings.DebugShowGameState.Value = false;
+            settings.DebugShowPerformance.Value = false;
+            settings.DebugShowClickFrequencyTarget.Value = false;
+            settings.DebugShowAltarDetection.Value = false;
+            settings.DebugShowAltarService.Value = false;
+            settings.DebugShowLabels.Value = false;
+            settings.DebugShowHoveredItemMetadata.Value = false;
+            settings.DebugShowRecentErrors.Value = false;
+            settings.DebugShowPathfinding.Value = true;
+
+            bool shouldApply = (bool)method!.Invoke(null, [settings])!;
+            shouldApply.Should().BeFalse();
+        }
+
     }
 }

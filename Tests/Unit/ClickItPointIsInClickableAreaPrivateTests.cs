@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Tests.TestUtils;
 using SharpDX;
@@ -11,7 +11,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void PointIsInClickableArea_UsesAreaServiceFields()
         {
-            // inject AreaService and set private rectangles so the test point is inside full-screen and outside the UI zones
             var area = new Services.AreaService();
             SetAreaRectangles(
                 area,
@@ -20,7 +19,6 @@ namespace ClickIt.Tests.Unit
                 new RectangleF(300, 250, 400, 300),
                 new RectangleF(0, 0, 50, 50));
 
-            // This point is in the middle of the screen and should be considered clickable
             var point = new Vector2(200f, 150f);
             var res = area.PointIsInClickableArea(null, point);
             res.Should().BeTrue();
