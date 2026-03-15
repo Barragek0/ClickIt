@@ -2,11 +2,12 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
-        private readonly object _labelDebugLock = new();
-        private LabelDebugSnapshot _lastLabelDebug = LabelDebugSnapshot.Empty;
-        private readonly Queue<string> _labelDebugTrail = new();
-        private long _labelDebugSequence;
         private const int LabelDebugTrailCapacity = 24;
+        private readonly Utils.DebugSnapshotStore<LabelDebugSnapshot> _labelDebugStore = new(
+            LabelDebugSnapshot.Empty,
+            LabelDebugTrailCapacity,
+            static (snapshot, sequence) => snapshot with { Sequence = sequence },
+            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}");
 
         public sealed record LabelDebugSnapshot(
             bool HasData,
@@ -47,37 +48,17 @@ namespace ClickIt.Services
 
         public LabelDebugSnapshot GetLatestLabelDebug()
         {
-            lock (_labelDebugLock)
-            {
-                return _lastLabelDebug;
-            }
+            return _labelDebugStore.GetLatest();
         }
 
         public IReadOnlyList<string> GetLatestLabelDebugTrail()
         {
-            lock (_labelDebugLock)
-            {
-                return _labelDebugTrail.ToArray();
-            }
+            return _labelDebugStore.GetTrail();
         }
 
         private void SetLatestLabelDebug(LabelDebugSnapshot snapshot)
         {
-            lock (_labelDebugLock)
-            {
-                long nextSequence = _labelDebugSequence + 1;
-                _labelDebugSequence = nextSequence;
-
-                LabelDebugSnapshot sequenced = snapshot with { Sequence = nextSequence };
-                _lastLabelDebug = sequenced;
-
-                string trailEntry = $"{sequenced.Sequence:00000} {sequenced.Stage} | {sequenced.Notes}";
-                _labelDebugTrail.Enqueue(trailEntry);
-                while (_labelDebugTrail.Count > LabelDebugTrailCapacity)
-                {
-                    _labelDebugTrail.Dequeue();
-                }
-            }
+            _labelDebugStore.SetLatest(snapshot);
         }
 
         private void PublishLabelDebugStage(

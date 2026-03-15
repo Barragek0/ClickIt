@@ -210,43 +210,43 @@ namespace ClickIt
 
             if (mechanicId.Equals("altars", StringComparison.OrdinalIgnoreCase))
             {
-                yield return "altars-searing-exarch";
-                yield return "altars-eater-of-worlds";
+                yield return MechanicIds.AltarsSearingExarch;
+                yield return MechanicIds.AltarsEaterOfWorlds;
                 yield break;
             }
 
             if (mechanicId.Equals("ultimatum", StringComparison.OrdinalIgnoreCase))
             {
-                yield return "ultimatum-initial-overlay";
-                yield return "ultimatum-window";
+                yield return MechanicIds.UltimatumInitialOverlay;
+                yield return MechanicIds.UltimatumWindow;
                 yield break;
             }
 
             if (mechanicId.Equals("sulphite-veins", StringComparison.OrdinalIgnoreCase))
             {
-                yield return "delve-sulphite-veins";
+                yield return MechanicIds.DelveSulphiteVeins;
                 yield break;
             }
 
             if (mechanicId.Equals("azurite-veins", StringComparison.OrdinalIgnoreCase))
             {
-                yield return "delve-azurite-veins";
+                yield return MechanicIds.DelveAzuriteVeins;
                 yield break;
             }
 
             if (mechanicId.Equals("delve-spawners", StringComparison.OrdinalIgnoreCase))
             {
-                yield return "delve-encounter-initiators";
+                yield return MechanicIds.DelveEncounterInitiators;
                 yield break;
             }
 
             if (mechanicId.Equals("settlers-ore", StringComparison.OrdinalIgnoreCase))
             {
-                yield return "settlers-crimson-iron";
-                yield return "settlers-copper";
-                yield return "settlers-petrified-wood";
-                yield return "settlers-bismuth";
-                yield return "settlers-verisium";
+                yield return MechanicIds.SettlersCrimsonIron;
+                yield return MechanicIds.SettlersCopper;
+                yield return MechanicIds.SettlersPetrifiedWood;
+                yield return MechanicIds.SettlersBismuth;
+                yield return MechanicIds.SettlersVerisium;
                 yield break;
             }
 
@@ -257,7 +257,7 @@ namespace ClickIt
         {
             MechanicPriorityIgnoreDistanceIds.RemoveWhere(id => string.IsNullOrWhiteSpace(id) || !validMechanicIds.Contains(id));
             if (applyDefaultIgnoreDistance)
-                MechanicPriorityIgnoreDistanceIds.Add("shrines");
+                MechanicPriorityIgnoreDistanceIds.Add(MechanicIds.Shrines);
         }
 
         private void SanitizeMechanicIgnoreDistanceWithin(HashSet<string> validMechanicIds)

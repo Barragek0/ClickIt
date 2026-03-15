@@ -1,14 +1,16 @@
 using SharpDX;
+using ClickIt.Utils;
 
 namespace ClickIt.Services
 {
     public partial class ClickService
     {
-        private readonly object _clickDebugLock = new();
-        private ClickDebugSnapshot _lastClickDebug = ClickDebugSnapshot.Empty;
-        private readonly Queue<string> _clickDebugTrail = new();
-        private long _clickDebugSequence;
         private const int ClickDebugTrailCapacity = 24;
+        private readonly DebugSnapshotStore<ClickDebugSnapshot> _clickDebugStore = new(
+            ClickDebugSnapshot.Empty,
+            ClickDebugTrailCapacity,
+            static (snapshot, sequence) => snapshot with { Sequence = sequence },
+            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}");
 
         public sealed record ClickDebugSnapshot(
             bool HasData,
@@ -49,37 +51,17 @@ namespace ClickIt.Services
 
         public ClickDebugSnapshot GetLatestClickDebug()
         {
-            lock (_clickDebugLock)
-            {
-                return _lastClickDebug;
-            }
+            return _clickDebugStore.GetLatest();
         }
 
         public IReadOnlyList<string> GetLatestClickDebugTrail()
         {
-            lock (_clickDebugLock)
-            {
-                return _clickDebugTrail.ToArray();
-            }
+            return _clickDebugStore.GetTrail();
         }
 
         private void SetLatestClickDebug(ClickDebugSnapshot snapshot)
         {
-            lock (_clickDebugLock)
-            {
-                long nextSequence = _clickDebugSequence + 1;
-                _clickDebugSequence = nextSequence;
-
-                ClickDebugSnapshot sequenced = snapshot with { Sequence = nextSequence };
-                _lastClickDebug = sequenced;
-
-                string trailEntry = $"{sequenced.Sequence:00000} {sequenced.Stage} | {sequenced.Notes}";
-                _clickDebugTrail.Enqueue(trailEntry);
-                while (_clickDebugTrail.Count > ClickDebugTrailCapacity)
-                {
-                    _clickDebugTrail.Dequeue();
-                }
-            }
+            _clickDebugStore.SetLatest(snapshot);
         }
     }
 }

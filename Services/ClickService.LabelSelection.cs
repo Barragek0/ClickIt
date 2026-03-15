@@ -16,16 +16,16 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
-        private const string ShrineMechanicId = "shrines";
-        private const string LostShipmentMechanicId = "lost-shipment";
+        private const string ShrineMechanicId = MechanicIds.Shrines;
+        private const string LostShipmentMechanicId = MechanicIds.LostShipment;
         private const string LostShipmentPathMarker = "Metadata/Chests/LostShipmentCrate";
         private const string LostShipmentLoosePathMarker = "LostShipment";
         private const string LostGoodsRenderNameMarker = "Lost Goods";
         private const string LostShipmentRenderNameMarker = "Lost Shipment";
-        private const string VerisiumMechanicId = "settlers-verisium";
-        private const string VerisiumBossSubAreaTransitionPathMarker = "VerisiumBossSubAreaTransition";
-        private const string AreaTransitionsMechanicId = "area-transitions";
-        private const string LabyrinthTrialsMechanicId = "labyrinth-trials";
+        private const string VerisiumMechanicId = MechanicIds.SettlersVerisium;
+        private const string VerisiumBossSubAreaTransitionPathMarker = MechanicIds.VerisiumBossSubAreaTransitionPathMarker;
+        private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
+        private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
         private const int MovementSkillRecastDelayMs = 450;
         private const int MovementSkillKeyTapDelayMs = 30;
         private const int MovementSkillDefaultPostCastClickBlockMs = 120;
@@ -276,6 +276,17 @@ namespace ClickIt.Services
             {
                 DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
                 PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", nextLabelMechanicId);
+
+                bool shouldContinueEntityPathing = ShouldPathfindToEntityAfterClickPointResolveFailure(
+                    settings.WalkTowardOffscreenLabels.Value,
+                    nextLabel.ItemOnGround != null,
+                    nextLabelMechanicId);
+                if (shouldContinueEntityPathing)
+                {
+                    PublishClickFlowDebugStage("EntityPathingFallback", "Label visible but unresolved click point; continuing pathing", nextLabelMechanicId);
+                    _ = TryWalkTowardOffscreenTarget(nextLabel.ItemOnGround);
+                }
+
                 yield break;
             }
 
@@ -452,10 +463,14 @@ namespace ClickIt.Services
                         matchedPath++;
                         if (ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, settings.ClickDistance.Value))
                             continue;
-                        if (!IsBackedByGroundLabel(entity.Address, labelEntityAddresses))
+
+                        bool hasGroundLabel = IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
+                        bool isVerisiumPath = IsVerisiumPath(path);
+                        if (!ShouldAllowSettlersCandidateWithoutGroundLabel(hasGroundLabel, isVerisiumPath))
                             continue;
 
-                        labelBacked++;
+                        if (hasGroundLabel)
+                            labelBacked++;
 
                         var worldScreenRawVec = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
                         Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
@@ -2230,7 +2245,9 @@ namespace ClickIt.Services
                 return false;
             }
 
-            bool clickedLabel = PerformLabelClick(clickPos, stickyLabel.Label, gameController);
+            bool clickedLabel = string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase)
+                ? PerformLabelHoldClick(clickPos, stickyLabel.Label, gameController, holdDurationMs: 0)
+                : PerformLabelClick(clickPos, stickyLabel.Label, gameController);
             if (clickedLabel)
             {
                 ClearStickyOffscreenTarget();
@@ -2964,6 +2981,9 @@ namespace ClickIt.Services
             if (labels == null || labels.Count == 0)
                 return null;
 
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+
             RefreshMechanicPriorityCaches();
 
             Entity? best = null;
@@ -2988,7 +3008,7 @@ namespace ClickIt.Services
                 if (string.IsNullOrWhiteSpace(mechanicId))
                     continue;
 
-                if (!ShouldContinuePathfindingToLabel(label, entity))
+                if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft))
                     continue;
 
                 var rank = BuildMechanicRank(entity.DistancePlayer, mechanicId);
@@ -3017,19 +3037,57 @@ namespace ClickIt.Services
             return suppressLeverClick || suppressInactiveUltimatum;
         }
 
-        private bool ShouldContinuePathfindingToLabel(LabelOnGround label, Entity entity)
+        private bool ShouldContinuePathfindingToLabel(
+            LabelOnGround label,
+            Entity entity,
+            IReadOnlyList<LabelOnGround>? allLabels,
+            Vector2 windowTopLeft)
         {
             if (!TryGetLabelRect(label, out RectangleF rect))
                 return true;
 
             string path = entity.Path ?? string.Empty;
+            bool labelInWindow = IsInsideWindowInEitherSpace(rect.Center);
             bool labelClickable = IsClickableInEitherSpace(rect.Center, path);
-            return ShouldContinuePathfindingWhenLabelClickable(labelClickable);
+
+            if (!labelInWindow || !labelClickable)
+                return true;
+
+            bool clickPointResolvable = allLabels != null
+                && inputHandler.TryCalculateClickPosition(
+                    label,
+                    windowTopLeft,
+                    allLabels,
+                    point => IsClickableInEitherSpace(point, path),
+                    out _);
+
+            return ShouldContinuePathfindingWhenLabelActionable(labelInWindow, labelClickable, clickPointResolvable);
         }
 
         internal static bool ShouldContinuePathfindingWhenLabelClickable(bool labelClickable)
         {
             return !labelClickable;
+        }
+
+        internal static bool ShouldContinuePathfindingWhenLabelActionable(bool labelInWindow, bool labelClickable, bool clickPointResolvable)
+        {
+            return !(labelInWindow && labelClickable && clickPointResolvable);
+        }
+
+        internal static bool ShouldPathfindToEntityAfterClickPointResolveFailure(
+            bool walkTowardOffscreenLabelsEnabled,
+            bool hasEntity,
+            string? mechanicId)
+        {
+            if (!walkTowardOffscreenLabelsEnabled || !hasEntity || string.IsNullOrWhiteSpace(mechanicId))
+                return false;
+
+            return true;
+        }
+
+        internal static bool ShouldAllowSettlersCandidateWithoutGroundLabel(bool hasGroundLabel, bool isVerisiumPath)
+        {
+            return hasGroundLabel || isVerisiumPath;
         }
 
         private static int GetOffscreenPathfindingTargetSearchDistance()

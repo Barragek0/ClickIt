@@ -184,6 +184,24 @@ namespace ClickIt.Rendering
             return (nextColumn, nextX, startY);
         }
 
+        private int RenderDebugTrailBlock(int xPos, int yPos, int lineHeight, IReadOnlyList<string> trail, int maxRows, int trimWidth)
+        {
+            if (trail == null || trail.Count == 0)
+                return yPos;
+
+            _deferredTextQueue.Enqueue("Recent Stages:", new Vector2(xPos, yPos), Color.LightBlue, 13);
+            yPos += lineHeight;
+
+            int start = Math.Max(0, trail.Count - Math.Max(1, maxRows));
+            for (int i = start; i < trail.Count; i++)
+            {
+                _deferredTextQueue.Enqueue($"  {TrimForDebug(trail[i], trimWidth)}", new Vector2(xPos, yPos), Color.LightGray, 12);
+                yPos += lineHeight;
+            }
+
+            return yPos;
+        }
+
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)
         {
             _deferredTextQueue.Enqueue($"--- ClickIt Status ---", new Vector2(xPos, yPos), Color.Orange, 16);

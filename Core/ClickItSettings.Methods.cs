@@ -67,6 +67,21 @@ namespace ClickIt
                 || DebugShowRecentErrors;
         }
 
+        public bool IsOnlyPathfindingDetailedDebugSectionEnabled()
+        {
+            return DebugShowPathfinding
+            && !DebugShowStatus
+            && !DebugShowGameState
+            && !DebugShowPerformance
+            && !DebugShowClickFrequencyTarget
+            && !DebugShowAltarDetection
+            && !DebugShowAltarService
+            && !DebugShowLabels
+            && !DebugShowHoveredItemMetadata
+            && !DebugShowClicking
+            && !DebugShowRecentErrors;
+        }
+
         private void DrawAltarsPanel()
         {
             DrawExarchSection();
@@ -420,7 +435,7 @@ namespace ClickIt
         }
 
         private sealed record MechanicToggleGroupEntry(string Id, string DisplayName);
-        private sealed record MechanicToggleTableEntry(string Id, string DisplayName, ToggleNode Node, string? GroupId = null);
+        private sealed record MechanicToggleTableEntry(string Id, string DisplayName, ToggleNode Node, string? GroupId = null, bool DefaultEnabled = false);
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
@@ -659,86 +674,46 @@ namespace ClickIt
         {
             foreach (MechanicToggleTableEntry entry in BuildMechanicTableEntries())
             {
-                entry.Node.Value = GetDefaultMechanicToggleState(entry.Id);
+                entry.Node.Value = entry.DefaultEnabled;
             }
-        }
-
-        private static bool GetDefaultMechanicToggleState(string id)
-        {
-            return id switch
-            {
-                "shrines" => true,
-                "lost-shipment" => true,
-                "basic-chests" => false,
-                "league-chests" => true,
-                "area-transitions" => false,
-                "labyrinth-trials" => false,
-                "crafting-recipes" => true,
-                "doors" => false,
-                "levers" => false,
-                "alva-temple-doors" => true,
-                "betrayal" => false,
-                "blight" => true,
-                "breach-nodes" => false,
-                "legion-pillars" => true,
-                "harvest" => true,
-                "sanctum" => true,
-                "settlers-crimson-iron" => true,
-                "settlers-copper" => true,
-                "settlers-petrified-wood" => true,
-                "settlers-bismuth" => true,
-                "settlers-verisium" => true,
-                "items" => true,
-                "essences" => true,
-                "ritual-initiate" => true,
-                "ritual-completed" => true,
-                "delve-azurite-veins" => true,
-                "delve-sulphite-veins" => true,
-                "delve-encounter-initiators" => true,
-                "ultimatum-initial-overlay" => false,
-                "ultimatum-window" => false,
-                "altars-searing-exarch" => false,
-                "altars-eater-of-worlds" => false,
-                _ => false
-            };
         }
 
         private MechanicToggleTableEntry[] BuildMechanicTableEntries()
         {
             return
             [
-                new("basic-chests", "Basic Chests", ClickBasicChests),
-                new("league-chests", "League Mechanic Chests", ClickLeagueChests),
-                new("shrines", "Shrines", ClickShrines),
-                new("area-transitions", "Area Transitions", ClickAreaTransitions),
-                new("labyrinth-trials", "Labyrinth Trials", ClickLabyrinthTrials),
-                new("crafting-recipes", "Crafting Recipes", ClickCraftingRecipes),
-                new("doors", "Doors", ClickDoors),
-                new("levers", "Levers", ClickLevers),
-                new("alva-temple-doors", "Alva Temple Doors", ClickAlvaTempleDoors),
-                new("betrayal", "Betrayal", ClickBetrayal),
-                new("blight", "Blight", ClickBlight),
-                new("breach-nodes", "Breach Nodes", ClickBreachNodes),
-                new("legion-pillars", "Legion Pillars", ClickLegionPillars),
-                new("harvest", "Nearest Harvest Plot", NearestHarvest),
-                new("sanctum", "Sanctum", ClickSanctum),
-                new("items", "Items", ClickItems),
-                new("essences", "Essences", ClickEssences),
-                new("ritual-initiate", "Ritual Altars", ClickRitualInitiate),
-                new("ritual-completed", "Completed Ritual Altars", ClickRitualCompleted),
-                new("lost-shipment", "Lost Shipment", ClickLostShipmentCrates, "settlers"),
-                new("settlers-crimson-iron", "Crimson Iron", ClickSettlersOre, "settlers"),
-                new("settlers-copper", "Copper", ClickSettlersOre, "settlers"),
-                new("settlers-petrified-wood", "Petrified Wood", ClickSettlersOre, "settlers"),
-                new("settlers-bismuth", "Bismuth", ClickSettlersOre, "settlers"),
-                new("settlers-verisium", "Verisium", ClickSettlersOre, "settlers"),
-                new("delve-azurite-veins", "Azurite Veins", ClickAzuriteVeins, "delve"),
-                new("delve-sulphite-veins", "Sulphite Veins", ClickSulphiteVeins, "delve"),
-                new("delve-encounter-initiators", "Encounter Initiators", ClickDelveSpawners, "delve"),
-                new("ultimatum-initial-overlay", "Initial Ultimatum Overlay", ClickInitialUltimatum, "ultimatum"),
-                new("ultimatum-window", "Ultimatum Window", ClickUltimatumChoices, "ultimatum"),
-                new("altars-searing-exarch", "Searing Exarch", ClickExarchAltars, "altars"),
-                new("altars-eater-of-worlds", "Eater of Worlds", ClickEaterAltars, "altars")
+                new(MechanicIds.BasicChests, "Basic Chests", ClickBasicChests, null, false),
+                new(MechanicIds.LeagueChests, "League Mechanic Chests", ClickLeagueChests, null, true),
+                new(MechanicIds.Shrines, "Shrines", ClickShrines, null, true),
+                new(MechanicIds.AreaTransitions, "Area Transitions", ClickAreaTransitions, null, false),
+                new(MechanicIds.LabyrinthTrials, "Labyrinth Trials", ClickLabyrinthTrials, null, false),
+                new(MechanicIds.CraftingRecipes, "Crafting Recipes", ClickCraftingRecipes, null, true),
+                new(MechanicIds.Doors, "Doors", ClickDoors, null, false),
+                new(MechanicIds.Levers, "Levers", ClickLevers, null, false),
+                new(MechanicIds.AlvaTempleDoors, "Alva Temple Doors", ClickAlvaTempleDoors, null, true),
+                new(MechanicIds.Betrayal, "Betrayal", ClickBetrayal, null, false),
+                new(MechanicIds.Blight, "Blight", ClickBlight, null, true),
+                new(MechanicIds.BreachNodes, "Breach Nodes", ClickBreachNodes, null, false),
+                new(MechanicIds.LegionPillars, "Legion Pillars", ClickLegionPillars, null, true),
+                new(MechanicIds.Harvest, "Nearest Harvest Plot", NearestHarvest, null, true),
+                new(MechanicIds.Sanctum, "Sanctum", ClickSanctum, null, true),
+                new(MechanicIds.Items, "Items", ClickItems, null, true),
+                new(MechanicIds.Essences, "Essences", ClickEssences, null, true),
+                new(MechanicIds.RitualInitiate, "Ritual Altars", ClickRitualInitiate, null, true),
+                new(MechanicIds.RitualCompleted, "Completed Ritual Altars", ClickRitualCompleted, null, true),
+                new(MechanicIds.LostShipment, "Lost Shipment", ClickLostShipmentCrates, "settlers", true),
+                new(MechanicIds.SettlersCrimsonIron, "Crimson Iron", ClickSettlersOre, "settlers", true),
+                new(MechanicIds.SettlersCopper, "Copper", ClickSettlersOre, "settlers", true),
+                new(MechanicIds.SettlersPetrifiedWood, "Petrified Wood", ClickSettlersOre, "settlers", true),
+                new(MechanicIds.SettlersBismuth, "Bismuth", ClickSettlersOre, "settlers", true),
+                new(MechanicIds.SettlersVerisium, "Verisium", ClickSettlersOre, "settlers", true),
+                new(MechanicIds.DelveAzuriteVeins, "Azurite Veins", ClickAzuriteVeins, "delve", true),
+                new(MechanicIds.DelveSulphiteVeins, "Sulphite Veins", ClickSulphiteVeins, "delve", true),
+                new(MechanicIds.DelveEncounterInitiators, "Encounter Initiators", ClickDelveSpawners, "delve", true),
+                new(MechanicIds.UltimatumInitialOverlay, "Initial Ultimatum Overlay", ClickInitialUltimatum, "ultimatum", false),
+                new(MechanicIds.UltimatumWindow, "Ultimatum Window", ClickUltimatumChoices, "ultimatum", false),
+                new(MechanicIds.AltarsSearingExarch, "Searing Exarch", ClickExarchAltars, "altars", false),
+                new(MechanicIds.AltarsEaterOfWorlds, "Eater of Worlds", ClickEaterAltars, "altars", false)
             ];
         }
 
@@ -1099,7 +1074,7 @@ namespace ClickIt
                 MechanicPriorityOrder = MechanicPriorityDefaultOrderIds.ToList();
                 MechanicPriorityIgnoreDistanceIds = new HashSet<string>(PriorityComparer)
                 {
-                    "shrines"
+                    MechanicIds.Shrines
                 };
                 MechanicPriorityIgnoreDistanceWithinById = MechanicPriorityIds
                     .ToDictionary(static x => x, static _ => MechanicIgnoreDistanceWithinDefault, PriorityComparer);
@@ -1183,42 +1158,10 @@ namespace ClickIt
 
         private bool IsMechanicPriorityMechanicEnabled(string mechanicId)
         {
-            return mechanicId switch
-            {
-                "basic-chests" => ClickBasicChests.Value,
-                "league-chests" => ClickLeagueChests.Value,
-                "shrines" => ClickShrines.Value,
-                "lost-shipment" => ClickLostShipmentCrates.Value,
-                "items" => ClickItems.Value,
-                "essences" => ClickEssences.Value,
-                "area-transitions" => ClickAreaTransitions.Value,
-                "labyrinth-trials" => ClickLabyrinthTrials.Value,
-                "crafting-recipes" => ClickCraftingRecipes.Value,
-                "doors" => ClickDoors.Value,
-                "levers" => ClickLevers.Value,
-                "alva-temple-doors" => ClickAlvaTempleDoors.Value,
-                "betrayal" => ClickBetrayal.Value,
-                "blight" => ClickBlight.Value,
-                "breach-nodes" => ClickBreachNodes.Value,
-                "legion-pillars" => ClickLegionPillars.Value,
-                "harvest" => NearestHarvest.Value,
-                "sanctum" => ClickSanctum.Value,
-                "settlers-crimson-iron" => ClickSettlersOre.Value,
-                "settlers-copper" => ClickSettlersOre.Value,
-                "settlers-petrified-wood" => ClickSettlersOre.Value,
-                "settlers-bismuth" => ClickSettlersOre.Value,
-                "settlers-verisium" => ClickSettlersOre.Value,
-                "ritual-initiate" => ClickRitualInitiate.Value,
-                "ritual-completed" => ClickRitualCompleted.Value,
-                "delve-sulphite-veins" => ClickSulphiteVeins.Value,
-                "delve-azurite-veins" => ClickAzuriteVeins.Value,
-                "delve-encounter-initiators" => ClickDelveSpawners.Value,
-                "ultimatum-initial-overlay" => ClickInitialUltimatum.Value,
-                "ultimatum-window" => ClickUltimatumChoices.Value,
-                "altars-searing-exarch" => ClickExarchAltars.Value,
-                "altars-eater-of-worlds" => ClickEaterAltars.Value,
-                _ => true
-            };
+            MechanicToggleTableEntry? entry = BuildMechanicTableEntries()
+                .FirstOrDefault(x => string.Equals(x.Id, mechanicId, StringComparison.OrdinalIgnoreCase));
+
+            return entry?.Node.Value ?? true;
         }
 
         private bool TryDrawMechanicPriorityMoveRow(

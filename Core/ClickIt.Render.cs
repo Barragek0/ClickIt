@@ -123,16 +123,7 @@ namespace ClickIt
             if (settings == null || !settings.DebugShowPathfinding.Value)
                 return false;
 
-            return !settings.DebugShowStatus.Value
-                && !settings.DebugShowGameState.Value
-                && !settings.DebugShowPerformance.Value
-                && !settings.DebugShowClickFrequencyTarget.Value
-                && !settings.DebugShowAltarDetection.Value
-                && !settings.DebugShowAltarService.Value
-                && !settings.DebugShowLabels.Value
-                && !settings.DebugShowHoveredItemMetadata.Value
-                && !settings.DebugShowClicking.Value
-                && !settings.DebugShowRecentErrors.Value;
+            return settings.IsOnlyPathfindingDetailedDebugSectionEnabled();
         }
 
         private static bool ShouldSkipAutoCopyForOffscreenMovementNoData(string[] debugLines)

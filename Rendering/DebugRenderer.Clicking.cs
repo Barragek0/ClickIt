@@ -55,18 +55,7 @@ namespace ClickIt.Rendering
             yPos += lineHeight;
 
             var trail = clickIt.State.ClickService.GetLatestClickDebugTrail();
-            if (trail.Count > 0)
-            {
-                _deferredTextQueue.Enqueue("Recent Stages:", new Vector2(xPos, yPos), Color.LightBlue, 13);
-                yPos += lineHeight;
-
-                int start = Math.Max(0, trail.Count - 8);
-                for (int i = start; i < trail.Count; i++)
-                {
-                    _deferredTextQueue.Enqueue($"  {TrimForDebug(trail[i], 78)}", new Vector2(xPos, yPos), Color.LightGray, 12);
-                    yPos += lineHeight;
-                }
-            }
+            yPos = RenderDebugTrailBlock(xPos, yPos, lineHeight, trail, maxRows: 8, trimWidth: 78);
 
             return yPos;
         }

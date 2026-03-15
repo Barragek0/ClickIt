@@ -292,82 +292,9 @@ namespace ClickIt.Services
                 return;
             }
 
-            int total = 0;
-            int nullItem = 0;
-            int outOfDistance = 0;
-            int untargetable = 0;
-            int noMechanic = 0;
-            int verisiumPathSeen = 0;
-            int petrifiedWoodPathSeen = 0;
-            int verisiumMechanic = 0;
-            int petrifiedWoodMechanic = 0;
-            int worldItemCount = 0;
-            int worldItemMetadataRejected = 0;
-            int verisiumMetadataSeen = 0;
-
-            for (int i = start; i < end; i++)
-            {
-                total++;
-                LabelOnGround? label = allLabels[i];
-                if (label == null)
-                {
-                    nullItem++;
-                    continue;
-                }
-
-                Entity? item = label.ItemOnGround;
-                if (item == null)
-                {
-                    nullItem++;
-                    continue;
-                }
-
-                string path = item.Path ?? string.Empty;
-                if (path.Contains(Constants.Verisium, StringComparison.OrdinalIgnoreCase))
-                    verisiumPathSeen++;
-                if (path.Contains(Constants.PetrifiedWood, StringComparison.OrdinalIgnoreCase))
-                    petrifiedWoodPathSeen++;
-
-                if (item.Type == ExileCore.Shared.Enums.EntityType.WorldItem)
-                {
-                    worldItemCount++;
-                    string resolvedMetadataPath = GetWorldItemMetadataPath(item);
-                    if (resolvedMetadataPath.Contains(Constants.Verisium, StringComparison.OrdinalIgnoreCase))
-                        verisiumMetadataSeen++;
-
-                    if (!ShouldAllowWorldItemByMetadata(clickSettings, item, _gameController))
-                        worldItemMetadataRejected++;
-                }
-
-                if (item.DistancePlayer > clickSettings.ClickDistance)
-                {
-                    outOfDistance++;
-                    continue;
-                }
-
-                if (!IsEntityTargetableForClick(label, item))
-                {
-                    untargetable++;
-                    continue;
-                }
-
-                string? mechanicId = GetClickableMechanicId(label, item, clickSettings, _gameController);
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                {
-                    noMechanic++;
-                    continue;
-                }
-
-                if (string.Equals(mechanicId, "settlers-verisium", StringComparison.OrdinalIgnoreCase))
-                    verisiumMechanic++;
-                if (string.Equals(mechanicId, "settlers-petrified-wood", StringComparison.OrdinalIgnoreCase))
-                    petrifiedWoodMechanic++;
-            }
-
+            SelectionDebugSummary summary = GetSelectionDebugSummary(allLabels, start, end - start);
             string msg =
-                $"[LabelFilterDiag] r:{start}-{end} t:{total} n:{nullItem} d:{outOfDistance} u:{untargetable} m:{noMechanic} " +
-                $"v:{verisiumPathSeen}/{verisiumMechanic} p:{petrifiedWoodPathSeen}/{petrifiedWoodMechanic} " +
-                $"wv:{verisiumMetadataSeen} wi:{worldItemCount}/{worldItemMetadataRejected} " +
+                $"[LabelFilterDiag] {summary.ToCompactString()} " +
                 $"sv:{(clickSettings.ClickSettlersVerisium ? 1 : 0)} sp:{(clickSettings.ClickSettlersPetrifiedWood ? 1 : 0)}";
 
             _errorHandler.LogMessage(true, true, msg, 5);

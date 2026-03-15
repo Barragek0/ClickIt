@@ -228,6 +228,74 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldContinuePathfindingWhenLabelActionable_ReturnsFalse_OnlyWhenFullyActionable()
+        {
+            ClickService.ShouldContinuePathfindingWhenLabelActionable(
+                labelInWindow: true,
+                labelClickable: true,
+                clickPointResolvable: true).Should().BeFalse();
+
+            ClickService.ShouldContinuePathfindingWhenLabelActionable(
+                labelInWindow: true,
+                labelClickable: true,
+                clickPointResolvable: false).Should().BeTrue();
+
+            ClickService.ShouldContinuePathfindingWhenLabelActionable(
+                labelInWindow: false,
+                labelClickable: true,
+                clickPointResolvable: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldAllowSettlersCandidateWithoutGroundLabel_AllowsVerisiumOnly()
+        {
+            ClickService.ShouldAllowSettlersCandidateWithoutGroundLabel(
+                hasGroundLabel: false,
+                isVerisiumPath: false).Should().BeFalse();
+
+            ClickService.ShouldAllowSettlersCandidateWithoutGroundLabel(
+                hasGroundLabel: false,
+                isVerisiumPath: true).Should().BeTrue();
+
+            ClickService.ShouldAllowSettlersCandidateWithoutGroundLabel(
+                hasGroundLabel: true,
+                isVerisiumPath: false).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldPathfindToEntityAfterClickPointResolveFailure_EnabledForEssencesAndItems()
+        {
+            ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasEntity: true,
+                mechanicId: "essences").Should().BeTrue();
+
+            ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasEntity: true,
+                mechanicId: "items").Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldPathfindToEntityAfterClickPointResolveFailure_RequiresPathingAndEntity()
+        {
+            ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                walkTowardOffscreenLabelsEnabled: false,
+                hasEntity: true,
+                mechanicId: "essences").Should().BeFalse();
+
+            ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasEntity: false,
+                mechanicId: "essences").Should().BeFalse();
+
+            ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasEntity: true,
+                mechanicId: null).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldSuppressPathfindingLabelCore_ReturnsTrue_ForInactiveUltimatum()
         {
             ClickService.ShouldSuppressPathfindingLabelCore(
