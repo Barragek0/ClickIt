@@ -131,6 +131,7 @@ namespace ClickIt
                 && !settings.DebugShowAltarService.Value
                 && !settings.DebugShowLabels.Value
                 && !settings.DebugShowHoveredItemMetadata.Value
+                && !settings.DebugShowClicking.Value
                 && !settings.DebugShowRecentErrors.Value;
         }
 

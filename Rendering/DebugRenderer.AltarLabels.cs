@@ -166,18 +166,25 @@ namespace ClickIt.Rendering
 
         public int RenderLabelsDebug(int xPos, int yPos, int lineHeight)
         {
-            _deferredTextQueue.Enqueue("Labels Debug:", new Vector2(xPos, yPos), Color.Orange, 16);
+            _deferredTextQueue.Enqueue("--- Labels ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
+
+            if (_plugin is not ClickIt clickIt || clickIt.State.LabelFilterService == null)
+            {
+                _deferredTextQueue.Enqueue("Label filter service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
             var gameController = _plugin.GameController;
             var labelsCollection = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
             if (labelsCollection == null)
             {
-                _deferredTextQueue.Enqueue("  Labels Collection: NULL", new Vector2(xPos, yPos), Color.Red, 16);
+                _deferredTextQueue.Enqueue("Labels collection: null", new Vector2(xPos, yPos), Color.Red, 14);
                 return yPos + lineHeight;
             }
 
             int totalLabels = labelsCollection.Count;
-            _deferredTextQueue.Enqueue($"  Total Labels: {totalLabels}", new Vector2(xPos, yPos), Color.White, 16);
+            _deferredTextQueue.Enqueue($"Total Visible: {totalLabels}", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
             int validLabels = 0;
@@ -187,8 +194,62 @@ namespace ClickIt.Rendering
                     validLabels++;
             }
 
-            _deferredTextQueue.Enqueue($"  Valid Labels: {validLabels}", new Vector2(xPos, yPos), Color.White, 16);
-            return yPos + lineHeight;
+            _deferredTextQueue.Enqueue($"Valid Labels: {validLabels}", new Vector2(xPos, yPos), Color.White, 14);
+            yPos += lineHeight;
+
+            var snap = clickIt.State.LabelFilterService.GetLatestLabelDebug();
+            if (!snap.HasData)
+            {
+                _deferredTextQueue.Enqueue("No label debug data yet", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            Color stageColor = string.Equals(snap.Stage, "SelectionReturned", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(snap.Stage, "SelectionScanSelected", StringComparison.OrdinalIgnoreCase)
+                ? Color.LightGreen
+                : Color.Yellow;
+            _deferredTextQueue.Enqueue($"Stage: {snap.Stage}  Seq: {snap.Sequence}", new Vector2(xPos, yPos), stageColor, 14);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Range: {snap.StartIndex}-{snap.EndExclusive}  Total: {snap.TotalLabels}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Considered: {snap.ConsideredCandidates}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Reject ND/U/NM: {snap.NullOrDistanceRejected}/{snap.UntargetableRejected}/{snap.NoMechanicRejected}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Ignored(PriorityDist): {snap.IgnoredByDistanceCandidates}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Selected Mechanic: {snap.SelectedMechanicId}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Selected Distance: {snap.SelectedDistance:0.0}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Selected Path: {TrimForDebug(snap.SelectedEntityPath, 56)}", new Vector2(xPos, yPos), Color.LightGray, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Note: {TrimForDebug(snap.Notes, 56)}", new Vector2(xPos, yPos), Color.LightGray, 13);
+            yPos += lineHeight;
+
+            var trail = clickIt.State.LabelFilterService.GetLatestLabelDebugTrail();
+            if (trail.Count > 0)
+            {
+                _deferredTextQueue.Enqueue("Recent Stages:", new Vector2(xPos, yPos), Color.LightBlue, 13);
+                yPos += lineHeight;
+
+                int start = Math.Max(0, trail.Count - 8);
+                for (int i = start; i < trail.Count; i++)
+                {
+                    _deferredTextQueue.Enqueue($"  {TrimForDebug(trail[i], 80)}", new Vector2(xPos, yPos), Color.LightGray, 12);
+                    yPos += lineHeight;
+                }
+            }
+
+            return yPos;
         }
 
         public int RenderHoveredItemMetadataDebug(int xPos, int yPos, int lineHeight)

@@ -153,6 +153,7 @@ namespace ClickIt.Rendering
             RenderSectionIfEnabled(settings.DebugShowLabels, (x, y, h) => RenderLabelsDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowHoveredItemMetadata, (x, y, h) => RenderHoveredItemMetadataDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowPathfinding, (x, y, h) => RenderPathfindingDebug(x, y, h));
+            RenderSectionIfEnabled(settings.DebugShowClicking, (x, y, h) => RenderClickingDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowRecentErrors, (x, y, h) => RenderErrorsDebug(x, y, h));
         }
 
