@@ -142,8 +142,33 @@ namespace ClickIt.Services
             if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
                 return false;
 
+            if (!IsEntityTargetableForClick(label, item))
+                return false;
+
             mechanicId = GetClickableMechanicId(label, item, clickSettings, _gameController);
             return !string.IsNullOrWhiteSpace(mechanicId);
+        }
+
+        private static bool IsEntityTargetableForClick(LabelOnGround label, Entity item)
+        {
+            bool hasLabelEntityTargetable = false;
+            bool labelEntityTargetable = true;
+
+            if (TryGetDynamicValue(label, l => l.Entity, out object? rawLabelEntity) && rawLabelEntity is Entity labelEntity)
+            {
+                hasLabelEntityTargetable = true;
+                labelEntityTargetable = labelEntity.IsTargetable;
+            }
+
+            return !ShouldSkipUntargetableEntity(hasLabelEntityTargetable, labelEntityTargetable, item.IsTargetable);
+        }
+
+        internal static bool ShouldSkipUntargetableEntity(bool hasLabelEntityTargetable, bool labelEntityTargetable, bool itemIsTargetable)
+        {
+            if (hasLabelEntityTargetable && !labelEntityTargetable)
+                return true;
+
+            return !itemIsTargetable;
         }
 
         private static bool TryPromoteIgnoredCandidate(

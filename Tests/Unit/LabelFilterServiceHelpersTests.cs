@@ -79,5 +79,29 @@ namespace ClickIt.Tests.Unit
             var cb5 = InvokePrivateStatic<bool>("IsBasicChestName", (string?)null);
             cb5.Should().BeFalse();
         }
+
+        [TestMethod]
+        public void ShouldSkipUntargetableEntity_RespectsLabelEntityAndItemTargetableState()
+        {
+            LabelFilterService.ShouldSkipUntargetableEntity(
+                hasLabelEntityTargetable: true,
+                labelEntityTargetable: false,
+                itemIsTargetable: true).Should().BeTrue();
+
+            LabelFilterService.ShouldSkipUntargetableEntity(
+                hasLabelEntityTargetable: true,
+                labelEntityTargetable: true,
+                itemIsTargetable: false).Should().BeTrue();
+
+            LabelFilterService.ShouldSkipUntargetableEntity(
+                hasLabelEntityTargetable: false,
+                labelEntityTargetable: true,
+                itemIsTargetable: false).Should().BeTrue();
+
+            LabelFilterService.ShouldSkipUntargetableEntity(
+                hasLabelEntityTargetable: true,
+                labelEntityTargetable: true,
+                itemIsTargetable: true).Should().BeFalse();
+        }
     }
 }
