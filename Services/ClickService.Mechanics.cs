@@ -16,6 +16,7 @@ namespace ClickIt.Services
         private const string VerisiumBossSubAreaTransitionPathMarker = MechanicIds.VerisiumBossSubAreaTransitionPathMarker;
         private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
         private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
+        private const int NonVerisiumSettlersRetryWindowMs = 3000;
 
         private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
         private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
@@ -57,41 +58,27 @@ namespace ClickIt.Services
         }
 
         internal static bool IsLostShipmentPath(string? path)
-        {
-            return HasAnyMarker(path, LostShipmentPathMarker, LostShipmentLoosePathMarker);
-        }
+            => HasAnyMarker(path, LostShipmentPathMarker, LostShipmentLoosePathMarker);
 
         internal static bool IsVerisiumPath(string? path)
-        {
-            return HasAnyMarker(path, Definitions.Constants.Verisium)
-                && !HasAnyMarker(path, VerisiumBossSubAreaTransitionPathMarker);
-        }
+            => HasAnyMarker(path, Definitions.Constants.Verisium)
+               && !HasAnyMarker(path, VerisiumBossSubAreaTransitionPathMarker);
 
         internal static bool ShouldUseHoldClickForSettlersMechanic(string? mechanicId)
-        {
-            return string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase);
-        }
+            => string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsLostShipmentEntity(string? path, string? renderName)
-        {
-            return IsLostShipmentPath(path)
-                || HasAnyMarker(renderName, LostGoodsRenderNameMarker, LostShipmentRenderNameMarker);
-        }
+            => IsLostShipmentPath(path)
+               || HasAnyMarker(renderName, LostGoodsRenderNameMarker, LostShipmentRenderNameMarker);
 
         internal static bool ShouldSkipLostShipmentEntity(bool isValid, float distance, int clickDistance, bool isOpened)
-        {
-            return !isValid || isOpened || distance > clickDistance;
-        }
+            => !isValid || isOpened || distance > clickDistance;
 
         internal static bool ShouldSkipSettlersOreEntity(bool isValid, float distance, int clickDistance)
-        {
-            return !isValid || distance > clickDistance;
-        }
+            => !isValid || distance > clickDistance;
 
         internal static bool ShouldSkipVerisiumEntity(bool isValid, float distance, int clickDistance)
-        {
-            return ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
-        }
+            => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
 
         internal static bool ShouldPreferLostShipmentOverVisibleCandidates(
             float lostShipmentDistance,
@@ -103,7 +90,7 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
         {
-            MechanicRank candidate = BuildMechanicRank(
+            var candidate = BuildMechanicRank(
                 lostShipmentDistance,
                 LostShipmentMechanicId,
                 priorityIndexMap,
@@ -111,10 +98,8 @@ namespace ClickIt.Services
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
 
-            if (!BeatsExistingCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty))
-                return false;
-
-            return BeatsExistingCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
+            return BeatsExistingCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
+                && BeatsExistingCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
         }
 
         internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
@@ -129,7 +114,7 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
         {
-            MechanicRank candidate = BuildMechanicRank(
+            var candidate = BuildMechanicRank(
                 settlersOreDistance,
                 settlersOreMechanicId,
                 priorityIndexMap,
@@ -152,8 +137,7 @@ namespace ClickIt.Services
             IReadOnlySet<string> ignoreDistanceSet,
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
-        {
-            return ShouldPreferSettlersOreOverVisibleCandidates(
+            => ShouldPreferSettlersOreOverVisibleCandidates(
                 verisiumDistance,
                 VerisiumMechanicId,
                 labelDistance,
@@ -164,7 +148,6 @@ namespace ClickIt.Services
                 ignoreDistanceSet,
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
-        }
 
         internal static bool ShouldPreferShrineOverLabelForOffscreen(
             float shrineDistance,
@@ -175,7 +158,7 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
         {
-            MechanicRank shrineRank = BuildMechanicRank(
+            var shrineRank = BuildMechanicRank(
                 shrineDistance,
                 ShrineMechanicId,
                 priorityIndexMap,
@@ -183,7 +166,7 @@ namespace ClickIt.Services
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
 
-            MechanicRank labelRank = BuildMechanicRank(
+            var labelRank = BuildMechanicRank(
                 labelDistance,
                 labelMechanicId,
                 priorityIndexMap,
@@ -220,7 +203,7 @@ namespace ClickIt.Services
             if (!otherDistance.HasValue)
                 return true;
 
-            MechanicRank other = BuildMechanicRank(
+            var other = BuildMechanicRank(
                 otherDistance.Value,
                 otherMechanicId,
                 priorityIndexMap,
@@ -232,15 +215,13 @@ namespace ClickIt.Services
         }
 
         private MechanicRank BuildMechanicRank(float distance, string? mechanicId)
-        {
-            return BuildMechanicRank(
+            => BuildMechanicRank(
                 distance,
                 mechanicId,
                 _cachedMechanicPriorityIndexMap,
                 _cachedMechanicIgnoreDistanceSet,
                 _cachedMechanicIgnoreDistanceWithinMap,
                 settings.MechanicPriorityDistancePenalty.Value);
-        }
 
         private static MechanicRank BuildMechanicRank(
             float distance,
@@ -258,7 +239,9 @@ namespace ClickIt.Services
             }
 
             bool ignored = IsIgnoreDistanceActiveForMechanic(mechanicId, distance, ignoreDistanceSet, ignoreDistanceWithinByMechanicId);
-            float weightedDistance = distance + (priorityIndex == int.MaxValue ? float.MaxValue : priorityIndex * Math.Max(0, priorityDistancePenalty));
+            float weightedDistance = distance + (priorityIndex == int.MaxValue
+                ? float.MaxValue
+                : priorityIndex * Math.Max(0, priorityDistancePenalty));
 
             return new MechanicRank(ignored, priorityIndex, weightedDistance, distance);
         }
@@ -283,10 +266,8 @@ namespace ClickIt.Services
         {
             if (left.Ignored && right.Ignored)
             {
-                int ignoredPriorityCompare = left.PriorityIndex.CompareTo(right.PriorityIndex);
-                return ignoredPriorityCompare != 0
-                    ? ignoredPriorityCompare
-                    : left.RawDistance.CompareTo(right.RawDistance);
+                int byPriority = left.PriorityIndex.CompareTo(right.PriorityIndex);
+                return byPriority != 0 ? byPriority : left.RawDistance.CompareTo(right.RawDistance);
             }
 
             if (left.Ignored != right.Ignored)
@@ -296,13 +277,13 @@ namespace ClickIt.Services
                     : (right.PriorityIndex <= left.PriorityIndex ? 1 : -1);
             }
 
-            int weightedCompare = left.WeightedDistance.CompareTo(right.WeightedDistance);
-            if (weightedCompare != 0)
-                return weightedCompare;
+            int byWeightedDistance = left.WeightedDistance.CompareTo(right.WeightedDistance);
+            if (byWeightedDistance != 0)
+                return byWeightedDistance;
 
-            int rawDistanceCompare = left.RawDistance.CompareTo(right.RawDistance);
-            if (rawDistanceCompare != 0)
-                return rawDistanceCompare;
+            int byRawDistance = left.RawDistance.CompareTo(right.RawDistance);
+            if (byRawDistance != 0)
+                return byRawDistance;
 
             return left.PriorityIndex.CompareTo(right.PriorityIndex);
         }
@@ -313,18 +294,18 @@ namespace ClickIt.Services
             if (!ReferenceEquals(_cachedMechanicPriorityOrder, priorityOrder))
             {
                 _cachedMechanicPriorityOrder = priorityOrder;
+                var priorityMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-                var nextPriorityMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 for (int i = 0; i < priorityOrder.Count; i++)
                 {
                     string id = priorityOrder[i] ?? string.Empty;
-                    if (id.Length == 0 || nextPriorityMap.ContainsKey(id))
+                    if (id.Length == 0 || priorityMap.ContainsKey(id))
                         continue;
 
-                    nextPriorityMap[id] = i;
+                    priorityMap[id] = i;
                 }
 
-                _cachedMechanicPriorityIndexMap = nextPriorityMap;
+                _cachedMechanicPriorityIndexMap = priorityMap;
             }
 
             IReadOnlyCollection<string> ignoreDistanceIds = settings.GetMechanicPriorityIgnoreDistanceIds();
@@ -353,9 +334,60 @@ namespace ClickIt.Services
         }
 
         private static bool IsSettlersMechanicId(string? mechanicId)
+            => !string.IsNullOrWhiteSpace(mechanicId)
+               && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
+
+        private void MarkSuccessfulSettlersInteraction(long entityAddress, string? mechanicId)
         {
-            return !string.IsNullOrWhiteSpace(mechanicId)
-                && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
+            if (entityAddress == 0
+                || string.IsNullOrWhiteSpace(mechanicId)
+                || !IsSettlersMechanicId(mechanicId)
+                || ShouldUseHoldClickForSettlersMechanic(mechanicId))
+            {
+                return;
+            }
+
+            _lastSuccessfulNonVerisiumSettlersTargetAddress = entityAddress;
+            _lastSuccessfulNonVerisiumSettlersMechanicId = mechanicId;
+            _lastSuccessfulNonVerisiumSettlersTimestampMs = Environment.TickCount64;
+        }
+
+        private bool IsRecentSuccessfulNonVerisiumSettlersRetryTarget(long entityAddress, string? mechanicId)
+        {
+            long now = Environment.TickCount64;
+            return IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
+                _lastSuccessfulNonVerisiumSettlersTargetAddress,
+                _lastSuccessfulNonVerisiumSettlersMechanicId,
+                _lastSuccessfulNonVerisiumSettlersTimestampMs,
+                entityAddress,
+                mechanicId,
+                now,
+                NonVerisiumSettlersRetryWindowMs);
+        }
+
+        internal static bool IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
+            long lastSuccessfulTargetAddress,
+            string? lastSuccessfulMechanicId,
+            long lastSuccessfulTimestampMs,
+            long candidateEntityAddress,
+            string? candidateMechanicId,
+            long now,
+            int retryWindowMs)
+        {
+            if (lastSuccessfulTargetAddress == 0
+                || candidateEntityAddress == 0
+                || !IsSettlersMechanicId(candidateMechanicId)
+                || ShouldUseHoldClickForSettlersMechanic(candidateMechanicId)
+                || !string.Equals(lastSuccessfulMechanicId, candidateMechanicId, StringComparison.OrdinalIgnoreCase)
+                || candidateEntityAddress != lastSuccessfulTargetAddress
+                || retryWindowMs <= 0
+                || lastSuccessfulTimestampMs <= 0)
+            {
+                return false;
+            }
+
+            long elapsed = now - lastSuccessfulTimestampMs;
+            return elapsed >= 0 && elapsed <= retryWindowMs;
         }
 
         private bool IsSettlersMechanicEnabled(string? mechanicId)

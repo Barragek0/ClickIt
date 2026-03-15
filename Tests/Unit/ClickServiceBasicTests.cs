@@ -263,6 +263,69 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldAllowNonVerisiumSettlersRetryWithoutGroundLabel_RequiresRecentRetryTarget()
+        {
+            ClickService.ShouldAllowNonVerisiumSettlersRetryWithoutGroundLabel(
+                hasGroundLabel: false,
+                isVerisiumPath: false,
+                recentlyClickedNonVerisiumTarget: false).Should().BeFalse();
+
+            ClickService.ShouldAllowNonVerisiumSettlersRetryWithoutGroundLabel(
+                hasGroundLabel: false,
+                isVerisiumPath: false,
+                recentlyClickedNonVerisiumTarget: true).Should().BeTrue();
+
+            ClickService.ShouldAllowNonVerisiumSettlersRetryWithoutGroundLabel(
+                hasGroundLabel: false,
+                isVerisiumPath: true,
+                recentlyClickedNonVerisiumTarget: false).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsRecentSuccessfulNonVerisiumSettlersRetryTarget_MatchesSameTargetMechanicWithinWindow()
+        {
+            ClickService.IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
+                lastSuccessfulTargetAddress: 1001,
+                lastSuccessfulMechanicId: "settlers-copper",
+                lastSuccessfulTimestampMs: 1_000,
+                candidateEntityAddress: 1001,
+                candidateMechanicId: "settlers-copper",
+                now: 3_500,
+                retryWindowMs: 3_000).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsRecentSuccessfulNonVerisiumSettlersRetryTarget_ReturnsFalse_ForVerisiumOrStaleOrDifferentTarget()
+        {
+            ClickService.IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
+                lastSuccessfulTargetAddress: 1001,
+                lastSuccessfulMechanicId: "settlers-copper",
+                lastSuccessfulTimestampMs: 1_000,
+                candidateEntityAddress: 1001,
+                candidateMechanicId: "settlers-verisium",
+                now: 2_000,
+                retryWindowMs: 3_000).Should().BeFalse();
+
+            ClickService.IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
+                lastSuccessfulTargetAddress: 1001,
+                lastSuccessfulMechanicId: "settlers-copper",
+                lastSuccessfulTimestampMs: 1_000,
+                candidateEntityAddress: 1002,
+                candidateMechanicId: "settlers-copper",
+                now: 2_000,
+                retryWindowMs: 3_000).Should().BeFalse();
+
+            ClickService.IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
+                lastSuccessfulTargetAddress: 1001,
+                lastSuccessfulMechanicId: "settlers-copper",
+                lastSuccessfulTimestampMs: 1_000,
+                candidateEntityAddress: 1001,
+                candidateMechanicId: "settlers-copper",
+                now: 4_200,
+                retryWindowMs: 3_000).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldPathfindToEntityAfterClickPointResolveFailure_EnabledForEssencesAndItems()
         {
             ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
@@ -293,6 +356,66 @@ namespace ClickIt.Tests.Unit
                 walkTowardOffscreenLabelsEnabled: true,
                 hasEntity: true,
                 mechanicId: null).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing_ReturnsFalse_WhenSettingDisabled()
+        {
+            ClickService.ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
+                prioritizeOnscreenClickableMechanics: false,
+                hasClickableAltar: true,
+                hasClickableShrine: true,
+                hasClickableLostShipment: true,
+                hasClickableSettlersOre: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing_ReturnsTrue_WhenAnyOnscreenMechanicIsClickable()
+        {
+            ClickService.ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
+                prioritizeOnscreenClickableMechanics: true,
+                hasClickableAltar: false,
+                hasClickableShrine: true,
+                hasClickableLostShipment: false,
+                hasClickableSettlersOre: false).Should().BeTrue();
+
+            ClickService.ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
+                prioritizeOnscreenClickableMechanics: true,
+                hasClickableAltar: false,
+                hasClickableShrine: false,
+                hasClickableLostShipment: false,
+                hasClickableSettlersOre: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldRetryLabelClickPointWithoutClickableArea_ReturnsTrue_ForSettlersMechanics()
+        {
+            ClickService.ShouldRetryLabelClickPointWithoutClickableArea("settlers-verisium").Should().BeTrue();
+            ClickService.ShouldRetryLabelClickPointWithoutClickableArea("settlers-copper").Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldRetryLabelClickPointWithoutClickableArea_ReturnsFalse_ForNonSettlers()
+        {
+            ClickService.ShouldRetryLabelClickPointWithoutClickableArea("items").Should().BeFalse();
+            ClickService.ShouldRetryLabelClickPointWithoutClickableArea("shrines").Should().BeFalse();
+            ClickService.ShouldRetryLabelClickPointWithoutClickableArea(null).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldAllowSettlersRelaxedClickPointFallback_AllowsOnlyWhenBackingEntityIsOffscreen()
+        {
+            ClickService.ShouldAllowSettlersRelaxedClickPointFallback(
+                hasBackingEntity: true,
+                worldProjectionInWindow: false).Should().BeTrue();
+
+            ClickService.ShouldAllowSettlersRelaxedClickPointFallback(
+                hasBackingEntity: true,
+                worldProjectionInWindow: true).Should().BeFalse();
+
+            ClickService.ShouldAllowSettlersRelaxedClickPointFallback(
+                hasBackingEntity: false,
+                worldProjectionInWindow: false).Should().BeFalse();
         }
 
         [TestMethod]

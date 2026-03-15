@@ -233,11 +233,11 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            if (!inputHandler.TryCalculateClickPosition(
+            if (!TryResolveLabelClickPosition(
                 nextLabel,
+                nextLabelMechanicId,
                 windowTopLeft,
                 allLabels,
-                point => IsClickableInEitherSpace(point, nextLabel.ItemOnGround?.Path ?? string.Empty),
                 out Vector2 clickPos))
             {
                 DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
@@ -267,9 +267,16 @@ namespace ClickIt.Services
                 resolved: true,
                 notes: "Settlers label candidate selected from ItemsOnGroundLabelsVisible");
 
+            bool forceUiHoverVerification = ShouldForceUiHoverVerificationForLabel(nextLabel);
+
             bool clicked = ShouldUseHoldClickForSettlersMechanic(nextLabelMechanicId)
-                ? PerformLabelHoldClick(clickPos, nextLabel.Label, gameController, holdDurationMs: 0)
-                : PerformLabelClick(clickPos, nextLabel.Label, gameController);
+                ? PerformLabelHoldClick(clickPos, nextLabel.Label, gameController, holdDurationMs: 0, forceUiHoverVerification)
+                : PerformLabelClick(clickPos, nextLabel.Label, gameController, forceUiHoverVerification);
+
+            if (clicked && isSettlersMechanic)
+            {
+                MarkSuccessfulSettlersInteraction(nextLabel.ItemOnGround?.Address ?? 0, nextLabelMechanicId);
+            }
 
             PublishLabelClickDebug(
                 stage: clicked ? "ClickSuccess" : "ClickFailed",
@@ -662,23 +669,23 @@ namespace ClickIt.Services
             return false;
         }
 
-        private bool PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? controller)
+        private bool PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
         {
             if (!EnsureCursorInsideGameWindowForClick("[PerformLabelClick] Skipping label click - cursor outside PoE window"))
                 return false;
 
-            PerformLockedClick(clickPos, expectedElement, controller);
+            PerformLockedClick(clickPos, expectedElement, controller, forceUiHoverVerification);
 
             performanceMonitor.RecordClickInterval();
             return true;
         }
 
-        private bool PerformLabelHoldClick(Vector2 clickPos, Element? expectedElement, GameController? controller, int holdDurationMs)
+        private bool PerformLabelHoldClick(Vector2 clickPos, Element? expectedElement, GameController? controller, int holdDurationMs, bool forceUiHoverVerification = false)
         {
             if (!EnsureCursorInsideGameWindowForClick("[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"))
                 return false;
 
-            PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller);
+            PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification);
 
             performanceMonitor.RecordClickInterval();
             return true;
@@ -688,6 +695,14 @@ namespace ClickIt.Services
         {
             if (!settings.WalkTowardOffscreenLabels.Value)
                 return false;
+
+            if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
+            {
+                ClearStickyOffscreenTarget();
+                pathfindingService.ClearLatestPath();
+                DebugLog(() => "[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a clickable on-screen mechanic is available.");
+                return false;
+            }
 
             Entity? target = preferredTarget ?? ResolveNearestOffscreenWalkTarget();
             if (target == null)
@@ -1507,21 +1522,23 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (!inputHandler.TryCalculateClickPosition(
+            if (!TryResolveLabelClickPosition(
                 stickyLabel,
+                mechanicId,
                 windowTopLeft,
                 allLabels,
-                point => IsClickableInEitherSpace(point, stickyTarget.Path ?? string.Empty),
-                out Vector2 clickPos))
+                out Vector2 clickPos,
+                explicitPath: stickyTarget.Path))
             {
                 return false;
             }
 
             bool clickedLabel = ShouldUseHoldClickForSettlersMechanic(mechanicId)
-                ? PerformLabelHoldClick(clickPos, stickyLabel.Label, gameController, holdDurationMs: 0)
-                : PerformLabelClick(clickPos, stickyLabel.Label, gameController);
+                ? PerformLabelHoldClick(clickPos, stickyLabel.Label, gameController, holdDurationMs: 0, ShouldForceUiHoverVerificationForLabel(stickyLabel))
+                : PerformLabelClick(clickPos, stickyLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(stickyLabel));
             if (clickedLabel)
             {
+                MarkSuccessfulSettlersInteraction(stickyLabel.ItemOnGround?.Address ?? 0, mechanicId);
                 ClearStickyOffscreenTarget();
             }
 
@@ -1531,6 +1548,65 @@ namespace ClickIt.Services
         private void SetStickyOffscreenTarget(Entity target)
         {
             _stickyOffscreenTargetAddress = target.Address;
+        }
+
+        private bool TryResolveLabelClickPosition(
+            LabelOnGround label,
+            string? mechanicId,
+            Vector2 windowTopLeft,
+            IReadOnlyList<LabelOnGround>? allLabels,
+            out Vector2 clickPos,
+            string? explicitPath = null)
+        {
+            string path = explicitPath ?? label.ItemOnGround?.Path ?? string.Empty;
+
+            if (inputHandler.TryCalculateClickPosition(
+                label,
+                windowTopLeft,
+                allLabels,
+                point => IsClickableInEitherSpace(point, path),
+                out clickPos))
+            {
+                return true;
+            }
+
+            // Settlers labels can remain clickable while the backing world entity projection is off-screen.
+            // In that case, relax area validation and let UIHover verification guard the final click.
+            if (!ShouldRetryLabelClickPointWithoutClickableArea(mechanicId))
+                return false;
+
+            if (!ShouldAllowSettlersRelaxedClickPointFallback(label.ItemOnGround != null, IsItemWorldProjectionInWindow(label.ItemOnGround, windowTopLeft)))
+                return false;
+
+            return inputHandler.TryCalculateClickPosition(
+                label,
+                windowTopLeft,
+                allLabels,
+                isClickableArea: null,
+                out clickPos);
+        }
+
+        internal static bool ShouldRetryLabelClickPointWithoutClickableArea(string? mechanicId)
+        {
+            return IsSettlersMechanicId(mechanicId);
+        }
+
+        internal static bool ShouldAllowSettlersRelaxedClickPointFallback(bool hasBackingEntity, bool worldProjectionInWindow)
+        {
+            if (!hasBackingEntity)
+                return false;
+
+            return !worldProjectionInWindow;
+        }
+
+        private bool IsItemWorldProjectionInWindow(Entity? item, Vector2 windowTopLeft)
+        {
+            if (item == null)
+                return false;
+
+            var worldScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
+            Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
+            return IsInsideWindowInEitherSpace(worldScreenAbsolute);
         }
 
         private void ClearStickyOffscreenTarget()
@@ -1860,6 +1936,12 @@ namespace ClickIt.Services
             if (gameController?.EntityListWrapper?.ValidEntitiesByType == null)
                 return null;
 
+            if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
+            {
+                ClearStickyOffscreenTarget();
+                return null;
+            }
+
             if (TryResolveStickyOffscreenTarget(out Entity? stickyTarget) && stickyTarget != null)
                 return stickyTarget;
 
@@ -1884,6 +1966,48 @@ namespace ClickIt.Services
             PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId);
 
             return best;
+        }
+
+        private bool ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable()
+        {
+            bool prioritizeOnscreen = settings.PrioritizeOnscreenClickableMechanicsOverPathfinding?.Value == true;
+            if (!prioritizeOnscreen)
+                return false;
+
+            bool hasClickableAltars = HasClickableAltars();
+            bool hasClickableShrine = ResolveNextShrineCandidate() != null;
+            bool hasClickableLostShipment = ResolveNextLostShipmentCandidate().HasValue;
+            bool hasClickableSettlers = ResolveNextSettlersOreCandidate().HasValue;
+
+            bool shouldAvoid = ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
+                prioritizeOnscreen,
+                hasClickableAltars,
+                hasClickableShrine,
+                hasClickableLostShipment,
+                hasClickableSettlers);
+
+            if (shouldAvoid)
+            {
+                PublishClickFlowDebugStage(
+                    "OffscreenPathingBlocked",
+                    $"onscreen clickable mechanic detected (altar={hasClickableAltars}, shrine={hasClickableShrine}, lost={hasClickableLostShipment}, settlers={hasClickableSettlers})");
+            }
+
+            return shouldAvoid;
+        }
+
+        internal static bool ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
+            bool prioritizeOnscreenClickableMechanics,
+            bool hasClickableAltar,
+            bool hasClickableShrine,
+            bool hasClickableLostShipment,
+            bool hasClickableSettlersOre)
+        {
+            return prioritizeOnscreenClickableMechanics
+                && (hasClickableAltar
+                    || hasClickableShrine
+                    || hasClickableLostShipment
+                    || hasClickableSettlersOre);
         }
 
         private string BuildNoLabelDebugSummary(IReadOnlyList<LabelOnGround>? allLabels)
@@ -2362,6 +2486,26 @@ namespace ClickIt.Services
         internal static bool ShouldAllowSettlersCandidateWithoutGroundLabel(bool hasGroundLabel, bool isVerisiumPath)
         {
             return hasGroundLabel || isVerisiumPath;
+        }
+
+        internal static bool ShouldAllowNonVerisiumSettlersRetryWithoutGroundLabel(
+            bool hasGroundLabel,
+            bool isVerisiumPath,
+            bool recentlyClickedNonVerisiumTarget)
+        {
+            if (hasGroundLabel || isVerisiumPath)
+                return true;
+
+            return recentlyClickedNonVerisiumTarget;
+        }
+
+        private static bool ShouldForceUiHoverVerificationForLabel(LabelOnGround? label)
+        {
+            Entity? item = label?.ItemOnGround;
+            if (item == null || item.Type != ExileCore.Shared.Enums.EntityType.WorldItem)
+                return false;
+
+            return InputHandler.ShouldForceUiHoverVerificationForWorldItem(item.Path, item.RenderName);
         }
 
         private static int GetOffscreenPathfindingTargetSearchDistance()

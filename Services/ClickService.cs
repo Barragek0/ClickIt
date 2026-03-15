@@ -53,6 +53,9 @@ namespace ClickIt.Services
         private long _movementSkillPostCastClickBlockUntilTimestampMs;
         private long _movementSkillStatusPollUntilTimestampMs;
         private object? _lastUsedMovementSkillEntry;
+        private long _lastSuccessfulNonVerisiumSettlersTargetAddress;
+        private string? _lastSuccessfulNonVerisiumSettlersMechanicId;
+        private long _lastSuccessfulNonVerisiumSettlersTimestampMs;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
@@ -293,19 +296,19 @@ namespace ClickIt.Services
             return true;
         }
 
-        private void PerformLockedClick(Vector2 clickPos, Element? expectedElement, GameController? controller)
+        private void PerformLockedClick(Vector2 clickPos, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
         {
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
-                inputHandler.PerformClick(clickPos, expectedElement, controller);
+                inputHandler.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification);
             }
         }
 
-        private void PerformLockedHoldClick(Vector2 clickPos, int holdDurationMs, Element? expectedElement, GameController? controller)
+        private void PerformLockedHoldClick(Vector2 clickPos, int holdDurationMs, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
         {
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
-                inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller);
+                inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification);
             }
         }
 
