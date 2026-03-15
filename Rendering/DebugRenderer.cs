@@ -15,7 +15,7 @@ namespace ClickIt.Rendering
         private const int DetailedDebugStartY = 120;
         private const int DetailedDebugLineHeight = 18;
         private const int DetailedDebugBaseX = 10;
-        private const int DetailedDebugLinesPerColumn = 40;
+        private const int DetailedDebugLinesPerColumn = 34;
         private const int DetailedDebugColumnShiftPx = 600;
         private const int DetailedDebugMaxColumns = 4;
 
