@@ -154,21 +154,52 @@ namespace ClickIt.Services
             return selected;
         }
 
-        public readonly record struct SelectionDebugSummary(
-            int Start,
-            int End,
-            int Total,
-            int NullLabel,
-            int NullEntity,
-            int OutOfDistance,
-            int Untargetable,
-            int NoMechanic,
-            int WorldItem,
-            int WorldItemMetadataRejected,
-            int SettlersPathSeen,
-            int SettlersMechanicMatched,
-            int SettlersMechanicDisabled)
+        public readonly struct SelectionDebugSummary
         {
+            public SelectionDebugSummary(
+                int Start,
+                int End,
+                int Total,
+                int NullLabel,
+                int NullEntity,
+                int OutOfDistance,
+                int Untargetable,
+                int NoMechanic,
+                int WorldItem,
+                int WorldItemMetadataRejected,
+                int SettlersPathSeen,
+                int SettlersMechanicMatched,
+                int SettlersMechanicDisabled)
+            {
+                this.Start = Start;
+                this.End = End;
+                this.Total = Total;
+                this.NullLabel = NullLabel;
+                this.NullEntity = NullEntity;
+                this.OutOfDistance = OutOfDistance;
+                this.Untargetable = Untargetable;
+                this.NoMechanic = NoMechanic;
+                this.WorldItem = WorldItem;
+                this.WorldItemMetadataRejected = WorldItemMetadataRejected;
+                this.SettlersPathSeen = SettlersPathSeen;
+                this.SettlersMechanicMatched = SettlersMechanicMatched;
+                this.SettlersMechanicDisabled = SettlersMechanicDisabled;
+            }
+
+            public int Start { get; }
+            public int End { get; }
+            public int Total { get; }
+            public int NullLabel { get; }
+            public int NullEntity { get; }
+            public int OutOfDistance { get; }
+            public int Untargetable { get; }
+            public int NoMechanic { get; }
+            public int WorldItem { get; }
+            public int WorldItemMetadataRejected { get; }
+            public int SettlersPathSeen { get; }
+            public int SettlersMechanicMatched { get; }
+            public int SettlersMechanicDisabled { get; }
+
             public string ToCompactString()
             {
                 return $"r:{Start}-{End} t:{Total} nl:{NullLabel} ne:{NullEntity} d:{OutOfDistance} u:{Untargetable} nm:{NoMechanic} wi:{WorldItem}/{WorldItemMetadataRejected} sp:{SettlersPathSeen} sm:{SettlersMechanicMatched} sd:{SettlersMechanicDisabled}";
@@ -257,19 +288,19 @@ namespace ClickIt.Services
             }
 
             return new SelectionDebugSummary(
-                Start: start,
-                End: end,
-                Total: total,
-                NullLabel: nullLabel,
-                NullEntity: nullEntity,
-                OutOfDistance: outOfDistance,
-                Untargetable: untargetable,
-                NoMechanic: noMechanic,
-                WorldItem: worldItem,
-                WorldItemMetadataRejected: worldItemMetadataRejected,
-                SettlersPathSeen: settlersPathSeen,
-                SettlersMechanicMatched: settlersMechanicMatched,
-                SettlersMechanicDisabled: settlersMechanicDisabled);
+                start,
+                end,
+                total,
+                nullLabel,
+                nullEntity,
+                outOfDistance,
+                untargetable,
+                noMechanic,
+                worldItem,
+                worldItemMetadataRejected,
+                settlersPathSeen,
+                settlersMechanicMatched,
+                settlersMechanicDisabled);
         }
 
         public void LogSelectionDiagnostics(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
@@ -707,6 +738,7 @@ namespace ClickIt.Services
             bool hasRestricted = LazyModeRestrictedChecker(this, allLabels);
             bool hotkeyHeld = KeyStateProvider(s.ClickLabelKey.Value);
             bool applyLazyModeRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
+            bool settlersOreEnabled = !applyLazyModeRestrictions && s.ClickSettlersOre.Value;
             IReadOnlyList<string> mechanicPriorities = s.GetMechanicPriorityOrder();
             IReadOnlyCollection<string> ignoreDistance = s.GetMechanicPriorityIgnoreDistanceIds();
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId = s.GetMechanicPriorityIgnoreDistanceWithinById();
@@ -735,12 +767,12 @@ namespace ClickIt.Services
                 ClickEssences = s.ClickEssences.Value,
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
-                ClickSettlersOre = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
-                ClickSettlersCrimsonIron = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
-                ClickSettlersCopper = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
-                ClickSettlersPetrifiedWood = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
-                ClickSettlersBismuth = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
-                ClickSettlersVerisium = !applyLazyModeRestrictions && s.ClickSettlersOre.Value,
+                ClickSettlersOre = settlersOreEnabled,
+                ClickSettlersCrimsonIron = settlersOreEnabled,
+                ClickSettlersCopper = settlersOreEnabled,
+                ClickSettlersPetrifiedWood = settlersOreEnabled,
+                ClickSettlersBismuth = settlersOreEnabled,
+                ClickSettlersVerisium = settlersOreEnabled,
                 StrongboxClickMetadata = s.GetStrongboxClickMetadataIdentifiers(),
                 StrongboxDontClickMetadata = s.GetStrongboxDontClickMetadataIdentifiers(),
                 ClickSanctum = s.ClickSanctum.Value,
@@ -759,7 +791,7 @@ namespace ClickIt.Services
             };
         }
 
-        private struct ClickSettings
+        internal struct ClickSettings
         {
             public int ClickDistance { get; set; }
             public bool ClickItems { get; set; }

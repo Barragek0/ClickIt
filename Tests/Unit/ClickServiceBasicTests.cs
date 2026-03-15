@@ -682,6 +682,17 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldUseHoldClickForSettlersMechanic_ReturnsTrue_OnlyForVerisium()
+        {
+            ClickService.ShouldUseHoldClickForSettlersMechanic("settlers-verisium").Should().BeTrue();
+            ClickService.ShouldUseHoldClickForSettlersMechanic("settlers-copper").Should().BeFalse();
+            ClickService.ShouldUseHoldClickForSettlersMechanic("settlers-bismuth").Should().BeFalse();
+            ClickService.ShouldUseHoldClickForSettlersMechanic("settlers-crimson-iron").Should().BeFalse();
+            ClickService.ShouldUseHoldClickForSettlersMechanic("settlers-petrified-wood").Should().BeFalse();
+            ClickService.ShouldUseHoldClickForSettlersMechanic(null).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void TryGetSettlersOreMechanicId_MapsKnownSettlersNodeTypes()
         {
             LabelFilterService.TryGetSettlersOreMechanicId(

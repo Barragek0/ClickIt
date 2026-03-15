@@ -12,6 +12,14 @@ namespace ClickIt.Services
     public partial class LabelFilterService
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+        private static readonly (string MechanicId, Func<string, bool> MatchesPath)[] SettlersOreResolvers =
+        [
+            (MechanicIds.SettlersCrimsonIron, IsSettlersCrimsonIronPath),
+            (MechanicIds.SettlersCopper, IsSettlersCopperPath),
+            (MechanicIds.SettlersPetrifiedWood, IsSettlersPetrifiedWoodPath),
+            (MechanicIds.SettlersBismuth, IsSettlersBismuthPath),
+            (MechanicIds.SettlersVerisium, IsSettlersVerisiumPath)
+        ];
 
         private static string? GetClickableMechanicId(LabelOnGround label, Entity item, ClickSettings settings, ExileCore.GameController? gameController)
         {
@@ -140,20 +148,9 @@ namespace ClickIt.Services
 
             if (TryGetSettlersOreMechanicId(path, out string? settlersMechanicId) && !string.IsNullOrWhiteSpace(settlersMechanicId))
             {
-                if (string.Equals(settlersMechanicId, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase))
-                    return settings.ClickSettlersCrimsonIron ? MechanicIds.SettlersCrimsonIron : null;
-
-                if (string.Equals(settlersMechanicId, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase))
-                    return settings.ClickSettlersCopper ? MechanicIds.SettlersCopper : null;
-
-                if (string.Equals(settlersMechanicId, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase))
-                    return settings.ClickSettlersPetrifiedWood ? MechanicIds.SettlersPetrifiedWood : null;
-
-                if (string.Equals(settlersMechanicId, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase))
-                    return settings.ClickSettlersBismuth ? MechanicIds.SettlersBismuth : null;
-
-                if (string.Equals(settlersMechanicId, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase))
-                    return settings.ClickSettlersVerisium ? MechanicIds.SettlersVerisium : null;
+                return IsSettlersMechanicEnabled(settings, settlersMechanicId)
+                    ? settlersMechanicId
+                    : null;
             }
 
             bool strongboxesEnabled = settings.StrongboxClickMetadata?.Count > 0;
@@ -192,35 +189,31 @@ namespace ClickIt.Services
             if (string.IsNullOrWhiteSpace(path))
                 return false;
 
-            if (IsSettlersCrimsonIronPath(path))
+            for (int i = 0; i < SettlersOreResolvers.Length; i++)
             {
-                mechanicId = MechanicIds.SettlersCrimsonIron;
+                (string resolvedMechanicId, Func<string, bool> matchesPath) = SettlersOreResolvers[i];
+                if (!matchesPath(path))
+                    continue;
+
+                mechanicId = resolvedMechanicId;
                 return true;
             }
 
-            if (IsSettlersCopperPath(path))
-            {
-                mechanicId = MechanicIds.SettlersCopper;
-                return true;
-            }
+            return false;
+        }
 
-            if (IsSettlersPetrifiedWoodPath(path))
-            {
-                mechanicId = MechanicIds.SettlersPetrifiedWood;
-                return true;
-            }
-
-            if (IsSettlersBismuthPath(path))
-            {
-                mechanicId = MechanicIds.SettlersBismuth;
-                return true;
-            }
-
-            if (IsSettlersVerisiumPath(path))
-            {
-                mechanicId = MechanicIds.SettlersVerisium;
-                return true;
-            }
+        private static bool IsSettlersMechanicEnabled(ClickSettings settings, string mechanicId)
+        {
+            if (string.Equals(mechanicId, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersCrimsonIron;
+            if (string.Equals(mechanicId, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersCopper;
+            if (string.Equals(mechanicId, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersPetrifiedWood;
+            if (string.Equals(mechanicId, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersBismuth;
+            if (string.Equals(mechanicId, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersVerisium;
 
             return false;
         }

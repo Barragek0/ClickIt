@@ -37,6 +37,8 @@ namespace ClickIt.Services
         private const int MovementSkillLightningWarpPostCastClickBlockMs = 320;
         private const int MovementSkillConsecratedPathPostCastClickBlockMs = 240;
         private const int MovementSkillChainHookPostCastClickBlockMs = 220;
+        private const int MovementSkillDefaultStatusPollExtraMs = 900;
+        private const int MovementSkillExtendedStatusPollExtraMs = 1300;
 
         private static readonly string[] MovementSkillInternalNameMarkers =
         [
@@ -301,7 +303,7 @@ namespace ClickIt.Services
                 resolved: true,
                 notes: "Settlers label candidate selected from ItemsOnGroundLabelsVisible");
 
-            bool clicked = string.Equals(nextLabelMechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase)
+            bool clicked = ShouldUseHoldClickForSettlersMechanic(nextLabelMechanicId)
                 ? PerformLabelHoldClick(clickPos, nextLabel.Label, gameController, holdDurationMs: 0)
                 : PerformLabelClick(clickPos, nextLabel.Label, gameController);
 
@@ -655,7 +657,9 @@ namespace ClickIt.Services
                 Sequence: 0,
                 TimestampMs: Environment.TickCount64));
 
-            bool clicked = PerformLabelHoldClick(candidate.ClickPosition, null, gameController, holdDurationMs: 0);
+            bool clicked = ShouldUseHoldClickForSettlersMechanic(candidate.MechanicId)
+                ? PerformLabelHoldClick(candidate.ClickPosition, null, gameController, holdDurationMs: 0)
+                : PerformLabelClick(candidate.ClickPosition, null, gameController);
             if (clicked)
             {
                 SetLatestClickDebug(new ClickDebugSnapshot(
@@ -696,6 +700,11 @@ namespace ClickIt.Services
             return !string.IsNullOrWhiteSpace(path)
                 && path.Contains(PathConstants.Verisium, StringComparison.OrdinalIgnoreCase)
                 && !path.Contains(VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static bool ShouldUseHoldClickForSettlersMechanic(string? mechanicId)
+        {
+            return string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsLostShipmentEntity(string? path, string? renderName)
@@ -1656,16 +1665,11 @@ namespace ClickIt.Services
             if (postCastClickBlockMs <= 0 || string.IsNullOrWhiteSpace(movementSkillInternalName))
                 return 0;
 
-            string normalized = movementSkillInternalName.Trim();
-
-            if (IsShieldChargeMovementSkill(normalized))
+            MovementSkillTimingProfile profile = ResolveMovementSkillTimingProfile(movementSkillInternalName);
+            if (profile.DisableStatusPoll)
                 return 0;
 
-            if (ContainsSkillMarker(normalized, "ChargedDash") || ContainsSkillMarker(normalized, "charged_dash")
-                || ContainsSkillMarker(normalized, "LightningWarp") || ContainsSkillMarker(normalized, "lightning_warp"))
-                return postCastClickBlockMs + 1300;
-
-            return postCastClickBlockMs + 900;
+            return postCastClickBlockMs + profile.StatusPollExtraMs;
         }
 
         private static bool TryResolveMovementSkillRuntimeState(object? entry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed)
@@ -1725,28 +1729,7 @@ namespace ClickIt.Services
 
         private static bool TryReadBool(Func<dynamic, object?> accessor, object? source, out bool value)
         {
-            value = false;
-            if (!TryGetDynamicValue(source, accessor, out object? raw))
-                return false;
-
-            if (raw is bool boolValue)
-            {
-                value = boolValue;
-                return true;
-            }
-
-            if (raw == null)
-                return false;
-
-            try
-            {
-                value = Convert.ToBoolean(raw);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return DynamicAccess.TryReadBool(source, accessor, out value);
         }
 
         internal static int ResolveMovementSkillPostCastClickBlockMs(string? movementSkillInternalName)
@@ -1754,44 +1737,59 @@ namespace ClickIt.Services
             if (string.IsNullOrWhiteSpace(movementSkillInternalName))
                 return 0;
 
-            string normalized = movementSkillInternalName.Trim();
+            MovementSkillTimingProfile profile = ResolveMovementSkillTimingProfile(movementSkillInternalName);
+            return profile.PostCastClickBlockMs;
+        }
 
-            if (ContainsSkillMarker(normalized, "Frostblink")
-                || ContainsSkillMarker(normalized, "frostblink")
-                || ContainsSkillMarker(normalized, "QuickDashGem")
-                || ContainsSkillMarker(normalized, "Dash")
-                || ContainsSkillMarker(normalized, "dash")
-                || ContainsSkillMarker(normalized, "FlameDash")
-                || ContainsSkillMarker(normalized, "flame_dash")
-                || ContainsSkillMarker(normalized, "WitheringStep")
-                || ContainsSkillMarker(normalized, "withering_step")
-                || ContainsSkillMarker(normalized, "PhaseRun")
-                || ContainsSkillMarker(normalized, "phase_run")
-                || ContainsSkillMarker(normalized, "Ambush")
-                || ContainsSkillMarker(normalized, "ambush_player"))
+        private readonly record struct MovementSkillTimingProfile(int PostCastClickBlockMs, int StatusPollExtraMs, bool DisableStatusPoll);
+
+        private static readonly (string Marker, MovementSkillTimingProfile Profile)[] MovementSkillTimingProfiles =
+        [
+            ("Frostblink", new MovementSkillTimingProfile(0, 0, true)),
+            ("QuickDashGem", new MovementSkillTimingProfile(0, 0, true)),
+            ("Dash", new MovementSkillTimingProfile(0, 0, true)),
+            ("FlameDash", new MovementSkillTimingProfile(0, 0, true)),
+            ("flame_dash", new MovementSkillTimingProfile(0, 0, true)),
+            ("WitheringStep", new MovementSkillTimingProfile(0, 0, true)),
+            ("withering_step", new MovementSkillTimingProfile(0, 0, true)),
+            ("PhaseRun", new MovementSkillTimingProfile(0, 0, true)),
+            ("phase_run", new MovementSkillTimingProfile(0, 0, true)),
+            ("Ambush", new MovementSkillTimingProfile(0, 0, true)),
+            ("ambush_player", new MovementSkillTimingProfile(0, 0, true)),
+            ("ShieldCharge", new MovementSkillTimingProfile(MovementSkillShieldChargePostCastClickBlockMs, 0, true)),
+            ("shield_charge", new MovementSkillTimingProfile(MovementSkillShieldChargePostCastClickBlockMs, 0, true)),
+            ("LeapSlam", new MovementSkillTimingProfile(MovementSkillLeapSlamPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("leap_slam", new MovementSkillTimingProfile(MovementSkillLeapSlamPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("WhirlingBlades", new MovementSkillTimingProfile(MovementSkillWhirlingBladesPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("whirling_blades", new MovementSkillTimingProfile(MovementSkillWhirlingBladesPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("BlinkArrow", new MovementSkillTimingProfile(MovementSkillBlinkArrowPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("blink_arrow", new MovementSkillTimingProfile(MovementSkillBlinkArrowPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("MirrorArrow", new MovementSkillTimingProfile(MovementSkillBlinkArrowPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("mirror_arrow", new MovementSkillTimingProfile(MovementSkillBlinkArrowPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("ChargedDash", new MovementSkillTimingProfile(MovementSkillChargedDashPostCastClickBlockMs, MovementSkillExtendedStatusPollExtraMs, false)),
+            ("charged_dash", new MovementSkillTimingProfile(MovementSkillChargedDashPostCastClickBlockMs, MovementSkillExtendedStatusPollExtraMs, false)),
+            ("LightningWarp", new MovementSkillTimingProfile(MovementSkillLightningWarpPostCastClickBlockMs, MovementSkillExtendedStatusPollExtraMs, false)),
+            ("lightning_warp", new MovementSkillTimingProfile(MovementSkillLightningWarpPostCastClickBlockMs, MovementSkillExtendedStatusPollExtraMs, false)),
+            ("ConsecratedPath", new MovementSkillTimingProfile(MovementSkillConsecratedPathPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("consecrated_path", new MovementSkillTimingProfile(MovementSkillConsecratedPathPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("ChainHook", new MovementSkillTimingProfile(MovementSkillChainHookPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false)),
+            ("chain_hook", new MovementSkillTimingProfile(MovementSkillChainHookPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false))
+        ];
+
+        private static MovementSkillTimingProfile ResolveMovementSkillTimingProfile(string? movementSkillInternalName)
+        {
+            if (string.IsNullOrWhiteSpace(movementSkillInternalName))
+                return new MovementSkillTimingProfile(0, 0, true);
+
+            string normalized = movementSkillInternalName.Trim();
+            for (int i = 0; i < MovementSkillTimingProfiles.Length; i++)
             {
-                return 0;
+                (string marker, MovementSkillTimingProfile profile) = MovementSkillTimingProfiles[i];
+                if (ContainsSkillMarker(normalized, marker))
+                    return profile;
             }
 
-            if (IsShieldChargeMovementSkill(normalized))
-                return MovementSkillShieldChargePostCastClickBlockMs;
-            if (ContainsSkillMarker(normalized, "LeapSlam") || ContainsSkillMarker(normalized, "leap_slam"))
-                return MovementSkillLeapSlamPostCastClickBlockMs;
-            if (ContainsSkillMarker(normalized, "WhirlingBlades") || ContainsSkillMarker(normalized, "whirling_blades"))
-                return MovementSkillWhirlingBladesPostCastClickBlockMs;
-            if (ContainsSkillMarker(normalized, "BlinkArrow") || ContainsSkillMarker(normalized, "blink_arrow")
-                || ContainsSkillMarker(normalized, "MirrorArrow") || ContainsSkillMarker(normalized, "mirror_arrow"))
-                return MovementSkillBlinkArrowPostCastClickBlockMs;
-            if (ContainsSkillMarker(normalized, "ChargedDash") || ContainsSkillMarker(normalized, "charged_dash"))
-                return MovementSkillChargedDashPostCastClickBlockMs;
-            if (ContainsSkillMarker(normalized, "LightningWarp") || ContainsSkillMarker(normalized, "lightning_warp"))
-                return MovementSkillLightningWarpPostCastClickBlockMs;
-            if (ContainsSkillMarker(normalized, "ConsecratedPath") || ContainsSkillMarker(normalized, "consecrated_path"))
-                return MovementSkillConsecratedPathPostCastClickBlockMs;
-            if (ContainsSkillMarker(normalized, "ChainHook") || ContainsSkillMarker(normalized, "chain_hook"))
-                return MovementSkillChainHookPostCastClickBlockMs;
-
-            return MovementSkillDefaultPostCastClickBlockMs;
+            return new MovementSkillTimingProfile(MovementSkillDefaultPostCastClickBlockMs, MovementSkillDefaultStatusPollExtraMs, false);
         }
 
         private static bool ContainsSkillMarker(string skillName, string marker)
@@ -2153,37 +2151,12 @@ namespace ClickIt.Services
 
         private static bool TryReadString(Func<dynamic, object?> accessor, object? source, out string value)
         {
-            value = string.Empty;
-            if (!TryGetDynamicValue(source, accessor, out object? raw) || raw == null)
-                return false;
-
-            string? text = raw.ToString();
-            if (string.IsNullOrWhiteSpace(text))
-                return false;
-
-            value = text.Trim();
-            return true;
+            return DynamicAccess.TryReadString(source, accessor, out value);
         }
 
         private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
         {
-            value = null;
-            if (source == null)
-                return false;
-
-            try
-            {
-                value = accessor((dynamic)source);
-                return true;
-            }
-            catch (RuntimeBinderException)
-            {
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
+            return DynamicAccess.TryGetDynamicValue(source, accessor, out value);
         }
 
         private bool TryHandleStickyOffscreenTarget(Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
@@ -2245,7 +2218,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            bool clickedLabel = string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase)
+            bool clickedLabel = ShouldUseHoldClickForSettlersMechanic(mechanicId)
                 ? PerformLabelHoldClick(clickPos, stickyLabel.Label, gameController, holdDurationMs: 0)
                 : PerformLabelClick(clickPos, stickyLabel.Label, gameController);
             if (clickedLabel)

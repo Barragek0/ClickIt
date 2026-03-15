@@ -391,75 +391,17 @@ namespace ClickIt.Services
 
         private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
         {
-            value = false;
-            if (!TryGetDynamicValue(source, accessor, out object? raw))
-                return false;
-
-            if (raw is bool boolValue)
-            {
-                value = boolValue;
-                return true;
-            }
-
-            if (raw == null)
-                return false;
-
-            try
-            {
-                value = Convert.ToBoolean(raw);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return DynamicAccess.TryReadBool(source, accessor, out value);
         }
 
         private static bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
         {
-            value = 0;
-            if (!TryGetDynamicValue(source, accessor, out object? raw))
-                return false;
-
-            if (raw is int intValue)
-            {
-                value = intValue;
-                return true;
-            }
-
-            if (raw == null)
-                return false;
-
-            try
-            {
-                value = Convert.ToInt32(raw);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return DynamicAccess.TryReadInt(source, accessor, out value);
         }
 
         private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
         {
-            value = null;
-            if (source == null)
-                return false;
-
-            try
-            {
-                value = accessor((dynamic)source);
-                return true;
-            }
-            catch (RuntimeBinderException)
-            {
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
+            return DynamicAccess.TryGetDynamicValue(source, accessor, out value);
         }
 
         private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)

@@ -393,29 +393,13 @@ namespace ClickIt.Services
         private static RectangleF ResolveChatPanelBlockedRectangle(GameController gameController)
         {
             object? root = TryGetIngameUiProperty(gameController, "ChatPanel");
-            if (!TryGetChildNode(root, 1, out object? child1) || child1 == null)
-                return RectangleF.Empty;
-            if (!TryGetChildNode(child1, 2, out object? child12) || child12 == null)
-                return RectangleF.Empty;
-            if (!TryGetChildNode(child12, 2, out object? target) || target == null)
-                return RectangleF.Empty;
-
-            return TryGetClientRect(target, out RectangleF rect) && rect.Width > 1f && rect.Height > 1f
-                ? rect
-                : RectangleF.Empty;
+            return ResolveRectangleFromNodePath(root, 1, 2, 2);
         }
 
         private static RectangleF ResolveMapPanelBlockedRectangle(GameController gameController)
         {
             object? root = TryGetIngameUiProperty(gameController, "Map");
-            if (!TryGetChildNode(root, 2, out object? child2) || child2 == null)
-                return RectangleF.Empty;
-            if (!TryGetChildNode(child2, 1, out object? target) || target == null)
-                return RectangleF.Empty;
-
-            return TryGetClientRect(target, out RectangleF rect) && rect.Width > 1f && rect.Height > 1f
-                ? rect
-                : RectangleF.Empty;
+            return ResolveRectangleFromNodePath(root, 2, 1);
         }
 
         private static RectangleF ResolveGameUiPanelBlockedRectangle(GameController gameController)
@@ -427,10 +411,22 @@ namespace ClickIt.Services
                 _ = TryGetChildNode(ingameUi, 0, out root);
             }
 
-            if (!TryGetChildNode(root, 0, out object? target) || target == null)
+            return ResolveRectangleFromNodePath(root, 0);
+        }
+
+        private static RectangleF ResolveRectangleFromNodePath(object? root, params int[] childPath)
+        {
+            if (root == null || childPath == null || childPath.Length == 0)
                 return RectangleF.Empty;
 
-            return TryGetClientRect(target, out RectangleF rect) && rect.Width > 1f && rect.Height > 1f
+            object? current = root;
+            for (int i = 0; i < childPath.Length; i++)
+            {
+                if (!TryGetChildNode(current, childPath[i], out current) || current == null)
+                    return RectangleF.Empty;
+            }
+
+            return TryGetClientRect(current, out RectangleF rect) && rect.Width > 1f && rect.Height > 1f
                 ? rect
                 : RectangleF.Empty;
         }

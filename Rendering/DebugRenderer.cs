@@ -12,6 +12,12 @@ namespace ClickIt.Rendering
 {
     public partial class DebugRenderer
     {
+        private const int DetailedDebugStartY = 120;
+        private const int DetailedDebugLineHeight = 18;
+        private const int DetailedDebugBaseX = 10;
+        private const int DetailedDebugLinesPerColumn = 45;
+        private const int DetailedDebugColumnShiftPx = 405;
+        private const int DetailedDebugMaxColumns = 4;
 
         private readonly BaseSettingsPlugin<ClickItSettings> _plugin;
         private readonly AltarService? _altarService;
@@ -112,12 +118,12 @@ namespace ClickIt.Rendering
                 return;
             }
 
-            const int startY = 120;
-            const int lineHeight = 18;
-            const int baseX = 10;
-            const int linesPerColumn = 28;
-            const int columnShiftPx = 405;
-            const int maxColumns = 4;
+            const int startY = DetailedDebugStartY;
+            const int lineHeight = DetailedDebugLineHeight;
+            const int baseX = DetailedDebugBaseX;
+            const int linesPerColumn = DetailedDebugLinesPerColumn;
+            const int columnShiftPx = DetailedDebugColumnShiftPx;
+            const int maxColumns = DetailedDebugMaxColumns;
 
             int currentColumn = 0;
             int xPos = baseX;
@@ -186,13 +192,26 @@ namespace ClickIt.Rendering
 
         private int RenderDebugTrailBlock(int xPos, int yPos, int lineHeight, IReadOnlyList<string> trail, int maxRows, int trimWidth)
         {
-            if (trail == null || trail.Count == 0)
+            if (trail == null || trail.Count == 0 || lineHeight <= 0)
                 return yPos;
+
+            int remainingLines = GetRemainingLinesInCurrentDebugColumn(yPos);
+            if (remainingLines <= 0)
+            {
+                return yPos;
+            }
 
             _deferredTextQueue.Enqueue("Recent Stages:", new Vector2(xPos, yPos), Color.LightBlue, 13);
             yPos += lineHeight;
 
-            int start = Math.Max(0, trail.Count - Math.Max(1, maxRows));
+            remainingLines--;
+            if (remainingLines <= 0)
+            {
+                return yPos;
+            }
+
+            int rowsToRender = Math.Min(Math.Max(1, maxRows), remainingLines);
+            int start = Math.Max(0, trail.Count - rowsToRender);
             for (int i = start; i < trail.Count; i++)
             {
                 _deferredTextQueue.Enqueue($"  {TrimForDebug(trail[i], trimWidth)}", new Vector2(xPos, yPos), Color.LightGray, 12);
@@ -200,6 +219,12 @@ namespace ClickIt.Rendering
             }
 
             return yPos;
+        }
+
+        private static int GetRemainingLinesInCurrentDebugColumn(int yPos)
+        {
+            int usedLines = Math.Max(0, (yPos - DetailedDebugStartY) / DetailedDebugLineHeight);
+            return Math.Max(0, DetailedDebugLinesPerColumn - usedLines);
         }
 
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)

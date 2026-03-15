@@ -10,6 +10,8 @@ namespace ClickIt
 {
     public partial class ClickItSettings : ISettings
     {
+        private MechanicToggleTableEntry[]? _mechanicTableEntriesCache;
+
         private void DrawPanelSafe(string panelName, Action drawAction)
         {
             try
@@ -166,25 +168,43 @@ namespace ClickIt
 
             ImGui.Spacing();
 
-            bool tableOpen = ImGui.BeginTable("ItemTypeFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable);
-            if (!tableOpen)
+            DrawDualTransferTable(
+                tableId: "ItemTypeFilterLists",
+                leftHeader: "Click",
+                rightHeader: "Don't Click",
+                leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                drawLeft: () => DrawItemTypeList("Click##ItemType", ItemTypeWhitelistIds, moveToWhitelist: false, textColor: WhitelistTextColor),
+                drawRight: () => DrawItemTypeList("Don't Click##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true, textColor: BlacklistTextColor));
+        }
+
+        private static void DrawDualTransferTable(
+            string tableId,
+            string leftHeader,
+            string rightHeader,
+            Vector4 leftBackground,
+            Vector4 rightBackground,
+            Action drawLeft,
+            Action drawRight)
+        {
+            if (!ImGui.BeginTable(tableId, 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
                 return;
 
             try
             {
                 SetupTwoColumnFilterTableHeader(
-                    leftHeader: "Click",
-                    rightHeader: "Don't Click",
-                    leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                    rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
+                    leftHeader,
+                    rightHeader,
+                    leftBackground,
+                    rightBackground);
 
                 ImGui.TableNextRow();
 
                 ImGui.TableSetColumnIndex(0);
-                DrawItemTypeList("Click##ItemType", ItemTypeWhitelistIds, moveToWhitelist: false, textColor: WhitelistTextColor);
+                drawLeft();
 
                 ImGui.TableSetColumnIndex(1);
-                DrawItemTypeList("Don't Click##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true, textColor: BlacklistTextColor);
+                drawRight();
             }
             finally
             {
@@ -316,29 +336,14 @@ namespace ClickIt
 
             ImGui.Spacing();
 
-            if (!ImGui.BeginTable("EssenceCorruptionLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
-                return;
-
-            try
-            {
-                SetupTwoColumnFilterTableHeader(
-                    leftHeader: "Corrupt",
-                    rightHeader: "Don't Corrupt",
-                    leftBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
-                    rightBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f));
-
-                ImGui.TableNextRow();
-
-                ImGui.TableSetColumnIndex(0);
-                DrawEssenceCorruptionList("Corrupt##Essence", EssenceCorruptNames, moveToCorrupt: false, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
-
-                ImGui.TableSetColumnIndex(1);
-                DrawEssenceCorruptionList("DontCorrupt##Essence", EssenceDontCorruptNames, moveToCorrupt: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
-            }
-            finally
-            {
-                ImGui.EndTable();
-            }
+            DrawDualTransferTable(
+                tableId: "EssenceCorruptionLists",
+                leftHeader: "Corrupt",
+                rightHeader: "Don't Corrupt",
+                leftBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                rightBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                drawLeft: () => DrawEssenceCorruptionList("Corrupt##Essence", EssenceCorruptNames, moveToCorrupt: false, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f)),
+                drawRight: () => DrawEssenceCorruptionList("DontCorrupt##Essence", EssenceDontCorruptNames, moveToCorrupt: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f)));
         }
 
         private void DrawEssenceCorruptionList(string id, HashSet<string> sourceSet, bool moveToCorrupt, Vector4 textColor)
@@ -382,29 +387,14 @@ namespace ClickIt
 
             ImGui.Spacing();
 
-            if (!ImGui.BeginTable("StrongboxFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
-                return;
-
-            try
-            {
-                SetupTwoColumnFilterTableHeader(
-                    leftHeader: "Click",
-                    rightHeader: "Don't Click",
-                    leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                    rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
-
-                ImGui.TableNextRow();
-
-                ImGui.TableSetColumnIndex(0);
-                DrawStrongboxFilterList("Click##Strongbox", StrongboxClickIds, moveToClick: false, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f));
-
-                ImGui.TableSetColumnIndex(1);
-                DrawStrongboxFilterList("DontClick##Strongbox", StrongboxDontClickIds, moveToClick: true, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f));
-            }
-            finally
-            {
-                ImGui.EndTable();
-            }
+            DrawDualTransferTable(
+                tableId: "StrongboxFilterLists",
+                leftHeader: "Click",
+                rightHeader: "Don't Click",
+                leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                drawLeft: () => DrawStrongboxFilterList("Click##Strongbox", StrongboxClickIds, moveToClick: false, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f)),
+                drawRight: () => DrawStrongboxFilterList("DontClick##Strongbox", StrongboxDontClickIds, moveToClick: true, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f)));
         }
 
         private void DrawStrongboxFilterList(string id, HashSet<string> sourceSet, bool moveToClick, Vector4 textColor)
@@ -460,36 +450,21 @@ namespace ClickIt
 
             ImGui.Spacing();
 
-            if (!ImGui.BeginTable("MechanicsFilterLists", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
-                return;
-
-            try
-            {
-                SetupTwoColumnFilterTableHeader(
-                    leftHeader: "Click",
-                    rightHeader: "Don't Click",
-                    leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                    rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f));
-
-                ImGui.TableNextRow();
-
-                ImGui.TableSetColumnIndex(0);
-                DrawMechanicsTableList("Click##Mechanics", moveToClick: false, WhitelistTextColor);
-
-                ImGui.TableSetColumnIndex(1);
-                DrawMechanicsTableList("DontClick##Mechanics", moveToClick: true, BlacklistTextColor);
-            }
-            finally
-            {
-                ImGui.EndTable();
-            }
+            DrawDualTransferTable(
+                tableId: "MechanicsFilterLists",
+                leftHeader: "Click",
+                rightHeader: "Don't Click",
+                leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                drawLeft: () => DrawMechanicsTableList("Click##Mechanics", moveToClick: false, WhitelistTextColor),
+                drawRight: () => DrawMechanicsTableList("DontClick##Mechanics", moveToClick: true, BlacklistTextColor));
         }
 
         private void DrawMechanicsTableList(string listId, bool moveToClick, Vector4 textColor)
         {
             ImGui.PushID(listId);
 
-            MechanicToggleTableEntry[] entries = BuildMechanicTableEntries();
+            IReadOnlyList<MechanicToggleTableEntry> entries = GetMechanicTableEntries();
             bool hasEntries = false;
 
             foreach (MechanicToggleTableEntry entry in entries)
@@ -672,10 +647,16 @@ namespace ClickIt
 
         private void ResetMechanicsTableDefaults()
         {
-            foreach (MechanicToggleTableEntry entry in BuildMechanicTableEntries())
+            foreach (MechanicToggleTableEntry entry in GetMechanicTableEntries())
             {
                 entry.Node.Value = entry.DefaultEnabled;
             }
+        }
+
+        private IReadOnlyList<MechanicToggleTableEntry> GetMechanicTableEntries()
+        {
+            _mechanicTableEntriesCache ??= BuildMechanicTableEntries();
+            return _mechanicTableEntriesCache;
         }
 
         private MechanicToggleTableEntry[] BuildMechanicTableEntries()
@@ -741,6 +722,24 @@ namespace ClickIt
             ImGui.PushStyleColor(ImGuiCol.Text, textColor);
             ImGui.Selectable($"{displayText}##{listId}_{key}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
             ImGui.PopStyleColor();
+        }
+
+        private static bool BeginSingleColumnPriorityTable(string tableId, string headerText, float tableWidth)
+        {
+            if (!ImGui.BeginTable(tableId, 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
+                return false;
+
+            ImGui.TableSetupColumn(headerText, ImGuiTableColumnFlags.WidthFixed, tableWidth);
+            DrawPriorityTableHeaderCell(headerText);
+            return true;
+        }
+
+        private static void DrawPriorityTableHeaderCell(string headerText)
+        {
+            ImGui.TableNextRow(ImGuiTableRowFlags.None);
+            ImGui.TableSetColumnIndex(0);
+            ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.6f, 0.3f)));
+            ImGui.TextColored(new Vector4(1f, 1f, 1f, 1f), headerText);
         }
 
         private void MoveStrongboxFilter(string strongboxId, bool moveToClick)
@@ -872,18 +871,11 @@ namespace ClickIt
             ImGui.Spacing();
 
             float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
-            if (!ImGui.BeginTable("UltimatumModifierPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
+            if (!BeginSingleColumnPriorityTable("UltimatumModifierPriorityTable", "Modifiers", tableWidth))
                 return;
 
             try
             {
-                ImGui.TableSetupColumn("Modifiers", ImGuiTableColumnFlags.WidthFixed, tableWidth);
-
-                ImGui.TableNextRow(ImGuiTableRowFlags.None);
-                ImGui.TableSetColumnIndex(0);
-                ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.6f, 0.3f)));
-                ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), "Modifiers");
-
                 for (int i = 0; i < UltimatumModifierPriority.Count; i++)
                 {
                     string modifier = UltimatumModifierPriority[i];
@@ -1083,27 +1075,17 @@ namespace ClickIt
             DrawMechanicPrioritySectionDescription();
 
             float tableWidth = Math.Min(700f, Math.Max(160f, ImGui.GetContentRegionAvail().X));
-            if (!ImGui.BeginTable("MechanicPriorityTable", 1, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.Borders | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.NoPadOuterX))
+            if (!BeginSingleColumnPriorityTable("MechanicPriorityTable", "Mechanics", tableWidth))
                 return;
 
             try
             {
-                ImGui.TableSetupColumn("Mechanics", ImGuiTableColumnFlags.WidthFixed, tableWidth);
-                DrawMechanicPriorityTableHeader();
                 DrawMechanicPriorityRows();
             }
             finally
             {
                 ImGui.EndTable();
             }
-        }
-
-        private static void DrawMechanicPriorityTableHeader()
-        {
-            ImGui.TableNextRow(ImGuiTableRowFlags.None);
-            ImGui.TableSetColumnIndex(0);
-            ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.6f, 0.3f)));
-            ImGui.TextColored(new Vector4(1f, 1f, 1f, 1f), "Mechanics");
         }
 
         private static void DrawMechanicPrioritySectionDescription()
@@ -1158,7 +1140,7 @@ namespace ClickIt
 
         private bool IsMechanicPriorityMechanicEnabled(string mechanicId)
         {
-            MechanicToggleTableEntry? entry = BuildMechanicTableEntries()
+            MechanicToggleTableEntry? entry = GetMechanicTableEntries()
                 .FirstOrDefault(x => string.Equals(x.Id, mechanicId, StringComparison.OrdinalIgnoreCase));
 
             return entry?.Node.Value ?? true;
