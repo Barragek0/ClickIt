@@ -201,7 +201,7 @@ namespace ClickIt
 
         [Menu("Mechanics", 1400)]
         public EmptyNode WorldInteractionsCategory { get; set; } = new EmptyNode();
-        [Menu("", 1, 1400)]
+        [Menu("", 101, 1400)]
         [JsonIgnore]
         public CustomNode MechanicsTablePanel { get; }
         [JsonIgnore]
@@ -215,7 +215,7 @@ namespace ClickIt
         [Menu("Shrines", "Click shrines", 3, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);
-        [Menu("Lost Shipment", "Click Lost Shipment crates.", 3, 1400)]
+        [Menu("Lost Shipment", "Click Lost Shipment crates.", 41, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickLostShipmentCrates { get; set; } = new ToggleNode(true);
         [Menu("Area Transitions", "Click area transitions.", 4, 1400)]
