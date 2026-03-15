@@ -130,6 +130,62 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void IsHeistBlueprintWorldItem_DetectsByPathAndName()
+        {
+            InputHandler.IsHeistBlueprintWorldItem(
+                "Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric",
+                "Whatever").Should().BeTrue();
+
+            InputHandler.IsHeistBlueprintWorldItem(
+                "Metadata/Items/Currency/Heist/Blueprint/BlueprintCurrency1",
+                "Whatever").Should().BeTrue();
+
+            InputHandler.IsHeistBlueprintWorldItem(
+                string.Empty,
+                "Blueprint: Smuggler's Den").Should().BeTrue();
+
+            InputHandler.IsHeistBlueprintWorldItem(
+                "Metadata/Items/Currency/CurrencyRerollRare",
+                "Chaos Orb").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsRoguesMarkerWorldItem_DetectsByPathAndName()
+        {
+            InputHandler.IsRoguesMarkerWorldItem(
+                "Metadata/Items/Heist/HeistCoin/HeistCoin1",
+                "Whatever").Should().BeTrue();
+
+            InputHandler.IsRoguesMarkerWorldItem(
+                string.Empty,
+                "Rogue's Marker").Should().BeTrue();
+
+            InputHandler.IsRoguesMarkerWorldItem(
+                "Metadata/Items/Currency/CurrencyRerollRare",
+                "Chaos Orb").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldForceUiHoverVerificationForWorldItem_ReturnsTrue_ForHeistContractsBlueprintsAndMarkers()
+        {
+            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+                "Metadata/Items/Heist/Contracts/ContractGeneric",
+                "Contract: Test").Should().BeTrue();
+
+            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+                "Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric",
+                "Blueprint: Test").Should().BeTrue();
+
+            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+                "Metadata/Items/Heist/HeistCoin/HeistCoin1",
+                "Rogue's Marker").Should().BeTrue();
+
+            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+                "Metadata/Items/Currency/CurrencyRerollRare",
+                "Chaos Orb").Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ResolvePreferredLabelPoint_UsesLowerLabelArea_ForHeistContracts()
         {
             var rect = new RectangleF(100, 200, 180, 40);

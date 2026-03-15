@@ -32,5 +32,23 @@ namespace ClickIt.Tests.Unit
 
             result.Should().Be(expected);
         }
+
+        [TestMethod]
+        public void ShouldSkipClickDueToHoverMismatch_RespectsForcedVerification_WhenNotLazyAndSettingDisabled()
+        {
+            InputHandler.ShouldSkipClickDueToHoverMismatch(
+                lazyModeEnabled: false,
+                verifyUiHoverWhenNotLazy: false,
+                expectedAddress: 100UL,
+                hoverAddress: 200UL,
+                forceUiHoverVerification: true).Should().BeTrue();
+
+            InputHandler.ShouldSkipClickDueToHoverMismatch(
+                lazyModeEnabled: false,
+                verifyUiHoverWhenNotLazy: false,
+                expectedAddress: 100UL,
+                hoverAddress: 100UL,
+                forceUiHoverVerification: true).Should().BeFalse();
+        }
     }
 }

@@ -10,7 +10,7 @@ namespace ClickIt.Utils
 {
     public partial class InputHandler
     {
-        public void PerformClick(Vector2 position, Element? expectedElement = null, GameController? gameController = null)
+        public void PerformClick(Vector2 position, Element? expectedElement = null, GameController? gameController = null, bool forceUiHoverVerification = false)
         {
             if (!TryConsumeLazyModeLimiter())
                 return;
@@ -50,7 +50,7 @@ namespace ClickIt.Utils
             ulong expectedAddress = unchecked((ulong)(expectedElement?.Address ?? 0));
             ulong hoverAddress = unchecked((ulong)(uiHover?.Address ?? 0));
 
-            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress))
+            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress, forceUiHoverVerification))
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification failed for current mode. Skipping click.", 5);
                 RestoreCursorIfLazyMode(before, gameController);
@@ -83,7 +83,7 @@ namespace ClickIt.Utils
             swTotal.Stop();
         }
 
-        public void PerformClickAndHold(Vector2 position, int holdDurationMs, Element? expectedElement = null, GameController? gameController = null)
+        public void PerformClickAndHold(Vector2 position, int holdDurationMs, Element? expectedElement = null, GameController? gameController = null, bool forceUiHoverVerification = false)
         {
             _ = holdDurationMs;
 
@@ -127,7 +127,7 @@ namespace ClickIt.Utils
             ulong expectedAddress = unchecked((ulong)(expectedElement?.Address ?? 0));
             ulong hoverAddress = unchecked((ulong)(uiHover?.Address ?? 0));
 
-            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress))
+            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress, forceUiHoverVerification))
             {
                 _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification failed for hold-click. Skipping.", 5);
                 RestoreCursorIfLazyMode(before, gameController);
@@ -170,9 +170,10 @@ namespace ClickIt.Utils
             bool lazyModeEnabled,
             bool verifyUiHoverWhenNotLazy,
             ulong expectedAddress,
-            ulong hoverAddress)
+            ulong hoverAddress,
+            bool forceUiHoverVerification = false)
         {
-            bool strictHoverVerification = lazyModeEnabled || verifyUiHoverWhenNotLazy;
+            bool strictHoverVerification = forceUiHoverVerification || lazyModeEnabled || verifyUiHoverWhenNotLazy;
             if (!strictHoverVerification)
                 return false;
 
