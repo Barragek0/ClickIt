@@ -6,7 +6,7 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ClickIt.Utils;
 using ClickIt.Definitions;
-using System.Reflection;
+using Microsoft.CSharp.RuntimeBinder;
 using System.Windows.Forms;
 using PathConstants = ClickIt.Definitions.Constants;
 using SharpDX;
@@ -1222,28 +1222,23 @@ namespace ClickIt.Services
             if (entry == null)
                 return false;
 
-            object? skillObject = GetPropertyValue(entry, "Skill")
-                ?? GetPropertyValue(entry, "ActorSkill")
-                ?? entry;
+            object skillObject = ResolveSkillObject(entry);
 
             bool foundAny = false;
 
-            if (TryReadBoolMember(skillObject, "IsUsing", out bool usingValue)
-                || TryReadBoolMember(entry, "IsUsing", out usingValue))
+            if (TryReadBoolSkillMember(skillObject, entry, out bool usingValue, s => s.IsUsing))
             {
                 isUsing = usingValue;
                 foundAny = true;
             }
 
-            if (TryReadBoolMember(skillObject, "AllowedToCast", out bool allowedValue)
-                || TryReadBoolMember(entry, "AllowedToCast", out allowedValue))
+            if (TryReadBoolSkillMember(skillObject, entry, out bool allowedValue, s => s.AllowedToCast))
             {
                 allowedToCast = allowedValue;
                 foundAny = true;
             }
 
-            if (TryReadBoolMember(skillObject, "CanBeUsed", out bool canUseValue)
-                || TryReadBoolMember(entry, "CanBeUsed", out canUseValue))
+            if (TryReadBoolSkillMember(skillObject, entry, out bool canUseValue, s => s.CanBeUsed))
             {
                 canBeUsed = canUseValue;
                 foundAny = true;
@@ -1252,16 +1247,36 @@ namespace ClickIt.Services
             return foundAny;
         }
 
-        private static bool TryReadBoolMember(object? source, string memberName, out bool value)
+        private static object ResolveSkillObject(object entry)
+        {
+            if (TryGetDynamicValue(entry, s => s.Skill, out object? skill) && skill != null)
+                return skill;
+
+            if (TryGetDynamicValue(entry, s => s.ActorSkill, out object? actorSkill) && actorSkill != null)
+                return actorSkill;
+
+            return entry;
+        }
+
+        private static bool TryReadBoolSkillMember(object skillObject, object entry, out bool value, Func<dynamic, object?> accessor)
         {
             value = false;
-            if (source == null)
+
+            if (TryReadBool(accessor, skillObject, out value))
+                return true;
+
+            return TryReadBool(accessor, entry, out value);
+        }
+
+        private static bool TryReadBool(Func<dynamic, object?> accessor, object? source, out bool value)
+        {
+            value = false;
+            if (!TryGetDynamicValue(source, accessor, out object? raw))
                 return false;
 
-            object? raw = GetPropertyValue(source, memberName);
-            if (raw is bool b)
+            if (raw is bool boolValue)
             {
-                value = b;
+                value = boolValue;
                 return true;
             }
 
@@ -1459,13 +1474,13 @@ namespace ClickIt.Services
         {
             entries = [];
 
-            object? skillBar = gameController?.IngameState?.IngameUi == null
-                ? null
-                : GetPropertyValue(gameController.IngameState.IngameUi, "SkillBar");
+            object? skillBar = gameController?.IngameState?.IngameUi?.SkillBar;
             if (skillBar == null)
                 return false;
 
-            object? skillsCollection = GetPropertyValue(skillBar, "Skills");
+            if (!TryGetDynamicValue(skillBar, s => s.Skills, out object? skillsCollection))
+                return false;
+
             if (skillsCollection is not IEnumerable enumerable)
                 return false;
 
@@ -1483,36 +1498,35 @@ namespace ClickIt.Services
         {
             internalName = string.Empty;
 
-            object? skillObject = GetPropertyValue(entry, "Skill")
-                ?? GetPropertyValue(entry, "ActorSkill")
-                ?? entry;
+            object skillObject = ResolveSkillObject(entry);
 
-            string[] nameCandidates =
-            [
-                "InternalName",
-                "Name",
-                "Id",
-                "SkillId",
-                "MetadataId"
-            ];
-
-            for (int i = 0; i < nameCandidates.Length; i++)
+            if (TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.InternalName)
+                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.Name)
+                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.Id)
+                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.SkillId)
+                || TryResolveMovementSkillNameCandidate(skillObject, entry, out internalName, s => s.MetadataId))
             {
-                object? raw = GetPropertyValue(skillObject, nameCandidates[i])
-                    ?? GetPropertyValue(entry, nameCandidates[i]);
-
-                string? value = raw?.ToString();
-                if (string.IsNullOrWhiteSpace(value))
-                    continue;
-
-                if (!IsMovementSkillInternalName(value))
-                    continue;
-
-                internalName = value.Trim();
                 return true;
             }
 
             return false;
+        }
+
+        private static bool TryResolveMovementSkillNameCandidate(object skillObject, object entry, out string internalName, Func<dynamic, object?> accessor)
+        {
+            internalName = string.Empty;
+
+            if (!TryReadString(accessor, skillObject, out string candidate)
+                && !TryReadString(accessor, entry, out candidate))
+            {
+                return false;
+            }
+
+            if (!IsMovementSkillInternalName(candidate))
+                return false;
+
+            internalName = candidate;
+            return true;
         }
 
         internal static bool IsMovementSkillInternalName(string? skillInternalName)
@@ -1532,38 +1546,28 @@ namespace ClickIt.Services
 
         private static bool IsSkillEntryOnCooldown(object entry)
         {
-            object? skillObject = GetPropertyValue(entry, "Skill")
-                ?? GetPropertyValue(entry, "ActorSkill")
-                ?? entry;
-
-            string[] boolMembers = ["IsOnCooldown", "OnCooldown", "HasCooldown"];
-            for (int i = 0; i < boolMembers.Length; i++)
-            {
-                object? raw = GetPropertyValue(skillObject, boolMembers[i]) ?? GetPropertyValue(entry, boolMembers[i]);
-                if (raw is bool b)
-                    return b;
-            }
-
-            return false;
+            object skillObject = ResolveSkillObject(entry);
+            return TryReadBoolSkillMember(skillObject, entry, out bool onCooldown, s => s.IsOnCooldown)
+                ? onCooldown
+                : TryReadBoolSkillMember(skillObject, entry, out onCooldown, s => s.OnCooldown)
+                    ? onCooldown
+                    : TryReadBoolSkillMember(skillObject, entry, out onCooldown, s => s.HasCooldown) && onCooldown;
         }
 
         private static bool TryResolveSkillKeyText(object entry, out string keyText)
         {
             keyText = string.Empty;
 
-            object? skillObject = GetPropertyValue(entry, "Skill")
-                ?? GetPropertyValue(entry, "ActorSkill")
-                ?? entry;
+            object skillObject = ResolveSkillObject(entry);
 
-            string[] keyMembers = ["KeyText", "SkillBarText", "Key", "Bind", "Hotkey", "InputText", "SlotText"];
-            for (int i = 0; i < keyMembers.Length; i++)
+            if (TryReadStringSkillMember(skillObject, entry, out keyText, s => s.KeyText)
+                || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.SkillBarText)
+                || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.Key)
+                || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.Bind)
+                || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.Hotkey)
+                || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.InputText)
+                || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.SlotText))
             {
-                object? raw = GetPropertyValue(entry, keyMembers[i]) ?? GetPropertyValue(skillObject, keyMembers[i]);
-                string? text = raw?.ToString();
-                if (string.IsNullOrWhiteSpace(text))
-                    continue;
-
-                keyText = text.Trim();
                 return true;
             }
 
@@ -1605,31 +1609,16 @@ namespace ClickIt.Services
                 return child != null;
             }
 
-            try
+            if (TryGetDynamicValue(node, n => n.Child(index), out object? dynamicChild) && dynamicChild != null)
             {
-                MethodInfo? childMethod = node.GetType().GetMethod("Child", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, binder: null, types: [typeof(int)], modifiers: null);
-                if (childMethod != null)
-                {
-                    child = childMethod.Invoke(node, [index]);
-                    if (child != null)
-                        return true;
-                }
-            }
-            catch
-            {
+                child = dynamicChild;
+                return true;
             }
 
-            try
+            if (TryGetDynamicValue(node, n => n.Children, out object? childrenObj) && childrenObj is IList list && index < list.Count)
             {
-                object? children = GetPropertyValue(node, "Children");
-                if (children is IList list && index < list.Count)
-                {
-                    child = list[index];
-                    return child != null;
-                }
-            }
-            catch
-            {
+                child = list[index];
+                return child != null;
             }
 
             return false;
@@ -1651,19 +1640,9 @@ namespace ClickIt.Services
                 }
             }
 
-            string[] textMembers = ["Text", "Label", "KeyText"];
-            for (int i = 0; i < textMembers.Length; i++)
-            {
-                object? raw = GetPropertyValue(node, textMembers[i]);
-                string? value = raw?.ToString();
-                if (string.IsNullOrWhiteSpace(value))
-                    continue;
-
-                text = value.Trim();
-                return true;
-            }
-
-            return false;
+            return TryReadString(n => n.Text, node, out text)
+                || TryReadString(n => n.Label, node, out text)
+                || TryReadString(n => n.KeyText, node, out text);
         }
 
         internal static bool TryMapKeyTextToKeys(string? keyText, out Keys key)
@@ -1707,19 +1686,48 @@ namespace ClickIt.Services
             return Enum.TryParse(normalized, ignoreCase: true, out key);
         }
 
-        private static object? GetPropertyValue(object source, string propertyName)
+        private static bool TryReadStringSkillMember(object skillObject, object entry, out string value, Func<dynamic, object?> accessor)
         {
-            if (source == null || string.IsNullOrWhiteSpace(propertyName))
-                return null;
+            value = string.Empty;
+
+            if (TryReadString(accessor, entry, out value))
+                return true;
+
+            return TryReadString(accessor, skillObject, out value);
+        }
+
+        private static bool TryReadString(Func<dynamic, object?> accessor, object? source, out string value)
+        {
+            value = string.Empty;
+            if (!TryGetDynamicValue(source, accessor, out object? raw) || raw == null)
+                return false;
+
+            string? text = raw.ToString();
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            value = text.Trim();
+            return true;
+        }
+
+        private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
+        {
+            value = null;
+            if (source == null)
+                return false;
 
             try
             {
-                PropertyInfo? property = source.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                return property?.GetValue(source);
+                value = accessor((dynamic)source);
+                return true;
+            }
+            catch (RuntimeBinderException)
+            {
+                return false;
             }
             catch
             {
-                return null;
+                return false;
             }
         }
 

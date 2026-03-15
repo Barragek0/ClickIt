@@ -5,6 +5,7 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
+using Microsoft.CSharp.RuntimeBinder;
 
 namespace ClickIt.Services
 {
@@ -81,10 +82,10 @@ namespace ClickIt.Services
 
         private static bool IsInventorySlotOccupied(object slot)
         {
-            if (TryGetPropertyValue(slot, "HasItem", out object? hasItemObj) && hasItemObj is bool hasItem)
+            if (TryReadBool(slot, out bool hasItem, s => s.HasItem))
                 return hasItem;
 
-            if (TryGetPropertyValue(slot, "IsEmpty", out object? isEmptyObj) && isEmptyObj is bool isEmpty)
+            if (TryReadBool(slot, out bool isEmpty, s => s.IsEmpty))
                 return !isEmpty;
 
             return TryGetNestedEntityLikeObject(slot, out _);
@@ -129,8 +130,13 @@ namespace ClickIt.Services
             try
             {
                 object? stackComponent = itemEntity.GetComponent<ExileCore.PoEMemory.Components.Stack>();
-                if (!TryReadIntMember(stackComponent, ["Size", "Count", "StackSize", "Amount"], out currentStack))
+                if (!TryReadInt(stackComponent, out currentStack, s => s.Size)
+                    && !TryReadInt(stackComponent, out currentStack, s => s.Count)
+                    && !TryReadInt(stackComponent, out currentStack, s => s.StackSize)
+                    && !TryReadInt(stackComponent, out currentStack, s => s.Amount))
+                {
                     return false;
+                }
             }
             catch
             {
@@ -140,8 +146,12 @@ namespace ClickIt.Services
             try
             {
                 object? baseItemType = gameController.Files?.BaseItemTypes?.Translate(itemEntity.Path ?? string.Empty);
-                if (!TryReadIntMember(baseItemType, ["StackSize", "MaxStackSize", "Stack"], out maxStack))
+                if (!TryReadInt(baseItemType, out maxStack, s => s.StackSize)
+                    && !TryReadInt(baseItemType, out maxStack, s => s.MaxStackSize)
+                    && !TryReadInt(baseItemType, out maxStack, s => s.Stack))
+                {
                     return false;
+                }
             }
             catch
             {
@@ -149,37 +159,6 @@ namespace ClickIt.Services
             }
 
             return true;
-        }
-
-        private static bool TryReadIntMember(object? source, IReadOnlyList<string> memberNames, out int value)
-        {
-            value = 0;
-            if (source == null)
-                return false;
-
-            for (int i = 0; i < memberNames.Count; i++)
-            {
-                string member = memberNames[i];
-                if (!TryGetPropertyValue(source, member, out object? raw))
-                    continue;
-
-                if (raw is int intValue)
-                {
-                    value = intValue;
-                    return true;
-                }
-
-                try
-                {
-                    value = Convert.ToInt32(raw);
-                    return true;
-                }
-                catch
-                {
-                }
-            }
-
-            return false;
         }
 
         private static Entity? TryGetWorldItemEntity(Entity? worldItem)
@@ -205,24 +184,20 @@ namespace ClickIt.Services
             if (!TryGetInventoryRoots(gameController, out IReadOnlyList<object?> roots))
                 return false;
 
-            string[] slotCollectionNames = ["VisibleInventorySlots", "InventorySlots", "Slots", "Cells", "InventorySlotItems"];
             foreach (object? root in roots)
             {
                 if (root == null)
                     continue;
 
-                for (int i = 0; i < slotCollectionNames.Length; i++)
-                {
-                    if (!TryGetPropertyValue(root, slotCollectionNames[i], out object? collectionObj) || collectionObj == null)
-                        continue;
+                if (!TryGetInventorySlotCollection(root, out object? collectionObj) || collectionObj == null)
+                    continue;
 
-                    List<object?> extracted = [.. EnumerateObjects(collectionObj)];
-                    if (extracted.Count == 0)
-                        continue;
+                List<object?> extracted = [.. EnumerateObjects(collectionObj)];
+                if (extracted.Count == 0)
+                    continue;
 
-                    slots = extracted;
-                    return true;
-                }
+                slots = extracted;
+                return true;
             }
 
             return false;
@@ -237,29 +212,25 @@ namespace ClickIt.Services
 
             var entities = new List<Entity>(64);
 
-            string[] itemCollectionNames = ["VisibleInventoryItems", "InventoryItems", "Items", "InventorySlotItems", "Slots", "Cells"];
             foreach (object? root in roots)
             {
                 if (root == null)
                     continue;
 
-                for (int i = 0; i < itemCollectionNames.Length; i++)
+                if (!TryGetInventoryItemCollection(root, out object? collectionObj) || collectionObj == null)
+                    continue;
+
+                foreach (object? entry in EnumerateObjects(collectionObj))
                 {
-                    if (!TryGetPropertyValue(root, itemCollectionNames[i], out object? collectionObj) || collectionObj == null)
-                        continue;
-
-                    foreach (object? entry in EnumerateObjects(collectionObj))
+                    if (entry is Entity directEntity)
                     {
-                        if (entry is Entity directEntity)
-                        {
-                            entities.Add(directEntity);
-                            continue;
-                        }
+                        entities.Add(directEntity);
+                        continue;
+                    }
 
-                        if (TryGetNestedEntityLikeObject(entry, out Entity? nestedEntity) && nestedEntity != null)
-                        {
-                            entities.Add(nestedEntity);
-                        }
+                    if (TryGetNestedEntityLikeObject(entry, out Entity? nestedEntity) && nestedEntity != null)
+                    {
+                        entities.Add(nestedEntity);
                     }
                 }
             }
@@ -307,30 +278,22 @@ namespace ClickIt.Services
             {
             }
 
-            if (inventoryPanel == null && TryGetPropertyValue(ingameUi, "InventoryPanel", out object? reflectedInventoryPanel))
-            {
-                inventoryPanel = reflectedInventoryPanel;
-            }
+            if (inventoryPanel == null)
+                TryGetDynamicValue(ingameUi, s => s.InventoryPanel, out inventoryPanel);
 
             if (inventoryPanel != null)
             {
                 candidates.Add(inventoryPanel);
 
                 object? inventoryObj = null;
-                if (TryGetPropertyValue(inventoryPanel, "Inventory", out object? reflectedInventory))
-                {
-                    inventoryObj = reflectedInventory;
-                }
+                TryGetDynamicValue(inventoryPanel, s => s.Inventory, out inventoryObj);
 
                 if (inventoryObj != null)
                     candidates.Add(inventoryObj);
             }
 
             object? inventoryDirect = null;
-            if (TryGetPropertyValue(ingameUi, "Inventory", out object? reflectedInventoryDirect))
-            {
-                inventoryDirect = reflectedInventoryDirect;
-            }
+            TryGetDynamicValue(ingameUi, s => s.Inventory, out inventoryDirect);
 
             if (inventoryDirect != null)
                 candidates.Add(inventoryDirect);
@@ -351,47 +314,37 @@ namespace ClickIt.Services
                 return true;
             }
 
-            string[] candidateMembers = ["ItemEntity", "Item", "Entity"];
-            for (int i = 0; i < candidateMembers.Length; i++)
+            if (TryResolveNestedEntityCandidate(source, out entity, s => s.ItemEntity)
+                || TryResolveNestedEntityCandidate(source, out entity, s => s.Item)
+                || TryResolveNestedEntityCandidate(source, out entity, s => s.Entity))
             {
-                if (!TryGetPropertyValue(source, candidateMembers[i], out object? nested) || nested == null)
-                    continue;
-
-                if (nested is Entity nestedEntity)
-                {
-                    entity = nestedEntity;
-                    return true;
-                }
-
-                if (nested != source && TryGetNestedEntityLikeObject(nested, out Entity? deepEntity) && deepEntity != null)
-                {
-                    entity = deepEntity;
-                    return true;
-                }
+                return true;
             }
 
             return false;
         }
 
-        private static bool TryGetPropertyValue(object source, string propertyName, out object? value)
+        private static bool TryResolveNestedEntityCandidate(object source, out Entity? entity, Func<dynamic, object?> accessor)
         {
-            value = null;
-            if (source == null || string.IsNullOrWhiteSpace(propertyName))
+            entity = null;
+            if (!TryGetDynamicValue(source, accessor, out object? nested) || nested == null)
                 return false;
 
-            try
+            if (nested is Entity nestedEntity)
             {
-                var prop = source.GetType().GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (prop == null)
-                    return false;
-
-                value = prop.GetValue(source);
+                entity = nestedEntity;
                 return true;
             }
-            catch
+
+            if (!ReferenceEquals(nested, source)
+                && TryGetNestedEntityLikeObject(nested, out Entity? deepEntity)
+                && deepEntity != null)
             {
-                return false;
+                entity = deepEntity;
+                return true;
             }
+
+            return false;
         }
 
         private static IEnumerable<object?> EnumerateObjects(object? source)
@@ -413,6 +366,100 @@ namespace ClickIt.Services
             }
 
             yield return source;
+        }
+
+        private static bool TryGetInventorySlotCollection(object root, out object? collection)
+        {
+            collection = null;
+            return TryGetDynamicValue(root, s => s.VisibleInventorySlots, out collection)
+                || TryGetDynamicValue(root, s => s.InventorySlots, out collection)
+                || TryGetDynamicValue(root, s => s.Slots, out collection)
+                || TryGetDynamicValue(root, s => s.Cells, out collection)
+                || TryGetDynamicValue(root, s => s.InventorySlotItems, out collection);
+        }
+
+        private static bool TryGetInventoryItemCollection(object root, out object? collection)
+        {
+            collection = null;
+            return TryGetDynamicValue(root, s => s.VisibleInventoryItems, out collection)
+                || TryGetDynamicValue(root, s => s.InventoryItems, out collection)
+                || TryGetDynamicValue(root, s => s.Items, out collection)
+                || TryGetDynamicValue(root, s => s.InventorySlotItems, out collection)
+                || TryGetDynamicValue(root, s => s.Slots, out collection)
+                || TryGetDynamicValue(root, s => s.Cells, out collection);
+        }
+
+        private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
+        {
+            value = false;
+            if (!TryGetDynamicValue(source, accessor, out object? raw))
+                return false;
+
+            if (raw is bool boolValue)
+            {
+                value = boolValue;
+                return true;
+            }
+
+            if (raw == null)
+                return false;
+
+            try
+            {
+                value = Convert.ToBoolean(raw);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
+        {
+            value = 0;
+            if (!TryGetDynamicValue(source, accessor, out object? raw))
+                return false;
+
+            if (raw is int intValue)
+            {
+                value = intValue;
+                return true;
+            }
+
+            if (raw == null)
+                return false;
+
+            try
+            {
+                value = Convert.ToInt32(raw);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
+        {
+            value = null;
+            if (source == null)
+                return false;
+
+            try
+            {
+                value = accessor((dynamic)source);
+                return true;
+            }
+            catch (RuntimeBinderException)
+            {
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
