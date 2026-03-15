@@ -328,7 +328,7 @@ namespace ClickIt.Rendering
             }
 
             string indentation = new(' ', leadingSpaces);
-            ReadOnlySpan<char> content = text.AsSpan(leadingSpaces);
+            string content = text.Substring(leadingSpaces);
             int contentLength = content.Length;
             int startIndex = 0;
 
@@ -337,14 +337,14 @@ namespace ClickIt.Rendering
                 int endIndex = Math.Min(startIndex + safeWrap, contentLength);
                 if (endIndex < contentLength)
                 {
-                    ReadOnlySpan<char> segment = content.Slice(startIndex, endIndex - startIndex);
+                    string segment = content.Substring(startIndex, endIndex - startIndex);
                     int lastSpaceOffset = segment.LastIndexOf(' ');
                     if (lastSpaceOffset > 0)
                         endIndex = startIndex + lastSpaceOffset;
                 }
 
-                ReadOnlySpan<char> lineSpan = content.Slice(startIndex, endIndex - startIndex).TrimEnd();
-                lines.Add(indentation + lineSpan.ToString());
+                string line = content.Substring(startIndex, endIndex - startIndex).TrimEnd();
+                lines.Add(indentation + line);
 
                 startIndex = endIndex;
                 if (startIndex < contentLength && content[startIndex] == ' ')
