@@ -13,6 +13,9 @@ namespace ClickIt.Utils
 {
     public partial class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
     {
+        private const string HeistContractPathMarker = "Metadata/Items/Heist/Contracts/";
+        private const string HeistContractNamePrefix = "Contract:";
+
         private readonly ClickItSettings _settings = settings;
         private readonly Random _random = new();
         private readonly ErrorHandler? _errorHandler = errorHandler;
@@ -141,6 +144,36 @@ namespace ClickIt.Utils
             return new Vector2(
                 Math.Clamp(point.X, rect.Left, rect.Right),
                 Math.Clamp(point.Y, rect.Top, rect.Bottom));
+        }
+
+        internal static bool IsHeistContractWorldItem(string? itemPath, string? renderName)
+        {
+            bool byPath = !string.IsNullOrWhiteSpace(itemPath)
+                && itemPath.IndexOf(HeistContractPathMarker, StringComparison.OrdinalIgnoreCase) >= 0;
+            if (byPath)
+                return true;
+
+            return !string.IsNullOrWhiteSpace(renderName)
+                && renderName.StartsWith(HeistContractNamePrefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static Vector2 ResolvePreferredLabelPoint(RectangleF rect, EntityType itemType, int chestHeightOffset, string? itemPath, string? renderName)
+        {
+            Vector2 preferredPoint = rect.Center;
+
+            if (itemType == EntityType.Chest)
+            {
+                preferredPoint.Y -= chestHeightOffset;
+            }
+
+            // Contract labels often render under dropped items; bias lower label area to avoid clicking nearby item hitboxes.
+            if (itemType == EntityType.WorldItem && IsHeistContractWorldItem(itemPath, renderName))
+            {
+                float safeLowerY = rect.Top + (rect.Height * 0.84f);
+                preferredPoint.Y = Math.Clamp(safeLowerY, rect.Top + 1f, rect.Bottom - 1f);
+            }
+
+            return preferredPoint;
         }
 
         internal static bool TryResolveVisibleClickPoint(RectangleF targetRect, Vector2 preferredPoint, IReadOnlyList<RectangleF> blockedAreas, out Vector2 resolvedPoint)
@@ -305,11 +338,13 @@ namespace ClickIt.Utils
                 throw new InvalidOperationException("Label element is invalid");
             }
 
-            Vector2 preferredPoint = rect.Center;
-            if (label.ItemOnGround.Type == EntityType.Chest)
-            {
-                preferredPoint.Y -= _settings.ChestHeightOffset;
-            }
+            var item = label.ItemOnGround;
+            Vector2 preferredPoint = ResolvePreferredLabelPoint(
+                rect,
+                item?.Type ?? EntityType.WorldItem,
+                _settings.ChestHeightOffset,
+                item?.Path,
+                item?.RenderName);
 
             Vector2 resolvedPoint = preferredPoint;
             bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;
@@ -344,11 +379,13 @@ namespace ClickIt.Utils
             if (!TryGetLabelClientRect(label, out RectangleF rect))
                 return false;
 
-            Vector2 preferredPoint = rect.Center;
-            if (label.ItemOnGround.Type == EntityType.Chest)
-            {
-                preferredPoint.Y -= _settings.ChestHeightOffset;
-            }
+            var item = label.ItemOnGround;
+            Vector2 preferredPoint = ResolvePreferredLabelPoint(
+                rect,
+                item?.Type ?? EntityType.WorldItem,
+                _settings.ChestHeightOffset,
+                item?.Path,
+                item?.RenderName);
 
             List<RectangleF> blockedAreas = [];
             bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;

@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ExileCore.Shared.Enums;
 using SharpDX;
 using System.Collections.Generic;
 using ClickIt.Utils;
@@ -110,6 +111,39 @@ namespace ClickIt.Tests.Unit
             var virtualScreen = new RectangleF(0, 0, 1920, 1080);
 
             InputHandler.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsHeistContractWorldItem_DetectsByPathAndName()
+        {
+            InputHandler.IsHeistContractWorldItem(
+                "Metadata/Items/Heist/Contracts/ContractWeapons1",
+                "Whatever").Should().BeTrue();
+
+            InputHandler.IsHeistContractWorldItem(
+                string.Empty,
+                "Contract: Smuggler's Den").Should().BeTrue();
+
+            InputHandler.IsHeistContractWorldItem(
+                "Metadata/Items/Currency/CurrencyRerollRare",
+                "Chaos Orb").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ResolvePreferredLabelPoint_UsesLowerLabelArea_ForHeistContracts()
+        {
+            var rect = new RectangleF(100, 200, 180, 40);
+
+            Vector2 preferred = InputHandler.ResolvePreferredLabelPoint(
+                rect,
+                EntityType.WorldItem,
+                chestHeightOffset: 0,
+                "Metadata/Items/Heist/Contracts/ContractGeneric",
+                "Contract: Test");
+
+            preferred.Y.Should().BeGreaterThan(rect.Center.Y);
+            preferred.Y.Should().BeLessThan(rect.Bottom);
+            preferred.X.Should().Be(rect.Center.X);
         }
     }
 }
