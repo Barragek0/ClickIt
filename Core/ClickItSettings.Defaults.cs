@@ -124,12 +124,48 @@ namespace ClickIt
             MechanicPriorityIgnoreDistanceIds ??= new HashSet<string>(PriorityComparer);
             MechanicPriorityIgnoreDistanceWithinById ??= new Dictionary<string, int>(PriorityComparer);
 
+            NormalizeLegacyMechanicPriorityFields();
+
             HashSet<string> valid = new(MechanicPriorityIds, PriorityComparer);
 
             bool applyDefaultIgnoreDistance = MechanicPriorityIgnoreDistanceIds.Count == 0;
             MechanicPriorityOrder = BuildSanitizedMechanicPriorityOrder(valid);
             SanitizeMechanicIgnoreDistance(valid, applyDefaultIgnoreDistance);
             SanitizeMechanicIgnoreDistanceWithin(valid);
+        }
+
+        private void NormalizeLegacyMechanicPriorityFields()
+        {
+            HashSet<string> normalizedIgnoreDistance = new(PriorityComparer);
+            foreach (string id in MechanicPriorityIgnoreDistanceIds)
+            {
+                foreach (string expandedId in ExpandLegacyMechanicId(id))
+                {
+                    if (!string.IsNullOrWhiteSpace(expandedId))
+                        normalizedIgnoreDistance.Add(expandedId);
+                }
+            }
+
+            if (normalizedIgnoreDistance.Count > 0)
+                MechanicPriorityIgnoreDistanceIds = normalizedIgnoreDistance;
+
+            if (MechanicPriorityIgnoreDistanceWithinById.Count == 0)
+                return;
+
+            Dictionary<string, int> normalizedWithinById = new(PriorityComparer);
+            foreach ((string id, int value) in MechanicPriorityIgnoreDistanceWithinById)
+            {
+                foreach (string expandedId in ExpandLegacyMechanicId(id))
+                {
+                    if (string.IsNullOrWhiteSpace(expandedId))
+                        continue;
+                    if (!normalizedWithinById.ContainsKey(expandedId))
+                        normalizedWithinById[expandedId] = value;
+                }
+            }
+
+            if (normalizedWithinById.Count > 0)
+                MechanicPriorityIgnoreDistanceWithinById = normalizedWithinById;
         }
 
         private List<string> BuildSanitizedMechanicPriorityOrder(HashSet<string> validMechanicIds)
@@ -153,15 +189,68 @@ namespace ClickIt
         {
             foreach (string mechanicId in sourceIds)
             {
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                    continue;
-                if (!validMechanicIds.Contains(mechanicId))
-                    continue;
-                if (!seen.Add(mechanicId))
-                    continue;
+                foreach (string normalizedMechanicId in ExpandLegacyMechanicId(mechanicId))
+                {
+                    if (string.IsNullOrWhiteSpace(normalizedMechanicId))
+                        continue;
+                    if (!validMechanicIds.Contains(normalizedMechanicId))
+                        continue;
+                    if (!seen.Add(normalizedMechanicId))
+                        continue;
 
-                destination.Add(mechanicId);
+                    destination.Add(normalizedMechanicId);
+                }
             }
+        }
+
+        private static IEnumerable<string> ExpandLegacyMechanicId(string? mechanicId)
+        {
+            if (string.IsNullOrWhiteSpace(mechanicId))
+                yield break;
+
+            if (mechanicId.Equals("altars", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "altars-searing-exarch";
+                yield return "altars-eater-of-worlds";
+                yield break;
+            }
+
+            if (mechanicId.Equals("ultimatum", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "ultimatum-initial-overlay";
+                yield return "ultimatum-window";
+                yield break;
+            }
+
+            if (mechanicId.Equals("sulphite-veins", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "delve-sulphite-veins";
+                yield break;
+            }
+
+            if (mechanicId.Equals("azurite-veins", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "delve-azurite-veins";
+                yield break;
+            }
+
+            if (mechanicId.Equals("delve-spawners", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "delve-encounter-initiators";
+                yield break;
+            }
+
+            if (mechanicId.Equals("settlers-ore", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "settlers-crimson-iron";
+                yield return "settlers-copper";
+                yield return "settlers-petrified-wood";
+                yield return "settlers-bismuth";
+                yield return "settlers-verisium";
+                yield break;
+            }
+
+            yield return mechanicId;
         }
 
         private void SanitizeMechanicIgnoreDistance(HashSet<string> validMechanicIds, bool applyDefaultIgnoreDistance)

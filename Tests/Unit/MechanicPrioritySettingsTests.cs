@@ -25,12 +25,22 @@ namespace ClickIt.Tests.Unit
             priorities.Should().Contain("betrayal");
             priorities.Should().Contain("sanctum");
             priorities.Should().Contain("essences");
-            priorities.Should().Contain("altars");
-            priorities.Should().Contain("ultimatum");
+            priorities.Should().Contain("altars-searing-exarch");
+            priorities.Should().Contain("altars-eater-of-worlds");
+            priorities.Should().Contain("ultimatum-initial-overlay");
+            priorities.Should().Contain("ultimatum-window");
             priorities.Should().Contain("shrines");
             priorities.Should().Contain("lost-shipment");
             priorities.Should().Contain("strongboxes");
             priorities.Should().Contain("items");
+            priorities.Should().Contain("delve-sulphite-veins");
+            priorities.Should().Contain("delve-azurite-veins");
+            priorities.Should().Contain("delve-encounter-initiators");
+            priorities.Should().Contain("settlers-crimson-iron");
+            priorities.Should().Contain("settlers-copper");
+            priorities.Should().Contain("settlers-petrified-wood");
+            priorities.Should().Contain("settlers-bismuth");
+            priorities.Should().Contain("settlers-verisium");
             var priorityList = priorities.ToList();
             priorityList.IndexOf("shrines").Should().BeLessThan(priorityList.IndexOf("lost-shipment"));
             priorityList.IndexOf("lost-shipment").Should().BeLessThan(priorityList.IndexOf("items"));
@@ -105,18 +115,19 @@ namespace ClickIt.Tests.Unit
             var ignoreDistanceWithinById = restored.GetMechanicPriorityIgnoreDistanceWithinById();
 
             priorities[0].Should().Be("essences");
-            priorities[1].Should().Be("ultimatum");
-            priorities[2].Should().Be("items");
+            priorities.Should().ContainInOrder("essences", "ultimatum-initial-overlay", "ultimatum-window", "items");
             ignoreDistance.Should().Contain("essences");
-            ignoreDistance.Should().Contain("ultimatum");
+            ignoreDistance.Should().Contain("ultimatum-initial-overlay");
+            ignoreDistance.Should().Contain("ultimatum-window");
             ignoreDistanceWithinById["essences"].Should().Be(75);
-            ignoreDistanceWithinById["ultimatum"].Should().Be(125);
+            ignoreDistanceWithinById["ultimatum-initial-overlay"].Should().Be(125);
+            ignoreDistanceWithinById["ultimatum-window"].Should().Be(125);
         }
 
         [TestMethod]
         public void MechanicPriority_MigratesLegacyJsonWithoutOverwritingPrioritySettings()
         {
-            const string legacyJson = "{\"MechanicPriorityOrder\":[\"essences\",\"items\",\"shrines\"],\"MechanicPriorityIgnoreDistanceIds\":[\"essences\"],\"MechanicPriorityDistancePenalty\":{\"Value\":25}}";
+            const string legacyJson = "{\"MechanicPriorityOrder\":[\"altars\",\"ultimatum\",\"essences\",\"items\",\"shrines\"],\"MechanicPriorityIgnoreDistanceIds\":[\"ultimatum\"],\"MechanicPriorityDistancePenalty\":{\"Value\":25}}";
 
             var restored = JsonConvert.DeserializeObject<ClickItSettings>(legacyJson);
 
@@ -126,12 +137,53 @@ namespace ClickIt.Tests.Unit
             var ignoreDistance = restored.GetMechanicPriorityIgnoreDistanceIds();
             var ignoreDistanceWithinById = restored.GetMechanicPriorityIgnoreDistanceWithinById();
 
-            priorities[0].Should().Be("essences");
-            priorities[1].Should().Be("items");
-            priorities[2].Should().Be("shrines");
-            ignoreDistance.Should().ContainSingle().Which.Should().Be("essences");
-            ignoreDistanceWithinById["essences"].Should().Be(100);
+            priorities.Should().ContainInOrder(
+                "altars-searing-exarch",
+                "altars-eater-of-worlds",
+                "ultimatum-initial-overlay",
+                "ultimatum-window",
+                "essences",
+                "items",
+                "shrines");
+            ignoreDistance.Should().Contain("ultimatum-initial-overlay");
+            ignoreDistance.Should().Contain("ultimatum-window");
+            ignoreDistanceWithinById["ultimatum-initial-overlay"].Should().Be(100);
+            ignoreDistanceWithinById["ultimatum-window"].Should().Be(100);
             ignoreDistanceWithinById["items"].Should().Be(100);
+        }
+
+        [TestMethod]
+        public void MechanicPriority_MigratesLegacySettlersOreIds_ToSplitSettlersIds()
+        {
+            const string legacyJson = "{\"MechanicPriorityOrder\":[\"settlers-ore\",\"items\"],\"MechanicPriorityIgnoreDistanceIds\":[\"settlers-ore\"],\"MechanicPriorityIgnoreDistanceWithinById\":{\"settlers-ore\":90}}";
+
+            var restored = JsonConvert.DeserializeObject<ClickItSettings>(legacyJson);
+
+            restored.Should().NotBeNull();
+
+            var priorities = restored!.GetMechanicPriorityOrder();
+            var ignoreDistance = restored.GetMechanicPriorityIgnoreDistanceIds();
+            var ignoreDistanceWithinById = restored.GetMechanicPriorityIgnoreDistanceWithinById();
+
+            priorities.Should().ContainInOrder(
+                "settlers-crimson-iron",
+                "settlers-copper",
+                "settlers-petrified-wood",
+                "settlers-bismuth",
+                "settlers-verisium",
+                "items");
+
+            ignoreDistance.Should().Contain("settlers-crimson-iron");
+            ignoreDistance.Should().Contain("settlers-copper");
+            ignoreDistance.Should().Contain("settlers-petrified-wood");
+            ignoreDistance.Should().Contain("settlers-bismuth");
+            ignoreDistance.Should().Contain("settlers-verisium");
+
+            ignoreDistanceWithinById["settlers-crimson-iron"].Should().Be(90);
+            ignoreDistanceWithinById["settlers-copper"].Should().Be(90);
+            ignoreDistanceWithinById["settlers-petrified-wood"].Should().Be(90);
+            ignoreDistanceWithinById["settlers-bismuth"].Should().Be(90);
+            ignoreDistanceWithinById["settlers-verisium"].Should().Be(90);
         }
     }
 }

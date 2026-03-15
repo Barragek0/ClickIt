@@ -113,10 +113,12 @@ namespace ClickIt
 
         private static readonly MechanicPriorityEntry[] MechanicPriorityEntries =
         [
-            new("altars", "Altars"),
+            new("altars-searing-exarch", "Searing Exarch Altars"),
+            new("altars-eater-of-worlds", "Eater of Worlds Altars"),
             new("shrines", "Shrines"),
             new("lost-shipment", "Lost Shipment"),
-            new("ultimatum", "Ultimatum"),
+            new("ultimatum-initial-overlay", "Initial Ultimatum Overlay"),
+            new("ultimatum-window", "Ultimatum Window"),
             new("essences", "Essences"),
             new("items", "Items"),
             new("strongboxes", "Strongboxes"),
@@ -134,12 +136,16 @@ namespace ClickIt
             new("breach-nodes", "Breach Nodes"),
             new("legion-pillars", "Legion Pillars"),
             new("alva-temple-doors", "Alva Temple Doors"),
-            new("settlers-ore", "Settlers Ore Deposits"),
+            new("settlers-crimson-iron", "Settlers Crimson Iron"),
+            new("settlers-copper", "Settlers Copper"),
+            new("settlers-petrified-wood", "Settlers Petrified Wood"),
+            new("settlers-bismuth", "Settlers Bismuth"),
+            new("settlers-verisium", "Settlers Verisium"),
             new("ritual-initiate", "Ritual (Initiate)"),
             new("ritual-completed", "Ritual (Completed)"),
-            new("sulphite-veins", "Sulphite Veins"),
-            new("azurite-veins", "Azurite Veins"),
-            new("delve-spawners", "Delve Encounter Initiators")
+            new("delve-sulphite-veins", "Sulphite Veins"),
+            new("delve-azurite-veins", "Azurite Veins"),
+            new("delve-encounter-initiators", "Delve Encounter Initiators")
         ];
 
         private static readonly string[] MechanicPriorityDefaultOrderIds =
@@ -147,12 +153,14 @@ namespace ClickIt
             "shrines",
             "lost-shipment",
             "items",
-            "altars",
+            "altars-searing-exarch",
+            "altars-eater-of-worlds",
             "essences",
             "strongboxes",
             "ritual-initiate",
             "ritual-completed",
-            "ultimatum",
+            "ultimatum-initial-overlay",
+            "ultimatum-window",
             "harvest",
             "crafting-recipes",
             "league-chests",
@@ -167,10 +175,14 @@ namespace ClickIt
             "breach-nodes",
             "legion-pillars",
             "alva-temple-doors",
-            "settlers-ore",
-            "sulphite-veins",
-            "azurite-veins",
-            "delve-spawners"
+            "settlers-crimson-iron",
+            "settlers-copper",
+            "settlers-petrified-wood",
+            "settlers-bismuth",
+            "settlers-verisium",
+            "delve-sulphite-veins",
+            "delve-azurite-veins",
+            "delve-encounter-initiators"
         ];
 
         private static readonly HashSet<string> MechanicPriorityIds = new(MechanicPriorityEntries.Select(static x => x.Id), StringComparer.OrdinalIgnoreCase);

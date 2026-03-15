@@ -63,6 +63,7 @@ namespace ClickIt
                 || DebugShowLabels
                 || DebugShowHoveredItemMetadata
                 || DebugShowPathfinding
+                || DebugShowClicking
                 || DebugShowRecentErrors;
         }
 
@@ -112,6 +113,7 @@ namespace ClickIt
                 DrawToggleNodeControl("Labels", DebugShowLabels, "Show/hide the labels debug section");
                 DrawToggleNodeControl("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section");
                 DrawToggleNodeControl("Pathfinding", DebugShowPathfinding, "Show/hide offscreen pathfinding debug section");
+                DrawToggleNodeControl("Clicking", DebugShowClicking, "Show/hide clicking debug section");
                 DrawToggleNodeControl("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section");
                 DrawToggleNodeControl("Debug Frames", DebugShowFrames, "Show/hide the debug screen area frames");
                 ImGui.Unindent();
@@ -422,6 +424,7 @@ namespace ClickIt
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
+            new("settlers", "Settlers"),
             new("delve", "Delve"),
             new("ultimatum", "Ultimatum"),
             new("altars", "Altars")
@@ -680,7 +683,11 @@ namespace ClickIt
                 "legion-pillars" => true,
                 "harvest" => true,
                 "sanctum" => true,
-                "settlers-ore" => true,
+                "settlers-crimson-iron" => true,
+                "settlers-copper" => true,
+                "settlers-petrified-wood" => true,
+                "settlers-bismuth" => true,
+                "settlers-verisium" => true,
                 "items" => true,
                 "essences" => true,
                 "ritual-initiate" => true,
@@ -703,7 +710,6 @@ namespace ClickIt
                 new("basic-chests", "Basic Chests", ClickBasicChests),
                 new("league-chests", "League Mechanic Chests", ClickLeagueChests),
                 new("shrines", "Shrines", ClickShrines),
-                new("lost-shipment", "Lost Shipment", ClickLostShipmentCrates),
                 new("area-transitions", "Area Transitions", ClickAreaTransitions),
                 new("labyrinth-trials", "Labyrinth Trials", ClickLabyrinthTrials),
                 new("crafting-recipes", "Crafting Recipes", ClickCraftingRecipes),
@@ -716,11 +722,16 @@ namespace ClickIt
                 new("legion-pillars", "Legion Pillars", ClickLegionPillars),
                 new("harvest", "Nearest Harvest Plot", NearestHarvest),
                 new("sanctum", "Sanctum", ClickSanctum),
-                new("settlers-ore", "Settlers Ore Deposits", ClickSettlersOre),
                 new("items", "Items", ClickItems),
                 new("essences", "Essences", ClickEssences),
                 new("ritual-initiate", "Ritual Altars", ClickRitualInitiate),
                 new("ritual-completed", "Completed Ritual Altars", ClickRitualCompleted),
+                new("lost-shipment", "Lost Shipment", ClickLostShipmentCrates, "settlers"),
+                new("settlers-crimson-iron", "Crimson Iron", ClickSettlersOre, "settlers"),
+                new("settlers-copper", "Copper", ClickSettlersOre, "settlers"),
+                new("settlers-petrified-wood", "Petrified Wood", ClickSettlersOre, "settlers"),
+                new("settlers-bismuth", "Bismuth", ClickSettlersOre, "settlers"),
+                new("settlers-verisium", "Verisium", ClickSettlersOre, "settlers"),
                 new("delve-azurite-veins", "Azurite Veins", ClickAzuriteVeins, "delve"),
                 new("delve-sulphite-veins", "Sulphite Veins", ClickSulphiteVeins, "delve"),
                 new("delve-encounter-initiators", "Encounter Initiators", ClickDelveSpawners, "delve"),
@@ -1133,37 +1144,108 @@ namespace ClickIt
 
         private void DrawMechanicPriorityRows()
         {
-            for (int i = 0; i < MechanicPriorityOrder.Count; i++)
+            List<VisibleMechanicPriorityRow> visibleRows = GetVisibleMechanicPriorityRows();
+
+            for (int i = 0; i < visibleRows.Count; i++)
             {
-                string mechanicId = MechanicPriorityOrder[i];
-                if (!TryGetMechanicPriorityEntry(mechanicId, out MechanicPriorityEntry? entry) || entry == null)
+                VisibleMechanicPriorityRow row = visibleRows[i];
+
+                if (TryDrawMechanicPriorityMoveRow(visibleRows, i, row.OrderIndex, row.MechanicId, row.Entry))
                     continue;
 
-                if (TryDrawMechanicPriorityMoveRow(i, mechanicId, entry))
-                    continue;
-
-                DrawMechanicPriorityExpandedOptions(mechanicId);
+                DrawMechanicPriorityExpandedOptions(row.MechanicId);
             }
         }
 
-        private bool TryDrawMechanicPriorityMoveRow(int index, string mechanicId, MechanicPriorityEntry entry)
+        private readonly struct VisibleMechanicPriorityRow(int orderIndex, string mechanicId, MechanicPriorityEntry entry)
+        {
+            public int OrderIndex { get; } = orderIndex;
+            public string MechanicId { get; } = mechanicId;
+            public MechanicPriorityEntry Entry { get; } = entry;
+        }
+
+        private List<VisibleMechanicPriorityRow> GetVisibleMechanicPriorityRows()
+        {
+            List<VisibleMechanicPriorityRow> rows = [];
+            for (int orderIndex = 0; orderIndex < MechanicPriorityOrder.Count; orderIndex++)
+            {
+                string mechanicId = MechanicPriorityOrder[orderIndex];
+                if (!TryGetMechanicPriorityEntry(mechanicId, out MechanicPriorityEntry? entry) || entry == null)
+                    continue;
+                if (!IsMechanicPriorityMechanicEnabled(mechanicId))
+                    continue;
+
+                rows.Add(new VisibleMechanicPriorityRow(orderIndex, mechanicId, entry));
+            }
+
+            return rows;
+        }
+
+        private bool IsMechanicPriorityMechanicEnabled(string mechanicId)
+        {
+            return mechanicId switch
+            {
+                "basic-chests" => ClickBasicChests.Value,
+                "league-chests" => ClickLeagueChests.Value,
+                "shrines" => ClickShrines.Value,
+                "lost-shipment" => ClickLostShipmentCrates.Value,
+                "items" => ClickItems.Value,
+                "essences" => ClickEssences.Value,
+                "area-transitions" => ClickAreaTransitions.Value,
+                "labyrinth-trials" => ClickLabyrinthTrials.Value,
+                "crafting-recipes" => ClickCraftingRecipes.Value,
+                "doors" => ClickDoors.Value,
+                "levers" => ClickLevers.Value,
+                "alva-temple-doors" => ClickAlvaTempleDoors.Value,
+                "betrayal" => ClickBetrayal.Value,
+                "blight" => ClickBlight.Value,
+                "breach-nodes" => ClickBreachNodes.Value,
+                "legion-pillars" => ClickLegionPillars.Value,
+                "harvest" => NearestHarvest.Value,
+                "sanctum" => ClickSanctum.Value,
+                "settlers-crimson-iron" => ClickSettlersOre.Value,
+                "settlers-copper" => ClickSettlersOre.Value,
+                "settlers-petrified-wood" => ClickSettlersOre.Value,
+                "settlers-bismuth" => ClickSettlersOre.Value,
+                "settlers-verisium" => ClickSettlersOre.Value,
+                "ritual-initiate" => ClickRitualInitiate.Value,
+                "ritual-completed" => ClickRitualCompleted.Value,
+                "delve-sulphite-veins" => ClickSulphiteVeins.Value,
+                "delve-azurite-veins" => ClickAzuriteVeins.Value,
+                "delve-encounter-initiators" => ClickDelveSpawners.Value,
+                "ultimatum-initial-overlay" => ClickInitialUltimatum.Value,
+                "ultimatum-window" => ClickUltimatumChoices.Value,
+                "altars-searing-exarch" => ClickExarchAltars.Value,
+                "altars-eater-of-worlds" => ClickEaterAltars.Value,
+                _ => true
+            };
+        }
+
+        private bool TryDrawMechanicPriorityMoveRow(
+            IReadOnlyList<VisibleMechanicPriorityRow> visibleRows,
+            int visibleIndex,
+            int orderIndex,
+            string mechanicId,
+            MechanicPriorityEntry entry)
         {
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
 
-            Vector4 priorityColor = GetUltimatumPriorityRowColor(index, MechanicPriorityOrder.Count);
+            Vector4 priorityColor = GetUltimatumPriorityRowColor(visibleIndex, visibleRows.Count);
             ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(priorityColor));
 
-            if (DrawUltimatumArrowButton(ImGuiDir.Up, $"MechanicPriorityUp_{index}", enabled: index > 0))
+            if (DrawUltimatumArrowButton(ImGuiDir.Up, $"MechanicPriorityUp_{mechanicId}_{orderIndex}", enabled: visibleIndex > 0))
             {
-                (MechanicPriorityOrder[index], MechanicPriorityOrder[index - 1]) = (MechanicPriorityOrder[index - 1], MechanicPriorityOrder[index]);
+                int targetOrderIndex = visibleRows[visibleIndex - 1].OrderIndex;
+                (MechanicPriorityOrder[orderIndex], MechanicPriorityOrder[targetOrderIndex]) = (MechanicPriorityOrder[targetOrderIndex], MechanicPriorityOrder[orderIndex]);
                 return true;
             }
 
             ImGui.SameLine();
-            if (DrawUltimatumArrowButton(ImGuiDir.Down, $"MechanicPriorityDown_{index}", enabled: index < MechanicPriorityOrder.Count - 1))
+            if (DrawUltimatumArrowButton(ImGuiDir.Down, $"MechanicPriorityDown_{mechanicId}_{orderIndex}", enabled: visibleIndex < visibleRows.Count - 1))
             {
-                (MechanicPriorityOrder[index], MechanicPriorityOrder[index + 1]) = (MechanicPriorityOrder[index + 1], MechanicPriorityOrder[index]);
+                int targetOrderIndex = visibleRows[visibleIndex + 1].OrderIndex;
+                (MechanicPriorityOrder[orderIndex], MechanicPriorityOrder[targetOrderIndex]) = (MechanicPriorityOrder[targetOrderIndex], MechanicPriorityOrder[orderIndex]);
                 return true;
             }
 
