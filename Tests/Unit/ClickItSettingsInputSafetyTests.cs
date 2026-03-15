@@ -77,5 +77,17 @@ namespace ClickIt.Tests.Unit
 
             settings.CorruptAllEssences.Value.Should().BeFalse();
         }
+
+        [TestMethod]
+        public void ShowEssenceCorruptionTablePanel_DisabledWhenCorruptAllEnabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ShowEssenceCorruptionTablePanel.Should().BeTrue();
+
+            settings.CorruptAllEssences.Value = true;
+
+            settings.ShowEssenceCorruptionTablePanel.Should().BeFalse();
+        }
     }
 }

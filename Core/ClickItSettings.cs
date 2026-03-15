@@ -327,7 +327,10 @@ namespace ClickIt
         public EmptyNode Essences { get; set; } = new EmptyNode();
         [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 18)]
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
+        [JsonIgnore]
+        public bool ShowEssenceCorruptionTablePanel => CorruptAllEssences?.Value != true;
         [Menu("", 2, 18)]
+        [ConditionalDisplay(nameof(ShowEssenceCorruptionTablePanel))]
         [JsonIgnore]
         public CustomNode EssenceCorruptionTablePanel { get; }
 

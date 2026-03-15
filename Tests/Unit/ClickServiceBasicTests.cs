@@ -658,7 +658,7 @@ namespace ClickIt.Tests.Unit
             preferLostShipment.Should().BeFalse();
         }
 
-        private sealed class SkillNode
+        public sealed class SkillNode
         {
             private readonly SkillNode?[] _children;
 
