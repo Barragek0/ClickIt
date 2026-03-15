@@ -15,6 +15,9 @@ namespace ClickIt.Services
             if (LabelUtils.ElementContainsAnyStrings(label, ["Corrupted"]))
                 return false;
 
+            if (_settings.CorruptAllEssences.Value)
+                return true;
+
             IReadOnlyList<string> selectedEssences = _settings.GetCorruptEssenceNames();
             if (selectedEssences.Count == 0)
                 return false;

@@ -69,5 +69,13 @@ namespace ClickIt.Tests.Unit
 
             settings.OffscreenShieldChargePostCastClickDelayMs.Value.Should().Be(100);
         }
+
+        [TestMethod]
+        public void CorruptAllEssences_DefaultsToDisabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.CorruptAllEssences.Value.Should().BeFalse();
+        }
     }
 }

@@ -325,6 +325,8 @@ namespace ClickIt
 
         [Menu("Essences", 18, 1400)]
         public EmptyNode Essences { get; set; } = new EmptyNode();
+        [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 18)]
+        public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
         [Menu("", 2, 18)]
         [JsonIgnore]
         public CustomNode EssenceCorruptionTablePanel { get; }
