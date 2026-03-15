@@ -16,7 +16,6 @@ namespace ClickIt.Services
         private const string VerisiumBossSubAreaTransitionPathMarker = MechanicIds.VerisiumBossSubAreaTransitionPathMarker;
         private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
         private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
-        private const int NonVerisiumSettlersRetryWindowMs = 3000;
 
         private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
         private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
@@ -336,59 +335,6 @@ namespace ClickIt.Services
         private static bool IsSettlersMechanicId(string? mechanicId)
             => !string.IsNullOrWhiteSpace(mechanicId)
                && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
-
-        private void MarkSuccessfulSettlersInteraction(long entityAddress, string? mechanicId)
-        {
-            if (entityAddress == 0
-                || string.IsNullOrWhiteSpace(mechanicId)
-                || !IsSettlersMechanicId(mechanicId)
-                || ShouldUseHoldClickForSettlersMechanic(mechanicId))
-            {
-                return;
-            }
-
-            _lastSuccessfulNonVerisiumSettlersTargetAddress = entityAddress;
-            _lastSuccessfulNonVerisiumSettlersMechanicId = mechanicId;
-            _lastSuccessfulNonVerisiumSettlersTimestampMs = Environment.TickCount64;
-        }
-
-        private bool IsRecentSuccessfulNonVerisiumSettlersRetryTarget(long entityAddress, string? mechanicId)
-        {
-            long now = Environment.TickCount64;
-            return IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
-                _lastSuccessfulNonVerisiumSettlersTargetAddress,
-                _lastSuccessfulNonVerisiumSettlersMechanicId,
-                _lastSuccessfulNonVerisiumSettlersTimestampMs,
-                entityAddress,
-                mechanicId,
-                now,
-                NonVerisiumSettlersRetryWindowMs);
-        }
-
-        internal static bool IsRecentSuccessfulNonVerisiumSettlersRetryTarget(
-            long lastSuccessfulTargetAddress,
-            string? lastSuccessfulMechanicId,
-            long lastSuccessfulTimestampMs,
-            long candidateEntityAddress,
-            string? candidateMechanicId,
-            long now,
-            int retryWindowMs)
-        {
-            if (lastSuccessfulTargetAddress == 0
-                || candidateEntityAddress == 0
-                || !IsSettlersMechanicId(candidateMechanicId)
-                || ShouldUseHoldClickForSettlersMechanic(candidateMechanicId)
-                || !string.Equals(lastSuccessfulMechanicId, candidateMechanicId, StringComparison.OrdinalIgnoreCase)
-                || candidateEntityAddress != lastSuccessfulTargetAddress
-                || retryWindowMs <= 0
-                || lastSuccessfulTimestampMs <= 0)
-            {
-                return false;
-            }
-
-            long elapsed = now - lastSuccessfulTimestampMs;
-            return elapsed >= 0 && elapsed <= retryWindowMs;
-        }
 
         private bool IsSettlersMechanicEnabled(string? mechanicId)
         {

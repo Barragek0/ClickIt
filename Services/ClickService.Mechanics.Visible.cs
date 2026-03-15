@@ -194,10 +194,6 @@ namespace ClickIt.Services
             }
 
             hasGroundLabel = IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
-            bool isVerisiumPath = IsVerisiumPath(path);
-            bool recentNonVerisiumRetryTarget = IsRecentSuccessfulNonVerisiumSettlersRetryTarget(entity.Address, mechanicId);
-            if (!ShouldAllowNonVerisiumSettlersRetryWithoutGroundLabel(hasGroundLabel, isVerisiumPath, recentNonVerisiumRetryTarget))
-                return false;
 
             var worldScreenRawVec = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
             Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
@@ -315,8 +311,15 @@ namespace ClickIt.Services
                 pathfindingService.ClearLatestPath();
         }
 
-        private void TryClickSettlersOre(SettlersOreCandidate candidate)
+        private bool TryClickSettlersOre(SettlersOreCandidate candidate)
         {
+            var entity = candidate.Entity;
+            if (entity != null && !entity.IsTargetable)
+            {
+                DebugLog(() => $"[ProcessRegularClick] Skipping settlers ore candidate ({candidate.MechanicId}) because entity is not targetable.");
+                return false;
+            }
+
             DebugLog(() => $"[ProcessRegularClick] Clicking settlers ore candidate ({candidate.MechanicId}) via entity position.");
 
             bool captureClickDebug = ShouldCaptureClickDebug();
@@ -328,18 +331,18 @@ namespace ClickIt.Services
                 : PerformLabelClick(candidate.ClickPosition, null, gameController);
 
             if (!clicked)
-                return;
-
-            MarkSuccessfulSettlersInteraction(candidate.Entity.Address, candidate.MechanicId);
+                return false;
 
             if (captureClickDebug)
                 PublishSettlersCandidateDebug("ClickSuccess", candidate, "Settlers click completed");
 
-            if (IsStickyTarget(candidate.Entity))
+            if (IsStickyTarget(entity))
                 ClearStickyOffscreenTarget();
 
             if (settings.WalkTowardOffscreenLabels.Value)
                 pathfindingService.ClearLatestPath();
+
+            return true;
         }
     }
 }

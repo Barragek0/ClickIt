@@ -50,7 +50,7 @@ namespace ClickIt.Tests.Unit
             var rh2 = InvokePrivateStatic<bool>("IsHarvestPath", "Nothing/Here");
             rh2.Should().BeFalse();
 
-            var rs1 = InvokePrivateStatic<bool>("IsSettlersOrePath", "PetrifiedWood/Some");
+            var rs1 = InvokePrivateStatic<bool>("IsSettlersOrePath", "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/PetrifiedWood");
             rs1.Should().BeTrue();
             var rs2 = InvokePrivateStatic<bool>("IsSettlersOrePath", "Random/Path");
             rs2.Should().BeFalse();

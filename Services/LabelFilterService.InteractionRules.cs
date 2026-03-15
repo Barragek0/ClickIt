@@ -236,8 +236,7 @@ namespace ClickIt.Services
 
         private static bool IsSettlersCrimsonIronPath(string path)
         {
-            return path.Contains(Constants.CrimsonIron, StringComparison.OrdinalIgnoreCase)
-                || MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCrimsonIronMarker);
+            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCrimsonIronMarker);
         }
 
         private static bool IsSettlersCopperPath(string path)
@@ -247,20 +246,17 @@ namespace ClickIt.Services
 
         private static bool IsSettlersPetrifiedWoodPath(string path)
         {
-            return path.Contains(Constants.PetrifiedWood, StringComparison.OrdinalIgnoreCase)
-                || MatchesSettlersOrePathMarker(path, MechanicIds.SettlersPetrifiedWoodMarker);
+            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersPetrifiedWoodMarker);
         }
 
         private static bool IsSettlersBismuthPath(string path)
         {
-            return path.Contains(Constants.Bismuth, StringComparison.OrdinalIgnoreCase)
-                || MatchesSettlersOrePathMarker(path, MechanicIds.SettlersBismuthMarker);
+            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersBismuthMarker);
         }
 
         private static bool IsSettlersVerisiumPath(string path)
         {
-            return (path.Contains(Constants.Verisium, StringComparison.OrdinalIgnoreCase)
-                    || MatchesSettlersOrePathMarker(path, MechanicIds.SettlersVerisiumMarker))
+            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersVerisiumMarker)
                 && !path.Contains(MechanicIds.VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase);
         }
 

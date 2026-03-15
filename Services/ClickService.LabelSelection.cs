@@ -4,6 +4,7 @@ using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
+using ClickIt.Definitions;
 using ClickIt.Utils;
 using Microsoft.CSharp.RuntimeBinder;
 using System.Windows.Forms;
@@ -133,9 +134,13 @@ namespace ClickIt.Services
                         _cachedMechanicIgnoreDistanceWithinMap,
                         settings.MechanicPriorityDistancePenalty.Value))
                 {
-                    PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", settlersOreCandidate.Value.MechanicId);
-                    TryClickSettlersOre(settlersOreCandidate.Value);
-                    yield break;
+                    if (TryClickSettlersOre(settlersOreCandidate.Value))
+                    {
+                        PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", settlersOreCandidate.Value.MechanicId);
+                        yield break;
+                    }
+
+                    PublishClickFlowDebugStage("HiddenSettlersFallbackSkipped", "Hidden settlers candidate was not targetable/valid at click time", settlersOreCandidate.Value.MechanicId);
                 }
 
                 if (lostShipmentCandidate.HasValue
@@ -180,6 +185,28 @@ namespace ClickIt.Services
             string? nextLabelMechanicId = nextLabel != null
                 ? labelFilterService.GetMechanicIdForLabel(nextLabel)
                 : null;
+            nextLabelMechanicId = ResolveLabelMechanicIdForVisibleCandidateComparison(
+                nextLabelMechanicId,
+                hasLabel: nextLabel != null,
+                isWorldItemLabel: nextLabel?.ItemOnGround?.Type == ExileCore.Shared.Enums.EntityType.WorldItem,
+                clickItemsEnabled: settings.ClickItems.Value);
+
+            if (settlersOreCandidate.HasValue
+                && ShouldPreferSettlersOreOverVisibleCandidates(
+                    settlersOreCandidate.Value.Distance,
+                    settlersOreCandidate.Value.MechanicId,
+                    nextLabel?.ItemOnGround?.DistancePlayer,
+                    nextLabelMechanicId,
+                    nextShrine?.DistancePlayer,
+                    lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
+                    _cachedMechanicPriorityIndexMap,
+                    _cachedMechanicIgnoreDistanceSet,
+                    _cachedMechanicIgnoreDistanceWithinMap,
+                    settings.MechanicPriorityDistancePenalty.Value))
+            {
+                if (TryClickSettlersOre(settlersOreCandidate.Value))
+                    yield break;
+            }
 
             if (lostShipmentCandidate.HasValue
                 && ShouldPreferLostShipmentOverVisibleCandidates(
@@ -243,6 +270,17 @@ namespace ClickIt.Services
                 DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
                 PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", nextLabelMechanicId);
 
+                if (settlersOreCandidate.HasValue
+                    && ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(nextLabelMechanicId, settlersOreCandidate.Value.MechanicId))
+                {
+                    PublishClickFlowDebugStage("SettlersEntityFallbackAttempt", "Label unresolved; attempting settlers entity click", settlersOreCandidate.Value.MechanicId);
+                    if (TryClickSettlersOre(settlersOreCandidate.Value))
+                    {
+                        PublishClickFlowDebugStage("SettlersEntityFallbackSuccess", "Settlers entity click succeeded after label resolve failure", settlersOreCandidate.Value.MechanicId);
+                        yield break;
+                    }
+                }
+
                 bool shouldContinueEntityPathing = ShouldPathfindToEntityAfterClickPointResolveFailure(
                     settings.WalkTowardOffscreenLabels.Value,
                     nextLabel.ItemOnGround != null,
@@ -258,7 +296,6 @@ namespace ClickIt.Services
 
             PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", nextLabelMechanicId);
 
-            bool isSettlersMechanic = IsSettlersMechanicId(nextLabelMechanicId);
             PublishLabelClickDebug(
                 stage: "LabelCandidate",
                 mechanicId: nextLabelMechanicId,
@@ -272,11 +309,6 @@ namespace ClickIt.Services
             bool clicked = ShouldUseHoldClickForSettlersMechanic(nextLabelMechanicId)
                 ? PerformLabelHoldClick(clickPos, nextLabel.Label, gameController, holdDurationMs: 0, forceUiHoverVerification)
                 : PerformLabelClick(clickPos, nextLabel.Label, gameController, forceUiHoverVerification);
-
-            if (clicked && isSettlersMechanic)
-            {
-                MarkSuccessfulSettlersInteraction(nextLabel.ItemOnGround?.Address ?? 0, nextLabelMechanicId);
-            }
 
             PublishLabelClickDebug(
                 stage: clicked ? "ClickSuccess" : "ClickFailed",
@@ -1538,7 +1570,6 @@ namespace ClickIt.Services
                 : PerformLabelClick(clickPos, stickyLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(stickyLabel));
             if (clickedLabel)
             {
-                MarkSuccessfulSettlersInteraction(stickyLabel.ItemOnGround?.Address ?? 0, mechanicId);
                 ClearStickyOffscreenTarget();
             }
 
@@ -2483,20 +2514,32 @@ namespace ClickIt.Services
             return true;
         }
 
-        internal static bool ShouldAllowSettlersCandidateWithoutGroundLabel(bool hasGroundLabel, bool isVerisiumPath)
+        internal static string? ResolveLabelMechanicIdForVisibleCandidateComparison(
+            string? resolvedMechanicId,
+            bool hasLabel,
+            bool isWorldItemLabel,
+            bool clickItemsEnabled)
         {
-            return hasGroundLabel || isVerisiumPath;
+            if (!string.IsNullOrWhiteSpace(resolvedMechanicId))
+                return resolvedMechanicId;
+
+            if (hasLabel && isWorldItemLabel && clickItemsEnabled)
+                return MechanicIds.Items;
+
+            return resolvedMechanicId;
         }
 
-        internal static bool ShouldAllowNonVerisiumSettlersRetryWithoutGroundLabel(
-            bool hasGroundLabel,
-            bool isVerisiumPath,
-            bool recentlyClickedNonVerisiumTarget)
+        internal static bool ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(
+            string? labelMechanicId,
+            string? settlersCandidateMechanicId)
         {
-            if (hasGroundLabel || isVerisiumPath)
-                return true;
+            if (!IsSettlersMechanicId(labelMechanicId) || !IsSettlersMechanicId(settlersCandidateMechanicId))
+                return false;
 
-            return recentlyClickedNonVerisiumTarget;
+            if (string.IsNullOrWhiteSpace(labelMechanicId) || string.IsNullOrWhiteSpace(settlersCandidateMechanicId))
+                return false;
+
+            return string.Equals(labelMechanicId, settlersCandidateMechanicId, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool ShouldForceUiHoverVerificationForLabel(LabelOnGround? label)

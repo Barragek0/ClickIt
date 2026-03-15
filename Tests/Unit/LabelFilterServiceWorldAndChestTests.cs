@@ -106,14 +106,16 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void HasVerisiumOnScreen_DetectsPathAndWithinDistance()
+        public void IsSettlersOrePath_UsesStrictSettlersNodeMarkers()
         {
-            var settings = new ClickItSettings();
-            settings.ClickSettlersOre.Value = true;
+            var settlersNodePath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/CrimsonIron";
+            var monsterPath = "Metadata/Monsters/LeagueKalguur/CrimsonIron/SmallGrowthMaps@83";
 
-            // Use internal helper and pass a simple tuple list - avoids needing to construct LabelOnGround
-            var ok = (bool)InvokePrivateStatic("IsSettlersOrePath", "some/CrimsonIron/path")!;
-            ok.Should().BeTrue();
+            var settlersMatch = (bool)InvokePrivateStatic("IsSettlersOrePath", settlersNodePath)!;
+            settlersMatch.Should().BeTrue();
+
+            var monsterMatch = (bool)InvokePrivateStatic("IsSettlersOrePath", monsterPath)!;
+            monsterMatch.Should().BeFalse();
         }
 
         [TestMethod]

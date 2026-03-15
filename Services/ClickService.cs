@@ -53,9 +53,6 @@ namespace ClickIt.Services
         private long _movementSkillPostCastClickBlockUntilTimestampMs;
         private long _movementSkillStatusPollUntilTimestampMs;
         private object? _lastUsedMovementSkillEntry;
-        private long _lastSuccessfulNonVerisiumSettlersTargetAddress;
-        private string? _lastSuccessfulNonVerisiumSettlersMechanicId;
-        private long _lastSuccessfulNonVerisiumSettlersTimestampMs;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
