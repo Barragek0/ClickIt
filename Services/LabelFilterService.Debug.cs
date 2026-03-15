@@ -58,7 +58,15 @@ namespace ClickIt.Services
 
         private void SetLatestLabelDebug(LabelDebugSnapshot snapshot)
         {
+            if (!ShouldCaptureLabelDebug())
+                return;
+
             _labelDebugStore.SetLatest(snapshot);
+        }
+
+        private bool ShouldCaptureLabelDebug()
+        {
+            return _settings.DebugMode.Value && _settings.DebugShowLabels.Value;
         }
 
         private void PublishLabelDebugStage(
@@ -76,6 +84,9 @@ namespace ClickIt.Services
             float selectedDistance,
             string notes)
         {
+            if (!ShouldCaptureLabelDebug())
+                return;
+
             SetLatestLabelDebug(new LabelDebugSnapshot(
                 HasData: true,
                 Stage: stage,

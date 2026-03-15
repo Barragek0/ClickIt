@@ -118,5 +118,44 @@ namespace ClickIt.Tests.Unit
             bool clickSettlersOre = (bool)clickSettlersOreProperty!.GetValue(result)!;
             clickSettlersOre.Should().BeTrue();
         }
+
+        [TestMethod]
+        public void CreateClickSettings_SeparatesSettlersOrePerMechanicToggles()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickSettlersOre.Value = true;
+            settings.ClickSettlersCrimsonIron.Value = true;
+            settings.ClickSettlersCopper.Value = false;
+            settings.ClickSettlersPetrifiedWood.Value = true;
+            settings.ClickSettlersBismuth.Value = false;
+            settings.ClickSettlersVerisium.Value = true;
+
+            var ess = new EssenceService(settings);
+            var err = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
+            var svc = new LabelFilterService(settings, ess, err, null);
+
+            LabelFilterService.KeyStateProvider = _ => false;
+            LabelFilterService.LazyModeRestrictedChecker = (_, _) => false;
+
+            var method = typeof(LabelFilterService).GetMethod("CreateClickSettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method.Should().NotBeNull();
+
+            var result = method!.Invoke(svc, [null]);
+            result.Should().NotBeNull();
+
+            var clickSettingsType = result!.GetType();
+
+            bool clickCrimsonIron = (bool)clickSettingsType.GetProperty("ClickSettlersCrimsonIron")!.GetValue(result)!;
+            bool clickCopper = (bool)clickSettingsType.GetProperty("ClickSettlersCopper")!.GetValue(result)!;
+            bool clickPetrifiedWood = (bool)clickSettingsType.GetProperty("ClickSettlersPetrifiedWood")!.GetValue(result)!;
+            bool clickBismuth = (bool)clickSettingsType.GetProperty("ClickSettlersBismuth")!.GetValue(result)!;
+            bool clickVerisium = (bool)clickSettingsType.GetProperty("ClickSettlersVerisium")!.GetValue(result)!;
+
+            clickCrimsonIron.Should().BeTrue();
+            clickCopper.Should().BeFalse();
+            clickPetrifiedWood.Should().BeTrue();
+            clickBismuth.Should().BeFalse();
+            clickVerisium.Should().BeTrue();
+        }
     }
 }

@@ -1,4 +1,5 @@
 using ClickIt.Components;
+using ClickIt.Services;
 using ClickIt.Utils;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
@@ -166,6 +167,11 @@ namespace ClickIt.Rendering
 
         public int RenderLabelsDebug(int xPos, int yPos, int lineHeight)
         {
+            return RenderLabelsDebug(ref xPos, yPos, lineHeight);
+        }
+
+        private int RenderLabelsDebug(ref int xPos, int yPos, int lineHeight)
+        {
             _deferredTextQueue.Enqueue("--- Labels ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
@@ -229,14 +235,77 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Selected Distance: {snap.SelectedDistance:0.0}", new Vector2(xPos, yPos), Color.White, 13);
             yPos += lineHeight;
 
-            _deferredTextQueue.Enqueue($"Selected Path: {TrimForDebug(snap.SelectedEntityPath, 56)}", new Vector2(xPos, yPos), Color.LightGray, 13);
-            yPos += lineHeight;
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Selected Path: {snap.SelectedEntityPath}", Color.LightGray, 13, 72);
 
-            _deferredTextQueue.Enqueue($"Note: {TrimForDebug(snap.Notes, 56)}", new Vector2(xPos, yPos), Color.LightGray, 13);
-            yPos += lineHeight;
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Note: {snap.Notes}", Color.LightGray, 13, 72);
 
             var trail = clickIt.State.LabelFilterService.GetLatestLabelDebugTrail();
-            yPos = RenderDebugTrailBlock(xPos, yPos, lineHeight, trail, maxRows: 8, trimWidth: 80);
+            yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 80);
+
+            return yPos;
+        }
+
+        public int RenderInventoryPickupDebug(int xPos, int yPos, int lineHeight)
+        {
+            return RenderInventoryPickupDebug(ref xPos, yPos, lineHeight);
+        }
+
+        private int RenderInventoryPickupDebug(ref int xPos, int yPos, int lineHeight)
+        {
+            _deferredTextQueue.Enqueue("--- Inventory Pickup ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+
+            var snap = LabelFilterService.GetLatestInventoryDebug();
+            if (!snap.HasData)
+            {
+                _deferredTextQueue.Enqueue("No inventory pickup debug data yet", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            Color decisionColor = snap.DecisionAllowPickup ? Color.LightGreen : Color.OrangeRed;
+            Color fullnessColor = snap.InventoryFull ? Color.OrangeRed : Color.LightGreen;
+
+            _deferredTextQueue.Enqueue($"Stage: {snap.Stage}  Seq: {snap.Sequence}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Allow Pickup: {snap.DecisionAllowPickup}", new Vector2(xPos, yPos), decisionColor, 14);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Inventory Full: {snap.InventoryFull} ({snap.InventoryFullSource})", new Vector2(xPos, yPos), fullnessColor, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Server Inventory Present: {snap.HasPrimaryInventory}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Full Flag Used/Value: {snap.UsedFullFlag}/{snap.FullFlagValue}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Cell Occupancy Used: {snap.UsedCellOccupancy}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Capacity/Occupied Cells: {snap.CapacityCells}/{snap.OccupiedCells}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Inventory Entities/Layout Entries: {snap.InventoryEntityCount}/{snap.LayoutEntryCount}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Ground Item Name: {snap.GroundItemName}", Color.LightGray, 13, 72);
+
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Ground Item Path: {snap.GroundItemPath}", Color.LightGray, 13, 72);
+
+            _deferredTextQueue.Enqueue($"Ground Stackable: {snap.IsGroundStackable}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Path Matches In Inventory: {snap.MatchingPathCount}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue($"Partial Stack Matches: {snap.PartialMatchingStackCount} (Any: {snap.HasPartialMatchingStack})", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Note: {snap.Notes}", Color.LightGray, 13, 72);
+
+            var trail = LabelFilterService.GetLatestInventoryDebugTrail();
+            yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 4, wrapWidth: 80);
 
             return yPos;
         }

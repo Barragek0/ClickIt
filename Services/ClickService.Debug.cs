@@ -61,7 +61,15 @@ namespace ClickIt.Services
 
         private void SetLatestClickDebug(ClickDebugSnapshot snapshot)
         {
+            if (!ShouldCaptureClickDebug())
+                return;
+
             _clickDebugStore.SetLatest(snapshot);
+        }
+
+        private bool ShouldCaptureClickDebug()
+        {
+            return settings.DebugMode.Value && settings.DebugShowClicking.Value;
         }
     }
 }

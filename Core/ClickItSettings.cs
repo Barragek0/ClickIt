@@ -66,19 +66,22 @@ namespace ClickIt
         [Menu("Labels", "Show/hide the labels debug section", 7, 2)]
         public ToggleNode DebugShowLabels { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Hovered Item Metadata", "Show/hide the hovered item metadata debug section", 8, 2)]
+        [Menu("Inventory Pickup", "Show/hide inventory pickup/fullness debug section", 8, 2)]
+        public ToggleNode DebugShowInventoryPickup { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Hovered Item Metadata", "Show/hide the hovered item metadata debug section", 9, 2)]
         public ToggleNode DebugShowHoveredItemMetadata { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Pathfinding", "Show/hide offscreen pathfinding debug section", 9, 2)]
+        [Menu("Pathfinding", "Show/hide offscreen pathfinding debug section", 10, 2)]
         public ToggleNode DebugShowPathfinding { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Clicking", "Show/hide clicking debug section", 10, 2)]
+        [Menu("Clicking", "Show/hide clicking debug section", 11, 2)]
         public ToggleNode DebugShowClicking { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 11, 2)]
+        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 12, 2)]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Frames", "Show/hide the debug screen area frames", 12, 2)]
+        [Menu("Debug Frames", "Show/hide the debug screen area frames", 13, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Log messages", "This will flood your log and screen with debug text.", 5, 900)]
@@ -255,6 +258,21 @@ namespace ClickIt
         [Menu("Settlers Ore Deposits", "Click settlers league ore deposits (CrimsonIron, Orichalcum, etc).", 16, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickSettlersOre { get; set; } = new ToggleNode(true);
+        [Menu("Settlers Crimson Iron", "Click settlers Crimson Iron deposits.", 17, 1400)]
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickSettlersCrimsonIron { get; set; } = new ToggleNode(true);
+        [Menu("Settlers Copper", "Click settlers Copper deposits.", 18, 1400)]
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickSettlersCopper { get; set; } = new ToggleNode(true);
+        [Menu("Settlers Petrified Wood", "Click settlers Petrified Wood deposits.", 19, 1400)]
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickSettlersPetrifiedWood { get; set; } = new ToggleNode(true);
+        [Menu("Settlers Bismuth", "Click settlers Bismuth deposits.", 20, 1400)]
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickSettlersBismuth { get; set; } = new ToggleNode(true);
+        [Menu("Settlers Verisium", "Click settlers Verisium deposits.", 21, 1400)]
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickSettlersVerisium { get; set; } = new ToggleNode(true);
         [Menu("Items", "Click items", 30, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickItems { get; set; } = new ToggleNode(true);

@@ -11,6 +11,8 @@ namespace ClickIt.Tests.Unit
         public void GetNextLabelToClick_PublishesNoLabelsDebugSnapshot_WhenInputIsNull()
         {
             var settings = new ClickItSettings();
+            settings.DebugMode.Value = true;
+            settings.DebugShowLabels.Value = true;
             var essenceService = new EssenceService(settings);
             var errorHandler = new global::ClickIt.Utils.ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
             var service = new LabelFilterService(settings, essenceService, errorHandler, null);
@@ -32,6 +34,8 @@ namespace ClickIt.Tests.Unit
         public void GetNextLabelToClick_PublishesNoLabelsDebugSnapshot_WhenInputIsEmpty()
         {
             var settings = new ClickItSettings();
+            settings.DebugMode.Value = true;
+            settings.DebugShowLabels.Value = true;
             var essenceService = new EssenceService(settings);
             var errorHandler = new global::ClickIt.Utils.ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
             var service = new LabelFilterService(settings, essenceService, errorHandler, null);

@@ -15,8 +15,8 @@ namespace ClickIt.Rendering
         private const int DetailedDebugStartY = 120;
         private const int DetailedDebugLineHeight = 18;
         private const int DetailedDebugBaseX = 10;
-        private const int DetailedDebugLinesPerColumn = 45;
-        private const int DetailedDebugColumnShiftPx = 405;
+        private const int DetailedDebugLinesPerColumn = 40;
+        private const int DetailedDebugColumnShiftPx = 600;
         private const int DetailedDebugMaxColumns = 4;
 
         private readonly BaseSettingsPlugin<ClickItSettings> _plugin;
@@ -150,17 +150,64 @@ namespace ClickIt.Rendering
                 yPos = renderSection(xPos, yPos, lineHeight);
             }
 
+            void RenderSectionIfEnabledWithPosition(bool enabled, Func<int, int, int, (int NextX, int NextY)> renderSection)
+            {
+                if (!enabled)
+                {
+                    return;
+                }
+
+                (currentColumn, xPos, yPos) = ResolveDebugColumnForNextSection(
+                    currentColumn,
+                    xPos,
+                    yPos,
+                    startY,
+                    lineHeight,
+                    linesPerColumn,
+                    maxColumns,
+                    baseX,
+                    columnShiftPx);
+
+                (xPos, yPos) = renderSection(xPos, yPos, lineHeight);
+                currentColumn = ResolveDebugColumnFromX(xPos, baseX, columnShiftPx, maxColumns);
+            }
+
             RenderSectionIfEnabled(settings.DebugShowStatus, (x, y, h) => RenderPluginStatusDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowGameState, (x, y, h) => RenderGameStateDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowPerformance, (x, y, h) => RenderPerformanceDebug(x, y, h, performanceMonitor));
             RenderSectionIfEnabled(settings.DebugShowClickFrequencyTarget, (x, y, h) => RenderClickFrequencyTargetDebug(x, y, h, performanceMonitor));
             RenderSectionIfEnabled(settings.DebugShowAltarDetection, (x, y, h) => RenderAltarDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowAltarService, (x, y, h) => RenderAltarServiceDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowLabels, (x, y, h) => RenderLabelsDebug(x, y, h));
+            RenderSectionIfEnabledWithPosition(settings.DebugShowLabels, (x, y, h) =>
+            {
+                int localX = x;
+                int nextY = RenderLabelsDebug(ref localX, y, h);
+                return (localX, nextY);
+            });
+            RenderSectionIfEnabledWithPosition(settings.DebugShowInventoryPickup, (x, y, h) =>
+            {
+                int localX = x;
+                int nextY = RenderInventoryPickupDebug(ref localX, y, h);
+                return (localX, nextY);
+            });
             RenderSectionIfEnabled(settings.DebugShowHoveredItemMetadata, (x, y, h) => RenderHoveredItemMetadataDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowPathfinding, (x, y, h) => RenderPathfindingDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowClicking, (x, y, h) => RenderClickingDebug(x, y, h));
+            RenderSectionIfEnabledWithPosition(settings.DebugShowClicking, (x, y, h) =>
+            {
+                int localX = x;
+                int nextY = RenderClickingDebug(ref localX, y, h);
+                return (localX, nextY);
+            });
             RenderSectionIfEnabled(settings.DebugShowRecentErrors, (x, y, h) => RenderErrorsDebug(x, y, h));
+        }
+
+        private static int ResolveDebugColumnFromX(int xPos, int baseX, int columnShiftPx, int maxColumns)
+        {
+            if (columnShiftPx <= 0 || maxColumns <= 0)
+                return 0;
+
+            int raw = (xPos - baseX) / columnShiftPx;
+            return Math.Clamp(raw, 0, maxColumns - 1);
         }
 
         private static (int NextColumn, int NextX, int NextY) ResolveDebugColumnForNextSection(
@@ -190,41 +237,121 @@ namespace ClickIt.Rendering
             return (nextColumn, nextX, startY);
         }
 
-        private int RenderDebugTrailBlock(int xPos, int yPos, int lineHeight, IReadOnlyList<string> trail, int maxRows, int trimWidth)
+        private int RenderDebugTrailBlock(ref int xPos, int yPos, int lineHeight, IReadOnlyList<string> trail, int maxRows, int wrapWidth)
         {
             if (trail == null || trail.Count == 0 || lineHeight <= 0)
                 return yPos;
 
-            int remainingLines = GetRemainingLinesInCurrentDebugColumn(yPos);
-            if (remainingLines <= 0)
-            {
+            if (!EnsureDebugLineCapacity(ref xPos, ref yPos, lineHeight))
                 return yPos;
-            }
 
             _deferredTextQueue.Enqueue("Recent Stages:", new Vector2(xPos, yPos), Color.LightBlue, 13);
             yPos += lineHeight;
 
-            remainingLines--;
-            if (remainingLines <= 0)
-            {
-                return yPos;
-            }
-
-            int rowsToRender = Math.Min(Math.Max(1, maxRows), remainingLines);
+            int rowsToRender = Math.Min(Math.Max(1, maxRows), trail.Count);
             int start = Math.Max(0, trail.Count - rowsToRender);
             for (int i = start; i < trail.Count; i++)
             {
-                _deferredTextQueue.Enqueue($"  {TrimForDebug(trail[i], trimWidth)}", new Vector2(xPos, yPos), Color.LightGray, 12);
+                yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"  {trail[i]}", Color.LightGray, 12, wrapWidth);
+            }
+
+            return yPos;
+        }
+
+        protected int EnqueueWrappedDebugLine(
+            ref int xPos,
+            int yPos,
+            int lineHeight,
+            string text,
+            Color color,
+            int fontSize,
+            int maxCharsPerLine = 72)
+        {
+            if (lineHeight <= 0)
+                return yPos;
+
+            if (string.IsNullOrEmpty(text))
+            {
+                if (!EnsureDebugLineCapacity(ref xPos, ref yPos, lineHeight))
+                    return yPos;
+
+                _deferredTextQueue.Enqueue(string.Empty, new Vector2(xPos, yPos), color, fontSize);
+                return yPos + lineHeight;
+            }
+
+            int safeWrap = Math.Max(20, maxCharsPerLine);
+            foreach (string wrappedLine in WrapTextForDebug(text, safeWrap))
+            {
+                if (!EnsureDebugLineCapacity(ref xPos, ref yPos, lineHeight))
+                    break;
+
+                _deferredTextQueue.Enqueue(wrappedLine, new Vector2(xPos, yPos), color, fontSize);
                 yPos += lineHeight;
             }
 
             return yPos;
         }
 
-        private static int GetRemainingLinesInCurrentDebugColumn(int yPos)
+        private static bool EnsureDebugLineCapacity(ref int xPos, ref int yPos, int lineHeight)
         {
-            int usedLines = Math.Max(0, (yPos - DetailedDebugStartY) / DetailedDebugLineHeight);
-            return Math.Max(0, DetailedDebugLinesPerColumn - usedLines);
+            if (lineHeight <= 0)
+                return false;
+
+            int usedLines = Math.Max(0, (yPos - DetailedDebugStartY) / lineHeight);
+            if (usedLines < DetailedDebugLinesPerColumn)
+                return true;
+
+            int currentColumn = ResolveDebugColumnFromX(xPos, DetailedDebugBaseX, DetailedDebugColumnShiftPx, DetailedDebugMaxColumns);
+            if (currentColumn >= DetailedDebugMaxColumns - 1)
+                return false;
+
+            int nextColumn = currentColumn + 1;
+            xPos = DetailedDebugBaseX + (nextColumn * DetailedDebugColumnShiftPx);
+            yPos = DetailedDebugStartY;
+            return true;
+        }
+
+        private static List<string> WrapTextForDebug(string text, int maxCharsPerLine)
+        {
+            var lines = new List<string>(8);
+            if (string.IsNullOrEmpty(text))
+            {
+                lines.Add(string.Empty);
+                return lines;
+            }
+
+            int safeWrap = Math.Max(20, maxCharsPerLine);
+            int leadingSpaces = 0;
+            while (leadingSpaces < text.Length && text[leadingSpaces] == ' ')
+            {
+                leadingSpaces++;
+            }
+
+            string indentation = new(' ', leadingSpaces);
+            ReadOnlySpan<char> content = text.AsSpan(leadingSpaces);
+            int contentLength = content.Length;
+            int startIndex = 0;
+
+            while (startIndex < contentLength)
+            {
+                int endIndex = Math.Min(startIndex + safeWrap, contentLength);
+                if (endIndex < contentLength)
+                {
+                    ReadOnlySpan<char> segment = content.Slice(startIndex, endIndex - startIndex);
+                    int lastSpaceOffset = segment.LastIndexOf(' ');
+                    if (lastSpaceOffset > 0)
+                        endIndex = startIndex + lastSpaceOffset;
+                }
+
+                ReadOnlySpan<char> lineSpan = content.Slice(startIndex, endIndex - startIndex).TrimEnd();
+                lines.Add(indentation + lineSpan.ToString());
+
+                startIndex = endIndex;
+                if (startIndex < contentLength && content[startIndex] == ' ')
+                    startIndex++;
+            }
+
+            return lines;
         }
 
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)

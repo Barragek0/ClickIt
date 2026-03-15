@@ -6,6 +6,9 @@ namespace ClickIt.Services
 {
     public sealed class PathfindingService(ClickItSettings settings, Utils.ErrorHandler? errorHandler = null)
     {
+        private static readonly IReadOnlyList<GridPoint> EmptyGridPath = Array.Empty<GridPoint>();
+        private static readonly IReadOnlyList<Vector2> EmptyScreenPath = Array.Empty<Vector2>();
+
         private readonly ClickItSettings _settings = settings;
         private readonly Utils.ErrorHandler? _errorHandler = errorHandler;
 
@@ -17,8 +20,8 @@ namespace ClickIt.Services
         private int _lastPathLength;
         private long _lastComputeMs;
         private long _lastPathBuildAttemptTickMs;
-        private IReadOnlyList<GridPoint> _lastGridPath = new List<GridPoint>();
-        private IReadOnlyList<Vector2> _lastScreenPath = new List<Vector2>();
+        private IReadOnlyList<GridPoint> _lastGridPath = EmptyGridPath;
+        private IReadOnlyList<Vector2> _lastScreenPath = EmptyScreenPath;
         private string _lastTargetPath = string.Empty;
         private OffscreenMovementDebugSnapshot _lastOffscreenMovementDebug = OffscreenMovementDebugSnapshot.Empty;
 
@@ -117,8 +120,8 @@ namespace ClickIt.Services
         {
             lock (_stateLock)
             {
-                _lastGridPath = new List<GridPoint>();
-                _lastScreenPath = new List<Vector2>();
+                _lastGridPath = EmptyGridPath;
+                _lastScreenPath = EmptyScreenPath;
                 _lastPathLength = 0;
                 _lastTargetPath = string.Empty;
                 _lastFailureReason = string.Empty;
@@ -138,8 +141,8 @@ namespace ClickIt.Services
                 if (elapsedMs < timeoutMs)
                     return false;
 
-                _lastGridPath = new List<GridPoint>();
-                _lastScreenPath = new List<Vector2>();
+                _lastGridPath = EmptyGridPath;
+                _lastScreenPath = EmptyScreenPath;
                 _lastPathLength = 0;
                 _lastTargetPath = string.Empty;
                 _lastFailureReason = string.Empty;
@@ -186,8 +189,8 @@ namespace ClickIt.Services
                     _lastPathLength = 0;
                     _lastFailureReason = "A* did not find a route.";
                     _lastTargetPath = target.Path ?? string.Empty;
-                    _lastGridPath = new List<GridPoint>();
-                    _lastScreenPath = new List<Vector2>();
+                    _lastGridPath = EmptyGridPath;
+                    _lastScreenPath = EmptyScreenPath;
                 }
                 return false;
             }
@@ -522,8 +525,8 @@ namespace ClickIt.Services
             {
                 _lastFailureReason = reason;
                 _lastPathLength = 0;
-                _lastGridPath = new List<GridPoint>();
-                _lastScreenPath = new List<Vector2>();
+                _lastGridPath = EmptyGridPath;
+                _lastScreenPath = EmptyScreenPath;
             }
 
             _errorHandler?.LogMessage(localDebug: true, message: $"PathfindingService: {reason}", frame: 10);

@@ -63,6 +63,7 @@ namespace ClickIt
                 || DebugShowAltarDetection
                 || DebugShowAltarService
                 || DebugShowLabels
+                || DebugShowInventoryPickup
                 || DebugShowHoveredItemMetadata
                 || DebugShowPathfinding
                 || DebugShowClicking
@@ -79,6 +80,7 @@ namespace ClickIt
             && !DebugShowAltarDetection
             && !DebugShowAltarService
             && !DebugShowLabels
+            && !DebugShowInventoryPickup
             && !DebugShowHoveredItemMetadata
             && !DebugShowClicking
             && !DebugShowRecentErrors;
@@ -128,6 +130,7 @@ namespace ClickIt
                 DrawToggleNodeControl("Altar Detection", DebugShowAltarDetection, "Show/hide the Altar Detection debug section");
                 DrawToggleNodeControl("Altar Service", DebugShowAltarService, "Show/hide the Altar Service debug section");
                 DrawToggleNodeControl("Labels", DebugShowLabels, "Show/hide the labels debug section");
+                DrawToggleNodeControl("Inventory Pickup", DebugShowInventoryPickup, "Show/hide inventory pickup/fullness debug section");
                 DrawToggleNodeControl("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section");
                 DrawToggleNodeControl("Pathfinding", DebugShowPathfinding, "Show/hide offscreen pathfinding debug section");
                 DrawToggleNodeControl("Clicking", DebugShowClicking, "Show/hide clicking debug section");
@@ -683,11 +686,11 @@ namespace ClickIt
                 new(MechanicIds.RitualInitiate, "Ritual Altars", ClickRitualInitiate, null, true),
                 new(MechanicIds.RitualCompleted, "Completed Ritual Altars", ClickRitualCompleted, null, true),
                 new(MechanicIds.LostShipment, "Lost Shipment", ClickLostShipmentCrates, "settlers", true),
-                new(MechanicIds.SettlersCrimsonIron, "Crimson Iron", ClickSettlersOre, "settlers", true),
-                new(MechanicIds.SettlersCopper, "Copper", ClickSettlersOre, "settlers", true),
-                new(MechanicIds.SettlersPetrifiedWood, "Petrified Wood", ClickSettlersOre, "settlers", true),
-                new(MechanicIds.SettlersBismuth, "Bismuth", ClickSettlersOre, "settlers", true),
-                new(MechanicIds.SettlersVerisium, "Verisium", ClickSettlersOre, "settlers", true),
+                new(MechanicIds.SettlersCrimsonIron, "Crimson Iron", ClickSettlersCrimsonIron, "settlers", true),
+                new(MechanicIds.SettlersCopper, "Copper", ClickSettlersCopper, "settlers", true),
+                new(MechanicIds.SettlersPetrifiedWood, "Petrified Wood", ClickSettlersPetrifiedWood, "settlers", true),
+                new(MechanicIds.SettlersBismuth, "Bismuth", ClickSettlersBismuth, "settlers", true),
+                new(MechanicIds.SettlersVerisium, "Verisium", ClickSettlersVerisium, "settlers", true),
                 new(MechanicIds.DelveAzuriteVeins, "Azurite Veins", ClickAzuriteVeins, "delve", true),
                 new(MechanicIds.DelveSulphiteVeins, "Sulphite Veins", ClickSulphiteVeins, "delve", true),
                 new(MechanicIds.DelveEncounterInitiators, "Encounter Initiators", ClickDelveSpawners, "delve", true),

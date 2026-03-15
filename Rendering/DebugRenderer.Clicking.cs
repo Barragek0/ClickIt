@@ -7,6 +7,11 @@ namespace ClickIt.Rendering
     {
         public int RenderClickingDebug(int xPos, int yPos, int lineHeight)
         {
+            return RenderClickingDebug(ref xPos, yPos, lineHeight);
+        }
+
+        private int RenderClickingDebug(ref int xPos, int yPos, int lineHeight)
+        {
             _deferredTextQueue.Enqueue("--- Clicking ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
@@ -33,8 +38,7 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Distance: {snap.Distance:0.0}", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
-            _deferredTextQueue.Enqueue($"Path: {TrimForDebug(snap.EntityPath, 56)}", new Vector2(xPos, yPos), Color.LightGray, 13);
-            yPos += lineHeight;
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Path: {snap.EntityPath}", Color.LightGray, 13, 72);
 
             _deferredTextQueue.Enqueue($"World Raw: ({snap.WorldScreenRaw.X:0.0},{snap.WorldScreenRaw.Y:0.0})", new Vector2(xPos, yPos), Color.White, 13);
             yPos += lineHeight;
@@ -51,24 +55,12 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Resolved InWnd/Clickable: {snap.ResolvedInWindow}/{snap.ResolvedClickable}", new Vector2(xPos, yPos), Color.White, 13);
             yPos += lineHeight;
 
-            _deferredTextQueue.Enqueue($"Resolved: {snap.Resolved}  Note: {TrimForDebug(snap.Notes, 48)}", new Vector2(xPos, yPos), Color.LightGray, 13);
-            yPos += lineHeight;
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Resolved: {snap.Resolved}  Note: {snap.Notes}", Color.LightGray, 13, 72);
 
             var trail = clickIt.State.ClickService.GetLatestClickDebugTrail();
-            yPos = RenderDebugTrailBlock(xPos, yPos, lineHeight, trail, maxRows: 8, trimWidth: 78);
+            yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 78);
 
             return yPos;
-        }
-
-        private static string TrimForDebug(string value, int maxChars)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return string.Empty;
-
-            if (value.Length <= maxChars)
-                return value;
-
-            return value.Substring(0, maxChars) + "...";
         }
     }
 }

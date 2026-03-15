@@ -11,6 +11,105 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
+        private const int InventoryDebugTrailCapacity = 32;
+        private static readonly Utils.DebugSnapshotStore<InventoryDebugSnapshot> InventoryDebugStore = new(
+            InventoryDebugSnapshot.Empty,
+            InventoryDebugTrailCapacity,
+            static (snapshot, sequence) => snapshot with { Sequence = sequence },
+            static snapshot =>
+                $"{snapshot.Sequence:00000} {snapshot.Stage} | f:{snapshot.InventoryFull} a:{snapshot.DecisionAllowPickup} c:{snapshot.CapacityCells} o:{snapshot.OccupiedCells} s:{snapshot.IsGroundStackable} p:{snapshot.HasPartialMatchingStack} n:{snapshot.Notes}");
+
+        public sealed record InventoryDebugSnapshot(
+            bool HasData,
+            string Stage,
+            bool InventoryFull,
+            string InventoryFullSource,
+            bool HasPrimaryInventory,
+            bool UsedFullFlag,
+            bool FullFlagValue,
+            bool UsedCellOccupancy,
+            int CapacityCells,
+            int OccupiedCells,
+            int InventoryEntityCount,
+            int LayoutEntryCount,
+            string GroundItemPath,
+            string GroundItemName,
+            bool IsGroundStackable,
+            int MatchingPathCount,
+            int PartialMatchingStackCount,
+            bool HasPartialMatchingStack,
+            bool DecisionAllowPickup,
+            string Notes,
+            long Sequence,
+            long TimestampMs)
+        {
+            public static readonly InventoryDebugSnapshot Empty = new(
+                HasData: false,
+                Stage: string.Empty,
+                InventoryFull: false,
+                InventoryFullSource: string.Empty,
+                HasPrimaryInventory: false,
+                UsedFullFlag: false,
+                FullFlagValue: false,
+                UsedCellOccupancy: false,
+                CapacityCells: 0,
+                OccupiedCells: 0,
+                InventoryEntityCount: 0,
+                LayoutEntryCount: 0,
+                GroundItemPath: string.Empty,
+                GroundItemName: string.Empty,
+                IsGroundStackable: false,
+                MatchingPathCount: 0,
+                PartialMatchingStackCount: 0,
+                HasPartialMatchingStack: false,
+                DecisionAllowPickup: false,
+                Notes: string.Empty,
+                Sequence: 0,
+                TimestampMs: 0);
+        }
+
+        private readonly record struct InventoryFullProbe(
+            bool HasPrimaryInventory,
+            bool UsedFullFlag,
+            bool FullFlagValue,
+            bool UsedCellOccupancy,
+            int CapacityCells,
+            int OccupiedCells,
+            int InventoryEntityCount,
+            int LayoutEntryCount,
+            bool IsFull,
+            string Source,
+            string Notes)
+        {
+            public static readonly InventoryFullProbe Empty = new(
+                HasPrimaryInventory: false,
+                UsedFullFlag: false,
+                FullFlagValue: false,
+                UsedCellOccupancy: false,
+                CapacityCells: 0,
+                OccupiedCells: 0,
+                InventoryEntityCount: 0,
+                LayoutEntryCount: 0,
+                IsFull: false,
+                Source: string.Empty,
+                Notes: string.Empty);
+        }
+
+        public static InventoryDebugSnapshot GetLatestInventoryDebug()
+        {
+            return InventoryDebugStore.GetLatest();
+        }
+
+        public static IReadOnlyList<string> GetLatestInventoryDebugTrail()
+        {
+            return InventoryDebugStore.GetTrail();
+        }
+
+        private static void PublishInventoryDebug(InventoryDebugSnapshot snapshot)
+        {
+            InventoryDebugStore.SetLatest(snapshot);
+        }
+
         private static bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController)
         {
             string metadata = GetWorldItemMetadataPath(item);
@@ -31,13 +130,75 @@ namespace ClickIt.Services
 
         private static bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
         {
-            if (!IsInventoryFullCore(gameController))
+            bool inventoryFull = IsInventoryFullCore(gameController, out InventoryFullProbe probe);
+            if (!inventoryFull)
+            {
+                PublishInventoryDebug(new InventoryDebugSnapshot(
+                    HasData: true,
+                    Stage: "InventoryNotFullAllow",
+                    InventoryFull: false,
+                    InventoryFullSource: probe.Source,
+                    HasPrimaryInventory: probe.HasPrimaryInventory,
+                    UsedFullFlag: probe.UsedFullFlag,
+                    FullFlagValue: probe.FullFlagValue,
+                    UsedCellOccupancy: probe.UsedCellOccupancy,
+                    CapacityCells: probe.CapacityCells,
+                    OccupiedCells: probe.OccupiedCells,
+                    InventoryEntityCount: probe.InventoryEntityCount,
+                    LayoutEntryCount: probe.LayoutEntryCount,
+                    GroundItemPath: string.Empty,
+                    GroundItemName: string.Empty,
+                    IsGroundStackable: false,
+                    MatchingPathCount: 0,
+                    PartialMatchingStackCount: 0,
+                    HasPartialMatchingStack: false,
+                    DecisionAllowPickup: true,
+                    Notes: probe.Notes,
+                    Sequence: 0,
+                    TimestampMs: Environment.TickCount64));
+
                 return true;
+            }
 
             Entity? groundItemEntity = TryGetWorldItemEntity(groundItem);
-            bool isStackable = IsStackableCurrencyCore(groundItemEntity, gameController);
-            bool hasPartialMatchingStack = HasMatchingPartialStackInInventoryCore(groundItemEntity?.Path, gameController);
-            return ShouldPickupWhenInventoryFullCore(inventoryFull: true, isStackable, hasPartialMatchingStack);
+            string groundItemPath = groundItemEntity?.Path ?? string.Empty;
+            string groundItemName = GetWorldItemBaseName(groundItem);
+            bool isStackable = IsGroundItemStackableCore(groundItemEntity);
+            int matchingPathCount = 0;
+            int partialMatchingStackCount = 0;
+            bool hasPartialMatchingStack = isStackable
+                && HasMatchingPartialStackInInventoryCore(
+                    groundItemPath,
+                    gameController,
+                    out matchingPathCount,
+                    out partialMatchingStackCount);
+            bool allowPickup = ShouldPickupWhenInventoryFullCore(inventoryFull: true, isStackable, hasPartialMatchingStack);
+
+            PublishInventoryDebug(new InventoryDebugSnapshot(
+                HasData: true,
+                Stage: "InventoryFullDecision",
+                InventoryFull: true,
+                InventoryFullSource: probe.Source,
+                HasPrimaryInventory: probe.HasPrimaryInventory,
+                UsedFullFlag: probe.UsedFullFlag,
+                FullFlagValue: probe.FullFlagValue,
+                UsedCellOccupancy: probe.UsedCellOccupancy,
+                CapacityCells: probe.CapacityCells,
+                OccupiedCells: probe.OccupiedCells,
+                InventoryEntityCount: probe.InventoryEntityCount,
+                LayoutEntryCount: probe.LayoutEntryCount,
+                GroundItemPath: groundItemPath,
+                GroundItemName: groundItemName,
+                IsGroundStackable: isStackable,
+                MatchingPathCount: matchingPathCount,
+                PartialMatchingStackCount: partialMatchingStackCount,
+                HasPartialMatchingStack: hasPartialMatchingStack,
+                DecisionAllowPickup: allowPickup,
+                Notes: probe.Notes,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
+
+            return allowPickup;
         }
 
         internal static bool ShouldPickupWhenInventoryFullCore(bool inventoryFull, bool isStackable, bool hasPartialMatchingStack)
@@ -50,49 +211,232 @@ namespace ClickIt.Services
             return currentStackSize > 0 && maxStackSize > 0 && currentStackSize < maxStackSize;
         }
 
+        internal static bool IsPartialServerStackCore(bool fullStack, int size)
+        {
+            return size > 0 && !fullStack;
+        }
+
+        internal static bool IsInventoryCellUsageFullCore(int occupiedCellCount, int totalCellCapacity)
+        {
+            return totalCellCapacity > 0 && occupiedCellCount >= totalCellCapacity;
+        }
+
         private static bool IsInventoryFullCore(GameController? gameController)
         {
-            if (!TryResolveInventorySlotStates(gameController, out int totalSlots, out int occupiedSlots))
-                return false;
-
-            return totalSlots > 0 && occupiedSlots >= totalSlots;
+            return IsInventoryFullCore(gameController, out _);
         }
 
-        private static bool TryResolveInventorySlotStates(GameController? gameController, out int totalSlots, out int occupiedSlots)
+        private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
         {
-            totalSlots = 0;
-            occupiedSlots = 0;
+            probe = InventoryFullProbe.Empty;
 
-            if (!TryEnumerateInventorySlotEntries(gameController, out IReadOnlyList<object?> slots))
-                return false;
-
-            for (int i = 0; i < slots.Count; i++)
+            if (!TryGetPrimaryServerInventory(gameController, out object? primaryInventory) || primaryInventory == null)
             {
-                object? slot = slots[i];
-                if (slot == null)
-                    continue;
-
-                totalSlots++;
-                if (IsInventorySlotOccupied(slot))
-                    occupiedSlots++;
+                probe = probe with { Notes = "Primary server inventory missing" };
+                return false;
             }
 
-            return totalSlots > 0;
+            if (TryReadBool(primaryInventory, out bool full, s => s.IsFull))
+            {
+                probe = new InventoryFullProbe(
+                    HasPrimaryInventory: true,
+                    UsedFullFlag: true,
+                    FullFlagValue: full,
+                    UsedCellOccupancy: false,
+                    CapacityCells: 0,
+                    OccupiedCells: 0,
+                    InventoryEntityCount: 0,
+                    LayoutEntryCount: 0,
+                    IsFull: full,
+                    Source: "IsFull",
+                    Notes: "Inventory fullness from server flag IsFull");
+                return full;
+            }
+            if (TryReadBool(primaryInventory, out full, s => s.Full))
+            {
+                probe = new InventoryFullProbe(
+                    HasPrimaryInventory: true,
+                    UsedFullFlag: true,
+                    FullFlagValue: full,
+                    UsedCellOccupancy: false,
+                    CapacityCells: 0,
+                    OccupiedCells: 0,
+                    InventoryEntityCount: 0,
+                    LayoutEntryCount: 0,
+                    IsFull: full,
+                    Source: "Full",
+                    Notes: "Inventory fullness from server flag Full");
+                return full;
+            }
+            if (TryReadBool(primaryInventory, out full, s => s.InventoryFull))
+            {
+                probe = new InventoryFullProbe(
+                    HasPrimaryInventory: true,
+                    UsedFullFlag: true,
+                    FullFlagValue: full,
+                    UsedCellOccupancy: false,
+                    CapacityCells: 0,
+                    OccupiedCells: 0,
+                    InventoryEntityCount: 0,
+                    LayoutEntryCount: 0,
+                    IsFull: full,
+                    Source: "InventoryFull",
+                    Notes: "Inventory fullness from server flag InventoryFull");
+                return full;
+            }
+
+            if (!TryResolveInventoryCapacity(primaryInventory, out int totalCellCapacity))
+            {
+                probe = probe with
+                {
+                    HasPrimaryInventory = true,
+                    Notes = "Unable to resolve inventory capacity"
+                };
+                return false;
+            }
+
+            if (!TryEnumeratePrimaryInventoryItemEntities(primaryInventory, out IReadOnlyList<Entity> inventoryItems, out string itemEnumDebug))
+            {
+                probe = probe with
+                {
+                    HasPrimaryInventory = true,
+                    CapacityCells = totalCellCapacity,
+                    Notes = $"Unable to enumerate PlayerInventories[0].Inventory.Items ({itemEnumDebug})"
+                };
+                return false;
+            }
+
+            if (!TryResolveOccupiedInventoryCells(inventoryItems, totalCellCapacity, out int occupiedCellCount))
+            {
+                probe = probe with
+                {
+                    HasPrimaryInventory = true,
+                    CapacityCells = totalCellCapacity,
+                    InventoryEntityCount = inventoryItems.Count,
+                    LayoutEntryCount = inventoryItems.Count,
+                    Notes = "Unable to resolve occupied inventory cells from PlayerInventories[0].Inventory.Items"
+                };
+                return false;
+            }
+
+            bool isFullByOccupancy = IsInventoryCellUsageFullCore(occupiedCellCount, totalCellCapacity);
+            probe = new InventoryFullProbe(
+                HasPrimaryInventory: true,
+                UsedFullFlag: false,
+                FullFlagValue: false,
+                UsedCellOccupancy: true,
+                CapacityCells: totalCellCapacity,
+                OccupiedCells: occupiedCellCount,
+                InventoryEntityCount: inventoryItems.Count,
+                LayoutEntryCount: inventoryItems.Count,
+                IsFull: isFullByOccupancy,
+                Source: "CellOccupancy",
+                Notes: $"Inventory fullness from PlayerInventories[0].Inventory.Items footprint ({itemEnumDebug})");
+
+            return isFullByOccupancy;
         }
 
-        private static bool IsInventorySlotOccupied(object slot)
+        private static bool TryResolveOccupiedInventoryCells(
+            IReadOnlyList<Entity> inventoryItems,
+            int totalCellCapacity,
+            out int occupiedCellCount)
         {
-            if (TryReadBool(slot, out bool hasItem, s => s.HasItem))
-                return hasItem;
+            occupiedCellCount = 0;
+            if (totalCellCapacity <= 0)
+                return false;
 
-            if (TryReadBool(slot, out bool isEmpty, s => s.IsEmpty))
-                return !isEmpty;
+            if (inventoryItems == null || inventoryItems.Count == 0)
+                return true;
 
-            return TryGetNestedEntityLikeObject(slot, out _);
+            for (int i = 0; i < inventoryItems.Count; i++)
+            {
+                Entity itemEntity = inventoryItems[i];
+                if (itemEntity == null)
+                    continue;
+
+                TryResolveInventoryItemSize(itemEntity, out int width, out int height);
+                occupiedCellCount += Math.Max(1, width) * Math.Max(1, height);
+                if (occupiedCellCount >= totalCellCapacity)
+                {
+                    occupiedCellCount = totalCellCapacity;
+                    return true;
+                }
+            }
+
+            occupiedCellCount = Math.Min(totalCellCapacity, occupiedCellCount);
+            return true;
         }
 
-        private static bool HasMatchingPartialStackInInventoryCore(string? worldItemPath, GameController? gameController)
+        private static bool TryResolveInventoryCapacity(object primaryInventory, out int totalCellCapacity)
         {
+            totalCellCapacity = 0;
+
+            if (TryReadInt(primaryInventory, out int width, s => s.Width)
+                && TryReadInt(primaryInventory, out int height, s => s.Height)
+                && width > 0
+                && height > 0)
+            {
+                totalCellCapacity = width * height;
+                return true;
+            }
+
+            if (TryReadInt(primaryInventory, out int totalBoxes, s => s.TotalBoxes) && totalBoxes > 0)
+            {
+                totalCellCapacity = totalBoxes;
+                return true;
+            }
+
+            if (TryReadInt(primaryInventory, out int capacity, s => s.Capacity) && capacity > 0)
+            {
+                totalCellCapacity = capacity;
+                return true;
+            }
+
+            totalCellCapacity = 60;
+            return true;
+        }
+
+        private static bool TryResolveInventoryItemSize(Entity itemEntity, out int width, out int height)
+        {
+            width = 1;
+            height = 1;
+
+            try
+            {
+                Base? baseComponent = itemEntity.GetComponent<Base>();
+                bool widthResolved = TryReadInt(baseComponent, out width, s => s.Width);
+                bool heightResolved = TryReadInt(baseComponent, out height, s => s.Height);
+                if (widthResolved && heightResolved)
+                {
+                    width = Math.Max(1, width);
+                    height = Math.Max(1, height);
+                    return true;
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        private static bool IsGroundItemStackableCore(Entity? itemEntity)
+        {
+            if (itemEntity == null)
+                return false;
+
+            return TryResolveServerStackState(itemEntity, out _, out _);
+        }
+
+        private static bool HasMatchingPartialStackInInventoryCore(
+            string? worldItemPath,
+            GameController? gameController,
+            out int matchingPathCount,
+            out int partialMatchingStackCount)
+        {
+            matchingPathCount = 0;
+            partialMatchingStackCount = 0;
+
             if (string.IsNullOrWhiteSpace(worldItemPath))
                 return false;
 
@@ -109,56 +453,49 @@ namespace ClickIt.Services
                 if (!inventoryPath.Equals(worldItemPath, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (!TryResolveStackSizes(inventoryItem, gameController, out int currentStack, out int maxStack))
+                matchingPathCount++;
+
+                if (!TryResolveServerStackState(inventoryItem, out bool fullStack, out int stackSize))
                     continue;
 
-                if (IsPartialStackCore(currentStack, maxStack))
+                if (IsPartialServerStackCore(fullStack, stackSize))
+                {
+                    partialMatchingStackCount++;
                     return true;
+                }
             }
 
             return false;
         }
 
-        private static bool TryResolveStackSizes(Entity itemEntity, GameController? gameController, out int currentStack, out int maxStack)
+        private static bool TryResolveServerStackState(Entity itemEntity, out bool fullStack, out int stackSize)
         {
-            currentStack = 0;
-            maxStack = 0;
+            fullStack = false;
+            stackSize = 0;
 
-            if (itemEntity == null || gameController == null)
+            if (itemEntity == null)
                 return false;
 
             try
             {
                 object? stackComponent = itemEntity.GetComponent<ExileCore.PoEMemory.Components.Stack>();
-                if (!TryReadInt(stackComponent, out currentStack, s => s.Size)
-                    && !TryReadInt(stackComponent, out currentStack, s => s.Count)
-                    && !TryReadInt(stackComponent, out currentStack, s => s.StackSize)
-                    && !TryReadInt(stackComponent, out currentStack, s => s.Amount))
-                {
+                if (!TryReadBool(stackComponent, out fullStack, s => s.FullStack)
+                    && !TryReadBool(stackComponent, out fullStack, s => s.IsFull)
+                    && !TryReadBool(stackComponent, out fullStack, s => s.Full))
                     return false;
-                }
+
+                if (!TryReadInt(stackComponent, out stackSize, s => s.Size)
+                    && !TryReadInt(stackComponent, out stackSize, s => s.Count)
+                    && !TryReadInt(stackComponent, out stackSize, s => s.StackSize)
+                    && !TryReadInt(stackComponent, out stackSize, s => s.Amount))
+                    return false;
             }
             catch
             {
                 return false;
             }
 
-            try
-            {
-                object? baseItemType = gameController.Files?.BaseItemTypes?.Translate(itemEntity.Path ?? string.Empty);
-                if (!TryReadInt(baseItemType, out maxStack, s => s.StackSize)
-                    && !TryReadInt(baseItemType, out maxStack, s => s.MaxStackSize)
-                    && !TryReadInt(baseItemType, out maxStack, s => s.Stack))
-                {
-                    return false;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-
-            return true;
+            return stackSize > 0;
         }
 
         private static Entity? TryGetWorldItemEntity(Entity? worldItem)
@@ -177,66 +514,80 @@ namespace ClickIt.Services
             }
         }
 
-        private static bool TryEnumerateInventorySlotEntries(GameController? gameController, out IReadOnlyList<object?> slots)
-        {
-            slots = [];
-
-            if (!TryGetInventoryRoots(gameController, out IReadOnlyList<object?> roots))
-                return false;
-
-            foreach (object? root in roots)
-            {
-                if (root == null)
-                    continue;
-
-                if (!TryGetInventorySlotCollection(root, out object? collectionObj) || collectionObj == null)
-                    continue;
-
-                List<object?> extracted = [.. EnumerateObjects(collectionObj)];
-                if (extracted.Count == 0)
-                    continue;
-
-                slots = extracted;
-                return true;
-            }
-
-            return false;
-        }
-
         private static bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
         {
             items = [];
 
-            if (!TryGetInventoryRoots(gameController, out IReadOnlyList<object?> roots))
+            if (!TryGetPrimaryServerInventory(gameController, out object? primaryInventory) || primaryInventory == null)
                 return false;
 
-            var entities = new List<Entity>(64);
+            if (!TryEnumeratePrimaryInventoryItemEntities(primaryInventory, out IReadOnlyList<Entity> entities, out _))
+                return false;
 
-            foreach (object? root in roots)
+            items = entities;
+            return items.Count > 0;
+        }
+
+        private static bool TryEnumeratePrimaryInventoryItemEntities(object primaryInventory, out IReadOnlyList<Entity> items, out string debugDetails)
+        {
+            items = [];
+            debugDetails = string.Empty;
+
+            if (!TryGetPrimaryServerInventoryItems(primaryInventory, out object? collectionObj, out string collectionDebug) || collectionObj == null)
             {
-                if (root == null)
-                    continue;
+                debugDetails = $"items-collection: {collectionDebug}";
+                return false;
+            }
 
-                if (!TryGetInventoryItemCollection(root, out object? collectionObj) || collectionObj == null)
-                    continue;
+            var entities = new List<Entity>(64);
+            int totalEntries = 0;
+            int nullEntries = 0;
+            int directEntityEntries = 0;
+            int nestedEntityEntries = 0;
+            int rejectedNonItemEntity = 0;
+            int rejectedNestedNonEntity = 0;
 
-                foreach (object? entry in EnumerateObjects(collectionObj))
+            foreach (object? entry in EnumerateObjects(collectionObj))
+            {
+                totalEntries++;
+
+                if (entry == null)
                 {
-                    if (entry is Entity directEntity)
+                    nullEntries++;
+                    continue;
+                }
+
+                if (entry is Entity directEntity)
+                {
+                    directEntityEntries++;
+                    if (!IsInventoryItemEntity(directEntity, out _))
                     {
-                        entities.Add(directEntity);
+                        rejectedNonItemEntity++;
                         continue;
                     }
 
-                    if (TryGetNestedEntityLikeObject(entry, out Entity? nestedEntity) && nestedEntity != null)
-                    {
-                        entities.Add(nestedEntity);
-                    }
+                    entities.Add(directEntity);
+                    continue;
                 }
+
+                if (TryGetDynamicValue(entry, s => s.ItemEntity, out object? nestedItemObj)
+                    && nestedItemObj is Entity nestedItemEntity
+                    && IsInventoryItemEntity(nestedItemEntity, out _))
+                {
+                    nestedEntityEntries++;
+                    entities.Add(nestedItemEntity);
+                    continue;
+                }
+
+                rejectedNestedNonEntity++;
             }
 
             if (entities.Count == 0)
+            {
+                debugDetails =
+                    $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} direct:{directEntityEntries} nested:{nestedEntityEntries} rejectedNonItem:{rejectedNonItemEntity} rejectedNested:{rejectedNestedNonEntity}";
                 return false;
+            }
 
             // Deduplicate by address to avoid repeated matches across multiple reflected paths.
             var unique = new Dictionary<long, Entity>();
@@ -254,97 +605,122 @@ namespace ClickIt.Services
             }
 
             items = [.. unique.Values];
+            debugDetails =
+                $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} direct:{directEntityEntries} nested:{nestedEntityEntries} rejectedNonItem:{rejectedNonItemEntity} rejectedNested:{rejectedNestedNonEntity} dedup:{entities.Count}->{items.Count}";
             return items.Count > 0;
         }
 
-        private static bool TryGetInventoryRoots(GameController? gameController, out IReadOnlyList<object?> roots)
+        private static bool TryGetPrimaryServerInventory(GameController? gameController, out object? primaryInventory)
         {
-            roots = [];
-            var ingameUi = gameController?.IngameState?.IngameUi;
-            if (ingameUi == null)
+            primaryInventory = null;
+
+            object? data = gameController?.IngameState?.Data;
+            if (data == null)
                 return false;
 
-            var candidates = new List<object?>(6)
-            {
-                ingameUi
-            };
+            object? serverData = null;
+            if (!TryGetDynamicValue(data, s => s.ServerData, out serverData) || serverData == null)
+                return false;
 
-            object? inventoryPanel = null;
-            try
-            {
-                inventoryPanel = ingameUi.InventoryPanel;
-            }
-            catch
-            {
-            }
+            if (!TryGetDynamicValue(serverData, s => s.PlayerInventories, out object? playerInventories) || playerInventories == null)
+                return false;
 
-            if (inventoryPanel == null)
-                TryGetDynamicValue(ingameUi, s => s.InventoryPanel, out inventoryPanel);
+            if (!TryGetFirstCollectionObject(playerInventories, out object? firstInventory) || firstInventory == null)
+                return false;
 
-            if (inventoryPanel != null)
-            {
-                candidates.Add(inventoryPanel);
-
-                object? inventoryObj = null;
-                TryGetDynamicValue(inventoryPanel, s => s.Inventory, out inventoryObj);
-
-                if (inventoryObj != null)
-                    candidates.Add(inventoryObj);
-            }
-
-            object? inventoryDirect = null;
-            TryGetDynamicValue(ingameUi, s => s.Inventory, out inventoryDirect);
-
-            if (inventoryDirect != null)
-                candidates.Add(inventoryDirect);
-
-            roots = candidates;
-            return roots.Count > 0;
+            // Strict server-data path: IngameState.Data.ServerData.PlayerInventories[0]
+            primaryInventory = firstInventory;
+            return true;
         }
 
-        private static bool TryGetNestedEntityLikeObject(object? source, out Entity? entity)
+        private static bool TryGetPrimaryServerInventoryItems(object primaryInventory, out object? itemsCollection, out string debugDetails)
         {
-            entity = null;
-            if (source == null)
-                return false;
+            itemsCollection = null;
+            debugDetails = string.Empty;
 
-            if (source is Entity directEntity)
+            if (!TryGetDynamicValue(primaryInventory, s => s.Inventory, out object? inventoryObj) || inventoryObj == null)
             {
-                entity = directEntity;
-                return true;
+                debugDetails = "read-failed: PlayerInventories[0].Inventory accessor unavailable";
+                return false;
             }
 
-            if (TryResolveNestedEntityCandidate(source, out entity, s => s.ItemEntity)
-                || TryResolveNestedEntityCandidate(source, out entity, s => s.Item)
-                || TryResolveNestedEntityCandidate(source, out entity, s => s.Entity))
+            bool readOk = TryGetDynamicValue(inventoryObj, s => s.Items, out itemsCollection);
+            if (!readOk)
             {
-                return true;
+                debugDetails = "read-failed: PlayerInventories[0].Inventory.Items accessor unavailable";
+                return false;
+            }
+
+            if (itemsCollection == null)
+            {
+                debugDetails = "read-ok: PlayerInventories[0].Inventory.Items is null";
+                return false;
+            }
+
+            int previewCount = 0;
+            foreach (object? _ in EnumerateObjects(itemsCollection))
+            {
+                previewCount++;
+                if (previewCount >= 8)
+                    break;
+            }
+
+            debugDetails = $"read-ok: PlayerInventories[0].Inventory.Items type={itemsCollection.GetType().Name} previewCount={previewCount}";
+            return true;
+        }
+
+        private static bool TryGetPrimaryServerInventoryItems(object primaryInventory, out object? itemsCollection)
+        {
+            return TryGetPrimaryServerInventoryItems(primaryInventory, out itemsCollection, out _);
+        }
+
+        private static bool TryGetFirstCollectionObject(object collection, out object? first)
+        {
+            first = null;
+
+            if (collection is System.Collections.IList list)
+            {
+                if (list.Count <= 0)
+                    return false;
+
+                first = list[0];
+                return first != null;
+            }
+
+            foreach (object? entry in EnumerateObjects(collection))
+            {
+                first = entry;
+                return first != null;
             }
 
             return false;
         }
 
-        private static bool TryResolveNestedEntityCandidate(object source, out Entity? entity, Func<dynamic, object?> accessor)
+        private static bool IsInventoryItemEntity(Entity? entity)
         {
-            entity = null;
-            if (!TryGetDynamicValue(source, accessor, out object? nested) || nested == null)
+            return IsInventoryItemEntity(entity, out _);
+        }
+
+        private static bool IsInventoryItemEntity(Entity? entity, out string reason)
+        {
+            reason = string.Empty;
+            if (entity == null)
+            {
+                reason = "entity-null";
                 return false;
-
-            if (nested is Entity nestedEntity)
-            {
-                entity = nestedEntity;
-                return true;
             }
 
-            if (!ReferenceEquals(nested, source)
-                && TryGetNestedEntityLikeObject(nested, out Entity? deepEntity)
-                && deepEntity != null)
+            string path = entity.Path ?? string.Empty;
+            if (path.Length == 0)
             {
-                entity = deepEntity;
-                return true;
+                reason = "path-empty";
+                return false;
             }
 
-            return false;
+            bool isItem = path.IndexOf("Metadata/Items/", StringComparison.OrdinalIgnoreCase) >= 0;
+            string shortPath = path.Length <= 56 ? path : path.Substring(0, 56) + "...";
+            reason = isItem ? "path-item" : $"path-non-item:{shortPath}";
+            return isItem;
         }
 
         private static IEnumerable<object?> EnumerateObjects(object? source)
@@ -366,27 +742,6 @@ namespace ClickIt.Services
             }
 
             yield return source;
-        }
-
-        private static bool TryGetInventorySlotCollection(object root, out object? collection)
-        {
-            collection = null;
-            return TryGetDynamicValue(root, s => s.VisibleInventorySlots, out collection)
-                || TryGetDynamicValue(root, s => s.InventorySlots, out collection)
-                || TryGetDynamicValue(root, s => s.Slots, out collection)
-                || TryGetDynamicValue(root, s => s.Cells, out collection)
-                || TryGetDynamicValue(root, s => s.InventorySlotItems, out collection);
-        }
-
-        private static bool TryGetInventoryItemCollection(object root, out object? collection)
-        {
-            collection = null;
-            return TryGetDynamicValue(root, s => s.VisibleInventoryItems, out collection)
-                || TryGetDynamicValue(root, s => s.InventoryItems, out collection)
-                || TryGetDynamicValue(root, s => s.Items, out collection)
-                || TryGetDynamicValue(root, s => s.InventorySlotItems, out collection)
-                || TryGetDynamicValue(root, s => s.Slots, out collection)
-                || TryGetDynamicValue(root, s => s.Cells, out collection);
         }
 
         private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)

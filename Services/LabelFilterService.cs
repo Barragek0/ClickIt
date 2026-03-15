@@ -74,22 +74,27 @@ namespace ClickIt.Services
 
         public LabelOnGround? GetNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
+            bool captureLabelDebug = ShouldCaptureLabelDebug();
+
             if (allLabels == null || allLabels.Count == 0)
             {
-                PublishLabelDebugStage(
-                    stage: "NoLabels",
-                    startIndex: 0,
-                    endExclusive: 0,
-                    totalLabels: 0,
-                    consideredCandidates: 0,
-                    nullOrDistanceRejected: 0,
-                    untargetableRejected: 0,
-                    noMechanicRejected: 0,
-                    ignoredByDistanceCandidates: 0,
-                    selectedMechanicId: string.Empty,
-                    selectedEntityPath: string.Empty,
-                    selectedDistance: 0f,
-                    notes: "GetNextLabelToClick received an empty label collection");
+                if (captureLabelDebug)
+                {
+                    PublishLabelDebugStage(
+                        stage: "NoLabels",
+                        startIndex: 0,
+                        endExclusive: 0,
+                        totalLabels: 0,
+                        consideredCandidates: 0,
+                        nullOrDistanceRejected: 0,
+                        untargetableRejected: 0,
+                        noMechanicRejected: 0,
+                        ignoredByDistanceCandidates: 0,
+                        selectedMechanicId: string.Empty,
+                        selectedEntityPath: string.Empty,
+                        selectedDistance: 0f,
+                        notes: "GetNextLabelToClick received an empty label collection");
+                }
                 return null;
             }
 
@@ -97,26 +102,10 @@ namespace ClickIt.Services
             int start = Math.Max(0, startIndex);
             int end = Math.Min(allLabels.Count, startIndex + Math.Max(0, maxCount));
 
-            PublishLabelDebugStage(
-                stage: "SelectionRequested",
-                startIndex: start,
-                endExclusive: end,
-                totalLabels: allLabels.Count,
-                consideredCandidates: 0,
-                nullOrDistanceRejected: 0,
-                untargetableRejected: 0,
-                noMechanicRejected: 0,
-                ignoredByDistanceCandidates: 0,
-                selectedMechanicId: string.Empty,
-                selectedEntityPath: string.Empty,
-                selectedDistance: 0f,
-                notes: $"start={startIndex} maxCount={maxCount}");
-
-            LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings);
-            if (selected == null)
+            if (captureLabelDebug)
             {
                 PublishLabelDebugStage(
-                    stage: "SelectionReturnedNone",
+                    stage: "SelectionRequested",
                     startIndex: start,
                     endExclusive: end,
                     totalLabels: allLabels.Count,
@@ -128,28 +117,53 @@ namespace ClickIt.Services
                     selectedMechanicId: string.Empty,
                     selectedEntityPath: string.Empty,
                     selectedDistance: 0f,
-                    notes: "No label selected");
+                    notes: $"start={startIndex} maxCount={maxCount}");
+            }
+
+            LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings);
+            if (selected == null)
+            {
+                if (captureLabelDebug)
+                {
+                    PublishLabelDebugStage(
+                        stage: "SelectionReturnedNone",
+                        startIndex: start,
+                        endExclusive: end,
+                        totalLabels: allLabels.Count,
+                        consideredCandidates: 0,
+                        nullOrDistanceRejected: 0,
+                        untargetableRejected: 0,
+                        noMechanicRejected: 0,
+                        ignoredByDistanceCandidates: 0,
+                        selectedMechanicId: string.Empty,
+                        selectedEntityPath: string.Empty,
+                        selectedDistance: 0f,
+                        notes: "No label selected");
+                }
                 return null;
             }
 
-            Entity? selectedItem = selected.ItemOnGround;
-            string? selectedMechanic = selectedItem != null
-                ? GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController)
-                : null;
-            PublishLabelDebugStage(
-                stage: "SelectionReturned",
-                startIndex: start,
-                endExclusive: end,
-                totalLabels: allLabels.Count,
-                consideredCandidates: 0,
-                nullOrDistanceRejected: 0,
-                untargetableRejected: 0,
-                noMechanicRejected: 0,
-                ignoredByDistanceCandidates: 0,
-                selectedMechanicId: selectedMechanic,
-                selectedEntityPath: selectedItem?.Path,
-                selectedDistance: selectedItem?.DistancePlayer ?? 0f,
-                notes: "Selected label returned to click service");
+            if (captureLabelDebug)
+            {
+                Entity? selectedItem = selected.ItemOnGround;
+                string? selectedMechanic = selectedItem != null
+                    ? GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController)
+                    : null;
+                PublishLabelDebugStage(
+                    stage: "SelectionReturned",
+                    startIndex: start,
+                    endExclusive: end,
+                    totalLabels: allLabels.Count,
+                    consideredCandidates: 0,
+                    nullOrDistanceRejected: 0,
+                    untargetableRejected: 0,
+                    noMechanicRejected: 0,
+                    ignoredByDistanceCandidates: 0,
+                    selectedMechanicId: selectedMechanic,
+                    selectedEntityPath: selectedItem?.Path,
+                    selectedDistance: selectedItem?.DistancePlayer ?? 0f,
+                    notes: "Selected label returned to click service");
+            }
 
             return selected;
         }
@@ -406,27 +420,30 @@ namespace ClickIt.Services
             }
 
             LabelOnGround? selected = ResolveWinningCandidate(bestNonIgnoredByDistance, bestNonIgnoredMechanicId, bestIgnoredByPriority, bestIgnoredPriority, clickSettings);
-            Entity? selectedEntity = selected?.ItemOnGround;
-            string? selectedMechanicId = string.Empty;
-            if (selected != null && selectedEntity != null)
+            if (ShouldCaptureLabelDebug())
             {
-                selectedMechanicId = GetClickableMechanicId(selected!, selectedEntity, clickSettings, _gameController);
-            }
+                Entity? selectedEntity = selected?.ItemOnGround;
+                string? selectedMechanicId = string.Empty;
+                if (selected != null && selectedEntity != null)
+                {
+                    selectedMechanicId = GetClickableMechanicId(selected!, selectedEntity, clickSettings, _gameController);
+                }
 
-            PublishLabelDebugStage(
-                stage: selected == null ? "SelectionScanNone" : "SelectionScanSelected",
-                startIndex: startIndex,
-                endExclusive: endExclusive,
-                totalLabels: allLabels.Count,
-                consideredCandidates: consideredCandidates,
-                nullOrDistanceRejected: nullOrDistanceRejected,
-                untargetableRejected: untargetableRejected,
-                noMechanicRejected: noMechanicRejected,
-                ignoredByDistanceCandidates: ignoredByDistanceCandidates,
-                selectedMechanicId: selectedMechanicId,
-                selectedEntityPath: selectedEntity?.Path,
-                selectedDistance: selectedEntity?.DistancePlayer ?? 0f,
-                notes: $"c:{consideredCandidates} nd:{nullOrDistanceRejected} u:{untargetableRejected} nm:{noMechanicRejected} ig:{ignoredByDistanceCandidates}");
+                PublishLabelDebugStage(
+                    stage: selected == null ? "SelectionScanNone" : "SelectionScanSelected",
+                    startIndex: startIndex,
+                    endExclusive: endExclusive,
+                    totalLabels: allLabels.Count,
+                    consideredCandidates: consideredCandidates,
+                    nullOrDistanceRejected: nullOrDistanceRejected,
+                    untargetableRejected: untargetableRejected,
+                    noMechanicRejected: noMechanicRejected,
+                    ignoredByDistanceCandidates: ignoredByDistanceCandidates,
+                    selectedMechanicId: selectedMechanicId,
+                    selectedEntityPath: selectedEntity?.Path,
+                    selectedDistance: selectedEntity?.DistancePlayer ?? 0f,
+                    notes: $"c:{consideredCandidates} nd:{nullOrDistanceRejected} u:{untargetableRejected} nm:{noMechanicRejected} ig:{ignoredByDistanceCandidates}");
+            }
 
             return selected;
         }
@@ -768,11 +785,11 @@ namespace ClickIt.Services
                 ClickCrafting = s.ClickCraftingRecipes.Value,
                 ClickBreach = s.ClickBreachNodes.Value,
                 ClickSettlersOre = settlersOreEnabled,
-                ClickSettlersCrimsonIron = settlersOreEnabled,
-                ClickSettlersCopper = settlersOreEnabled,
-                ClickSettlersPetrifiedWood = settlersOreEnabled,
-                ClickSettlersBismuth = settlersOreEnabled,
-                ClickSettlersVerisium = settlersOreEnabled,
+                ClickSettlersCrimsonIron = settlersOreEnabled && s.ClickSettlersCrimsonIron.Value,
+                ClickSettlersCopper = settlersOreEnabled && s.ClickSettlersCopper.Value,
+                ClickSettlersPetrifiedWood = settlersOreEnabled && s.ClickSettlersPetrifiedWood.Value,
+                ClickSettlersBismuth = settlersOreEnabled && s.ClickSettlersBismuth.Value,
+                ClickSettlersVerisium = settlersOreEnabled && s.ClickSettlersVerisium.Value,
                 StrongboxClickMetadata = s.GetStrongboxClickMetadataIdentifiers(),
                 StrongboxDontClickMetadata = s.GetStrongboxDontClickMetadataIdentifiers(),
                 ClickSanctum = s.ClickSanctum.Value,

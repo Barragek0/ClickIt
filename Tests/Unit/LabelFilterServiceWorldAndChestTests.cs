@@ -182,6 +182,24 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void IsPartialServerStackCore_ReturnsTrue_OnlyWhenNotFullAndSizePositive()
+        {
+            ((bool)InvokePrivateStatic("IsPartialServerStackCore", false, 1)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("IsPartialServerStackCore", false, 10)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("IsPartialServerStackCore", true, 10)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("IsPartialServerStackCore", false, 0)!).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsInventoryCellUsageFullCore_ReturnsTrue_WhenOccupiedCellsMeetOrExceedCapacity()
+        {
+            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 59, 60)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 60, 60)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 61, 60)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 10, 0)!).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void SelectBestWorldItemMetadataPath_PrefersComponentMetadata_ForMiscObjectsFallback()
         {
             string selected = (string)InvokePrivateStatic(

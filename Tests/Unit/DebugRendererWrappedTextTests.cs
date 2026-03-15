@@ -17,6 +17,15 @@ namespace ClickIt.Tests.Unit
             return mi!.Invoke(null, args);
         }
 
+        private static int ReadPrivateConstInt(string fieldName)
+        {
+            FieldInfo? field = typeof(DebugRenderer).GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Static);
+            field.Should().NotBeNull();
+            object? value = field!.GetRawConstantValue();
+            value.Should().NotBeNull();
+            return (int)value!;
+        }
+
         [TestMethod]
         public void RenderWrappedText_SplitsIntoExpectedLineCount_AndAdvancesY()
         {
@@ -157,6 +166,35 @@ namespace ClickIt.Tests.Unit
             ((int)tuple.Item1).Should().Be(3);
             ((int)tuple.Item2).Should().Be(fourthColumnX);
             ((int)tuple.Item3).Should().Be(yOverflow);
+        }
+
+        [TestMethod]
+        public void EnqueueWrappedDebugLine_MovesToNextColumn_WhenCurrentColumnIsFull()
+        {
+            var plugin = new ClickIt();
+            plugin.__Test_SetSettings(new ClickItSettings());
+            var queue = new DeferredTextQueue();
+            var renderer = new DebugRenderer(plugin, deferredTextQueue: queue);
+
+            int startY = ReadPrivateConstInt("DetailedDebugStartY");
+            int lineHeight = ReadPrivateConstInt("DetailedDebugLineHeight");
+            int baseX = ReadPrivateConstInt("DetailedDebugBaseX");
+            int linesPerColumn = ReadPrivateConstInt("DetailedDebugLinesPerColumn");
+            int columnShiftPx = ReadPrivateConstInt("DetailedDebugColumnShiftPx");
+
+            MethodInfo? method = typeof(DebugRenderer).GetMethod("EnqueueWrappedDebugLine", BindingFlags.NonPublic | BindingFlags.Instance);
+            method.Should().NotBeNull();
+
+            object[] args = [baseX, startY + (linesPerColumn * lineHeight), lineHeight, "Alpha Beta", Color.White, 12, 20];
+            object? result = method!.Invoke(renderer, args);
+
+            result.Should().NotBeNull();
+            ((int)result!).Should().Be(startY + lineHeight);
+            ((int)args[0]).Should().Be(baseX + columnShiftPx);
+
+            var pending = queue.GetPendingTextSnapshot();
+            pending.Should().NotBeEmpty();
+            pending[0].Should().Contain("Alpha");
         }
     }
 }

@@ -213,7 +213,10 @@ namespace ClickIt.Services
             }
 
             var allLabels = GetLabelsForRegularSelection();
-            PublishClickFlowDebugStage("LabelSource", BuildLabelSourceDebugSummary(allLabels));
+            if (ShouldCaptureClickDebug())
+            {
+                PublishClickFlowDebugStage("LabelSource", BuildLabelSourceDebugSummary(allLabels));
+            }
             LabelOnGround? nextLabel = ResolveNextLabelCandidate(allLabels);
 
             string? nextLabelMechanicId = nextLabel != null
@@ -246,7 +249,10 @@ namespace ClickIt.Services
             if (nextLabel == null)
             {
                 labelFilterService.LogSelectionDiagnostics(allLabels, 0, allLabels?.Count ?? 0);
-                PublishClickFlowDebugStage("NoLabelCandidate", BuildNoLabelDebugSummary(allLabels));
+                if (ShouldCaptureClickDebug())
+                {
+                    PublishClickFlowDebugStage("NoLabelCandidate", BuildNoLabelDebugSummary(allLabels));
+                }
 
                 if (settings.WalkTowardOffscreenLabels.Value && TryHandleStickyOffscreenTarget(windowTopLeft, allLabels))
                 {
@@ -437,6 +443,8 @@ namespace ClickIt.Services
             if (!settings.ClickSettlersOre.Value || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
                 return null;
 
+            bool captureClickDebug = ShouldCaptureClickDebug();
+
             try
             {
                 SettlersOreCandidate? best = null;
@@ -460,6 +468,8 @@ namespace ClickIt.Services
                         scanned++;
                         string path = entity.Path ?? string.Empty;
                         if (!LabelFilterService.TryGetSettlersOreMechanicId(path, out string? settlersMechanicId) || string.IsNullOrWhiteSpace(settlersMechanicId))
+                            continue;
+                        if (!IsSettlersMechanicEnabled(settlersMechanicId))
                             continue;
 
                         matchedPath++;
@@ -485,54 +495,37 @@ namespace ClickIt.Services
 
                         if (!TryResolveNearbyClickablePoint(worldScreenAbsolute, path, out Vector2 clickPos))
                         {
-                            SetLatestClickDebug(new ClickDebugSnapshot(
-                                HasData: true,
-                                Stage: "ProbeFailed",
-                                MechanicId: settlersMechanicId,
-                                EntityPath: path,
-                                Distance: entity.DistancePlayer,
-                                WorldScreenRaw: worldScreenRaw,
-                                WorldScreenAbsolute: worldScreenAbsolute,
-                                ResolvedClickPoint: default,
-                                Resolved: false,
-                                CenterInWindow: centerInWindow,
-                                CenterClickable: centerClickable,
-                                ResolvedInWindow: false,
-                                ResolvedClickable: false,
-                                Notes: "No nearby clickable point resolved",
-                                Sequence: 0,
-                                TimestampMs: Environment.TickCount64));
+                            if (captureClickDebug)
+                            {
+                                SetLatestClickDebug(new ClickDebugSnapshot(
+                                    HasData: true,
+                                    Stage: "ProbeFailed",
+                                    MechanicId: settlersMechanicId,
+                                    EntityPath: path,
+                                    Distance: entity.DistancePlayer,
+                                    WorldScreenRaw: worldScreenRaw,
+                                    WorldScreenAbsolute: worldScreenAbsolute,
+                                    ResolvedClickPoint: default,
+                                    Resolved: false,
+                                    CenterInWindow: centerInWindow,
+                                    CenterClickable: centerClickable,
+                                    ResolvedInWindow: false,
+                                    ResolvedClickable: false,
+                                    Notes: "No nearby clickable point resolved",
+                                    Sequence: 0,
+                                    TimestampMs: Environment.TickCount64));
+                            }
                             continue;
                         }
 
                         bool resolvedInWindow = IsInsideWindowInEitherSpace(clickPos);
                         bool resolvedClickable = IsClickableInEitherSpace(clickPos, path);
 
-                        SetLatestClickDebug(new ClickDebugSnapshot(
-                            HasData: true,
-                            Stage: "ProbeResolved",
-                            MechanicId: settlersMechanicId,
-                            EntityPath: path,
-                            Distance: entity.DistancePlayer,
-                            WorldScreenRaw: worldScreenRaw,
-                            WorldScreenAbsolute: worldScreenAbsolute,
-                            ResolvedClickPoint: clickPos,
-                            Resolved: true,
-                            CenterInWindow: centerInWindow,
-                            CenterClickable: centerClickable,
-                            ResolvedInWindow: resolvedInWindow,
-                            ResolvedClickable: resolvedClickable,
-                            Notes: "Resolved nearby clickable point",
-                            Sequence: 0,
-                            TimestampMs: Environment.TickCount64));
-
-                        var candidate = new SettlersOreCandidate(entity, clickPos, settlersMechanicId, path, worldScreenRaw, worldScreenAbsolute);
-                        if (!best.HasValue || candidate.Distance < best.Value.Distance)
+                        if (captureClickDebug)
                         {
-                            best = candidate;
                             SetLatestClickDebug(new ClickDebugSnapshot(
                                 HasData: true,
-                                Stage: "CandidateSelected",
+                                Stage: "ProbeResolved",
                                 MechanicId: settlersMechanicId,
                                 EntityPath: path,
                                 Distance: entity.DistancePlayer,
@@ -544,9 +537,35 @@ namespace ClickIt.Services
                                 CenterClickable: centerClickable,
                                 ResolvedInWindow: resolvedInWindow,
                                 ResolvedClickable: resolvedClickable,
-                                Notes: "Nearest settlers candidate selected",
+                                Notes: "Resolved nearby clickable point",
                                 Sequence: 0,
                                 TimestampMs: Environment.TickCount64));
+                        }
+
+                        var candidate = new SettlersOreCandidate(entity, clickPos, settlersMechanicId, path, worldScreenRaw, worldScreenAbsolute);
+                        if (!best.HasValue || candidate.Distance < best.Value.Distance)
+                        {
+                            best = candidate;
+                            if (captureClickDebug)
+                            {
+                                SetLatestClickDebug(new ClickDebugSnapshot(
+                                    HasData: true,
+                                    Stage: "CandidateSelected",
+                                    MechanicId: settlersMechanicId,
+                                    EntityPath: path,
+                                    Distance: entity.DistancePlayer,
+                                    WorldScreenRaw: worldScreenRaw,
+                                    WorldScreenAbsolute: worldScreenAbsolute,
+                                    ResolvedClickPoint: clickPos,
+                                    Resolved: true,
+                                    CenterInWindow: centerInWindow,
+                                    CenterClickable: centerClickable,
+                                    ResolvedInWindow: resolvedInWindow,
+                                    ResolvedClickable: resolvedClickable,
+                                    Notes: "Nearest settlers candidate selected",
+                                    Sequence: 0,
+                                    TimestampMs: Environment.TickCount64));
+                            }
                         }
                     }
                 }
@@ -554,23 +573,26 @@ namespace ClickIt.Services
                 if (!best.HasValue)
                 {
                     DebugLog(() => $"[ResolveNextSettlersOreCandidate] none scanned:{scanned} matched:{matchedPath} labelBacked:{labelBacked}");
-                    SetLatestClickDebug(new ClickDebugSnapshot(
-                        HasData: true,
-                        Stage: "NoCandidate",
-                        MechanicId: string.Empty,
-                        EntityPath: string.Empty,
-                        Distance: 0f,
-                        WorldScreenRaw: default,
-                        WorldScreenAbsolute: default,
-                        ResolvedClickPoint: default,
-                        Resolved: false,
-                        CenterInWindow: false,
-                        CenterClickable: false,
-                        ResolvedInWindow: false,
-                        ResolvedClickable: false,
-                        Notes: $"scanned={scanned}, matchedPath={matchedPath}, labelBacked={labelBacked}",
-                        Sequence: 0,
-                        TimestampMs: Environment.TickCount64));
+                    if (captureClickDebug)
+                    {
+                        SetLatestClickDebug(new ClickDebugSnapshot(
+                            HasData: true,
+                            Stage: "NoCandidate",
+                            MechanicId: string.Empty,
+                            EntityPath: string.Empty,
+                            Distance: 0f,
+                            WorldScreenRaw: default,
+                            WorldScreenAbsolute: default,
+                            ResolvedClickPoint: default,
+                            Resolved: false,
+                            CenterInWindow: false,
+                            CenterClickable: false,
+                            ResolvedInWindow: false,
+                            ResolvedClickable: false,
+                            Notes: $"scanned={scanned}, matchedPath={matchedPath}, labelBacked={labelBacked}",
+                            Sequence: 0,
+                            TimestampMs: Environment.TickCount64));
+                    }
                 }
 
                 return best;
@@ -639,32 +661,13 @@ namespace ClickIt.Services
         {
             DebugLog(() => $"[ProcessRegularClick] Clicking settlers ore candidate ({candidate.MechanicId}) via entity position.");
 
-            SetLatestClickDebug(new ClickDebugSnapshot(
-                HasData: true,
-                Stage: "ClickAttempt",
-                MechanicId: candidate.MechanicId,
-                EntityPath: candidate.EntityPath,
-                Distance: candidate.Distance,
-                WorldScreenRaw: candidate.WorldScreenRaw,
-                WorldScreenAbsolute: candidate.WorldScreenAbsolute,
-                ResolvedClickPoint: candidate.ClickPosition,
-                Resolved: true,
-                CenterInWindow: IsInsideWindowInEitherSpace(candidate.WorldScreenAbsolute),
-                CenterClickable: IsClickableInEitherSpace(candidate.WorldScreenAbsolute, candidate.EntityPath),
-                ResolvedInWindow: IsInsideWindowInEitherSpace(candidate.ClickPosition),
-                ResolvedClickable: IsClickableInEitherSpace(candidate.ClickPosition, candidate.EntityPath),
-                Notes: "Attempting settlers click",
-                Sequence: 0,
-                TimestampMs: Environment.TickCount64));
+            bool captureClickDebug = ShouldCaptureClickDebug();
 
-            bool clicked = ShouldUseHoldClickForSettlersMechanic(candidate.MechanicId)
-                ? PerformLabelHoldClick(candidate.ClickPosition, null, gameController, holdDurationMs: 0)
-                : PerformLabelClick(candidate.ClickPosition, null, gameController);
-            if (clicked)
+            if (captureClickDebug)
             {
                 SetLatestClickDebug(new ClickDebugSnapshot(
                     HasData: true,
-                    Stage: "ClickSuccess",
+                    Stage: "ClickAttempt",
                     MechanicId: candidate.MechanicId,
                     EntityPath: candidate.EntityPath,
                     Distance: candidate.Distance,
@@ -676,9 +679,36 @@ namespace ClickIt.Services
                     CenterClickable: IsClickableInEitherSpace(candidate.WorldScreenAbsolute, candidate.EntityPath),
                     ResolvedInWindow: IsInsideWindowInEitherSpace(candidate.ClickPosition),
                     ResolvedClickable: IsClickableInEitherSpace(candidate.ClickPosition, candidate.EntityPath),
-                    Notes: "Settlers click completed",
+                    Notes: "Attempting settlers click",
                     Sequence: 0,
                     TimestampMs: Environment.TickCount64));
+            }
+
+            bool clicked = ShouldUseHoldClickForSettlersMechanic(candidate.MechanicId)
+                ? PerformLabelHoldClick(candidate.ClickPosition, null, gameController, holdDurationMs: 0)
+                : PerformLabelClick(candidate.ClickPosition, null, gameController);
+            if (clicked)
+            {
+                if (captureClickDebug)
+                {
+                    SetLatestClickDebug(new ClickDebugSnapshot(
+                        HasData: true,
+                        Stage: "ClickSuccess",
+                        MechanicId: candidate.MechanicId,
+                        EntityPath: candidate.EntityPath,
+                        Distance: candidate.Distance,
+                        WorldScreenRaw: candidate.WorldScreenRaw,
+                        WorldScreenAbsolute: candidate.WorldScreenAbsolute,
+                        ResolvedClickPoint: candidate.ClickPosition,
+                        Resolved: true,
+                        CenterInWindow: IsInsideWindowInEitherSpace(candidate.WorldScreenAbsolute),
+                        CenterClickable: IsClickableInEitherSpace(candidate.WorldScreenAbsolute, candidate.EntityPath),
+                        ResolvedInWindow: IsInsideWindowInEitherSpace(candidate.ClickPosition),
+                        ResolvedClickable: IsClickableInEitherSpace(candidate.ClickPosition, candidate.EntityPath),
+                        Notes: "Settlers click completed",
+                        Sequence: 0,
+                        TimestampMs: Environment.TickCount64));
+                }
 
                 if (IsStickyTarget(candidate.Entity))
                     ClearStickyOffscreenTarget();
@@ -1201,8 +1231,11 @@ namespace ClickIt.Services
                 LabelOnGround? label = labelFilterService.GetNextLabelToClick(allLabels, currentStart, endExclusive - currentStart);
                 if (label == null)
                 {
-                    string noLabelSummary = BuildLabelRangeRejectionDebugSummary(allLabels, start, endExclusive, examined);
-                    PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
+                    if (ShouldCaptureClickDebug())
+                    {
+                        string noLabelSummary = BuildLabelRangeRejectionDebugSummary(allLabels, start, endExclusive, examined);
+                        PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
+                    }
                     if (examined > 0)
                     {
                         DebugLog(() =>
@@ -2593,6 +2626,25 @@ namespace ClickIt.Services
                 && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
         }
 
+        private bool IsSettlersMechanicEnabled(string? mechanicId)
+        {
+            if (!settings.ClickSettlersOre.Value || string.IsNullOrWhiteSpace(mechanicId))
+                return false;
+
+            if (string.Equals(mechanicId, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersCrimsonIron.Value;
+            if (string.Equals(mechanicId, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersCopper.Value;
+            if (string.Equals(mechanicId, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersPetrifiedWood.Value;
+            if (string.Equals(mechanicId, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersBismuth.Value;
+            if (string.Equals(mechanicId, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase))
+                return settings.ClickSettlersVerisium.Value;
+
+            return false;
+        }
+
         private string BuildNoLabelDebugSummary(IReadOnlyList<LabelOnGround>? allLabels)
         {
             int labelCount = allLabels?.Count ?? 0;
@@ -2630,6 +2682,9 @@ namespace ClickIt.Services
 
         private void PublishClickFlowDebugStage(string stage, string notes, string? mechanicId = null)
         {
+            if (!ShouldCaptureClickDebug())
+                return;
+
             SetLatestClickDebug(new ClickDebugSnapshot(
                 HasData: true,
                 Stage: stage,
@@ -2657,6 +2712,9 @@ namespace ClickIt.Services
             bool resolved,
             string notes)
         {
+            if (!ShouldCaptureClickDebug())
+                return;
+
             Entity? entity = label?.ItemOnGround;
             if (entity == null)
                 return;
@@ -2722,6 +2780,8 @@ namespace ClickIt.Services
 
                     string path = entity.Path ?? string.Empty;
                     if (!LabelFilterService.TryGetSettlersOreMechanicId(path, out string? mechanicId) || string.IsNullOrWhiteSpace(mechanicId))
+                        continue;
+                    if (!IsSettlersMechanicEnabled(mechanicId))
                         continue;
 
                     var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
