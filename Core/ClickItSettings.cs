@@ -309,26 +309,26 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickDelveSpawners { get; set; } = new ToggleNode(true);
 
-        [Menu("Priorities", 24, 1400)]
+        [Menu("Priorities", 124, 1400)]
         public EmptyNode PrioritiesCategory { get; set; } = new EmptyNode();
 
-        [Menu("", 10007, 24)]
+        [Menu("", 10007, 124)]
         [JsonIgnore]
         public CustomNode PrioritiesSliderWidthStart { get; }
-        [Menu("Priority Distance Penalty", "Applies an extra distance cost per lower-priority row when comparing non-ignored mechanics.\n\nHigher values make table order matter more while still considering distance.\n\nSetting this to 0 will effectively disable the priorities feature, however, ignore distance values will still be respected.\n\nWhen priorities are disabled, distance will be the only factor considered in what to click.", 1, 24)]
+        [Menu("Priority Distance Penalty", "Applies an extra distance cost per lower-priority row when comparing non-ignored mechanics.\n\nHigher values make table order matter more while still considering distance.\n\nSetting this to 0 will effectively disable the priorities feature, however, ignore distance values will still be respected.\n\nWhen priorities are disabled, distance will be the only factor considered in what to click.", 1, 124)]
         public RangeNode<int> MechanicPriorityDistancePenalty { get; set; } = new RangeNode<int>(25, 0, 100);
 
-        [Menu("", 2, 24)]
+        [Menu("", 2, 124)]
         [JsonIgnore]
         public CustomNode MechanicPriorityTablePanel { get; }
-        [Menu("", 10008, 24)]
+        [Menu("", 10008, 124)]
         [JsonIgnore]
         public CustomNode PrioritiesSliderWidthEnd { get; }
 
-        [Menu("Items", 17, 1400)]
+        [Menu("Items", 117, 1400)]
         public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
 
-        [Menu("", 2, 17)]
+        [Menu("", 2, 117)]
         [JsonIgnore]
         public CustomNode ItemTypeFiltersPanel { get; }
 
@@ -346,13 +346,13 @@ namespace ClickIt
 
         private string _expandedItemTypeRowKey = string.Empty;
 
-        [Menu("Essences", 18, 1400)]
+        [Menu("Essences", 118, 1400)]
         public EmptyNode Essences { get; set; } = new EmptyNode();
-        [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 18)]
+        [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 118)]
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
         [JsonIgnore]
         public bool ShowEssenceCorruptionTablePanel => CorruptAllEssences?.Value != true;
-        [Menu("", 2, 18)]
+        [Menu("", 2, 118)]
         [ConditionalDisplay(nameof(ShowEssenceCorruptionTablePanel))]
         [JsonIgnore]
         public CustomNode EssenceCorruptionTablePanel { get; }
@@ -363,22 +363,22 @@ namespace ClickIt
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> EssenceDontCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        [Menu("Ultimatum", 19, 1400)]
+        [Menu("Ultimatum", 119, 1400)]
         public EmptyNode Ultimatum { get; set; } = new EmptyNode();
-        [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 3, 19)]
+        [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 3, 119)]
         public ToggleNode ShowUltimatumOptionOverlay { get; set; } = new ToggleNode(true);
-        [Menu("", 4, 19)]
+        [Menu("", 4, 119)]
         [JsonIgnore]
         public CustomNode UltimatumModifierTablePanel { get; }
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> UltimatumModifierPriority { get; set; } = new();
 
-        [Menu("Strongboxes", 20, 1400)]
+        [Menu("Strongboxes", 120, 1400)]
         public EmptyNode Strongboxes { get; set; } = new EmptyNode();
-        [Menu("Show Strongbox Overlay", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked.", 1, 20)]
+        [Menu("Show Strongbox Overlay", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked.", 1, 120)]
         public ToggleNode ShowStrongboxFrames { get; set; } = new ToggleNode(true);
-        [Menu("", 2, 20)]
+        [Menu("", 2, 120)]
         [JsonIgnore]
         public CustomNode StrongboxFilterTablePanel { get; }
 
@@ -388,10 +388,10 @@ namespace ClickIt
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> StrongboxDontClickIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        [Menu("Altars", 21, 1400)]
+        [Menu("Altars", 121, 1400)]
         public EmptyNode AltarsCategory { get; set; } = new EmptyNode();
 
-        [Menu("Settings", 1, 21)]
+        [Menu("Settings", 1, 121)]
         [JsonIgnore]
         public CustomNode AltarsPanel { get; }
 
@@ -442,25 +442,25 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
         public RangeNode<int> AlertSoundVolume { get; set; } = new RangeNode<int>(5, 0, 100);
 
-        [Menu("Ritual", 22, 1400)]
+        [Menu("Ritual", 122, 1400)]
         public EmptyNode Ritual { get; set; } = new EmptyNode();
 
-        [Menu("Delve", 23, 1400)]
+        [Menu("Delve", 123, 1400)]
         public EmptyNode Delve { get; set; } = new EmptyNode();
-        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 23)]
+        [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 123)]
         public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
-        [Menu("Flare Hotkey", "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.", 5, 23)]
+        [Menu("Flare Hotkey", "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.", 5, 123)]
         public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
-        [Menu("", 10009, 23)]
+        [Menu("", 10009, 123)]
         [JsonIgnore]
         public CustomNode DelveSliderWidthStart { get; }
-        [Menu("Darkness Debuff Stacks", 6, 23)]
+        [Menu("Darkness Debuff Stacks", 6, 123)]
         public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
-        [Menu("Flare Health %", 7, 23)]
+        [Menu("Flare Health %", 7, 123)]
         public RangeNode<int> DelveFlareHealthThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
-        [Menu("Flare Energy Shield %", 8, 23)]
+        [Menu("Flare Energy Shield %", 8, 123)]
         public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
-        [Menu("", 10010, 23)]
+        [Menu("", 10010, 123)]
         [JsonIgnore]
         public CustomNode DelveSliderWidthEnd { get; }
 
