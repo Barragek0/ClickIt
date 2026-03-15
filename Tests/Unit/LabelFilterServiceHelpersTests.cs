@@ -8,6 +8,12 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class LabelFilterServiceHelpersTests
     {
+        public sealed class FakeTargetableEntity
+        {
+            public bool IsTargetable { get; set; }
+        }
+
+
         private static T InvokePrivateStatic<T>(string methodName, params object?[] args)
         {
             var method = typeof(LabelFilterService).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static);
@@ -48,6 +54,13 @@ namespace ClickIt.Tests.Unit
             rs1.Should().BeTrue();
             var rs2 = InvokePrivateStatic<bool>("IsSettlersOrePath", "Random/Path");
             rs2.Should().BeFalse();
+
+            var verisiumPath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium";
+            var rs3 = InvokePrivateStatic<bool>("IsSettlersVerisiumPath", verisiumPath);
+            rs3.Should().BeTrue();
+
+            var rs4 = InvokePrivateStatic<bool>("IsSettlersVerisiumPath", verisiumPath.ToLowerInvariant());
+            rs4.Should().BeTrue();
         }
 
         [TestMethod]
@@ -99,9 +112,103 @@ namespace ClickIt.Tests.Unit
                 itemIsTargetable: false).Should().BeTrue();
 
             LabelFilterService.ShouldSkipUntargetableEntity(
+                hasLabelEntityTargetable: false,
+                labelEntityTargetable: true,
+                itemIsTargetable: false,
+                allowNullEntityFallback: true).Should().BeFalse();
+
+            LabelFilterService.ShouldSkipUntargetableEntity(
                 hasLabelEntityTargetable: true,
                 labelEntityTargetable: true,
                 itemIsTargetable: true).Should().BeFalse();
         }
+
+        [TestMethod]
+        public void ResolveLabelEntityTargetableFromRaw_ReadsDynamicIsTargetable_WhenEntityIsNotMemoryObjectEntity()
+        {
+            object? rawLabelEntity = new FakeTargetableEntity { IsTargetable = false };
+
+            LabelFilterService.ResolveLabelEntityTargetableFromRaw(rawLabelEntity, out bool hasTargetable, out bool targetable);
+            hasTargetable.Should().BeTrue();
+            targetable.Should().BeFalse();
+
+            LabelFilterService.ShouldSkipUntargetableEntity(
+                hasLabelEntityTargetable: true,
+                labelEntityTargetable: false,
+                itemIsTargetable: true).Should().BeTrue();
+
+            LabelFilterService.ShouldSkipUntargetableEntity(
+                hasLabelEntityTargetable: false,
+                labelEntityTargetable: true,
+                itemIsTargetable: false,
+                allowNullEntityFallback: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void RequiresTargetabilityGate_IsLimitedToSettlersOrePaths()
+        {
+            var settlersOre = InvokePrivateStatic<bool>("RequiresTargetabilityGate", "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/PetrifiedWood");
+            settlersOre.Should().BeTrue();
+
+            var nonSettlersPath = InvokePrivateStatic<bool>("RequiresTargetabilityGate", "Metadata/Terrain/Leagues/Delve/Objects/AzuriteVein");
+            nonSettlersPath.Should().BeFalse();
+
+            var emptyPath = InvokePrivateStatic<bool>("RequiresTargetabilityGate", string.Empty);
+            emptyPath.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void SelectionDebugSummary_ToCompactString_IncludesExpectedCounters()
+        {
+            var summary = new LabelFilterService.SelectionDebugSummary(
+                Start: 0,
+                End: 5,
+                Total: 5,
+                NullLabel: 1,
+                NullEntity: 1,
+                OutOfDistance: 1,
+                Untargetable: 1,
+                NoMechanic: 1,
+                WorldItem: 3,
+                WorldItemMetadataRejected: 2,
+                SettlersPathSeen: 2,
+                SettlersMechanicMatched: 1,
+                SettlersMechanicDisabled: 1);
+
+            summary.ToCompactString().Should().Be("r:0-5 t:5 nl:1 ne:1 d:1 u:1 nm:1 wi:3/2 sp:2 sm:1 sd:1");
+        }
+
+        [TestMethod]
+        public void ShouldAllowPetrifiedWoodTargetability_UsesEntityWhenPresent_AndAllowsWhenMissing()
+        {
+            LabelFilterService.ShouldAllowPetrifiedWoodTargetability(
+                hasLabelEntityTargetable: false,
+                labelEntityTargetable: false).Should().BeTrue();
+
+            LabelFilterService.ShouldAllowPetrifiedWoodTargetability(
+                hasLabelEntityTargetable: true,
+                labelEntityTargetable: false).Should().BeFalse();
+
+            LabelFilterService.ShouldAllowPetrifiedWoodTargetability(
+                hasLabelEntityTargetable: true,
+                labelEntityTargetable: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldApplyPetrifiedWoodEntityTargetabilityGate_IsTrueOnlyForPetrifiedWood()
+        {
+            LabelFilterService.ShouldApplyPetrifiedWoodEntityTargetabilityGate(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/PetrifiedWood").Should().BeTrue();
+
+            LabelFilterService.ShouldApplyPetrifiedWoodEntityTargetabilityGate(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Copper").Should().BeFalse();
+
+            LabelFilterService.ShouldApplyPetrifiedWoodEntityTargetabilityGate(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/CrimsonIron").Should().BeFalse();
+
+            LabelFilterService.ShouldApplyPetrifiedWoodEntityTargetabilityGate(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium").Should().BeFalse();
+        }
+
     }
 }

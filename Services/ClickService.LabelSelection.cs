@@ -22,6 +22,8 @@ namespace ClickIt.Services
         private const string LostShipmentLoosePathMarker = "LostShipment";
         private const string LostGoodsRenderNameMarker = "Lost Goods";
         private const string LostShipmentRenderNameMarker = "Lost Shipment";
+        private const string VerisiumMechanicId = "settlers-verisium";
+        private const string VerisiumBossSubAreaTransitionPathMarker = "VerisiumBossSubAreaTransition";
         private const string AreaTransitionsMechanicId = "area-transitions";
         private const string LabyrinthTrialsMechanicId = "labyrinth-trials";
         private const int MovementSkillRecastDelayMs = 450;
@@ -100,10 +102,30 @@ namespace ClickIt.Services
             public float Distance { get; } = entity.DistancePlayer;
         }
 
+        private readonly struct SettlersOreCandidate(
+            Entity entity,
+            Vector2 clickPosition,
+            string mechanicId,
+            string entityPath,
+            Vector2 worldScreenRaw,
+            Vector2 worldScreenAbsolute)
+        {
+            public Entity Entity { get; } = entity;
+            public Vector2 ClickPosition { get; } = clickPosition;
+            public string MechanicId { get; } = mechanicId;
+            public string EntityPath { get; } = entityPath;
+            public Vector2 WorldScreenRaw { get; } = worldScreenRaw;
+            public Vector2 WorldScreenAbsolute { get; } = worldScreenAbsolute;
+            public float Distance { get; } = entity.DistancePlayer;
+        }
+
         public IEnumerator ProcessRegularClick()
         {
+            PublishClickFlowDebugStage("TickStart", "ProcessRegularClick entered");
+
             if (HasClickableAltars())
             {
+                PublishClickFlowDebugStage("AltarBranch", "Clickable altar detected; regular label click path skipped");
                 yield return ProcessAltarClicking();
                 yield break;
             }
@@ -125,15 +147,37 @@ namespace ClickIt.Services
             if (TryGetMovementSkillPostCastBlockState(Environment.TickCount64, out string movementSkillBlockReason))
             {
                 DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while movement skill is still executing ({movementSkillBlockReason}).");
+                PublishClickFlowDebugStage("MovementBlocked", movementSkillBlockReason);
                 yield break;
             }
 
             var nextShrine = ResolveNextShrineCandidate();
             LostShipmentCandidate? lostShipmentCandidate = ResolveNextLostShipmentCandidate();
+            SettlersOreCandidate? settlersOreCandidate = ResolveNextSettlersOreCandidate();
             RefreshMechanicPriorityCaches();
 
             if (!groundItemsVisible())
             {
+                PublishClickFlowDebugStage("GroundItemsHidden", "Ground item labels hidden; evaluating non-label fallbacks");
+
+                if (settlersOreCandidate.HasValue
+                    && ShouldPreferSettlersOreOverVisibleCandidates(
+                        settlersOreCandidate.Value.Distance,
+                        settlersOreCandidate.Value.MechanicId,
+                        labelDistance: null,
+                        labelMechanicId: null,
+                        shrineDistance: nextShrine?.DistancePlayer,
+                        lostShipmentDistance: lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
+                        _cachedMechanicPriorityIndexMap,
+                        _cachedMechanicIgnoreDistanceSet,
+                        _cachedMechanicIgnoreDistanceWithinMap,
+                        settings.MechanicPriorityDistancePenalty.Value))
+                {
+                    PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", settlersOreCandidate.Value.MechanicId);
+                    TryClickSettlersOre(settlersOreCandidate.Value);
+                    yield break;
+                }
+
                 if (lostShipmentCandidate.HasValue
                     && ShouldPreferLostShipmentOverVisibleCandidates(
                         lostShipmentCandidate.Value.Distance,
@@ -162,10 +206,12 @@ namespace ClickIt.Services
                 }
 
                 DebugLog(() => "[ProcessRegularClick] Ground items not visible, breaking");
+                PublishClickFlowDebugStage("GroundItemsHiddenExit", "No clickable hidden fallback selected");
                 yield break;
             }
 
-            var allLabels = cachedLabels?.Value;
+            var allLabels = GetLabelsForRegularSelection();
+            PublishClickFlowDebugStage("LabelSource", BuildLabelSourceDebugSummary(allLabels));
             LabelOnGround? nextLabel = ResolveNextLabelCandidate(allLabels);
 
             string? nextLabelMechanicId = nextLabel != null
@@ -197,6 +243,9 @@ namespace ClickIt.Services
 
             if (nextLabel == null)
             {
+                labelFilterService.LogSelectionDiagnostics(allLabels, 0, allLabels?.Count ?? 0);
+                PublishClickFlowDebugStage("NoLabelCandidate", BuildNoLabelDebugSummary(allLabels));
+
                 if (settings.WalkTowardOffscreenLabels.Value && TryHandleStickyOffscreenTarget(windowTopLeft, allLabels))
                 {
                     yield break;
@@ -208,11 +257,15 @@ namespace ClickIt.Services
                 }
 
                 DebugLog(() => "[ProcessRegularClick] No label to click found, breaking");
+                PublishClickFlowDebugStage("NoLabelExit", "No label click attempted");
                 yield break;
             }
 
             if (ShouldSkipOrHandleSpecialLabel(nextLabel, windowTopLeft))
+            {
+                PublishClickFlowDebugStage("SpecialLabelHandled", "Special label handling consumed click tick", nextLabelMechanicId);
                 yield break;
+            }
 
             if (!inputHandler.TryCalculateClickPosition(
                 nextLabel,
@@ -222,10 +275,35 @@ namespace ClickIt.Services
                 out Vector2 clickPos))
             {
                 DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
+                PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", nextLabelMechanicId);
                 yield break;
             }
 
-            bool clicked = PerformLabelClick(clickPos, nextLabel.Label, gameController);
+            PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", nextLabelMechanicId);
+
+            bool isSettlersMechanic = IsSettlersMechanicId(nextLabelMechanicId);
+            PublishLabelClickDebug(
+                stage: "LabelCandidate",
+                mechanicId: nextLabelMechanicId,
+                label: nextLabel,
+                resolvedClickPos: clickPos,
+                resolved: true,
+                notes: "Settlers label candidate selected from ItemsOnGroundLabelsVisible");
+
+            bool clicked = string.Equals(nextLabelMechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase)
+                ? PerformLabelHoldClick(clickPos, nextLabel.Label, gameController, holdDurationMs: 0)
+                : PerformLabelClick(clickPos, nextLabel.Label, gameController);
+
+            PublishLabelClickDebug(
+                stage: clicked ? "ClickSuccess" : "ClickFailed",
+                mechanicId: nextLabelMechanicId,
+                label: nextLabel,
+                resolvedClickPos: clickPos,
+                resolved: clicked,
+                notes: clicked ? "Settlers click completed via label pipeline" : "Settlers click attempt failed via label pipeline");
+
+            PublishClickFlowDebugStage(clicked ? "ClickExecuted" : "ClickRejected", clicked ? "Input click executed" : "Input click rejected", nextLabelMechanicId);
+
             if (clicked)
             {
                 if (IsStickyTarget(nextLabel.ItemOnGround))
@@ -334,9 +412,157 @@ namespace ClickIt.Services
             clickPos = default;
 
             var worldScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-            Vector2 worldScreen = new(worldScreenRaw.X, worldScreenRaw.Y);
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            Vector2 worldScreen = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
 
             return TryResolveNearbyClickablePoint(worldScreen, path, out clickPos);
+        }
+
+        private SettlersOreCandidate? ResolveNextSettlersOreCandidate()
+        {
+            if (!settings.ClickSettlersOre.Value || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
+                return null;
+
+            try
+            {
+                SettlersOreCandidate? best = null;
+                int scanned = 0;
+                int matchedPath = 0;
+                int labelBacked = 0;
+                var labelEntityAddresses = CollectGroundLabelEntityAddresses();
+
+                foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
+                {
+                    var entities = kv.Value;
+                    if (entities == null)
+                        continue;
+
+                    for (int i = 0; i < entities.Count; i++)
+                    {
+                        Entity entity = entities[i];
+                        if (entity == null)
+                            continue;
+
+                        scanned++;
+                        string path = entity.Path ?? string.Empty;
+                        if (!LabelFilterService.TryGetSettlersOreMechanicId(path, out string? settlersMechanicId) || string.IsNullOrWhiteSpace(settlersMechanicId))
+                            continue;
+
+                        matchedPath++;
+                        if (ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, settings.ClickDistance.Value))
+                            continue;
+                        if (!IsBackedByGroundLabel(entity.Address, labelEntityAddresses))
+                            continue;
+
+                        labelBacked++;
+
+                        var worldScreenRawVec = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+                        Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
+                        RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+                        Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+                        Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
+
+                        bool centerInWindow = IsInsideWindowInEitherSpace(worldScreenAbsolute);
+                        bool centerClickable = IsClickableInEitherSpace(worldScreenAbsolute, path);
+
+                        if (!TryResolveNearbyClickablePoint(worldScreenAbsolute, path, out Vector2 clickPos))
+                        {
+                            SetLatestClickDebug(new ClickDebugSnapshot(
+                                HasData: true,
+                                Stage: "ProbeFailed",
+                                MechanicId: settlersMechanicId,
+                                EntityPath: path,
+                                Distance: entity.DistancePlayer,
+                                WorldScreenRaw: worldScreenRaw,
+                                WorldScreenAbsolute: worldScreenAbsolute,
+                                ResolvedClickPoint: default,
+                                Resolved: false,
+                                CenterInWindow: centerInWindow,
+                                CenterClickable: centerClickable,
+                                ResolvedInWindow: false,
+                                ResolvedClickable: false,
+                                Notes: "No nearby clickable point resolved",
+                                Sequence: 0,
+                                TimestampMs: Environment.TickCount64));
+                            continue;
+                        }
+
+                        bool resolvedInWindow = IsInsideWindowInEitherSpace(clickPos);
+                        bool resolvedClickable = IsClickableInEitherSpace(clickPos, path);
+
+                        SetLatestClickDebug(new ClickDebugSnapshot(
+                            HasData: true,
+                            Stage: "ProbeResolved",
+                            MechanicId: settlersMechanicId,
+                            EntityPath: path,
+                            Distance: entity.DistancePlayer,
+                            WorldScreenRaw: worldScreenRaw,
+                            WorldScreenAbsolute: worldScreenAbsolute,
+                            ResolvedClickPoint: clickPos,
+                            Resolved: true,
+                            CenterInWindow: centerInWindow,
+                            CenterClickable: centerClickable,
+                            ResolvedInWindow: resolvedInWindow,
+                            ResolvedClickable: resolvedClickable,
+                            Notes: "Resolved nearby clickable point",
+                            Sequence: 0,
+                            TimestampMs: Environment.TickCount64));
+
+                        var candidate = new SettlersOreCandidate(entity, clickPos, settlersMechanicId, path, worldScreenRaw, worldScreenAbsolute);
+                        if (!best.HasValue || candidate.Distance < best.Value.Distance)
+                        {
+                            best = candidate;
+                            SetLatestClickDebug(new ClickDebugSnapshot(
+                                HasData: true,
+                                Stage: "CandidateSelected",
+                                MechanicId: settlersMechanicId,
+                                EntityPath: path,
+                                Distance: entity.DistancePlayer,
+                                WorldScreenRaw: worldScreenRaw,
+                                WorldScreenAbsolute: worldScreenAbsolute,
+                                ResolvedClickPoint: clickPos,
+                                Resolved: true,
+                                CenterInWindow: centerInWindow,
+                                CenterClickable: centerClickable,
+                                ResolvedInWindow: resolvedInWindow,
+                                ResolvedClickable: resolvedClickable,
+                                Notes: "Nearest settlers candidate selected",
+                                Sequence: 0,
+                                TimestampMs: Environment.TickCount64));
+                        }
+                    }
+                }
+
+                if (!best.HasValue)
+                {
+                    DebugLog(() => $"[ResolveNextSettlersOreCandidate] none scanned:{scanned} matched:{matchedPath} labelBacked:{labelBacked}");
+                    SetLatestClickDebug(new ClickDebugSnapshot(
+                        HasData: true,
+                        Stage: "NoCandidate",
+                        MechanicId: string.Empty,
+                        EntityPath: string.Empty,
+                        Distance: 0f,
+                        WorldScreenRaw: default,
+                        WorldScreenAbsolute: default,
+                        ResolvedClickPoint: default,
+                        Resolved: false,
+                        CenterInWindow: false,
+                        CenterClickable: false,
+                        ResolvedInWindow: false,
+                        ResolvedClickable: false,
+                        Notes: $"scanned={scanned}, matchedPath={matchedPath}, labelBacked={labelBacked}",
+                        Sequence: 0,
+                        TimestampMs: Environment.TickCount64));
+                }
+
+                return best;
+            }
+            catch (Exception ex)
+            {
+                DebugLog(() => $"[ResolveNextSettlersOreCandidate] Failed to scan entities: {ex.Message}");
+                return null;
+            }
         }
 
         private bool TryResolveNearbyClickablePoint(Vector2 center, string path, out Vector2 clickPos)
@@ -360,6 +586,9 @@ namespace ClickIt.Services
             for (int i = 0; i < offsets.Length; i++)
             {
                 Vector2 candidate = center + offsets[i];
+                if (!IsInsideWindowInEitherSpace(candidate))
+                    continue;
+
                 if (!IsClickableInEitherSpace(candidate, path))
                     continue;
 
@@ -389,11 +618,69 @@ namespace ClickIt.Services
             }
         }
 
+        private void TryClickSettlersOre(SettlersOreCandidate candidate)
+        {
+            DebugLog(() => $"[ProcessRegularClick] Clicking settlers ore candidate ({candidate.MechanicId}) via entity position.");
+
+            SetLatestClickDebug(new ClickDebugSnapshot(
+                HasData: true,
+                Stage: "ClickAttempt",
+                MechanicId: candidate.MechanicId,
+                EntityPath: candidate.EntityPath,
+                Distance: candidate.Distance,
+                WorldScreenRaw: candidate.WorldScreenRaw,
+                WorldScreenAbsolute: candidate.WorldScreenAbsolute,
+                ResolvedClickPoint: candidate.ClickPosition,
+                Resolved: true,
+                CenterInWindow: IsInsideWindowInEitherSpace(candidate.WorldScreenAbsolute),
+                CenterClickable: IsClickableInEitherSpace(candidate.WorldScreenAbsolute, candidate.EntityPath),
+                ResolvedInWindow: IsInsideWindowInEitherSpace(candidate.ClickPosition),
+                ResolvedClickable: IsClickableInEitherSpace(candidate.ClickPosition, candidate.EntityPath),
+                Notes: "Attempting settlers click",
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
+
+            bool clicked = PerformLabelHoldClick(candidate.ClickPosition, null, gameController, holdDurationMs: 0);
+            if (clicked)
+            {
+                SetLatestClickDebug(new ClickDebugSnapshot(
+                    HasData: true,
+                    Stage: "ClickSuccess",
+                    MechanicId: candidate.MechanicId,
+                    EntityPath: candidate.EntityPath,
+                    Distance: candidate.Distance,
+                    WorldScreenRaw: candidate.WorldScreenRaw,
+                    WorldScreenAbsolute: candidate.WorldScreenAbsolute,
+                    ResolvedClickPoint: candidate.ClickPosition,
+                    Resolved: true,
+                    CenterInWindow: IsInsideWindowInEitherSpace(candidate.WorldScreenAbsolute),
+                    CenterClickable: IsClickableInEitherSpace(candidate.WorldScreenAbsolute, candidate.EntityPath),
+                    ResolvedInWindow: IsInsideWindowInEitherSpace(candidate.ClickPosition),
+                    ResolvedClickable: IsClickableInEitherSpace(candidate.ClickPosition, candidate.EntityPath),
+                    Notes: "Settlers click completed",
+                    Sequence: 0,
+                    TimestampMs: Environment.TickCount64));
+
+                if (IsStickyTarget(candidate.Entity))
+                    ClearStickyOffscreenTarget();
+
+                if (settings.WalkTowardOffscreenLabels.Value)
+                    pathfindingService.ClearLatestPath();
+            }
+        }
+
         internal static bool IsLostShipmentPath(string? path)
         {
             return !string.IsNullOrWhiteSpace(path)
                 && (path.Contains(LostShipmentPathMarker, StringComparison.OrdinalIgnoreCase)
                     || path.Contains(LostShipmentLoosePathMarker, StringComparison.OrdinalIgnoreCase));
+        }
+
+        internal static bool IsVerisiumPath(string? path)
+        {
+            return !string.IsNullOrWhiteSpace(path)
+                && path.Contains(PathConstants.Verisium, StringComparison.OrdinalIgnoreCase)
+                && !path.Contains(VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsLostShipmentEntity(string? path, string? renderName)
@@ -411,6 +698,16 @@ namespace ClickIt.Services
         internal static bool ShouldSkipLostShipmentEntity(bool isValid, float distance, int clickDistance, bool isOpened)
         {
             return !isValid || isOpened || distance > clickDistance;
+        }
+
+        internal static bool ShouldSkipSettlersOreEntity(bool isValid, float distance, int clickDistance)
+        {
+            return !isValid || distance > clickDistance;
+        }
+
+        internal static bool ShouldSkipVerisiumEntity(bool isValid, float distance, int clickDistance)
+        {
+            return ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
         }
 
         internal static bool ShouldPreferLostShipmentOverVisibleCandidates(
@@ -460,6 +757,95 @@ namespace ClickIt.Services
             }
 
             return true;
+        }
+
+        internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
+            float settlersOreDistance,
+            string settlersOreMechanicId,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            IReadOnlyDictionary<string, int> priorityIndexMap,
+            IReadOnlySet<string> ignoreDistanceSet,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+        {
+            var settlersOreRank = BuildMechanicRank(
+                settlersOreDistance,
+                settlersOreMechanicId,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+            if (labelDistance.HasValue)
+            {
+                var labelRank = BuildMechanicRank(
+                    labelDistance.Value,
+                    labelMechanicId,
+                    priorityIndexMap,
+                    ignoreDistanceSet,
+                    ignoreDistanceWithinByMechanicId,
+                    priorityDistancePenalty);
+
+                if (CompareMechanicRanks(settlersOreRank, labelRank) >= 0)
+                    return false;
+            }
+
+            if (shrineDistance.HasValue)
+            {
+                var shrineRank = BuildMechanicRank(
+                    shrineDistance.Value,
+                    ShrineMechanicId,
+                    priorityIndexMap,
+                    ignoreDistanceSet,
+                    ignoreDistanceWithinByMechanicId,
+                    priorityDistancePenalty);
+
+                if (CompareMechanicRanks(settlersOreRank, shrineRank) >= 0)
+                    return false;
+            }
+
+            if (lostShipmentDistance.HasValue)
+            {
+                var lostShipmentRank = BuildMechanicRank(
+                    lostShipmentDistance.Value,
+                    LostShipmentMechanicId,
+                    priorityIndexMap,
+                    ignoreDistanceSet,
+                    ignoreDistanceWithinByMechanicId,
+                    priorityDistancePenalty);
+
+                if (CompareMechanicRanks(settlersOreRank, lostShipmentRank) >= 0)
+                    return false;
+            }
+
+            return true;
+        }
+
+        internal static bool ShouldPreferVerisiumOverVisibleCandidates(
+            float verisiumDistance,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            IReadOnlyDictionary<string, int> priorityIndexMap,
+            IReadOnlySet<string> ignoreDistanceSet,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+        {
+            return ShouldPreferSettlersOreOverVisibleCandidates(
+                verisiumDistance,
+                VerisiumMechanicId,
+                labelDistance,
+                labelMechanicId,
+                shrineDistance,
+                lostShipmentDistance,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
         }
 
         private bool HasStickyOffscreenTarget()
@@ -780,18 +1166,48 @@ namespace ClickIt.Services
         private LabelOnGround? FindLabelInRange(IReadOnlyList<LabelOnGround> allLabels, int start, int endExclusive)
         {
             int currentStart = start;
+            int examined = 0;
+            int leverSuppressed = 0;
+            int ultimatumSuppressed = 0;
+            int overlappedSuppressed = 0;
+            int indexMisses = 0;
+
             while (currentStart < endExclusive)
             {
                 LabelOnGround? label = labelFilterService.GetNextLabelToClick(allLabels, currentStart, endExclusive - currentStart);
                 if (label == null)
+                {
+                    string noLabelSummary = BuildLabelRangeRejectionDebugSummary(allLabels, start, endExclusive, examined);
+                    PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
+                    if (examined > 0)
+                    {
+                        DebugLog(() =>
+                            $"[LabelSelectDiag] range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
+                    }
                     return null;
+                }
 
+                examined++;
+
+                bool suppressLever = ShouldSuppressLeverClick(label);
+                bool suppressUltimatum = ShouldSuppressInactiveUltimatumLabel(label);
                 bool fullyOverlapped = inputHandler.IsLabelFullyOverlapped(label, allLabels);
 
-                if (!ShouldSuppressLeverClick(label)
-                    && !ShouldSuppressInactiveUltimatumLabel(label)
+                if (suppressLever)
+                    leverSuppressed++;
+                if (suppressUltimatum)
+                    ultimatumSuppressed++;
+
+                if (fullyOverlapped)
+                    overlappedSuppressed++;
+
+                if (!suppressLever
+                    && !suppressUltimatum
                     && !fullyOverlapped)
+                {
+                    PublishClickFlowDebugStage("FindLabelMatch", $"range:{start}-{endExclusive} examined:{examined}");
                     return label;
+                }
 
                 if (fullyOverlapped)
                 {
@@ -800,9 +1216,22 @@ namespace ClickIt.Services
 
                 int idx = IndexOfLabelReference(allLabels, label, currentStart, endExclusive);
                 if (idx < 0)
+                {
+                    indexMisses++;
+                    PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
+                    DebugLog(() =>
+                        $"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
                     return null;
+                }
 
                 currentStart = idx + 1;
+            }
+
+            if (examined > 0)
+            {
+                PublishClickFlowDebugStage("FindLabelExhausted", $"range:{start}-{endExclusive} examined:{examined}");
+                DebugLog(() =>
+                    $"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
             }
 
             return null;
@@ -916,6 +1345,17 @@ namespace ClickIt.Services
                 return false;
 
             PerformLockedClick(clickPos, expectedElement, controller);
+
+            performanceMonitor.RecordClickInterval();
+            return true;
+        }
+
+        private bool PerformLabelHoldClick(Vector2 clickPos, Element? expectedElement, GameController? controller, int holdDurationMs)
+        {
+            if (!EnsureCursorInsideGameWindowForClick("[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"))
+                return false;
+
+            PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller);
 
             performanceMonitor.RecordClickInterval();
             return true;
@@ -2157,6 +2597,216 @@ namespace ClickIt.Services
             return best;
         }
 
+        private static bool IsSettlersMechanicId(string? mechanicId)
+        {
+            return !string.IsNullOrWhiteSpace(mechanicId)
+                && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string BuildNoLabelDebugSummary(IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            int labelCount = allLabels?.Count ?? 0;
+            string sourceSummary = BuildLabelSourceDebugSummary(allLabels);
+            if (labelCount <= 0)
+                return $"{sourceSummary} | selection:r:0-0 t:0";
+
+            var summary = labelFilterService.GetSelectionDebugSummary(allLabels, 0, labelCount);
+            return $"{sourceSummary} | selection:{summary.ToCompactString()}";
+        }
+
+        private string BuildLabelRangeRejectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int start, int endExclusive, int examined)
+        {
+            int maxCount = Math.Max(0, endExclusive - start);
+            var summary = labelFilterService.GetSelectionDebugSummary(allLabels, start, maxCount);
+            return $"range:{start}-{endExclusive} examined:{examined} | {summary.ToCompactString()}";
+        }
+
+        private string BuildLabelSourceDebugSummary(IReadOnlyList<LabelOnGround>? cachedLabelSnapshot)
+        {
+            int cachedCount = cachedLabelSnapshot?.Count ?? 0;
+            int visibleCount = 0;
+            try
+            {
+                visibleCount = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.Count ?? 0;
+            }
+            catch
+            {
+                visibleCount = 0;
+            }
+
+            bool groundVisible = groundItemsVisible();
+            return $"visible:{visibleCount} cached:{cachedCount} groundVisible:{groundVisible}";
+        }
+
+        private void PublishClickFlowDebugStage(string stage, string notes, string? mechanicId = null)
+        {
+            SetLatestClickDebug(new ClickDebugSnapshot(
+                HasData: true,
+                Stage: stage,
+                MechanicId: mechanicId ?? string.Empty,
+                EntityPath: string.Empty,
+                Distance: 0f,
+                WorldScreenRaw: default,
+                WorldScreenAbsolute: default,
+                ResolvedClickPoint: default,
+                Resolved: false,
+                CenterInWindow: false,
+                CenterClickable: false,
+                ResolvedInWindow: false,
+                ResolvedClickable: false,
+                Notes: notes,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
+        }
+
+        private void PublishLabelClickDebug(
+            string stage,
+            string? mechanicId,
+            LabelOnGround label,
+            Vector2 resolvedClickPos,
+            bool resolved,
+            string notes)
+        {
+            Entity? entity = label?.ItemOnGround;
+            if (entity == null)
+                return;
+
+            string entityPath = entity.Path ?? string.Empty;
+            var worldScreenRawVec = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+            Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
+
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            Vector2 worldScreenAbsolute = worldScreenRaw + windowTopLeft;
+
+            bool centerInWindow = IsInsideWindowInEitherSpace(worldScreenAbsolute);
+            bool centerClickable = IsClickableInEitherSpace(worldScreenAbsolute, entityPath);
+            bool resolvedInWindow = IsInsideWindowInEitherSpace(resolvedClickPos);
+            bool resolvedClickable = IsClickableInEitherSpace(resolvedClickPos, entityPath);
+
+            SetLatestClickDebug(new ClickDebugSnapshot(
+                HasData: true,
+                Stage: stage,
+                MechanicId: mechanicId ?? string.Empty,
+                EntityPath: entityPath,
+                Distance: entity.DistancePlayer,
+                WorldScreenRaw: worldScreenRaw,
+                WorldScreenAbsolute: worldScreenAbsolute,
+                ResolvedClickPoint: resolvedClickPos,
+                Resolved: resolved,
+                CenterInWindow: centerInWindow,
+                CenterClickable: centerClickable,
+                ResolvedInWindow: resolvedInWindow,
+                ResolvedClickable: resolvedClickable,
+                Notes: notes,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
+        }
+
+        private Entity? ResolveNearestOffscreenSettlersOreTarget(int maxDistance, out string? selectedMechanicId)
+        {
+            selectedMechanicId = null;
+
+            if (!settings.ClickSettlersOre.Value || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
+                return null;
+
+            Entity? best = null;
+            float bestDistance = float.MaxValue;
+            var labelEntityAddresses = CollectGroundLabelEntityAddresses();
+
+            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
+            {
+                var entities = kv.Value;
+                if (entities == null)
+                    continue;
+
+                for (int i = 0; i < entities.Count; i++)
+                {
+                    Entity entity = entities[i];
+                    if (entity == null || !entity.IsValid || entity.IsHidden)
+                        continue;
+                    if (entity.DistancePlayer > maxDistance)
+                        continue;
+                    if (!IsBackedByGroundLabel(entity.Address, labelEntityAddresses))
+                        continue;
+
+                    string path = entity.Path ?? string.Empty;
+                    if (!LabelFilterService.TryGetSettlersOreMechanicId(path, out string? mechanicId) || string.IsNullOrWhiteSpace(mechanicId))
+                        continue;
+
+                    var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+                    Vector2 screen = new(screenRaw.X, screenRaw.Y);
+                    if (IsInsideWindowInEitherSpace(screen))
+                        continue;
+
+                    if (IsClickableInEitherSpace(screen, path))
+                        continue;
+
+                    float d = entity.DistancePlayer;
+                    if (d >= bestDistance)
+                        continue;
+
+                    bestDistance = d;
+                    selectedMechanicId = mechanicId;
+                    best = entity;
+                }
+            }
+
+            return best;
+        }
+
+        private HashSet<long> CollectGroundLabelEntityAddresses()
+        {
+            var addresses = new HashSet<long>();
+
+            try
+            {
+                var labels = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
+                if (labels == null || labels.Count == 0)
+                    return addresses;
+
+                for (int i = 0; i < labels.Count; i++)
+                {
+                    long address = labels[i]?.ItemOnGround?.Address ?? 0;
+                    if (address != 0)
+                        addresses.Add(address);
+                }
+            }
+            catch
+            {
+            }
+
+            return addresses;
+        }
+
+        internal static bool IsBackedByGroundLabel(long entityAddress, IReadOnlySet<long>? labelEntityAddresses)
+        {
+            return entityAddress != 0
+                && labelEntityAddresses != null
+                && labelEntityAddresses.Contains(entityAddress);
+        }
+
+        private bool IsInsideWindowInEitherSpace(Vector2 point)
+        {
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            return IsInsideWindowInEitherSpace(point, windowArea);
+        }
+
+        internal static bool IsInsideWindowInEitherSpace(Vector2 point, RectangleF windowArea)
+        {
+            bool inClientSpace = point.X >= 0f
+                && point.Y >= 0f
+                && point.X <= windowArea.Width
+                && point.Y <= windowArea.Height;
+
+            bool inScreenSpace = point.X >= windowArea.Left
+                && point.Y >= windowArea.Top
+                && point.X <= windowArea.Right
+                && point.Y <= windowArea.Bottom;
+
+            return inClientSpace || inScreenSpace;
+        }
+
         private void PromoteOffscreenTargetCandidate(
             ref Entity? best,
             ref string? bestMechanicId,
@@ -2410,6 +3060,21 @@ namespace ClickIt.Services
         }
 
         private IReadOnlyList<LabelOnGround>? GetLabelsForOffscreenSelection()
+        {
+            try
+            {
+                var raw = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+                if (raw != null && raw.Count > 0)
+                    return [.. raw];
+            }
+            catch
+            {
+            }
+
+            return cachedLabels?.Value;
+        }
+
+        private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
         {
             try
             {

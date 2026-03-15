@@ -60,6 +60,9 @@ namespace ClickIt.Tests.Unit
             settings.ClickLeagueChests.Value = true;
             settings.ClickSettlersOre.Value = true;
 
+            LabelFilterService.KeyStateProvider = (k) => false;
+            LabelFilterService.LazyModeRestrictedChecker = (svc2, labels) => true;
+
             var ess = new EssenceService(settings);
             var err = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
             var svc = new LabelFilterService(settings, ess, err, null);
@@ -86,6 +89,34 @@ namespace ClickIt.Tests.Unit
 
             clickLeagueChests.Should().BeFalse();
             clickSettlersOre.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void CreateClickSettings_KeepsSettlersEnabled_WhenLazyModeAndNoRestrictedItemOnScreen()
+        {
+            var settings = new ClickItSettings();
+            settings.LazyMode.Value = true;
+            settings.ClickSettlersOre.Value = true;
+
+            var ess = new EssenceService(settings);
+            var err = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
+            var svc = new LabelFilterService(settings, ess, err, null);
+
+            LabelFilterService.KeyStateProvider = (k) => false;
+            LabelFilterService.LazyModeRestrictedChecker = (svc2, labels) => false;
+
+            var method = typeof(LabelFilterService).GetMethod("CreateClickSettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method.Should().NotBeNull();
+
+            var result = method!.Invoke(svc, [null]);
+            result.Should().NotBeNull();
+
+            var clickSettingsType = result!.GetType();
+            var clickSettlersOreProperty = clickSettingsType.GetProperty("ClickSettlersOre");
+            clickSettlersOreProperty.Should().NotBeNull();
+
+            bool clickSettlersOre = (bool)clickSettlersOreProperty!.GetValue(result)!;
+            clickSettlersOre.Should().BeTrue();
         }
     }
 }

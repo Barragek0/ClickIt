@@ -595,6 +595,64 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void IsInsideWindowInEitherSpace_AcceptsClientAndScreenCoordinates()
+        {
+            var windowArea = new SharpDX.RectangleF(100f, 200f, 1920f, 1080f);
+
+            ClickService.IsInsideWindowInEitherSpace(new SharpDX.Vector2(960f, 540f), windowArea).Should().BeTrue();
+            ClickService.IsInsideWindowInEitherSpace(new SharpDX.Vector2(1060f, 740f), windowArea).Should().BeTrue();
+            ClickService.IsInsideWindowInEitherSpace(new SharpDX.Vector2(-10f, 740f), windowArea).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsVerisiumPath_ReturnsTrue_ForSettlersNodeMetadata()
+        {
+            ClickService.IsVerisiumPath("Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium").Should().BeTrue();
+            ClickService.IsVerisiumPath("metadata/terrain/leagues/settlers/node/objects/nodetypes/verisium").Should().BeTrue();
+            ClickService.IsVerisiumPath("Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/VerisiumBossSubAreaTransition").Should().BeFalse();
+            ClickService.IsVerisiumPath("Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/CrimsonIron").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryGetSettlersOreMechanicId_MapsKnownSettlersNodeTypes()
+        {
+            LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/CrimsonIron",
+                out string? crimsonMechanicId).Should().BeTrue();
+            crimsonMechanicId.Should().Be("settlers-crimson-iron");
+
+            LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/DemonCopperObjects/copper_altar",
+                out string? copperMechanicId).Should().BeTrue();
+            copperMechanicId.Should().Be("settlers-copper");
+
+            LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Bismuth",
+                out string? bismuthMechanicId).Should().BeTrue();
+            bismuthMechanicId.Should().Be("settlers-bismuth");
+
+            LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium",
+                out string? verisiumMechanicId).Should().BeTrue();
+            verisiumMechanicId.Should().Be("settlers-verisium");
+
+            LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/UnknownNode",
+                out string? unknownMechanicId).Should().BeFalse();
+            unknownMechanicId.Should().BeNull();
+
+            LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/VerisiumBossSubAreaTransition",
+                out string? verisiumTransitionMechanicId).Should().BeFalse();
+            verisiumTransitionMechanicId.Should().BeNull();
+
+            LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/FakeCopper/copper_altar",
+                out string? broadCopperFalsePositive).Should().BeFalse();
+            broadCopperFalsePositive.Should().BeNull();
+        }
+
+        [TestMethod]
         public void ShouldSkipLostShipmentEntity_ReturnsTrue_WhenEntityIsOpened()
         {
             bool shouldSkip = ClickService.ShouldSkipLostShipmentEntity(
@@ -604,6 +662,36 @@ namespace ClickIt.Tests.Unit
                 isOpened: true);
 
             shouldSkip.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldSkipVerisiumEntity_RespectsValidityAndDistance()
+        {
+            ClickService.ShouldSkipVerisiumEntity(
+                isValid: false,
+                distance: 10f,
+                clickDistance: 100).Should().BeTrue();
+
+            ClickService.ShouldSkipVerisiumEntity(
+                isValid: true,
+                distance: 150f,
+                clickDistance: 100).Should().BeTrue();
+
+            ClickService.ShouldSkipVerisiumEntity(
+                isValid: true,
+                distance: 50f,
+                clickDistance: 100).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsBackedByGroundLabel_RequiresKnownNonZeroAddress()
+        {
+            var addresses = new System.Collections.Generic.HashSet<long> { 123, 456 };
+
+            ClickService.IsBackedByGroundLabel(123, addresses).Should().BeTrue();
+            ClickService.IsBackedByGroundLabel(999, addresses).Should().BeFalse();
+            ClickService.IsBackedByGroundLabel(0, addresses).Should().BeFalse();
+            ClickService.IsBackedByGroundLabel(123, null).Should().BeFalse();
         }
 
         [TestMethod]
@@ -656,6 +744,121 @@ namespace ClickIt.Tests.Unit
                 priorityDistancePenalty: 25);
 
             preferLostShipment.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPreferVerisiumOverVisibleCandidates_ReturnsTrue_WhenItHasBestRank()
+        {
+            var priorityMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["settlers-verisium"] = 0,
+                ["lost-shipment"] = 1,
+                ["items"] = 2,
+                ["shrines"] = 3
+            };
+
+            var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            bool preferVerisium = ClickService.ShouldPreferVerisiumOverVisibleCandidates(
+                verisiumDistance: 90f,
+                labelDistance: 80f,
+                labelMechanicId: "items",
+                shrineDistance: 70f,
+                lostShipmentDistance: 75f,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 25);
+
+            preferVerisium.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldPreferVerisiumOverVisibleCandidates_ReturnsFalse_WhenLostShipmentRankWins()
+        {
+            var priorityMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["lost-shipment"] = 0,
+                ["settlers-verisium"] = 2,
+                ["items"] = 3,
+                ["shrines"] = 4
+            };
+
+            var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            bool preferVerisium = ClickService.ShouldPreferVerisiumOverVisibleCandidates(
+                verisiumDistance: 90f,
+                labelDistance: null,
+                labelMechanicId: null,
+                shrineDistance: null,
+                lostShipmentDistance: 20f,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 25);
+
+            preferVerisium.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPreferSettlersOreOverVisibleCandidates_UsesSelectedSettlersMechanicRank()
+        {
+            var priorityMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["settlers-crimson-iron"] = 0,
+                ["lost-shipment"] = 1,
+                ["items"] = 2,
+                ["shrines"] = 3,
+                ["settlers-verisium"] = 4
+            };
+
+            var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            bool preferSettlersOre = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance: 90f,
+                settlersOreMechanicId: "settlers-crimson-iron",
+                labelDistance: 80f,
+                labelMechanicId: "items",
+                shrineDistance: 70f,
+                lostShipmentDistance: 75f,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 25);
+
+            preferSettlersOre.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldPreferSettlersOreOverVisibleCandidates_ReturnsTrue_WhenNoCompetingCandidates()
+        {
+            var priorityMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["settlers-verisium"] = 0,
+                ["lost-shipment"] = 1,
+                ["shrines"] = 2,
+                ["items"] = 3
+            };
+
+            var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            bool preferSettlersOre = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance: 90f,
+                settlersOreMechanicId: "settlers-verisium",
+                labelDistance: null,
+                labelMechanicId: null,
+                shrineDistance: null,
+                lostShipmentDistance: null,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 25);
+
+            preferSettlersOre.Should().BeTrue();
         }
 
         public sealed class SkillNode

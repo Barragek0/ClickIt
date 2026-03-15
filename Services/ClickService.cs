@@ -301,6 +301,14 @@ namespace ClickIt.Services
             }
         }
 
+        private void PerformLockedHoldClick(Vector2 clickPos, int holdDurationMs, Element? expectedElement, GameController? controller)
+        {
+            using (LockManager.AcquireStatic(_elementAccessLock))
+            {
+                inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller);
+            }
+        }
+
         private bool IsCursorInsideGameWindow()
         {
             try

@@ -3,6 +3,8 @@ using ExileCore.PoEMemory;
 using SharpDX;
 using System.Diagnostics;
 using System.Threading;
+using ClickIt.Definitions;
+using ExileCore.Shared.Nodes;
 
 namespace ClickIt.Utils
 {
@@ -78,6 +80,89 @@ namespace ClickIt.Utils
             Interlocked.Increment(ref _successfulClickSequence);
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
 
+            swTotal.Stop();
+        }
+
+        public void PerformClickAndHold(Vector2 position, int holdDurationMs, Element? expectedElement = null, GameController? gameController = null)
+        {
+            _ = holdDurationMs;
+
+            if (!TryConsumeLazyModeLimiter())
+                return;
+
+            HotkeyNode? clickKeyNode = _settings.ClickLabelKey;
+            if (clickKeyNode == null)
+                return;
+
+            var clickKey = clickKeyNode.Value;
+            if (!_settings.LazyMode.Value && !Input.GetKeyState(clickKey))
+                return;
+
+            if (!TryValidateAutomationScreenPoint(position, gameController, out string invalidPointReason))
+            {
+                _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping hold click at {position} ({invalidPointReason}).", 10);
+                return;
+            }
+
+            var swTotal = Stopwatch.StartNew();
+            var before = Mouse.GetCursorPosition();
+
+            if (!Mouse.DisableNativeInput)
+            {
+                Input.SetCursorPos(position);
+            }
+
+            if (_settings?.LazyMode?.Value == true)
+            {
+                Thread.Sleep(_settings.LazyModeUIHoverSleep.Value);
+            }
+            else
+            {
+                Thread.Sleep(10);
+            }
+
+            var uiHover = gameController?.IngameState?.UIHoverElement;
+            bool lazyModeEnabled = _settings?.LazyMode?.Value == true;
+            bool verifyUiHoverWhenNotLazy = _settings?.VerifyUIHoverWhenNotLazy?.Value != false;
+            ulong expectedAddress = unchecked((ulong)(expectedElement?.Address ?? 0));
+            ulong hoverAddress = unchecked((ulong)(uiHover?.Address ?? 0));
+
+            if (ShouldSkipClickDueToHoverMismatch(lazyModeEnabled, verifyUiHoverWhenNotLazy, expectedAddress, hoverAddress))
+            {
+                _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification failed for hold-click. Skipping.", 5);
+                RestoreCursorIfLazyMode(before, gameController);
+                return;
+            }
+
+            try
+            {
+                if (_settings?.LeftHanded?.Value == true)
+                {
+                    Mouse.RightMouseDown();
+                    while (Input.GetKeyState(clickKey))
+                    {
+                        Thread.Sleep(10);
+                    }
+                    Mouse.RightMouseUp();
+                }
+                else
+                {
+                    Mouse.LeftMouseDown();
+                    while (Input.GetKeyState(clickKey))
+                    {
+                        Thread.Sleep(10);
+                    }
+                    Mouse.LeftMouseUp();
+                }
+            }
+            finally
+            {
+                RestoreCursorIfLazyMode(before, gameController);
+            }
+
+            MarkLazyModeClickCompleted();
+            Interlocked.Increment(ref _successfulClickSequence);
+            _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
             swTotal.Stop();
         }
 

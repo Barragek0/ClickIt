@@ -20,28 +20,57 @@ namespace ClickIt.Services
         private const string MechanicAreaTransitions = "area-transitions";
         private const string MechanicLabyrinthTrials = "labyrinth-trials";
         private const string MechanicHarvest = "harvest";
-        private const string MechanicSulphiteVeins = "sulphite-veins";
+        private const string MechanicDelveSulphiteVeins = "delve-sulphite-veins";
         private const string MechanicStrongboxes = "strongboxes";
         private const string MechanicSanctum = "sanctum";
         private const string MechanicBetrayal = "betrayal";
         private const string MechanicBlight = "blight";
         private const string MechanicAlvaTempleDoors = "alva-temple-doors";
         private const string MechanicLegionPillars = "legion-pillars";
-        private const string MechanicAzuriteVeins = "azurite-veins";
-        private const string MechanicUltimatum = "ultimatum";
-        private const string MechanicDelveSpawners = "delve-spawners";
+        private const string MechanicDelveAzuriteVeins = "delve-azurite-veins";
+        private const string MechanicUltimatumInitialOverlay = "ultimatum-initial-overlay";
+        private const string MechanicDelveEncounterInitiators = "delve-encounter-initiators";
         private const string MechanicCraftingRecipes = "crafting-recipes";
         private const string MechanicBreachNodes = "breach-nodes";
-        private const string MechanicSettlersOre = "settlers-ore";
-        private const string MechanicAltars = "altars";
+        private const string MechanicSettlersCrimsonIron = "settlers-crimson-iron";
+        private const string MechanicSettlersCopper = "settlers-copper";
+        private const string MechanicSettlersPetrifiedWood = "settlers-petrified-wood";
+        private const string MechanicSettlersBismuth = "settlers-bismuth";
+        private const string MechanicSettlersVerisium = "settlers-verisium";
+        private const string SettlersNodeTypeRootPath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/";
+        private const string SettlersCrimsonIronMarker = SettlersNodeTypeRootPath + "CrimsonIron";
+        private const string SettlersCopperMarker = SettlersNodeTypeRootPath + "DemonCopperObjects/copper_altar";
+        private const string SettlersPetrifiedWoodMarker = SettlersNodeTypeRootPath + "PetrifiedWood";
+        private const string SettlersBismuthMarker = SettlersNodeTypeRootPath + "Bismuth";
+        private const string SettlersVerisiumMarker = SettlersNodeTypeRootPath + "Verisium";
+        private const string VerisiumBossSubAreaTransitionPathMarker = "VerisiumBossSubAreaTransition";
+        private const string MechanicAltarsSearingExarch = "altars-searing-exarch";
+        private const string MechanicAltarsEaterOfWorlds = "altars-eater-of-worlds";
         private const string MechanicEssences = "essences";
         private const string MechanicRitualInitiate = "ritual-initiate";
         private const string MechanicRitualCompleted = "ritual-completed";
 
         private static string? GetClickableMechanicId(LabelOnGround label, Entity item, ClickSettings settings, ExileCore.GameController? gameController)
         {
-            string path = item.Path;
             EntityType type = item.Type;
+            string path = type == EntityType.WorldItem
+                ? GetWorldItemMetadataPath(item)
+                : (item.Path ?? string.Empty);
+
+            string? specialMechanicId = GetSpecialPathMechanicId(settings, path, label);
+            if (!string.IsNullOrWhiteSpace(specialMechanicId))
+                return specialMechanicId;
+
+            string? altarMechanicId = GetAltarMechanicId(settings, path);
+            if (!string.IsNullOrWhiteSpace(altarMechanicId))
+                return altarMechanicId;
+
+            if (ShouldClickEssence(settings.ClickEssences, label))
+                return MechanicEssences;
+
+            string? ritualMechanicId = GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
+            if (!string.IsNullOrWhiteSpace(ritualMechanicId))
+                return ritualMechanicId;
 
             if (type == EntityType.WorldItem && !ShouldAllowWorldItemByMetadata(settings, item, gameController))
                 return null;
@@ -59,20 +88,6 @@ namespace ClickIt.Services
             string? transitionMechanicId = GetAreaTransitionMechanicId(settings.ClickAreaTransitions, settings.ClickLabyrinthTrials, type, path);
             if (!string.IsNullOrWhiteSpace(transitionMechanicId))
                 return transitionMechanicId;
-
-            string? specialMechanicId = GetSpecialPathMechanicId(settings, path, label);
-            if (!string.IsNullOrWhiteSpace(specialMechanicId))
-                return specialMechanicId;
-
-            if (ShouldClickAltar(settings.HighlightEater, settings.HighlightExarch, settings.ClickEater, settings.ClickExarch, path))
-                return MechanicAltars;
-
-            if (ShouldClickEssence(settings.ClickEssences, label))
-                return MechanicEssences;
-
-            string? ritualMechanicId = GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
-            if (!string.IsNullOrWhiteSpace(ritualMechanicId))
-                return ritualMechanicId;
 
             return null;
         }
@@ -160,24 +175,41 @@ namespace ClickIt.Services
             if (string.IsNullOrEmpty(path))
                 return null;
 
+            if (TryGetSettlersOreMechanicId(path, out string? settlersMechanicId) && !string.IsNullOrWhiteSpace(settlersMechanicId))
+            {
+                if (string.Equals(settlersMechanicId, MechanicSettlersCrimsonIron, StringComparison.OrdinalIgnoreCase))
+                    return settings.ClickSettlersCrimsonIron ? MechanicSettlersCrimsonIron : null;
+
+                if (string.Equals(settlersMechanicId, MechanicSettlersCopper, StringComparison.OrdinalIgnoreCase))
+                    return settings.ClickSettlersCopper ? MechanicSettlersCopper : null;
+
+                if (string.Equals(settlersMechanicId, MechanicSettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase))
+                    return settings.ClickSettlersPetrifiedWood ? MechanicSettlersPetrifiedWood : null;
+
+                if (string.Equals(settlersMechanicId, MechanicSettlersBismuth, StringComparison.OrdinalIgnoreCase))
+                    return settings.ClickSettlersBismuth ? MechanicSettlersBismuth : null;
+
+                if (string.Equals(settlersMechanicId, MechanicSettlersVerisium, StringComparison.OrdinalIgnoreCase))
+                    return settings.ClickSettlersVerisium ? MechanicSettlersVerisium : null;
+            }
+
             bool strongboxesEnabled = settings.StrongboxClickMetadata?.Count > 0;
 
             var checks = new (bool On, string MechanicId, Func<string, bool> Matches)[]
             {
                 (settings.NearestHarvest, MechanicHarvest, static p => IsHarvestPath(p)),
-                (settings.ClickSulphite, MechanicSulphiteVeins, static p => p.Contains("DelveMineral")),
+                (settings.ClickSulphite, MechanicDelveSulphiteVeins, static p => p.Contains("DelveMineral", StringComparison.OrdinalIgnoreCase)),
                 (strongboxesEnabled, MechanicStrongboxes, p => ShouldClickStrongbox(settings, p, label)),
-                (settings.ClickSanctum, MechanicSanctum, static p => p.Contains("Sanctum")),
-                (settings.ClickBetrayal, MechanicBetrayal, static p => p.Contains("BetrayalMakeChoice")),
-                (settings.ClickBlight, MechanicBlight, static p => p.Contains("BlightPump")),
-                (settings.ClickAlvaTempleDoors, MechanicAlvaTempleDoors, static p => p.Contains(Constants.ClosedDoorPast)),
-                (settings.ClickLegionPillars, MechanicLegionPillars, static p => p.Contains(Constants.LegionInitiator)),
-                (settings.ClickAzurite, MechanicAzuriteVeins, static p => p.Contains("AzuriteEncounterController")),
-                (settings.ClickInitialUltimatum, MechanicUltimatum, static p => IsUltimatumPath(p)),
-                (settings.ClickDelveSpawners, MechanicDelveSpawners, static p => p.Contains("Delve/Objects/Encounter")),
-                (settings.ClickCrafting, MechanicCraftingRecipes, static p => p.Contains("CraftingUnlocks")),
-                (settings.ClickBreach, MechanicBreachNodes, static p => p.Contains(Constants.Brequel)),
-                (settings.ClickSettlersOre, MechanicSettlersOre, static p => IsSettlersOrePath(p))
+                (settings.ClickSanctum, MechanicSanctum, static p => p.Contains("Sanctum", StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickBetrayal, MechanicBetrayal, static p => p.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickBlight, MechanicBlight, static p => p.Contains("BlightPump", StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickAlvaTempleDoors, MechanicAlvaTempleDoors, static p => p.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickLegionPillars, MechanicLegionPillars, static p => p.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickAzurite, MechanicDelveAzuriteVeins, static p => p.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickInitialUltimatum, MechanicUltimatumInitialOverlay, static p => IsUltimatumPath(p)),
+                (settings.ClickDelveSpawners, MechanicDelveEncounterInitiators, static p => p.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickCrafting, MechanicCraftingRecipes, static p => p.Contains("CraftingUnlocks", StringComparison.OrdinalIgnoreCase)),
+                (settings.ClickBreach, MechanicBreachNodes, static p => p.Contains(Constants.Brequel, StringComparison.OrdinalIgnoreCase))
             };
 
             foreach ((bool on, string mechanicId, Func<string, bool> matches) in checks)
@@ -191,18 +223,121 @@ namespace ClickIt.Services
             return null;
         }
 
+        internal static bool TryGetSettlersOreMechanicId(string? path, out string? mechanicId)
+        {
+            mechanicId = null;
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            if (IsSettlersCrimsonIronPath(path))
+            {
+                mechanicId = MechanicSettlersCrimsonIron;
+                return true;
+            }
+
+            if (IsSettlersCopperPath(path))
+            {
+                mechanicId = MechanicSettlersCopper;
+                return true;
+            }
+
+            if (IsSettlersPetrifiedWoodPath(path))
+            {
+                mechanicId = MechanicSettlersPetrifiedWood;
+                return true;
+            }
+
+            if (IsSettlersBismuthPath(path))
+            {
+                mechanicId = MechanicSettlersBismuth;
+                return true;
+            }
+
+            if (IsSettlersVerisiumPath(path))
+            {
+                mechanicId = MechanicSettlersVerisium;
+                return true;
+            }
+
+            return false;
+        }
+
         private static bool IsHarvestPath(string path)
         {
-            return path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor");
+            return path.Contains("Harvest/Irrigator", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("Harvest/Extractor", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsSettlersOrePath(string path)
         {
-            return path.Contains(Constants.CrimsonIron)
-                || path.Contains(Constants.CopperAltar)
-                || path.Contains(Constants.PetrifiedWood)
-                || path.Contains(Constants.Bismuth)
-                || path.Contains(Constants.Hourglass);
+            return IsSettlersCrimsonIronPath(path)
+                || IsSettlersCopperPath(path)
+                || IsSettlersPetrifiedWoodPath(path)
+                || IsSettlersBismuthPath(path)
+                || IsSettlersVerisiumPath(path)
+                || path.Contains(Constants.Hourglass, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSettlersCrimsonIronPath(string path)
+        {
+            return path.Contains(Constants.CrimsonIron, StringComparison.OrdinalIgnoreCase)
+                || MatchesSettlersOrePathMarker(path, SettlersCrimsonIronMarker);
+        }
+
+        private static bool IsSettlersCopperPath(string path)
+        {
+            return MatchesSettlersOrePathMarker(path, SettlersCopperMarker);
+        }
+
+        private static bool IsSettlersPetrifiedWoodPath(string path)
+        {
+            return path.Contains(Constants.PetrifiedWood, StringComparison.OrdinalIgnoreCase)
+                || MatchesSettlersOrePathMarker(path, SettlersPetrifiedWoodMarker);
+        }
+
+        private static bool IsSettlersBismuthPath(string path)
+        {
+            return path.Contains(Constants.Bismuth, StringComparison.OrdinalIgnoreCase)
+                || MatchesSettlersOrePathMarker(path, SettlersBismuthMarker);
+        }
+
+        private static bool IsSettlersVerisiumPath(string path)
+        {
+            return (path.Contains(Constants.Verisium, StringComparison.OrdinalIgnoreCase)
+                    || MatchesSettlersOrePathMarker(path, SettlersVerisiumMarker))
+                && !path.Contains(VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool MatchesSettlersOrePathMarker(string path, string fullMarker)
+        {
+            if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(fullMarker))
+                return false;
+
+            if (string.Equals(path, fullMarker, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            string markerWithSlash = fullMarker + "/";
+            return path.StartsWith(markerWithSlash, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string? GetAltarMechanicId(ClickSettings settings, string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            if ((settings.HighlightExarch || settings.ClickExarch)
+                && path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase))
+            {
+                return MechanicAltarsSearingExarch;
+            }
+
+            if ((settings.HighlightEater || settings.ClickEater)
+                && path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase))
+            {
+                return MechanicAltarsEaterOfWorlds;
+            }
+
+            return null;
         }
 
         private static bool IsUltimatumPath(string path)
