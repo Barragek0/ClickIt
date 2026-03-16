@@ -7,6 +7,7 @@ namespace ClickIt.Utils
 {
     public partial class DeferredFrameQueue
     {
+        private const int MaxBufferedItems = 8192;
         private readonly object _queueLock = new();
         private List<(RectangleF Rectangle, Color Color, int Thickness)> _items = [];
         private List<(RectangleF Rectangle, Color Color, int Thickness)> _spare = [];
@@ -36,6 +37,13 @@ namespace ClickIt.Utils
             {
                 lock (_queueLock)
                 {
+                    if (_items.Count >= MaxBufferedItems)
+                    {
+                        // Keep recent entries and shed older buffered frames to cap retained memory.
+                        int removeCount = Math.Max(1, _items.Count / 2);
+                        _items.RemoveRange(0, removeCount);
+                    }
+
                     var frame = (rectangle, color, thickness);
                     if (_items.Count > 0 && IsSameFrame(_items[_items.Count - 1], frame))
                         return;
@@ -84,6 +92,16 @@ namespace ClickIt.Utils
         public int GetPendingCount()
         {
             return Volatile.Read(ref _pendingCount);
+        }
+
+        public void ClearPending()
+        {
+            lock (_queueLock)
+            {
+                _items.Clear();
+                _spare.Clear();
+                _pendingCount = 0;
+            }
         }
     }
 }

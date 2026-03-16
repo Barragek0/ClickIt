@@ -6,6 +6,7 @@ namespace ClickIt.Utils
 {
     public class DeferredTextQueue
     {
+        private const int MaxBufferedItems = 8192;
         private readonly object _queueLock = new();
         private List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = [];
         private List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _spare = [];
@@ -21,6 +22,13 @@ namespace ClickIt.Utils
             {
                 lock (_queueLock)
                 {
+                    if (_items.Count >= MaxBufferedItems)
+                    {
+                        // Keep recent entries and shed older buffered lines to cap retained memory.
+                        int removeCount = Math.Max(1, _items.Count / 2);
+                        _items.RemoveRange(0, removeCount);
+                    }
+
                     _items.Add((text, pos, color, size, align));
                     _pendingCount = _items.Count;
                 }
@@ -65,6 +73,16 @@ namespace ClickIt.Utils
         public int GetPendingCount()
         {
             return Volatile.Read(ref _pendingCount);
+        }
+
+        public void ClearPending()
+        {
+            lock (_queueLock)
+            {
+                _items.Clear();
+                _spare.Clear();
+                _pendingCount = 0;
+            }
         }
 
         public string[] GetPendingTextSnapshot(int startIndex = 0)

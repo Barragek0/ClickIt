@@ -174,5 +174,63 @@ namespace ClickIt.Tests.Utils
             var items2 = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(tt, "_items");
             items2.Count.Should().Be(0);
         }
+
+        [TestMethod]
+        public void DeferredTextQueue_ClearPending_ResetsBufferedEntries()
+        {
+            var queue = new DeferredTextQueue();
+            queue.Enqueue("a", new Vector2(1, 1), Color.White, 12);
+            queue.Enqueue("b", new Vector2(2, 2), Color.White, 12);
+            queue.GetPendingCount().Should().Be(2);
+
+            queue.ClearPending();
+
+            queue.GetPendingCount().Should().Be(0);
+            queue.GetPendingTextSnapshot().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_ClearPending_ResetsBufferedEntries()
+        {
+            var queue = new DeferredFrameQueue();
+            queue.Enqueue(new RectangleF(0, 0, 10, 10), Color.White, 1);
+            queue.Enqueue(new RectangleF(20, 20, 10, 10), Color.White, 1);
+            queue.GetPendingCount().Should().Be(2);
+
+            queue.ClearPending();
+
+            queue.GetPendingCount().Should().Be(0);
+            queue.GetSnapshotForTests().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void DeferredTextQueue_HardCap_DropsOlderEntries_WhenBufferGrowsTooLarge()
+        {
+            var queue = new DeferredTextQueue();
+            for (int i = 0; i < 12000; i++)
+            {
+                queue.Enqueue($"line-{i}", new Vector2(i, i), Color.White, 12);
+            }
+
+            queue.GetPendingCount().Should().BeLessOrEqualTo(8192);
+            var snapshot = queue.GetPendingTextSnapshot();
+            snapshot.Should().NotBeEmpty();
+            snapshot[^1].Should().Be("line-11999");
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_HardCap_DropsOlderEntries_WhenBufferGrowsTooLarge()
+        {
+            var queue = new DeferredFrameQueue();
+            for (int i = 0; i < 12000; i++)
+            {
+                queue.Enqueue(new RectangleF(i, i, 10, 10), Color.White, 1);
+            }
+
+            queue.GetPendingCount().Should().BeLessOrEqualTo(8192);
+            var snapshot = queue.GetSnapshotForTests();
+            snapshot.Should().NotBeEmpty();
+            snapshot[^1].Rectangle.X.Should().Be(11999);
+        }
     }
 }

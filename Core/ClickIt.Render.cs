@@ -25,77 +25,87 @@ namespace ClickIt
             bool hasAltars = altarCount > 0;
 
             State.PerformanceMonitor?.StartRenderTiming();
-            State.PerformanceMonitor?.UpdateFPS();
-
-            if (effective.LazyMode.Value)
+            try
             {
-                long sectionStart = Stopwatch.GetTimestamp();
-                State.LazyModeRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"), State);
-                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.LazyMode, GetElapsedMs(sectionStart));
-            }
+                State.PerformanceMonitor?.UpdateFPS();
 
-            if (effective.IsClickHotkeyToggleModeEnabled())
-            {
-                State.ClickHotkeyToggleRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"));
-            }
-
-            if (hasDebugRendering)
-            {
-                int debugTextStartCount = 0;
-                bool autoCopyDebugInfo = effective.AutoCopyAdditionalDebugInfoToClipboard.Value;
-                if (autoCopyDebugInfo)
+                if (effective.LazyMode.Value)
                 {
-                    debugTextStartCount = State.DeferredTextQueue?.GetPendingCount() ?? 0;
+                    long sectionStart = Stopwatch.GetTimestamp();
+                    State.LazyModeRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"), State);
+                    State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.LazyMode, GetElapsedMs(sectionStart));
                 }
 
-                long sectionStart = Stopwatch.GetTimestamp();
-                State.DebugRenderer?.RenderDebugFrames(effective);
-                if (State.DebugRenderer != null
-                    && State.PerformanceMonitor != null
-                    && effective.IsAnyDetailedDebugSectionEnabled())
+                if (effective.IsClickHotkeyToggleModeEnabled())
                 {
-                    State.DebugRenderer.RenderDetailedDebugInfo(effective, State.PerformanceMonitor);
+                    State.ClickHotkeyToggleRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"));
                 }
 
-                if (autoCopyDebugInfo)
+                if (hasDebugRendering)
                 {
-                    string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(debugTextStartCount) ?? [];
-                    TryAutoCopyAdditionalDebugInfo(debugLines, effective);
+                    int debugTextStartCount = 0;
+                    bool autoCopyDebugInfo = effective.AutoCopyAdditionalDebugInfoToClipboard.Value;
+                    if (autoCopyDebugInfo)
+                    {
+                        debugTextStartCount = State.DeferredTextQueue?.GetPendingCount() ?? 0;
+                    }
+
+                    long sectionStart = Stopwatch.GetTimestamp();
+                    State.DebugRenderer?.RenderDebugFrames(effective);
+                    if (State.DebugRenderer != null
+                        && State.PerformanceMonitor != null
+                        && effective.IsAnyDetailedDebugSectionEnabled())
+                    {
+                        State.DebugRenderer.RenderDetailedDebugInfo(effective, State.PerformanceMonitor);
+                    }
+
+                    if (autoCopyDebugInfo)
+                    {
+                        string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(debugTextStartCount) ?? [];
+                        TryAutoCopyAdditionalDebugInfo(debugLines, effective);
+                    }
+
+                    State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.DebugOverlay, GetElapsedMs(sectionStart));
                 }
 
-                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.DebugOverlay, GetElapsedMs(sectionStart));
+                if (hasAltars)
+                {
+                    long sectionStart = Stopwatch.GetTimestamp();
+                    State.AltarDisplayRenderer?.RenderAltarComponents();
+                    State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.AltarOverlay, GetElapsedMs(sectionStart));
+                }
+
+                long ultimatumStart = Stopwatch.GetTimestamp();
+                State.UltimatumRenderer?.Render();
+                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.UltimatumOverlay, GetElapsedMs(ultimatumStart));
+
+                long strongboxStart = Stopwatch.GetTimestamp();
+                State.StrongboxRenderer?.Render(GameController, State);
+                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.StrongboxOverlay, GetElapsedMs(strongboxStart));
+
+                long pathfindingStart = Stopwatch.GetTimestamp();
+                State.PathfindingRenderer?.Render(GameController, Graphics, effective);
+                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.PathfindingOverlay, GetElapsedMs(pathfindingStart));
             }
-
-            if (hasAltars)
+            catch
             {
-                long sectionStart = Stopwatch.GetTimestamp();
-                State.AltarDisplayRenderer?.RenderAltarComponents();
-                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.AltarOverlay, GetElapsedMs(sectionStart));
+                State.DeferredTextQueue?.ClearPending();
+                State.DeferredFrameQueue?.ClearPending();
+                throw;
             }
+            finally
+            {
+                // Flush deferred rendering in finally so a section exception cannot leave buffered entries growing frame-over-frame.
+                long textFlushStart = Stopwatch.GetTimestamp();
+                State.DeferredTextQueue?.Flush(Graphics, (msg, frame) => { });
+                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.TextFlush, GetElapsedMs(textFlushStart));
 
-            long ultimatumStart = Stopwatch.GetTimestamp();
-            State.UltimatumRenderer?.Render();
-            State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.UltimatumOverlay, GetElapsedMs(ultimatumStart));
+                long frameFlushStart = Stopwatch.GetTimestamp();
+                State.DeferredFrameQueue?.Flush(Graphics, (msg, frame) => { });
+                State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.FrameFlush, GetElapsedMs(frameFlushStart));
 
-            long strongboxStart = Stopwatch.GetTimestamp();
-            State.StrongboxRenderer?.Render(GameController, State);
-            State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.StrongboxOverlay, GetElapsedMs(strongboxStart));
-
-            long pathfindingStart = Stopwatch.GetTimestamp();
-            State.PathfindingRenderer?.Render(GameController, Graphics, effective);
-            State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.PathfindingOverlay, GetElapsedMs(pathfindingStart));
-
-            // Flush deferred text rendering to prevent freezes
-            // Use no-op logger to prevent recursive logging during render loop
-            long textFlushStart = Stopwatch.GetTimestamp();
-            State.DeferredTextQueue?.Flush(Graphics, (msg, frame) => { });
-            State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.TextFlush, GetElapsedMs(textFlushStart));
-
-            long frameFlushStart = Stopwatch.GetTimestamp();
-            State.DeferredFrameQueue?.Flush(Graphics, (msg, frame) => { });
-            State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.FrameFlush, GetElapsedMs(frameFlushStart));
-
-            State.PerformanceMonitor?.StopRenderTiming();
+                State.PerformanceMonitor?.StopRenderTiming();
+            }
         }
 
         private void TryAutoCopyAdditionalDebugInfo(string[] debugLines, ClickItSettings settings)
