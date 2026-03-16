@@ -6,6 +6,7 @@ namespace ClickIt.Services
     public class AltarRepository
     {
         private readonly List<PrimaryAltarComponent> _altarComponents = [];
+        private readonly HashSet<string> _altarKeys = new(StringComparer.Ordinal);
         private readonly object _altarComponentsLock = new();
         private volatile PrimaryAltarComponent[] _altarSnapshot = [];
         private volatile ReadOnlyCollection<PrimaryAltarComponent> _altarReadOnlySnapshot = Array.AsReadOnly(Array.Empty<PrimaryAltarComponent>());
@@ -28,6 +29,7 @@ namespace ClickIt.Services
                 foreach (var component in _altarComponents)
                     component.InvalidateCache();
                 _altarComponents.Clear();
+                _altarKeys.Clear();
                 RefreshSnapshotUnderLock();
             }
         }
@@ -37,13 +39,18 @@ namespace ClickIt.Services
             if (predicate == null) return;
             lock (_altarComponentsLock)
             {
-                _altarComponents.RemoveAll(c =>
+                int removed = _altarComponents.RemoveAll(c =>
                 {
                     bool remove = predicate(c);
                     if (remove)
                         c.InvalidateCache();
                     return remove;
                 });
+
+                if (removed > 0)
+                {
+                    RebuildKeySnapshotUnderLock();
+                }
 
                 RefreshSnapshotUnderLock();
             }
@@ -55,12 +62,21 @@ namespace ClickIt.Services
             lock (_altarComponentsLock)
             {
                 string newKey = BuildAltarKey(component);
-                bool exists = _altarComponents.Any(existingComp => BuildAltarKey(existingComp) == newKey);
-                if (exists) return false;
+                if (!_altarKeys.Add(newKey))
+                    return false;
 
                 _altarComponents.Add(component);
                 RefreshSnapshotUnderLock();
                 return true;
+            }
+        }
+
+        private void RebuildKeySnapshotUnderLock()
+        {
+            _altarKeys.Clear();
+            for (int i = 0; i < _altarComponents.Count; i++)
+            {
+                _altarKeys.Add(BuildAltarKey(_altarComponents[i]));
             }
         }
 

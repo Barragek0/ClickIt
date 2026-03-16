@@ -185,8 +185,8 @@ namespace ClickIt
                 {
                     if (string.IsNullOrWhiteSpace(expandedId))
                         continue;
-                    if (!normalizedWithinById.ContainsKey(expandedId))
-                        normalizedWithinById[expandedId] = value;
+
+                    normalizedWithinById.TryAdd(expandedId, value);
                 }
             }
 
@@ -345,7 +345,9 @@ namespace ClickIt
 
         private static StrongboxFilterEntry? TryGetStrongboxFilterById(string id)
         {
-            return StrongboxTableEntries.FirstOrDefault(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+            return StrongboxTableEntriesById.TryGetValue(id, out StrongboxFilterEntry? entry)
+                ? entry
+                : null;
         }
 
         private void EnsureUltimatumModifiersInitialized()

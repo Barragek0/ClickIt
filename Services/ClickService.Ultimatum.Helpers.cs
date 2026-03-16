@@ -150,7 +150,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            List<string> modifierNamesByIndex = GetUltimatumChoicePanelModifierNames(choicePanel, diagnostics);
+            IReadOnlyList<string> modifierNamesByIndex = GetUltimatumChoicePanelModifierNames(choicePanel, diagnostics);
 
             int seen = 0;
             foreach (object? choiceObj in EnumerateObjects(choiceElements))
@@ -176,19 +176,21 @@ namespace ClickIt.Services
             return results.Count > 0;
         }
 
-        private static List<string> GetUltimatumChoicePanelModifierNames(UltimatumChoicePanel choicePanel, List<string>? diagnostics)
+        private static IReadOnlyList<string> GetUltimatumChoicePanelModifierNames(UltimatumChoicePanel choicePanel, List<string>? diagnostics)
         {
-            var names = new List<string>(3);
-
             var modifiersObj = choicePanel.Modifiers;
             if (modifiersObj == null)
             {
                 diagnostics?.Add("ChoicePanel: Modifiers missing.");
-                return names;
+                return [];
             }
+
+            List<string>? names = null;
 
             foreach (object? modifierObj in EnumerateObjects(modifiersObj))
             {
+                names ??= new List<string>(3);
+
                 if (modifierObj is string modifierName)
                 {
                     names.Add(NormalizeModifierText(modifierName));
@@ -198,10 +200,10 @@ namespace ClickIt.Services
                 names.Add(NormalizeModifierText(modifierObj?.ToString() ?? string.Empty));
             }
 
-            return names;
+            return names == null ? [] : [.. names];
         }
 
-        private static string ResolveUltimatumChoiceModifierName(Element option, int seen, List<string> modifierNamesByIndex)
+        private static string ResolveUltimatumChoiceModifierName(Element option, int seen, IReadOnlyList<string> modifierNamesByIndex)
         {
             if (seen >= 0 && seen < modifierNamesByIndex.Count)
             {

@@ -1,5 +1,4 @@
-﻿using ExileCore.PoEMemory.Elements;
-using ClickIt.Utils;
+﻿using ClickIt.Utils;
 
 namespace ClickIt.Services
 {
@@ -7,7 +6,7 @@ namespace ClickIt.Services
     {
         internal static Func<Keys, bool> KeyStateProvider { get; set; } = Keyboard.IsKeyDown;
 
-        internal static Func<LabelFilterService, IReadOnlyList<LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
+        internal static Func<LabelFilterService, IReadOnlyList<global::ExileCore.PoEMemory.Elements.LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
 
         internal static bool MatchesMetadataFiltersForTests(string metadataPath, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)
         {

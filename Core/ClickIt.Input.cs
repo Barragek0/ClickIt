@@ -60,7 +60,17 @@ namespace ClickIt
 
         private static Coroutine? FindExistingClickLogicCoroutine()
         {
-            return Core.ParallelRunner.Coroutines.FirstOrDefault(x => x.Name == "ClickIt.ClickLogic" && !x.IsDone);
+            foreach (Coroutine coroutine in Core.ParallelRunner.Coroutines)
+            {
+                if (coroutine != null
+                    && string.Equals(coroutine.Name, "ClickIt.ClickLogic", StringComparison.Ordinal)
+                    && !coroutine.IsDone)
+                {
+                    return coroutine;
+                }
+            }
+
+            return null;
         }
 
         private void ResumeAltarScanningIfDue()

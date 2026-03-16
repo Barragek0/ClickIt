@@ -238,7 +238,7 @@ namespace ClickIt.Services
             if (!TryGetUltimatumChoiceElements(panelObj, out object? choiceElementsObj, logFailures))
                 return false;
 
-            List<string> modifierNamesByIndex = GetUltimatumPanelModifierNames(panelObj);
+            IReadOnlyList<string> modifierNamesByIndex = GetUltimatumPanelModifierNames(panelObj);
 
             var priorities = settings.GetUltimatumModifierPriority();
             int seen = 0;
@@ -307,7 +307,7 @@ namespace ClickIt.Services
         private bool TryCreateUltimatumPanelChoiceCandidate(
             object? choiceObj,
             int seen,
-            List<string> modifierNamesByIndex,
+            IReadOnlyList<string> modifierNamesByIndex,
             IReadOnlyList<string> priorities,
             bool isGruelingGauntletActive,
             bool logFailures,
@@ -360,7 +360,7 @@ namespace ClickIt.Services
             return true;
         }
 
-        private static string ResolveUltimatumPanelModifierName(Element choiceEl, int seen, List<string> modifierNamesByIndex)
+        private static string ResolveUltimatumPanelModifierName(Element choiceEl, int seen, IReadOnlyList<string> modifierNamesByIndex)
         {
             if (seen < modifierNamesByIndex.Count)
             {
@@ -376,16 +376,18 @@ namespace ClickIt.Services
             return NormalizeModifierText(choiceEl.GetText(1024) ?? string.Empty);
         }
 
-        private static List<string> GetUltimatumPanelModifierNames(UltimatumPanel panelObj)
+        private static IReadOnlyList<string> GetUltimatumPanelModifierNames(UltimatumPanel panelObj)
         {
-            var names = new List<string>(3);
-
             var modifiersObj = panelObj.Modifiers;
             if (modifiersObj == null)
-                return names;
+                return [];
+
+            List<string>? names = null;
 
             foreach (object? modifierObj in EnumerateObjects(modifiersObj))
             {
+                names ??= new List<string>(3);
+
                 if (modifierObj is string modifierName)
                 {
                     names.Add(NormalizeModifierText(modifierName));
@@ -395,7 +397,7 @@ namespace ClickIt.Services
                 names.Add(NormalizeModifierText(modifierObj?.ToString() ?? string.Empty));
             }
 
-            return names;
+            return names == null ? [] : [.. names];
         }
 
         private static bool TryGetBestUltimatumPanelChoice(IReadOnlyList<UltimatumPanelChoiceCandidate> candidates, out UltimatumPanelChoiceCandidate best)

@@ -101,8 +101,15 @@ namespace ClickIt.Services
             var effectiveSettings = _effectiveSettingsProvider();
             if (!effectiveSettings.ModAlerts.ContainsKey(key))
             {
-                var found = effectiveSettings.ModAlerts.Keys.FirstOrDefault(k => k.EndsWith("|" + matchedId, StringComparison.OrdinalIgnoreCase));
-                if (!string.IsNullOrEmpty(found)) key = found;
+                string suffix = "|" + matchedId;
+                foreach (string existingKey in effectiveSettings.ModAlerts.Keys)
+                {
+                    if (!existingKey.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    key = existingKey;
+                    break;
+                }
             }
 
             return key;

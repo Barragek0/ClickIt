@@ -10,8 +10,8 @@ namespace ClickIt.Services
             for (int i = 0; i < priorities.Count; i++)
             {
                 string id = priorities[i] ?? string.Empty;
-                if (id.Length > 0 && !map.ContainsKey(id))
-                    map[id] = i;
+                if (id.Length > 0)
+                    map.TryAdd(id, i);
             }
 
             return map;

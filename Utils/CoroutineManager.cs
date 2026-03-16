@@ -162,8 +162,17 @@ namespace ClickIt.Utils
             if (!_settings.ClickDelveFlares || _gameController?.Player?.Buffs == null)
                 yield break;
 
-            var delveBuff = _gameController.Player.Buffs.FirstOrDefault(b => b.Name == "delve_degen_buff");
-            if (delveBuff == null || delveBuff.Charges < _settings.DarknessDebuffStacks.Value)
+            int delveBuffCharges = -1;
+            foreach (var buff in _gameController.Player.Buffs)
+            {
+                if (buff != null && string.Equals(buff.Name, "delve_degen_buff", StringComparison.Ordinal))
+                {
+                    delveBuffCharges = buff.Charges;
+                    break;
+                }
+            }
+
+            if (delveBuffCharges < _settings.DarknessDebuffStacks.Value)
                 yield break;
 
             float healthPercent = GetPlayerHealthPercent();
@@ -176,7 +185,7 @@ namespace ClickIt.Utils
                 yield break;
 
             Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
-            _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuff.Charges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
+            _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuffCharges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
             yield return new WaitTime(1000);
         }
 

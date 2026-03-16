@@ -18,6 +18,13 @@ namespace ClickIt
     public partial class ClickItSettings : ISettings
     {
         private MechanicToggleTableEntry[]? _mechanicTableEntriesCache;
+        private Dictionary<string, ToggleNode>? _mechanicToggleNodeByIdCache;
+        private int _itemTypeMetadataSnapshotSignature = int.MinValue;
+        private string[] _itemTypeWhitelistMetadataSnapshot = [];
+        private string[] _itemTypeBlacklistMetadataSnapshot = [];
+        private int _strongboxMetadataSnapshotSignature = int.MinValue;
+        private string[] _strongboxClickMetadataSnapshot = [];
+        private string[] _strongboxDontClickMetadataSnapshot = [];
 
         private void DrawPanelSafe(string panelName, Action drawAction)
         {
@@ -758,8 +765,24 @@ namespace ClickIt
 
         private IReadOnlyList<MechanicToggleTableEntry> GetMechanicTableEntries()
         {
-            _mechanicTableEntriesCache ??= BuildMechanicTableEntries();
+            if (_mechanicTableEntriesCache == null)
+            {
+                _mechanicTableEntriesCache = BuildMechanicTableEntries();
+                _mechanicToggleNodeByIdCache = BuildMechanicToggleNodeById(_mechanicTableEntriesCache);
+            }
+
             return _mechanicTableEntriesCache;
+        }
+
+        private static Dictionary<string, ToggleNode> BuildMechanicToggleNodeById(IEnumerable<MechanicToggleTableEntry> entries)
+        {
+            Dictionary<string, ToggleNode> nodesById = new(StringComparer.OrdinalIgnoreCase);
+            foreach (MechanicToggleTableEntry entry in entries)
+            {
+                nodesById[entry.Id] = entry.Node;
+            }
+
+            return nodesById;
         }
 
         private MechanicToggleTableEntry[] BuildMechanicTableEntries()
@@ -913,8 +936,16 @@ namespace ClickIt
                 return true;
 
             string term = filter.Trim();
-            return entry.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase)
-                || entry.MetadataIdentifiers.Any(x => x.Contains(term, StringComparison.OrdinalIgnoreCase));
+            if (entry.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            foreach (string metadataIdentifier in entry.MetadataIdentifiers)
+            {
+                if (metadataIdentifier.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         private void MoveEssenceName(string essenceName, bool moveToCorrupt)
@@ -937,22 +968,60 @@ namespace ClickIt
         public IReadOnlyList<string> GetCorruptEssenceNames()
         {
             EnsureEssenceCorruptionFiltersInitialized();
-            return EssenceCorruptNames
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+
+            HashSet<string> uniqueNames = new(StringComparer.OrdinalIgnoreCase);
+            foreach (string essenceName in EssenceCorruptNames)
+            {
+                if (!string.IsNullOrWhiteSpace(essenceName))
+                {
+                    uniqueNames.Add(essenceName);
+                }
+            }
+
+            return [.. uniqueNames];
         }
 
         public IReadOnlyList<string> GetStrongboxClickMetadataIdentifiers()
         {
             EnsureStrongboxFiltersInitialized();
-            return BuildStrongboxMetadataIdentifiers(StrongboxClickIds);
+            RefreshStrongboxMetadataSnapshotsIfNeeded();
+            return _strongboxClickMetadataSnapshot;
         }
 
         public IReadOnlyList<string> GetStrongboxDontClickMetadataIdentifiers()
         {
             EnsureStrongboxFiltersInitialized();
-            return BuildStrongboxMetadataIdentifiers(StrongboxDontClickIds);
+            RefreshStrongboxMetadataSnapshotsIfNeeded();
+            return _strongboxDontClickMetadataSnapshot;
+        }
+
+        private void RefreshStrongboxMetadataSnapshotsIfNeeded()
+        {
+            int signature = ComputeStrongboxMetadataSignature();
+            if (signature == _strongboxMetadataSnapshotSignature)
+                return;
+
+            _strongboxClickMetadataSnapshot = BuildStrongboxMetadataIdentifiers(StrongboxClickIds);
+            _strongboxDontClickMetadataSnapshot = BuildStrongboxMetadataIdentifiers(StrongboxDontClickIds);
+            _strongboxMetadataSnapshotSignature = signature;
+        }
+
+        private int ComputeStrongboxMetadataSignature()
+        {
+            int clickHash = ComputeCaseInsensitiveSetHash(StrongboxClickIds);
+            int dontClickHash = ComputeCaseInsensitiveSetHash(StrongboxDontClickIds);
+            return HashCode.Combine(StrongboxClickIds.Count, clickHash, StrongboxDontClickIds.Count, dontClickHash);
+        }
+
+        private static int ComputeCaseInsensitiveSetHash(IEnumerable<string> values)
+        {
+            int hash = 0;
+            foreach (string value in values)
+            {
+                hash ^= StringComparer.OrdinalIgnoreCase.GetHashCode(value ?? string.Empty);
+            }
+
+            return hash;
         }
 
         private static string[] BuildStrongboxMetadataIdentifiers(HashSet<string> strongboxIds)
@@ -1608,10 +1677,16 @@ namespace ClickIt
 
         private bool IsMechanicPriorityMechanicEnabled(string mechanicId)
         {
-            MechanicToggleTableEntry? entry = GetMechanicTableEntries()
-                .FirstOrDefault(x => string.Equals(x.Id, mechanicId, StringComparison.OrdinalIgnoreCase));
+            _ = GetMechanicTableEntries();
 
-            return entry?.Node.Value ?? true;
+            if (_mechanicToggleNodeByIdCache != null
+                && _mechanicToggleNodeByIdCache.TryGetValue(mechanicId, out ToggleNode? node)
+                && node != null)
+            {
+                return node.Value;
+            }
+
+            return true;
         }
 
         private bool TryDrawMechanicPriorityMoveRow(
@@ -1695,8 +1770,14 @@ namespace ClickIt
 
         private static bool TryGetMechanicPriorityEntry(string id, out MechanicPriorityEntry? entry)
         {
-            entry = MechanicPriorityEntries.FirstOrDefault(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-            return entry != null;
+            if (MechanicPriorityEntriesById.TryGetValue(id, out MechanicPriorityEntry? found))
+            {
+                entry = found;
+                return true;
+            }
+
+            entry = null;
+            return false;
         }
 
         private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)
@@ -1832,21 +1913,68 @@ namespace ClickIt
         public IReadOnlyList<string> GetItemTypeWhitelistMetadataIdentifiers()
         {
             EnsureItemTypeFiltersInitialized();
-            return BuildItemTypeMetadataIdentifiers(
-                primaryIds: ItemTypeWhitelistIds,
-                primaryIsWhitelist: true,
-                oppositeIds: ItemTypeBlacklistIds,
-                oppositeIsWhitelist: false);
+            RefreshItemTypeMetadataSnapshotsIfNeeded();
+            return _itemTypeWhitelistMetadataSnapshot;
         }
 
         public IReadOnlyList<string> GetItemTypeBlacklistMetadataIdentifiers()
         {
             EnsureItemTypeFiltersInitialized();
-            return BuildItemTypeMetadataIdentifiers(
+            RefreshItemTypeMetadataSnapshotsIfNeeded();
+            return _itemTypeBlacklistMetadataSnapshot;
+        }
+
+        private void RefreshItemTypeMetadataSnapshotsIfNeeded()
+        {
+            int signature = ComputeItemTypeMetadataSignature();
+            if (signature == _itemTypeMetadataSnapshotSignature)
+                return;
+
+            _itemTypeWhitelistMetadataSnapshot = BuildItemTypeMetadataIdentifiers(
+                primaryIds: ItemTypeWhitelistIds,
+                primaryIsWhitelist: true,
+                oppositeIds: ItemTypeBlacklistIds,
+                oppositeIsWhitelist: false);
+
+            _itemTypeBlacklistMetadataSnapshot = BuildItemTypeMetadataIdentifiers(
                 primaryIds: ItemTypeBlacklistIds,
                 primaryIsWhitelist: false,
                 oppositeIds: ItemTypeWhitelistIds,
                 oppositeIsWhitelist: true);
+
+            _itemTypeMetadataSnapshotSignature = signature;
+        }
+
+        private int ComputeItemTypeMetadataSignature()
+        {
+            int whitelistHash = ComputeCaseInsensitiveSetHash(ItemTypeWhitelistIds);
+            int blacklistHash = ComputeCaseInsensitiveSetHash(ItemTypeBlacklistIds);
+            int whitelistSubtypeHash = ComputeSubtypeDictionaryHash(ItemTypeWhitelistSubtypeIds);
+            int blacklistSubtypeHash = ComputeSubtypeDictionaryHash(ItemTypeBlacklistSubtypeIds);
+
+            return HashCode.Combine(
+                ItemTypeWhitelistIds.Count,
+                ItemTypeBlacklistIds.Count,
+                ItemTypeWhitelistSubtypeIds.Count,
+                ItemTypeBlacklistSubtypeIds.Count,
+                whitelistHash,
+                blacklistHash,
+                whitelistSubtypeHash,
+                blacklistSubtypeHash);
+        }
+
+        private static int ComputeSubtypeDictionaryHash(Dictionary<string, HashSet<string>> source)
+        {
+            int hash = 0;
+            foreach ((string key, HashSet<string> values) in source)
+            {
+                int entryHash = StringComparer.OrdinalIgnoreCase.GetHashCode(key ?? string.Empty);
+                IEnumerable<string> entries = values;
+                entryHash = HashCode.Combine(entryHash, values.Count, ComputeCaseInsensitiveSetHash(entries));
+                hash ^= entryHash;
+            }
+
+            return hash;
         }
 
         private string[] BuildItemTypeMetadataIdentifiers(
@@ -1909,13 +2037,29 @@ namespace ClickIt
                 return category.MetadataIdentifiers;
             }
 
-            return subtypeDefinitions
-                .Where(x => includeOppositeSubtypeSelections
-                    ? !selectedSubtypeIds.Contains(x.Id)
-                    : selectedSubtypeIds.Contains(x.Id))
-                .SelectMany(x => x.MetadataIdentifiers)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            HashSet<string> metadataIdentifiers = new(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < subtypeDefinitions.Length; i++)
+            {
+                ItemSubtypeDefinition subtypeDefinition = subtypeDefinitions[i];
+                bool includeSubtype = includeOppositeSubtypeSelections
+                    ? !selectedSubtypeIds.Contains(subtypeDefinition.Id)
+                    : selectedSubtypeIds.Contains(subtypeDefinition.Id);
+                if (!includeSubtype)
+                    continue;
+
+                IReadOnlyList<string> subtypeMetadataIdentifiers = subtypeDefinition.MetadataIdentifiers;
+                for (int j = 0; j < subtypeMetadataIdentifiers.Count; j++)
+                {
+                    string metadataIdentifier = subtypeMetadataIdentifiers[j];
+                    if (!string.IsNullOrWhiteSpace(metadataIdentifier))
+                    {
+                        metadataIdentifiers.Add(metadataIdentifier);
+                    }
+                }
+            }
+
+            return [.. metadataIdentifiers];
         }
 
         private void DrawExarchSection()
@@ -2209,9 +2353,12 @@ namespace ClickIt
         }
         private static bool MatchesSearchFilter(string name, string type, string filter)
         {
-            return string.IsNullOrEmpty(filter) ||
-                   name.ToLower().Contains(filter.ToLower()) ||
-                   type.ToLower().Contains(filter.ToLower());
+            if (string.IsNullOrWhiteSpace(filter))
+                return true;
+
+            string term = filter.Trim();
+            return name.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || type.Contains(term, StringComparison.OrdinalIgnoreCase);
         }
         private static string GetUpsideSectionHeader(string type)
         {
@@ -2382,34 +2529,23 @@ namespace ClickIt
             foreach ((string id, _, string type, int defaultValue) in AltarModsConstants.UpsideMods)
             {
                 string compositeKey = BuildCompositeKey(type, id);
-                if (ModTiers.ContainsKey(compositeKey))
-                    continue;
-
-                ModTiers[compositeKey] = defaultValue;
+                ModTiers.TryAdd(compositeKey, defaultValue);
             }
 
             foreach ((string id, _, string type, int defaultValue) in AltarModsConstants.DownsideMods)
             {
                 string compositeKey = BuildCompositeKey(type, id);
-                if (ModTiers.ContainsKey(compositeKey))
-                    continue;
-
-                ModTiers[compositeKey] = defaultValue;
+                ModTiers.TryAdd(compositeKey, defaultValue);
             }
             foreach ((string id, _, string type, int _) in AltarModsConstants.UpsideMods)
             {
                 var compositeKey = BuildCompositeKey(type, id);
-                if (!ModAlerts.ContainsKey(compositeKey))
+                bool isDivineOrbAlert = (type == AltarTypeMinion && id == "#% chance to drop an additional Divine Orb")
+                    || (type == AltarTypeBoss && id == "Final Boss drops # additional Divine Orbs");
+
+                if (ModAlerts.TryAdd(compositeKey, false) && isDivineOrbAlert)
                 {
-                    if ((type == AltarTypeMinion && id == "#% chance to drop an additional Divine Orb") ||
-                        (type == AltarTypeBoss && id == "Final Boss drops # additional Divine Orbs"))
-                    {
-                        ModAlerts[compositeKey] = true;
-                    }
-                    else
-                    {
-                        ModAlerts[compositeKey] = false;
-                    }
+                    ModAlerts[compositeKey] = true;
                 }
             }
         }

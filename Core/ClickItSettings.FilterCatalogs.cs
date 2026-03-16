@@ -93,6 +93,9 @@ namespace ClickIt
             new("unique-strongbox", "Unique Strongboxes", ["special:strongbox-unique"])
         ];
 
+        private static readonly Dictionary<string, StrongboxFilterEntry> StrongboxTableEntriesById =
+            StrongboxTableEntries.ToDictionary(static x => x.Id, static x => x, StringComparer.OrdinalIgnoreCase);
+
         private static readonly string[] StrongboxDefaultClickIds =
         [
             "regular",
@@ -148,6 +151,9 @@ namespace ClickIt
             new(MechanicIds.DelveAzuriteVeins, "Azurite Veins"),
             new(MechanicIds.DelveEncounterInitiators, "Delve Encounter Initiators")
         ];
+
+        private static readonly Dictionary<string, MechanicPriorityEntry> MechanicPriorityEntriesById =
+            MechanicPriorityEntries.ToDictionary(static x => x.Id, static x => x, StringComparer.OrdinalIgnoreCase);
 
         private static readonly string[] MechanicPriorityDefaultOrderIds =
         [

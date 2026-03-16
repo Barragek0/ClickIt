@@ -12,6 +12,9 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
+        [ThreadStatic]
+        private static List<object?>? _threadSkillBarEntriesBuffer;
+
         private bool TryUseMovementSkillForOffscreenPathing(string targetPath, Vector2 targetScreen, bool builtPath, out Vector2 castPoint, out string debugReason)
         {
             castPoint = default;
@@ -471,7 +474,8 @@ namespace ClickIt.Services
             if (skillsCollection is not IEnumerable enumerable)
                 return false;
 
-            var list = new List<object?>();
+            List<object?> list = _threadSkillBarEntriesBuffer ??= new List<object?>(16);
+            list.Clear();
             foreach (object? entry in enumerable)
             {
                 list.Add(entry);

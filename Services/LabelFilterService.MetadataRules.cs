@@ -679,7 +679,9 @@ namespace ClickIt.Services
             int rejectedNonItemEntity = 0;
             int rejectedNestedNonEntity = 0;
 
-            var entities = new List<Entity>(64);
+            var uniqueAddresses = new HashSet<long>();
+            var uniqueEntities = new List<Entity>(64);
+            int dedupBeforeCount = 0;
 
             foreach (object? entry in EnumerateObjects(collectionObj))
             {
@@ -695,7 +697,10 @@ namespace ClickIt.Services
                 {
                     directEntityEntries++;
                     if (IsInventoryItemEntity(directEntity, out _))
-                        entities.Add(directEntity);
+                    {
+                        dedupBeforeCount++;
+                        AddUniqueInventoryEntity(directEntity, uniqueAddresses, uniqueEntities);
+                    }
                     else
                         rejectedNonItemEntity++;
                     continue;
@@ -706,14 +711,15 @@ namespace ClickIt.Services
                     && IsInventoryItemEntity(nestedItemEntity, out _))
                 {
                     nestedEntityEntries++;
-                    entities.Add(nestedItemEntity);
+                    dedupBeforeCount++;
+                    AddUniqueInventoryEntity(nestedItemEntity, uniqueAddresses, uniqueEntities);
                     continue;
                 }
 
                 rejectedNestedNonEntity++;
             }
 
-            if (entities.Count == 0)
+            if (uniqueEntities.Count == 0)
             {
                 debugDetails = BuildInventoryEnumerationDebugDetails(
                     collectionDebug,
@@ -726,17 +732,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            var unique = new Dictionary<long, Entity>();
-            for (int i = 0; i < entities.Count; i++)
-            {
-                Entity entity = entities[i];
-                if (entity == null || entity.Address == 0)
-                    continue;
-
-                unique[entity.Address] = entity;
-            }
-
-            items = [.. unique.Values];
+            items = uniqueEntities;
             debugDetails = BuildInventoryEnumerationDebugDetails(
                 collectionDebug,
                 totalEntries,
@@ -745,9 +741,21 @@ namespace ClickIt.Services
                 nestedEntityEntries,
                 rejectedNonItemEntity,
                 rejectedNestedNonEntity,
-                dedupBeforeCount: entities.Count,
+                dedupBeforeCount: dedupBeforeCount,
                 dedupAfterCount: items.Count);
             return items.Count > 0;
+        }
+
+        private static void AddUniqueInventoryEntity(Entity entity, HashSet<long> uniqueAddresses, List<Entity> uniqueEntities)
+        {
+            if (entity == null)
+                return;
+
+            long address = entity.Address;
+            if (address == 0 || !uniqueAddresses.Add(address))
+                return;
+
+            uniqueEntities.Add(entity);
         }
 
         private static string BuildInventoryEnumerationDebugDetails(
