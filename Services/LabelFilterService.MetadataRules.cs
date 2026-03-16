@@ -9,7 +9,17 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
+        private const int InventoryProbeCacheWindowMs = 50;
         private const int InventoryDebugTrailCapacity = 32;
+        private static readonly object InventoryProbeCacheLock = new();
+        private static long _inventoryProbeCacheTimestampMs;
+        private static GameController? _inventoryProbeCacheController;
+        private static InventoryFullProbe _inventoryProbeCacheValue = InventoryFullProbe.Empty;
+        private static bool _inventoryProbeCacheHasValue;
+        private static long _inventoryItemsCacheTimestampMs;
+        private static GameController? _inventoryItemsCacheController;
+        private static IReadOnlyList<Entity> _inventoryItemsCacheValue = [];
+        private static bool _inventoryItemsCacheHasValue;
         private static readonly DebugSnapshotStore<InventoryDebugSnapshot> InventoryDebugStore = new(
             InventoryDebugSnapshot.Empty,
             InventoryDebugTrailCapacity,
@@ -223,40 +233,49 @@ namespace ClickIt.Services
 
         private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
         {
-            probe = InventoryFullProbe.Empty;
+            long now = Environment.TickCount64;
+            if (TryGetCachedInventoryProbe(gameController, now, out InventoryFullProbe cachedProbe))
+            {
+                probe = cachedProbe;
+                return probe.IsFull;
+            }
 
             if (!TryGetPrimaryServerInventory(gameController, out object? primaryInventory) || primaryInventory == null)
             {
-                probe = probe with { Notes = "Primary server inventory missing" };
-                return false;
+                probe = InventoryFullProbe.Empty with { Notes = "Primary server inventory missing" };
+                SetCachedInventoryProbe(gameController, now, probe);
+                return probe.IsFull;
             }
 
             if (TryReadInventoryFullFlag(primaryInventory, out bool full, out string source))
             {
                 probe = CreateInventoryFullFlagProbe(full, source);
-                return full;
+                SetCachedInventoryProbe(gameController, now, probe);
+                return probe.IsFull;
             }
 
             if (!TryResolveInventoryCapacity(primaryInventory, out int totalCellCapacity))
             {
-                probe = probe with { HasPrimaryInventory = true, Notes = "Unable to resolve inventory capacity" };
-                return false;
+                probe = InventoryFullProbe.Empty with { HasPrimaryInventory = true, Notes = "Unable to resolve inventory capacity" };
+                SetCachedInventoryProbe(gameController, now, probe);
+                return probe.IsFull;
             }
 
             if (!TryEnumeratePrimaryInventoryItemEntities(primaryInventory, out IReadOnlyList<Entity> inventoryItems, out string itemEnumDebug))
             {
-                probe = probe with
+                probe = InventoryFullProbe.Empty with
                 {
                     HasPrimaryInventory = true,
                     CapacityCells = totalCellCapacity,
                     Notes = $"Unable to enumerate PlayerInventories[0].Inventory.Items ({itemEnumDebug})"
                 };
-                return false;
+                SetCachedInventoryProbe(gameController, now, probe);
+                return probe.IsFull;
             }
 
             if (!TryResolveOccupiedInventoryCells(inventoryItems, totalCellCapacity, out int occupiedCellCount))
             {
-                probe = probe with
+                probe = InventoryFullProbe.Empty with
                 {
                     HasPrimaryInventory = true,
                     CapacityCells = totalCellCapacity,
@@ -264,7 +283,8 @@ namespace ClickIt.Services
                     LayoutEntryCount = inventoryItems.Count,
                     Notes = "Unable to resolve occupied inventory cells from PlayerInventories[0].Inventory.Items"
                 };
-                return false;
+                SetCachedInventoryProbe(gameController, now, probe);
+                return probe.IsFull;
             }
 
             bool isFull = IsInventoryCellUsageFullCore(occupiedCellCount, totalCellCapacity);
@@ -280,8 +300,8 @@ namespace ClickIt.Services
                 IsFull: isFull,
                 Source: "CellOccupancy",
                 Notes: $"Inventory fullness from PlayerInventories[0].Inventory.Items footprint ({itemEnumDebug})");
-
-            return isFull;
+            SetCachedInventoryProbe(gameController, now, probe);
+            return probe.IsFull;
         }
 
         private static InventoryFullProbe CreateInventoryFullFlagProbe(bool full, string source)
@@ -491,15 +511,94 @@ namespace ClickIt.Services
 
         private static bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
         {
+            long now = Environment.TickCount64;
+            if (TryGetCachedInventoryItems(gameController, now, out IReadOnlyList<Entity> cachedItems))
+            {
+                items = cachedItems;
+                return items.Count > 0;
+            }
+
             items = [];
             if (!TryGetPrimaryServerInventory(gameController, out object? primaryInventory) || primaryInventory == null)
+            {
+                SetCachedInventoryItems(gameController, now, items);
                 return false;
+            }
 
             if (!TryEnumeratePrimaryInventoryItemEntities(primaryInventory, out IReadOnlyList<Entity> entities, out _))
+            {
+                SetCachedInventoryItems(gameController, now, items);
                 return false;
+            }
 
             items = entities;
+            SetCachedInventoryItems(gameController, now, items);
             return items.Count > 0;
+        }
+
+        private static bool TryGetCachedInventoryProbe(GameController? gameController, long now, out InventoryFullProbe probe)
+        {
+            lock (InventoryProbeCacheLock)
+            {
+                if (_inventoryProbeCacheHasValue
+                    && ReferenceEquals(_inventoryProbeCacheController, gameController)
+                    && IsCacheFresh(now, _inventoryProbeCacheTimestampMs, InventoryProbeCacheWindowMs))
+                {
+                    probe = _inventoryProbeCacheValue;
+                    return true;
+                }
+            }
+
+            probe = InventoryFullProbe.Empty;
+            return false;
+        }
+
+        private static void SetCachedInventoryProbe(GameController? gameController, long now, InventoryFullProbe probe)
+        {
+            lock (InventoryProbeCacheLock)
+            {
+                _inventoryProbeCacheController = gameController;
+                _inventoryProbeCacheTimestampMs = now;
+                _inventoryProbeCacheValue = probe;
+                _inventoryProbeCacheHasValue = true;
+            }
+        }
+
+        private static bool TryGetCachedInventoryItems(GameController? gameController, long now, out IReadOnlyList<Entity> items)
+        {
+            lock (InventoryProbeCacheLock)
+            {
+                if (_inventoryItemsCacheHasValue
+                    && ReferenceEquals(_inventoryItemsCacheController, gameController)
+                    && IsCacheFresh(now, _inventoryItemsCacheTimestampMs, InventoryProbeCacheWindowMs))
+                {
+                    items = _inventoryItemsCacheValue;
+                    return true;
+                }
+            }
+
+            items = [];
+            return false;
+        }
+
+        private static void SetCachedInventoryItems(GameController? gameController, long now, IReadOnlyList<Entity> items)
+        {
+            lock (InventoryProbeCacheLock)
+            {
+                _inventoryItemsCacheController = gameController;
+                _inventoryItemsCacheTimestampMs = now;
+                _inventoryItemsCacheValue = items;
+                _inventoryItemsCacheHasValue = true;
+            }
+        }
+
+        private static bool IsCacheFresh(long now, long cachedAtMs, int windowMs)
+        {
+            if (cachedAtMs <= 0 || windowMs <= 0)
+                return false;
+
+            long age = now - cachedAtMs;
+            return age >= 0 && age <= windowMs;
         }
 
         private static bool TryEnumeratePrimaryInventoryItemEntities(object primaryInventory, out IReadOnlyList<Entity> items, out string debugDetails)

@@ -3,6 +3,7 @@ using System.Linq;
 using FluentAssertions;
 using ClickIt.Services;
 using ClickIt.Definitions;
+using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using System;
 using System.Windows.Forms;
@@ -204,6 +205,53 @@ namespace ClickIt.Tests.Unit
                 "test/path");
 
             result.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ResolveVisibleLabelsWithoutForcedCopy_ReturnsSameListReference_ForReadOnlyListSource()
+        {
+            var label = (LabelOnGround)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            var labels = new System.Collections.Generic.List<LabelOnGround> { label };
+
+            var resolved = ClickService.ResolveVisibleLabelsWithoutForcedCopy(labels);
+
+            resolved.Should().BeSameAs(labels);
+            resolved.Should().HaveCount(1);
+        }
+
+        [TestMethod]
+        public void ResolveVisibleLabelsWithoutForcedCopy_MaterializesEnumerable_WhenSourceIsNotReadOnlyList()
+        {
+            var label = (LabelOnGround)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            System.Collections.Generic.IEnumerable<LabelOnGround> labels = YieldSingleLabel(label);
+
+            var resolved = ClickService.ResolveVisibleLabelsWithoutForcedCopy(labels);
+
+            resolved.Should().NotBeNull();
+            resolved.Should().HaveCount(1);
+            resolved.Should().NotBeSameAs(labels);
+        }
+
+        [TestMethod]
+        public void ResolveVisibleLabelsWithoutForcedCopy_ReturnsNull_ForNullOrEmptySources()
+        {
+            ClickService.ResolveVisibleLabelsWithoutForcedCopy(null).Should().BeNull();
+
+            var emptyList = new System.Collections.Generic.List<LabelOnGround>();
+            ClickService.ResolveVisibleLabelsWithoutForcedCopy(emptyList).Should().BeNull();
+
+            System.Collections.Generic.IEnumerable<LabelOnGround> emptyEnumerable = YieldNoLabels();
+            ClickService.ResolveVisibleLabelsWithoutForcedCopy(emptyEnumerable).Should().BeNull();
+        }
+
+        private static System.Collections.Generic.IEnumerable<LabelOnGround> YieldSingleLabel(LabelOnGround label)
+        {
+            yield return label;
+        }
+
+        private static System.Collections.Generic.IEnumerable<LabelOnGround> YieldNoLabels()
+        {
+            yield break;
         }
 
         [TestMethod]

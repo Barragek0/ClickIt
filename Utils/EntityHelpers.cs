@@ -14,19 +14,23 @@ namespace ClickIt.Utils
         {
             if (gameController?.EntityListWrapper?.OnlyValidEntities == null)
                 return false;
-            var paths = new List<string?>();
+
             foreach (var entity in gameController.EntityListWrapper.OnlyValidEntities)
             {
+                string? path = null;
                 try
                 {
-                    paths.Add(entity?.Path);
+                    path = entity?.Path;
                 }
                 catch
                 {
                 }
+
+                if (path?.Contains("RitualBlocker") == true)
+                    return true;
             }
 
-            return IsRitualActive(paths);
+            return false;
         }
 
         public static string ResolveWorldItemMetadataPath(

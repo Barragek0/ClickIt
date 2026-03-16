@@ -12,6 +12,14 @@ namespace ClickIt.Rendering
 {
     public partial class DebugRenderer
     {
+        internal readonly record struct ClickFrequencyTargetDebugMetrics(
+            double ClickTargetMs,
+            double ProcessingMs,
+            double ClickDelayMs,
+            double ModeledTotalMs,
+            double ObservedTotalMs,
+            double SchedulerDeltaMs,
+            double TargetDeviationRatio);
 
         private const double FPS_HIGH_THRESHOLD = 144;
         private const double FPS_MEDIUM_THRESHOLD = 60;
@@ -173,29 +181,72 @@ namespace ClickIt.Rendering
             bool lazyModeActive = lazyModeEnabled && !lazyModeDisableKeyHeld && !hasRestrictedItems && poeActive;
 
             double clickTarget = lazyModeActive ? lazyModeTarget : performanceMonitor.GetClickTargetInterval();
-            double avgClickTime = performanceMonitor.GetAverageSuccessfulClickTiming();
-            double effectiveDelay = clickTarget - avgClickTime;
-            double expectedTotal = effectiveDelay + avgClickTime;
-            double targetDeviation = (expectedTotal - clickTarget) / clickTarget;
-            string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM ? "meeting target" : "not meeting target";
+            // Use the same timing channel that drives click loop pacing so debug values reflect real gating behavior.
+            double avgClickProcessing = performanceMonitor.GetAverageTiming(TimingChannel.Click);
+            if (avgClickProcessing <= 0)
+            {
+                avgClickProcessing = performanceMonitor.GetAverageSuccessfulClickTiming();
+            }
+
+            double observedInterval = performanceMonitor.GetAverageClickInterval();
+            ClickFrequencyTargetDebugMetrics metrics = BuildClickFrequencyTargetDebugMetrics(clickTarget, avgClickProcessing, observedInterval);
+            bool hasObservedInterval = observedInterval > 0;
+
+            double targetDeviation = metrics.TargetDeviationRatio;
+            string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM
+                ? (hasObservedInterval ? "meeting target" : "estimating")
+                : "not meeting target";
             Color targetLineColor = targetDeviation <= TARGET_DEVIATION_LOW ? Color.LawnGreen : targetDeviation <= TARGET_DEVIATION_MEDIUM ? Color.Yellow : Color.Red;
 
-            string delayStr = $"{effectiveDelay:F0}";
-            string procStr = $"{avgClickTime:F0}";
-            string targetStr = $"{expectedTotal:F0}";
-            string settingStr = $"{clickTarget:F0}";
-            int maxLen = Math.Max(Math.Max(delayStr.Length, procStr.Length), Math.Max(targetStr.Length, settingStr.Length));
+            string delayStr = $"{metrics.ClickDelayMs:F0}";
+            string procStr = $"{metrics.ProcessingMs:F0}";
+            string modeledTotalStr = $"{metrics.ModeledTotalMs:F0}";
+            string observedStr = $"{metrics.ObservedTotalMs:F0}";
+            string schedStr = $"{metrics.SchedulerDeltaMs:+0;-0;0}";
+            string settingStr = $"{metrics.ClickTargetMs:F0}";
+            int maxLen = Math.Max(
+                Math.Max(delayStr.Length, procStr.Length),
+                Math.Max(Math.Max(modeledTotalStr.Length, observedStr.Length), Math.Max(schedStr.Length, settingStr.Length)));
 
-            Color procColor = avgClickTime > clickTarget ? Color.Red : avgClickTime >= clickTarget * 0.75 ? Color.Yellow : Color.LawnGreen;
+            Color procColor = metrics.ProcessingMs > metrics.ClickTargetMs ? Color.Red : metrics.ProcessingMs >= metrics.ClickTargetMs * 0.75 ? Color.Yellow : Color.LawnGreen;
+            double absSchedulerDelta = Math.Abs(metrics.SchedulerDeltaMs);
+            Color schedulerColor = absSchedulerDelta <= 5 ? Color.LawnGreen : absSchedulerDelta <= 20 ? Color.Yellow : Color.OrangeRed;
             _deferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms {(lazyModeActive ? "(Lazy)" : "")}", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
             yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Total:       {targetStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
+            _deferredTextQueue.Enqueue($"Total:       {modeledTotalStr.PadLeft(maxLen)} ms (model)", new Vector2(xPos, yPos), targetLineColor, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Scheduler: {schedStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), schedulerColor, 16);
+            yPos += lineHeight;
+            _deferredTextQueue.Enqueue($"Observed:    {observedStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
 
             return yPos + lineHeight;
+        }
+
+        internal static ClickFrequencyTargetDebugMetrics BuildClickFrequencyTargetDebugMetrics(
+            double clickTargetMs,
+            double processingMs,
+            double observedIntervalMs)
+        {
+            double safeClickTargetMs = Math.Max(1d, clickTargetMs);
+            double safeProcessingMs = Math.Max(0d, processingMs);
+            double clickDelayMs = Math.Max(0d, safeClickTargetMs - safeProcessingMs);
+            double modeledTotalMs = clickDelayMs + safeProcessingMs;
+            double observedTotalMs = observedIntervalMs > 0d ? observedIntervalMs : modeledTotalMs;
+            double schedulerDeltaMs = observedTotalMs - modeledTotalMs;
+            double targetDeviationRatio = (observedTotalMs - safeClickTargetMs) / safeClickTargetMs;
+
+            return new ClickFrequencyTargetDebugMetrics(
+                ClickTargetMs: safeClickTargetMs,
+                ProcessingMs: safeProcessingMs,
+                ClickDelayMs: clickDelayMs,
+                ModeledTotalMs: modeledTotalMs,
+                ObservedTotalMs: observedTotalMs,
+                SchedulerDeltaMs: schedulerDeltaMs,
+                TargetDeviationRatio: targetDeviationRatio);
         }
 
         public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)

@@ -79,6 +79,8 @@ namespace ClickIt.Services
         ];
 
         private static readonly int[] LabelSearchCaps = [1, 5, 25, 100];
+        [ThreadStatic]
+        private static HashSet<long>? _threadGroundLabelEntityAddresses;
 
         public IEnumerator ProcessRegularClick()
         {
@@ -1415,13 +1417,16 @@ namespace ClickIt.Services
 
         private HashSet<long> CollectGroundLabelEntityAddresses()
         {
-            var addresses = new HashSet<long>();
+            var addresses = GetThreadGroundLabelEntityAddresses();
+            addresses.Clear();
 
             try
             {
                 var labels = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
                 if (labels == null || labels.Count == 0)
                     return addresses;
+
+                addresses.EnsureCapacity(labels.Count);
 
                 for (int i = 0; i < labels.Count; i++)
                 {
@@ -1434,6 +1439,17 @@ namespace ClickIt.Services
             {
             }
 
+            return addresses;
+        }
+
+        private static HashSet<long> GetThreadGroundLabelEntityAddresses()
+        {
+            HashSet<long>? addresses = _threadGroundLabelEntityAddresses;
+            if (addresses != null)
+                return addresses;
+
+            addresses = new HashSet<long>();
+            _threadGroundLabelEntityAddresses = addresses;
             return addresses;
         }
 
@@ -1823,14 +1839,31 @@ namespace ClickIt.Services
             try
             {
                 var raw = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-                if (raw != null && raw.Count > 0)
-                    return [.. raw];
+                var visible = ResolveVisibleLabelsWithoutForcedCopy(raw);
+                if (visible != null)
+                    return visible;
             }
             catch
             {
             }
 
             return cachedLabels?.Value;
+        }
+
+        internal static IReadOnlyList<LabelOnGround>? ResolveVisibleLabelsWithoutForcedCopy(object? rawVisibleLabels)
+        {
+            if (rawVisibleLabels is IReadOnlyList<LabelOnGround> visibleList)
+            {
+                return visibleList.Count > 0 ? visibleList : null;
+            }
+
+            if (rawVisibleLabels is IEnumerable<LabelOnGround> visibleEnumerable)
+            {
+                List<LabelOnGround> snapshot = [.. visibleEnumerable];
+                return snapshot.Count > 0 ? snapshot : null;
+            }
+
+            return null;
         }
 
     }

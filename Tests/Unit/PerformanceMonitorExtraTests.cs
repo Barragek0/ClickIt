@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
+using ClickIt.Rendering;
 using ClickIt;
 using System.Threading;
 using System.Diagnostics;
@@ -92,6 +93,38 @@ namespace ClickIt.Tests.Unit
             pm.RecordSuccessfulClickTiming(200);
 
             pm.GetAverageSuccessfulClickTiming().Should().BeInRange(100, 200);
+        }
+
+        [TestMethod]
+        public void BuildClickFrequencyTargetDebugMetrics_UsesObservedIntervalForTotalAndScheduler()
+        {
+            var metrics = DebugRenderer.BuildClickFrequencyTargetDebugMetrics(
+                clickTargetMs: 250,
+                processingMs: 40,
+                observedIntervalMs: 420);
+
+            metrics.ClickTargetMs.Should().Be(250);
+            metrics.ProcessingMs.Should().Be(40);
+            metrics.ClickDelayMs.Should().Be(210);
+            metrics.ModeledTotalMs.Should().Be(250);
+            metrics.ObservedTotalMs.Should().Be(420);
+            metrics.SchedulerDeltaMs.Should().Be(170);
+            metrics.TargetDeviationRatio.Should().BeApproximately((420d - 250d) / 250d, 0.0001);
+        }
+
+        [TestMethod]
+        public void BuildClickFrequencyTargetDebugMetrics_FallsBackToExpectedWhenObservedIntervalMissing()
+        {
+            var metrics = DebugRenderer.BuildClickFrequencyTargetDebugMetrics(
+                clickTargetMs: 250,
+                processingMs: 60,
+                observedIntervalMs: 0);
+
+            metrics.ClickDelayMs.Should().Be(190);
+            metrics.ModeledTotalMs.Should().Be(250);
+            metrics.ObservedTotalMs.Should().Be(250);
+            metrics.SchedulerDeltaMs.Should().Be(0);
+            metrics.TargetDeviationRatio.Should().BeApproximately(0, 0.0001);
         }
     }
 }
