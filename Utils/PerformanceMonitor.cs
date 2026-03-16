@@ -306,6 +306,33 @@ namespace ClickIt.Utils
             _clickCount = 0;
         }
 
+        public void ShutdownForHotReload()
+        {
+            _mainTimer.Stop();
+            _secondTimer.Stop();
+            _renderTimer.Stop();
+            _altarCoroutineTimer.Stop();
+            _clickCoroutineTimer.Stop();
+            _flareCoroutineTimer.Stop();
+            _fpsTimer.Stop();
+            _lastHotkeyReleaseTimer.Stop();
+            _lastRenderTimer.Stop();
+            _lastTickTimer.Stop();
+
+            lock (_clickTimingsLock)
+                _clickCoroutineTimings.Clear();
+            lock (_altarTimingsLock)
+                _altarCoroutineTimings.Clear();
+            lock (_flareTimingsLock)
+                _flareCoroutineTimings.Clear();
+            lock (_renderTimingsLock)
+                _renderTimings.Clear();
+            lock (_clickIntervalsLock)
+                _clickIntervals.Clear();
+            lock (_successfulClickTimingsLock)
+                _successfulClickTimings.Clear();
+        }
+
         public void RecordSuccessfulClickTiming(long duration)
         {
             EnqueueTiming(_successfulClickTimings, duration, 10, _successfulClickTimingsLock);

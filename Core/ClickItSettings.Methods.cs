@@ -432,6 +432,7 @@ namespace ClickIt
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
+            new("ritual-altars", "Ritual"),
             new("settlers", "Settlers"),
             new("delve", "Delve"),
             new("ultimatum", "Ultimatum"),
@@ -683,8 +684,8 @@ namespace ClickIt
                 new(MechanicIds.Sanctum, "Sanctum", ClickSanctum, null, true),
                 new(MechanicIds.Items, "Items", ClickItems, null, true),
                 new(MechanicIds.Essences, "Essences", ClickEssences, null, true),
-                new(MechanicIds.RitualInitiate, "Ritual Altars", ClickRitualInitiate, null, true),
-                new(MechanicIds.RitualCompleted, "Completed Ritual Altars", ClickRitualCompleted, null, true),
+                new(MechanicIds.RitualInitiate, "Uncompleted Altars", ClickRitualInitiate, "ritual-altars", true),
+                new(MechanicIds.RitualCompleted, "Completed Altars", ClickRitualCompleted, "ritual-altars", true),
                 new(MechanicIds.LostShipment, "Lost Shipment", ClickLostShipmentCrates, "settlers", true),
                 new(MechanicIds.SettlersCrimsonIron, "Crimson Iron", ClickSettlersCrimsonIron, "settlers", true),
                 new(MechanicIds.SettlersCopper, "Copper", ClickSettlersCopper, "settlers", true),

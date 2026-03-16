@@ -49,7 +49,7 @@ namespace ClickIt.Utils
 
         private IEnumerator MainScanForAltarsLogic()
         {
-            while (_settings.Enable)
+            while (_settings.Enable && !_state.IsShuttingDown)
             {
                 yield return ScanForAltarsLogic();
             }
@@ -57,7 +57,7 @@ namespace ClickIt.Utils
 
         private IEnumerator ScanForAltarsLogic()
         {
-            if (_state.PerformanceMonitor == null) yield break;
+            if (_state.IsShuttingDown || _state.PerformanceMonitor == null) yield break;
 
             _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Altar);
             _state.AltarService?.ProcessAltarScanningLogic();
@@ -68,7 +68,7 @@ namespace ClickIt.Utils
 
         private IEnumerator MainClickLabelCoroutine()
         {
-            while (_settings.Enable)
+            while (_settings.Enable && !_state.IsShuttingDown)
             {
                 yield return ClickLabel();
             }
@@ -76,7 +76,7 @@ namespace ClickIt.Utils
 
         private IEnumerator ClickLabel()
         {
-            if (_state.PerformanceMonitor == null || _state.ClickService == null) yield break;
+            if (_state.IsShuttingDown || _state.PerformanceMonitor == null || _state.ClickService == null) yield break;
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
             bool isRitualActive = IsRitualActive();
@@ -143,9 +143,9 @@ namespace ClickIt.Utils
 
         private IEnumerator FlareCoroutine()
         {
-            if (_state.PerformanceMonitor == null) yield break;
+            if (_state.IsShuttingDown || _state.PerformanceMonitor == null) yield break;
 
-            while (_settings.Enable)
+            while (_settings.Enable && !_state.IsShuttingDown)
             {
                 _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Flare);
 

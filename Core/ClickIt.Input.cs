@@ -7,6 +7,11 @@ namespace ClickIt
     {
         public override Job? Tick()
         {
+            if (State.IsShuttingDown)
+            {
+                return null;
+            }
+
             bool hotkeyPressed = IsClickHotkeyPressed();
 
             if (hotkeyPressed)
@@ -30,6 +35,11 @@ namespace ClickIt
 
         private void HandleHotkeyPressed()
         {
+            if (State.IsShuttingDown)
+            {
+                return;
+            }
+
             if (State.ClickLabelCoroutine?.IsDone == true)
             {
                 State.ClickLabelCoroutine = FindExistingClickLogicCoroutine();
@@ -50,7 +60,7 @@ namespace ClickIt
 
         private static Coroutine? FindExistingClickLogicCoroutine()
         {
-            return Core.ParallelRunner.Coroutines.FirstOrDefault(x => x.Name == "ClickIt.ClickLogic");
+            return Core.ParallelRunner.Coroutines.FirstOrDefault(x => x.Name == "ClickIt.ClickLogic" && !x.IsDone);
         }
 
         private void ResumeAltarScanningIfDue()

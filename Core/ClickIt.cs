@@ -17,6 +17,7 @@ namespace ClickIt
         public override void OnClose()
         {
             ClickItSettings runtimeSettings = Settings ?? EffectiveSettings;
+            State.IsShuttingDown = true;
 
             // Remove event handlers to prevent issues during DLL reload
             runtimeSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
@@ -44,6 +45,11 @@ namespace ClickIt
             WaitForCoroutineShutdown(State.AltarCoroutine);
             WaitForCoroutineShutdown(State.ClickLabelCoroutine);
             WaitForCoroutineShutdown(State.DelveFlareCoroutine);
+            WaitForAllClickItCoroutinesShutdown();
+
+            State.AltarCoroutine = null;
+            State.ClickLabelCoroutine = null;
+            State.DelveFlareCoroutine = null;
 
             LockManager.Instance = null;
 
@@ -51,6 +57,8 @@ namespace ClickIt
             Services.ShrineService.ClearThreadLocalStorageForCurrentThread();
 
             State.CachedLabels = null;
+
+            State.PerformanceMonitor?.ShutdownForHotReload();
 
             State.PerformanceMonitor = null;
             State.ErrorHandler = null;
@@ -68,6 +76,28 @@ namespace ClickIt
             State.AltarDisplayRenderer = null;
             State.PathfindingService = null;
             State.AlertService = null;
+            State.LabelService = null;
+            State.LabelFilterService = null;
+            State.ClickService = null;
+            State.Camera = null;
+
+            State.LastRenderTimer.Stop();
+            State.LastTickTimer.Stop();
+            State.Timer.Stop();
+            State.SecondTimer.Stop();
+
+            // Best-effort finalizer drain to reduce transient assembly/file lock windows during host hot-reload.
+            try
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                Thread.Sleep(50);
+            }
+            catch
+            {
+                // Best effort only.
+            }
 
             // In some test scenarios the Settings property isn't populated on the base class even though tests inject settings via the test seam.
             // Avoid invoking base.OnClose when the real Settings property is null to prevent ExileCore.BaseSettingsPlugin from attempting to save a null settings instance.
@@ -79,6 +109,7 @@ namespace ClickIt
 
         public override bool Initialise()
         {
+            State.IsShuttingDown = false;
             Settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
             State.PerformanceMonitor = new PerformanceMonitor(Settings);
             State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage);
@@ -176,6 +207,31 @@ namespace ClickIt
             }
         }
 
+        private static void WaitForAllClickItCoroutinesShutdown(int timeoutMs = 2000)
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                while (sw.ElapsedMilliseconds < timeoutMs)
+                {
+                    bool anyActive = Core.ParallelRunner.Coroutines
+                        .Any(c => c != null
+                            && c.Name != null
+                            && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase)
+                            && !c.IsDone);
+
+                    if (!anyActive)
+                        break;
+
+                    Thread.Sleep(10);
+                }
+            }
+            catch
+            {
+                // Best effort cleanup during shutdown.
+            }
+        }
+
         private void ReportBugButtonPressed()
         {
             _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues");
@@ -183,7 +239,7 @@ namespace ClickIt
 
         public override void Render()
         {
-            if (State.PerformanceMonitor == null) return;
+            if (State.IsShuttingDown || State.PerformanceMonitor == null) return;
 
             // Set flag to prevent logging during render loop
             State.IsRendering = true;

@@ -39,6 +39,7 @@ namespace ClickIt
         public Services.AlertService? AlertService { get; set; }
         public Camera? Camera { get; set; }
         public bool WorkFinished { get; set; } = false;
+        public bool IsShuttingDown { get; set; } = false;
 
         /// <summary>
         /// Indicates whether we're currently in the Render() method.

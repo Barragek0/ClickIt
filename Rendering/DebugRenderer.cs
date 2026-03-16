@@ -49,29 +49,43 @@ namespace ClickIt.Rendering
             {
                 var healthSquare = _areaService.HealthSquareRectangle;
                 var flaskRect = _areaService.FlaskRectangle;
+                var flaskTertiaryRect = _areaService.FlaskTertiaryRectangle;
                 var manaSquare = _areaService.ManaSquareRectangle;
                 var skillsRect = _areaService.SkillsRectangle;
+                var skillsTertiaryRect = _areaService.SkillsTertiaryRectangle;
 
                 // Fallback: derive split rectangles from combined regions if cached split fields are empty.
-                if (IsEmptyRect(healthSquare) || IsEmptyRect(flaskRect))
+                if (IsEmptyRect(healthSquare) || IsEmptyRect(flaskRect) || IsEmptyRect(flaskTertiaryRect))
                 {
-                    (healthSquare, flaskRect) = AreaService.SplitBottomAnchoredRectangleFromLeft(_areaService.HealthAndFlaskRectangle, 0.6f);
+                    (healthSquare, flaskRect, flaskTertiaryRect) = AreaService.SplitBottomAnchoredThreeRectanglesFromLeft(
+                        _areaService.HealthAndFlaskRectangle,
+                        0.6f,
+                        0.85f,
+                        1f);
                 }
 
-                if (IsEmptyRect(manaSquare) || IsEmptyRect(skillsRect))
+                if (IsEmptyRect(manaSquare) || IsEmptyRect(skillsRect) || IsEmptyRect(skillsTertiaryRect))
                 {
-                    (manaSquare, skillsRect) = AreaService.SplitBottomAnchoredRectangleFromRight(_areaService.ManaAndSkillsRectangle, 0.6f);
+                    (manaSquare, skillsRect, skillsTertiaryRect) = AreaService.SplitBottomAnchoredThreeRectanglesFromRight(
+                        _areaService.ManaAndSkillsRectangle,
+                        0.6f,
+                        0.85f,
+                        1f);
                 }
 
                 RectangleF healthSquareDraw = ToDrawRectangleFromLtrb(healthSquare);
                 RectangleF flaskRectDraw = ToDrawRectangleFromLtrb(flaskRect);
+                RectangleF flaskTertiaryRectDraw = ToDrawRectangleFromLtrb(flaskTertiaryRect);
                 RectangleF skillsRectDraw = ToDrawRectangleFromLtrb(skillsRect);
+                RectangleF skillsTertiaryRectDraw = ToDrawRectangleFromLtrb(skillsTertiaryRect);
                 RectangleF manaSquareDraw = ToDrawRectangleFromLtrb(manaSquare);
 
                 _deferredFrameQueue.Enqueue(_areaService.FullScreenRectangle, Color.LightSkyBlue, 1);
                 _deferredFrameQueue.Enqueue(healthSquareDraw, Color.Red, 1);
-                _deferredFrameQueue.Enqueue(flaskRectDraw, Color.OrangeRed, 1);
+                _deferredFrameQueue.Enqueue(flaskRectDraw, Color.Red, 1);
+                _deferredFrameQueue.Enqueue(flaskTertiaryRectDraw, Color.Red, 1);
                 _deferredFrameQueue.Enqueue(skillsRectDraw, Color.DeepSkyBlue, 1);
+                _deferredFrameQueue.Enqueue(skillsTertiaryRectDraw, Color.DeepSkyBlue, 1);
                 _deferredFrameQueue.Enqueue(manaSquareDraw, Color.DeepSkyBlue, 1);
                 var buffsAndDebuffsRects = _areaService.BuffsAndDebuffsRectangles;
                 if (buffsAndDebuffsRects.Count > 0)

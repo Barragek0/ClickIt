@@ -12,15 +12,19 @@ namespace ClickIt.Services
         private const int BlockedUiRectanglesRefreshIntervalMs = 10_000;
         private const int BuffsAndDebuffsRectanglesRefreshIntervalMs = 500;
         private const int QuestTrackerRectanglesHoldLastGoodMs = 200;
-        private const float SideCompanionHeightRatio = 0.65f;
-        private const float SideCompanionWidthRatio = 1f;
+        private const float SideCompanionHeightRatio = 0.625f;
+        private const float SideCompanionWidthRatio = 0.555f;
+        private const float SideTertiaryCompanionHeightRatio = 0.85f;
+        private const float SideTertiaryCompanionWidthRatio = 0.79f;
 
         private RectangleF _fullScreenRectangle;
         private RectangleF _healthAndFlaskRectangle;
         private RectangleF _manaAndSkillsRectangle;
         private RectangleF _healthSquareRectangle;
         private RectangleF _flaskRectangle;
+        private RectangleF _flaskTertiaryRectangle;
         private RectangleF _skillsRectangle;
+        private RectangleF _skillsTertiaryRectangle;
         private RectangleF _manaSquareRectangle;
         private RectangleF _buffsAndDebuffsRectangle;
         private readonly List<RectangleF> _buffsAndDebuffsRectangles = [];
@@ -41,7 +45,9 @@ namespace ClickIt.Services
         public RectangleF ManaAndSkillsRectangle => _manaAndSkillsRectangle;
         public RectangleF HealthSquareRectangle => _healthSquareRectangle;
         public RectangleF FlaskRectangle => _flaskRectangle;
+        public RectangleF FlaskTertiaryRectangle => _flaskTertiaryRectangle;
         public RectangleF SkillsRectangle => _skillsRectangle;
+        public RectangleF SkillsTertiaryRectangle => _skillsTertiaryRectangle;
         public RectangleF ManaSquareRectangle => _manaSquareRectangle;
         public RectangleF BuffsAndDebuffsRectangle => _buffsAndDebuffsRectangle;
         public IReadOnlyList<RectangleF> BuffsAndDebuffsRectangles => _buffsAndDebuffsRectangles;
@@ -108,8 +114,16 @@ namespace ClickIt.Services
             _healthAndFlaskRectangle = leftCombined;
             _manaAndSkillsRectangle = rightCombined;
 
-            (_healthSquareRectangle, _flaskRectangle) = SplitBottomAnchoredRectangleFromLeft(leftCombined, SideCompanionHeightRatio);
-            (_manaSquareRectangle, _skillsRectangle) = SplitBottomAnchoredRectangleFromRight(rightCombined, SideCompanionHeightRatio);
+            (_healthSquareRectangle, _flaskRectangle, _flaskTertiaryRectangle) = SplitBottomAnchoredThreeRectanglesFromLeft(
+                leftCombined,
+                SideCompanionHeightRatio,
+                SideTertiaryCompanionHeightRatio,
+                SideTertiaryCompanionWidthRatio);
+            (_manaSquareRectangle, _skillsRectangle, _skillsTertiaryRectangle) = SplitBottomAnchoredThreeRectanglesFromRight(
+                rightCombined,
+                SideCompanionHeightRatio,
+                SideTertiaryCompanionHeightRatio,
+                SideTertiaryCompanionWidthRatio);
 
             RefreshQuestTrackerAreas(gameController, now);
 
@@ -204,11 +218,59 @@ namespace ClickIt.Services
             return SplitBottomAnchoredRectangle(source, secondaryHeightRatio, anchorLeft: true);
         }
 
+        internal static (RectangleF primarySquare, RectangleF secondaryCompanion, RectangleF tertiaryCompanion) SplitBottomAnchoredThreeRectanglesFromLeft(
+            RectangleF source,
+            float secondaryHeightRatio,
+            float tertiaryHeightRatio,
+            float tertiaryWidthRatio)
+        {
+            (RectangleF primary, RectangleF secondary) = SplitBottomAnchoredRectangle(source, secondaryHeightRatio, anchorLeft: true);
+            RectangleF tertiary = BuildLinkedBottomRectangle(secondary, tertiaryHeightRatio, tertiaryWidthRatio, anchorLeft: true);
+            return (primary, secondary, tertiary);
+        }
+
         internal static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangleFromRight(
             RectangleF source,
             float secondaryHeightRatio)
         {
             return SplitBottomAnchoredRectangle(source, secondaryHeightRatio, anchorLeft: false);
+        }
+
+        internal static (RectangleF primarySquare, RectangleF secondaryCompanion, RectangleF tertiaryCompanion) SplitBottomAnchoredThreeRectanglesFromRight(
+            RectangleF source,
+            float secondaryHeightRatio,
+            float tertiaryHeightRatio,
+            float tertiaryWidthRatio)
+        {
+            (RectangleF primary, RectangleF secondary) = SplitBottomAnchoredRectangle(source, secondaryHeightRatio, anchorLeft: false);
+            RectangleF tertiary = BuildLinkedBottomRectangle(secondary, tertiaryHeightRatio, tertiaryWidthRatio, anchorLeft: false);
+            return (primary, secondary, tertiary);
+        }
+
+        private static RectangleF BuildLinkedBottomRectangle(
+            RectangleF source,
+            float heightRatio,
+            float widthRatio,
+            bool anchorLeft)
+        {
+            float left = source.X;
+            float top = source.Y;
+            float right = source.Width;
+            float bottom = source.Height;
+
+            float sourceWidth = right - left;
+            float sourceHeight = bottom - top;
+            if (sourceWidth <= 0f || sourceHeight <= 0f)
+                return RectangleF.Empty;
+
+            float linkedWidth = sourceWidth * Math.Max(0f, widthRatio);
+            float linkedHeight = sourceHeight * Math.Clamp(heightRatio, 0f, 1f);
+            if (linkedWidth <= 0f || linkedHeight <= 0f)
+                return RectangleF.Empty;
+
+            return anchorLeft
+                ? new RectangleF(right, bottom - linkedHeight, right + linkedWidth, bottom)
+                : new RectangleF(left - linkedWidth, bottom - linkedHeight, left, bottom);
         }
 
         private static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangle(
@@ -251,7 +313,9 @@ namespace ClickIt.Services
                 return point.PointInRectangle(_fullScreenRectangle)
                     && !point.PointInRectangle(_healthSquareRectangle)
                     && !point.PointInRectangle(_flaskRectangle)
+                    && !point.PointInRectangle(_flaskTertiaryRectangle)
                     && !point.PointInRectangle(_skillsRectangle)
+                    && !point.PointInRectangle(_skillsTertiaryRectangle)
                     && !point.PointInRectangle(_manaSquareRectangle)
                     && !point.PointInRectangle(_buffsAndDebuffsRectangle)
                     && !PointInAnyRectangle(point, _buffsAndDebuffsRectangles)

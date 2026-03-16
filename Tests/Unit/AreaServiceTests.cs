@@ -320,6 +320,25 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void PointIsInClickableArea_ReturnsFalse_InTertiaryFlaskAndSkillsRectangles()
+        {
+            var svc = new AreaService();
+
+            var full = new RectangleF(0, 0, 500, 300);
+            var health = new RectangleF(0, 290, 500, 300);
+            var mana = new RectangleF(490, 290, 500, 300);
+            var buffs = new RectangleF(0, 0, 30, 30);
+
+            SetRectangles(svc, full, health, mana, buffs);
+            PrivateFieldAccessor.Set(svc, "_flaskTertiaryRectangle", new RectangleF(120, 220, 170, 300));
+            PrivateFieldAccessor.Set(svc, "_skillsTertiaryRectangle", new RectangleF(330, 220, 380, 300));
+
+            svc.PointIsInClickableArea(new Vector2(140, 250)).Should().BeFalse();
+            svc.PointIsInClickableArea(new Vector2(350, 250)).Should().BeFalse();
+            svc.PointIsInClickableArea(new Vector2(250, 200)).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void PointIsInClickableArea_ReturnsFalse_InBuffsAndDebuffsBlockedRectangles()
         {
             var svc = new AreaService();
@@ -349,7 +368,9 @@ namespace ClickIt.Tests.Unit
             PrivateFieldAccessor.Set(svc, "_manaAndSkillsRectangle", mana);
             PrivateFieldAccessor.Set(svc, "_healthSquareRectangle", health);
             PrivateFieldAccessor.Set(svc, "_flaskRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(svc, "_flaskTertiaryRectangle", RectangleF.Empty);
             PrivateFieldAccessor.Set(svc, "_skillsRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(svc, "_skillsTertiaryRectangle", RectangleF.Empty);
             PrivateFieldAccessor.Set(svc, "_manaSquareRectangle", mana);
             PrivateFieldAccessor.Set(svc, "_buffsAndDebuffsRectangle", buffs);
         }

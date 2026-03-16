@@ -39,6 +39,7 @@ namespace ClickIt.Tests.Unit
             plugin.State.DeferredTextQueue.Should().BeNull();
             plugin.State.DeferredFrameQueue.Should().BeNull();
             plugin.State.AltarDisplayRenderer.Should().BeNull();
+            plugin.State.IsShuttingDown.Should().BeTrue();
 
             global::ClickIt.Utils.LockManager.Instance.Should().BeNull();
         }
