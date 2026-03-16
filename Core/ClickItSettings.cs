@@ -144,55 +144,55 @@ namespace ClickIt
         public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
         [Menu("Avoid Overlapping Labels when Clicking", "When enabled, the plugin attempts to click a visible, non-overlapped part of the target label instead of always clicking center. Helps when one label partially covers another.", 13, 1100)]
         public ToggleNode AvoidOverlappingLabelClickPoints { get; set; } = new ToggleNode(true);
-        [Menu("Pathfinding", 14, 1100)]
+        [Menu("Pathfinding", 1114, 1100)]
         public EmptyNode PathfindingCategory { get; set; } = new EmptyNode();
-        [Menu("Walk toward Offscreen Labels", "When enabled and no clickable labels are on screen, attempt to walk toward the nearest offscreen interactable target using terrain pathfinding data.\n\nI would be careful enabling this feature as its somewhat likely GGG could flag you as a bot.\n\nWhile that hasn't happen to me while testing the feature, I wouldn't be surprised if it did happen during prolonged use.", 1, 14)]
+        [Menu("Walk toward Offscreen Labels", "When enabled and no clickable labels are on screen, attempt to walk toward the nearest offscreen interactable target using terrain pathfinding data.\n\nI would be careful enabling this feature as its somewhat likely GGG could flag you as a bot.\n\nWhile that hasn't happen to me while testing the feature, I wouldn't be surprised if it did happen during prolonged use.", 1, 1114)]
         public ToggleNode WalkTowardOffscreenLabels { get; set; } = new ToggleNode(false);
-        [Menu("Prioritize On-Screen Clickable Mechanics", "When enabled, offscreen pathfinding is skipped whenever there is at least one clickable on-screen mechanic candidate (for example: altars, shrines, settlers ore, or lost shipment).", 2, 14)]
+        [Menu("Prioritize On-Screen Clickable Mechanics", "When enabled, offscreen pathfinding is skipped whenever there is at least one clickable on-screen mechanic candidate (for example: altars, shrines, settlers ore, or lost shipment).", 2, 1114)]
         public ToggleNode PrioritizeOnscreenClickableMechanicsOverPathfinding { get; set; } = new ToggleNode(true);
-        [Menu("", 10003, 14)]
+        [Menu("", 10003, 1114)]
         [JsonIgnore]
         public CustomNode PathfindingSliderWidthStart { get; }
-        [Menu("Offscreen Pathfinding Search Budget", "Controls pathfinding search complexity for offscreen walking. Higher values search deeper but increase CPU usage.", 3, 14)]
+        [Menu("Offscreen Pathfinding Search Budget", "Controls pathfinding search complexity for offscreen walking. Higher values search deeper but increase CPU usage.", 3, 1114)]
         public RangeNode<int> OffscreenPathfindingSearchBudget { get; set; } = new RangeNode<int>(6000, 1000, 50000);
-        [Menu("Offscreen Path Line Timeout (ms)", "Maximum age of the red pathfinding line. If pathfinding has not run within this timeout, the line is automatically cleared.", 4, 14)]
+        [Menu("Offscreen Path Line Timeout (ms)", "Maximum age of the red pathfinding line. If pathfinding has not run within this timeout, the line is automatically cleared.", 4, 1114)]
         public RangeNode<int> OffscreenPathfindingLineTimeoutMs { get; set; } = new RangeNode<int>(1500, 250, 10000);
-        [Menu("Use Movement Skills for Offscreen Pathfinding", "When enabled, the plugin will attempt to use an equipped movement skill keybind while pathing to offscreen targets. Supports common travel/blink gems when they are off cooldown and have a keyboard keybind.", 5, 14)]
+        [Menu("Use Movement Skills for Offscreen Pathfinding", "When enabled, the plugin will attempt to use an equipped movement skill keybind while pathing to offscreen targets. Supports common travel/blink gems when they are off cooldown and have a keyboard keybind.", 5, 1114)]
         public ToggleNode UseMovementSkillsForOffscreenPathfinding { get; set; } = new ToggleNode(false);
-        [Menu("Movement Skill Minimum Path Subsection Length", "Minimum remaining path node count required before a movement skill cast is attempted. Lower values cast more often; higher values are more conservative.", 6, 14)]
+        [Menu("Movement Skill Minimum Path Subsection Length", "Minimum remaining path node count required before a movement skill cast is attempted. Lower values cast more often; higher values are more conservative.", 6, 1114)]
         public RangeNode<int> OffscreenMovementSkillMinPathSubsectionLength { get; set; } = new RangeNode<int>(8, 1, 100);
-        [Menu("Shield Charge Post-Cast Delay (ms)", "Delay before normal clicking resumes after Shield Charge is used for offscreen pathing. Lower values cast/recover faster; higher values are safer for slower attack speed setups.", 7, 14)]
+        [Menu("Shield Charge Post-Cast Delay (ms)", "Delay before normal clicking resumes after Shield Charge is used for offscreen pathing. Lower values cast/recover faster; higher values are safer for slower attack speed setups.", 7, 1114)]
         public RangeNode<int> OffscreenShieldChargePostCastClickDelayMs { get; set; } = new RangeNode<int>(100, 0, 1000);
-        [Menu("", 10004, 14)]
+        [Menu("", 10004, 1114)]
         [JsonIgnore]
         public CustomNode PathfindingSliderWidthEnd { get; }
 
-        [Menu("Lazy Mode", 15, 1100)]
+        [Menu("Lazy Mode", 1115, 1100)]
         public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();
-        [Menu("Lazy Mode - Important Info in Tooltip ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'Disable Lazy Mode while Left Click Held' or 'Disable Lazy Mode while Right Click Held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked,\n   This is a limitation with ExileAPI and not the plugin and for this reason, lazy mode is not allowed\n   to click chests that were locked when spawned. When a locked-on-spawn chest is on-screen,\n   lazy mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in Controls will override lazy mode blocking.", 1, 15)]
+        [Menu("Lazy Mode - Important Info in Tooltip ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'Disable Lazy Mode while Left Click Held' or 'Disable Lazy Mode while Right Click Held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked,\n   This is a limitation with ExileAPI and not the plugin and for this reason, lazy mode is not allowed\n   to click chests that were locked when spawned. When a locked-on-spawn chest is on-screen,\n   lazy mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in Controls will override lazy mode blocking.", 1, 1115)]
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
-        [Menu("", 10005, 15)]
+        [Menu("", 10005, 1115)]
         [JsonIgnore]
         public CustomNode LazyModeSliderWidthStart { get; }
-        [Menu("Click Limiting (ms)", "When lazy mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while lazy mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 15)]
+        [Menu("Click Limiting (ms)", "When lazy mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while lazy mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 1115)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
-        [Menu("Disable Hotkey", "When lazy mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 15)]
+        [Menu("Disable Hotkey", "When lazy mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1115)]
         public HotkeyNode LazyModeDisableKey { get; set; } = new HotkeyNode(Keys.F2);
-        [Menu("Disable Hotkey Toggle Mode", "When enabled, pressing the Disable Hotkey toggles lazy mode clicking on/off until you press it again.\nWhen disabled, the hotkey works as hold-to-disable.", 4, 15)]
+        [Menu("Disable Hotkey Toggle Mode", "When enabled, pressing the Disable Hotkey toggles lazy mode clicking on/off until you press it again.\nWhen disabled, the hotkey works as hold-to-disable.", 4, 1115)]
         public ToggleNode LazyModeDisableKeyToggleMode { get; set; } = new ToggleNode(false);
-        [Menu("Restore Cursor Position after Each Click", "When enabled, restores cursor to original position after clicking in lazy mode.", 5, 15)]
+        [Menu("Restore Cursor Position after Each Click", "When enabled, restores cursor to original position after clicking in lazy mode.", 5, 1115)]
         public ToggleNode RestoreCursorInLazyMode { get; set; } = new ToggleNode(true);
-        [Menu("Restore Cursor Delay (ms)", "Delay before restoring cursor position after a lazy-mode click when cursor restore is enabled.\n\nWhen set below 20, this may cause the plugin to have to click an item multiple times to pick it up.", 6, 15)]
+        [Menu("Restore Cursor Delay (ms)", "Delay before restoring cursor position after a lazy-mode click when cursor restore is enabled.\n\nWhen set below 20, this may cause the plugin to have to click an item multiple times to pick it up.", 6, 1115)]
         public RangeNode<int> LazyModeRestoreCursorDelayMs { get; set; } = new RangeNode<int>(20, 0, 40);
-        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 7, 15)]
+        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 7, 1115)]
         public RangeNode<int> LazyModeUIHoverSleep { get; set; } = new RangeNode<int>(20, 20, 40);
-        [Menu("Disable Lazy Mode while Left Click Held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 8, 15)]
+        [Menu("Disable Lazy Mode while Left Click Held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 8, 1115)]
         public ToggleNode DisableLazyModeLeftClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Disable Lazy Mode while Right Click Held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 9, 15)]
+        [Menu("Disable Lazy Mode while Right Click Held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 9, 1115)]
         public ToggleNode DisableLazyModeRightClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Lever Reclick Delay (ms)", "When lazy mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 10, 15)]
+        [Menu("Lever Reclick Delay (ms)", "When lazy mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 10, 1115)]
         public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
-        [Menu("Nearby Monster Blockers", "Prevents lazy mode clicking when nearby monster density reaches your configured thresholds.", 11, 15)]
+        [Menu("Nearby Monster Blockers", "Prevents lazy mode clicking when nearby monster density reaches your configured thresholds.", 11, 1115)]
         [JsonIgnore]
         public CustomNode LazyModeNearbyMonsterRulesPanel { get; }
         public int LazyModeNormalMonsterBlockCount { get; set; } = 0;
@@ -203,7 +203,7 @@ namespace ClickIt
         public int LazyModeRareMonsterBlockDistance { get; set; } = 10;
         public int LazyModeUniqueMonsterBlockCount { get; set; } = 1;
         public int LazyModeUniqueMonsterBlockDistance { get; set; } = 10;
-        [Menu("", 10006, 15)]
+        [Menu("", 10006, 1115)]
         [JsonIgnore]
         public CustomNode LazyModeSliderWidthEnd { get; }
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
