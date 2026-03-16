@@ -184,6 +184,90 @@ namespace ClickIt
                 drawRight: () => DrawItemTypeList("Don't Click##ItemType", ItemTypeBlacklistIds, moveToWhitelist: true, textColor: BlacklistTextColor));
         }
 
+        private void DrawLazyModeNearbyMonsterRulesPanel()
+        {
+            EnsureLazyModeNearbyMonsterFiltersInitialized();
+
+            DrawLazyModeNearbyMonsterRuleRow(
+                "Normal",
+                "Normal",
+                LazyModeNormalMonsterBlockCount,
+                LazyModeNormalMonsterBlockDistance,
+                (count, distance) =>
+                {
+                    LazyModeNormalMonsterBlockCount = count;
+                    LazyModeNormalMonsterBlockDistance = distance;
+                });
+
+            DrawLazyModeNearbyMonsterRuleRow(
+                "Magic",
+                "Magic",
+                LazyModeMagicMonsterBlockCount,
+                LazyModeMagicMonsterBlockDistance,
+                (count, distance) =>
+                {
+                    LazyModeMagicMonsterBlockCount = count;
+                    LazyModeMagicMonsterBlockDistance = distance;
+                });
+
+            DrawLazyModeNearbyMonsterRuleRow(
+                "Rare",
+                "Rare",
+                LazyModeRareMonsterBlockCount,
+                LazyModeRareMonsterBlockDistance,
+                (count, distance) =>
+                {
+                    LazyModeRareMonsterBlockCount = count;
+                    LazyModeRareMonsterBlockDistance = distance;
+                });
+
+            DrawLazyModeNearbyMonsterRuleRow(
+                "Unique",
+                "Unique",
+                LazyModeUniqueMonsterBlockCount,
+                LazyModeUniqueMonsterBlockDistance,
+                (count, distance) =>
+                {
+                    LazyModeUniqueMonsterBlockCount = count;
+                    LazyModeUniqueMonsterBlockDistance = distance;
+                });
+
+            ImGui.Spacing();
+            ImGui.TextDisabled("Set count to 0 to disable a specific rarity rule.");
+        }
+
+        private void DrawLazyModeNearbyMonsterRuleRow(string rowId, string rarityLabel, int currentCount, int currentDistance, Action<int, int> apply)
+        {
+            int count = currentCount;
+            int distance = currentDistance;
+
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted("Don't Click when");
+            ImGui.SameLine();
+
+            ImGui.SetNextItemWidth(70f);
+            bool changed = ImGui.InputInt($"##LazyModeNearbyMonsterCount{rowId}", ref count, 1, 10);
+            count = SanitizeLazyModeNearbyMonsterCount(count);
+
+            ImGui.SameLine();
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted($"{rarityLabel} Monsters are within");
+            ImGui.SameLine();
+
+            ImGui.SetNextItemWidth(80f);
+            changed |= ImGui.InputInt($"##LazyModeNearbyMonsterDistance{rowId}", ref distance, 1, 10);
+            distance = SanitizeLazyModeNearbyMonsterDistance(distance);
+
+            ImGui.SameLine();
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted("Distance");
+
+            if (changed || count != currentCount || distance != currentDistance)
+            {
+                apply(count, distance);
+            }
+        }
+
         private static void DrawDualTransferTable(
             string tableId,
             string leftHeader,

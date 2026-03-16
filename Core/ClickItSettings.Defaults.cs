@@ -10,6 +10,32 @@ namespace ClickIt
 {
     public partial class ClickItSettings : ISettings
     {
+        private const int LazyModeNearbyMonsterCountMin = 0;
+        private const int LazyModeNearbyMonsterCountMax = 200;
+        private const int LazyModeNearbyMonsterDistanceMin = 1;
+        private const int LazyModeNearbyMonsterDistanceMax = 300;
+
+        private void EnsureLazyModeNearbyMonsterFiltersInitialized()
+        {
+            LazyModeNormalMonsterBlockCount = SanitizeLazyModeNearbyMonsterCount(LazyModeNormalMonsterBlockCount);
+            LazyModeNormalMonsterBlockDistance = SanitizeLazyModeNearbyMonsterDistance(LazyModeNormalMonsterBlockDistance);
+
+            LazyModeMagicMonsterBlockCount = SanitizeLazyModeNearbyMonsterCount(LazyModeMagicMonsterBlockCount);
+            LazyModeMagicMonsterBlockDistance = SanitizeLazyModeNearbyMonsterDistance(LazyModeMagicMonsterBlockDistance);
+
+            LazyModeRareMonsterBlockCount = SanitizeLazyModeNearbyMonsterCount(LazyModeRareMonsterBlockCount);
+            LazyModeRareMonsterBlockDistance = SanitizeLazyModeNearbyMonsterDistance(LazyModeRareMonsterBlockDistance);
+
+            LazyModeUniqueMonsterBlockCount = SanitizeLazyModeNearbyMonsterCount(LazyModeUniqueMonsterBlockCount);
+            LazyModeUniqueMonsterBlockDistance = SanitizeLazyModeNearbyMonsterDistance(LazyModeUniqueMonsterBlockDistance);
+        }
+
+        private static int SanitizeLazyModeNearbyMonsterCount(int value)
+            => Math.Clamp(value, LazyModeNearbyMonsterCountMin, LazyModeNearbyMonsterCountMax);
+
+        private static int SanitizeLazyModeNearbyMonsterDistance(int value)
+            => Math.Clamp(value, LazyModeNearbyMonsterDistanceMin, LazyModeNearbyMonsterDistanceMax);
+
         private void EnsureItemTypeFiltersInitialized()
         {
             ItemTypeWhitelistIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);

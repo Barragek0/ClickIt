@@ -31,6 +31,21 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void LazyModeNearbyMonsterBlockers_DefaultToRequestedValues()
+        {
+            var settings = new ClickItSettings();
+
+            settings.LazyModeNormalMonsterBlockCount.Should().Be(0);
+            settings.LazyModeNormalMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeMagicMonsterBlockCount.Should().Be(3);
+            settings.LazyModeMagicMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeRareMonsterBlockCount.Should().Be(1);
+            settings.LazyModeRareMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeUniqueMonsterBlockCount.Should().Be(1);
+            settings.LazyModeUniqueMonsterBlockDistance.Should().Be(50);
+        }
+
+        [TestMethod]
         public void ToggleItemsIntervalMs_DefaultsToFifteenHundred()
         {
             var settings = new ClickItSettings();

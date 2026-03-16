@@ -210,5 +210,57 @@ namespace ClickIt.Tests.Unit
                 "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium").Should().BeFalse();
         }
 
+        [TestMethod]
+        public void ShouldBlockLazyModeForNearbyMonsters_ReturnsTrue_WhenAnyEnabledThresholdIsMet()
+        {
+            InvokePrivateStatic<bool>(
+                "ShouldBlockLazyModeForNearbyMonsters",
+                0,
+                0,
+                2,
+                3,
+                1,
+                1,
+                0,
+                1).Should().BeTrue();
+
+            InvokePrivateStatic<bool>(
+                "ShouldBlockLazyModeForNearbyMonsters",
+                1,
+                1,
+                0,
+                3,
+                0,
+                1,
+                0,
+                1).Should().BeTrue();
+
+            InvokePrivateStatic<bool>(
+                "ShouldBlockLazyModeForNearbyMonsters",
+                0,
+                0,
+                0,
+                3,
+                0,
+                1,
+                1,
+                1).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldBlockLazyModeForNearbyMonsters_ReturnsFalse_WhenNoEnabledThresholdIsMet()
+        {
+            InvokePrivateStatic<bool>(
+                "ShouldBlockLazyModeForNearbyMonsters",
+                5,
+                0,
+                2,
+                3,
+                0,
+                1,
+                0,
+                1).Should().BeFalse();
+        }
+
     }
 }

@@ -187,6 +187,17 @@ namespace ClickIt
         public ToggleNode DisableLazyModeRightClickHeld { get; set; } = new ToggleNode(true);
         [Menu("Lever Reclick Delay (ms)", "When lazy mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 10, 15)]
         public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
+        [Menu("Nearby Monster Blockers", "Prevents lazy mode clicking when nearby monster density reaches your configured thresholds.", 11, 15)]
+        [JsonIgnore]
+        public CustomNode LazyModeNearbyMonsterRulesPanel { get; }
+        public int LazyModeNormalMonsterBlockCount { get; set; } = 0;
+        public int LazyModeNormalMonsterBlockDistance { get; set; } = 50;
+        public int LazyModeMagicMonsterBlockCount { get; set; } = 3;
+        public int LazyModeMagicMonsterBlockDistance { get; set; } = 50;
+        public int LazyModeRareMonsterBlockCount { get; set; } = 1;
+        public int LazyModeRareMonsterBlockDistance { get; set; } = 50;
+        public int LazyModeUniqueMonsterBlockCount { get; set; } = 1;
+        public int LazyModeUniqueMonsterBlockDistance { get; set; } = 50;
         [Menu("", 10006, 15)]
         [JsonIgnore]
         public CustomNode LazyModeSliderWidthEnd { get; }
@@ -488,6 +499,7 @@ namespace ClickIt
             EnsureEssenceCorruptionFiltersInitialized();
             EnsureStrongboxFiltersInitialized();
             EnsureUltimatumModifiersInitialized();
+            EnsureLazyModeNearbyMonsterFiltersInitialized();
             DebugTestingPanel = new CustomNode
             {
                 DrawDelegate = () => DrawPanelSafe("DebugTestingPanel", DrawDebugTestingPanel)
@@ -515,6 +527,10 @@ namespace ClickIt
             LazyModeSliderWidthEnd = new CustomNode
             {
                 DrawDelegate = PopStandardSliderWidth
+            };
+            LazyModeNearbyMonsterRulesPanel = new CustomNode
+            {
+                DrawDelegate = () => DrawPanelSafe("LazyModeNearbyMonsterRulesPanel", DrawLazyModeNearbyMonsterRulesPanel)
             };
             PrioritiesSliderWidthStart = new CustomNode
             {
