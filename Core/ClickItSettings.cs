@@ -78,10 +78,13 @@ namespace ClickIt
         [Menu("Clicking", "Show/hide clicking debug section", 11, 2)]
         public ToggleNode DebugShowClicking { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 12, 2)]
+        [Menu("Debug Log Overlay", "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail.", 12, 2)]
+        public ToggleNode DebugShowRuntimeDebugLogOverlay { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 13, 2)]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Frames", "Show/hide the debug screen area frames", 13, 2)]
+        [Menu("Debug Frames", "Show/hide the debug screen area frames", 14, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Log messages", "This will flood your log and screen with debug text.", 5, 900)]

@@ -213,6 +213,12 @@ namespace ClickIt.Rendering
                 int nextY = RenderClickingDebug(ref localX, y, h);
                 return (localX, nextY);
             });
+            RenderSectionIfEnabledWithPosition(settings.DebugShowRuntimeDebugLogOverlay, (x, y, h) =>
+            {
+                int localX = x;
+                int nextY = RenderRuntimeDebugLogOverlay(ref localX, y, h);
+                return (localX, nextY);
+            });
             RenderSectionIfEnabled(settings.DebugShowRecentErrors, (x, y, h) => RenderErrorsDebug(x, y, h));
         }
 

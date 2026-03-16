@@ -67,6 +67,7 @@ namespace ClickIt
                 || DebugShowHoveredItemMetadata
                 || DebugShowPathfinding
                 || DebugShowClicking
+                || DebugShowRuntimeDebugLogOverlay
                 || DebugShowRecentErrors;
         }
 
@@ -83,6 +84,7 @@ namespace ClickIt
             && !DebugShowInventoryPickup
             && !DebugShowHoveredItemMetadata
             && !DebugShowClicking
+            && !DebugShowRuntimeDebugLogOverlay
             && !DebugShowRecentErrors;
         }
 
@@ -134,6 +136,7 @@ namespace ClickIt
                 DrawToggleNodeControl("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section");
                 DrawToggleNodeControl("Pathfinding", DebugShowPathfinding, "Show/hide offscreen pathfinding debug section");
                 DrawToggleNodeControl("Clicking", DebugShowClicking, "Show/hide clicking debug section");
+                DrawToggleNodeControl("Debug Log Overlay", DebugShowRuntimeDebugLogOverlay, "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail");
                 DrawToggleNodeControl("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section");
                 DrawToggleNodeControl("Debug Frames", DebugShowFrames, "Show/hide the debug screen area frames");
                 ImGui.Unindent();

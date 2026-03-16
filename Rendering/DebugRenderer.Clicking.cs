@@ -5,6 +5,36 @@ namespace ClickIt.Rendering
 {
     public partial class DebugRenderer
     {
+        public int RenderRuntimeDebugLogOverlay(int xPos, int yPos, int lineHeight)
+        {
+            return RenderRuntimeDebugLogOverlay(ref xPos, yPos, lineHeight);
+        }
+
+        private int RenderRuntimeDebugLogOverlay(ref int xPos, int yPos, int lineHeight)
+        {
+            _deferredTextQueue.Enqueue("--- Debug Log Overlay ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+
+            if (_plugin is not ClickIt clickIt || clickIt.State.ClickService == null)
+            {
+                _deferredTextQueue.Enqueue("Click service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            var latest = clickIt.State.ClickService.GetLatestRuntimeDebugLog();
+            if (!latest.HasData)
+            {
+                _deferredTextQueue.Enqueue("No debug log messages yet", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Latest: {latest.Message}", Color.LightGray, 13, 80);
+
+            var trail = clickIt.State.ClickService.GetLatestRuntimeDebugLogTrail();
+            yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 10, wrapWidth: 80);
+            return yPos;
+        }
+
         public int RenderClickingDebug(int xPos, int yPos, int lineHeight)
         {
             return RenderClickingDebug(ref xPos, yPos, lineHeight);

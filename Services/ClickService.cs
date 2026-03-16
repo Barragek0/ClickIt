@@ -64,9 +64,15 @@ namespace ClickIt.Services
         // Helper to avoid allocating debug message strings when debug logging is disabled
         private void DebugLog(Func<string> messageFactory)
         {
-            if (settings.DebugMode?.Value == true)
+            if (settings.DebugMode?.Value != true)
+                return;
+
+            string message = messageFactory();
+            SetLatestRuntimeDebugLog(message);
+
+            if (settings.LogMessages?.Value == true)
             {
-                errorHandler.LogMessage(messageFactory());
+                errorHandler.LogMessage(message);
             }
         }
 
