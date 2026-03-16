@@ -16,6 +16,8 @@ namespace ClickIt.Services
         private const string VerisiumBossSubAreaTransitionPathMarker = MechanicIds.VerisiumBossSubAreaTransitionPathMarker;
         private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
         private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
+        private const int HiddenFallbackCandidateCacheWindowMs = 150;
+        private const int GroundLabelEntityAddressCacheWindowMs = 150;
 
         private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
         private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
@@ -23,6 +25,14 @@ namespace ClickIt.Services
         private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private long _hiddenFallbackCandidateCacheTimestampMs;
+        private int _hiddenFallbackCandidateLabelCount = -1;
+        private bool _hiddenFallbackCandidateCacheHasValue;
+        private LostShipmentCandidate? _hiddenFallbackCachedLostShipmentCandidate;
+        private SettlersOreCandidate? _hiddenFallbackCachedSettlersCandidate;
+        private readonly HashSet<long> _cachedGroundLabelEntityAddresses = [];
+        private long _cachedGroundLabelEntityAddressesTimestampMs;
+        private int _cachedGroundLabelEntityLabelCount = -1;
 
         private readonly struct LostShipmentCandidate
         {

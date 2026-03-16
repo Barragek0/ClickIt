@@ -114,12 +114,13 @@ namespace ClickIt.Services
             }
 
             var nextShrine = ResolveNextShrineCandidate();
-            LostShipmentCandidate? lostShipmentCandidate = ResolveNextLostShipmentCandidate();
-            SettlersOreCandidate? settlersOreCandidate = ResolveNextSettlersOreCandidate();
+            LostShipmentCandidate? lostShipmentCandidate;
+            SettlersOreCandidate? settlersOreCandidate;
             RefreshMechanicPriorityCaches();
 
             if (!groundItemsVisible())
             {
+                ResolveHiddenFallbackCandidates(out lostShipmentCandidate, out settlersOreCandidate);
                 PublishClickFlowDebugStage("GroundItemsHidden", "Ground item labels hidden; evaluating non-label fallbacks");
 
                 if (settlersOreCandidate.HasValue
@@ -175,6 +176,9 @@ namespace ClickIt.Services
                 PublishClickFlowDebugStage("GroundItemsHiddenExit", "No clickable hidden fallback selected");
                 yield break;
             }
+
+            lostShipmentCandidate = ResolveNextLostShipmentCandidate();
+            settlersOreCandidate = ResolveNextSettlersOreCandidate();
 
             var allLabels = GetLabelsForRegularSelection();
             if (ShouldCaptureClickDebug())
@@ -1409,31 +1413,49 @@ namespace ClickIt.Services
             return best;
         }
 
-        private HashSet<long> CollectGroundLabelEntityAddresses()
+        private IReadOnlySet<long> CollectGroundLabelEntityAddresses()
         {
-            var addresses = GetThreadGroundLabelEntityAddresses();
-            addresses.Clear();
-
             try
             {
                 var labels = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
-                if (labels == null || labels.Count == 0)
-                    return addresses;
+                int labelCount = labels?.Count ?? 0;
+                if (labels == null || labelCount == 0)
+                {
+                    _cachedGroundLabelEntityAddresses.Clear();
+                    _cachedGroundLabelEntityLabelCount = 0;
+                    _cachedGroundLabelEntityAddressesTimestampMs = Environment.TickCount64;
+                    return _cachedGroundLabelEntityAddresses;
+                }
 
-                addresses.EnsureCapacity(labels.Count);
+                long now = Environment.TickCount64;
+                if (ShouldReuseTimedLabelCountCache(
+                        now,
+                        _cachedGroundLabelEntityAddressesTimestampMs,
+                        _cachedGroundLabelEntityLabelCount,
+                        labelCount,
+                        GroundLabelEntityAddressCacheWindowMs))
+                {
+                    return _cachedGroundLabelEntityAddresses;
+                }
 
-                for (int i = 0; i < labels.Count; i++)
+                _cachedGroundLabelEntityAddresses.Clear();
+                _cachedGroundLabelEntityAddresses.EnsureCapacity(labelCount);
+
+                for (int i = 0; i < labelCount; i++)
                 {
                     long address = labels[i]?.ItemOnGround?.Address ?? 0;
                     if (address != 0)
-                        addresses.Add(address);
+                        _cachedGroundLabelEntityAddresses.Add(address);
                 }
+
+                _cachedGroundLabelEntityAddressesTimestampMs = now;
+                _cachedGroundLabelEntityLabelCount = labelCount;
             }
             catch
             {
             }
 
-            return addresses;
+            return _cachedGroundLabelEntityAddresses;
         }
 
         private static HashSet<long> GetThreadGroundLabelEntityAddresses()

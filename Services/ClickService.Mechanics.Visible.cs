@@ -95,6 +95,46 @@ namespace ClickIt.Services
             return TryResolveNearbyClickablePoint(worldScreenAbsolute, path, out clickPos);
         }
 
+        private void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate)
+        {
+            int labelCount = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.Count ?? 0;
+            long now = Environment.TickCount64;
+
+            if (_hiddenFallbackCandidateCacheHasValue
+                && ShouldReuseTimedLabelCountCache(
+                    now,
+                    _hiddenFallbackCandidateCacheTimestampMs,
+                    _hiddenFallbackCandidateLabelCount,
+                    labelCount,
+                    HiddenFallbackCandidateCacheWindowMs))
+            {
+                lostShipmentCandidate = _hiddenFallbackCachedLostShipmentCandidate;
+                settlersOreCandidate = _hiddenFallbackCachedSettlersCandidate;
+                return;
+            }
+
+            lostShipmentCandidate = ResolveNextLostShipmentCandidate();
+            settlersOreCandidate = ResolveNextSettlersOreCandidate();
+
+            _hiddenFallbackCachedLostShipmentCandidate = lostShipmentCandidate;
+            _hiddenFallbackCachedSettlersCandidate = settlersOreCandidate;
+            _hiddenFallbackCandidateCacheTimestampMs = now;
+            _hiddenFallbackCandidateLabelCount = labelCount;
+            _hiddenFallbackCandidateCacheHasValue = true;
+        }
+
+        internal static bool ShouldReuseTimedLabelCountCache(long now, long cachedAtMs, int cachedLabelCount, int currentLabelCount, int cacheWindowMs)
+        {
+            if (cachedAtMs <= 0 || cacheWindowMs <= 0)
+                return false;
+
+            if (cachedLabelCount != currentLabelCount)
+                return false;
+
+            long age = now - cachedAtMs;
+            return age >= 0 && age <= cacheWindowMs;
+        }
+
         private SettlersOreCandidate? ResolveNextSettlersOreCandidate()
         {
             if (!settings.ClickSettlersOre.Value || gameController?.EntityListWrapper?.ValidEntitiesByType == null)

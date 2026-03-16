@@ -238,6 +238,37 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldReuseTimedLabelCountCache_ReturnsTrue_WhenFreshAndLabelCountMatches()
+        {
+            bool reuse = ClickService.ShouldReuseTimedLabelCountCache(
+                now: 10_000,
+                cachedAtMs: 9_900,
+                cachedLabelCount: 873,
+                currentLabelCount: 873,
+                cacheWindowMs: 150);
+
+            reuse.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldReuseTimedLabelCountCache_ReturnsFalse_WhenStaleOrCountChanged()
+        {
+            ClickService.ShouldReuseTimedLabelCountCache(
+                now: 10_000,
+                cachedAtMs: 9_700,
+                cachedLabelCount: 873,
+                currentLabelCount: 873,
+                cacheWindowMs: 150).Should().BeFalse();
+
+            ClickService.ShouldReuseTimedLabelCountCache(
+                now: 10_000,
+                cachedAtMs: 9_900,
+                cachedLabelCount: 873,
+                currentLabelCount: 872,
+                cacheWindowMs: 150).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ResolveVisibleLabelsWithoutForcedCopy_ReturnsSameListReference_ForReadOnlyListSource()
         {
             var label = (LabelOnGround)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
@@ -1315,6 +1346,137 @@ namespace ClickIt.Tests.Unit
                 priorityDistancePenalty: 100);
 
             preferSettlersWithHigherLost.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPreferSettlersOreOverVisibleCandidates_PenaltyZero_UsesClosestDistance()
+        {
+            var priorityMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                [MechanicIds.SettlersVerisium] = 4,
+                [MechanicIds.Shrines] = 0,
+                [MechanicIds.LostShipment] = 1,
+                ["items"] = 2
+            };
+
+            var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            bool preferSettlersWhenClosest = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance: 40f,
+                settlersOreMechanicId: MechanicIds.SettlersVerisium,
+                labelDistance: 60f,
+                labelMechanicId: "items",
+                shrineDistance: 50f,
+                lostShipmentDistance: 55f,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 0);
+
+            preferSettlersWhenClosest.Should().BeTrue();
+
+            bool preferSettlersWhenFarther = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance: 70f,
+                settlersOreMechanicId: MechanicIds.SettlersVerisium,
+                labelDistance: 60f,
+                labelMechanicId: "items",
+                shrineDistance: 50f,
+                lostShipmentDistance: 55f,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 0);
+
+            preferSettlersWhenFarther.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPreferLostShipmentOverVisibleCandidates_PenaltyZero_UsesClosestDistance()
+        {
+            var priorityMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                [MechanicIds.Shrines] = 0,
+                [MechanicIds.LostShipment] = 3,
+                ["items"] = 1
+            };
+
+            var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            bool preferLostWhenClosest = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+                lostShipmentDistance: 25f,
+                labelDistance: 35f,
+                labelMechanicId: "items",
+                shrineDistance: 40f,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 0);
+
+            preferLostWhenClosest.Should().BeTrue();
+
+            bool preferLostWhenFarther = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+                lostShipmentDistance: 45f,
+                labelDistance: 35f,
+                labelMechanicId: "items",
+                shrineDistance: 40f,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 0);
+
+            preferLostWhenFarther.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldPreferSettlersOreOverVisibleCandidates_PenaltyZero_IgnoreDistanceMechanicStillWorks()
+        {
+            var priorityMap = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                [MechanicIds.SettlersVerisium] = 1,
+                ["items"] = 2,
+                [MechanicIds.Shrines] = 3,
+                [MechanicIds.LostShipment] = 4
+            };
+
+            var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                MechanicIds.SettlersVerisium
+            };
+
+            var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                [MechanicIds.SettlersVerisium] = 120
+            };
+
+            bool preferIgnoredWithinRange = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance: 100f,
+                settlersOreMechanicId: MechanicIds.SettlersVerisium,
+                labelDistance: 80f,
+                labelMechanicId: "items",
+                shrineDistance: null,
+                lostShipmentDistance: null,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 0);
+
+            preferIgnoredWithinRange.Should().BeTrue();
+
+            bool preferIgnoredOutOfRange = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance: 130f,
+                settlersOreMechanicId: MechanicIds.SettlersVerisium,
+                labelDistance: 80f,
+                labelMechanicId: "items",
+                shrineDistance: null,
+                lostShipmentDistance: null,
+                priorityIndexMap: priorityMap,
+                ignoreDistanceSet: ignoreSet,
+                ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty: 0);
+
+            preferIgnoredOutOfRange.Should().BeFalse();
         }
 
         public sealed class SkillNode
