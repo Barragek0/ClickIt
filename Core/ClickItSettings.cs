@@ -103,6 +103,8 @@ namespace ClickIt
         [Obsolete("Can be safely ignored for now.")]
 
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
+        [Menu("Click Hotkey Toggle Mode", "When enabled, pressing the Click Hotkey toggles clicking on/off.\nWhen disabled, clicking only occurs while holding the Click Hotkey (or via Lazy Mode).", 2, 1100)]
+        public ToggleNode ClickHotkeyToggleMode { get; set; } = new ToggleNode(false);
         [Menu("", 10001, 1100)]
         [JsonIgnore]
         public CustomNode ControlsSliderWidthStart { get; }

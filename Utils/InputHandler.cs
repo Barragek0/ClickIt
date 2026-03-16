@@ -30,6 +30,8 @@ namespace ClickIt.Utils
         private long _lastToggleItemsTimestampMs = 0;
         private bool _lazyModeDisableToggled;
         private bool _lazyModeDisableKeyWasDown;
+        private bool _clickHotkeyToggled;
+        private bool _clickHotkeyWasDown;
 
         public long GetSuccessfulClickSequence()
         {
@@ -207,7 +209,17 @@ namespace ClickIt.Utils
 
         private bool IsClickHotkeyHeld()
         {
-            return _settings?.ClickLabelKey != null && Input.GetKeyState(_settings.ClickLabelKey.Value);
+            return IsClickHotkeyActiveForCurrentInputState();
+        }
+
+        public bool IsClickHotkeyActiveForCurrentInputState()
+        {
+            if (_settings?.ClickLabelKey == null)
+                return false;
+
+            bool toggleMode = _settings.IsClickHotkeyToggleModeEnabled();
+            bool keyDown = Input.GetKeyState(_settings.ClickLabelKey.Value);
+            return ResolveClickHotkeyActive(toggleMode, keyDown, ref _clickHotkeyToggled, ref _clickHotkeyWasDown);
         }
 
         private bool IsBlockedByUiOrEscapeState(GameController gameController)
@@ -287,7 +299,7 @@ namespace ClickIt.Utils
 
         public bool IsClickHotkeyPressed(TimeCache<List<LabelOnGround>>? cachedLabels, Services.LabelFilterService? labelFilterService)
         {
-            bool hotkeyHeld = Input.GetKeyState(_settings.ClickLabelKey.Value);
+            bool hotkeyHeld = IsClickHotkeyHeld();
             if (!_settings.LazyMode.Value)
             {
                 return hotkeyHeld;
@@ -332,6 +344,24 @@ namespace ClickIt.Utils
             }
 
             wasPressedLastFrame = disableKeyPressed;
+            return toggledState;
+        }
+
+        public static bool ResolveClickHotkeyActive(bool toggleModeEnabled, bool hotkeyPressed, ref bool toggledState, ref bool wasPressedLastFrame)
+        {
+            if (!toggleModeEnabled)
+            {
+                toggledState = false;
+                wasPressedLastFrame = hotkeyPressed;
+                return hotkeyPressed;
+            }
+
+            if (hotkeyPressed && !wasPressedLastFrame)
+            {
+                toggledState = !toggledState;
+            }
+
+            wasPressedLastFrame = hotkeyPressed;
             return toggledState;
         }
 

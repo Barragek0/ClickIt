@@ -39,6 +39,11 @@ namespace ClickIt
             return LazyModeDisableKeyToggleMode?.Value == true;
         }
 
+        public bool IsClickHotkeyToggleModeEnabled()
+        {
+            return ClickHotkeyToggleMode?.Value == true;
+        }
+
         public bool IsInitialUltimatumClickEnabled()
         {
             return ClickInitialUltimatum?.Value == true;

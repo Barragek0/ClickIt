@@ -15,7 +15,7 @@ namespace ClickIt.Utils
             if (!TryConsumeLazyModeLimiter())
                 return;
 
-            if (!_settings.LazyMode.Value && !Input.GetKeyState(_settings.ClickLabelKey.Value))
+            if (ShouldSkipClickWhenNotLazyAndHotkeyInactive(_settings.LazyMode.Value, IsClickHotkeyActiveForCurrentInputState()))
                 return;
 
             if (!TryValidateAutomationScreenPoint(position, gameController, out string invalidPointReason))
@@ -95,7 +95,7 @@ namespace ClickIt.Utils
                 return;
 
             var clickKey = clickKeyNode.Value;
-            if (!_settings.LazyMode.Value && !Input.GetKeyState(clickKey))
+            if (ShouldSkipClickWhenNotLazyAndHotkeyInactive(_settings.LazyMode.Value, IsClickHotkeyActiveForCurrentInputState()))
                 return;
 
             if (!TryValidateAutomationScreenPoint(position, gameController, out string invalidPointReason))
@@ -164,6 +164,11 @@ namespace ClickIt.Utils
             Interlocked.Increment(ref _successfulClickSequence);
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
             swTotal.Stop();
+        }
+
+        internal static bool ShouldSkipClickWhenNotLazyAndHotkeyInactive(bool lazyModeEnabled, bool clickHotkeyActive)
+        {
+            return !lazyModeEnabled && !clickHotkeyActive;
         }
 
         public static bool ShouldSkipClickDueToHoverMismatch(

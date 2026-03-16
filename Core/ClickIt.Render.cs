@@ -34,6 +34,11 @@ namespace ClickIt
                 State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.LazyMode, GetElapsedMs(sectionStart));
             }
 
+            if (effective.IsClickHotkeyToggleModeEnabled())
+            {
+                State.ClickHotkeyToggleRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"));
+            }
+
             if (hasDebugRendering)
             {
                 int debugTextStartCount = 0;

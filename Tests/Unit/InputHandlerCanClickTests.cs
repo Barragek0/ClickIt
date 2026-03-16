@@ -38,5 +38,21 @@ namespace ClickIt.Tests.Unit
 
             handler.GetSuccessfulClickSequence().Should().Be(0);
         }
+
+        [TestMethod]
+        public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsExpectedValues()
+        {
+            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: false,
+                clickHotkeyActive: false).Should().BeTrue();
+
+            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: false,
+                clickHotkeyActive: true).Should().BeFalse();
+
+            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: true,
+                clickHotkeyActive: false).Should().BeFalse();
+        }
     }
 }

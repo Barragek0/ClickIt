@@ -23,6 +23,14 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ClickHotkeyToggleMode_DefaultsToDisabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ClickHotkeyToggleMode.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void LazyModeRestoreCursorDelayMs_DefaultsToTwenty()
         {
             var settings = new ClickItSettings();
