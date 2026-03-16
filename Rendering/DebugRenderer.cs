@@ -87,11 +87,12 @@ namespace ClickIt.Rendering
                 }
                 _deferredFrameQueue.Enqueue(_areaService.ChatPanelBlockedRectangle, Color.Green, 1);
                 _deferredFrameQueue.Enqueue(_areaService.MapPanelBlockedRectangle, Color.Pink, 1);
-                _deferredFrameQueue.Enqueue(_areaService.GameUiPanelBlockedRectangle, Color.Orange, 1);
+                _deferredFrameQueue.Enqueue(_areaService.XpBarBlockedRectangle, Color.Orange, 1);
+                _deferredFrameQueue.Enqueue(_areaService.AltarBlockedRectangle, Color.Gold, 1);
                 var questTrackerRects = _areaService.QuestTrackerBlockedRectangles;
                 for (int i = 0; i < questTrackerRects.Count; i++)
                 {
-                    _deferredFrameQueue.Enqueue(questTrackerRects[i], Color.Lavender, 1);
+                    _deferredFrameQueue.Enqueue(questTrackerRects[i], Color.MediumPurple, 1);
                 }
             }
         }

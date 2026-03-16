@@ -284,7 +284,7 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void PointIsInClickableArea_ReturnsFalse_InGameUiPanelBlockedRectangle()
+        public void PointIsInClickableArea_ReturnsFalse_InXpBarBlockedRectangle()
         {
             var svc = new AreaService();
 
@@ -292,12 +292,30 @@ namespace ClickIt.Tests.Unit
             var health = new RectangleF(0, 290, 400, 300);
             var mana = new RectangleF(390, 290, 400, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
-            var gameUiBlocked = new RectangleF(120, 120, 220, 200);
+            var xpBarBlocked = new RectangleF(120, 120, 220, 200);
 
             SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_gameUiPanelBlockedRectangle", gameUiBlocked);
+            PrivateFieldAccessor.Set(svc, "_xpBarBlockedRectangle", xpBarBlocked);
 
             svc.PointIsInClickableArea(new Vector2(180, 150)).Should().BeFalse();
+            svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void PointIsInClickableArea_ReturnsFalse_InAltarBlockedRectangle()
+        {
+            var svc = new AreaService();
+
+            var full = new RectangleF(0, 0, 400, 300);
+            var health = new RectangleF(0, 290, 400, 300);
+            var mana = new RectangleF(390, 290, 400, 300);
+            var buffs = new RectangleF(0, 0, 30, 30);
+            var altarBlocked = new RectangleF(250, 120, 320, 190);
+
+            SetRectangles(svc, full, health, mana, buffs);
+            PrivateFieldAccessor.Set(svc, "_altarBlockedRectangle", altarBlocked);
+
+            svc.PointIsInClickableArea(new Vector2(280, 150)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeTrue();
         }
 

@@ -12,7 +12,7 @@ namespace ClickIt.Services
         private const int BlockedUiRectanglesRefreshIntervalMs = 10_000;
         private const int BuffsAndDebuffsRectanglesRefreshIntervalMs = 500;
         private const int QuestTrackerRectanglesHoldLastGoodMs = 200;
-        private const float SideCompanionHeightRatio = 0.6f;
+        private const float SideCompanionHeightRatio = 0.65f;
         private const float SideCompanionWidthRatio = 1f;
 
         private RectangleF _fullScreenRectangle;
@@ -26,7 +26,8 @@ namespace ClickIt.Services
         private readonly List<RectangleF> _buffsAndDebuffsRectangles = [];
         private RectangleF _chatPanelBlockedRectangle;
         private RectangleF _mapPanelBlockedRectangle;
-        private RectangleF _gameUiPanelBlockedRectangle;
+        private RectangleF _xpBarBlockedRectangle;
+        private RectangleF _altarBlockedRectangle;
         private readonly List<RectangleF> _questTrackerBlockedRectangles = [];
         private long _lastQuestTrackerRectanglesSuccessTimestampMs;
         private long _lastBlockedUiRectanglesRefreshTimestampMs;
@@ -46,7 +47,8 @@ namespace ClickIt.Services
         public IReadOnlyList<RectangleF> BuffsAndDebuffsRectangles => _buffsAndDebuffsRectangles;
         public RectangleF ChatPanelBlockedRectangle => _chatPanelBlockedRectangle;
         public RectangleF MapPanelBlockedRectangle => _mapPanelBlockedRectangle;
-        public RectangleF GameUiPanelBlockedRectangle => _gameUiPanelBlockedRectangle;
+        public RectangleF XpBarBlockedRectangle => _xpBarBlockedRectangle;
+        public RectangleF AltarBlockedRectangle => _altarBlockedRectangle;
         public IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles => _questTrackerBlockedRectangles;
 
         public void UpdateScreenAreas(GameController gameController)
@@ -115,7 +117,8 @@ namespace ClickIt.Services
             _mapPanelBlockedRectangle = ShouldUpdateMapPanelBlockedRectangle(IsInTownOrHideout(gameController))
                 ? ResolveMapPanelBlockedRectangle(gameController)
                 : RectangleF.Empty;
-            _gameUiPanelBlockedRectangle = ResolveGameUiPanelBlockedRectangle(gameController);
+            _xpBarBlockedRectangle = ResolveXpBarBlockedRectangle(gameController);
+            _altarBlockedRectangle = ResolveAltarBlockedRectangle(gameController);
         }
 
         private void RefreshQuestTrackerAreas(GameController gameController, long now)
@@ -255,7 +258,8 @@ namespace ClickIt.Services
                     && !PointInAnyRectangle(point, _questTrackerBlockedRectangles)
                     && !point.PointInRectangle(_chatPanelBlockedRectangle)
                     && !point.PointInRectangle(_mapPanelBlockedRectangle)
-                    && !point.PointInRectangle(_gameUiPanelBlockedRectangle);
+                    && !point.PointInRectangle(_xpBarBlockedRectangle)
+                    && !point.PointInRectangle(_altarBlockedRectangle);
             }
         }
 
@@ -351,14 +355,11 @@ namespace ClickIt.Services
         private static RectangleF ResolveMapPanelBlockedRectangle(GameController gameController)
             => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "Map"), 2, 1);
 
-        private static RectangleF ResolveGameUiPanelBlockedRectangle(GameController gameController)
-        {
-            object? root = TryGetIngameUiProperty(gameController, "GameUI");
-            if (root == null)
-                _ = TryGetChildNode(gameController?.IngameState?.IngameUi, 0, out root);
+        private static RectangleF ResolveXpBarBlockedRectangle(GameController gameController)
+         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 0);
 
-            return ResolveRectangleFromNodePath(root, 0);
-        }
+        private static RectangleF ResolveAltarBlockedRectangle(GameController gameController)
+         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 17);
 
         private static RectangleF ResolveRectangleFromNodePath(object? root, params int[] childPath)
         {
