@@ -26,9 +26,9 @@ namespace ClickIt.Services
             bool[][] converted = ConvertRawGridToWalkable(rawGrid);
 
             var areaDims = data.AreaDimensions;
-            int areaWidth = areaDims.X > 0 ? areaDims.X : gridWidth;
-            int areaHeight = areaDims.Y > 0 ? areaDims.Y : gridHeight;
-            GridPoint dimensions = new(areaWidth, areaHeight);
+            GridPoint dimensions = new GridPoint(
+                areaDims.X > 0 ? areaDims.X : gridWidth,
+                areaDims.Y > 0 ? areaDims.Y : gridHeight);
 
             lock (_stateLock)
             {
@@ -59,25 +59,20 @@ namespace ClickIt.Services
             var converted = new List<int[]>(rows.Length);
             foreach (object? row in rows)
             {
-                if (TryConvertRow(row, out int[]? parsed) && parsed != null && parsed.Length > 0)
-                {
-                    converted.Add(parsed);
-                }
+                if (!TryConvertRow(row, out int[]? parsed) || parsed == null || parsed.Length == 0)
+                    continue;
+
+                converted.Add(parsed);
             }
 
             if (converted.Count == 0)
                 return false;
 
             int expectedWidth = converted[0].Length;
-            if (expectedWidth <= 0)
-                return false;
-
             for (int i = 1; i < converted.Count; i++)
             {
-                if (converted[i].Length == expectedWidth)
-                    continue;
-
-                return false;
+                if (converted[i].Length != expectedWidth)
+                    return false;
             }
 
             grid = converted.ToArray();
@@ -125,14 +120,14 @@ namespace ClickIt.Services
             bool[][] walkable = new bool[rawGrid.Length][];
             for (int y = 0; y < rawGrid.Length; y++)
             {
-                int[] sourceRow = rawGrid[y];
-                bool[] walkableRow = new bool[sourceRow.Length];
-                for (int x = 0; x < sourceRow.Length; x++)
+                int[] source = rawGrid[y];
+                bool[] row = new bool[source.Length];
+                for (int x = 0; x < source.Length; x++)
                 {
-                    walkableRow[x] = sourceRow[x] > 0;
+                    row[x] = source[x] > 0;
                 }
 
-                walkable[y] = walkableRow;
+                walkable[y] = row;
             }
 
             return walkable;
@@ -154,36 +149,8 @@ namespace ClickIt.Services
                 return [];
             }
 
-            float deltaGridX = goal.X - start.X;
-            float deltaGridY = goal.Y - start.Y;
-            float deltaScreenX = goalScreen.X - startScreen.X;
-            float deltaScreenY = goalScreen.Y - startScreen.Y;
-
-            float scaleX;
-            float scaleY;
-
-            if (Math.Abs(deltaGridX) >= 0.001f)
-            {
-                scaleX = deltaScreenX / deltaGridX;
-            }
-            else
-            {
-                scaleX = Math.Sign(deltaScreenX) * 2.5f;
-            }
-
-            if (Math.Abs(deltaGridY) >= 0.001f)
-            {
-                scaleY = deltaScreenY / deltaGridY;
-            }
-            else
-            {
-                scaleY = Math.Sign(deltaScreenY) * 2.5f;
-            }
-
-            if (Math.Abs(scaleX) < 0.01f)
-                scaleX = 2.5f;
-            if (Math.Abs(scaleY) < 0.01f)
-                scaleY = 2.5f;
+            float scaleX = ResolveScale(goalScreen.X - startScreen.X, goal.X - start.X);
+            float scaleY = ResolveScale(goalScreen.Y - startScreen.Y, goal.Y - start.Y);
 
             var points = new List<Vector2>(gridPath.Count);
             for (int i = 0; i < gridPath.Count; i++)
@@ -191,13 +158,25 @@ namespace ClickIt.Services
                 GridPoint node = gridPath[i];
                 float x = startScreen.X + ((node.X - start.X) * scaleX);
                 float y = startScreen.Y + ((node.Y - start.Y) * scaleY);
-                if (!IsFinitePoint(x, y))
-                    continue;
-
-                points.Add(new Vector2(x, y));
+                if (IsFinitePoint(x, y))
+                    points.Add(new Vector2(x, y));
             }
 
             return points;
+        }
+
+        private static float ResolveScale(float deltaScreen, float deltaGrid)
+        {
+            float scale;
+            if (Math.Abs(deltaGrid) >= 0.001f)
+                scale = deltaScreen / deltaGrid;
+            else
+                scale = Math.Sign(deltaScreen) * 2.5f;
+
+            if (Math.Abs(scale) < 0.01f)
+                return 2.5f;
+
+            return scale;
         }
 
         private static bool TryGetScreenPointForEntity(GameController gameController, Entity? entity, out Vector2 screen)
@@ -219,8 +198,6 @@ namespace ClickIt.Services
         }
 
         private static bool IsFinitePoint(float x, float y)
-        {
-            return !float.IsNaN(x) && !float.IsInfinity(x) && !float.IsNaN(y) && !float.IsInfinity(y);
-        }
+            => !float.IsNaN(x) && !float.IsInfinity(x) && !float.IsNaN(y) && !float.IsInfinity(y);
     }
 }

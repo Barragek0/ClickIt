@@ -41,7 +41,7 @@ namespace ClickIt.Services
             if (path.Count < 2)
                 return false;
 
-            PathfindingService.GridPoint playerGrid = new((int)player.GridPosNum.X, (int)player.GridPosNum.Y);
+            PathfindingService.GridPoint playerGrid = new PathfindingService.GridPoint((int)player.GridPosNum.X, (int)player.GridPosNum.Y);
             int nearestIndex = FindClosestPathIndexToPlayer(path, playerGrid);
             if (nearestIndex < 0)
                 return false;
@@ -50,7 +50,7 @@ namespace ClickIt.Services
                 return false;
 
             RectangleF window = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 center = new(window.X + (window.Width * 0.5f), window.Y + (window.Height * 0.5f));
+            Vector2 center = GetWindowCenter(window);
             float radius = Math.Min(window.Width, window.Height) * 0.30f;
             return TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
@@ -79,7 +79,7 @@ namespace ClickIt.Services
 
             for (int i = start; i <= end; i++)
             {
-                var node = path[i];
+                PathfindingService.GridPoint node = path[i];
                 float dx = node.X - playerGrid.X;
                 float dy = node.Y - playerGrid.Y;
                 if (Math.Abs(dx) + Math.Abs(dy) < 0.001f)
@@ -104,36 +104,54 @@ namespace ClickIt.Services
             targetScreen = default;
 
             RectangleF window = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 center = new(window.X + (window.Width * 0.5f), window.Y + (window.Height * 0.5f));
+            Vector2 center = GetWindowCenter(window);
             float radius = Math.Min(window.Width, window.Height) * 0.30f;
+            TryGetGridDelta(target, out float deltaX, out float deltaY);
 
             if (target.Type == ExileCore.Shared.Enums.EntityType.WorldItem
-                && TryComputeGridDirectionPoint(center, GetGridDeltaX(target), GetGridDeltaY(target), radius, out targetScreen))
+                && TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen))
             {
                 return true;
             }
 
             var raw = gameController.Game.IngameState.Camera.WorldToScreen(target.PosNum);
-            Vector2 projected = new(raw.X, raw.Y);
+            Vector2 projected = new Vector2(raw.X, raw.Y);
             if (IsFinite(projected) && !IsNearCorner(projected, window))
             {
                 targetScreen = projected;
                 return true;
             }
 
-            return TryComputeGridDirectionPoint(center, GetGridDeltaX(target), GetGridDeltaY(target), radius, out targetScreen);
+            return TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
+
+        private static Vector2 GetWindowCenter(RectangleF window)
+            => new Vector2(window.X + (window.Width * 0.5f), window.Y + (window.Height * 0.5f));
 
         private float GetGridDeltaX(Entity target)
         {
-            var player = gameController.Player;
-            return player == null ? 0f : target.GridPosNum.X - player.GridPosNum.X;
+            TryGetGridDelta(target, out float deltaX, out _);
+            return deltaX;
         }
 
         private float GetGridDeltaY(Entity target)
         {
+            TryGetGridDelta(target, out _, out float deltaY);
+            return deltaY;
+        }
+
+        private void TryGetGridDelta(Entity target, out float deltaX, out float deltaY)
+        {
             var player = gameController.Player;
-            return player == null ? 0f : target.GridPosNum.Y - player.GridPosNum.Y;
+            if (player == null)
+            {
+                deltaX = 0f;
+                deltaY = 0f;
+                return;
+            }
+
+            deltaX = target.GridPosNum.X - player.GridPosNum.X;
+            deltaY = target.GridPosNum.Y - player.GridPosNum.Y;
         }
 
         internal static bool TryComputeGridDirectionPoint(Vector2 center, float deltaGridX, float deltaGridY, float radius, out Vector2 point)
@@ -142,7 +160,7 @@ namespace ClickIt.Services
             if (radius <= 0f)
                 return false;
 
-            Vector2 axis = new(deltaGridX - deltaGridY, -(deltaGridX + deltaGridY) * 0.65f);
+            Vector2 axis = new Vector2(deltaGridX - deltaGridY, -(deltaGridX + deltaGridY) * 0.65f);
             float lengthSquared = (axis.X * axis.X) + (axis.Y * axis.Y);
             if (lengthSquared < 0.001f)
                 return false;
@@ -173,9 +191,7 @@ namespace ClickIt.Services
         }
 
         private static bool IsFinite(Vector2 point)
-        {
-            return !float.IsNaN(point.X) && !float.IsInfinity(point.X) && !float.IsNaN(point.Y) && !float.IsInfinity(point.Y);
-        }
+            => !float.IsNaN(point.X) && !float.IsInfinity(point.X) && !float.IsNaN(point.Y) && !float.IsInfinity(point.Y);
 
         private static bool IsNearCorner(Vector2 point, RectangleF window)
         {
@@ -188,8 +204,6 @@ namespace ClickIt.Services
         }
 
         private static bool IsInsideWindow(RectangleF window, Vector2 point)
-        {
-            return point.X >= window.Left && point.X <= window.Right && point.Y >= window.Top && point.Y <= window.Bottom;
-        }
+            => point.X >= window.Left && point.X <= window.Right && point.Y >= window.Top && point.Y <= window.Bottom;
     }
 }

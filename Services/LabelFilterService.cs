@@ -1,10 +1,11 @@
-﻿using ExileCore.PoEMemory.Components;
+using ClickIt.Definitions;
+using ClickIt.Utils;
+using ExileCore.PoEMemory;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
-using ClickIt.Utils;
-using ClickIt.Definitions;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ClickIt.Services
@@ -15,6 +16,7 @@ namespace ClickIt.Services
         private readonly EssenceService _essenceService = essenceService;
         private readonly ErrorHandler _errorHandler = errorHandler;
         private readonly ExileCore.GameController? _gameController = gameController;
+
         private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
         private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
         private IReadOnlyDictionary<string, int>? _cachedMechanicIgnoreDistanceWithinById;
@@ -23,9 +25,7 @@ namespace ClickIt.Services
         private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         public bool HasLazyModeRestrictedItemsOnScreen(IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            return LazyModeRestrictedChecker(this, allLabels);
-        }
+            => LazyModeRestrictedChecker(this, allLabels);
 
         private bool HasLazyModeRestrictedItemsOnScreenImpl(IReadOnlyList<LabelOnGround>? allLabels)
         {
@@ -35,21 +35,22 @@ namespace ClickIt.Services
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
-                Entity item = label.ItemOnGround;
-                if (item != null && item.DistancePlayer <= _settings.ClickDistance.Value)
-                {
-                    string path = item.Path;
-                    if (string.IsNullOrEmpty(path))
-                        continue;
+                Entity? item = label.ItemOnGround;
+                if (item == null || item.DistancePlayer > _settings.ClickDistance.Value)
+                    continue;
 
-                    var chestComponent = label.ItemOnGround.GetComponent<Chest>();
-                    if (chestComponent?.IsLocked == true && !chestComponent.IsStrongbox)
-                    {
-                        _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
-                        return true;
-                    }
+                string path = item.Path ?? string.Empty;
+                if (path.Length == 0)
+                    continue;
+
+                Chest? chest = item.GetComponent<Chest>();
+                if (chest?.IsLocked == true && !chest.IsStrongbox)
+                {
+                    _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
+                    return true;
                 }
             }
+
             return false;
         }
 
@@ -58,75 +59,75 @@ namespace ClickIt.Services
             List<LabelOnGround> result = [];
             if (allLabels == null)
                 return result;
+
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround label = allLabels[i];
-                if (label.ItemOnGround?.Path == null || label.Label?.GetClientRect() is not RectangleF rect || label.Label?.IsValid != true || !isInClickableArea(rect.Center))
+                if (!TryGetClickableLabelRectCenter(label, out Vector2 center))
                     continue;
-                string path = label.ItemOnGround.Path;
-                if (path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor"))
+                if (!isInClickableArea(center))
+                    continue;
+
+                string path = label.ItemOnGround?.Path ?? string.Empty;
+                if (path.Contains("Harvest/Irrigator", StringComparison.OrdinalIgnoreCase)
+                    || path.Contains("Harvest/Extractor", StringComparison.OrdinalIgnoreCase))
+                {
                     result.Add(label);
+                }
             }
+
             if (result.Count > 1)
-                result.Sort((a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
+                result.Sort(static (a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
+
             return result;
         }
 
-        public LabelOnGround? GetNextLabelToClick(System.Collections.Generic.IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+        private static bool TryGetClickableLabelRectCenter(LabelOnGround? label, out Vector2 center)
         {
-            bool captureLabelDebug = ShouldCaptureLabelDebug();
+            center = default;
+            var element = label?.Label;
+            if (element == null || !element.IsValid)
+                return false;
+
+            RectangleF rect = element.GetClientRect();
+            center = rect.Center;
+            return rect.Width > 0f && rect.Height > 0f;
+        }
+
+        public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+        {
+            bool captureDebug = ShouldCaptureLabelDebug();
 
             if (allLabels == null || allLabels.Count == 0)
             {
-                if (captureLabelDebug)
-                {
-                    PublishLabelDebugStage(
-                        stage: "NoLabels",
-                        startIndex: 0,
-                        endExclusive: 0,
-                        totalLabels: 0,
-                        consideredCandidates: 0,
-                        nullOrDistanceRejected: 0,
-                        untargetableRejected: 0,
-                        noMechanicRejected: 0,
-                        ignoredByDistanceCandidates: 0,
-                        selectedMechanicId: string.Empty,
-                        selectedEntityPath: string.Empty,
-                        selectedDistance: 0f,
-                        notes: "GetNextLabelToClick received an empty label collection");
-                }
+                if (captureDebug)
+                    PublishSelectionLifecycleDebug("NoLabels", allLabels, 0, 0, "GetNextLabelToClick received an empty label collection");
                 return null;
             }
 
-            var clickSettings = CreateClickSettings(allLabels);
             int start = Math.Max(0, startIndex);
             int end = Math.Min(allLabels.Count, startIndex + Math.Max(0, maxCount));
+            ClickSettings clickSettings = CreateClickSettings(allLabels);
 
-            if (captureLabelDebug)
-            {
-                PublishLabelDebugStage(
-                    stage: "SelectionRequested",
-                    startIndex: start,
-                    endExclusive: end,
-                    totalLabels: allLabels.Count,
-                    consideredCandidates: 0,
-                    nullOrDistanceRejected: 0,
-                    untargetableRejected: 0,
-                    noMechanicRejected: 0,
-                    ignoredByDistanceCandidates: 0,
-                    selectedMechanicId: string.Empty,
-                    selectedEntityPath: string.Empty,
-                    selectedDistance: 0f,
-                    notes: $"start={startIndex} maxCount={maxCount}");
-            }
+            if (captureDebug)
+                PublishSelectionLifecycleDebug("SelectionRequested", allLabels, start, end, $"start={startIndex} maxCount={maxCount}");
 
             LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings);
-            if (selected == null)
+            if (captureDebug)
             {
-                if (captureLabelDebug)
+                if (selected == null)
                 {
+                    PublishSelectionLifecycleDebug("SelectionReturnedNone", allLabels, start, end, "No label selected");
+                }
+                else
+                {
+                    Entity? selectedItem = selected.ItemOnGround;
+                    string? selectedMechanic = selectedItem != null
+                        ? GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController)
+                        : null;
+
                     PublishLabelDebugStage(
-                        stage: "SelectionReturnedNone",
+                        stage: "SelectionReturned",
                         startIndex: start,
                         endExclusive: end,
                         totalLabels: allLabels.Count,
@@ -135,85 +136,49 @@ namespace ClickIt.Services
                         untargetableRejected: 0,
                         noMechanicRejected: 0,
                         ignoredByDistanceCandidates: 0,
-                        selectedMechanicId: string.Empty,
-                        selectedEntityPath: string.Empty,
-                        selectedDistance: 0f,
-                        notes: "No label selected");
+                        selectedMechanicId: selectedMechanic,
+                        selectedEntityPath: selectedItem?.Path,
+                        selectedDistance: selectedItem?.DistancePlayer ?? 0f,
+                        notes: "Selected label returned to click service");
                 }
-                return null;
-            }
-
-            if (captureLabelDebug)
-            {
-                Entity? selectedItem = selected.ItemOnGround;
-                string? selectedMechanic = selectedItem != null
-                    ? GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController)
-                    : null;
-                PublishLabelDebugStage(
-                    stage: "SelectionReturned",
-                    startIndex: start,
-                    endExclusive: end,
-                    totalLabels: allLabels.Count,
-                    consideredCandidates: 0,
-                    nullOrDistanceRejected: 0,
-                    untargetableRejected: 0,
-                    noMechanicRejected: 0,
-                    ignoredByDistanceCandidates: 0,
-                    selectedMechanicId: selectedMechanic,
-                    selectedEntityPath: selectedItem?.Path,
-                    selectedDistance: selectedItem?.DistancePlayer ?? 0f,
-                    notes: "Selected label returned to click service");
             }
 
             return selected;
         }
 
-        public readonly struct SelectionDebugSummary
+        private void PublishSelectionLifecycleDebug(string stage, IReadOnlyList<LabelOnGround>? allLabels, int start, int end, string notes)
         {
-            public SelectionDebugSummary(
-                int Start,
-                int End,
-                int Total,
-                int NullLabel,
-                int NullEntity,
-                int OutOfDistance,
-                int Untargetable,
-                int NoMechanic,
-                int WorldItem,
-                int WorldItemMetadataRejected,
-                int SettlersPathSeen,
-                int SettlersMechanicMatched,
-                int SettlersMechanicDisabled)
-            {
-                this.Start = Start;
-                this.End = End;
-                this.Total = Total;
-                this.NullLabel = NullLabel;
-                this.NullEntity = NullEntity;
-                this.OutOfDistance = OutOfDistance;
-                this.Untargetable = Untargetable;
-                this.NoMechanic = NoMechanic;
-                this.WorldItem = WorldItem;
-                this.WorldItemMetadataRejected = WorldItemMetadataRejected;
-                this.SettlersPathSeen = SettlersPathSeen;
-                this.SettlersMechanicMatched = SettlersMechanicMatched;
-                this.SettlersMechanicDisabled = SettlersMechanicDisabled;
-            }
+            PublishLabelDebugStage(
+                stage: stage,
+                startIndex: start,
+                endExclusive: end,
+                totalLabels: allLabels?.Count ?? 0,
+                consideredCandidates: 0,
+                nullOrDistanceRejected: 0,
+                untargetableRejected: 0,
+                noMechanicRejected: 0,
+                ignoredByDistanceCandidates: 0,
+                selectedMechanicId: string.Empty,
+                selectedEntityPath: string.Empty,
+                selectedDistance: 0f,
+                notes: notes);
+        }
 
-            public int Start { get; }
-            public int End { get; }
-            public int Total { get; }
-            public int NullLabel { get; }
-            public int NullEntity { get; }
-            public int OutOfDistance { get; }
-            public int Untargetable { get; }
-            public int NoMechanic { get; }
-            public int WorldItem { get; }
-            public int WorldItemMetadataRejected { get; }
-            public int SettlersPathSeen { get; }
-            public int SettlersMechanicMatched { get; }
-            public int SettlersMechanicDisabled { get; }
-
+        public readonly struct SelectionDebugSummary(
+            int Start,
+            int End,
+            int Total,
+            int NullLabel,
+            int NullEntity,
+            int OutOfDistance,
+            int Untargetable,
+            int NoMechanic,
+            int WorldItem,
+            int WorldItemMetadataRejected,
+            int SettlersPathSeen,
+            int SettlersMechanicMatched,
+            int SettlersMechanicDisabled)
+        {
             public string ToCompactString()
             {
                 return $"r:{Start}-{End} t:{Total} nl:{NullLabel} ne:{NullEntity} d:{OutOfDistance} u:{Untargetable} nm:{NoMechanic} wi:{WorldItem}/{WorldItemMetadataRejected} sp:{SettlersPathSeen} sm:{SettlersMechanicMatched} sd:{SettlersMechanicDisabled}";
@@ -225,7 +190,7 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0)
                 return default;
 
-            var clickSettings = CreateClickSettings(allLabels);
+            ClickSettings clickSettings = CreateClickSettings(allLabels);
             int start = Math.Max(0, startIndex);
             int end = Math.Min(allLabels.Count, start + Math.Max(0, maxCount));
             if (start >= end)
@@ -246,6 +211,7 @@ namespace ClickIt.Services
             for (int i = start; i < end; i++)
             {
                 total++;
+
                 LabelOnGround? label = allLabels[i];
                 if (label == null)
                 {
@@ -269,9 +235,7 @@ namespace ClickIt.Services
                 {
                     worldItem++;
                     if (!ShouldAllowWorldItemByMetadata(clickSettings, item, _gameController))
-                    {
                         worldItemMetadataRejected++;
-                    }
                 }
 
                 if (item.DistancePlayer > clickSettings.ClickDistance)
@@ -296,9 +260,7 @@ namespace ClickIt.Services
                 }
 
                 if (mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase))
-                {
                     settlersMechanicMatched++;
-                }
             }
 
             return new SelectionDebugSummary(
@@ -328,7 +290,6 @@ namespace ClickIt.Services
                 return;
             }
 
-            var clickSettings = CreateClickSettings(allLabels);
             int start = Math.Max(0, startIndex);
             int end = Math.Min(allLabels.Count, start + Math.Max(0, maxCount));
             if (start >= end)
@@ -337,6 +298,7 @@ namespace ClickIt.Services
                 return;
             }
 
+            ClickSettings clickSettings = CreateClickSettings(allLabels);
             SelectionDebugSummary summary = GetSelectionDebugSummary(allLabels, start, end - start);
             string msg =
                 $"[LabelFilterDiag] {summary.ToCompactString()} " +
@@ -347,105 +309,108 @@ namespace ClickIt.Services
 
         public string? GetMechanicIdForLabel(LabelOnGround? label)
         {
-            if (label?.ItemOnGround == null)
+            Entity? item = label?.ItemOnGround;
+            if (item == null)
+                return null;
+            if (!IsEntityTargetableForClick(label!, item))
                 return null;
 
-            if (!IsEntityTargetableForClick(label, label.ItemOnGround))
-                return null;
-
-            var clickSettings = CreateClickSettings(null);
-            return GetClickableMechanicId(label, label.ItemOnGround, clickSettings, _gameController);
+            ClickSettings clickSettings = CreateClickSettings(null);
+            return GetClickableMechanicId(label!, item, clickSettings, _gameController);
         }
 
-        private LabelOnGround? SelectNextLabelByPriority(System.Collections.Generic.IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
+        private LabelOnGround? SelectNextLabelByPriority(IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
         {
-            if (allLabels == null || allLabels.Count == 0)
+            if (allLabels.Count == 0)
                 return null;
 
-            startIndex = Math.Max(0, startIndex);
-            endExclusive = Math.Min(allLabels.Count, endExclusive);
-            if (startIndex >= endExclusive)
+            int start = Math.Max(0, startIndex);
+            int end = Math.Min(allLabels.Count, endExclusive);
+            if (start >= end)
                 return null;
 
-            LabelOnGround? bestNonIgnoredByDistance = null;
+            var stats = new SelectionStats();
+
+            LabelOnGround? bestNonIgnored = null;
             string? bestNonIgnoredMechanicId = null;
             float bestNonIgnoredDistance = float.MaxValue;
             float bestNonIgnoredWeightedScore = float.MaxValue;
 
-            LabelOnGround? bestIgnoredByPriority = null;
+            LabelOnGround? bestIgnored = null;
             int bestIgnoredPriority = int.MaxValue;
 
-            int consideredCandidates = 0;
-            int nullOrDistanceRejected = 0;
-            int untargetableRejected = 0;
-            int noMechanicRejected = 0;
-            int ignoredByDistanceCandidates = 0;
-
-            for (int i = startIndex; i < endExclusive; i++)
+            for (int i = start; i < end; i++)
             {
                 LabelOnGround label = allLabels[i];
-                consideredCandidates++;
+                stats.ConsideredCandidates++;
+
                 if (!TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason))
                 {
-                    switch (rejectReason)
-                    {
-                        case LabelCandidateRejectReason.NullItemOrOutOfDistance:
-                            nullOrDistanceRejected++;
-                            break;
-                        case LabelCandidateRejectReason.Untargetable:
-                            untargetableRejected++;
-                            break;
-                        case LabelCandidateRejectReason.NoMechanic:
-                            noMechanicRejected++;
-                            break;
-                    }
+                    stats.AddReject(rejectReason);
                     continue;
                 }
 
-                if (TryPromoteIgnoredCandidate(label, mechanicId, item.DistancePlayer, clickSettings, ref bestIgnoredByPriority, ref bestIgnoredPriority))
+                if (TryPromoteIgnoredCandidate(label, mechanicId!, item!.DistancePlayer, clickSettings, ref bestIgnored, ref bestIgnoredPriority))
                 {
-                    ignoredByDistanceCandidates++;
+                    stats.IgnoredByDistanceCandidates++;
                     continue;
                 }
 
                 PromoteNonIgnoredCandidate(
                     label,
-                    mechanicId,
+                    mechanicId!,
                     item.DistancePlayer,
                     clickSettings,
-                    ref bestNonIgnoredByDistance,
+                    ref bestNonIgnored,
                     ref bestNonIgnoredMechanicId,
                     ref bestNonIgnoredDistance,
                     ref bestNonIgnoredWeightedScore);
             }
 
-            LabelOnGround? selected = ResolveWinningCandidate(bestNonIgnoredByDistance, bestNonIgnoredMechanicId, bestIgnoredByPriority, bestIgnoredPriority, clickSettings);
+            LabelOnGround? selected = ResolveWinningCandidate(bestNonIgnored, bestNonIgnoredMechanicId, bestIgnored, bestIgnoredPriority, clickSettings);
             if (ShouldCaptureLabelDebug())
             {
                 Entity? selectedEntity = selected?.ItemOnGround;
-                string? selectedMechanicId = string.Empty;
-                if (selected != null && selectedEntity != null)
-                {
-                    selectedMechanicId = GetClickableMechanicId(selected!, selectedEntity, clickSettings, _gameController);
-                }
+                string? selectedMechanicId = selectedEntity != null
+                    ? GetClickableMechanicId(selected!, selectedEntity, clickSettings, _gameController)
+                    : string.Empty;
 
                 PublishLabelDebugStage(
                     stage: selected == null ? "SelectionScanNone" : "SelectionScanSelected",
-                    startIndex: startIndex,
-                    endExclusive: endExclusive,
+                    startIndex: start,
+                    endExclusive: end,
                     totalLabels: allLabels.Count,
-                    consideredCandidates: consideredCandidates,
-                    nullOrDistanceRejected: nullOrDistanceRejected,
-                    untargetableRejected: untargetableRejected,
-                    noMechanicRejected: noMechanicRejected,
-                    ignoredByDistanceCandidates: ignoredByDistanceCandidates,
+                    consideredCandidates: stats.ConsideredCandidates,
+                    nullOrDistanceRejected: stats.NullOrDistanceRejected,
+                    untargetableRejected: stats.UntargetableRejected,
+                    noMechanicRejected: stats.NoMechanicRejected,
+                    ignoredByDistanceCandidates: stats.IgnoredByDistanceCandidates,
                     selectedMechanicId: selectedMechanicId,
                     selectedEntityPath: selectedEntity?.Path,
                     selectedDistance: selectedEntity?.DistancePlayer ?? 0f,
-                    notes: $"c:{consideredCandidates} nd:{nullOrDistanceRejected} u:{untargetableRejected} nm:{noMechanicRejected} ig:{ignoredByDistanceCandidates}");
+                    notes: $"c:{stats.ConsideredCandidates} nd:{stats.NullOrDistanceRejected} u:{stats.UntargetableRejected} nm:{stats.NoMechanicRejected} ig:{stats.IgnoredByDistanceCandidates}");
             }
 
             return selected;
+        }
+
+        private sealed class SelectionStats
+        {
+            public int ConsideredCandidates;
+            public int NullOrDistanceRejected;
+            public int UntargetableRejected;
+            public int NoMechanicRejected;
+            public int IgnoredByDistanceCandidates;
+
+            public void AddReject(LabelCandidateRejectReason rejectReason)
+            {
+                if (rejectReason == LabelCandidateRejectReason.NullItemOrOutOfDistance)
+                    NullOrDistanceRejected++;
+                else if (rejectReason == LabelCandidateRejectReason.Untargetable)
+                    UntargetableRejected++;
+                else if (rejectReason == LabelCandidateRejectReason.NoMechanic)
+                    NoMechanicRejected++;
+            }
         }
 
         private enum LabelCandidateRejectReason
@@ -466,6 +431,7 @@ namespace ClickIt.Services
             item = label.ItemOnGround;
             mechanicId = null;
             rejectReason = LabelCandidateRejectReason.None;
+
             if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
             {
                 rejectReason = LabelCandidateRejectReason.NullItemOrOutOfDistance;
@@ -493,8 +459,6 @@ namespace ClickIt.Services
             string path = item.Path ?? string.Empty;
             if (!RequiresTargetabilityGate(path))
                 return true;
-
-            // Only petrified wood uses label/entity-specific targetability semantics.
             if (!ShouldApplyPetrifiedWoodEntityTargetabilityGate(path))
                 return true;
 
@@ -503,24 +467,13 @@ namespace ClickIt.Services
         }
 
         private static bool RequiresTargetabilityGate(string path)
-        {
-            return !string.IsNullOrEmpty(path) && IsSettlersOrePath(path);
-        }
+            => !string.IsNullOrEmpty(path) && IsSettlersOrePath(path);
 
         internal static bool ShouldApplyPetrifiedWoodEntityTargetabilityGate(string? path)
-        {
-            return !string.IsNullOrWhiteSpace(path)
-                && IsSettlersPetrifiedWoodPath(path);
-        }
+            => !string.IsNullOrWhiteSpace(path) && IsSettlersPetrifiedWoodPath(path);
 
         internal static bool ShouldAllowPetrifiedWoodTargetability(bool hasLabelEntityTargetable, bool labelEntityTargetable)
-        {
-            // If no label entity exists yet, treat petrified wood as not-yet-clicked and allow it.
-            if (!hasLabelEntityTargetable)
-                return true;
-
-            return labelEntityTargetable;
-        }
+            => !hasLabelEntityTargetable || labelEntityTargetable;
 
         internal static void ResolveLabelEntityTargetableForClick(LabelOnGround label, out bool hasLabelEntityTargetable, out bool labelEntityTargetable)
         {
@@ -530,7 +483,7 @@ namespace ClickIt.Services
             Entity? item = label.ItemOnGround;
             if (item != null)
             {
-                var targetable = item.GetComponent<Targetable>();
+                Targetable? targetable = item.GetComponent<Targetable>();
                 if (targetable != null)
                 {
                     hasLabelEntityTargetable = true;
@@ -539,10 +492,7 @@ namespace ClickIt.Services
                 }
             }
 
-            object? rawLabelEntity = null;
-            bool hasDirectEntity = TryGetDynamicValue(label, l => l.Entity, out rawLabelEntity);
-
-            if (hasDirectEntity
+            if (TryGetDynamicValue(label, l => l.Entity, out object? rawLabelEntity)
                 && TryResolveLabelEntityTargetableFromRaw(rawLabelEntity, out bool directTargetable, out bool directHasTargetable)
                 && directHasTargetable)
             {
@@ -553,11 +503,11 @@ namespace ClickIt.Services
 
             if (TryGetDynamicValue(label, l => l.Label, out object? rawLabelElement)
                 && TryGetDynamicValue(rawLabelElement, l => l.Entity, out object? rawElementEntity)
-                && TryResolveLabelEntityTargetableFromRaw(rawElementEntity, out bool labelElementTargetable, out bool labelElementHasTargetable)
-                && labelElementHasTargetable)
+                && TryResolveLabelEntityTargetableFromRaw(rawElementEntity, out bool elementTargetable, out bool elementHasTargetable)
+                && elementHasTargetable)
             {
                 hasLabelEntityTargetable = true;
-                labelEntityTargetable = labelElementTargetable;
+                labelEntityTargetable = elementTargetable;
             }
         }
 
@@ -596,11 +546,7 @@ namespace ClickIt.Services
             return false;
         }
 
-        internal static bool ShouldSkipUntargetableEntity(
-            bool hasLabelEntityTargetable,
-            bool labelEntityTargetable,
-            bool itemIsTargetable,
-            bool allowNullEntityFallback = false)
+        internal static bool ShouldSkipUntargetableEntity(bool hasLabelEntityTargetable, bool labelEntityTargetable, bool itemIsTargetable, bool allowNullEntityFallback = false)
         {
             if (hasLabelEntityTargetable && !labelEntityTargetable)
                 return true;
@@ -619,11 +565,7 @@ namespace ClickIt.Services
             ref LabelOnGround? bestIgnoredByPriority,
             ref int bestIgnoredPriority)
         {
-            if (!IsIgnoreDistanceActiveForMechanic(
-                    mechanicId,
-                    distance,
-                    clickSettings.IgnoreDistanceMechanicIds,
-                    clickSettings.IgnoreDistanceWithinByMechanicId))
+            if (!IsIgnoreDistanceActiveForMechanic(mechanicId, distance, clickSettings.IgnoreDistanceMechanicIds, clickSettings.IgnoreDistanceWithinByMechanicId))
                 return false;
 
             int candidatePriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
@@ -642,9 +584,7 @@ namespace ClickIt.Services
             IReadOnlySet<string> ignoreDistanceMechanicIds,
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
         {
-            if (string.IsNullOrWhiteSpace(mechanicId))
-                return false;
-            if (!ignoreDistanceMechanicIds.Contains(mechanicId))
+            if (string.IsNullOrWhiteSpace(mechanicId) || !ignoreDistanceMechanicIds.Contains(mechanicId))
                 return false;
 
             int maxDistance = ignoreDistanceWithinByMechanicId.TryGetValue(mechanicId, out int configured)
@@ -663,9 +603,8 @@ namespace ClickIt.Services
             ref float bestNonIgnoredDistance,
             ref float bestNonIgnoredWeightedScore)
         {
-            int nonIgnoredPriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
-            float weightedScore = CalculateNonIgnoredWeightedScore(distance, nonIgnoredPriority, clickSettings.MechanicPriorityDistancePenalty);
-
+            int priorityIndex = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
+            float weightedScore = CalculateNonIgnoredWeightedScore(distance, priorityIndex, clickSettings.MechanicPriorityDistancePenalty);
             bool better = weightedScore < bestNonIgnoredWeightedScore
                 || (Math.Abs(weightedScore - bestNonIgnoredWeightedScore) < 0.001f && distance < bestNonIgnoredDistance);
             if (!better)
@@ -689,8 +628,8 @@ namespace ClickIt.Services
             if (bestNonIgnoredByDistance == null)
                 return bestIgnoredByPriority;
 
-            int bestNonIgnoredPriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, bestNonIgnoredMechanicId);
-            return bestIgnoredPriority <= bestNonIgnoredPriority ? bestIgnoredByPriority : bestNonIgnoredByDistance;
+            int nonIgnoredPriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, bestNonIgnoredMechanicId);
+            return bestIgnoredPriority <= nonIgnoredPriority ? bestIgnoredByPriority : bestNonIgnoredByDistance;
         }
 
         private static int GetMechanicPriorityIndex(IReadOnlyDictionary<string, int> priorityMap, string? mechanicId)
@@ -702,12 +641,9 @@ namespace ClickIt.Services
         }
 
         private static float CalculateNonIgnoredWeightedScore(float distance, int priorityIndex, int penalty)
-        {
-            if (priorityIndex == int.MaxValue)
-                return float.MaxValue;
-
-            return distance + (priorityIndex * Math.Max(0, penalty));
-        }
+            => priorityIndex == int.MaxValue
+                ? float.MaxValue
+                : distance + (priorityIndex * Math.Max(0, penalty));
 
         private static Dictionary<string, int> BuildMechanicPriorityIndexMap(IReadOnlyList<string> priorities)
         {
@@ -715,10 +651,8 @@ namespace ClickIt.Services
             for (int i = 0; i < priorities.Count; i++)
             {
                 string id = priorities[i] ?? string.Empty;
-                if (id.Length == 0 || map.ContainsKey(id))
-                    continue;
-
-                map[id] = i;
+                if (id.Length > 0 && !map.ContainsKey(id))
+                    map[id] = i;
             }
 
             return map;
@@ -750,12 +684,13 @@ namespace ClickIt.Services
 
         private ClickSettings CreateClickSettings(IReadOnlyList<LabelOnGround>? allLabels)
         {
-            var s = _settings;
+            ClickItSettings s = _settings;
 
             bool hasRestricted = LazyModeRestrictedChecker(this, allLabels);
             bool hotkeyHeld = KeyStateProvider(s.ClickLabelKey.Value);
-            bool applyLazyModeRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
-            bool settlersOreEnabled = !applyLazyModeRestrictions && s.ClickSettlersOre.Value;
+            bool applyLazyRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
+
+            bool settlersOreEnabled = !applyLazyRestrictions && s.ClickSettlersOre.Value;
             IReadOnlyList<string> mechanicPriorities = s.GetMechanicPriorityOrder();
             IReadOnlyCollection<string> ignoreDistance = s.GetMechanicPriorityIgnoreDistanceIds();
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId = s.GetMechanicPriorityIgnoreDistanceWithinById();
@@ -768,7 +703,7 @@ namespace ClickIt.Services
                 ItemTypeWhitelistMetadata = s.GetItemTypeWhitelistMetadataIdentifiers(),
                 ItemTypeBlacklistMetadata = s.GetItemTypeBlacklistMetadataIdentifiers(),
                 ClickBasicChests = s.ClickBasicChests.Value,
-                ClickLeagueChests = !applyLazyModeRestrictions && s.ClickLeagueChests.Value,
+                ClickLeagueChests = !applyLazyRestrictions && s.ClickLeagueChests.Value,
                 ClickDoors = s.ClickDoors.Value,
                 ClickLevers = s.ClickLevers.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
@@ -855,15 +790,9 @@ namespace ClickIt.Services
         }
 
         public bool ShouldCorruptEssence(LabelOnGround label)
-        {
-            return _essenceService.ShouldCorruptEssence(label.Label);
-        }
+            => _essenceService.ShouldCorruptEssence(label.Label);
 
         public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
-        {
-            return EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
-        }
-
+            => EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
     }
 }
-

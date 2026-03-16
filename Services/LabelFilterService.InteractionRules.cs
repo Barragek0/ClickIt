@@ -1,4 +1,4 @@
-﻿using ClickIt.Definitions;
+using ClickIt.Definitions;
 using ClickIt.Utils;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
@@ -12,6 +12,7 @@ namespace ClickIt.Services
     public partial class LabelFilterService
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+
         private static readonly (string MechanicId, Func<string, bool> MatchesPath)[] SettlersOreResolvers =
         [
             (MechanicIds.SettlersCrimsonIron, IsSettlersCrimsonIronPath),
@@ -28,44 +29,54 @@ namespace ClickIt.Services
                 ? GetWorldItemMetadataPath(item)
                 : (item.Path ?? string.Empty);
 
-            string? specialMechanicId = GetSpecialPathMechanicId(settings, path, label);
-            if (!string.IsNullOrWhiteSpace(specialMechanicId))
-                return specialMechanicId;
+            string? mechanicId = ResolvePrimaryMechanicId(settings, path, label);
+            if (!string.IsNullOrWhiteSpace(mechanicId))
+                return mechanicId;
 
-            string? altarMechanicId = GetAltarMechanicId(settings, path);
-            if (!string.IsNullOrWhiteSpace(altarMechanicId))
-                return altarMechanicId;
+            if (type == EntityType.WorldItem)
+            {
+                if (!ShouldAllowWorldItemByMetadata(settings, item, gameController))
+                    return null;
+
+                if (ShouldClickWorldItemCore(settings.ClickItems, type, item))
+                    return MechanicIds.Items;
+            }
+
+            return ResolveFallbackMechanicId(settings, type, path, label, item);
+        }
+
+        private static string? ResolvePrimaryMechanicId(ClickSettings settings, string path, LabelOnGround label)
+        {
+            string? special = GetSpecialPathMechanicId(settings, path, label);
+            if (!string.IsNullOrWhiteSpace(special))
+                return special;
+
+            string? altar = GetAltarMechanicId(settings, path);
+            if (!string.IsNullOrWhiteSpace(altar))
+                return altar;
 
             if (ShouldClickEssence(settings.ClickEssences, label))
                 return MechanicIds.Essences;
 
-            string? ritualMechanicId = GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
-            if (!string.IsNullOrWhiteSpace(ritualMechanicId))
-                return ritualMechanicId;
+            return GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
+        }
 
-            if (type == EntityType.WorldItem && !ShouldAllowWorldItemByMetadata(settings, item, gameController))
-                return null;
-            if (ShouldClickWorldItemCore(settings.ClickItems, type, item))
-                return MechanicIds.Items;
+        private static string? ResolveFallbackMechanicId(ClickSettings settings, EntityType type, string path, LabelOnGround label, Entity item)
+        {
+            string? chest = GetChestMechanicId(settings.ClickBasicChests, settings.ClickLeagueChests, type, label);
+            if (!string.IsNullOrWhiteSpace(chest))
+                return chest;
 
-            string? chestMechanicId = GetChestMechanicId(settings.ClickBasicChests, settings.ClickLeagueChests, type, label);
-            if (!string.IsNullOrWhiteSpace(chestMechanicId))
-                return chestMechanicId;
+            string? named = GetNamedInteractableMechanicId(settings.ClickDoors, settings.ClickLevers, item.RenderName, path);
+            if (!string.IsNullOrWhiteSpace(named))
+                return named;
 
-            string? namedMechanicId = GetNamedInteractableMechanicId(settings.ClickDoors, settings.ClickLevers, item.RenderName, path);
-            if (!string.IsNullOrWhiteSpace(namedMechanicId))
-                return namedMechanicId;
-
-            string? transitionMechanicId = GetAreaTransitionMechanicId(settings.ClickAreaTransitions, settings.ClickLabyrinthTrials, type, path);
-            if (!string.IsNullOrWhiteSpace(transitionMechanicId))
-                return transitionMechanicId;
-
-            return null;
+            return GetAreaTransitionMechanicId(settings.ClickAreaTransitions, settings.ClickLabyrinthTrials, type, path);
         }
 
         private static string? GetNamedInteractableMechanicId(bool clickDoors, bool clickLevers, string? renderName, string? metadataPath)
         {
-            string path = string.IsNullOrWhiteSpace(metadataPath) ? string.Empty : metadataPath.Trim();
+            string path = metadataPath?.Trim() ?? string.Empty;
 
             bool isDoor = path.Contains("MiscellaneousObjects/Lights", StringComparison.OrdinalIgnoreCase)
                 || path.Contains("MiscellaneousObjects/Door", StringComparison.OrdinalIgnoreCase);
@@ -86,9 +97,7 @@ namespace ClickIt.Services
                 return null;
 
             if (IsLabyrinthTrialTransitionPath(path))
-            {
                 return clickLabyrinthTrials ? MechanicIds.LabyrinthTrials : null;
-            }
 
             return clickAreaTransitions ? MechanicIds.AreaTransitions : null;
         }
@@ -108,12 +117,9 @@ namespace ClickIt.Services
             if (!clickItems || type != EntityType.WorldItem)
                 return false;
 
-            // Prevent strongboxes from being clicked as items.
             string? itemPath = item.Path;
-            if (!string.IsNullOrEmpty(itemPath) && itemPath.ToLowerInvariant().Contains("strongbox"))
-                return false;
-
-            return true;
+            return string.IsNullOrEmpty(itemPath)
+                || !itemPath.Contains("strongbox", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string? GetChestMechanicId(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)
@@ -128,14 +134,13 @@ namespace ClickIt.Services
             if (type != EntityType.Chest)
                 return null;
 
-            // Avoid treating strongboxes as generic chests; strongboxes have their own settings.
-            if (!string.IsNullOrEmpty(path) && path.ToLowerInvariant().Contains("strongbox"))
+            if (!string.IsNullOrEmpty(path) && path.Contains("strongbox", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            bool isBasicChest = IsBasicChestName(renderName);
-            if (clickBasicChests && isBasicChest)
+            bool isBasic = IsBasicChestName(renderName);
+            if (clickBasicChests && isBasic)
                 return MechanicIds.BasicChests;
-            if (clickLeagueChests && !isBasicChest)
+            if (clickLeagueChests && !isBasic)
                 return MechanicIds.LeagueChests;
 
             return null;
@@ -153,32 +158,37 @@ namespace ClickIt.Services
                     : null;
             }
 
-            bool strongboxesEnabled = settings.StrongboxClickMetadata?.Count > 0;
+            return ResolveSpecialNonSettlersMechanic(settings, path, label);
+        }
 
-            var checks = new (bool On, string MechanicId, Func<string, bool> Matches)[]
-            {
-                (settings.NearestHarvest, MechanicIds.Harvest, static p => IsHarvestPath(p)),
-                (settings.ClickSulphite, MechanicIds.DelveSulphiteVeins, static p => p.Contains("DelveMineral", StringComparison.OrdinalIgnoreCase)),
-                (strongboxesEnabled, MechanicIds.Strongboxes, p => ShouldClickStrongbox(settings, p, label)),
-                (settings.ClickSanctum, MechanicIds.Sanctum, static p => p.Contains("Sanctum", StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickBetrayal, MechanicIds.Betrayal, static p => p.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickBlight, MechanicIds.Blight, static p => p.Contains("BlightPump", StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickAlvaTempleDoors, MechanicIds.AlvaTempleDoors, static p => p.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickLegionPillars, MechanicIds.LegionPillars, static p => p.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickAzurite, MechanicIds.DelveAzuriteVeins, static p => p.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickInitialUltimatum, MechanicIds.UltimatumInitialOverlay, static p => IsUltimatumPath(p)),
-                (settings.ClickDelveSpawners, MechanicIds.DelveEncounterInitiators, static p => p.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickCrafting, MechanicIds.CraftingRecipes, static p => p.Contains("CraftingUnlocks", StringComparison.OrdinalIgnoreCase)),
-                (settings.ClickBreach, MechanicIds.BreachNodes, static p => p.Contains(Constants.Brequel, StringComparison.OrdinalIgnoreCase))
-            };
-
-            foreach ((bool on, string mechanicId, Func<string, bool> matches) in checks)
-            {
-                if (!on)
-                    continue;
-                if (matches(path))
-                    return mechanicId;
-            }
+        private static string? ResolveSpecialNonSettlersMechanic(ClickSettings settings, string path, LabelOnGround label)
+        {
+            if (settings.NearestHarvest && IsHarvestPath(path))
+                return MechanicIds.Harvest;
+            if (settings.ClickSulphite && path.Contains("DelveMineral", StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.DelveSulphiteVeins;
+            if ((settings.StrongboxClickMetadata?.Count ?? 0) > 0 && ShouldClickStrongbox(settings, path, label))
+                return MechanicIds.Strongboxes;
+            if (settings.ClickSanctum && path.Contains("Sanctum", StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.Sanctum;
+            if (settings.ClickBetrayal && path.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.Betrayal;
+            if (settings.ClickBlight && path.Contains("BlightPump", StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.Blight;
+            if (settings.ClickAlvaTempleDoors && path.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.AlvaTempleDoors;
+            if (settings.ClickLegionPillars && path.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.LegionPillars;
+            if (settings.ClickAzurite && path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.DelveAzuriteVeins;
+            if (settings.ClickInitialUltimatum && IsUltimatumPath(path))
+                return MechanicIds.UltimatumInitialOverlay;
+            if (settings.ClickDelveSpawners && path.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.DelveEncounterInitiators;
+            if (settings.ClickCrafting && path.Contains("CraftingUnlocks", StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.CraftingRecipes;
+            if (settings.ClickBreach && path.Contains(Constants.Brequel, StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.BreachNodes;
 
             return null;
         }
@@ -204,25 +214,20 @@ namespace ClickIt.Services
 
         private static bool IsSettlersMechanicEnabled(ClickSettings settings, string mechanicId)
         {
-            if (string.Equals(mechanicId, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersCrimsonIron;
-            if (string.Equals(mechanicId, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersCopper;
-            if (string.Equals(mechanicId, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersPetrifiedWood;
-            if (string.Equals(mechanicId, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersBismuth;
-            if (string.Equals(mechanicId, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersVerisium;
-
-            return false;
+            return mechanicId switch
+            {
+                var id when string.Equals(id, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCrimsonIron,
+                var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCopper,
+                var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersPetrifiedWood,
+                var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersBismuth,
+                var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersVerisium,
+                _ => false
+            };
         }
 
         private static bool IsHarvestPath(string path)
-        {
-            return path.Contains("Harvest/Irrigator", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("Harvest/Extractor", StringComparison.OrdinalIgnoreCase);
-        }
+            => path.Contains("Harvest/Irrigator", StringComparison.OrdinalIgnoreCase)
+               || path.Contains("Harvest/Extractor", StringComparison.OrdinalIgnoreCase);
 
         private static bool IsSettlersOrePath(string path)
         {
@@ -235,30 +240,20 @@ namespace ClickIt.Services
         }
 
         private static bool IsSettlersCrimsonIronPath(string path)
-        {
-            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCrimsonIronMarker);
-        }
+            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCrimsonIronMarker);
 
         private static bool IsSettlersCopperPath(string path)
-        {
-            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCopperMarker);
-        }
+            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCopperMarker);
 
         private static bool IsSettlersPetrifiedWoodPath(string path)
-        {
-            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersPetrifiedWoodMarker);
-        }
+            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersPetrifiedWoodMarker);
 
         private static bool IsSettlersBismuthPath(string path)
-        {
-            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersBismuthMarker);
-        }
+            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersBismuthMarker);
 
         private static bool IsSettlersVerisiumPath(string path)
-        {
-            return MatchesSettlersOrePathMarker(path, MechanicIds.SettlersVerisiumMarker)
-                && !path.Contains(MechanicIds.VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase);
-        }
+            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersVerisiumMarker)
+               && !path.Contains(MechanicIds.VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase);
 
         private static bool MatchesSettlersOrePathMarker(string path, string fullMarker)
         {
@@ -293,18 +288,18 @@ namespace ClickIt.Services
         }
 
         private static bool IsUltimatumPath(string path)
-        {
-            return Constants.IsUltimatumInteractablePath(path);
-        }
+            => Constants.IsUltimatumInteractablePath(path);
 
         private static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
 
-            return (highlightEater || highlightExarch || clickEater || clickExarch)
-                && (path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase)
-                    || path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase));
+            if (!(highlightEater || highlightExarch || clickEater || clickExarch))
+                return false;
+
+            return path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase)
+                || path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool ShouldClickEssence(bool clickEssences, LabelOnGround label)
@@ -317,7 +312,7 @@ namespace ClickIt.Services
 
         private static string? GetRitualMechanicId(bool clickRitualInitiate, bool clickRitualCompleted, string path, LabelOnGround label)
         {
-            if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual"))
+            if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             bool hasFavoursText = LabelUtils.GetElementByString(label.Label, "Interact to view Favours") != null;
@@ -331,9 +326,7 @@ namespace ClickIt.Services
 
         private static bool ShouldClickStrongbox(ClickSettings settings, string path, LabelOnGround label)
         {
-            if (string.IsNullOrEmpty(path))
-                return false;
-            if (label?.ItemOnGround == null)
+            if (string.IsNullOrEmpty(path) || label?.ItemOnGround == null)
                 return false;
 
             Chest? chest = label.ItemOnGround.GetComponent<Chest>();
@@ -342,13 +335,10 @@ namespace ClickIt.Services
 
             IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? [];
             IReadOnlyList<string> dontClickMetadata = settings.StrongboxDontClickMetadata ?? [];
-            string renderName = label.ItemOnGround.RenderName ?? string.Empty;
-            bool isUniqueStrongbox = IsUniqueStrongbox(label);
-
             if (clickMetadata.Count == 0)
                 return false;
 
-            if (isUniqueStrongbox)
+            if (IsUniqueStrongbox(label))
             {
                 if (ContainsStrongboxUniqueIdentifier(dontClickMetadata))
                     return false;
@@ -356,8 +346,8 @@ namespace ClickIt.Services
                 return ContainsStrongboxUniqueIdentifier(clickMetadata);
             }
 
+            string renderName = label.ItemOnGround.RenderName ?? string.Empty;
             bool dontClickMatch = ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata);
-
             if (dontClickMatch)
                 return false;
 
@@ -379,9 +369,7 @@ namespace ClickIt.Services
         }
 
         private static bool IsUniqueStrongbox(LabelOnGround? label)
-        {
-            return label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
-        }
+            => label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
 
         private static bool IsBasicChestName(string name)
         {

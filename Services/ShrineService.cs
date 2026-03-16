@@ -21,22 +21,18 @@ namespace ClickIt.Services
         private static List<Entity>? _threadLocalShrineList;
 
         private static List<Entity> GetThreadLocalShrineList()
-        {
-            if (_threadLocalShrineList == null)
-            {
-                _threadLocalShrineList = [];
-            }
-            return _threadLocalShrineList;
-        }
+            => _threadLocalShrineList ??= [];
 
         public static bool IsShrine(Entity item)
         {
-            if (item == null) return false;
+            if (item == null)
+                return false;
 
             if (item.HasComponent<Shrine>())
                 return true;
 
-            return !string.IsNullOrEmpty(item.Path) && item.Path.Contains("DarkShrine");
+            string path = item.Path ?? string.Empty;
+            return path.Contains("DarkShrine", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsClickableShrineCandidate(Entity? item)
@@ -60,12 +56,20 @@ namespace ClickIt.Services
                 _shrineCacheTimer.Start();
 
             long currentTime = _shrineCacheTimer.ElapsedMilliseconds;
-            if (_cachedShrines == null || (currentTime - _lastShrineCacheTime) > SHRINE_CACHE_DURATION_MS)
-            {
-                _cachedShrines = GetShrineEntitiesUncached();
-                _lastShrineCacheTime = currentTime;
-            }
-            return _cachedShrines;
+
+            if (!HasUsableShrineCache(currentTime))
+                RefreshShrineCache(currentTime);
+
+            return _cachedShrines!;
+        }
+
+        private bool HasUsableShrineCache(long currentTime)
+            => _cachedShrines != null && (currentTime - _lastShrineCacheTime) <= SHRINE_CACHE_DURATION_MS;
+
+        private void RefreshShrineCache(long currentTime)
+        {
+            _cachedShrines = GetShrineEntitiesUncached();
+            _lastShrineCacheTime = currentTime;
         }
 
         /// <summary>
@@ -76,16 +80,16 @@ namespace ClickIt.Services
             var shrines = GetThreadLocalShrineList();
             shrines.Clear();
 
-            if (_gameController?.EntityListWrapper?.ValidEntitiesByType == null)
+            var validEntities = _gameController.EntityListWrapper?.ValidEntitiesByType;
+            if (validEntities == null)
                 return shrines;
-
-            var validEntities = _gameController.EntityListWrapper.ValidEntitiesByType;
 
             foreach (var entityType in validEntities)
             {
-                if (entityType.Value == null) continue;
-
                 var entities = entityType.Value;
+                if (entities == null)
+                    continue;
+
                 foreach (var entity in entities)
                 {
                     if (IsClickableShrineCandidate(entity))
@@ -107,7 +111,8 @@ namespace ClickIt.Services
 
             foreach (var shrine in shrines)
             {
-                if (shrine == null) continue;
+                if (shrine == null)
+                    continue;
 
                 var screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
                 Vector2 clickPos = new(screenPosRaw.X, screenPosRaw.Y);
@@ -127,7 +132,8 @@ namespace ClickIt.Services
 
             foreach (var shrine in shrines)
             {
-                if (shrine == null) continue;
+                if (shrine == null)
+                    continue;
 
                 float distance = shrine.DistancePlayer;
 
@@ -135,14 +141,12 @@ namespace ClickIt.Services
                 if (distance > clickDistance || distance >= minDistance)
                     continue;
 
-                if (isInClickableArea != null && _camera != null)
+                if (isInClickableArea != null)
                 {
                     var screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
                     Vector2 screenPos = new(screenPosRaw.X, screenPosRaw.Y);
                     if (!isInClickableArea(screenPos))
-                    {
-                        continue; // Skip shrines that aren't in the clickable area
-                    }
+                        continue;
                 }
 
                 minDistance = distance;

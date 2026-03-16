@@ -21,66 +21,41 @@ namespace ClickIt.Services
         private OffscreenMovementDebugSnapshot _lastOffscreenMovementDebug = OffscreenMovementDebugSnapshot.Empty;
 
         public PathfindingDebugSnapshot GetDebugSnapshot()
-        {
-            lock (_stateLock)
-            {
-                return new PathfindingDebugSnapshot(
-                    TerrainLoaded: _walkableGrid != null,
-                    AreaWidth: _areaDimensions.X,
-                    AreaHeight: _areaDimensions.Y,
-                    LastExpandedNodes: _lastExpandedNodes,
-                    LastPathLength: _lastPathLength,
-                    LastComputeMs: _lastComputeMs,
-                    LastFailureReason: _lastFailureReason,
-                    LastTargetPath: _lastTargetPath);
-            }
-        }
+            => ReadState(() => new PathfindingDebugSnapshot(
+                TerrainLoaded: _walkableGrid != null,
+                AreaWidth: _areaDimensions.X,
+                AreaHeight: _areaDimensions.Y,
+                LastExpandedNodes: _lastExpandedNodes,
+                LastPathLength: _lastPathLength,
+                LastComputeMs: _lastComputeMs,
+                LastFailureReason: _lastFailureReason,
+                LastTargetPath: _lastTargetPath));
 
         public IReadOnlyList<Vector2> GetLatestScreenPath()
-        {
-            lock (_stateLock)
-            {
-                return _lastScreenPath;
-            }
-        }
+            => ReadState(() => _lastScreenPath);
 
         public IReadOnlyList<GridPoint> GetLatestGridPath()
-        {
-            lock (_stateLock)
-            {
-                return _lastGridPath;
-            }
-        }
+            => ReadState(() => _lastGridPath);
 
         public OffscreenMovementDebugSnapshot GetLatestOffscreenMovementDebug()
-        {
-            lock (_stateLock)
-            {
-                return _lastOffscreenMovementDebug;
-            }
-        }
+            => ReadState(() => _lastOffscreenMovementDebug);
 
         public void SetLatestOffscreenMovementDebug(OffscreenMovementDebugSnapshot snapshot)
-        {
-            lock (_stateLock)
-            {
-                _lastOffscreenMovementDebug = snapshot;
-            }
-        }
+            => UpdateState(() => _lastOffscreenMovementDebug = snapshot);
 
         public void ClearLatestPath()
         {
-            lock (_stateLock)
+            UpdateState(() =>
             {
                 ClearPathDataUnsafe(clearFailureReason: true);
                 _lastOffscreenMovementDebug = OffscreenMovementDebugSnapshot.Empty;
-            }
+            });
         }
 
         internal bool ClearPathIfStale(int staleTimeoutMs)
         {
             int timeoutMs = Math.Max(250, staleTimeoutMs);
-            lock (_stateLock)
+            return UpdateState(() =>
             {
                 if (_lastGridPath.Count == 0 && _lastScreenPath.Count == 0)
                     return false;
@@ -92,27 +67,22 @@ namespace ClickIt.Services
                 ClearPathDataUnsafe(clearFailureReason: true);
                 _lastOffscreenMovementDebug = OffscreenMovementDebugSnapshot.Empty;
                 return true;
-            }
+            });
         }
 
         private void MarkPathBuildAttempt()
-        {
-            lock (_stateLock)
-            {
-                _lastPathBuildAttemptTickMs = Environment.TickCount64;
-            }
-        }
+            => UpdateState(() => _lastPathBuildAttemptTickMs = Environment.TickCount64);
 
         private void SetFailedPathBuildSnapshot(int expandedNodes, long computeMs, string targetPath, string failureReason)
         {
-            lock (_stateLock)
+            UpdateState(() =>
             {
                 _lastExpandedNodes = expandedNodes;
                 _lastComputeMs = computeMs;
                 _lastTargetPath = targetPath;
                 _lastFailureReason = failureReason;
                 ClearPathDataUnsafe(clearFailureReason: false);
-            }
+            });
         }
 
         private void SetSuccessfulPathBuildSnapshot(
@@ -124,7 +94,7 @@ namespace ClickIt.Services
             IReadOnlyList<GridPoint> gridPath,
             IReadOnlyList<Vector2> screenPath)
         {
-            lock (_stateLock)
+            UpdateState(() =>
             {
                 _walkableGrid = walkable;
                 _areaDimensions = dims;
@@ -135,7 +105,7 @@ namespace ClickIt.Services
                 _lastTargetPath = targetPath;
                 _lastGridPath = gridPath;
                 _lastScreenPath = screenPath;
-            }
+            });
         }
 
         private void ClearPathDataUnsafe(bool clearFailureReason)
@@ -144,22 +114,45 @@ namespace ClickIt.Services
             _lastScreenPath = EmptyScreenPath;
             _lastPathLength = 0;
             _lastTargetPath = string.Empty;
+
             if (clearFailureReason)
-            {
                 _lastFailureReason = string.Empty;
-            }
         }
 
         private bool Fail(string reason)
         {
-            lock (_stateLock)
+            UpdateState(() =>
             {
                 _lastFailureReason = reason;
                 ClearPathDataUnsafe(clearFailureReason: false);
-            }
+            });
 
             _errorHandler?.LogMessage(localDebug: true, message: $"PathfindingService: {reason}", frame: 10);
             return false;
+        }
+
+        private T ReadState<T>(Func<T> action)
+        {
+            lock (_stateLock)
+            {
+                return action();
+            }
+        }
+
+        private void UpdateState(Action action)
+        {
+            lock (_stateLock)
+            {
+                action();
+            }
+        }
+
+        private T UpdateState<T>(Func<T> action)
+        {
+            lock (_stateLock)
+            {
+                return action();
+            }
         }
     }
 }

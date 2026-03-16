@@ -1,18 +1,16 @@
-﻿using ClickIt.Definitions;
+using ClickIt.Definitions;
 using ClickIt.Utils;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
-using Microsoft.CSharp.RuntimeBinder;
 
 namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
         private const int InventoryDebugTrailCapacity = 32;
-        private static readonly Utils.DebugSnapshotStore<InventoryDebugSnapshot> InventoryDebugStore = new(
+        private static readonly DebugSnapshotStore<InventoryDebugSnapshot> InventoryDebugStore = new(
             InventoryDebugSnapshot.Empty,
             InventoryDebugTrailCapacity,
             static (snapshot, sequence) => snapshot with { Sequence = sequence },
@@ -95,25 +93,17 @@ namespace ClickIt.Services
                 Notes: string.Empty);
         }
 
-        public static InventoryDebugSnapshot GetLatestInventoryDebug()
-        {
-            return InventoryDebugStore.GetLatest();
-        }
+        public static InventoryDebugSnapshot GetLatestInventoryDebug() => InventoryDebugStore.GetLatest();
 
-        public static IReadOnlyList<string> GetLatestInventoryDebugTrail()
-        {
-            return InventoryDebugStore.GetTrail();
-        }
+        public static IReadOnlyList<string> GetLatestInventoryDebugTrail() => InventoryDebugStore.GetTrail();
 
-        private static void PublishInventoryDebug(InventoryDebugSnapshot snapshot)
-        {
-            InventoryDebugStore.SetLatest(snapshot);
-        }
+        private static void PublishInventoryDebug(InventoryDebugSnapshot snapshot) => InventoryDebugStore.SetLatest(snapshot);
 
         private static bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController)
         {
             string metadata = GetWorldItemMetadataPath(item);
             string itemName = GetWorldItemBaseName(item);
+
             IReadOnlyList<string> whitelist = settings.ItemTypeWhitelistMetadata ?? [];
             IReadOnlyList<string> blacklist = settings.ItemTypeBlacklistMetadata ?? [];
 
@@ -133,29 +123,16 @@ namespace ClickIt.Services
             bool inventoryFull = IsInventoryFullCore(gameController, out InventoryFullProbe probe);
             if (!inventoryFull)
             {
-                PublishInventoryDebug(new InventoryDebugSnapshot(
-                    HasData: true,
-                    Stage: "InventoryNotFullAllow",
-                    InventoryFull: false,
-                    InventoryFullSource: probe.Source,
-                    HasPrimaryInventory: probe.HasPrimaryInventory,
-                    UsedFullFlag: probe.UsedFullFlag,
-                    FullFlagValue: probe.FullFlagValue,
-                    UsedCellOccupancy: probe.UsedCellOccupancy,
-                    CapacityCells: probe.CapacityCells,
-                    OccupiedCells: probe.OccupiedCells,
-                    InventoryEntityCount: probe.InventoryEntityCount,
-                    LayoutEntryCount: probe.LayoutEntryCount,
-                    GroundItemPath: string.Empty,
-                    GroundItemName: string.Empty,
-                    IsGroundStackable: false,
-                    MatchingPathCount: 0,
-                    PartialMatchingStackCount: 0,
-                    HasPartialMatchingStack: false,
-                    DecisionAllowPickup: true,
-                    Notes: probe.Notes,
-                    Sequence: 0,
-                    TimestampMs: Environment.TickCount64));
+                PublishInventoryDebug(CreateInventoryDebugSnapshot(
+                    stage: "InventoryNotFullAllow",
+                    probe,
+                    groundItemPath: string.Empty,
+                    groundItemName: string.Empty,
+                    isStackable: false,
+                    matchingPathCount: 0,
+                    partialMatchingStackCount: 0,
+                    hasPartialMatchingStack: false,
+                    allowPickup: true));
 
                 return true;
             }
@@ -166,18 +143,48 @@ namespace ClickIt.Services
             bool isStackable = IsGroundItemStackableCore(groundItemEntity);
             int matchingPathCount = 0;
             int partialMatchingStackCount = 0;
+
             bool hasPartialMatchingStack = isStackable
                 && HasMatchingPartialStackInInventoryCore(
                     groundItemPath,
                     gameController,
                     out matchingPathCount,
                     out partialMatchingStackCount);
-            bool allowPickup = ShouldPickupWhenInventoryFullCore(inventoryFull: true, isStackable, hasPartialMatchingStack);
 
-            PublishInventoryDebug(new InventoryDebugSnapshot(
+            bool allowPickup = ShouldPickupWhenInventoryFullCore(
+                inventoryFull: true,
+                isStackable,
+                hasPartialMatchingStack);
+
+            PublishInventoryDebug(CreateInventoryDebugSnapshot(
+                stage: "InventoryFullDecision",
+                probe,
+                groundItemPath,
+                groundItemName,
+                isStackable,
+                matchingPathCount,
+                partialMatchingStackCount,
+                hasPartialMatchingStack,
+                allowPickup));
+
+            return allowPickup;
+        }
+
+        private static InventoryDebugSnapshot CreateInventoryDebugSnapshot(
+            string stage,
+            InventoryFullProbe probe,
+            string groundItemPath,
+            string groundItemName,
+            bool isStackable,
+            int matchingPathCount,
+            int partialMatchingStackCount,
+            bool hasPartialMatchingStack,
+            bool allowPickup)
+        {
+            return new InventoryDebugSnapshot(
                 HasData: true,
-                Stage: "InventoryFullDecision",
-                InventoryFull: true,
+                Stage: stage,
+                InventoryFull: probe.IsFull,
                 InventoryFullSource: probe.Source,
                 HasPrimaryInventory: probe.HasPrimaryInventory,
                 UsedFullFlag: probe.UsedFullFlag,
@@ -196,35 +203,23 @@ namespace ClickIt.Services
                 DecisionAllowPickup: allowPickup,
                 Notes: probe.Notes,
                 Sequence: 0,
-                TimestampMs: Environment.TickCount64));
-
-            return allowPickup;
+                TimestampMs: Environment.TickCount64);
         }
 
         internal static bool ShouldPickupWhenInventoryFullCore(bool inventoryFull, bool isStackable, bool hasPartialMatchingStack)
-        {
-            return !inventoryFull || (isStackable && hasPartialMatchingStack);
-        }
+            => !inventoryFull || (isStackable && hasPartialMatchingStack);
 
         internal static bool IsPartialStackCore(int currentStackSize, int maxStackSize)
-        {
-            return currentStackSize > 0 && maxStackSize > 0 && currentStackSize < maxStackSize;
-        }
+            => currentStackSize > 0 && maxStackSize > 0 && currentStackSize < maxStackSize;
 
         internal static bool IsPartialServerStackCore(bool fullStack, int size)
-        {
-            return size > 0 && !fullStack;
-        }
+            => size > 0 && !fullStack;
 
         internal static bool IsInventoryCellUsageFullCore(int occupiedCellCount, int totalCellCapacity)
-        {
-            return totalCellCapacity > 0 && occupiedCellCount >= totalCellCapacity;
-        }
+            => totalCellCapacity > 0 && occupiedCellCount >= totalCellCapacity;
 
         private static bool IsInventoryFullCore(GameController? gameController)
-        {
-            return IsInventoryFullCore(gameController, out _);
-        }
+            => IsInventoryFullCore(gameController, out _);
 
         private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
         {
@@ -236,62 +231,15 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (TryReadBool(primaryInventory, out bool full, s => s.IsFull))
+            if (TryReadInventoryFullFlag(primaryInventory, out bool full, out string source))
             {
-                probe = new InventoryFullProbe(
-                    HasPrimaryInventory: true,
-                    UsedFullFlag: true,
-                    FullFlagValue: full,
-                    UsedCellOccupancy: false,
-                    CapacityCells: 0,
-                    OccupiedCells: 0,
-                    InventoryEntityCount: 0,
-                    LayoutEntryCount: 0,
-                    IsFull: full,
-                    Source: "IsFull",
-                    Notes: "Inventory fullness from server flag IsFull");
-                return full;
-            }
-            if (TryReadBool(primaryInventory, out full, s => s.Full))
-            {
-                probe = new InventoryFullProbe(
-                    HasPrimaryInventory: true,
-                    UsedFullFlag: true,
-                    FullFlagValue: full,
-                    UsedCellOccupancy: false,
-                    CapacityCells: 0,
-                    OccupiedCells: 0,
-                    InventoryEntityCount: 0,
-                    LayoutEntryCount: 0,
-                    IsFull: full,
-                    Source: "Full",
-                    Notes: "Inventory fullness from server flag Full");
-                return full;
-            }
-            if (TryReadBool(primaryInventory, out full, s => s.InventoryFull))
-            {
-                probe = new InventoryFullProbe(
-                    HasPrimaryInventory: true,
-                    UsedFullFlag: true,
-                    FullFlagValue: full,
-                    UsedCellOccupancy: false,
-                    CapacityCells: 0,
-                    OccupiedCells: 0,
-                    InventoryEntityCount: 0,
-                    LayoutEntryCount: 0,
-                    IsFull: full,
-                    Source: "InventoryFull",
-                    Notes: "Inventory fullness from server flag InventoryFull");
+                probe = CreateInventoryFullFlagProbe(full, source);
                 return full;
             }
 
             if (!TryResolveInventoryCapacity(primaryInventory, out int totalCellCapacity))
             {
-                probe = probe with
-                {
-                    HasPrimaryInventory = true,
-                    Notes = "Unable to resolve inventory capacity"
-                };
+                probe = probe with { HasPrimaryInventory = true, Notes = "Unable to resolve inventory capacity" };
                 return false;
             }
 
@@ -319,7 +267,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            bool isFullByOccupancy = IsInventoryCellUsageFullCore(occupiedCellCount, totalCellCapacity);
+            bool isFull = IsInventoryCellUsageFullCore(occupiedCellCount, totalCellCapacity);
             probe = new InventoryFullProbe(
                 HasPrimaryInventory: true,
                 UsedFullFlag: false,
@@ -329,24 +277,58 @@ namespace ClickIt.Services
                 OccupiedCells: occupiedCellCount,
                 InventoryEntityCount: inventoryItems.Count,
                 LayoutEntryCount: inventoryItems.Count,
-                IsFull: isFullByOccupancy,
+                IsFull: isFull,
                 Source: "CellOccupancy",
                 Notes: $"Inventory fullness from PlayerInventories[0].Inventory.Items footprint ({itemEnumDebug})");
 
-            return isFullByOccupancy;
+            return isFull;
         }
 
-        private static bool TryResolveOccupiedInventoryCells(
-            IReadOnlyList<Entity> inventoryItems,
-            int totalCellCapacity,
-            out int occupiedCellCount)
+        private static InventoryFullProbe CreateInventoryFullFlagProbe(bool full, string source)
+        {
+            return new InventoryFullProbe(
+                HasPrimaryInventory: true,
+                UsedFullFlag: true,
+                FullFlagValue: full,
+                UsedCellOccupancy: false,
+                CapacityCells: 0,
+                OccupiedCells: 0,
+                InventoryEntityCount: 0,
+                LayoutEntryCount: 0,
+                IsFull: full,
+                Source: source,
+                Notes: $"Inventory fullness from server flag {source}");
+        }
+
+        private static bool TryReadInventoryFullFlag(object primaryInventory, out bool full, out string source)
+        {
+            full = false;
+            source = string.Empty;
+
+            if (TryReadBool(primaryInventory, out full, s => s.IsFull))
+            {
+                source = "IsFull";
+                return true;
+            }
+            if (TryReadBool(primaryInventory, out full, s => s.Full))
+            {
+                source = "Full";
+                return true;
+            }
+            if (TryReadBool(primaryInventory, out full, s => s.InventoryFull))
+            {
+                source = "InventoryFull";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryResolveOccupiedInventoryCells(IReadOnlyList<Entity> inventoryItems, int totalCellCapacity, out int occupiedCellCount)
         {
             occupiedCellCount = 0;
             if (totalCellCapacity <= 0)
                 return false;
-
-            if (inventoryItems == null || inventoryItems.Count == 0)
-                return true;
 
             for (int i = 0; i < inventoryItems.Count; i++)
             {
@@ -421,12 +403,7 @@ namespace ClickIt.Services
         }
 
         private static bool IsGroundItemStackableCore(Entity? itemEntity)
-        {
-            if (itemEntity == null)
-                return false;
-
-            return TryResolveServerStackState(itemEntity, out _, out _);
-        }
+            => itemEntity != null && TryResolveServerStackState(itemEntity, out _, out _);
 
         private static bool HasMatchingPartialStackInInventoryCore(
             string? worldItemPath,
@@ -455,10 +432,8 @@ namespace ClickIt.Services
 
                 matchingPathCount++;
 
-                if (!TryResolveServerStackState(inventoryItem, out bool fullStack, out int stackSize))
-                    continue;
-
-                if (IsPartialServerStackCore(fullStack, stackSize))
+                if (TryResolveServerStackState(inventoryItem, out bool fullStack, out int stackSize)
+                    && IsPartialServerStackCore(fullStack, stackSize))
                 {
                     partialMatchingStackCount++;
                     return true;
@@ -473,30 +448,30 @@ namespace ClickIt.Services
             fullStack = false;
             stackSize = 0;
 
-            if (itemEntity == null)
-                return false;
-
             try
             {
-                object? stackComponent = itemEntity.GetComponent<ExileCore.PoEMemory.Components.Stack>();
-                if (!TryReadBool(stackComponent, out fullStack, s => s.FullStack)
-                    && !TryReadBool(stackComponent, out fullStack, s => s.IsFull)
-                    && !TryReadBool(stackComponent, out fullStack, s => s.Full))
-                    return false;
+                object? stack = itemEntity.GetComponent<Stack>();
+                bool hasFullFlag = TryReadStackFullFlag(stack, out fullStack);
+                bool hasSize = TryReadStackSize(stack, out stackSize);
 
-                if (!TryReadInt(stackComponent, out stackSize, s => s.Size)
-                    && !TryReadInt(stackComponent, out stackSize, s => s.Count)
-                    && !TryReadInt(stackComponent, out stackSize, s => s.StackSize)
-                    && !TryReadInt(stackComponent, out stackSize, s => s.Amount))
-                    return false;
+                return hasFullFlag && hasSize && stackSize > 0;
             }
             catch
             {
                 return false;
             }
-
-            return stackSize > 0;
         }
+
+        private static bool TryReadStackFullFlag(object? stack, out bool fullStack)
+            => TryReadBool(stack, out fullStack, s => s.FullStack)
+               || TryReadBool(stack, out fullStack, s => s.IsFull)
+               || TryReadBool(stack, out fullStack, s => s.Full);
+
+        private static bool TryReadStackSize(object? stack, out int stackSize)
+            => TryReadInt(stack, out stackSize, s => s.Size)
+               || TryReadInt(stack, out stackSize, s => s.Count)
+               || TryReadInt(stack, out stackSize, s => s.StackSize)
+               || TryReadInt(stack, out stackSize, s => s.Amount);
 
         private static Entity? TryGetWorldItemEntity(Entity? worldItem)
         {
@@ -517,7 +492,6 @@ namespace ClickIt.Services
         private static bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
         {
             items = [];
-
             if (!TryGetPrimaryServerInventory(gameController, out object? primaryInventory) || primaryInventory == null)
                 return false;
 
@@ -539,13 +513,14 @@ namespace ClickIt.Services
                 return false;
             }
 
-            var entities = new List<Entity>(64);
             int totalEntries = 0;
             int nullEntries = 0;
             int directEntityEntries = 0;
             int nestedEntityEntries = 0;
             int rejectedNonItemEntity = 0;
             int rejectedNestedNonEntity = 0;
+
+            var entities = new List<Entity>(64);
 
             foreach (object? entry in EnumerateObjects(collectionObj))
             {
@@ -560,13 +535,10 @@ namespace ClickIt.Services
                 if (entry is Entity directEntity)
                 {
                     directEntityEntries++;
-                    if (!IsInventoryItemEntity(directEntity, out _))
-                    {
+                    if (IsInventoryItemEntity(directEntity, out _))
+                        entities.Add(directEntity);
+                    else
                         rejectedNonItemEntity++;
-                        continue;
-                    }
-
-                    entities.Add(directEntity);
                     continue;
                 }
 
@@ -584,30 +556,57 @@ namespace ClickIt.Services
 
             if (entities.Count == 0)
             {
-                debugDetails =
-                    $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} direct:{directEntityEntries} nested:{nestedEntityEntries} rejectedNonItem:{rejectedNonItemEntity} rejectedNested:{rejectedNestedNonEntity}";
+                debugDetails = BuildInventoryEnumerationDebugDetails(
+                    collectionDebug,
+                    totalEntries,
+                    nullEntries,
+                    directEntityEntries,
+                    nestedEntityEntries,
+                    rejectedNonItemEntity,
+                    rejectedNestedNonEntity);
                 return false;
             }
 
-            // Deduplicate by address to avoid repeated matches across multiple reflected paths.
             var unique = new Dictionary<long, Entity>();
             for (int i = 0; i < entities.Count; i++)
             {
                 Entity entity = entities[i];
-                if (entity == null)
+                if (entity == null || entity.Address == 0)
                     continue;
 
-                long address = entity.Address;
-                if (address == 0)
-                    continue;
-
-                unique[address] = entity;
+                unique[entity.Address] = entity;
             }
 
             items = [.. unique.Values];
-            debugDetails =
-                $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} direct:{directEntityEntries} nested:{nestedEntityEntries} rejectedNonItem:{rejectedNonItemEntity} rejectedNested:{rejectedNestedNonEntity} dedup:{entities.Count}->{items.Count}";
+            debugDetails = BuildInventoryEnumerationDebugDetails(
+                collectionDebug,
+                totalEntries,
+                nullEntries,
+                directEntityEntries,
+                nestedEntityEntries,
+                rejectedNonItemEntity,
+                rejectedNestedNonEntity,
+                dedupBeforeCount: entities.Count,
+                dedupAfterCount: items.Count);
             return items.Count > 0;
+        }
+
+        private static string BuildInventoryEnumerationDebugDetails(
+            string collectionDebug,
+            int totalEntries,
+            int nullEntries,
+            int directEntityEntries,
+            int nestedEntityEntries,
+            int rejectedNonItemEntity,
+            int rejectedNestedNonEntity,
+            int? dedupBeforeCount = null,
+            int? dedupAfterCount = null)
+        {
+            string details = $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} direct:{directEntityEntries} nested:{nestedEntityEntries} rejectedNonItem:{rejectedNonItemEntity} rejectedNested:{rejectedNestedNonEntity}";
+            if (!dedupBeforeCount.HasValue || !dedupAfterCount.HasValue)
+                return details;
+
+            return $"{details} dedup:{dedupBeforeCount.Value}->{dedupAfterCount.Value}";
         }
 
         private static bool TryGetPrimaryServerInventory(GameController? gameController, out object? primaryInventory)
@@ -618,17 +617,13 @@ namespace ClickIt.Services
             if (data == null)
                 return false;
 
-            object? serverData = null;
-            if (!TryGetDynamicValue(data, s => s.ServerData, out serverData) || serverData == null)
+            if (!TryGetDynamicValue(data, s => s.ServerData, out object? serverData) || serverData == null)
                 return false;
-
             if (!TryGetDynamicValue(serverData, s => s.PlayerInventories, out object? playerInventories) || playerInventories == null)
                 return false;
-
             if (!TryGetFirstCollectionObject(playerInventories, out object? firstInventory) || firstInventory == null)
                 return false;
 
-            // Strict server-data path: IngameState.Data.ServerData.PlayerInventories[0]
             primaryInventory = firstInventory;
             return true;
         }
@@ -644,8 +639,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            bool readOk = TryGetDynamicValue(inventoryObj, s => s.Items, out itemsCollection);
-            if (!readOk)
+            if (!TryGetDynamicValue(inventoryObj, s => s.Items, out itemsCollection))
             {
                 debugDetails = "read-failed: PlayerInventories[0].Inventory.Items accessor unavailable";
                 return false;
@@ -657,22 +651,14 @@ namespace ClickIt.Services
                 return false;
             }
 
-            int previewCount = 0;
-            foreach (object? _ in EnumerateObjects(itemsCollection))
-            {
-                previewCount++;
-                if (previewCount >= 8)
-                    break;
-            }
+            int previewCount = CountPreviewObjects(itemsCollection, 8);
 
             debugDetails = $"read-ok: PlayerInventories[0].Inventory.Items type={itemsCollection.GetType().Name} previewCount={previewCount}";
             return true;
         }
 
         private static bool TryGetPrimaryServerInventoryItems(object primaryInventory, out object? itemsCollection)
-        {
-            return TryGetPrimaryServerInventoryItems(primaryInventory, out itemsCollection, out _);
-        }
+            => TryGetPrimaryServerInventoryItems(primaryInventory, out itemsCollection, out _);
 
         private static bool TryGetFirstCollectionObject(object collection, out object? first)
         {
@@ -696,11 +682,6 @@ namespace ClickIt.Services
             return false;
         }
 
-        private static bool IsInventoryItemEntity(Entity? entity)
-        {
-            return IsInventoryItemEntity(entity, out _);
-        }
-
         private static bool IsInventoryItemEntity(Entity? entity, out string reason)
         {
             reason = string.Empty;
@@ -718,8 +699,7 @@ namespace ClickIt.Services
             }
 
             bool isItem = path.IndexOf("Metadata/Items/", StringComparison.OrdinalIgnoreCase) >= 0;
-            string shortPath = path.Length <= 56 ? path : path.Substring(0, 56) + "...";
-            reason = isItem ? "path-item" : $"path-non-item:{shortPath}";
+            reason = isItem ? "path-item" : $"path-non-item:{(path.Length <= 56 ? path : path.Substring(0, 56) + "...")}";
             return isItem;
         }
 
@@ -744,25 +724,33 @@ namespace ClickIt.Services
             yield return source;
         }
 
-        private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
+        private static int CountPreviewObjects(object? source, int maxCount)
         {
-            return DynamicAccess.TryReadBool(source, accessor, out value);
+            if (maxCount <= 0)
+                return 0;
+
+            int count = 0;
+            foreach (object? _ in EnumerateObjects(source))
+            {
+                count++;
+                if (count >= maxCount)
+                    break;
+            }
+
+            return count;
         }
+
+        private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
+            => DynamicAccess.TryReadBool(source, accessor, out value);
 
         private static bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
-        {
-            return DynamicAccess.TryReadInt(source, accessor, out value);
-        }
+            => DynamicAccess.TryReadInt(source, accessor, out value);
 
         private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
-        {
-            return DynamicAccess.TryGetDynamicValue(source, accessor, out value);
-        }
+            => DynamicAccess.TryGetDynamicValue(source, accessor, out value);
 
         private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
-        {
-            return ContainsAnyMetadataIdentifier(metadataPath, itemName, item: null, identifiers);
-        }
+            => ContainsAnyMetadataIdentifier(metadataPath, itemName, item: null, identifiers);
 
         private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, IReadOnlyList<string> identifiers)
         {
@@ -782,7 +770,6 @@ namespace ClickIt.Services
                 {
                     if (MatchesSpecialRule(specialRule, metadataPath, itemName, item))
                         return true;
-
                     continue;
                 }
 
@@ -807,19 +794,15 @@ namespace ClickIt.Services
         {
             if (specialRule.Equals("unique-items", StringComparison.OrdinalIgnoreCase))
                 return item != null && IsUniqueItem(item);
-
             if (specialRule.Equals("heist-quest-contract", StringComparison.OrdinalIgnoreCase))
                 return IsHeistQuestContract(itemName);
-
             if (specialRule.Equals("heist-non-quest-contract", StringComparison.OrdinalIgnoreCase))
                 return IsHeistNonQuestContract(itemName);
-
             if (specialRule.Equals("inscribed-ultimatum", StringComparison.OrdinalIgnoreCase))
             {
                 return (item != null && IsInscribedUltimatum(item))
                     || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0;
             }
-
             if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase))
                 return IsRegularJewelsMetadataPath(metadataPath);
 
@@ -850,17 +833,12 @@ namespace ClickIt.Services
         }
 
         private static bool IsHeistQuestContract(string itemName)
-        {
-            return !string.IsNullOrWhiteSpace(itemName)
-                && Constants.HeistQuestContractNames.Contains(itemName);
-        }
+            => !string.IsNullOrWhiteSpace(itemName) && Constants.HeistQuestContractNames.Contains(itemName);
 
         private static bool IsHeistNonQuestContract(string itemName)
-        {
-            return !string.IsNullOrWhiteSpace(itemName)
-                && itemName.StartsWith("Contract:", StringComparison.OrdinalIgnoreCase)
-                && !Constants.HeistQuestContractNames.Contains(itemName);
-        }
+            => !string.IsNullOrWhiteSpace(itemName)
+               && itemName.StartsWith("Contract:", StringComparison.OrdinalIgnoreCase)
+               && !Constants.HeistQuestContractNames.Contains(itemName);
 
         private static bool IsInscribedUltimatum(Entity item)
         {
@@ -882,9 +860,7 @@ namespace ClickIt.Services
             {
                 string resolvedMetadata = EntityHelpers.ResolveWorldItemMetadataPath(item);
                 if (TryGetWorldItemComponentMetadata(item, out string componentMetadata))
-                {
                     return SelectBestWorldItemMetadataPath(resolvedMetadata, componentMetadata);
-                }
 
                 return resolvedMetadata;
             }
@@ -904,11 +880,11 @@ namespace ClickIt.Services
             {
                 WorldItem? worldItemComp = item.GetComponent<WorldItem>();
                 Entity? itemEntity = worldItemComp?.ItemEntity;
-                string itemEntityMetadata = itemEntity?.Metadata ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(itemEntityMetadata))
+                string candidate = itemEntity?.Metadata ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(candidate))
                     return false;
 
-                metadata = itemEntityMetadata;
+                metadata = candidate;
                 return true;
             }
             catch
@@ -921,11 +897,9 @@ namespace ClickIt.Services
         {
             if (string.IsNullOrWhiteSpace(componentMetadata))
                 return resolvedMetadata ?? string.Empty;
-
             if (string.IsNullOrWhiteSpace(resolvedMetadata))
                 return componentMetadata;
 
-            // When label/path resolution points to misc world objects, prefer concrete item metadata.
             if (resolvedMetadata.IndexOf("Metadata/MiscellaneousObjects/", StringComparison.OrdinalIgnoreCase) >= 0)
                 return componentMetadata;
 
@@ -938,8 +912,7 @@ namespace ClickIt.Services
             {
                 WorldItem? worldItemComp = item.GetComponent<WorldItem>();
                 Entity? itemEntity = worldItemComp?.ItemEntity;
-                string? itemName = itemEntity?.GetComponent<Base>()?.Name;
-                return itemName ?? string.Empty;
+                return itemEntity?.GetComponent<Base>()?.Name ?? string.Empty;
             }
             catch
             {
@@ -951,9 +924,7 @@ namespace ClickIt.Services
         {
             try
             {
-                if (gameController == null)
-                    return false;
-                if (itemEntity == null)
+                if (gameController == null || itemEntity == null)
                     return false;
 
                 var baseItemType = gameController.Files.BaseItemTypes.Translate(itemEntity.Path ?? string.Empty);

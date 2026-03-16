@@ -1,74 +1,22 @@
 using ClickIt.Definitions;
-using ExileCore.PoEMemory.MemoryObjects;
-using SharpDX;
 
 namespace ClickIt.Services
 {
     public partial class ClickService
     {
-        private const string ShrineMechanicId = MechanicIds.Shrines;
-        private const string LostShipmentMechanicId = MechanicIds.LostShipment;
-        private const string LostShipmentPathMarker = "Metadata/Chests/LostShipmentCrate";
-        private const string LostShipmentLoosePathMarker = "LostShipment";
-        private const string LostGoodsRenderNameMarker = "Lost Goods";
-        private const string LostShipmentRenderNameMarker = "Lost Shipment";
-        private const string VerisiumMechanicId = MechanicIds.SettlersVerisium;
-        private const string VerisiumBossSubAreaTransitionPathMarker = MechanicIds.VerisiumBossSubAreaTransitionPathMarker;
-        private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
-        private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
-
-        private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
-        private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
-        private IReadOnlyDictionary<string, int>? _cachedMechanicIgnoreDistanceWithinById;
-        private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        private readonly struct LostShipmentCandidate(Entity entity, Vector2 clickPosition)
-        {
-            public Entity Entity { get; } = entity;
-            public Vector2 ClickPosition { get; } = clickPosition;
-            public float Distance { get; } = entity.DistancePlayer;
-        }
-
-        private readonly struct SettlersOreCandidate(
-            Entity entity,
-            Vector2 clickPosition,
-            string mechanicId,
-            string entityPath,
-            Vector2 worldScreenRaw,
-            Vector2 worldScreenAbsolute)
-        {
-            public Entity Entity { get; } = entity;
-            public Vector2 ClickPosition { get; } = clickPosition;
-            public string MechanicId { get; } = mechanicId;
-            public string EntityPath { get; } = entityPath;
-            public Vector2 WorldScreenRaw { get; } = worldScreenRaw;
-            public Vector2 WorldScreenAbsolute { get; } = worldScreenAbsolute;
-            public float Distance { get; } = entity.DistancePlayer;
-        }
-
-        private readonly struct MechanicRank(bool ignored, int priorityIndex, float weightedDistance, float rawDistance)
-        {
-            public bool Ignored { get; } = ignored;
-            public int PriorityIndex { get; } = priorityIndex;
-            public float WeightedDistance { get; } = weightedDistance;
-            public float RawDistance { get; } = rawDistance;
-        }
-
         internal static bool IsLostShipmentPath(string? path)
-            => HasAnyMarker(path, LostShipmentPathMarker, LostShipmentLoosePathMarker);
+            => ContainsAny(path, LostShipmentPathMarker, LostShipmentLoosePathMarker);
 
         internal static bool IsVerisiumPath(string? path)
-            => HasAnyMarker(path, Definitions.Constants.Verisium)
-               && !HasAnyMarker(path, VerisiumBossSubAreaTransitionPathMarker);
+            => ContainsAny(path, Definitions.Constants.Verisium)
+               && !ContainsAny(path, VerisiumBossSubAreaTransitionPathMarker);
 
         internal static bool ShouldUseHoldClickForSettlersMechanic(string? mechanicId)
             => string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsLostShipmentEntity(string? path, string? renderName)
             => IsLostShipmentPath(path)
-               || HasAnyMarker(renderName, LostGoodsRenderNameMarker, LostShipmentRenderNameMarker);
+               || ContainsAny(renderName, LostGoodsRenderNameMarker, LostShipmentRenderNameMarker);
 
         internal static bool ShouldSkipLostShipmentEntity(bool isValid, float distance, int clickDistance, bool isOpened)
             => !isValid || isOpened || distance > clickDistance;
@@ -89,7 +37,7 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
         {
-            var candidate = BuildMechanicRank(
+            MechanicRank candidate = BuildMechanicRank(
                 lostShipmentDistance,
                 LostShipmentMechanicId,
                 priorityIndexMap,
@@ -97,8 +45,8 @@ namespace ClickIt.Services
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
 
-            return BeatsExistingCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsExistingCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
+            return BeatsOtherCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
+                && BeatsOtherCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
         }
 
         internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
@@ -113,7 +61,7 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
         {
-            var candidate = BuildMechanicRank(
+            MechanicRank candidate = BuildMechanicRank(
                 settlersOreDistance,
                 settlersOreMechanicId,
                 priorityIndexMap,
@@ -121,9 +69,9 @@ namespace ClickIt.Services
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
 
-            return BeatsExistingCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsExistingCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsExistingCandidate(candidate, lostShipmentDistance, LostShipmentMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
+            return BeatsOtherCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
+                && BeatsOtherCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
+                && BeatsOtherCandidate(candidate, lostShipmentDistance, LostShipmentMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
         }
 
         internal static bool ShouldPreferVerisiumOverVisibleCandidates(
@@ -157,7 +105,7 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
         {
-            var shrineRank = BuildMechanicRank(
+            MechanicRank shrineRank = BuildMechanicRank(
                 shrineDistance,
                 ShrineMechanicId,
                 priorityIndexMap,
@@ -165,7 +113,7 @@ namespace ClickIt.Services
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
 
-            var labelRank = BuildMechanicRank(
+            MechanicRank labelRank = BuildMechanicRank(
                 labelDistance,
                 labelMechanicId,
                 priorityIndexMap,
@@ -176,21 +124,7 @@ namespace ClickIt.Services
             return CompareMechanicRanks(shrineRank, labelRank) < 0;
         }
 
-        private static bool HasAnyMarker(string? value, params string[] markers)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return false;
-
-            for (int i = 0; i < markers.Length; i++)
-            {
-                if (value.Contains(markers[i], StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private static bool BeatsExistingCandidate(
+        private static bool BeatsOtherCandidate(
             MechanicRank candidate,
             float? otherDistance,
             string? otherMechanicId,
@@ -202,7 +136,7 @@ namespace ClickIt.Services
             if (!otherDistance.HasValue)
                 return true;
 
-            var other = BuildMechanicRank(
+            MechanicRank other = BuildMechanicRank(
                 otherDistance.Value,
                 otherMechanicId,
                 priorityIndexMap,
@@ -230,19 +164,24 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
         {
-            int priorityIndex = int.MaxValue;
-            if (!string.IsNullOrWhiteSpace(mechanicId)
-                && priorityIndexMap.TryGetValue(mechanicId, out int configuredIndex))
-            {
-                priorityIndex = configuredIndex;
-            }
-
+            int priorityIndex = ResolvePriorityIndex(mechanicId, priorityIndexMap);
             bool ignored = IsIgnoreDistanceActiveForMechanic(mechanicId, distance, ignoreDistanceSet, ignoreDistanceWithinByMechanicId);
-            float weightedDistance = distance + (priorityIndex == int.MaxValue
+
+            float weightedDistance = priorityIndex == int.MaxValue
                 ? float.MaxValue
-                : priorityIndex * Math.Max(0, priorityDistancePenalty));
+                : distance + (priorityIndex * Math.Max(0, priorityDistancePenalty));
 
             return new MechanicRank(ignored, priorityIndex, weightedDistance, distance);
+        }
+
+        private static int ResolvePriorityIndex(string? mechanicId, IReadOnlyDictionary<string, int> priorityIndexMap)
+        {
+            if (string.IsNullOrWhiteSpace(mechanicId))
+                return int.MaxValue;
+
+            return priorityIndexMap.TryGetValue(mechanicId, out int index)
+                ? index
+                : int.MaxValue;
         }
 
         private static bool IsIgnoreDistanceActiveForMechanic(
@@ -287,50 +226,69 @@ namespace ClickIt.Services
             return left.PriorityIndex.CompareTo(right.PriorityIndex);
         }
 
+        private static bool ContainsAny(string? value, params string[] markers)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            for (int i = 0; i < markers.Length; i++)
+            {
+                if (value.Contains(markers[i], StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
         private void RefreshMechanicPriorityCaches()
         {
+            RefreshPriorityOrderCache();
+            RefreshIgnoreDistanceIdsCache();
+            RefreshIgnoreDistanceWithinCache();
+        }
+
+        private void RefreshPriorityOrderCache()
+        {
             IReadOnlyList<string> priorityOrder = settings.GetMechanicPriorityOrder();
-            if (!ReferenceEquals(_cachedMechanicPriorityOrder, priorityOrder))
+            if (ReferenceEquals(_cachedMechanicPriorityOrder, priorityOrder))
+                return;
+
+            _cachedMechanicPriorityOrder = priorityOrder;
+            var priorityMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < priorityOrder.Count; i++)
             {
-                _cachedMechanicPriorityOrder = priorityOrder;
-                var priorityMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                string id = priorityOrder[i] ?? string.Empty;
+                if (id.Length == 0 || priorityMap.ContainsKey(id))
+                    continue;
 
-                for (int i = 0; i < priorityOrder.Count; i++)
-                {
-                    string id = priorityOrder[i] ?? string.Empty;
-                    if (id.Length == 0 || priorityMap.ContainsKey(id))
-                        continue;
-
-                    priorityMap[id] = i;
-                }
-
-                _cachedMechanicPriorityIndexMap = priorityMap;
+                priorityMap[id] = i;
             }
 
+            _cachedMechanicPriorityIndexMap = priorityMap;
+        }
+
+        private void RefreshIgnoreDistanceIdsCache()
+        {
             IReadOnlyCollection<string> ignoreDistanceIds = settings.GetMechanicPriorityIgnoreDistanceIds();
-            if (!ReferenceEquals(_cachedMechanicIgnoreDistanceIds, ignoreDistanceIds))
-            {
-                _cachedMechanicIgnoreDistanceIds = ignoreDistanceIds;
-                _cachedMechanicIgnoreDistanceSet = new HashSet<string>(ignoreDistanceIds, StringComparer.OrdinalIgnoreCase);
-            }
+            if (ReferenceEquals(_cachedMechanicIgnoreDistanceIds, ignoreDistanceIds))
+                return;
 
+            _cachedMechanicIgnoreDistanceIds = ignoreDistanceIds;
+            _cachedMechanicIgnoreDistanceSet = new HashSet<string>(ignoreDistanceIds, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private void RefreshIgnoreDistanceWithinCache()
+        {
             IReadOnlyDictionary<string, int> ignoreDistanceWithin = settings.GetMechanicPriorityIgnoreDistanceWithinById();
-            if (!ReferenceEquals(_cachedMechanicIgnoreDistanceWithinById, ignoreDistanceWithin))
-            {
-                _cachedMechanicIgnoreDistanceWithinById = ignoreDistanceWithin;
-                _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(ignoreDistanceWithin, StringComparer.OrdinalIgnoreCase);
-            }
+            if (ReferenceEquals(_cachedMechanicIgnoreDistanceWithinById, ignoreDistanceWithin))
+                return;
+
+            _cachedMechanicIgnoreDistanceWithinById = ignoreDistanceWithin;
+            _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(ignoreDistanceWithin, StringComparer.OrdinalIgnoreCase);
         }
 
         private int GetMechanicPriorityIndex(string? mechanicId)
-        {
-            if (string.IsNullOrWhiteSpace(mechanicId))
-                return int.MaxValue;
-
-            return _cachedMechanicPriorityIndexMap.TryGetValue(mechanicId, out int index)
-                ? index
-                : int.MaxValue;
-        }
+            => ResolvePriorityIndex(mechanicId, _cachedMechanicPriorityIndexMap);
 
         private static bool IsSettlersMechanicId(string? mechanicId)
             => !string.IsNullOrWhiteSpace(mechanicId)
@@ -341,18 +299,15 @@ namespace ClickIt.Services
             if (!settings.ClickSettlersOre.Value || string.IsNullOrWhiteSpace(mechanicId))
                 return false;
 
-            if (string.Equals(mechanicId, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersCrimsonIron.Value;
-            if (string.Equals(mechanicId, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersCopper.Value;
-            if (string.Equals(mechanicId, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersPetrifiedWood.Value;
-            if (string.Equals(mechanicId, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersBismuth.Value;
-            if (string.Equals(mechanicId, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase))
-                return settings.ClickSettlersVerisium.Value;
-
-            return false;
+            return mechanicId switch
+            {
+                var id when string.Equals(id, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCrimsonIron.Value,
+                var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCopper.Value,
+                var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersPetrifiedWood.Value,
+                var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersBismuth.Value,
+                var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersVerisium.Value,
+                _ => false
+            };
         }
     }
 }

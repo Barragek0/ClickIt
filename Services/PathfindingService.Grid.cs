@@ -23,25 +23,25 @@ namespace ClickIt.Services
         internal static List<GridPoint>? FindPathAStar(bool[][] walkable, GridPoint start, GridPoint goal, int maxExpandedNodes, out int expandedNodes)
         {
             expandedNodes = 0;
+
             if (!TryGetGridDimensions(walkable, out int width, out int height))
                 return null;
 
-            if (!IsInside(start, new GridPoint(width, height)) || !IsInside(goal, new GridPoint(width, height)))
+            GridPoint dims = new GridPoint(width, height);
+            if (!IsInside(start, dims) || !IsInside(goal, dims))
                 return null;
-
             if (!walkable[start.Y][start.X] || !walkable[goal.Y][goal.X])
                 return null;
 
-            int maxNodes = width * height;
-            int safeBudget = Math.Max(1, maxExpandedNodes);
+            int nodeCount = width * height;
+            int budget = Math.Max(1, maxExpandedNodes);
 
-            var openSet = new PriorityQueue<int, float>();
-            var inOpenSet = new bool[maxNodes];
-            var closedSet = new bool[maxNodes];
-            var gScore = new float[maxNodes];
-            var parent = new int[maxNodes];
+            var open = new PriorityQueue<int, float>();
+            var closed = new bool[nodeCount];
+            var gScore = new float[nodeCount];
+            var parent = new int[nodeCount];
 
-            for (int i = 0; i < maxNodes; i++)
+            for (int i = 0; i < nodeCount; i++)
             {
                 gScore[i] = float.PositiveInfinity;
                 parent[i] = -1;
@@ -49,25 +49,22 @@ namespace ClickIt.Services
 
             int startKey = ToKey(start.X, start.Y, width);
             int goalKey = ToKey(goal.X, goal.Y, width);
-
             gScore[startKey] = 0f;
-            openSet.Enqueue(startKey, EstimateCost(start, goal));
-            inOpenSet[startKey] = true;
+            open.Enqueue(startKey, EstimateCost(start, goal));
 
-            while (openSet.Count > 0 && expandedNodes < safeBudget)
+            while (open.Count > 0 && expandedNodes < budget)
             {
-                int currentKey = openSet.Dequeue();
-                if (closedSet[currentKey])
+                int currentKey = open.Dequeue();
+                if (closed[currentKey])
                     continue;
 
-                closedSet[currentKey] = true;
+                closed[currentKey] = true;
                 expandedNodes++;
-
                 if (currentKey == goalKey)
                     return BuildPathFromParents(parent, currentKey, width);
 
-                var current = FromKey(currentKey, width);
-                float currentG = gScore[currentKey];
+                GridPoint current = FromKey(currentKey, width);
+                float currentCost = gScore[currentKey];
 
                 for (int i = 0; i < NeighborOffsets.Length; i++)
                 {
@@ -77,26 +74,23 @@ namespace ClickIt.Services
 
                     if (nx < 0 || ny < 0 || nx >= width || ny >= height)
                         continue;
-
                     if (!walkable[ny][nx])
                         continue;
 
                     int neighborKey = ToKey(nx, ny, width);
-                    if (closedSet[neighborKey])
+                    if (closed[neighborKey])
                         continue;
 
-                    bool isDiagonal = offset.X != 0 && offset.Y != 0;
-                    float tentative = currentG + (isDiagonal ? DiagonalCost : StraightCost);
+                    float moveCost = offset.X != 0 && offset.Y != 0 ? DiagonalCost : StraightCost;
+                    float tentative = currentCost + moveCost;
                     if (tentative >= gScore[neighborKey])
                         continue;
 
                     parent[neighborKey] = currentKey;
                     gScore[neighborKey] = tentative;
 
-                    var neighbor = new GridPoint(nx, ny);
-                    float fScore = tentative + EstimateCost(neighbor, goal);
-                    openSet.Enqueue(neighborKey, fScore);
-                    inOpenSet[neighborKey] = true;
+                    GridPoint neighbor = new GridPoint(nx, ny);
+                    open.Enqueue(neighborKey, tentative + EstimateCost(neighbor, goal));
                 }
             }
 
@@ -106,49 +100,48 @@ namespace ClickIt.Services
         internal static bool TryResolveWalkableGoal(bool[][] walkable, GridPoint desiredGoal, int maxRadius, out GridPoint resolvedGoal)
         {
             resolvedGoal = desiredGoal;
+
             if (!TryGetGridDimensions(walkable, out int width, out int height))
                 return false;
-
             if (desiredGoal.X < 0 || desiredGoal.Y < 0 || desiredGoal.X >= width || desiredGoal.Y >= height)
                 return false;
-
             if (walkable[desiredGoal.Y][desiredGoal.X])
                 return true;
 
             int radiusLimit = Math.Max(1, maxRadius);
             int bestDistanceSquared = int.MaxValue;
-            bool found = false;
 
-            for (int r = 1; r <= radiusLimit; r++)
+            for (int radius = 1; radius <= radiusLimit; radius++)
             {
-                int minX = Math.Max(0, desiredGoal.X - r);
-                int maxX = Math.Min(width - 1, desiredGoal.X + r);
-                int minY = Math.Max(0, desiredGoal.Y - r);
-                int maxY = Math.Min(height - 1, desiredGoal.Y + r);
+                int minX = Math.Max(0, desiredGoal.X - radius);
+                int maxX = Math.Min(width - 1, desiredGoal.X + radius);
+                int minY = Math.Max(0, desiredGoal.Y - radius);
+                int maxY = Math.Min(height - 1, desiredGoal.Y + radius);
+
+                bool foundAnyInRing = false;
 
                 for (int y = minY; y <= maxY; y++)
                 {
                     for (int x = minX; x <= maxX; x++)
                     {
-                        if (Math.Max(Math.Abs(x - desiredGoal.X), Math.Abs(y - desiredGoal.Y)) != r)
+                        if (Math.Max(Math.Abs(x - desiredGoal.X), Math.Abs(y - desiredGoal.Y)) != radius)
                             continue;
-
                         if (!walkable[y][x])
                             continue;
 
+                        foundAnyInRing = true;
                         int dx = x - desiredGoal.X;
                         int dy = y - desiredGoal.Y;
                         int distanceSquared = (dx * dx) + (dy * dy);
                         if (distanceSquared >= bestDistanceSquared)
                             continue;
 
-                        resolvedGoal = new GridPoint(x, y);
                         bestDistanceSquared = distanceSquared;
-                        found = true;
+                        resolvedGoal = new GridPoint(x, y);
                     }
                 }
 
-                if (found)
+                if (foundAnyInRing)
                     return true;
             }
 
@@ -169,21 +162,12 @@ namespace ClickIt.Services
         }
 
         private static bool IsInside(GridPoint point, GridPoint dims)
-        {
-            return point.X >= 0 && point.Y >= 0 && point.X < dims.X && point.Y < dims.Y;
-        }
+            => point.X >= 0 && point.Y >= 0 && point.X < dims.X && point.Y < dims.Y;
 
-        private static int ToKey(int x, int y, int width)
-        {
-            return (y * width) + x;
-        }
+        private static int ToKey(int x, int y, int width) => (y * width) + x;
 
         private static GridPoint FromKey(int key, int width)
-        {
-            int x = key % width;
-            int y = key / width;
-            return new GridPoint(x, y);
-        }
+            => new GridPoint(key % width, key / width);
 
         private static float EstimateCost(GridPoint a, GridPoint b)
         {
@@ -197,11 +181,9 @@ namespace ClickIt.Services
         private static List<GridPoint> BuildPathFromParents(int[] parent, int goalKey, int width)
         {
             var result = new List<GridPoint>(128);
-            int trace = goalKey;
-            while (trace >= 0)
+            for (int trace = goalKey; trace >= 0; trace = parent[trace])
             {
                 result.Add(FromKey(trace, width));
-                trace = parent[trace];
             }
 
             result.Reverse();

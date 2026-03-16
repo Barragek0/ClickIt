@@ -2379,21 +2379,12 @@ namespace ClickIt.Services
         }
 
         private IReadOnlyList<LabelOnGround>? GetLabelsForOffscreenSelection()
-        {
-            try
-            {
-                var raw = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-                if (raw != null && raw.Count > 0)
-                    return [.. raw];
-            }
-            catch
-            {
-            }
-
-            return cachedLabels?.Value;
-        }
+            => GetVisibleOrCachedLabels();
 
         private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
+            => GetVisibleOrCachedLabels();
+
+        private IReadOnlyList<LabelOnGround>? GetVisibleOrCachedLabels()
         {
             try
             {
