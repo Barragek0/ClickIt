@@ -3,7 +3,6 @@ using FluentAssertions;
 using System;
 using System.Runtime.CompilerServices;
 using System.Reflection;
-using System.Collections.Generic;
 using ClickIt.Utils;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -75,17 +74,5 @@ namespace ClickIt.Tests.Unit
             LabelUtils.IsValidEntityPath(ent).Should().BeTrue();
         }
 
-        // NOTE: creating and mutating ExileCore runtime Element/LabelOnGround objects is unsafe inside unit tests.
-        // so we avoid constructing native-backed Element instances here and only assert the Sort/partition helper existence.
-
-        [TestMethod]
-        public void PartitionAndSwap_OperateOnLabelOnGround_DistanceOrdering()
-        {
-            // This partition/swap logic operates on LabelOnGround which is runtime memory-backed
-            // and cannot be safely constructed here. We're keeping this test present but empty
-            // to acknowledge the helper exists and avoid unsafe memory access.
-            var mi = typeof(LabelUtils).GetMethod("SortLabelsByDistance", BindingFlags.Public | BindingFlags.Static);
-            mi.Should().NotBeNull();
-        }
     }
 }

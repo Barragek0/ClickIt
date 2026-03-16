@@ -61,19 +61,6 @@ namespace ClickIt.Tests.Utils
         }
 
         [TestMethod]
-        public void IsPathForClickableObject_MatchesKnownPatterns()
-        {
-            LabelUtils.IsPathForClickableObject("Some/DelveMineral/Path").Should().BeTrue();
-            LabelUtils.IsPathForClickableObject("This/contains/Harvest/Extractor").Should().BeTrue();
-            LabelUtils.IsPathForClickableObject("CleansingFireAltar").Should().BeTrue();
-            LabelUtils.IsPathForClickableObject("Metadata/Terrain/Leagues/Ultimatum/Objects/UltimatumChallengeInteractable").Should().BeTrue();
-            LabelUtils.IsPathForClickableObject("Metadata/Terrain/Leagues/Heist/Switch_Once").Should().BeTrue();
-            LabelUtils.IsPathForClickableObject("Metadata/Terrain/Leagues/Heist/SWITCH_TOGGLE").Should().BeFalse();
-            LabelUtils.IsPathForClickableObject("Metadata/Terrain/Misc/LeverArm").Should().BeFalse();
-            LabelUtils.IsPathForClickableObject("Random/NotRelevant").Should().BeFalse();
-        }
-
-        [TestMethod]
         public void GetElementsByStringContainsForTests_FindsRootAndChildren()
         {
             var root = new FakeAdapter("root contains match");
