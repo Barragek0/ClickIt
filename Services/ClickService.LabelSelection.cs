@@ -468,6 +468,17 @@ namespace ClickIt.Services
         {
             if (IsAltarLabel(nextLabel))
             {
+                bool shouldContinuePathing = ShouldContinuePathingForSpecialAltarLabel(
+                    settings.WalkTowardOffscreenLabels.Value,
+                    nextLabel.ItemOnGround != null,
+                    HasClickableAltars());
+                if (shouldContinuePathing)
+                {
+                    _ = TryWalkTowardOffscreenTarget(nextLabel.ItemOnGround);
+                    DebugLog(() => "[ProcessRegularClick] Item is an altar and altar choices are not fully clickable yet; continuing pathing");
+                    return true;
+                }
+
                 DebugLog(() => "[ProcessRegularClick] Item is an altar, breaking");
                 return true;
             }
@@ -483,6 +494,16 @@ namespace ClickIt.Services
 
             DebugLog(() => "[ProcessRegularClick] Ultimatum label detected but no preferred modifier matched; skipping generic label click");
             return true;
+        }
+
+        internal static bool ShouldContinuePathingForSpecialAltarLabel(
+            bool walkTowardOffscreenLabelsEnabled,
+            bool hasBackingEntity,
+            bool hasClickableAltars)
+        {
+            return walkTowardOffscreenLabelsEnabled
+                && hasBackingEntity
+                && !hasClickableAltars;
         }
 
         private static bool IsEssenceLabel(LabelOnGround lbl)
@@ -963,7 +984,20 @@ namespace ClickIt.Services
                 return false;
             }
 
+            string stickyPath = target.Path ?? string.Empty;
+            bool isEldritchAltar = IsEldritchAltarPath(stickyPath);
+            if (ShouldDropStickyTargetForUntargetableEldritchAltar(isEldritchAltar, target.IsTargetable))
+            {
+                ClearStickyOffscreenTarget();
+                return false;
+            }
+
             return true;
+        }
+
+        internal static bool ShouldDropStickyTargetForUntargetableEldritchAltar(bool isEldritchAltar, bool isTargetable)
+        {
+            return isEldritchAltar && !isTargetable;
         }
 
         private Entity? FindEntityByAddress(long address)
@@ -1098,10 +1132,11 @@ namespace ClickIt.Services
             int maxDistance = GetOffscreenPathfindingTargetSearchDistance();
 
             Entity? labelBackedTarget = ResolveNearestOffscreenLabelBackedTarget(maxDistance, out string? labelMechanicId);
+            Entity? eldritchAltarTarget = ResolveNearestOffscreenEldritchAltarTarget(maxDistance, out string? eldritchAltarMechanicId);
             Entity? shrineTarget = ResolveNearestOffscreenShrineTarget(maxDistance);
             Entity? areaTransitionTarget = ResolveNearestOffscreenAreaTransitionTarget(maxDistance, out string? areaTransitionMechanicId);
 
-            if (labelBackedTarget == null && shrineTarget == null && areaTransitionTarget == null)
+            if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null)
                 return null;
 
             RefreshMechanicPriorityCaches();
@@ -1112,9 +1147,67 @@ namespace ClickIt.Services
             bool hasBest = false;
 
             PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, labelBackedTarget, labelMechanicId);
+            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId);
             PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, ShrineMechanicId);
             PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId);
 
+            return best;
+        }
+
+        private Entity? ResolveNearestOffscreenEldritchAltarTarget(int maxDistance, out string? selectedMechanicId)
+        {
+            selectedMechanicId = null;
+
+            if ((!settings.ClickExarchAltars.Value && !settings.ClickEaterAltars.Value)
+                || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
+            {
+                return null;
+            }
+
+            Entity? best = null;
+            string? bestMechanicId = null;
+            float bestDistance = float.MaxValue;
+
+            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
+            {
+                var entities = kv.Value;
+                if (entities == null)
+                    continue;
+
+                for (int i = 0; i < entities.Count; i++)
+                {
+                    Entity entity = entities[i];
+                    if (entity == null || !entity.IsValid || entity.IsHidden)
+                        continue;
+                    if (entity.DistancePlayer > maxDistance)
+                        continue;
+                    if (!entity.IsTargetable)
+                        continue;
+
+                    string path = entity.Path ?? string.Empty;
+                    string? mechanicId = GetEldritchAltarMechanicIdForPath(
+                        settings.ClickExarchAltars.Value,
+                        settings.ClickEaterAltars.Value,
+                        path);
+                    if (string.IsNullOrWhiteSpace(mechanicId))
+                        continue;
+
+                    var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+                    Vector2 screen = new(screenRaw.X, screenRaw.Y);
+                    if (IsClickableInEitherSpace(screen, path))
+                        continue;
+
+                    float d = entity.DistancePlayer;
+                    if (d >= bestDistance)
+                        continue;
+
+                    bestDistance = d;
+                    best = entity;
+                    bestMechanicId = mechanicId;
+                }
+            }
+
+            selectedMechanicId = bestMechanicId;
             return best;
         }
 
@@ -1464,6 +1557,28 @@ namespace ClickIt.Services
                 return clickLabyrinthTrials ? LabyrinthTrialsMechanicId : null;
 
             return clickAreaTransitions ? AreaTransitionsMechanicId : null;
+        }
+
+        internal static string? GetEldritchAltarMechanicIdForPath(bool clickExarchAltars, bool clickEaterAltars, string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            if (clickExarchAltars && path.Contains(global::ClickIt.Definitions.Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.AltarsSearingExarch;
+
+            if (clickEaterAltars && path.Contains(global::ClickIt.Definitions.Constants.TangleAltar, StringComparison.OrdinalIgnoreCase))
+                return MechanicIds.AltarsEaterOfWorlds;
+
+            return null;
+        }
+
+        internal static bool IsEldritchAltarPath(string path)
+        {
+            return !string.IsNullOrWhiteSpace(GetEldritchAltarMechanicIdForPath(
+                clickExarchAltars: true,
+                clickEaterAltars: true,
+                path));
         }
 
         private static bool IsLabyrinthTrialTransitionPath(string path)

@@ -281,6 +281,30 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldContinuePathingForSpecialAltarLabel_ReturnsTrue_OnlyWhenPathingEnabledWithEntityAndNoClickableAltars()
+        {
+            ClickService.ShouldContinuePathingForSpecialAltarLabel(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasBackingEntity: true,
+                hasClickableAltars: false).Should().BeTrue();
+
+            ClickService.ShouldContinuePathingForSpecialAltarLabel(
+                walkTowardOffscreenLabelsEnabled: false,
+                hasBackingEntity: true,
+                hasClickableAltars: false).Should().BeFalse();
+
+            ClickService.ShouldContinuePathingForSpecialAltarLabel(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasBackingEntity: false,
+                hasClickableAltars: false).Should().BeFalse();
+
+            ClickService.ShouldContinuePathingForSpecialAltarLabel(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasBackingEntity: true,
+                hasClickableAltars: true).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ResolveLabelMechanicIdForVisibleCandidateComparison_FallsBackToItems_ForWorldItemLabel()
         {
             ClickService.ResolveLabelMechanicIdForVisibleCandidateComparison(
@@ -357,6 +381,26 @@ namespace ClickIt.Tests.Unit
                 hasClickableShrine: false,
                 hasClickableLostShipment: false,
                 hasClickableSettlersOre: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void AreBothAltarOptionsActionable_ReturnsTrue_OnlyWhenTopAndBottomAreActionable()
+        {
+            ClickService.AreBothAltarOptionsActionable(
+                topVisibleAndClickable: true,
+                bottomVisibleAndClickable: true).Should().BeTrue();
+
+            ClickService.AreBothAltarOptionsActionable(
+                topVisibleAndClickable: true,
+                bottomVisibleAndClickable: false).Should().BeFalse();
+
+            ClickService.AreBothAltarOptionsActionable(
+                topVisibleAndClickable: false,
+                bottomVisibleAndClickable: true).Should().BeFalse();
+
+            ClickService.AreBothAltarOptionsActionable(
+                topVisibleAndClickable: false,
+                bottomVisibleAndClickable: false).Should().BeFalse();
         }
 
         [TestMethod]
@@ -600,6 +644,66 @@ namespace ClickIt.Tests.Unit
                 "Metadata/MiscellaneousObjects/AreaTransition");
 
             mechanicId.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void GetEldritchAltarMechanicIdForPath_ReturnsSearingExarch_WhenPathMatchesAndEnabled()
+        {
+            string? mechanicId = ClickService.GetEldritchAltarMechanicIdForPath(
+                clickExarchAltars: true,
+                clickEaterAltars: false,
+                path: "Metadata/MiscellaneousObjects/PrimordialBosses/CleansingFireAltar");
+
+            mechanicId.Should().Be(MechanicIds.AltarsSearingExarch);
+        }
+
+        [TestMethod]
+        public void GetEldritchAltarMechanicIdForPath_ReturnsEaterOfWorlds_WhenPathMatchesAndEnabled()
+        {
+            string? mechanicId = ClickService.GetEldritchAltarMechanicIdForPath(
+                clickExarchAltars: false,
+                clickEaterAltars: true,
+                path: "Metadata/MiscellaneousObjects/PrimordialBosses/TangleAltar");
+
+            mechanicId.Should().Be(MechanicIds.AltarsEaterOfWorlds);
+        }
+
+        [TestMethod]
+        public void GetEldritchAltarMechanicIdForPath_ReturnsNull_WhenDisabledOrUnrecognized()
+        {
+            ClickService.GetEldritchAltarMechanicIdForPath(
+                clickExarchAltars: false,
+                clickEaterAltars: false,
+                path: "Metadata/MiscellaneousObjects/PrimordialBosses/CleansingFireAltar").Should().BeNull();
+
+            ClickService.GetEldritchAltarMechanicIdForPath(
+                clickExarchAltars: true,
+                clickEaterAltars: true,
+                path: "Metadata/MiscellaneousObjects/PrimordialBosses/SomeOtherAltar").Should().BeNull();
+        }
+
+        [TestMethod]
+        public void ShouldDropStickyTargetForUntargetableEldritchAltar_DropsOnlyUntargetableAltars()
+        {
+            ClickService.ShouldDropStickyTargetForUntargetableEldritchAltar(
+                isEldritchAltar: true,
+                isTargetable: false).Should().BeTrue();
+
+            ClickService.ShouldDropStickyTargetForUntargetableEldritchAltar(
+                isEldritchAltar: true,
+                isTargetable: true).Should().BeFalse();
+
+            ClickService.ShouldDropStickyTargetForUntargetableEldritchAltar(
+                isEldritchAltar: false,
+                isTargetable: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsEldritchAltarPath_ReturnsTrueForKnownAltarPaths()
+        {
+            ClickService.IsEldritchAltarPath("Metadata/MiscellaneousObjects/PrimordialBosses/CleansingFireAltar").Should().BeTrue();
+            ClickService.IsEldritchAltarPath("Metadata/MiscellaneousObjects/PrimordialBosses/TangleAltar").Should().BeTrue();
+            ClickService.IsEldritchAltarPath("Metadata/MiscellaneousObjects/PrimordialBosses/OtherObject").Should().BeFalse();
         }
 
         [TestMethod]

@@ -168,6 +168,12 @@ namespace ClickIt.Services
                 return false;
             }
 
+            if (!AreBothAltarOptionsVisibleAndClickable(altar))
+            {
+                DebugLog(() => "Skipping altar - Top and bottom options are not both visible/clickable yet");
+                return false;
+            }
+
             var altarWeights = altar.GetCachedWeights(pc => weightCalculator.CalculateAltarWeights(pc));
             if (!altarWeights.HasValue)
             {
@@ -254,6 +260,40 @@ namespace ClickIt.Services
         private static bool IsValidVisible(Element el)
         {
             return el != null && el.IsValid && el.IsVisible;
+        }
+
+        private bool AreBothAltarOptionsVisibleAndClickable(PrimaryAltarComponent altar)
+        {
+            string altarPath = altar.AltarType.ToString();
+            bool topVisibleAndClickable = IsAltarOptionVisibleAndClickable(altar.TopMods?.Element, altarPath);
+            bool bottomVisibleAndClickable = IsAltarOptionVisibleAndClickable(altar.BottomMods?.Element, altarPath);
+            return AreBothAltarOptionsActionable(topVisibleAndClickable, bottomVisibleAndClickable);
+        }
+
+        internal static bool AreBothAltarOptionsActionable(bool topVisibleAndClickable, bool bottomVisibleAndClickable)
+        {
+            return topVisibleAndClickable && bottomVisibleAndClickable;
+        }
+
+        private bool IsAltarOptionVisibleAndClickable(Element? optionElement, string altarPath)
+        {
+            if (optionElement == null || !optionElement.IsValid || !optionElement.IsVisible)
+                return false;
+
+            RectangleF optionRect;
+            try
+            {
+                optionRect = optionElement.GetClientRect();
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (optionRect.Width <= 0 || optionRect.Height <= 0)
+                return false;
+
+            return IsClickableInEitherSpace(optionRect.Center, altarPath);
         }
 
         private bool IsValidVisibleUnderLock(Element el)
