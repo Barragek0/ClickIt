@@ -207,6 +207,12 @@ namespace ClickIt.Rendering
             });
             RenderSectionIfEnabled(settings.DebugShowHoveredItemMetadata, (x, y, h) => RenderHoveredItemMetadataDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowPathfinding, (x, y, h) => RenderPathfindingDebug(x, y, h));
+            RenderSectionIfEnabledWithPosition(settings.DebugShowUltimatum, (x, y, h) =>
+            {
+                int localX = x;
+                int nextY = RenderUltimatumDebug(ref localX, y, h);
+                return (localX, nextY);
+            });
             RenderSectionIfEnabledWithPosition(settings.DebugShowClicking, (x, y, h) =>
             {
                 int localX = x;

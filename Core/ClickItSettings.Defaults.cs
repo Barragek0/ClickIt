@@ -383,5 +383,34 @@ namespace ClickIt
             UltimatumModifierPriority = sanitized;
         }
 
+        private void EnsureUltimatumTakeRewardModifiersInitialized()
+        {
+            UltimatumTakeRewardModifierNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            UltimatumContinueModifierNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (UltimatumTakeRewardModifierNames.Count == 0 && UltimatumContinueModifierNames.Count == 0)
+            {
+                UltimatumContinueModifierNames = new HashSet<string>(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
+                return;
+            }
+
+            HashSet<string> allowed = new(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
+            UltimatumTakeRewardModifierNames.RemoveWhere(x => !allowed.Contains(x));
+            UltimatumContinueModifierNames.RemoveWhere(x => !allowed.Contains(x));
+
+            foreach (string name in UltimatumTakeRewardModifierNames.ToArray())
+            {
+                UltimatumContinueModifierNames.Remove(name);
+            }
+
+            foreach (string name in UltimatumModifiersConstants.AllModifierNamesWithStages)
+            {
+                if (!UltimatumTakeRewardModifierNames.Contains(name) && !UltimatumContinueModifierNames.Contains(name))
+                {
+                    UltimatumContinueModifierNames.Add(name);
+                }
+            }
+        }
+
     }
 }

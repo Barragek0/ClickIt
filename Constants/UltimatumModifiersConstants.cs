@@ -6,6 +6,28 @@ namespace ClickIt.Definitions
 {
     internal static class UltimatumModifiersConstants
     {
+        private static readonly KeyValuePair<string, int>[] TieredModifierMaxTiers =
+        [
+            new("Blistering Cold", 4),
+            new("Raging Dead", 4),
+            new("Restless Ground", 4),
+            new("Blood Altar", 2),
+            new("Quicksand", 4),
+            new("Razor Dance", 4),
+            new("Choking Miasma", 4),
+            new("Stormcaller Runes", 4),
+            new("Reduced Recovery", 2),
+            new("Ruin", 4),
+            new("Stalking Ruin", 4)
+        ];
+
+        private static readonly string[] TierSuffixes = ["I", "II", "III", "IV"];
+        private static readonly HashSet<string> HideBaseNameInStagedTable = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Ruin",
+            "Stalking Ruin"
+        };
+
         public static readonly string[] AllModifierNames =
         [
             "Resistant Monsters",
@@ -56,6 +78,8 @@ namespace ClickIt.Definitions
             "Ruin",
             "Stalking Ruin"
         ];
+
+        public static readonly string[] AllModifierNamesWithStages = BuildAllModifierNamesWithStages();
 
         public static readonly IReadOnlyDictionary<string, string> ModifierDescriptions =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -110,7 +134,72 @@ namespace ClickIt.Definitions
             if (ModifierDescriptions.TryGetValue(modifierName, out string? description))
                 return description;
 
+            if (TryGetTieredModifierBaseName(modifierName, out string baseModifierName, out string tierSuffix)
+                && ModifierDescriptions.TryGetValue(baseModifierName, out string? baseDescription)
+                && !string.IsNullOrWhiteSpace(baseDescription))
+            {
+                return $"{baseDescription} (Tier {tierSuffix})";
+            }
+
             return modifierName;
+        }
+
+        private static string[] BuildAllModifierNamesWithStages()
+        {
+            var ordered = new List<string>(AllModifierNames.Length + 64);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < AllModifierNames.Length; i++)
+            {
+                string name = AllModifierNames[i];
+                if (HideBaseNameInStagedTable.Contains(name))
+                    continue;
+
+                if (seen.Add(name))
+                    ordered.Add(name);
+            }
+
+            for (int i = 0; i < TieredModifierMaxTiers.Length; i++)
+            {
+                string baseName = TieredModifierMaxTiers[i].Key;
+                int maxTier = Math.Clamp(TieredModifierMaxTiers[i].Value, 1, TierSuffixes.Length);
+                for (int t = 0; t < maxTier; t++)
+                {
+                    string stagedName = $"{baseName} {TierSuffixes[t]}";
+                    if (seen.Add(stagedName))
+                        ordered.Add(stagedName);
+                }
+            }
+
+            return [.. ordered];
+        }
+
+        private static bool TryGetTieredModifierBaseName(string modifierName, out string baseModifierName, out string tierSuffix)
+        {
+            baseModifierName = string.Empty;
+            tierSuffix = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(modifierName))
+                return false;
+
+            string trimmed = modifierName.Trim();
+            for (int i = 0; i < TierSuffixes.Length; i++)
+            {
+                string suffix = TierSuffixes[i];
+                string marker = " " + suffix;
+                if (!trimmed.EndsWith(marker, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string candidateBase = trimmed[..^marker.Length].Trim();
+                if (candidateBase.Length == 0)
+                    return false;
+
+                baseModifierName = candidateBase;
+                tierSuffix = suffix;
+                return true;
+            }
+
+            return false;
         }
 
         public static Vector4 GetPriorityGradientColor(int index, int totalCount, float alpha = 1f)

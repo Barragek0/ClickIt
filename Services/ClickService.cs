@@ -53,6 +53,9 @@ namespace ClickIt.Services
         private long _movementSkillPostCastClickBlockUntilTimestampMs;
         private long _movementSkillStatusPollUntilTimestampMs;
         private object? _lastUsedMovementSkillEntry;
+        private long _gruelingGauntletPassiveCacheTimestampMs;
+        private bool _gruelingGauntletPassiveCachedValue;
+        private bool _gruelingGauntletPassiveCacheHasValue;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();

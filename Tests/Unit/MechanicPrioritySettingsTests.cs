@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
@@ -184,6 +185,53 @@ namespace ClickIt.Tests.Unit
             ignoreDistanceWithinById["settlers-petrified-wood"].Should().Be(90);
             ignoreDistanceWithinById["settlers-bismuth"].Should().Be(90);
             ignoreDistanceWithinById["settlers-verisium"].Should().Be(90);
+        }
+
+        [TestMethod]
+        public void MechanicsSubmenuLogic_LeftAndRightColumnRenderingFollowNodeValue()
+        {
+            var settings = new ClickItSettings();
+
+            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo? shouldRenderMethod = typeof(ClickItSettings).GetMethod("ShouldRenderMechanicEntry", BindingFlags.Static | BindingFlags.NonPublic);
+            getEntriesMethod.Should().NotBeNull();
+            shouldRenderMethod.Should().NotBeNull();
+
+            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
+            object ritualCompletedEntry = entries.First(entry =>
+                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "ritual-completed", StringComparison.Ordinal));
+
+            settings.ClickRitualCompleted.Value = true;
+            ((bool)shouldRenderMethod!.Invoke(null, [ritualCompletedEntry, false, string.Empty])!).Should().BeTrue();
+            ((bool)shouldRenderMethod.Invoke(null, [ritualCompletedEntry, true, string.Empty])!).Should().BeFalse();
+
+            settings.ClickRitualCompleted.Value = false;
+            ((bool)shouldRenderMethod.Invoke(null, [ritualCompletedEntry, false, string.Empty])!).Should().BeFalse();
+            ((bool)shouldRenderMethod.Invoke(null, [ritualCompletedEntry, true, string.Empty])!).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void MechanicsSubmenuLogic_GroupToggleUpdatesUnderlyingMechanicStates()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickRitualInitiate.Value = true;
+            settings.ClickRitualCompleted.Value = true;
+
+            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo? setGroupStateMethod = typeof(ClickItSettings).GetMethod("SetMechanicGroupState", BindingFlags.Static | BindingFlags.NonPublic);
+            getEntriesMethod.Should().NotBeNull();
+            setGroupStateMethod.Should().NotBeNull();
+
+            object entries = getEntriesMethod!.Invoke(settings, null)!;
+            setGroupStateMethod!.Invoke(null, ["ritual-altars", entries, false]);
+
+            settings.ClickRitualInitiate.Value.Should().BeFalse();
+            settings.ClickRitualCompleted.Value.Should().BeFalse();
+
+            setGroupStateMethod.Invoke(null, ["ritual-altars", entries, true]);
+
+            settings.ClickRitualInitiate.Value.Should().BeTrue();
+            settings.ClickRitualCompleted.Value.Should().BeTrue();
         }
     }
 }

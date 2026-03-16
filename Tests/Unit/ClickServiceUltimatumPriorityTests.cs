@@ -24,6 +24,22 @@ namespace ClickIt.Tests.Unit
             return (bool)method!.Invoke(null, new object[] { path })!;
         }
 
+        private static bool InvokeShouldTreatUltimatumChoiceAsSaturatedCore(bool hasSaturationState, bool isSaturated, bool fallbackVisible)
+        {
+            var method = typeof(ClickService).GetMethod("ShouldTreatUltimatumChoiceAsSaturatedCore", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+            return (bool)method!.Invoke(null, new object[] { hasSaturationState, isSaturated, fallbackVisible })!;
+        }
+
+        private static int InvokeDetermineGruelingGauntletActionCore(bool hasSaturatedChoice, bool shouldTakeReward)
+        {
+            var method = typeof(ClickService).GetMethod("DetermineGruelingGauntletActionCore", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            object action = method!.Invoke(null, new object[] { hasSaturatedChoice, shouldTakeReward })!;
+            return Convert.ToInt32(action);
+        }
+
         [TestMethod]
         public void GetModifierPriorityIndex_MatchesTieredNameByPrefix()
         {
@@ -76,6 +92,34 @@ namespace ClickIt.Tests.Unit
 
             int value = (int)field!.GetValue(null)!;
             value.Should().Be(200);
+        }
+
+        [DataTestMethod]
+        [DataRow(true, true, false, true)]
+        [DataRow(true, false, true, false)]
+        [DataRow(false, false, true, true)]
+        [DataRow(false, true, false, false)]
+        public void ShouldTreatUltimatumChoiceAsSaturatedCore_UsesExpectedDecision(
+            bool hasSaturationState,
+            bool isSaturated,
+            bool fallbackVisible,
+            bool expected)
+        {
+            InvokeShouldTreatUltimatumChoiceAsSaturatedCore(hasSaturationState, isSaturated, fallbackVisible).Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [DataRow(true, true, 2)]
+        [DataRow(true, false, 1)]
+        [DataRow(false, false, 1)]
+        public void DetermineGruelingGauntletActionCore_ReturnsExpectedAction(
+            bool hasSaturatedChoice,
+            bool shouldTakeReward,
+            int expected)
+        {
+            int action = InvokeDetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+
+            action.Should().Be(expected);
         }
 
         private sealed class ThrowingGetterStub

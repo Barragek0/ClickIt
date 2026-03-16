@@ -8,6 +8,13 @@ using ClickIt.Definitions;
 
 namespace ClickIt
 {
+    /**
+        * This file contains methods related to the ClickItSettings class, which are used to render the settings UI and manage related logic.
+        * It is separate from ClickItSettings.cs to keep the core settings data structure and the UI/logic code separate for better maintainability.
+        * This file cannot be split into partial files because 
+          doing so would affect ordering of the elements inside
+          of the settings panel.
+        */
     public partial class ClickItSettings : ISettings
     {
         private MechanicToggleTableEntry[]? _mechanicTableEntriesCache;
@@ -71,6 +78,7 @@ namespace ClickIt
                 || DebugShowInventoryPickup
                 || DebugShowHoveredItemMetadata
                 || DebugShowPathfinding
+                || DebugShowUltimatum
                 || DebugShowClicking
                 || DebugShowRuntimeDebugLogOverlay
                 || DebugShowRecentErrors;
@@ -88,6 +96,7 @@ namespace ClickIt
             && !DebugShowLabels
             && !DebugShowInventoryPickup
             && !DebugShowHoveredItemMetadata
+            && !DebugShowUltimatum
             && !DebugShowClicking
             && !DebugShowRuntimeDebugLogOverlay
             && !DebugShowRecentErrors;
@@ -140,6 +149,7 @@ namespace ClickIt
                 DrawToggleNodeControl("Inventory Pickup", DebugShowInventoryPickup, "Show/hide inventory pickup/fullness debug section");
                 DrawToggleNodeControl("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section");
                 DrawToggleNodeControl("Pathfinding", DebugShowPathfinding, "Show/hide offscreen pathfinding debug section");
+                DrawToggleNodeControl("Ultimatum", DebugShowUltimatum, "Show/hide ultimatum automation debug section");
                 DrawToggleNodeControl("Clicking", DebugShowClicking, "Show/hide clicking debug section");
                 DrawToggleNodeControl("Debug Log Overlay", DebugShowRuntimeDebugLogOverlay, "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail");
                 DrawToggleNodeControl("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section");
@@ -647,9 +657,6 @@ namespace ClickIt
         private void DrawMechanicGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
         {
             ImGui.Indent();
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.75f, 0.75f, 0.75f, 1f));
-            ImGui.TextWrapped($"{group.DisplayName} submenu: toggle individual mechanics in this group.");
-            ImGui.PopStyleColor();
 
             foreach (MechanicToggleTableEntry entry in entries)
             {
@@ -847,6 +854,59 @@ namespace ClickIt
             target.Add(strongboxId);
         }
 
+        private void MoveUltimatumTakeRewardModifier(string modifierName, bool moveToTakeReward)
+        {
+            HashSet<string> source = moveToTakeReward ? UltimatumContinueModifierNames : UltimatumTakeRewardModifierNames;
+            HashSet<string> target = moveToTakeReward ? UltimatumTakeRewardModifierNames : UltimatumContinueModifierNames;
+
+            source.Remove(modifierName);
+            target.Add(modifierName);
+        }
+
+        private static bool TryGetUltimatumModifierBaseName(string modifierName, out string baseModifierName)
+        {
+            baseModifierName = string.Empty;
+            if (string.IsNullOrWhiteSpace(modifierName))
+                return false;
+
+            string[] suffixes = [" I", " II", " III", " IV"];
+            string trimmed = modifierName.Trim();
+            for (int i = 0; i < suffixes.Length; i++)
+            {
+                string suffix = suffixes[i];
+                if (!trimmed.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                baseModifierName = trimmed[..^suffix.Length].Trim();
+                return baseModifierName.Length > 0;
+            }
+
+            return false;
+        }
+
+        private static string NormalizeUltimatumModifierForMatching(string modifierName)
+        {
+            if (string.IsNullOrWhiteSpace(modifierName))
+                return string.Empty;
+
+            string normalized = modifierName.Trim();
+
+            // Some panel strings are shaped like: InternalId (Display Name).
+            int closeParen = normalized.LastIndexOf(')');
+            if (closeParen == normalized.Length - 1)
+            {
+                int openParen = normalized.LastIndexOf('(');
+                if (openParen >= 0 && openParen < closeParen)
+                {
+                    string inner = normalized[(openParen + 1)..closeParen].Trim();
+                    if (!string.IsNullOrWhiteSpace(inner))
+                        normalized = inner;
+                }
+            }
+
+            return normalized;
+        }
+
         private static bool MatchesStrongboxSearch(StrongboxFilterEntry entry, string filter)
         {
             if (string.IsNullOrWhiteSpace(filter))
@@ -928,6 +988,39 @@ namespace ClickIt
 
             _ultimatumPrioritySnapshot = UltimatumModifierPriority.ToArray();
             return _ultimatumPrioritySnapshot;
+        }
+
+        public IReadOnlyCollection<string> GetUltimatumTakeRewardModifierNames()
+        {
+            EnsureUltimatumTakeRewardModifiersInitialized();
+            return UltimatumTakeRewardModifierNames;
+        }
+
+        public bool ShouldTakeRewardForGruelingGauntletModifier(string? modifierName)
+        {
+            // Hot-path safe guard: fully sanitize only when collections are missing.
+            if (UltimatumTakeRewardModifierNames == null || UltimatumContinueModifierNames == null)
+                EnsureUltimatumTakeRewardModifiersInitialized();
+
+            HashSet<string> takeRewardSet = UltimatumTakeRewardModifierNames ?? [];
+
+            if (string.IsNullOrWhiteSpace(modifierName))
+                return false;
+
+            string normalized = NormalizeUltimatumModifierForMatching(modifierName);
+            if (takeRewardSet.Contains(normalized))
+                return true;
+
+            if (takeRewardSet.Contains($"{normalized} I"))
+                return true;
+
+            if (TryGetUltimatumModifierBaseName(normalized, out string baseName)
+                && takeRewardSet.Contains(baseName))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private bool HasMatchingUltimatumSnapshot()
@@ -1021,6 +1114,285 @@ namespace ClickIt
             {
                 ImGui.EndTable();
             }
+        }
+
+        private void DrawUltimatumTakeRewardModifierTablePanel()
+        {
+            EnsureUltimatumTakeRewardModifiersInitialized();
+
+            bool hasDetection = Services.ClickService.TryGetGruelingGauntletDetectionForSettings(out bool isGruelingGauntletActive);
+            if (!hasDetection || !isGruelingGauntletActive)
+            {
+                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "This table only does anything when Gruelling Gauntlet is allocated.");
+                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "ClickIt auto-detects that passive in-game and shows this table when it is active.");
+                return;
+            }
+
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Only used when Gruelling Gauntlet is allocated on your Atlas tree.");
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "ClickIt auto-detects that passive from game data and switches to this table automatically.");
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Rows with [v] can be clicked to open stage-specific submenu options.");
+            ImGui.Spacing();
+
+            DrawSearchBar("##UltimatumTakeRewardSearch", "Clear##UltimatumTakeRewardSearchClear", ref ultimatumTakeRewardSearchFilter);
+            if (DrawResetDefaultsButton("Reset Defaults##UltimatumTakeRewardResetDefaults"))
+            {
+                UltimatumTakeRewardModifierNames.Clear();
+                UltimatumContinueModifierNames = new HashSet<string>(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
+            }
+
+            ImGui.Spacing();
+
+            DrawDualTransferTable(
+                tableId: "UltimatumTakeRewardLists",
+                leftHeader: "Take Reward",
+                rightHeader: "Keep Going",
+                leftBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+                rightBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+                drawLeft: () => DrawUltimatumTakeRewardList("TakeReward##Ultimatum", UltimatumTakeRewardModifierNames, moveToTakeReward: false, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f)),
+                drawRight: () => DrawUltimatumTakeRewardList("Continue##Ultimatum", UltimatumContinueModifierNames, moveToTakeReward: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f)));
+        }
+
+        private void DrawUltimatumTakeRewardList(string id, HashSet<string> sourceSet, bool moveToTakeReward, Vector4 textColor)
+        {
+            ImGui.PushID(id);
+
+            bool hasEntries = false;
+            foreach (string modifier in UltimatumModifiersConstants.AllModifierNamesWithStages)
+            {
+                if (UltimatumTieredModifierNames.Contains(modifier))
+                    continue;
+                if (!sourceSet.Contains(modifier))
+                    continue;
+                if (!MatchesUltimatumSearch(modifier, ultimatumTakeRewardSearchFilter))
+                    continue;
+
+                hasEntries = true;
+                bool arrowClicked = DrawTransferListRow(id, modifier, modifier, moveToTakeReward, textColor);
+
+                if (ImGui.IsItemHovered())
+                {
+                    string description = UltimatumModifiersConstants.GetDescription(modifier);
+                    if (!string.IsNullOrWhiteSpace(description))
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
+                        ImGui.Indent();
+                        ImGui.TextWrapped(description);
+                        ImGui.Unindent();
+                        ImGui.PopStyleColor();
+                    }
+                }
+
+                if (arrowClicked)
+                {
+                    MoveUltimatumTakeRewardModifier(modifier, moveToTakeReward);
+                    _expandedUltimatumTakeRewardRowKey = string.Empty;
+                    ImGui.PopID();
+                    return;
+                }
+            }
+
+            foreach (UltimatumModifierGroupEntry group in UltimatumModifierGroups)
+            {
+                if (!ShouldRenderUltimatumModifierGroup(group, sourceSet, ultimatumTakeRewardSearchFilter))
+                    continue;
+
+                hasEntries = true;
+                UltimatumGroupRowRenderState rowState = DrawUltimatumModifierGroupRow(id, group, moveToTakeReward, textColor);
+                if (rowState.ArrowClicked)
+                {
+                    SetUltimatumModifierGroupState(group, moveToTakeReward);
+                    _expandedUltimatumTakeRewardRowKey = string.Empty;
+                    ImGui.PopID();
+                    return;
+                }
+
+                if (rowState.RowClicked)
+                    ToggleExpandedUltimatumTakeRewardRow(id, group.Id);
+
+                if (rowState.IsHovered)
+                {
+                    string description = UltimatumModifiersConstants.GetDescription(group.DisplayName);
+                    if (!string.IsNullOrWhiteSpace(description))
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
+                        ImGui.Indent();
+                        ImGui.TextWrapped(description);
+                        ImGui.Unindent();
+                        ImGui.PopStyleColor();
+                    }
+                }
+
+                if (IsExpandedUltimatumTakeRewardRow(id, group.Id))
+                    DrawUltimatumModifierGroupSubmenu(id, group, moveToTakeReward);
+            }
+
+            DrawNoEntriesPlaceholder(hasEntries);
+            ImGui.PopID();
+        }
+
+        private readonly struct UltimatumGroupRowRenderState(bool rowClicked, bool arrowClicked, bool isHovered)
+        {
+            public bool RowClicked { get; } = rowClicked;
+            public bool ArrowClicked { get; } = arrowClicked;
+            public bool IsHovered { get; } = isHovered;
+        }
+
+        private sealed record UltimatumModifierGroupEntry(string Id, string DisplayName, string[] Members);
+
+        private static readonly UltimatumModifierGroupEntry[] UltimatumModifierGroups = BuildUltimatumModifierGroups();
+        private static readonly HashSet<string> UltimatumTieredModifierNames = BuildUltimatumTieredModifierNames();
+
+        private UltimatumGroupRowRenderState DrawUltimatumModifierGroupRow(string listId, UltimatumModifierGroupEntry group, bool moveToTakeReward, Vector4 textColor)
+        {
+            string label = $"{group.DisplayName} [v]##{listId}_{group.Id}";
+            float rowWidth = CalculateItemTypeRowWidth();
+            const float arrowWidth = 28f;
+
+            if (moveToTakeReward)
+            {
+                bool leftArrowClicked = ImGui.Button($"<-##MoveUltimatumGroup_{listId}_{group.Id}", new Vector2(arrowWidth, 0));
+                bool leftArrowHovered = ImGui.IsItemHovered();
+                ImGui.SameLine();
+                bool rowClicked = DrawUltimatumModifierGroupSelectable(listId, group.Id, label, rowWidth, textColor);
+                bool rowHovered = ImGui.IsItemHovered();
+                return new UltimatumGroupRowRenderState(rowClicked, leftArrowClicked, rowHovered || leftArrowHovered);
+            }
+
+            bool clicked = DrawUltimatumModifierGroupSelectable(listId, group.Id, label, rowWidth, textColor);
+            bool rowIsHovered = ImGui.IsItemHovered();
+            ImGui.SameLine();
+            bool rightArrowClicked = ImGui.Button($"->##MoveUltimatumGroup_{listId}_{group.Id}", new Vector2(arrowWidth, 0));
+            bool rightArrowHovered = ImGui.IsItemHovered();
+            return new UltimatumGroupRowRenderState(clicked, rightArrowClicked, rowIsHovered || rightArrowHovered);
+        }
+
+        private bool DrawUltimatumModifierGroupSelectable(string listId, string groupId, string label, float rowWidth, Vector4 textColor)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+            bool clicked = ImGui.Selectable(label, IsExpandedUltimatumTakeRewardRow(listId, groupId), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+            ImGui.PopStyleColor();
+            return clicked;
+        }
+
+        private void DrawUltimatumModifierGroupSubmenu(string listId, UltimatumModifierGroupEntry group, bool moveToTakeReward)
+        {
+            ImGui.Indent();
+
+            foreach (string modifier in UltimatumModifiersConstants.AllModifierNamesWithStages)
+            {
+                if (!group.Members.Contains(modifier, StringComparer.OrdinalIgnoreCase))
+                    continue;
+                if (!MatchesUltimatumSearch(modifier, ultimatumTakeRewardSearchFilter))
+                    continue;
+
+                bool isTakeReward = UltimatumTakeRewardModifierNames.Contains(modifier);
+                bool enabledForList = moveToTakeReward ? !isTakeReward : isTakeReward;
+                Vector4 rowColor = enabledForList ? (moveToTakeReward ? WhitelistTextColor : BlacklistTextColor) : (moveToTakeReward ? BlacklistTextColor : WhitelistTextColor);
+                ImGui.PushStyleColor(ImGuiCol.Text, rowColor);
+                if (ImGui.Checkbox($"{modifier}##UltimatumGroupSubmenu_{listId}_{group.Id}_{modifier}", ref enabledForList))
+                {
+                    bool moveModifierToTakeReward = moveToTakeReward ? !enabledForList : enabledForList;
+                    MoveUltimatumTakeRewardModifier(modifier, moveModifierToTakeReward);
+                }
+                ImGui.PopStyleColor();
+            }
+
+            ImGui.Unindent();
+        }
+
+        private static bool ShouldRenderUltimatumModifierGroup(UltimatumModifierGroupEntry group, HashSet<string> sourceSet, string filter)
+        {
+            bool matchesGroup = MatchesUltimatumSearch(group.DisplayName, filter);
+            for (int i = 0; i < group.Members.Length; i++)
+            {
+                string member = group.Members[i];
+                if (!sourceSet.Contains(member))
+                    continue;
+                if (matchesGroup || MatchesUltimatumSearch(member, filter))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static UltimatumModifierGroupEntry[] BuildUltimatumModifierGroups()
+        {
+            Dictionary<string, List<string>> membersByBase = new(StringComparer.OrdinalIgnoreCase);
+            List<string> groupOrder = [];
+
+            for (int i = 0; i < UltimatumModifiersConstants.AllModifierNamesWithStages.Length; i++)
+            {
+                string modifier = UltimatumModifiersConstants.AllModifierNamesWithStages[i];
+                if (!TryGetUltimatumModifierBaseName(modifier, out string baseName))
+                    continue;
+
+                if (!membersByBase.TryGetValue(baseName, out List<string>? members))
+                {
+                    members = [];
+                    membersByBase[baseName] = members;
+                    groupOrder.Add(baseName);
+                }
+
+                members.Add(modifier);
+            }
+
+            var groups = new List<UltimatumModifierGroupEntry>(groupOrder.Count);
+            for (int i = 0; i < groupOrder.Count; i++)
+            {
+                string baseName = groupOrder[i];
+                List<string> members = membersByBase[baseName];
+                if (members.Count == 0)
+                    continue;
+
+                groups.Add(new UltimatumModifierGroupEntry(baseName, baseName, [.. members.Distinct(StringComparer.OrdinalIgnoreCase)]));
+            }
+
+            return [.. groups];
+        }
+
+        private static HashSet<string> BuildUltimatumTieredModifierNames()
+        {
+            HashSet<string> result = new(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < UltimatumModifierGroups.Length; i++)
+            {
+                // Hide tiered bases from top-level rows; they are managed via grouped submenu entries.
+                result.Add(UltimatumModifierGroups[i].Id);
+
+                string[] members = UltimatumModifierGroups[i].Members;
+                for (int j = 0; j < members.Length; j++)
+                {
+                    result.Add(members[j]);
+                }
+            }
+
+            return result;
+        }
+
+        private void SetUltimatumModifierGroupState(UltimatumModifierGroupEntry group, bool moveToTakeReward)
+        {
+            for (int i = 0; i < group.Members.Length; i++)
+            {
+                MoveUltimatumTakeRewardModifier(group.Members[i], moveToTakeReward);
+            }
+        }
+
+        private static string BuildExpandedUltimatumTakeRewardRowKey(string listId, string rowId)
+        {
+            return $"{listId}:{rowId}";
+        }
+
+        private bool IsExpandedUltimatumTakeRewardRow(string listId, string rowId)
+        {
+            return string.Equals(_expandedUltimatumTakeRewardRowKey, BuildExpandedUltimatumTakeRewardRowKey(listId, rowId), StringComparison.Ordinal);
+        }
+
+        private void ToggleExpandedUltimatumTakeRewardRow(string listId, string rowId)
+        {
+            string rowKey = BuildExpandedUltimatumTakeRewardRowKey(listId, rowId);
+            if (string.Equals(_expandedUltimatumTakeRewardRowKey, rowKey, StringComparison.Ordinal))
+                _expandedUltimatumTakeRewardRowKey = string.Empty;
+            else
+                _expandedUltimatumTakeRewardRowKey = rowKey;
         }
 
         private static bool MatchesUltimatumSearch(string modifier, string filter)

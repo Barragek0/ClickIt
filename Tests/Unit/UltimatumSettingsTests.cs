@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Reflection;
 using ClickIt.Definitions;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -92,13 +93,13 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void UltimatumDescriptions_AreOneLineAndEasyToScan()
         {
-            foreach (var modifier in UltimatumModifiersConstants.AllModifierNames)
+            foreach (var modifier in UltimatumModifiersConstants.AllModifierNamesWithStages)
             {
                 string description = UltimatumModifiersConstants.GetDescription(modifier);
 
                 description.Should().NotBeNullOrWhiteSpace();
                 description.Should().NotContain("\n");
-                description.Length.Should().BeLessOrEqualTo(120);
+                description.Length.Should().BeLessOrEqualTo(150);
             }
         }
 
@@ -109,6 +110,148 @@ namespace ClickIt.Tests.Unit
             {
                 UltimatumModifiersConstants.ModifierDescriptions.ContainsKey(modifier).Should().BeTrue();
             }
+        }
+
+        [TestMethod]
+        public void UltimatumModifiersWithStages_ContainsTieredAndBaseEntries()
+        {
+            string[] names = UltimatumModifiersConstants.AllModifierNamesWithStages;
+
+            names.Should().Contain("Restless Ground");
+            names.Should().Contain("Restless Ground I");
+            names.Should().Contain("Restless Ground IV");
+            names.Should().Contain("Stormcaller Runes IV");
+            names.Should().Contain("Blood Altar II");
+            names.Should().Contain("Reduced Recovery II");
+            names.Should().NotContain("Blood Altar III");
+            names.Should().NotContain("Reduced Recovery III");
+            names.Distinct(StringComparer.OrdinalIgnoreCase).Count().Should().Be(names.Length);
+        }
+
+        [TestMethod]
+        public void UltimatumTakeRewardTable_DefaultsToContinueAllAndTakeRewardNone()
+        {
+            var settings = new ClickItSettings();
+
+            settings.GetUltimatumTakeRewardModifierNames().Should().BeEmpty();
+            settings.UltimatumContinueModifierNames.Should().HaveCount(UltimatumModifiersConstants.AllModifierNamesWithStages.Length);
+        }
+
+        [TestMethod]
+        public void ShouldTakeRewardForGruelingGauntletModifier_MatchesExactAndTieredBaseEntries()
+        {
+            var settings = new ClickItSettings
+            {
+                UltimatumTakeRewardModifierNames = new HashSet<string>(new[] { "Restless Ground", "Ruin II" }, StringComparer.OrdinalIgnoreCase),
+                UltimatumContinueModifierNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            };
+
+            settings.ShouldTakeRewardForGruelingGauntletModifier("Restless Ground IV").Should().BeTrue();
+            settings.ShouldTakeRewardForGruelingGauntletModifier("Ruin II").Should().BeTrue();
+            settings.ShouldTakeRewardForGruelingGauntletModifier("Ruin IV").Should().BeFalse();
+            settings.ShouldTakeRewardForGruelingGauntletModifier("Deadly Monsters").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldTakeRewardForGruelingGauntletModifier_MatchesDisplayNameInsideParentheses()
+        {
+            var settings = new ClickItSettings
+            {
+                UltimatumTakeRewardModifierNames = new HashSet<string>(new[] { "Stormcaller Runes IV" }, StringComparer.OrdinalIgnoreCase),
+                UltimatumContinueModifierNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            };
+
+            settings.ShouldTakeRewardForGruelingGauntletModifier("LightningRuneDaemon4 (Stormcaller Runes IV)").Should().BeTrue();
+            settings.ShouldTakeRewardForGruelingGauntletModifier("LightningRuneDaemon4(Stormcaller Runes IV)").Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldTakeRewardForGruelingGauntletModifier_MatchesTierBaseAfterParenthesesNormalization()
+        {
+            var settings = new ClickItSettings
+            {
+                UltimatumTakeRewardModifierNames = new HashSet<string>(new[] { "Stormcaller Runes" }, StringComparer.OrdinalIgnoreCase),
+                UltimatumContinueModifierNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            };
+
+            settings.ShouldTakeRewardForGruelingGauntletModifier("LightningRuneDaemon4 (Stormcaller Runes IV)").Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldTakeRewardForGruelingGauntletModifier_MatchesBaseInGameNameToTierOneTableEntry()
+        {
+            var settings = new ClickItSettings
+            {
+                UltimatumTakeRewardModifierNames = new HashSet<string>(new[] { "Ruin I" }, StringComparer.OrdinalIgnoreCase),
+                UltimatumContinueModifierNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            };
+
+            settings.ShouldTakeRewardForGruelingGauntletModifier("Ruin").Should().BeTrue();
+            settings.ShouldTakeRewardForGruelingGauntletModifier("Stalking Ruin").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void UltimatumDescriptions_TieredModifiersIncludeBaseDescriptionAndTierLabel()
+        {
+            string tieredDescription = UltimatumModifiersConstants.GetDescription("Blistering Cold I");
+
+            tieredDescription.Should().Contain("Cold");
+            tieredDescription.Should().Contain("Tier I");
+        }
+
+        [TestMethod]
+        public void UltimatumTakeRewardSubmenuLogic_MoveToTakeReward_MarksModifierAsTakeRewardInRuntimeDecision()
+        {
+            var settings = new ClickItSettings();
+            const string modifier = "Blistering Cold III";
+
+            settings.UltimatumTakeRewardModifierNames.Remove(modifier);
+            settings.UltimatumContinueModifierNames.Add(modifier);
+
+            MethodInfo? moveMethod = typeof(ClickItSettings).GetMethod("MoveUltimatumTakeRewardModifier", BindingFlags.Instance | BindingFlags.NonPublic);
+            moveMethod.Should().NotBeNull();
+            moveMethod!.Invoke(settings, [modifier, true]);
+
+            settings.UltimatumTakeRewardModifierNames.Should().Contain(modifier);
+            settings.UltimatumContinueModifierNames.Should().NotContain(modifier);
+            settings.ShouldTakeRewardForGruelingGauntletModifier(modifier).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void UltimatumTakeRewardSubmenuLogic_MoveToKeepGoing_MarksModifierAsKeepGoingInRuntimeDecision()
+        {
+            var settings = new ClickItSettings();
+            const string modifier = "Blistering Cold III";
+
+            settings.UltimatumTakeRewardModifierNames.Add(modifier);
+            settings.UltimatumContinueModifierNames.Remove(modifier);
+
+            MethodInfo? moveMethod = typeof(ClickItSettings).GetMethod("MoveUltimatumTakeRewardModifier", BindingFlags.Instance | BindingFlags.NonPublic);
+            moveMethod.Should().NotBeNull();
+            moveMethod!.Invoke(settings, [modifier, false]);
+
+            settings.UltimatumTakeRewardModifierNames.Should().NotContain(modifier);
+            settings.UltimatumContinueModifierNames.Should().Contain(modifier);
+            settings.ShouldTakeRewardForGruelingGauntletModifier(modifier).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void UltimatumTakeRewardSubmenuLogic_TieredGroupContainsTierEntriesOnly_NotBaseName()
+        {
+            FieldInfo? groupsField = typeof(ClickItSettings).GetField("UltimatumModifierGroups", BindingFlags.Static | BindingFlags.NonPublic);
+            groupsField.Should().NotBeNull();
+
+            var groups = ((System.Collections.IEnumerable)groupsField!.GetValue(null)!).Cast<object>().ToList();
+            object blisteringColdGroup = groups.First(group =>
+                string.Equals((string)group.GetType().GetProperty("Id")!.GetValue(group)!, "Blistering Cold", StringComparison.Ordinal));
+
+            var members = ((System.Collections.IEnumerable)blisteringColdGroup.GetType().GetProperty("Members")!.GetValue(blisteringColdGroup)!)
+                .Cast<string>()
+                .ToArray();
+
+            members.Should().Contain("Blistering Cold I");
+            members.Should().Contain("Blistering Cold IV");
+            members.Should().NotContain("Blistering Cold");
         }
 
         [TestMethod]
@@ -189,9 +332,34 @@ namespace ClickIt.Tests.Unit
             settings.DebugShowAltarService.Value = false;
             settings.DebugShowLabels.Value = false;
             settings.DebugShowHoveredItemMetadata.Value = false;
+            settings.DebugShowUltimatum.Value = false;
             settings.DebugShowRecentErrors.Value = false;
 
             settings.IsAnyDetailedDebugSectionEnabled().Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void DetailedDebugSections_UltimatumToggleEnablesDetailedOverlay()
+        {
+            var settings = new ClickItSettings();
+
+            settings.DebugShowStatus.Value = false;
+            settings.DebugShowGameState.Value = false;
+            settings.DebugShowPerformance.Value = false;
+            settings.DebugShowClickFrequencyTarget.Value = false;
+            settings.DebugShowAltarDetection.Value = false;
+            settings.DebugShowAltarService.Value = false;
+            settings.DebugShowLabels.Value = false;
+            settings.DebugShowInventoryPickup.Value = false;
+            settings.DebugShowHoveredItemMetadata.Value = false;
+            settings.DebugShowPathfinding.Value = false;
+            settings.DebugShowUltimatum.Value = true;
+            settings.DebugShowClicking.Value = false;
+            settings.DebugShowRuntimeDebugLogOverlay.Value = false;
+            settings.DebugShowRecentErrors.Value = false;
+
+            settings.IsAnyDetailedDebugSectionEnabled().Should().BeTrue();
+            settings.IsOnlyPathfindingDetailedDebugSectionEnabled().Should().BeFalse();
         }
     }
 }

@@ -24,11 +24,16 @@ namespace ClickIt.Services
             public bool IsSelected { get; } = isSelected;
         }
 
-        private readonly struct UltimatumPanelChoiceCandidate(Element choiceElement, string modifierName, int priorityIndex)
+        private readonly struct UltimatumPanelChoiceCandidate(
+            Element choiceElement,
+            string modifierName,
+            int priorityIndex,
+            bool isSaturated)
         {
             public Element ChoiceElement { get; } = choiceElement;
             public string ModifierName { get; } = modifierName;
             public int PriorityIndex { get; } = priorityIndex;
+            public bool IsSaturated { get; } = isSaturated;
         }
 
         private static bool IsUltimatumPath(string? path) => Constants.IsUltimatumInteractablePath(path);
@@ -170,7 +175,7 @@ namespace ClickIt.Services
             if (label == null)
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] Label was null.");
-                return false;
+                return PublishInitialUltimatumFailure("InitialLabelNull", "Label was null");
             }
 
             string labelPath = label.ItemOnGround?.Path ?? string.Empty;
@@ -182,13 +187,13 @@ namespace ClickIt.Services
             if (!clickInitialUltimatum)
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] Disabled by settings.");
-                return false;
+                return PublishInitialUltimatumFailure("InitialDisabled", "Initial ultimatum click setting disabled");
             }
 
             if (!IsUltimatumLabel(label))
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] Label is not Ultimatum interactable path.");
-                return false;
+                return PublishInitialUltimatumFailure("InitialNotUltimatum", "Label path is not ultimatum interactable");
             }
 
             List<string> diagnostics = new(16);
@@ -198,7 +203,36 @@ namespace ClickIt.Services
             if (options.Count == 0)
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] No Ultimatum options found in UI tree.");
-                return false;
+                return PublishInitialUltimatumFailure("InitialNoOptions", "No options discovered from ultimatum label tree");
+            }
+
+            if (IsGruelingGauntletPassiveActive())
+            {
+                bool hasSaturatedChoice = TryGetSaturatedUltimatumGroundOption(options, out (Element OptionElement, string ModifierName) saturatedChoice);
+                bool shouldTakeReward = hasSaturatedChoice
+                    && settings.ShouldTakeRewardForGruelingGauntletModifier(saturatedChoice.ModifierName);
+
+                GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+                string saturatedModifierName = hasSaturatedChoice ? saturatedChoice.ModifierName : string.Empty;
+                DebugLog(() => $"[TryClickPreferredUltimatumModifier] Grueling Gauntlet action={action}, saturatedModifier='{saturatedModifierName}', shouldTakeReward={shouldTakeReward}");
+
+                bool clickedBegin = TryClickUltimatumBeginButton(label, windowTopLeft);
+                PublishUltimatumDebug(
+                    stage: "InitialGruelingHandled",
+                    source: "InitialLabel",
+                    isPanelVisible: false,
+                    isGruelingGauntletActive: true,
+                    hasSaturatedChoice: hasSaturatedChoice,
+                    saturatedModifier: saturatedModifierName,
+                    shouldTakeReward: shouldTakeReward,
+                    action: action.ToString(),
+                    candidateCount: options.Count,
+                    saturatedCandidateCount: hasSaturatedChoice ? 1 : 0,
+                    clickedChoice: false,
+                    clickedConfirm: clickedBegin,
+                    clickedTakeRewards: false,
+                    notes: clickedBegin ? "Clicked begin/confirm path on initial label" : "Begin/confirm click failed on initial label");
+                return clickedBegin;
             }
 
             var priorities = settings.GetUltimatumModifierPriority();
@@ -227,6 +261,13 @@ namespace ClickIt.Services
             if (bestOption == null || bestIndex == int.MaxValue)
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] No candidate matched configured priorities.");
+                PublishUltimatumDebug(
+                    stage: "InitialNoPriorityCandidate",
+                    source: "InitialLabel",
+                    isPanelVisible: false,
+                    isGruelingGauntletActive: false,
+                    candidateCount: options.Count,
+                    notes: "No candidate matched ultimatum priority table");
                 return false;
             }
 
@@ -239,16 +280,72 @@ namespace ClickIt.Services
 
             if (!clicked)
             {
+                PublishUltimatumDebug(
+                    stage: "InitialChoiceClickFailed",
+                    source: "InitialLabel",
+                    isPanelVisible: false,
+                    isGruelingGauntletActive: false,
+                    candidateCount: options.Count,
+                    bestModifier: bestModifier,
+                    bestPriority: bestIndex,
+                    clickedChoice: false,
+                    notes: "Preferred choice click failed");
                 return false;
             }
 
             Thread.Sleep(UltimatumChoiceToBeginDelayMs);
-            TryClickUltimatumBeginButton(label, windowTopLeft);
-
-            return true;
+            bool clickedBeginButton = TryClickUltimatumBeginButton(label, windowTopLeft);
+            PublishUltimatumDebug(
+                stage: "InitialHandled",
+                source: "InitialLabel",
+                isPanelVisible: false,
+                isGruelingGauntletActive: false,
+                candidateCount: options.Count,
+                bestModifier: bestModifier,
+                bestPriority: bestIndex,
+                clickedChoice: true,
+                clickedConfirm: clickedBeginButton,
+                notes: clickedBeginButton ? "Clicked preferred choice and begin" : "Choice clicked but begin click failed");
+            return clickedBeginButton;
         }
 
-        private void TryClickUltimatumBeginButton(LabelOnGround label, Vector2 windowTopLeft)
+        private bool PublishInitialUltimatumFailure(string stage, string notes, int candidateCount = 0)
+        {
+            PublishUltimatumDebug(
+                stage: stage,
+                source: "InitialLabel",
+                isPanelVisible: false,
+                isGruelingGauntletActive: ShouldCaptureUltimatumDebug() && IsGruelingGauntletPassiveActive(),
+                candidateCount: candidateCount,
+                notes: notes);
+            return false;
+        }
+
+        private static bool TryGetSaturatedUltimatumGroundOption(
+            IReadOnlyList<(Element OptionElement, string ModifierName)> options,
+            out (Element OptionElement, string ModifierName) saturatedChoice)
+        {
+            saturatedChoice = default;
+
+            for (int i = 0; i < options.Count; i++)
+            {
+                (Element optionElement, string modifierName) = options[i];
+                if (optionElement == null || !optionElement.IsValid)
+                    continue;
+
+                bool hasSaturationState = TryReadUltimatumChoiceSaturation(optionElement, out bool isSaturated);
+                bool saturatedForSelection = ShouldTreatUltimatumChoiceAsSaturatedCore(hasSaturationState, isSaturated, optionElement.IsVisible);
+                if (!saturatedForSelection)
+                    continue;
+
+                saturatedChoice = (optionElement, modifierName);
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryClickUltimatumBeginButton(LabelOnGround label, Vector2 windowTopLeft)
         {
             List<string> diagnostics = new(8);
             Element? beginButton = GetUltimatumBeginButton(label, diagnostics);
@@ -257,7 +354,7 @@ namespace ClickIt.Services
             if (beginButton == null)
             {
                 DebugLog(() => "[TryClickUltimatumBeginButton] Begin button not found.");
-                return;
+                return false;
             }
 
             if (!TryClickUltimatumElement(
@@ -267,10 +364,11 @@ namespace ClickIt.Services
                 "[TryClickUltimatumBeginButton] Rejected by clickable-area check.",
                 "[TryClickUltimatumBeginButton] Clicking Begin at"))
             {
-                return;
+                return false;
             }
 
             Thread.Sleep(UltimatumPostBeginDelayMs + UltimatumPostBeginAdditionalClickDelayMs);
+            return true;
         }
 
     }

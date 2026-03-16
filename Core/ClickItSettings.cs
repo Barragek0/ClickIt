@@ -75,16 +75,19 @@ namespace ClickIt
         [Menu("Pathfinding", "Show/hide offscreen pathfinding debug section", 10, 2)]
         public ToggleNode DebugShowPathfinding { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Clicking", "Show/hide clicking debug section", 11, 2)]
+        [Menu("Ultimatum", "Show/hide ultimatum automation debug section", 11, 2)]
+        public ToggleNode DebugShowUltimatum { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Clicking", "Show/hide clicking debug section", 12, 2)]
         public ToggleNode DebugShowClicking { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Log Overlay", "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail.", 12, 2)]
+        [Menu("Debug Log Overlay", "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail.", 13, 2)]
         public ToggleNode DebugShowRuntimeDebugLogOverlay { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 13, 2)]
+        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 14, 2)]
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Frames", "Show/hide the debug screen area frames", 14, 2)]
+        [Menu("Debug Frames", "Show/hide the debug screen area frames", 15, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Log messages", "This will flood your log and screen with debug text.", 5, 900)]
@@ -387,8 +390,20 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode UltimatumModifierTablePanel { get; }
 
+        [Menu("Take Reward when Modifier Is Chosen (Grueling Gauntlet)", 1195, 119)]
+        public EmptyNode UltimatumTakeRewardWhenChosenCategory { get; set; } = new EmptyNode();
+        [Menu("", 1, 1195)]
+        [JsonIgnore]
+        public CustomNode UltimatumTakeRewardModifierTablePanel { get; }
+
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> UltimatumModifierPriority { get; set; } = new();
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public HashSet<string> UltimatumTakeRewardModifierNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public HashSet<string> UltimatumContinueModifierNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         [Menu("Strongboxes", 120, 1400)]
         public EmptyNode Strongboxes { get; set; } = new EmptyNode();
@@ -487,6 +502,8 @@ namespace ClickIt
         private string strongboxSearchFilter = "";
         private string mechanicsSearchFilter = "";
         private string ultimatumSearchFilter = "";
+        private string ultimatumTakeRewardSearchFilter = "";
+        private string _expandedUltimatumTakeRewardRowKey = string.Empty;
         private string _lastSettingsUiError = string.Empty;
         private string[] _ultimatumPrioritySnapshot = [];
         private string[] _mechanicPrioritySnapshot = [];
@@ -501,6 +518,7 @@ namespace ClickIt
             EnsureEssenceCorruptionFiltersInitialized();
             EnsureStrongboxFiltersInitialized();
             EnsureUltimatumModifiersInitialized();
+            EnsureUltimatumTakeRewardModifiersInitialized();
             EnsureLazyModeNearbyMonsterFiltersInitialized();
             DebugTestingPanel = new CustomNode
             {
@@ -581,6 +599,10 @@ namespace ClickIt
             UltimatumModifierTablePanel = new CustomNode
             {
                 DrawDelegate = () => DrawPanelSafe("UltimatumModifierTablePanel", DrawUltimatumModifierTablePanel)
+            };
+            UltimatumTakeRewardModifierTablePanel = new CustomNode
+            {
+                DrawDelegate = () => DrawPanelSafe("UltimatumTakeRewardModifierTablePanel", DrawUltimatumTakeRewardModifierTablePanel)
             };
         }
 

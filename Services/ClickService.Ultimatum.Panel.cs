@@ -10,29 +10,147 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
+        private enum GruelingGauntletAction
+        {
+            ConfirmOnly = 1,
+            TakeRewards = 2
+        }
+
+        private const int GruelingGauntletAtlasPassiveSkillId = 9882;
+        private const int GruelingGauntletPassiveCacheWindowMs = 100;
+        private static bool _lastGruelingGauntletDetectionIsActive;
+        private static bool _lastGruelingGauntletDetectionHasValue;
+
+        internal static bool TryGetGruelingGauntletDetectionForSettings(out bool isActive)
+        {
+            isActive = _lastGruelingGauntletDetectionIsActive;
+            return _lastGruelingGauntletDetectionHasValue;
+        }
+
         private bool TryHandleUltimatumPanelUi(Vector2 windowTopLeft)
         {
             if (!settings.IsOtherUltimatumClickEnabled())
+            {
+                PublishUltimatumDebug(
+                    stage: "PanelSkip",
+                    source: "PanelUi",
+                    isPanelVisible: false,
+                    isGruelingGauntletActive: false,
+                    notes: "Other Ultimatum click setting disabled");
                 return false;
+            }
 
             if (!TryGetVisibleUltimatumPanel(out UltimatumPanel? panelObj) || panelObj == null)
+            {
+                PublishUltimatumDebug(
+                    stage: "PanelMissing",
+                    source: "PanelUi",
+                    isPanelVisible: false,
+                    isGruelingGauntletActive: GetGruelingGauntletDetectionForDebug(),
+                    notes: "Ultimatum panel not visible/available");
                 return false;
+            }
 
             DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel detected.");
 
+            bool isGruelingGauntletActive = IsGruelingGauntletPassiveActive();
+            if (isGruelingGauntletActive)
+                return TryHandleGruelingGauntletPanelUi(panelObj, windowTopLeft);
+
             bool clickedAny = false;
+            bool clickedChoice = false;
+            bool clickedConfirm = false;
 
             if (TryClickUltimatumPanelChoice(panelObj, windowTopLeft))
             {
                 clickedAny = true;
+                clickedChoice = true;
                 Thread.Sleep(UltimatumChoiceToBeginDelayMs);
             }
 
             if (TryClickUltimatumPanelConfirm(panelObj, windowTopLeft))
             {
                 clickedAny = true;
+                clickedConfirm = true;
                 Thread.Sleep(UltimatumPostBeginDelayMs);
             }
+
+            PublishUltimatumDebug(
+                stage: "PanelHandled",
+                source: "PanelUi",
+                isPanelVisible: true,
+                isGruelingGauntletActive: false,
+                clickedChoice: clickedChoice,
+                clickedConfirm: clickedConfirm,
+                clickedTakeRewards: false,
+                notes: clickedAny ? "Panel action executed" : "No panel action executed");
+
+            return clickedAny;
+        }
+
+        private bool TryHandleGruelingGauntletPanelUi(UltimatumPanel panelObj, Vector2 windowTopLeft)
+        {
+            bool clickedAny;
+
+            bool hasSaturatedChoice = false;
+            string saturatedModifier = string.Empty;
+            bool shouldTakeReward = false;
+            int candidateCount = 0;
+            int saturatedCandidateCount = 0;
+            string bestModifier = string.Empty;
+            int bestPriority = int.MaxValue;
+
+            if (TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate> candidates, isGruelingGauntletActive: true, logFailures: true))
+            {
+                candidateCount = candidates.Count;
+                ResolveGruelingSaturation(candidates, out hasSaturatedChoice, out saturatedModifier, out shouldTakeReward, out saturatedCandidateCount);
+
+                if (TryGetSelectedUltimatumPanelChoice(candidates, isGruelingGauntletActive: true, out UltimatumPanelChoiceCandidate best))
+                {
+                    bestModifier = best.ModifierName;
+                    bestPriority = best.PriorityIndex;
+                }
+            }
+            else
+            {
+                DebugLog(() => "[TryHandleUltimatumPanelUi] Grueling Gauntlet active but no saturated choice was found. Falling back to confirm-only action.");
+            }
+
+            GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+            DebugLog(() => $"[TryHandleUltimatumPanelUi] Grueling Gauntlet action={action}, saturatedModifier='{saturatedModifier}', shouldTakeReward={shouldTakeReward}");
+
+            bool clickedConfirm = false;
+            bool clickedTakeRewards = false;
+            if (action == GruelingGauntletAction.TakeRewards)
+                clickedTakeRewards = TryClickUltimatumPanelTakeRewards(panelObj, windowTopLeft);
+            else
+                clickedConfirm = TryClickUltimatumPanelConfirm(panelObj, windowTopLeft);
+
+            clickedAny = clickedConfirm || clickedTakeRewards;
+            if (clickedAny)
+                Thread.Sleep(UltimatumPostBeginDelayMs);
+
+            string note = action == GruelingGauntletAction.TakeRewards
+                ? (clickedTakeRewards ? "Take Rewards clicked" : "Take Rewards action selected but click failed")
+                : (clickedConfirm ? "Confirm clicked" : "Confirm action selected but click failed");
+
+            PublishUltimatumDebug(
+                stage: "PanelGruelingHandled",
+                source: "PanelUi",
+                isPanelVisible: true,
+                isGruelingGauntletActive: true,
+                hasSaturatedChoice: hasSaturatedChoice,
+                saturatedModifier: saturatedModifier,
+                shouldTakeReward: shouldTakeReward,
+                action: action.ToString(),
+                candidateCount: candidateCount,
+                saturatedCandidateCount: saturatedCandidateCount,
+                bestModifier: bestModifier,
+                bestPriority: bestPriority,
+                clickedChoice: false,
+                clickedConfirm: clickedConfirm,
+                clickedTakeRewards: clickedTakeRewards,
+                notes: note);
 
             return clickedAny;
         }
@@ -44,10 +162,32 @@ namespace ClickIt.Services
             if (!TryGetVisibleUltimatumPanel(out UltimatumPanel? panelObj, logFailures: false) || panelObj == null)
                 return false;
 
-            if (!TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, logFailures: false) || candidates == null || candidates.Count == 0)
+            bool isGruelingGauntletActive = IsGruelingGauntletPassiveActive();
+            if (!TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate> candidates, isGruelingGauntletActive, logFailures: false)
+                || candidates.Count == 0)
                 return false;
 
-            bool hasBest = TryGetBestUltimatumPanelChoice(candidates, out UltimatumPanelChoiceCandidate best);
+            bool hasBest = TryGetSelectedUltimatumPanelChoice(candidates, isGruelingGauntletActive, out UltimatumPanelChoiceCandidate best);
+            if (ShouldCaptureUltimatumDebug())
+            {
+                ResolveGruelingSaturation(candidates, out bool hasSaturatedChoice, out string saturatedModifier, out bool shouldTakeReward, out int saturatedCount);
+                GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+
+                PublishUltimatumDebug(
+                    stage: "OverlayPreview",
+                    source: "PanelPreview",
+                    isPanelVisible: true,
+                    isGruelingGauntletActive: isGruelingGauntletActive,
+                    hasSaturatedChoice: hasSaturatedChoice,
+                    saturatedModifier: saturatedModifier,
+                    shouldTakeReward: shouldTakeReward,
+                    action: action.ToString(),
+                    candidateCount: candidates.Count,
+                    saturatedCandidateCount: saturatedCount,
+                    bestModifier: hasBest ? best.ModifierName : string.Empty,
+                    bestPriority: hasBest ? best.PriorityIndex : int.MaxValue,
+                    notes: "Snapshot published from overlay preview polling");
+            }
 
             foreach (UltimatumPanelChoiceCandidate candidate in candidates)
             {
@@ -87,7 +227,11 @@ namespace ClickIt.Services
             return true;
         }
 
-        private bool TryGetUltimatumPanelChoiceCandidates(UltimatumPanel panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, bool logFailures)
+        private bool TryGetUltimatumPanelChoiceCandidates(
+            UltimatumPanel panelObj,
+            out List<UltimatumPanelChoiceCandidate> candidates,
+            bool isGruelingGauntletActive,
+            bool logFailures)
         {
             candidates = [];
 
@@ -105,6 +249,7 @@ namespace ClickIt.Services
                     seen,
                     modifierNamesByIndex,
                     priorities,
+                    isGruelingGauntletActive,
                     logFailures,
                     out UltimatumPanelChoiceCandidate candidate))
                 {
@@ -115,6 +260,25 @@ namespace ClickIt.Services
             }
 
             return candidates.Count > 0;
+        }
+
+        private void ResolveGruelingSaturation(
+            IReadOnlyList<UltimatumPanelChoiceCandidate> candidates,
+            out bool hasSaturatedChoice,
+            out string saturatedModifier,
+            out bool shouldTakeReward,
+            out int saturatedCount)
+        {
+            saturatedCount = 0;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if (candidates[i].IsSaturated)
+                    saturatedCount++;
+            }
+
+            hasSaturatedChoice = TryGetSaturatedUltimatumPanelChoice(candidates, out UltimatumPanelChoiceCandidate saturatedChoice);
+            saturatedModifier = hasSaturatedChoice ? saturatedChoice.ModifierName : string.Empty;
+            shouldTakeReward = hasSaturatedChoice && settings.ShouldTakeRewardForGruelingGauntletModifier(saturatedModifier);
         }
 
         private bool TryGetUltimatumChoiceElements(UltimatumPanel panelObj, out object? choiceElementsObj, bool logFailures)
@@ -145,6 +309,7 @@ namespace ClickIt.Services
             int seen,
             List<string> modifierNamesByIndex,
             IReadOnlyList<string> priorities,
+            bool isGruelingGauntletActive,
             bool logFailures,
             out UltimatumPanelChoiceCandidate candidate)
         {
@@ -174,11 +339,24 @@ namespace ClickIt.Services
 
             string modifierName = ResolveUltimatumPanelModifierName(choiceEl, seen, modifierNamesByIndex);
             int priorityIndex = GetModifierPriorityIndex(modifierName, priorities);
+            bool saturatedForSelection = false;
+            if (isGruelingGauntletActive)
+            {
+                bool hasSaturationState = TryReadUltimatumChoiceSaturation(choiceEl, out bool isSaturated);
+                saturatedForSelection = ShouldTreatUltimatumChoiceAsSaturatedCore(hasSaturationState, isSaturated, choiceEl.IsVisible);
+            }
 
             if (logFailures)
-                DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] modifier='{modifierName}', priority={priorityIndex}, center={choiceRect.Center}, visible={choiceEl.IsVisible}, valid={choiceEl.IsValid}");
+                DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] modifier='{modifierName}', priority={priorityIndex}, saturated={saturatedForSelection}, center={choiceRect.Center}, visible={choiceEl.IsVisible}, valid={choiceEl.IsValid}");
 
-            candidate = new UltimatumPanelChoiceCandidate(choiceEl, modifierName, priorityIndex);
+            if (isGruelingGauntletActive && !saturatedForSelection)
+            {
+                if (logFailures)
+                    DebugLog(() => $"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored in Grueling Gauntlet mode because it is not saturated.");
+                return false;
+            }
+
+            candidate = new UltimatumPanelChoiceCandidate(choiceEl, modifierName, priorityIndex, saturatedForSelection);
             return true;
         }
 
@@ -220,7 +398,7 @@ namespace ClickIt.Services
             return names;
         }
 
-        private static bool TryGetBestUltimatumPanelChoice(List<UltimatumPanelChoiceCandidate> candidates, out UltimatumPanelChoiceCandidate best)
+        private static bool TryGetBestUltimatumPanelChoice(IReadOnlyList<UltimatumPanelChoiceCandidate> candidates, out UltimatumPanelChoiceCandidate best)
         {
             best = default;
             int bestIndex = int.MaxValue;
@@ -240,15 +418,145 @@ namespace ClickIt.Services
             return found && bestIndex != int.MaxValue;
         }
 
+        private static bool TryGetSaturatedUltimatumPanelChoice(IReadOnlyList<UltimatumPanelChoiceCandidate> candidates, out UltimatumPanelChoiceCandidate best)
+        {
+            best = default;
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                UltimatumPanelChoiceCandidate candidate = candidates[i];
+                if (!candidate.IsSaturated)
+                    continue;
+
+                best = candidate;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetSelectedUltimatumPanelChoice(
+            IReadOnlyList<UltimatumPanelChoiceCandidate> candidates,
+            bool isGruelingGauntletActive,
+            out UltimatumPanelChoiceCandidate best)
+        {
+            if (isGruelingGauntletActive && TryGetSaturatedUltimatumPanelChoice(candidates, out best))
+                return true;
+
+            return TryGetBestUltimatumPanelChoice(candidates, out best);
+        }
+
+        private static GruelingGauntletAction DetermineGruelingGauntletActionCore(bool hasSaturatedChoice, bool shouldTakeReward)
+        {
+            return hasSaturatedChoice && shouldTakeReward
+                ? GruelingGauntletAction.TakeRewards
+                : GruelingGauntletAction.ConfirmOnly;
+        }
+
+        internal static bool ShouldTreatUltimatumChoiceAsSaturatedCore(bool hasSaturationState, bool isSaturated, bool fallbackVisible)
+            => hasSaturationState ? isSaturated : fallbackVisible;
+
+        private static bool TryReadUltimatumChoiceSaturation(Element choiceElement, out bool isSaturated)
+        {
+            isSaturated = false;
+            if (!TryGetDynamicValue(choiceElement, s => s.IsSaturated, out object? rawSaturated) || rawSaturated == null)
+                return false;
+
+            if (rawSaturated is bool boolValue)
+            {
+                isSaturated = boolValue;
+                return true;
+            }
+
+            try
+            {
+                isSaturated = Convert.ToBoolean(rawSaturated);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool IsGruelingGauntletPassiveActive()
+        {
+            long now = Environment.TickCount64;
+            if (_gruelingGauntletPassiveCacheHasValue
+                && now - _gruelingGauntletPassiveCacheTimestampMs >= 0
+                && now - _gruelingGauntletPassiveCacheTimestampMs <= GruelingGauntletPassiveCacheWindowMs)
+            {
+                PublishGruelingGauntletDetection(_gruelingGauntletPassiveCachedValue);
+                return _gruelingGauntletPassiveCachedValue;
+            }
+
+            bool isActive = false;
+            object? data = gameController?.IngameState?.Data;
+            if (TryGetDynamicValue(data, s => s.ServerData, out object? serverData)
+                && serverData != null
+                && TryGetDynamicValue(serverData, s => s.AtlasPassiveSkillIds, out object? atlasPassiveIds)
+                && atlasPassiveIds != null)
+            {
+                isActive = ContainsAtlasPassiveSkillId(atlasPassiveIds, GruelingGauntletAtlasPassiveSkillId);
+            }
+
+            _gruelingGauntletPassiveCacheTimestampMs = now;
+            _gruelingGauntletPassiveCachedValue = isActive;
+            _gruelingGauntletPassiveCacheHasValue = true;
+            PublishGruelingGauntletDetection(isActive);
+            return isActive;
+        }
+
+        private bool GetGruelingGauntletDetectionForDebug()
+        {
+            return ShouldCaptureUltimatumDebug() && IsGruelingGauntletPassiveActive();
+        }
+
+        private static void PublishGruelingGauntletDetection(bool isActive)
+        {
+            _lastGruelingGauntletDetectionIsActive = isActive;
+            _lastGruelingGauntletDetectionHasValue = true;
+        }
+
+        private static bool ContainsAtlasPassiveSkillId(object atlasPassiveIds, int targetId)
+        {
+            foreach (object? entry in EnumerateObjects(atlasPassiveIds))
+            {
+                if (entry == null)
+                    continue;
+
+                if (entry is int intId && intId == targetId)
+                    return true;
+
+                try
+                {
+                    int converted = Convert.ToInt32(entry);
+                    if (converted == targetId)
+                        return true;
+                }
+                catch
+                {
+                }
+            }
+
+            return false;
+        }
+
         private bool TryClickUltimatumPanelChoice(UltimatumPanel panelObj, Vector2 windowTopLeft)
         {
-            if (!TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate>? candidates, logFailures: true) || candidates == null)
+            bool isGruelingGauntletActive = IsGruelingGauntletPassiveActive();
+            if (!TryGetUltimatumPanelChoiceCandidates(panelObj, out List<UltimatumPanelChoiceCandidate> candidates, isGruelingGauntletActive, logFailures: true))
             {
                 DebugLog(() => "[TryClickUltimatumPanelChoice] No ranked choice found.");
                 return false;
             }
+            if (isGruelingGauntletActive)
+            {
+                DebugLog(() => "[TryClickUltimatumPanelChoice] Grueling Gauntlet active - skipping modifier click because choice is game-selected.");
+                return false;
+            }
 
-            if (!TryGetBestUltimatumPanelChoice(candidates, out UltimatumPanelChoiceCandidate best))
+            if (!TryGetSelectedUltimatumPanelChoice(candidates, isGruelingGauntletActive, out UltimatumPanelChoiceCandidate best))
             {
                 DebugLog(() => "[TryClickUltimatumPanelChoice] No ranked choice found.");
                 return false;
@@ -260,6 +568,33 @@ namespace ClickIt.Services
                 "[TryClickUltimatumPanelChoice] Skipping click - cursor outside PoE window.",
                 $"[TryClickUltimatumPanelChoice] Rejected by clickable-area check. best='{best.ModifierName}',",
                 $"[TryClickUltimatumPanelChoice] Clicking choice '{best.ModifierName}' (priority={best.PriorityIndex}) at");
+        }
+
+        private bool TryClickUltimatumPanelTakeRewards(UltimatumPanel panelObj, Vector2 windowTopLeft)
+        {
+            Element? takeRewardsEl = panelObj
+                .GetChildAtIndex(1)
+                ?.GetChildAtIndex(4)
+                ?.GetChildAtIndex(0);
+
+            if (takeRewardsEl == null)
+            {
+                DebugLog(() => "[TryClickUltimatumPanelTakeRewards] Take Rewards button missing at UltimatumPanel.Child(1).Child(4).Child(0).");
+                return false;
+            }
+
+            if (!takeRewardsEl.IsValid || !takeRewardsEl.IsVisible)
+            {
+                DebugLog(() => $"[TryClickUltimatumPanelTakeRewards] Take Rewards button ignored - valid={takeRewardsEl.IsValid}, visible={takeRewardsEl.IsVisible}");
+                return false;
+            }
+
+            return TryClickUltimatumElement(
+                takeRewardsEl,
+                windowTopLeft,
+                "[TryClickUltimatumPanelTakeRewards] Skipping click - cursor outside PoE window.",
+                "[TryClickUltimatumPanelTakeRewards] Rejected by clickable-area check.",
+                "[TryClickUltimatumPanelTakeRewards] Clicking Take Rewards at");
         }
 
         private bool TryClickUltimatumPanelConfirm(UltimatumPanel panelObj, Vector2 windowTopLeft)
