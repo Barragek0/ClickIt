@@ -193,6 +193,27 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldAllowIncubatorStackMatchCore_RequiresMatchingLevels_WhenIncubatorPathRuleApplies()
+        {
+            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, true, 68, true, 69)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, true, 68, true, 68)!).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldAllowIncubatorStackMatchCore_Rejects_WhenEitherLevelIsMissing()
+        {
+            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, false, 68, true, 68)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, true, 68, false, 68)!).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldAllowIncubatorStackMatchCore_AllowsAllLevels_WhenRuleDoesNotApply()
+        {
+            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", false, false, 0, false, 0)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", false, true, 1, true, 999)!).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void IsInventoryCellUsageFullCore_ReturnsTrue_WhenOccupiedCellsMeetOrExceedCapacity()
         {
             ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 59, 60)!).Should().BeFalse();

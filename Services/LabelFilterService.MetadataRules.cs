@@ -157,6 +157,7 @@ namespace ClickIt.Services
             bool hasPartialMatchingStack = isStackable
                 && HasMatchingPartialStackInInventoryCore(
                     groundItemPath,
+                    groundItemEntity,
                     gameController,
                     out matchingPathCount,
                     out partialMatchingStackCount);
@@ -427,6 +428,7 @@ namespace ClickIt.Services
 
         private static bool HasMatchingPartialStackInInventoryCore(
             string? worldItemPath,
+            Entity? groundItemEntity,
             GameController? gameController,
             out int matchingPathCount,
             out int partialMatchingStackCount)
@@ -440,6 +442,9 @@ namespace ClickIt.Services
             if (!TryEnumerateInventoryItemEntities(gameController, out IReadOnlyList<Entity> inventoryItems))
                 return false;
 
+            bool requiresIncubatorLevelMatch = IsIncubatorPath(worldItemPath);
+            bool hasGroundIncubatorLevel = TryResolveCurrencyItemLevel(groundItemEntity, out int groundIncubatorLevel);
+
             for (int i = 0; i < inventoryItems.Count; i++)
             {
                 Entity inventoryItem = inventoryItems[i];
@@ -452,6 +457,17 @@ namespace ClickIt.Services
 
                 matchingPathCount++;
 
+                bool hasInventoryIncubatorLevel = TryResolveCurrencyItemLevel(inventoryItem, out int inventoryIncubatorLevel);
+                if (!ShouldAllowIncubatorStackMatchCore(
+                    requiresIncubatorLevelMatch,
+                    hasGroundIncubatorLevel,
+                    groundIncubatorLevel,
+                    hasInventoryIncubatorLevel,
+                    inventoryIncubatorLevel))
+                {
+                    continue;
+                }
+
                 if (TryResolveServerStackState(inventoryItem, out bool fullStack, out int stackSize)
                     && IsPartialServerStackCore(fullStack, stackSize))
                 {
@@ -461,6 +477,50 @@ namespace ClickIt.Services
             }
 
             return false;
+        }
+
+        private static bool IsIncubatorPath(string? metadataPath)
+            => !string.IsNullOrWhiteSpace(metadataPath)
+               && metadataPath.IndexOf("Incubation", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        internal static bool ShouldAllowIncubatorStackMatchCore(
+            bool requiresIncubatorLevelMatch,
+            bool hasGroundIncubatorLevel,
+            int groundIncubatorLevel,
+            bool hasInventoryIncubatorLevel,
+            int inventoryIncubatorLevel)
+        {
+            if (!requiresIncubatorLevelMatch)
+                return true;
+
+            if (!hasGroundIncubatorLevel || !hasInventoryIncubatorLevel)
+                return false;
+
+            return groundIncubatorLevel == inventoryIncubatorLevel;
+        }
+
+        private static bool TryResolveCurrencyItemLevel(Entity? itemEntity, out int currencyItemLevel)
+        {
+            currencyItemLevel = 0;
+            if (itemEntity == null)
+                return false;
+
+            try
+            {
+                Base? baseComponent = itemEntity.GetComponent<Base>();
+                if (baseComponent == null)
+                    return false;
+
+                if (TryReadInt(baseComponent, out currencyItemLevel, s => s.CurrencyItemLevel))
+                    return currencyItemLevel > 0;
+
+                currencyItemLevel = baseComponent.CurrencyItemLevel;
+                return currencyItemLevel > 0;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static bool TryResolveServerStackState(Entity itemEntity, out bool fullStack, out int stackSize)
