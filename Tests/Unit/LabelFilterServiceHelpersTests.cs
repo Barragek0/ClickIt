@@ -262,5 +262,58 @@ namespace ClickIt.Tests.Unit
                 1).Should().BeFalse();
         }
 
+        [TestMethod]
+        public void BuildNearbyMonsterBlockReason_IncludesOnlyTriggeredThresholds()
+        {
+            string reason = InvokePrivateStatic<string>(
+                "BuildNearbyMonsterBlockReason",
+                0,
+                2,
+                50,
+                false,
+                3,
+                3,
+                50,
+                true,
+                2,
+                1,
+                50,
+                true,
+                0,
+                1,
+                50,
+                false);
+
+            reason.Should().Contain("Magic 3/3 within 50");
+            reason.Should().Contain("Rare 2/1 within 50");
+            reason.Should().NotContain("Normal");
+            reason.Should().NotContain("Unique");
+        }
+
+        [TestMethod]
+        public void BuildNearbyMonsterBlockReason_UsesFallback_WhenNoTriggeredThresholds()
+        {
+            string reason = InvokePrivateStatic<string>(
+                "BuildNearbyMonsterBlockReason",
+                0,
+                2,
+                50,
+                false,
+                0,
+                3,
+                50,
+                false,
+                0,
+                1,
+                50,
+                false,
+                0,
+                1,
+                50,
+                false);
+
+            reason.Should().Be("Nearby monster threshold reached");
+        }
+
     }
 }

@@ -191,13 +191,13 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode LazyModeNearbyMonsterRulesPanel { get; }
         public int LazyModeNormalMonsterBlockCount { get; set; } = 0;
-        public int LazyModeNormalMonsterBlockDistance { get; set; } = 50;
+        public int LazyModeNormalMonsterBlockDistance { get; set; } = 10;
         public int LazyModeMagicMonsterBlockCount { get; set; } = 3;
-        public int LazyModeMagicMonsterBlockDistance { get; set; } = 50;
+        public int LazyModeMagicMonsterBlockDistance { get; set; } = 10;
         public int LazyModeRareMonsterBlockCount { get; set; } = 1;
-        public int LazyModeRareMonsterBlockDistance { get; set; } = 50;
+        public int LazyModeRareMonsterBlockDistance { get; set; } = 10;
         public int LazyModeUniqueMonsterBlockCount { get; set; } = 1;
-        public int LazyModeUniqueMonsterBlockDistance { get; set; } = 50;
+        public int LazyModeUniqueMonsterBlockDistance { get; set; } = 10;
         [Menu("", 10006, 15)]
         [JsonIgnore]
         public CustomNode LazyModeSliderWidthEnd { get; }

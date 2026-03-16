@@ -36,13 +36,13 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
 
             settings.LazyModeNormalMonsterBlockCount.Should().Be(0);
-            settings.LazyModeNormalMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeNormalMonsterBlockDistance.Should().Be(10);
             settings.LazyModeMagicMonsterBlockCount.Should().Be(3);
-            settings.LazyModeMagicMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeMagicMonsterBlockDistance.Should().Be(10);
             settings.LazyModeRareMonsterBlockCount.Should().Be(1);
-            settings.LazyModeRareMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeRareMonsterBlockDistance.Should().Be(10);
             settings.LazyModeUniqueMonsterBlockCount.Should().Be(1);
-            settings.LazyModeUniqueMonsterBlockDistance.Should().Be(50);
+            settings.LazyModeUniqueMonsterBlockDistance.Should().Be(10);
         }
 
         [TestMethod]

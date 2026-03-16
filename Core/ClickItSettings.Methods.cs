@@ -242,7 +242,7 @@ namespace ClickIt
             int distance = currentDistance;
 
             ImGui.AlignTextToFramePadding();
-            ImGui.TextUnformatted("Don't Click when");
+            ImGui.TextUnformatted("Disable Lazy Mode when");
             ImGui.SameLine();
 
             ImGui.SetNextItemWidth(70f);

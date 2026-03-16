@@ -219,7 +219,7 @@ namespace ClickIt.Rendering
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Total:       {modeledTotalStr.PadLeft(maxLen)} ms (model)", new Vector2(xPos, yPos), targetLineColor, 16);
             yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Scheduler: {schedStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), schedulerColor, 16);
+            _deferredTextQueue.Enqueue($"Scheduler:   {schedStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), schedulerColor, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Observed:    {observedStr.PadLeft(maxLen)} ms ({targetStatus})", new Vector2(xPos, yPos), targetLineColor, 16);
 

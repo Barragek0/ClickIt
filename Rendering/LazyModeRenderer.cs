@@ -7,14 +7,16 @@ namespace ClickIt.Rendering
     public class LazyModeRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, InputHandler inputHandler, LabelFilterService? labelFilterService)
     {
         private const string LazyModeTitle = "Lazy Mode";
-        private const string LockedChestOrTreeDetectedText = "Locked chest or tree detected.";
+        private const string GenericRestrictionDetectedText = "Lazy mode blocking condition detected.";
         private const string LazyModeDisabledByHotkeyText = "Lazy mode disabled by hotkey.";
         private const string ReleaseToResumeLazyClickingText = "Release to resume lazy clicking.";
         private const string RitualInProgressText = "Ritual in progress.";
         private const string CompleteRitualToResumeText = "Complete it to resume lazy clicking.";
         private const string BlockingOverriddenByHotkeyText = "Blocking overridden by hotkey.";
+        private const int OverlayLineLengthLimit = 48;
         private const float LazyModeTitleY = 60f;
         private const float LazyModeLineHeightMultiplier = 1.2f;
+        private const int BodyFontSize = 24;
 
         private readonly ClickItSettings _settings = settings;
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
@@ -34,6 +36,7 @@ namespace ClickIt.Rendering
 
             var allLabels = state.CachedLabels?.Value;
             bool hasRestrictedItems = _labelFilterService?.HasLazyModeRestrictedItemsOnScreen(allLabels) ?? false;
+            string restrictionReason = GetLazyModeRestrictionDisplayReason(_labelFilterService?.LastLazyModeRestrictionReason);
 
             var (leftClickBlocks, rightClickBlocks, mouseButtonBlocks) =
                 InputHandler.GetMouseButtonBlockingState(_settings, Input.GetKeyState);
@@ -45,6 +48,7 @@ namespace ClickIt.Rendering
 
             var (textColor, line1, line2, line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,
+                restrictionReason,
                 hotkeyHeld,
                 lazyModeDisableHeld,
                 lazyModeDisableToggleMode,
@@ -59,6 +63,7 @@ namespace ClickIt.Rendering
 
         private (SharpDX.Color color, string line1, string line2, string line3) ComposeLazyModeStatus(
             bool hasRestrictedItems,
+            string restrictionReason,
             bool hotkeyHeld,
             bool lazyModeDisableHeld,
             bool lazyModeDisableToggleMode,
@@ -72,7 +77,7 @@ namespace ClickIt.Rendering
             {
                 return hotkeyHeld
                     ? BuildBlockedOverrideStatus()
-                    : (SharpDX.Color.Red, LockedChestOrTreeDetectedText, GetHoldClickLabelHint(clickLabelKey), string.Empty);
+                    : (SharpDX.Color.Red, restrictionReason, GetHoldClickLabelHint(clickLabelKey), string.Empty);
             }
 
             if (lazyModeDisableHeld)
@@ -112,12 +117,68 @@ namespace ClickIt.Rendering
             return (SharpDX.Color.LawnGreen, BlockingOverriddenByHotkeyText, string.Empty, string.Empty);
         }
 
+        private static string GetLazyModeRestrictionDisplayReason(string? rawReason)
+        {
+            return string.IsNullOrWhiteSpace(rawReason)
+                ? GenericRestrictionDetectedText
+                : rawReason.Trim();
+        }
+
+        private static List<string> WrapOverlayText(string? text, int maxLength)
+        {
+            List<string> lines = [];
+            if (string.IsNullOrWhiteSpace(text))
+                return lines;
+
+            string normalized = text.Replace("\r\n", "\n");
+            string[] baseLines = normalized.Split('\n');
+            for (int i = 0; i < baseLines.Length; i++)
+            {
+                string segment = baseLines[i].Trim();
+                if (segment.Length == 0)
+                    continue;
+
+                int start = 0;
+                while (start < segment.Length)
+                {
+                    int remaining = segment.Length - start;
+                    if (remaining <= maxLength)
+                    {
+                        lines.Add(segment.Substring(start));
+                        break;
+                    }
+
+                    int wrapAt = FindWrapIndex(segment, start, maxLength);
+                    int length = Math.Max(1, wrapAt - start);
+                    string chunk = segment.Substring(start, length).TrimEnd();
+                    if (chunk.Length > 0)
+                        lines.Add(chunk);
+
+                    start = wrapAt;
+                    while (start < segment.Length && segment[start] == ' ')
+                        start++;
+                }
+            }
+
+            return lines;
+        }
+
+        private static int FindWrapIndex(string value, int start, int maxLength)
+        {
+            int hardStop = Math.Min(start + maxLength, value.Length);
+            if (hardStop >= value.Length)
+                return value.Length;
+
+            int wordBoundary = value.LastIndexOf(' ', hardStop - 1, hardStop - start);
+            return wordBoundary > start ? wordBoundary : hardStop;
+        }
+
         private string GetHoldClickLabelHint(Keys clickLabelKey)
         {
             if (_cachedClickLabelKey != clickLabelKey || string.IsNullOrEmpty(_cachedHoldClickLabelHint))
             {
                 _cachedClickLabelKey = clickLabelKey;
-                _cachedHoldClickLabelHint = $"Hold {clickLabelKey} to click them.";
+                _cachedHoldClickLabelHint = $"Hold {clickLabelKey} to override.";
             }
 
             return _cachedHoldClickLabelHint;
@@ -146,21 +207,20 @@ namespace ClickIt.Rendering
         {
             _deferredTextQueue.Enqueue(LazyModeTitle, new SharpDX.Vector2(centerX, topY), color, 36, ExileCore.Shared.Enums.FontAlign.Center);
 
-            if (string.IsNullOrEmpty(line1)) return;
+            List<string> wrappedLines = [];
+            wrappedLines.AddRange(WrapOverlayText(line1, OverlayLineLengthLimit));
+            wrappedLines.AddRange(WrapOverlayText(line2, OverlayLineLengthLimit));
+            wrappedLines.AddRange(WrapOverlayText(line3, OverlayLineLengthLimit));
 
-            float lineHeight = 36 * LazyModeLineHeightMultiplier;
-            float secondLineY = topY + lineHeight;
-            _deferredTextQueue.Enqueue(line1, new SharpDX.Vector2(centerX, secondLineY), color, 24, ExileCore.Shared.Enums.FontAlign.Center);
+            if (wrappedLines.Count == 0)
+                return;
 
-            if (string.IsNullOrEmpty(line2)) return;
-
-            float thirdLineY = secondLineY + lineHeight;
-            _deferredTextQueue.Enqueue(line2, new SharpDX.Vector2(centerX, thirdLineY), color, 24, ExileCore.Shared.Enums.FontAlign.Center);
-
-            if (string.IsNullOrEmpty(line3)) return;
-
-            float fourthLineY = thirdLineY + lineHeight;
-            _deferredTextQueue.Enqueue(line3, new SharpDX.Vector2(centerX, fourthLineY), color, 24, ExileCore.Shared.Enums.FontAlign.Center);
+            float lineHeight = BodyFontSize * LazyModeLineHeightMultiplier;
+            for (int i = 0; i < wrappedLines.Count; i++)
+            {
+                float y = topY + ((i + 1) * lineHeight);
+                _deferredTextQueue.Enqueue(wrappedLines[i], new SharpDX.Vector2(centerX, y), color, BodyFontSize, ExileCore.Shared.Enums.FontAlign.Center);
+            }
         }
     }
 }

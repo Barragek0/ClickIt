@@ -25,10 +25,16 @@ namespace ClickIt.Services
         private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         private const int NearbyMonsterRestrictionCacheDurationMs = 50;
+        private const int LazyModeRestrictionLogThrottleMs = 500;
         private long _cachedNearbyMonsterRestrictionTimestampMs = long.MinValue;
         private int _cachedNearbyMonsterRestrictionSettingsSignature;
         private bool _cachedNearbyMonsterRestrictionResult;
         private string? _cachedNearbyMonsterRestrictionReason;
+        private long _lastLazyModeRestrictionLogTimestampMs = long.MinValue;
+        private string _lastLazyModeRestrictionLogReason = string.Empty;
+        private string? _lastLazyModeRestrictionReason;
+
+        public string? LastLazyModeRestrictionReason => _lastLazyModeRestrictionReason;
 
         public bool HasLazyModeRestrictedItemsOnScreen(IReadOnlyList<LabelOnGround>? allLabels)
             => LazyModeRestrictedChecker(this, allLabels);
@@ -37,12 +43,17 @@ namespace ClickIt.Services
         {
             if (TryGetNearbyMonsterBlockReason(out string? nearbyMonsterReason))
             {
-                _errorHandler.LogMessage(true, true, nearbyMonsterReason ?? "Lazy mode: nearby monster threshold reached", 5);
+                string reason = nearbyMonsterReason ?? "Nearby monster threshold reached";
+                _lastLazyModeRestrictionReason = reason;
+                TryLogLazyModeRestriction(reason);
                 return true;
             }
 
             if (allLabels == null)
+            {
+                _lastLazyModeRestrictionReason = null;
                 return false;
+            }
 
             for (int i = 0; i < allLabels.Count; i++)
             {
@@ -58,12 +69,29 @@ namespace ClickIt.Services
                 Chest? chest = item.GetComponent<Chest>();
                 if (chest?.IsLocked == true && !chest.IsStrongbox)
                 {
-                    _errorHandler.LogMessage(true, true, $"Lazy mode: restricted item detected - Path: {path}", 5);
+                    string reason = $"Locked chest detected ({path})";
+                    _lastLazyModeRestrictionReason = reason;
+                    TryLogLazyModeRestriction(reason);
                     return true;
                 }
             }
 
+            _lastLazyModeRestrictionReason = null;
             return false;
+        }
+
+        private void TryLogLazyModeRestriction(string reason)
+        {
+            long now = Environment.TickCount64;
+            if (now - _lastLazyModeRestrictionLogTimestampMs < LazyModeRestrictionLogThrottleMs
+                && string.Equals(_lastLazyModeRestrictionLogReason, reason, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _lastLazyModeRestrictionLogTimestampMs = now;
+            _lastLazyModeRestrictionLogReason = reason;
+            _errorHandler.LogMessage(true, true, reason, 5);
         }
 
         private bool TryGetNearbyMonsterBlockReason([NotNullWhen(true)] out string? reason)
@@ -114,6 +142,15 @@ namespace ClickIt.Services
             int nearbyMagicCount = 0;
             int nearbyRareCount = 0;
             int nearbyUniqueCount = 0;
+            int maxRelevantDistance = GetMaxRelevantNearbyMonsterDistance(
+                normalEnabled,
+                normalDistance,
+                magicEnabled,
+                magicDistance,
+                rareEnabled,
+                rareDistance,
+                uniqueEnabled,
+                uniqueDistance);
 
             foreach (Entity? entity in entities)
             {
@@ -123,53 +160,117 @@ namespace ClickIt.Services
                 float distancePlayer = entity.DistancePlayer;
                 if (distancePlayer < 0f || float.IsNaN(distancePlayer) || float.IsInfinity(distancePlayer))
                     continue;
+                if (distancePlayer > maxRelevantDistance)
+                    continue;
 
                 switch (entity.Rarity)
                 {
                     case MonsterRarity.White:
-                        if (normalEnabled && distancePlayer <= normalDistance)
+                        if (normalEnabled && distancePlayer <= normalDistance && entity.IsAlive && entity.IsHostile)
                             nearbyNormalCount++;
                         break;
                     case MonsterRarity.Magic:
-                        if (magicEnabled && distancePlayer <= magicDistance)
+                        if (magicEnabled && distancePlayer <= magicDistance && entity.IsAlive && entity.IsHostile)
                             nearbyMagicCount++;
                         break;
                     case MonsterRarity.Rare:
-                        if (rareEnabled && distancePlayer <= rareDistance)
+                        if (rareEnabled && distancePlayer <= rareDistance && entity.IsAlive && entity.IsHostile)
                             nearbyRareCount++;
                         break;
                     case MonsterRarity.Unique:
-                        if (uniqueEnabled && distancePlayer <= uniqueDistance)
+                        if (uniqueEnabled && distancePlayer <= uniqueDistance && entity.IsAlive && entity.IsHostile)
                             nearbyUniqueCount++;
                         break;
                 }
 
-                if (!ShouldBlockLazyModeForNearbyMonsters(
+            }
+
+            bool normalTriggered = normalThreshold > 0 && nearbyNormalCount >= normalThreshold;
+            bool magicTriggered = magicThreshold > 0 && nearbyMagicCount >= magicThreshold;
+            bool rareTriggered = rareThreshold > 0 && nearbyRareCount >= rareThreshold;
+            bool uniqueTriggered = uniqueThreshold > 0 && nearbyUniqueCount >= uniqueThreshold;
+            bool blocked = normalTriggered || magicTriggered || rareTriggered || uniqueTriggered;
+            if (blocked)
+            {
+                reason = BuildNearbyMonsterBlockReason(
                     nearbyNormalCount,
                     normalThreshold,
+                    normalDistance,
+                    normalTriggered,
                     nearbyMagicCount,
                     magicThreshold,
+                    magicDistance,
+                    magicTriggered,
                     nearbyRareCount,
                     rareThreshold,
+                    rareDistance,
+                    rareTriggered,
                     nearbyUniqueCount,
-                    uniqueThreshold))
-                {
-                    continue;
-                }
-
-                reason = $"Lazy mode: nearby monster threshold reached (Normal {nearbyNormalCount}/{normalThreshold} within {normalDistance}, Magic {nearbyMagicCount}/{magicThreshold} within {magicDistance}, Rare {nearbyRareCount}/{rareThreshold} within {rareDistance}, Unique {nearbyUniqueCount}/{uniqueThreshold} within {uniqueDistance})";
-                _cachedNearbyMonsterRestrictionTimestampMs = nowMs;
-                _cachedNearbyMonsterRestrictionSettingsSignature = settingsSignature;
-                _cachedNearbyMonsterRestrictionResult = true;
-                _cachedNearbyMonsterRestrictionReason = reason;
-                return true;
+                    uniqueThreshold,
+                    uniqueDistance,
+                    uniqueTriggered);
             }
 
             _cachedNearbyMonsterRestrictionTimestampMs = nowMs;
             _cachedNearbyMonsterRestrictionSettingsSignature = settingsSignature;
-            _cachedNearbyMonsterRestrictionResult = false;
-            _cachedNearbyMonsterRestrictionReason = null;
-            return false;
+            _cachedNearbyMonsterRestrictionResult = blocked;
+            _cachedNearbyMonsterRestrictionReason = reason;
+            return blocked;
+        }
+
+        private static int GetMaxRelevantNearbyMonsterDistance(
+            bool normalEnabled,
+            int normalDistance,
+            bool magicEnabled,
+            int magicDistance,
+            bool rareEnabled,
+            int rareDistance,
+            bool uniqueEnabled,
+            int uniqueDistance)
+        {
+            int maxDistance = 0;
+            if (normalEnabled)
+                maxDistance = Math.Max(maxDistance, normalDistance);
+            if (magicEnabled)
+                maxDistance = Math.Max(maxDistance, magicDistance);
+            if (rareEnabled)
+                maxDistance = Math.Max(maxDistance, rareDistance);
+            if (uniqueEnabled)
+                maxDistance = Math.Max(maxDistance, uniqueDistance);
+            return maxDistance;
+        }
+
+        private static string BuildNearbyMonsterBlockReason(
+            int nearbyNormalCount,
+            int normalThreshold,
+            int normalDistance,
+            bool normalTriggered,
+            int nearbyMagicCount,
+            int magicThreshold,
+            int magicDistance,
+            bool magicTriggered,
+            int nearbyRareCount,
+            int rareThreshold,
+            int rareDistance,
+            bool rareTriggered,
+            int nearbyUniqueCount,
+            int uniqueThreshold,
+            int uniqueDistance,
+            bool uniqueTriggered)
+        {
+            List<string> blockers = [];
+            if (normalTriggered)
+                blockers.Add($"Normal {nearbyNormalCount}/{normalThreshold} within {normalDistance}");
+            if (magicTriggered)
+                blockers.Add($"Magic {nearbyMagicCount}/{magicThreshold} within {magicDistance}");
+            if (rareTriggered)
+                blockers.Add($"Rare {nearbyRareCount}/{rareThreshold} within {rareDistance}");
+            if (uniqueTriggered)
+                blockers.Add($"Unique {nearbyUniqueCount}/{uniqueThreshold} within {uniqueDistance}");
+
+            return blockers.Count == 0
+                ? "Nearby monster threshold reached"
+                : $"Blocked by nearby monsters: {string.Join("; ", blockers)}";
         }
 
         private static bool ShouldBlockLazyModeForNearbyMonsters(
