@@ -55,6 +55,9 @@ namespace ClickIt
 
             LabelUtils.ClearThreadLocalStorage();
             Services.ShrineService.ClearThreadLocalStorageForCurrentThread();
+            Services.ClickService.ClearThreadLocalStorageForCurrentThread();
+            Services.LabelFilterService.ClearInventoryProbeCacheForShutdown();
+            State.AltarService?.ClearRuntimeCaches();
 
             State.CachedLabels = null;
 

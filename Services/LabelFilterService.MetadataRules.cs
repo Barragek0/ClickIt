@@ -661,6 +661,22 @@ namespace ClickIt.Services
             return age >= 0 && age <= windowMs;
         }
 
+        internal static void ClearInventoryProbeCacheForShutdown()
+        {
+            lock (InventoryProbeCacheLock)
+            {
+                _inventoryProbeCacheTimestampMs = 0;
+                _inventoryProbeCacheController = null;
+                _inventoryProbeCacheValue = InventoryFullProbe.Empty;
+                _inventoryProbeCacheHasValue = false;
+
+                _inventoryItemsCacheTimestampMs = 0;
+                _inventoryItemsCacheController = null;
+                _inventoryItemsCacheValue = [];
+                _inventoryItemsCacheHasValue = false;
+            }
+        }
+
         private static bool TryEnumeratePrimaryInventoryItemEntities(object primaryInventory, out IReadOnlyList<Entity> items, out string debugDetails)
         {
             items = [];

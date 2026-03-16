@@ -68,6 +68,19 @@ namespace ClickIt.Services
                 return cleaned;
             }
         }
+
+        public void ClearCaches()
+        {
+            lock (_modMatchCacheLock)
+            {
+                _modMatchCache.Clear();
+            }
+
+            lock (_textCleanCacheLock)
+            {
+                _textCleanCache.Clear();
+            }
+        }
     }
 }
 

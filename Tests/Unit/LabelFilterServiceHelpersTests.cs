@@ -2,6 +2,7 @@
 using FluentAssertions;
 using System.Reflection;
 using ClickIt.Services;
+using ExileCore;
 
 namespace ClickIt.Tests.Unit
 {
@@ -176,6 +177,30 @@ namespace ClickIt.Tests.Unit
                 SettlersMechanicDisabled: 1);
 
             summary.ToCompactString().Should().Be("r:0-5 t:5 nl:1 ne:1 d:1 u:1 nm:1 wi:3/2 sp:2 sm:1 sd:1");
+        }
+
+        [TestMethod]
+        public void ClearInventoryProbeCacheForShutdown_ResetsStaticCacheState()
+        {
+            var t = typeof(LabelFilterService);
+            var gameController = (GameController)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(GameController));
+            t.GetField("_inventoryProbeCacheTimestampMs", BindingFlags.NonPublic | BindingFlags.Static)!.SetValue(null, 123L);
+            t.GetField("_inventoryProbeCacheController", BindingFlags.NonPublic | BindingFlags.Static)!.SetValue(null, gameController);
+            t.GetField("_inventoryProbeCacheHasValue", BindingFlags.NonPublic | BindingFlags.Static)!.SetValue(null, true);
+
+            t.GetField("_inventoryItemsCacheTimestampMs", BindingFlags.NonPublic | BindingFlags.Static)!.SetValue(null, 456L);
+            t.GetField("_inventoryItemsCacheController", BindingFlags.NonPublic | BindingFlags.Static)!.SetValue(null, gameController);
+            t.GetField("_inventoryItemsCacheHasValue", BindingFlags.NonPublic | BindingFlags.Static)!.SetValue(null, true);
+
+            LabelFilterService.ClearInventoryProbeCacheForShutdown();
+
+            ((long)t.GetField("_inventoryProbeCacheTimestampMs", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!).Should().Be(0L);
+            t.GetField("_inventoryProbeCacheController", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null).Should().BeNull();
+            ((bool)t.GetField("_inventoryProbeCacheHasValue", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!).Should().BeFalse();
+
+            ((long)t.GetField("_inventoryItemsCacheTimestampMs", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!).Should().Be(0L);
+            t.GetField("_inventoryItemsCacheController", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null).Should().BeNull();
+            ((bool)t.GetField("_inventoryItemsCacheHasValue", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!).Should().BeFalse();
         }
 
         [TestMethod]

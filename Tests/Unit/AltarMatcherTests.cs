@@ -121,5 +121,20 @@ namespace ClickIt.Tests.Unit
             AltarModMatcher.GetModTarget("Player").Should().Be("Player");
             AltarModMatcher.GetModTarget("unknown").Should().BeEmpty();
         }
+
+        [TestMethod]
+        public void ClearCaches_EmptiesMatcherCaches()
+        {
+            var matcher = new AltarMatcher();
+            _ = matcher.CleanAltarModsText("<rgb(255,255,255)>Something");
+            _ = matcher.TryMatchModCached("NotARealMod", "Player gains:", out _, out _);
+
+            matcher.ClearCaches();
+
+            var modCache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_modMatchCache");
+            var textCache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_textCleanCache");
+            modCache.Count.Should().Be(0);
+            textCache.Count.Should().Be(0);
+        }
     }
 }

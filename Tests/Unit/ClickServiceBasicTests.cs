@@ -55,6 +55,28 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ClearThreadLocalStorageForCurrentThread_ClearsThreadStaticBuffers()
+        {
+            var addressesField = typeof(ClickService).GetField(
+                "_threadGroundLabelEntityAddresses",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var skillEntriesField = typeof(ClickService).GetField(
+                "_threadSkillBarEntriesBuffer",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+            addressesField.Should().NotBeNull();
+            skillEntriesField.Should().NotBeNull();
+
+            addressesField!.SetValue(null, new System.Collections.Generic.HashSet<long> { 42L });
+            skillEntriesField!.SetValue(null, new System.Collections.Generic.List<object?> { new object() });
+
+            ClickService.ClearThreadLocalStorageForCurrentThread();
+
+            addressesField.GetValue(null).Should().BeNull();
+            skillEntriesField.GetValue(null).Should().BeNull();
+        }
+
+        [TestMethod]
         public void ShouldResolveShrineCandidate_ReturnsFalse_WhenStickyTargetActive()
         {
             ClickService.ShouldResolveShrineCandidate(hasStickyOffscreenTarget: true).Should().BeFalse();

@@ -40,6 +40,13 @@ namespace ClickIt.Services
         {
             _altarRepository.ClearAltarComponents();
         }
+
+        public void ClearRuntimeCaches()
+        {
+            _altarMatcher.ClearCaches();
+            DebugInfo.RecentUnmatchedMods.Clear();
+        }
+
         public void RemoveAltarComponentsByElement(Element element)
         {
             if (element == null) return;
