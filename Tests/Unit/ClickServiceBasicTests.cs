@@ -47,6 +47,14 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void GetGroundLabelSearchLimit_ReturnsFullVisibleLabelCount()
+        {
+            ClickService.GetGroundLabelSearchLimit(0).Should().Be(0);
+            ClickService.GetGroundLabelSearchLimit(1).Should().Be(1);
+            ClickService.GetGroundLabelSearchLimit(37).Should().Be(37);
+        }
+
+        [TestMethod]
         public void ShouldResolveShrineCandidate_ReturnsFalse_WhenStickyTargetActive()
         {
             ClickService.ShouldResolveShrineCandidate(hasStickyOffscreenTarget: true).Should().BeFalse();

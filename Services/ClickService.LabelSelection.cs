@@ -78,7 +78,6 @@ namespace ClickIt.Services
             "slow_dodge"
         ];
 
-        private static readonly int[] LabelSearchCaps = [1, 5, 25, 100];
         [ThreadStatic]
         private static HashSet<long>? _threadGroundLabelEntityAddresses;
 
@@ -521,17 +520,12 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0)
                 return null;
 
-            foreach (int cap in LabelSearchCaps)
-            {
-                int limit = Math.Min(cap, allLabels.Count);
-                LabelOnGround? candidate = FindLabelInRange(allLabels, 0, limit);
-                if (candidate != null)
-                    return candidate;
-            }
-
-            // Fallback to full scan (rare).
-            return FindLabelInRange(allLabels, 0, allLabels.Count);
+            int searchLimit = GetGroundLabelSearchLimit(allLabels.Count);
+            return FindLabelInRange(allLabels, 0, searchLimit);
         }
+
+        internal static int GetGroundLabelSearchLimit(int totalVisibleLabels)
+            => Math.Max(0, totalVisibleLabels);
 
         private static LabelOnGround? FindLabelByAddress(IReadOnlyList<LabelOnGround> labels, long address)
         {
