@@ -30,7 +30,8 @@ namespace ClickIt.Tests.Unit
             PrivateFieldAccessor.Set(areaService, "_buffsAndDebuffsRectangle", RectangleF.Empty);
             PrivateFieldAccessor.Set(areaService, "_chatPanelBlockedRectangle", RectangleF.Empty);
             PrivateFieldAccessor.Set(areaService, "_mapPanelBlockedRectangle", RectangleF.Empty);
-            PrivateFieldAccessor.Set(areaService, "_xpBarBlockedRectangle", RectangleF.Empty);
+            RectangleF xpBarRect = new RectangleF(120, 120, 220, 200);
+            PrivateFieldAccessor.Set(areaService, "_xpBarBlockedRectangle", xpBarRect);
 
             RectangleF targetRect = new RectangleF(250, 120, 320, 190);
             PrivateFieldAccessor.Set(areaService, "_altarBlockedRectangle", targetRect);
@@ -40,6 +41,8 @@ namespace ClickIt.Tests.Unit
             renderer.RenderDebugFrames(settings);
 
             var frames = frameQueue.GetSnapshotForTests();
+            RectangleF expectedXpBarDrawRect = new RectangleF(xpBarRect.X, xpBarRect.Y - 5f, xpBarRect.Width, xpBarRect.Height + 5f);
+            frames.Should().Contain(f => f.Rectangle.Equals(expectedXpBarDrawRect) && f.Color.Equals(Color.Orange) && f.Thickness == 1);
             frames.Should().Contain(f => f.Rectangle.Equals(targetRect) && f.Color.Equals(Color.Gold) && f.Thickness == 1);
         }
 

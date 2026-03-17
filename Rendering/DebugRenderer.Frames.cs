@@ -7,6 +7,8 @@ namespace ClickIt.Rendering
 {
     public partial class DebugRenderer
     {
+        private const float XpBarDebugFrameTopExtensionPx = 5f;
+
         public void RenderDebugFrames(ClickItSettings settings)
         {
             if (_areaService == null)
@@ -70,7 +72,7 @@ namespace ClickIt.Rendering
 
             _deferredFrameQueue.Enqueue(_areaService.ChatPanelBlockedRectangle, Color.Green, 1);
             _deferredFrameQueue.Enqueue(_areaService.MapPanelBlockedRectangle, Color.Pink, 1);
-            _deferredFrameQueue.Enqueue(_areaService.XpBarBlockedRectangle, Color.Orange, 1);
+            _deferredFrameQueue.Enqueue(ExtendRectUpwardLtrb(_areaService.XpBarBlockedRectangle, XpBarDebugFrameTopExtensionPx), Color.Orange, 1);
             _deferredFrameQueue.Enqueue(_areaService.AltarBlockedRectangle, Color.Gold, 1);
             _deferredFrameQueue.Enqueue(_areaService.RitualBlockedRectangle, Color.MediumVioletRed, 1);
 
@@ -89,6 +91,14 @@ namespace ClickIt.Rendering
             float width = Math.Max(0f, rect.Width - rect.X);
             float height = Math.Max(0f, rect.Height - rect.Y);
             return new RectangleF(rect.X, rect.Y, width, height);
+        }
+
+        private static RectangleF ExtendRectUpwardLtrb(RectangleF rect, float extensionPx)
+        {
+            if (extensionPx <= 0f)
+                return rect;
+
+            return new RectangleF(rect.X, rect.Y - extensionPx, rect.Width, rect.Height + extensionPx);
         }
     }
 }
