@@ -93,8 +93,8 @@ namespace ClickIt.Tests.Unit
             var buffs = new RectangleF(0, 0, 30, 30);
             var questTrackerBlocks = new List<RectangleF>
             {
-                new RectangleF(300, 50, 320, 110),
-                new RectangleF(330, 50, 350, 110)
+                new RectangleF(300, 50, 20, 60),
+                new RectangleF(330, 50, 20, 60)
             };
 
             SetRectangles(svc, full, health, mana, buffs);
@@ -265,7 +265,7 @@ namespace ClickIt.Tests.Unit
             var health = new RectangleF(0, 290, 400, 300);
             var mana = new RectangleF(390, 290, 400, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
-            var chatBlocked = new RectangleF(40, 220, 180, 280);
+            var chatBlocked = new RectangleF(40, 220, 100, 40);
 
             SetRectangles(svc, full, health, mana, buffs);
             PrivateFieldAccessor.Set(svc, "_chatPanelBlockedRectangle", chatBlocked);
@@ -283,7 +283,7 @@ namespace ClickIt.Tests.Unit
             var health = new RectangleF(0, 290, 400, 300);
             var mana = new RectangleF(390, 290, 400, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
-            var mapBlocked = new RectangleF(300, 0, 390, 120);
+            var mapBlocked = new RectangleF(300, 0, 90, 120);
 
             SetRectangles(svc, full, health, mana, buffs);
             PrivateFieldAccessor.Set(svc, "_mapPanelBlockedRectangle", mapBlocked);
@@ -301,7 +301,7 @@ namespace ClickIt.Tests.Unit
             var health = new RectangleF(0, 290, 400, 300);
             var mana = new RectangleF(390, 290, 400, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
-            var xpBarBlocked = new RectangleF(120, 120, 220, 200);
+            var xpBarBlocked = new RectangleF(120, 120, 70, 80);
 
             SetRectangles(svc, full, health, mana, buffs);
             PrivateFieldAccessor.Set(svc, "_xpBarBlockedRectangle", xpBarBlocked);
@@ -319,7 +319,7 @@ namespace ClickIt.Tests.Unit
             var health = new RectangleF(0, 290, 400, 300);
             var mana = new RectangleF(390, 290, 400, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
-            var altarBlocked = new RectangleF(250, 120, 320, 190);
+            var altarBlocked = new RectangleF(250, 120, 60, 70);
 
             SetRectangles(svc, full, health, mana, buffs);
             PrivateFieldAccessor.Set(svc, "_altarBlockedRectangle", altarBlocked);
@@ -337,7 +337,7 @@ namespace ClickIt.Tests.Unit
             var health = new RectangleF(0, 290, 400, 300);
             var mana = new RectangleF(390, 290, 400, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
-            var ritualBlocked = new RectangleF(260, 130, 330, 210);
+            var ritualBlocked = new RectangleF(260, 130, 60, 80);
 
             SetRectangles(svc, full, health, mana, buffs);
             PrivateFieldAccessor.Set(svc, "_ritualBlockedRectangle", ritualBlocked);
@@ -376,8 +376,8 @@ namespace ClickIt.Tests.Unit
             var buffs = RectangleF.Empty;
             var buffRects = new List<RectangleF>
             {
-                new RectangleF(20, 20, 80, 80),
-                new RectangleF(90, 20, 150, 80)
+                new RectangleF(20, 20, 60, 60),
+                new RectangleF(90, 20, 60, 60)
             };
 
             SetRectangles(svc, full, health, mana, buffs);
@@ -386,6 +386,29 @@ namespace ClickIt.Tests.Unit
             svc.PointIsInClickableArea(new Vector2(50, 50)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(120, 50)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(200, 50)).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void PointIsInClickableArea_ReturnsFalse_ForUiBlockedRectangles_WhenPointIsAbsoluteAndRectIsClientSpace()
+        {
+            var svc = new AreaService();
+
+            // Full-screen in absolute coordinates (window offset from origin).
+            var full = new RectangleF(100, 50, 900, 650);
+            var health = new RectangleF(100, 600, 200, 650);
+            var mana = new RectangleF(800, 600, 900, 650);
+            var buffs = RectangleF.Empty;
+
+            SetRectangles(svc, full, health, mana, buffs);
+
+            // UI rectangle represented in client-space coordinates (XYWH).
+            PrivateFieldAccessor.Set(svc, "_altarBlockedRectangle", new RectangleF(200, 100, 120, 60));
+
+            // Absolute point maps to client (220,120) and should be blocked.
+            svc.PointIsInClickableArea(new Vector2(320, 170)).Should().BeFalse();
+
+            // Absolute point maps to client (500,400) and should remain clickable.
+            svc.PointIsInClickableArea(new Vector2(600, 450)).Should().BeTrue();
         }
 
         private static void SetRectangles(AreaService svc, RectangleF full, RectangleF health, RectangleF mana, RectangleF buffs)

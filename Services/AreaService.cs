@@ -320,14 +320,14 @@ namespace ClickIt.Services
                     && !point.PointInRectangle(_skillsRectangle)
                     && !point.PointInRectangle(_skillsTertiaryRectangle)
                     && !point.PointInRectangle(_manaSquareRectangle)
-                    && !point.PointInRectangle(_buffsAndDebuffsRectangle)
-                    && !PointInAnyRectangle(point, _buffsAndDebuffsRectangles)
-                    && !PointInAnyRectangle(point, _questTrackerBlockedRectangles)
-                    && !point.PointInRectangle(_chatPanelBlockedRectangle)
-                    && !point.PointInRectangle(_mapPanelBlockedRectangle)
-                    && !point.PointInRectangle(_xpBarBlockedRectangle)
-                    && !point.PointInRectangle(_altarBlockedRectangle)
-                    && !point.PointInRectangle(_ritualBlockedRectangle);
+                    && !PointInBlockedUiRectangle(point, _buffsAndDebuffsRectangle)
+                    && !PointInAnyBlockedUiRectangle(point, _buffsAndDebuffsRectangles)
+                    && !PointInAnyBlockedUiRectangle(point, _questTrackerBlockedRectangles)
+                    && !PointInBlockedUiRectangle(point, _chatPanelBlockedRectangle)
+                    && !PointInBlockedUiRectangle(point, _mapPanelBlockedRectangle)
+                    && !PointInBlockedUiRectangle(point, _xpBarBlockedRectangle)
+                    && !PointInBlockedUiRectangle(point, _altarBlockedRectangle)
+                    && !PointInBlockedUiRectangle(point, _ritualBlockedRectangle);
             }
         }
 
@@ -347,6 +347,48 @@ namespace ClickIt.Services
             }
 
             return false;
+        }
+
+        private bool PointInAnyBlockedUiRectangle(Vector2 point, List<RectangleF> rectangles)
+        {
+            for (int i = 0; i < rectangles.Count; i++)
+            {
+                if (PointInBlockedUiRectangle(point, rectangles[i]))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool PointInBlockedUiRectangle(Vector2 point, RectangleF rect)
+        {
+            if (PointInUiRectangleAnyRepresentation(point, rect))
+                return true;
+
+            Vector2 windowTopLeft = new(_fullScreenRectangle.X, _fullScreenRectangle.Y);
+            if (windowTopLeft.X == 0f && windowTopLeft.Y == 0f)
+                return false;
+
+            Vector2 clientPoint = point - windowTopLeft;
+            return PointInUiRectangleAnyRepresentation(clientPoint, rect);
+        }
+
+        private static bool PointInUiRectangleAnyRepresentation(Vector2 point, RectangleF rect)
+        {
+            return PointInUiRectangle(point, rect) || point.PointInRectangle(rect);
+        }
+
+        private static bool PointInUiRectangle(Vector2 point, RectangleF rect)
+        {
+            if (rect.Width <= 0f || rect.Height <= 0f)
+                return false;
+
+            float right = rect.X + rect.Width;
+            float bottom = rect.Y + rect.Height;
+            return point.X >= rect.X
+                && point.X <= right
+                && point.Y >= rect.Y
+                && point.Y <= bottom;
         }
 
         private static bool IsInTownOrHideout(GameController? gameController)

@@ -128,20 +128,11 @@ namespace ClickIt
                 RenderDebug,
                 "Provides more debug text related to rendering the overlay.");
 
-            DrawToggleNodeControl(
-                "Auto-Copy Additional Debug Information",
-                AutoCopyAdditionalDebugInfoToClipboard,
-                "Automatically copies the current Additional Debug Information text to clipboard.");
-
-            if (AutoCopyAdditionalDebugInfoToClipboard.Value)
+            if (ImGui.Button("Copy Additional Debug Information"))
             {
-                DrawRangeNodeControl(
-                    "Auto-Copy Interval (ms)",
-                    AutoCopyAdditionalDebugInfoIntervalMs,
-                    250,
-                    10000,
-                    "Minimum delay between clipboard updates when auto-copy is enabled.");
+                TriggerButtonNode(CopyAdditionalDebugInfoButton);
             }
+            DrawInlineTooltip("Copies the current Additional Debug Information text to clipboard.");
 
             if (RenderDebug.Value)
             {

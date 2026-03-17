@@ -5,8 +5,7 @@ namespace ClickIt
 {
     public partial class ClickIt
     {
-        private long _lastAdditionalDebugClipboardCopyMs;
-        private string _lastAdditionalDebugClipboardText = string.Empty;
+        private bool _copyAdditionalDebugInfoRequested;
 
         private static double GetElapsedMs(long startTimestamp)
         {
@@ -44,8 +43,8 @@ namespace ClickIt
                 if (hasDebugRendering)
                 {
                     int debugTextStartCount = 0;
-                    bool autoCopyDebugInfo = effective.AutoCopyAdditionalDebugInfoToClipboard.Value;
-                    if (autoCopyDebugInfo)
+                    bool shouldCopyDebugInfo = _copyAdditionalDebugInfoRequested;
+                    if (shouldCopyDebugInfo)
                     {
                         debugTextStartCount = State.DeferredTextQueue?.GetPendingCount() ?? 0;
                     }
@@ -59,10 +58,11 @@ namespace ClickIt
                         State.DebugRenderer.RenderDetailedDebugInfo(effective, State.PerformanceMonitor);
                     }
 
-                    if (autoCopyDebugInfo)
+                    if (shouldCopyDebugInfo)
                     {
                         string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(debugTextStartCount) ?? [];
-                        TryAutoCopyAdditionalDebugInfo(debugLines, effective);
+                        TryCopyAdditionalDebugInfo(debugLines);
+                        _copyAdditionalDebugInfoRequested = false;
                     }
 
                     State.PerformanceMonitor?.RecordRenderSectionTiming(Utils.RenderSection.DebugOverlay, GetElapsedMs(sectionStart));
@@ -108,52 +108,16 @@ namespace ClickIt
             }
         }
 
-        private void TryAutoCopyAdditionalDebugInfo(string[] debugLines, ClickItSettings settings)
+        private void TryCopyAdditionalDebugInfo(string[] debugLines)
         {
             if (debugLines == null || debugLines.Length == 0)
                 return;
 
-            if (ShouldApplyOffscreenNoDataAutoCopySkip(settings)
-                && ShouldSkipAutoCopyForOffscreenMovementNoData(debugLines))
-                return;
-
-            long now = Environment.TickCount64;
-            int intervalMs = Math.Max(250, settings.AutoCopyAdditionalDebugInfoIntervalMs.Value);
-            if (now - _lastAdditionalDebugClipboardCopyMs < intervalMs)
-                return;
-
             string payload = BuildDebugClipboardPayload(debugLines);
-            if (string.IsNullOrWhiteSpace(payload) || string.Equals(payload, _lastAdditionalDebugClipboardText, StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(payload))
                 return;
 
-            if (!TrySetClipboardText(payload))
-                return;
-
-            _lastAdditionalDebugClipboardCopyMs = now;
-            _lastAdditionalDebugClipboardText = payload;
-        }
-
-        private static bool ShouldApplyOffscreenNoDataAutoCopySkip(ClickItSettings settings)
-        {
-            if (settings == null || !settings.DebugShowPathfinding.Value)
-                return false;
-
-            return settings.IsOnlyPathfindingDetailedDebugSectionEnabled();
-        }
-
-        private static bool ShouldSkipAutoCopyForOffscreenMovementNoData(string[] debugLines)
-        {
-            for (int i = 0; i < debugLines.Length; i++)
-            {
-                string line = debugLines[i] ?? string.Empty;
-                if (line.IndexOf("Offscreen Movement:", StringComparison.OrdinalIgnoreCase) >= 0
-                    && line.IndexOf("<no data>", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            _ = TrySetClipboardText(payload);
         }
 
         private static string BuildDebugClipboardPayload(string[] lines)

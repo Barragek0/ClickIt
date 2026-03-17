@@ -132,81 +132,40 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void ShouldSkipAutoCopyForOffscreenMovementNoData_ReturnsTrue_WhenNoDataLinePresent()
+        public void CopyAdditionalDebugInfoButtonPressed_SetsCopyRequestFlag()
         {
-            var method = typeof(ClickIt).GetMethod("ShouldSkipAutoCopyForOffscreenMovementNoData", BindingFlags.NonPublic | BindingFlags.Static);
+            var method = typeof(ClickIt).GetMethod("CopyAdditionalDebugInfoButtonPressed", BindingFlags.NonPublic | BindingFlags.Instance);
             method.Should().NotBeNull();
 
-            string[] lines =
-            [
-                "--- Pathfinding ---",
-                "Offscreen Movement: <no data>",
-                "Some other debug line"
+            var clickIt = new ClickIt();
+            clickIt.__Test_SetSettings(new ClickItSettings());
+
+            var flagField = typeof(ClickIt).GetField("_copyAdditionalDebugInfoRequested", BindingFlags.NonPublic | BindingFlags.Instance);
+            flagField.Should().NotBeNull();
+
+            flagField!.SetValue(clickIt, false);
+            method!.Invoke(clickIt, null);
+
+            ((bool)flagField.GetValue(clickIt)!).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void BuildDebugClipboardPayload_FormatsHeaderAndSkipsBlankLines()
+        {
+            var method = typeof(ClickIt).GetMethod("BuildDebugClipboardPayload", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            string[] lines = [
+                "--- Clicking ---",
+                "",
+                "Stage: ClickExecuted",
+                "   "
             ];
 
-            bool shouldSkip = (bool)method!.Invoke(null, [lines])!;
-            shouldSkip.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void ShouldSkipAutoCopyForOffscreenMovementNoData_ReturnsFalse_WhenMovementDataExists()
-        {
-            var method = typeof(ClickIt).GetMethod("ShouldSkipAutoCopyForOffscreenMovementNoData", BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
-            string[] lines =
-            [
-                "--- Pathfinding ---",
-                "Offscreen Stage: Clicked | built=True | fromPath=True | clickPoint=True",
-                "Offscreen Target: Metadata/Terrain/Leagues/Ultimatum/Objects/UltimatumChallengeInteractable"
-            ];
-
-            bool shouldSkip = (bool)method!.Invoke(null, [lines])!;
-            shouldSkip.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldApplyOffscreenNoDataAutoCopySkip_ReturnsTrue_WhenPathfindingIsOnlyDetailedSectionEnabled()
-        {
-            var method = typeof(ClickIt).GetMethod("ShouldApplyOffscreenNoDataAutoCopySkip", BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
-            var settings = new ClickItSettings();
-            settings.DebugShowStatus.Value = false;
-            settings.DebugShowGameState.Value = false;
-            settings.DebugShowPerformance.Value = false;
-            settings.DebugShowClickFrequencyTarget.Value = false;
-            settings.DebugShowAltarDetection.Value = false;
-            settings.DebugShowAltarService.Value = false;
-            settings.DebugShowLabels.Value = false;
-            settings.DebugShowHoveredItemMetadata.Value = false;
-            settings.DebugShowRecentErrors.Value = false;
-            settings.DebugShowPathfinding.Value = true;
-
-            bool shouldApply = (bool)method!.Invoke(null, [settings])!;
-            shouldApply.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void ShouldApplyOffscreenNoDataAutoCopySkip_ReturnsFalse_WhenAnotherDetailedSectionIsEnabled()
-        {
-            var method = typeof(ClickIt).GetMethod("ShouldApplyOffscreenNoDataAutoCopySkip", BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
-            var settings = new ClickItSettings();
-            settings.DebugShowStatus.Value = true;
-            settings.DebugShowGameState.Value = false;
-            settings.DebugShowPerformance.Value = false;
-            settings.DebugShowClickFrequencyTarget.Value = false;
-            settings.DebugShowAltarDetection.Value = false;
-            settings.DebugShowAltarService.Value = false;
-            settings.DebugShowLabels.Value = false;
-            settings.DebugShowHoveredItemMetadata.Value = false;
-            settings.DebugShowRecentErrors.Value = false;
-            settings.DebugShowPathfinding.Value = true;
-
-            bool shouldApply = (bool)method!.Invoke(null, [settings])!;
-            shouldApply.Should().BeFalse();
+            string payload = (string)method!.Invoke(null, [lines])!;
+            payload.Should().Contain("=== ClickIt Additional Debug Information ===");
+            payload.Should().Contain("--- Clicking ---");
+            payload.Should().Contain("Stage: ClickExecuted");
         }
 
     }

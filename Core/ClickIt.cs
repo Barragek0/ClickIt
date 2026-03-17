@@ -21,8 +21,12 @@ namespace ClickIt
 
             // Remove event handlers to prevent issues during DLL reload
             runtimeSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
+            runtimeSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
             if (!ReferenceEquals(runtimeSettings, EffectiveSettings))
+            {
                 EffectiveSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
+                EffectiveSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
+            }
 
             if (State.AlertService != null)
             {
@@ -115,6 +119,7 @@ namespace ClickIt
         {
             State.IsShuttingDown = false;
             Settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
+            Settings.CopyAdditionalDebugInfoButton.OnPressed += CopyAdditionalDebugInfoButtonPressed;
             State.PerformanceMonitor = new PerformanceMonitor(Settings);
             State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage);
             State.ErrorHandler.RegisterGlobalExceptionHandlers();
@@ -240,6 +245,11 @@ namespace ClickIt
         private void ReportBugButtonPressed()
         {
             _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues");
+        }
+
+        private void CopyAdditionalDebugInfoButtonPressed()
+        {
+            _copyAdditionalDebugInfoRequested = true;
         }
 
         public override void Render()

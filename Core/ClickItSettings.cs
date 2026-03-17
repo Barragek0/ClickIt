@@ -45,6 +45,9 @@ namespace ClickIt
         [Menu("Auto-Copy Interval (ms)", "Minimum delay between clipboard updates when auto-copy is enabled.", 4, 900)]
         public RangeNode<int> AutoCopyAdditionalDebugInfoIntervalMs { get; set; } = new RangeNode<int>(1000, 250, 10000);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Copy Additional Debug Information", "Copies the current Additional Debug Information text to clipboard.", 5, 900)]
+        public ButtonNode CopyAdditionalDebugInfoButton { get; set; } = new ButtonNode();
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Status", "Show/hide the status debug section", 1, 2)]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
