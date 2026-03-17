@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using ClickIt.Utils;
+using ExileCore;
 
 namespace ClickIt
 {
@@ -110,12 +112,26 @@ namespace ClickIt
             }
         }
 
+        bool introspect = false;
+
         private void TryCopyAdditionalDebugInfo(string[] debugLines)
         {
             if (debugLines == null || debugLines.Length == 0)
                 return;
 
             string payload = BuildDebugClipboardPayload(debugLines);
+            if (introspect)
+            {
+                string introspection = RuntimeObjectIntrospection.BuildReport(GameController, new RuntimeObjectIntrospectionOptions(
+                    Title: "Inventory Introspection",
+                    MaxDepth: 4,
+                    MaxCollectionItems: 3,
+                    PriorityMembers:
+                    []));
+                if (!string.IsNullOrWhiteSpace(introspection))
+                    payload = payload + Environment.NewLine + Environment.NewLine + introspection;
+            }
+
             if (string.IsNullOrWhiteSpace(payload))
                 return;
 
