@@ -41,8 +41,7 @@ namespace ClickIt.Tests.Unit
             renderer.RenderDebugFrames(settings);
 
             var frames = frameQueue.GetSnapshotForTests();
-            RectangleF expectedXpBarDrawRect = new RectangleF(xpBarRect.X, xpBarRect.Y - 5f, xpBarRect.Width, xpBarRect.Height + 5f);
-            frames.Should().Contain(f => f.Rectangle.Equals(expectedXpBarDrawRect) && f.Color.Equals(Color.Orange) && f.Thickness == 1);
+            frames.Should().Contain(f => f.Rectangle.Equals(xpBarRect) && f.Color.Equals(Color.Orange) && f.Thickness == 1);
             frames.Should().Contain(f => f.Rectangle.Equals(targetRect) && f.Color.Equals(Color.Gold) && f.Thickness == 1);
         }
 
