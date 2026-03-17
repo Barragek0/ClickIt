@@ -72,6 +72,7 @@ namespace ClickIt.Rendering
             _deferredFrameQueue.Enqueue(_areaService.MapPanelBlockedRectangle, Color.Pink, 1);
             _deferredFrameQueue.Enqueue(_areaService.XpBarBlockedRectangle, Color.Orange, 1);
             _deferredFrameQueue.Enqueue(_areaService.AltarBlockedRectangle, Color.Gold, 1);
+            _deferredFrameQueue.Enqueue(_areaService.RitualBlockedRectangle, Color.MediumVioletRed, 1);
 
             var questTrackerRects = _areaService.QuestTrackerBlockedRectangles;
             for (int i = 0; i < questTrackerRects.Count; i++)

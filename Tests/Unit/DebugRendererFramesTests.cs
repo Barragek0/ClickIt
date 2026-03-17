@@ -42,5 +42,38 @@ namespace ClickIt.Tests.Unit
             var frames = frameQueue.GetSnapshotForTests();
             frames.Should().Contain(f => f.Rectangle.Equals(targetRect) && f.Color.Equals(Color.Gold) && f.Thickness == 1);
         }
+
+        [TestMethod]
+        public void RenderDebugFrames_Enqueues_RitualBlockedRectangle()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            settings.DebugShowFrames.Value = true;
+            plugin.__Test_SetSettings(settings);
+
+            var areaService = new AreaService();
+            var frameQueue = new DeferredFrameQueue();
+
+            PrivateFieldAccessor.Set(areaService, "_fullScreenRectangle", new RectangleF(0, 0, 400, 300));
+            PrivateFieldAccessor.Set(areaService, "_healthSquareRectangle", new RectangleF(0, 250, 80, 300));
+            PrivateFieldAccessor.Set(areaService, "_flaskRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(areaService, "_skillsRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(areaService, "_manaSquareRectangle", new RectangleF(320, 250, 400, 300));
+            PrivateFieldAccessor.Set(areaService, "_buffsAndDebuffsRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(areaService, "_chatPanelBlockedRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(areaService, "_mapPanelBlockedRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(areaService, "_xpBarBlockedRectangle", RectangleF.Empty);
+            PrivateFieldAccessor.Set(areaService, "_altarBlockedRectangle", RectangleF.Empty);
+
+            RectangleF targetRect = new RectangleF(260, 130, 330, 210);
+            PrivateFieldAccessor.Set(areaService, "_ritualBlockedRectangle", targetRect);
+
+            var renderer = new DebugRenderer(plugin, areaService: areaService, deferredFrameQueue: frameQueue);
+
+            renderer.RenderDebugFrames(settings);
+
+            var frames = frameQueue.GetSnapshotForTests();
+            frames.Should().Contain(f => f.Rectangle.Equals(targetRect) && f.Color.Equals(Color.MediumVioletRed) && f.Thickness == 1);
+        }
     }
 }

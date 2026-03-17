@@ -32,6 +32,7 @@ namespace ClickIt.Services
         private RectangleF _mapPanelBlockedRectangle;
         private RectangleF _xpBarBlockedRectangle;
         private RectangleF _altarBlockedRectangle;
+        private RectangleF _ritualBlockedRectangle;
         private readonly List<RectangleF> _questTrackerBlockedRectangles = [];
         private long _lastQuestTrackerRectanglesSuccessTimestampMs;
         private long _lastBlockedUiRectanglesRefreshTimestampMs;
@@ -55,6 +56,7 @@ namespace ClickIt.Services
         public RectangleF MapPanelBlockedRectangle => _mapPanelBlockedRectangle;
         public RectangleF XpBarBlockedRectangle => _xpBarBlockedRectangle;
         public RectangleF AltarBlockedRectangle => _altarBlockedRectangle;
+        public RectangleF RitualBlockedRectangle => _ritualBlockedRectangle;
         public IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles => _questTrackerBlockedRectangles;
 
         public void UpdateScreenAreas(GameController gameController)
@@ -133,6 +135,7 @@ namespace ClickIt.Services
                 : RectangleF.Empty;
             _xpBarBlockedRectangle = ResolveXpBarBlockedRectangle(gameController);
             _altarBlockedRectangle = ResolveAltarBlockedRectangle(gameController);
+            _ritualBlockedRectangle = ResolveRitualBlockedRectangle(gameController);
         }
 
         private void RefreshQuestTrackerAreas(GameController gameController, long now)
@@ -323,7 +326,8 @@ namespace ClickIt.Services
                     && !point.PointInRectangle(_chatPanelBlockedRectangle)
                     && !point.PointInRectangle(_mapPanelBlockedRectangle)
                     && !point.PointInRectangle(_xpBarBlockedRectangle)
-                    && !point.PointInRectangle(_altarBlockedRectangle);
+                    && !point.PointInRectangle(_altarBlockedRectangle)
+                    && !point.PointInRectangle(_ritualBlockedRectangle);
             }
         }
 
@@ -424,6 +428,36 @@ namespace ClickIt.Services
 
         private static RectangleF ResolveAltarBlockedRectangle(GameController gameController)
          => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 17);
+
+        private static RectangleF ResolveRitualBlockedRectangle(GameController gameController)
+         => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 0);
+
+        private static RectangleF ResolveVisibleRectangleFromNodePath(object? root, params int[] childPath)
+        {
+            if (root == null || childPath == null || childPath.Length == 0)
+                return RectangleF.Empty;
+
+            object? current = root;
+            for (int i = 0; i < childPath.Length; i++)
+            {
+                if (!TryGetChildNode(current, childPath[i], out current) || current == null)
+                    return RectangleF.Empty;
+            }
+
+            if (current is not Element element)
+                return RectangleF.Empty;
+
+            if (!ShouldUseVisibleUiBlockedRectangle(element.IsValid, element.IsVisible))
+                return RectangleF.Empty;
+
+            if (!TryGetClientRect(element, out RectangleF rect))
+                return RectangleF.Empty;
+
+            return rect.Width > 1f && rect.Height > 1f ? rect : RectangleF.Empty;
+        }
+
+        internal static bool ShouldUseVisibleUiBlockedRectangle(bool elementIsValid, bool elementIsVisible)
+            => elementIsValid && elementIsVisible;
 
         private static RectangleF ResolveRectangleFromNodePath(object? root, params int[] childPath)
         {

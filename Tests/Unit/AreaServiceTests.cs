@@ -248,6 +248,15 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldUseVisibleUiBlockedRectangle_ReturnsTrue_OnlyWhenValidAndVisible()
+        {
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: true).Should().BeFalse();
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: false).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void PointIsInClickableArea_ReturnsFalse_InChatPanelBlockedRectangle()
         {
             var svc = new AreaService();
@@ -317,6 +326,24 @@ namespace ClickIt.Tests.Unit
 
             svc.PointIsInClickableArea(new Vector2(280, 150)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void PointIsInClickableArea_ReturnsFalse_InRitualBlockedRectangle()
+        {
+            var svc = new AreaService();
+
+            var full = new RectangleF(0, 0, 400, 300);
+            var health = new RectangleF(0, 290, 400, 300);
+            var mana = new RectangleF(390, 290, 400, 300);
+            var buffs = new RectangleF(0, 0, 30, 30);
+            var ritualBlocked = new RectangleF(260, 130, 330, 210);
+
+            SetRectangles(svc, full, health, mana, buffs);
+            PrivateFieldAccessor.Set(svc, "_ritualBlockedRectangle", ritualBlocked);
+
+            svc.PointIsInClickableArea(new Vector2(300, 170)).Should().BeFalse();
+            svc.PointIsInClickableArea(new Vector2(230, 170)).Should().BeTrue();
         }
 
         [TestMethod]
