@@ -62,6 +62,19 @@ namespace ClickIt.Tests.Unit
             return method!.Invoke(null, args);
         }
 
+        public sealed class FakeBaseInfo
+        {
+            public int ItemCellsSizeX { get; set; }
+            public int ItemCellsSizeY { get; set; }
+            public int SizeX { get; set; }
+            public int SizeY { get; set; }
+        }
+
+        public sealed class FakeBaseWithInfo
+        {
+            public FakeBaseInfo Info { get; set; } = new FakeBaseInfo();
+        }
+
 
         [TestMethod]
         public void ShouldClickWorldItemCore_ReturnsFalse_WhenClickItemsDisabled()
@@ -220,6 +233,31 @@ namespace ClickIt.Tests.Unit
             ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 60, 60)!).Should().BeTrue();
             ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 61, 60)!).Should().BeTrue();
             ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 10, 0)!).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryResolveInventoryItemSizeFromBase_PrefersInfoItemCellsSize()
+        {
+            var method = typeof(Services.LabelFilterService).GetMethod(
+                "TryResolveInventoryItemSizeFromBase",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var fakeBase = new FakeBaseWithInfo
+            {
+                Info = new FakeBaseInfo
+                {
+                    ItemCellsSizeX = 2,
+                    ItemCellsSizeY = 4
+                }
+            };
+
+            object?[] args = [fakeBase, 0, 0];
+            bool resolved = (bool)method!.Invoke(null, args)!;
+
+            resolved.Should().BeTrue();
+            ((int)args[1]!).Should().Be(2);
+            ((int)args[2]!).Should().Be(4);
         }
 
         [TestMethod]

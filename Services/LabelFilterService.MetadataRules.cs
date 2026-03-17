@@ -407,20 +407,65 @@ namespace ClickIt.Services
             try
             {
                 Base? baseComponent = itemEntity.GetComponent<Base>();
-                bool widthResolved = TryReadInt(baseComponent, out width, s => s.Width);
-                bool heightResolved = TryReadInt(baseComponent, out height, s => s.Height);
-                if (widthResolved && heightResolved)
-                {
-                    width = Math.Max(1, width);
-                    height = Math.Max(1, height);
-                    return true;
-                }
+                return TryResolveInventoryItemSizeFromBase(baseComponent, out width, out height);
             }
             catch
             {
             }
 
             return false;
+        }
+
+        internal static bool TryResolveInventoryItemSizeFromBase(object? baseComponent, out int width, out int height)
+        {
+            width = 1;
+            height = 1;
+
+            if (baseComponent == null)
+                return false;
+
+            if (TryResolveInventoryItemCellSizeFromInfo(baseComponent, out width, out height))
+            {
+                if (width > 0 && height > 0)
+                {
+                    width = Math.Max(1, width);
+                    height = Math.Max(1, height);
+                    return true;
+                }
+            }
+
+            bool widthResolved = TryReadInt(baseComponent, out width, s => s.ItemCellsSizeX)
+                || TryReadInt(baseComponent, out width, s => s.SizeX);
+
+            bool heightResolved = TryReadInt(baseComponent, out height, s => s.ItemCellsSizeY)
+                || TryReadInt(baseComponent, out height, s => s.SizeY);
+
+            if (!widthResolved || !heightResolved)
+                return false;
+
+            width = Math.Max(1, width);
+            height = Math.Max(1, height);
+            return true;
+        }
+
+        private static bool TryResolveInventoryItemCellSizeFromInfo(object baseComponent, out int width, out int height)
+        {
+            width = 0;
+            height = 0;
+
+            if (!TryGetDynamicValue(baseComponent, s => s.Info, out object? info) || info == null)
+                return false;
+
+            int itemCellsX = 0;
+            int itemCellsY = 0;
+
+            bool hasItemCellsX = TryReadInt(info, out itemCellsX, s => s.ItemCellsSizeX);
+            bool hasItemCellsY = TryReadInt(info, out itemCellsY, s => s.ItemCellsSizeY);
+
+            width = itemCellsX;
+            height = itemCellsY;
+
+            return width > 0 && height > 0;
         }
 
         private static bool IsGroundItemStackableCore(Entity? itemEntity)
