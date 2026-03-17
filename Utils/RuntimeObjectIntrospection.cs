@@ -9,19 +9,32 @@ namespace ClickIt.Utils
         string Title,
         int MaxDepth,
         int MaxCollectionItems,
-        IReadOnlyList<string>? PriorityMembers)
+        IReadOnlyList<string>? PriorityMembers,
+        int MaxMembersPerObject = 48,
+        bool IncludeNonPublicMembers = false,
+        int MaxValueChars = 120)
     {
         public static RuntimeObjectIntrospectionOptions Default => new(
             Title: "Runtime Object Introspection",
             MaxDepth: 2,
             MaxCollectionItems: 5,
-            PriorityMembers: []);
+            PriorityMembers: [],
+            MaxMembersPerObject: 48,
+            IncludeNonPublicMembers: false,
+            MaxValueChars: 120);
+
+        public static RuntimeObjectIntrospectionOptions VeryDeepAllData => new(
+            Title: "Full Game Memory Dump",
+            MaxDepth: 64,
+            MaxCollectionItems: int.MaxValue,
+            PriorityMembers: [],
+            MaxMembersPerObject: int.MaxValue,
+            IncludeNonPublicMembers: true,
+            MaxValueChars: int.MaxValue);
     }
 
     internal static class RuntimeObjectIntrospection
     {
-        private const int MaxMembersPerObject = 48;
-
         public static string BuildReport(object? root, RuntimeObjectIntrospectionOptions options)
         {
             string title = string.IsNullOrWhiteSpace(options.Title)
@@ -30,6 +43,8 @@ namespace ClickIt.Utils
 
             int maxDepth = Math.Max(0, options.MaxDepth);
             int maxCollectionItems = Math.Max(1, options.MaxCollectionItems);
+            int maxMembersPerObject = Math.Max(1, options.MaxMembersPerObject);
+            int maxValueChars = Math.Max(1, options.MaxValueChars);
 
             var sb = new StringBuilder(1024);
             sb.AppendLine($"--- {title} ---");
@@ -41,25 +56,35 @@ namespace ClickIt.Utils
             }
 
             var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-            AppendNode(sb, "Root", root, 0, maxDepth, maxCollectionItems, options.PriorityMembers ?? [], visited);
+            AppendNode(
+                sb,
+                "Root",
+                root,
+                0,
+                maxDepth,
+                maxCollectionItems,
+                options.PriorityMembers ?? [],
+                options.IncludeNonPublicMembers,
+                maxMembersPerObject,
+                maxValueChars,
+                visited);
 
             return sb.ToString().TrimEnd();
         }
 
-        public static IReadOnlyList<string> CollectPresentMemberValues(object source, IReadOnlyList<string> memberNames)
+        public static string WriteVeryDeepMemorySnapshotToFile(object? root, string filePath)
+            => WriteReportToFile(root, filePath, RuntimeObjectIntrospectionOptions.VeryDeepAllData);
+
+        public static string WriteReportToFile(object? root, string filePath, RuntimeObjectIntrospectionOptions options)
         {
-            if (source == null || memberNames == null || memberNames.Count == 0)
-                return [];
+            string fullPath = Path.GetFullPath(filePath);
+            string? directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
 
-            List<string> lines = [];
-            for (int i = 0; i < memberNames.Count; i++)
-            {
-                string memberName = memberNames[i];
-                if (TryGetMemberValue(source, memberName, out object? value))
-                    lines.Add($"{memberName}={FormatValue(value)}");
-            }
-
-            return lines;
+            string content = BuildReport(root, options);
+            File.WriteAllText(fullPath, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            return fullPath;
         }
 
         private static void AppendNode(
@@ -70,6 +95,9 @@ namespace ClickIt.Utils
             int maxDepth,
             int maxCollectionItems,
             IReadOnlyList<string> priorityMembers,
+            bool includeNonPublicMembers,
+            int maxMembersPerObject,
+            int maxValueChars,
             HashSet<object> visited)
         {
             if (value == null)
@@ -81,7 +109,7 @@ namespace ClickIt.Utils
             Type type = value.GetType();
             if (IsSimpleType(type))
             {
-                sb.AppendLine($"{path}: {type.Name} = {FormatValue(value)}");
+                sb.AppendLine($"{path}: {type.Name} = {FormatValue(value, maxValueChars)}");
                 return;
             }
 
@@ -96,7 +124,19 @@ namespace ClickIt.Utils
 
             if (value is IEnumerable enumerable && value is not string)
             {
-                AppendEnumerable(sb, path, type, enumerable, depth, maxDepth, maxCollectionItems, priorityMembers, visited);
+                AppendEnumerable(
+                    sb,
+                    path,
+                    type,
+                    enumerable,
+                    depth,
+                    maxDepth,
+                    maxCollectionItems,
+                    priorityMembers,
+                    includeNonPublicMembers,
+                    maxMembersPerObject,
+                    maxValueChars,
+                    visited);
                 return;
             }
 
@@ -107,20 +147,20 @@ namespace ClickIt.Utils
                 return;
             }
 
-            IReadOnlyList<MemberInfo> members = GetReadableMembers(type, priorityMembers);
+            IReadOnlyList<MemberInfo> members = GetReadableMembers(type, priorityMembers, includeNonPublicMembers);
             if (members.Count == 0)
             {
                 sb.AppendLine($"{path}: no readable public members");
                 return;
             }
 
-            int memberCount = Math.Min(members.Count, MaxMembersPerObject);
+            int memberCount = Math.Min(members.Count, maxMembersPerObject);
             for (int i = 0; i < memberCount; i++)
             {
                 MemberInfo member = members[i];
                 string memberPath = $"{path}.{member.Name}";
 
-                if (!TryGetMemberValue(value, member.Name, out object? memberValue))
+                if (!TryGetMemberValue(value, member, out object? memberValue))
                 {
                     sb.AppendLine($"{memberPath}: <unavailable>");
                     continue;
@@ -134,15 +174,26 @@ namespace ClickIt.Utils
 
                 if (IsSimpleType(memberValue.GetType()))
                 {
-                    sb.AppendLine($"{memberPath}: {FormatValue(memberValue)}");
+                    sb.AppendLine($"{memberPath}: {FormatValue(memberValue, maxValueChars)}");
                     continue;
                 }
 
-                AppendNode(sb, memberPath, memberValue, depth + 1, maxDepth, maxCollectionItems, priorityMembers, visited);
+                AppendNode(
+                    sb,
+                    memberPath,
+                    memberValue,
+                    depth + 1,
+                    maxDepth,
+                    maxCollectionItems,
+                    priorityMembers,
+                    includeNonPublicMembers,
+                    maxMembersPerObject,
+                    maxValueChars,
+                    visited);
             }
 
-            if (members.Count > MaxMembersPerObject)
-                sb.AppendLine($"{path}: member output truncated ({members.Count - MaxMembersPerObject} omitted)");
+            if (members.Count > maxMembersPerObject)
+                sb.AppendLine($"{path}: member output truncated ({members.Count - maxMembersPerObject} omitted)");
         }
 
         private static void AppendEnumerable(
@@ -154,6 +205,9 @@ namespace ClickIt.Utils
             int maxDepth,
             int maxCollectionItems,
             IReadOnlyList<string> priorityMembers,
+            bool includeNonPublicMembers,
+            int maxMembersPerObject,
+            int maxValueChars,
             HashSet<object> visited)
         {
             sb.AppendLine($"{path}: {type.FullName} (enumerable)");
@@ -163,7 +217,18 @@ namespace ClickIt.Utils
             {
                 if (count < maxCollectionItems)
                 {
-                    AppendNode(sb, $"{path}[{count}]", entry, depth + 1, maxDepth, maxCollectionItems, priorityMembers, visited);
+                    AppendNode(
+                        sb,
+                        $"{path}[{count}]",
+                        entry,
+                        depth + 1,
+                        maxDepth,
+                        maxCollectionItems,
+                        priorityMembers,
+                        includeNonPublicMembers,
+                        maxMembersPerObject,
+                        maxValueChars,
+                        visited);
                 }
 
                 count++;
@@ -174,21 +239,28 @@ namespace ClickIt.Utils
                 sb.AppendLine($"{path}: collection output truncated ({count - maxCollectionItems} omitted)");
         }
 
-        private static IReadOnlyList<MemberInfo> GetReadableMembers(Type type, IReadOnlyList<string> priorityMembers)
+        private static IReadOnlyList<MemberInfo> GetReadableMembers(Type type, IReadOnlyList<string> priorityMembers, bool includeNonPublicMembers)
         {
             var members = new List<MemberInfo>();
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public;
+            if (includeNonPublicMembers)
+                flags |= BindingFlags.NonPublic;
 
-            PropertyInfo[] properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            PropertyInfo[] properties = type.GetProperties(flags);
             for (int i = 0; i < properties.Length; i++)
             {
                 PropertyInfo property = properties[i];
                 if (!property.CanRead || property.GetIndexParameters().Length > 0)
                     continue;
 
+                MethodInfo? getter = property.GetGetMethod(nonPublic: includeNonPublicMembers);
+                if (getter == null)
+                    continue;
+
                 members.Add(property);
             }
 
-            FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            FieldInfo[] fields = type.GetFields(flags);
             for (int i = 0; i < fields.Length; i++)
                 members.Add(fields[i]);
 
@@ -217,60 +289,33 @@ namespace ClickIt.Utils
             return members;
         }
 
-        internal static bool TryGetMemberValue(object source, string memberName, out object? value)
+        private static bool TryGetMemberValue(object source, MemberInfo member, out object? value)
         {
             value = null;
-            if (source == null || string.IsNullOrWhiteSpace(memberName))
+            if (source == null || member == null)
                 return false;
 
             try
             {
-                Type type = source.GetType();
-
-                PropertyInfo? property = type.GetProperty(memberName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                if (property != null)
+                switch (member)
                 {
-                    value = property.GetValue(source);
-                    return true;
-                }
-
-                FieldInfo? field = type.GetField(memberName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                if (field != null)
-                {
-                    value = field.GetValue(source);
-                    return true;
+                    case PropertyInfo property:
+                        value = property.GetValue(source);
+                        return true;
+                    case FieldInfo field:
+                        value = field.GetValue(source);
+                        return true;
+                    default:
+                        return false;
                 }
             }
             catch
             {
                 return false;
             }
-
-            return false;
         }
 
-        internal static bool TryGetFirstCollectionObject(object collection, out object? first)
-        {
-            first = null;
-            if (collection == null)
-                return false;
-
-            if (collection is IEnumerable enumerable)
-            {
-                foreach (object? entry in enumerable)
-                {
-                    first = entry;
-                    return first != null;
-                }
-
-                return false;
-            }
-
-            first = collection;
-            return true;
-        }
-
-        internal static string FormatValue(object? value)
+        private static string FormatValue(object? value, int maxLen = 120)
         {
             if (value == null)
                 return "null";
@@ -281,8 +326,7 @@ namespace ClickIt.Utils
                 _ => value.ToString() ?? string.Empty
             };
 
-            const int maxLen = 120;
-            if (text.Length > maxLen)
+            if (maxLen > 0 && text.Length > maxLen)
                 text = text[..maxLen] + "...";
 
             return text;

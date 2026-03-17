@@ -289,7 +289,7 @@ namespace ClickIt.Services
                 {
                     HasPrimaryInventory = true,
                     CapacityCells = totalCellCapacity,
-                    Notes = "Unable to resolve inventory layout entries"
+                    Notes = $"Unable to resolve inventory layout entries from {layoutSource} ({layoutDebug})"
                 };
                 SetCachedInventoryProbe(gameController, now, probe);
                 return probe.IsFull;
@@ -458,26 +458,9 @@ namespace ClickIt.Services
                 }
             }
 
-            if (!TryGetPrimaryServerInventoryItems(primaryInventory, out object? itemsCollection, out string itemsDebug) || itemsCollection == null)
-            {
-                source = "PlayerInventories[0].Inventory.Items";
-                debugDetails = itemsDebug;
-                return false;
-            }
-
-            if (!TryBuildInventoryLayoutEntriesFromCollection(itemsCollection, inventoryWidth, inventoryHeight, out List<InventoryLayoutEntry> itemEntries, out int itemRawCount))
-            {
-                source = "PlayerInventories[0].Inventory.Items";
-                debugDetails = itemsDebug;
-                return false;
-            }
-
-            entries = itemEntries;
-            source = "PlayerInventories[0].Inventory.Items";
-            rawEntryCount = itemRawCount;
-            isReliable = itemRawCount == 0 || itemEntries.Count > 0;
-            debugDetails = $"{itemsDebug}; raw:{itemRawCount} parsed:{itemEntries.Count}";
-            return true;
+            source = "PlayerInventories[0].InventorySlotItems";
+            debugDetails = "read-failed: PlayerInventories[0].InventorySlotItems accessor unavailable or unreadable";
+            return false;
         }
 
         private static bool TryBuildInventoryLayoutEntriesFromCollection(
@@ -1051,7 +1034,7 @@ namespace ClickIt.Services
             items = Array.Empty<Entity>();
             debugDetails = string.Empty;
 
-            if (!TryGetPrimaryServerInventoryItems(primaryInventory, out object? collectionObj, out string collectionDebug) || collectionObj == null)
+            if (!TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? collectionObj, out string collectionDebug) || collectionObj == null)
             {
                 debugDetails = $"items-collection: {collectionDebug}";
                 return false;
@@ -1125,9 +1108,9 @@ namespace ClickIt.Services
             return true;
         }
 
-        private static bool TryGetPrimaryServerInventoryItems(object primaryInventory, out object? itemsCollection, out string debugDetails)
+        private static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection, out string debugDetails)
         {
-            itemsCollection = null;
+            slotItemsCollection = null;
             debugDetails = string.Empty;
 
             if (!TryGetDynamicValue(primaryInventory, s => s.Inventory, out object? inventoryObj) || inventoryObj == null)
@@ -1136,27 +1119,26 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (!TryGetDynamicValue(inventoryObj, s => s.Items, out itemsCollection))
+            if (!TryGetDynamicValue(inventoryObj, s => s.InventorySlotItems, out slotItemsCollection))
             {
-                debugDetails = "read-failed: PlayerInventories[0].Inventory.Items accessor unavailable";
+                debugDetails = "read-failed: PlayerInventories[0].Inventory.InventorySlotItems accessor unavailable";
                 return false;
             }
 
-            if (itemsCollection == null)
+            if (slotItemsCollection == null)
             {
-                debugDetails = "read-ok: PlayerInventories[0].Inventory.Items is null";
+                debugDetails = "read-ok: PlayerInventories[0].Inventory.InventorySlotItems is null";
                 return false;
             }
 
-            int previewCount = CountPreviewObjects(itemsCollection, 8);
-            debugDetails = $"read-ok: PlayerInventories[0].Inventory.Items type={itemsCollection.GetType().Name} previewCount={previewCount}";
+            int previewCount = CountPreviewObjects(slotItemsCollection, 8);
+            debugDetails = $"read-ok: PlayerInventories[0].Inventory.InventorySlotItems type={slotItemsCollection.GetType().Name} previewCount={previewCount}";
             return true;
         }
 
         private static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection)
         {
-            slotItemsCollection = null;
-            return TryGetDynamicValue(primaryInventory, s => s.InventorySlotItems, out slotItemsCollection) && slotItemsCollection != null;
+            return TryGetPrimaryServerInventorySlotItems(primaryInventory, out slotItemsCollection, out _);
         }
 
         private static bool TryGetFirstCollectionObject(object collection, out object? first)

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using System.Text;
 using ClickIt.Utils;
 using ExileCore;
@@ -112,7 +113,7 @@ namespace ClickIt
             }
         }
 
-        bool introspect = false;
+        private const string DeepMemoryDumpFileName = "memoryData.dat";
 
         private void TryCopyAdditionalDebugInfo(string[] debugLines)
         {
@@ -120,22 +121,34 @@ namespace ClickIt
                 return;
 
             string payload = BuildDebugClipboardPayload(debugLines);
-            if (introspect)
+            string? memoryDumpPath = TryWriteDeepMemoryDumpToFile();
+            if (!string.IsNullOrWhiteSpace(memoryDumpPath))
             {
-                string introspection = RuntimeObjectIntrospection.BuildReport(GameController, new RuntimeObjectIntrospectionOptions(
-                    Title: "Inventory Introspection",
-                    MaxDepth: 4,
-                    MaxCollectionItems: 3,
-                    PriorityMembers:
-                    []));
-                if (!string.IsNullOrWhiteSpace(introspection))
-                    payload = payload + Environment.NewLine + Environment.NewLine + introspection;
+                payload = payload
+                    + Environment.NewLine
+                    + Environment.NewLine
+                    + "Deep runtime memory dump (full GameController graph) written to:"
+                    + Environment.NewLine
+                    + memoryDumpPath;
             }
 
             if (string.IsNullOrWhiteSpace(payload))
                 return;
 
             _ = TrySetClipboardText(payload);
+        }
+
+        private string? TryWriteDeepMemoryDumpToFile()
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DeepMemoryDumpFileName);
+                return RuntimeObjectIntrospection.WriteVeryDeepMemorySnapshotToFile(GameController, path);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static string BuildDebugClipboardPayload(string[] lines)
