@@ -193,9 +193,15 @@ namespace ClickIt.Rendering
             bool hasObservedInterval = observedInterval > 0;
 
             double targetDeviation = metrics.TargetDeviationRatio;
+            double modeledDeviation = Math.Abs(metrics.ModeledTotalMs - metrics.ClickTargetMs) / Math.Max(1d, metrics.ClickTargetMs);
             string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM
                 ? (hasObservedInterval ? "meeting target" : "estimating")
                 : "not meeting target";
+            Color modeledLineColor = modeledDeviation <= TARGET_DEVIATION_LOW
+                ? Color.LawnGreen
+                : modeledDeviation <= TARGET_DEVIATION_MEDIUM
+                    ? Color.Yellow
+                    : Color.Red;
             Color targetLineColor = targetDeviation <= TARGET_DEVIATION_LOW ? Color.LawnGreen : targetDeviation <= TARGET_DEVIATION_MEDIUM ? Color.Yellow : Color.Red;
 
             string delayStr = $"{metrics.ClickDelayMs:F0}";
@@ -217,7 +223,7 @@ namespace ClickIt.Rendering
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Processing:  {procStr.PadLeft(maxLen)} ms =", new Vector2(xPos, yPos), procColor, 16);
             yPos += lineHeight;
-            _deferredTextQueue.Enqueue($"Total:       {modeledTotalStr.PadLeft(maxLen)} ms (model)", new Vector2(xPos, yPos), targetLineColor, 16);
+            _deferredTextQueue.Enqueue($"Total:       {modeledTotalStr.PadLeft(maxLen)} ms (model)", new Vector2(xPos, yPos), modeledLineColor, 16);
             yPos += lineHeight;
             _deferredTextQueue.Enqueue($"Scheduler:   {schedStr.PadLeft(maxLen)} ms", new Vector2(xPos, yPos), schedulerColor, 16);
             yPos += lineHeight;
