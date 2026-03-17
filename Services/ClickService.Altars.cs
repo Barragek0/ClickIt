@@ -231,7 +231,9 @@ namespace ClickIt.Services
 
                 RectangleF r = el.GetClientRect();
                 Vector2 clickPos = r.Center + windowTopLeft;
-                PerformLockedClick(clickPos, el, gameController);
+                if (!PerformLockedClick(clickPos, el, gameController, expectedPath: "Altars"))
+                    return false;
+
                 performanceMonitor.RecordClickInterval();
                 DebugLog(() => "[ClickAltarElement] Click performed");
                 return true;

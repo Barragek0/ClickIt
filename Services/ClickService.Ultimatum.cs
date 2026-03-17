@@ -165,7 +165,9 @@ namespace ClickIt.Services
             Vector2 clickPos = rect.Center + windowTopLeft;
             DebugLog(() => $"{clickLog} {clickPos}");
 
-            PerformLockedClick(clickPos, element, gameController);
+            if (!PerformLockedClick(clickPos, element, gameController, expectedPath: "Ultimatum"))
+                return false;
+
             performanceMonitor.RecordClickInterval();
             return true;
         }

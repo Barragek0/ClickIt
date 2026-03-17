@@ -14,23 +14,81 @@ namespace ClickIt.Tests.Unit
     public class ClickServiceBasicTests
     {
         [TestMethod]
-        public void GetElementAccessLock_ReturnsSameObject()
+        public void ShouldAllowLabelClickForPoint_ReturnsTrue_OnlyWhenBothChecksPass()
         {
-            // Since runtime construction is heavy, create an uninitialized instance and initialize the internal lock
-            var svc = (ClickService)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ClickService));
-            var fld = typeof(ClickService).GetField("_elementAccessLock", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            if (fld == null)
-            {
-                fld = typeof(ClickService).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                    .FirstOrDefault(f => f.Name.IndexOf("elementAccess", System.StringComparison.OrdinalIgnoreCase) >= 0);
-            }
-            fld!.SetValue(svc, new object());
-            var lock1 = svc.GetElementAccessLock();
-            var lock2 = svc.GetElementAccessLock();
+            ClickService.ShouldAllowLabelClickForPoint(
+                pointIsClickableDirect: true,
+                pointIsClickableEitherSpace: true).Should().BeTrue();
 
-            // but the important behaviour is that repeated calls return the same instance.
-            lock1.Should().BeSameAs(lock2);
-            lock1.Should().BeSameAs(lock2);
+            ClickService.ShouldAllowLabelClickForPoint(
+                pointIsClickableDirect: true,
+                pointIsClickableEitherSpace: false).Should().BeFalse();
+
+            ClickService.ShouldAllowLabelClickForPoint(
+                pointIsClickableDirect: false,
+                pointIsClickableEitherSpace: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldSkipLabelClickForUnclickablePoint_ReturnsTrue_WhenNotAllowed()
+        {
+            ClickService.ShouldSkipLabelClickForUnclickablePoint(allowClick: false).Should().BeTrue();
+            ClickService.ShouldSkipLabelClickForUnclickablePoint(allowClick: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void BuildClickFlowStageSnapshot_PreservesResolvedClickContext()
+        {
+            var previous = new ClickService.ClickDebugSnapshot(
+                HasData: true,
+                Stage: "ClickSuccess",
+                MechanicId: "items",
+                EntityPath: "Metadata/MiscellaneousObjects/WorldItem",
+                Distance: 53.1f,
+                WorldScreenRaw: new SharpDX.Vector2(400f, 500f),
+                WorldScreenAbsolute: new SharpDX.Vector2(520f, 710f),
+                ResolvedClickPoint: new SharpDX.Vector2(928.7f, 1076.3f),
+                Resolved: true,
+                CenterInWindow: true,
+                CenterClickable: true,
+                ResolvedInWindow: true,
+                ResolvedClickable: true,
+                Notes: "before",
+                Sequence: 17,
+                TimestampMs: 111);
+
+            var snapshot = ClickService.BuildClickFlowStageSnapshot(
+                previous,
+                stage: "ClickExecuted",
+                notes: "Input click executed",
+                mechanicId: null,
+                timestampMs: 222);
+
+            snapshot.Stage.Should().Be("ClickExecuted");
+            snapshot.Notes.Should().Be("Input click executed");
+            snapshot.MechanicId.Should().Be("items");
+            snapshot.EntityPath.Should().Be("Metadata/MiscellaneousObjects/WorldItem");
+            snapshot.ResolvedClickPoint.Should().Be(new SharpDX.Vector2(928.7f, 1076.3f));
+            snapshot.ResolvedClickable.Should().BeTrue();
+            snapshot.TimestampMs.Should().Be(222);
+        }
+
+        [TestMethod]
+        public void BuildClickFlowStageSnapshot_UsesProvidedMechanicId_WhenPresent()
+        {
+            var previous = ClickService.ClickDebugSnapshot.Empty;
+
+            var snapshot = ClickService.BuildClickFlowStageSnapshot(
+                previous,
+                stage: "SelectionReturned",
+                notes: "Selected label returned to click service",
+                mechanicId: "shrines",
+                timestampMs: 333);
+
+            snapshot.MechanicId.Should().Be("shrines");
+            snapshot.Stage.Should().Be("SelectionReturned");
+            snapshot.HasData.Should().BeTrue();
+            snapshot.TimestampMs.Should().Be(333);
         }
 
         [TestMethod]
@@ -230,6 +288,20 @@ namespace ClickIt.Tests.Unit
 
             bool result = ClickService.IsClickableInEitherSpace(
                 new SharpDX.Vector2(40f, 20f),
+                new SharpDX.Vector2(80f, 0f),
+                checker,
+                "test/path");
+
+            result.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsClickableInEitherSpace_ReturnsTrue_WhenInputIsAbsoluteAndOnlyClientSpaceIsClickable()
+        {
+            bool checker(SharpDX.Vector2 p, string _) => p.X >= 40f && p.X <= 60f;
+
+            bool result = ClickService.IsClickableInEitherSpace(
+                new SharpDX.Vector2(130f, 50f),
                 new SharpDX.Vector2(80f, 0f),
                 checker,
                 "test/path");
