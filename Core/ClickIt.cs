@@ -148,7 +148,25 @@ namespace ClickIt
                 State.AltarService,
                 weightCalculator,
                 State.AltarDisplayRenderer,
-                (point, path) => State.AreaService?.PointIsInClickableArea(GameController, point) ?? false,
+                (point, path) =>
+                {
+                    var areaService = State.AreaService;
+                    if (areaService == null)
+                        return false;
+
+                    bool clickable = areaService.PointIsInClickableArea(GameController, point);
+                    if (!clickable)
+                        return false;
+
+                    if (IsWorldItemPath(path)
+                        && areaService.PointIsInXpBarBlockedArea(GameController, point, forceRefresh: true))
+                    {
+                        LogMessage($"[ClickIt] Blocked WorldItem click in XP-bar zone at ({point.X:0.0},{point.Y:0.0}) path='{path}'.", 5);
+                        return false;
+                    }
+
+                    return true;
+                },
                 State.InputHandler,
                 labelFilterService,
                 State.ShrineService,
@@ -179,6 +197,14 @@ namespace ClickIt
             State.SecondTimer.Start();
 
             return true;
+        }
+
+        private static bool IsWorldItemPath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            return path.IndexOf("WorldItem", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static void WaitForCoroutineShutdown(ExileCore.Shared.Coroutine? coroutine, int timeoutMs = 750)

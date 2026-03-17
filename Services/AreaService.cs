@@ -9,6 +9,8 @@ namespace ClickIt.Services
 {
     public class AreaService
     {
+        private const float XpBarBlockedTopExtensionPx = 5f;
+        private const float XpBarWorldItemFallbackBandHeightPx = 42f;
         private const int BlockedUiRectanglesRefreshIntervalMs = 10_000;
         private const int BuffsAndDebuffsRectanglesRefreshIntervalMs = 500;
         private const int QuestTrackerRectanglesHoldLastGoodMs = 200;
@@ -99,7 +101,11 @@ namespace ClickIt.Services
         private void RefreshMainBlockedAreas(GameController gameController, long now)
         {
             RectangleF winRect = gameController.Window.GetWindowRectangleTimeCache;
-            _fullScreenRectangle = new RectangleF(winRect.X, winRect.Y, winRect.Width, winRect.Height);
+            _fullScreenRectangle = new RectangleF(
+                winRect.X,
+                winRect.Y,
+                winRect.X + winRect.Width,
+                winRect.Y + winRect.Height);
 
             RectangleF leftCombined = new RectangleF(
                 winRect.BottomLeft.X / 3f,
@@ -133,9 +139,17 @@ namespace ClickIt.Services
             _mapPanelBlockedRectangle = ShouldUpdateMapPanelBlockedRectangle(IsInTownOrHideout(gameController))
                 ? ResolveMapPanelBlockedRectangle(gameController)
                 : RectangleF.Empty;
-            _xpBarBlockedRectangle = ResolveXpBarBlockedRectangle(gameController);
+            _xpBarBlockedRectangle = ExtendRectUpwardLtrb(ResolveXpBarBlockedRectangle(gameController), XpBarBlockedTopExtensionPx);
             _altarBlockedRectangle = ResolveAltarBlockedRectangle(gameController);
             _ritualBlockedRectangle = ResolveRitualBlockedRectangle(gameController);
+        }
+
+        internal static RectangleF ExtendRectUpwardLtrb(RectangleF rect, float extensionPx)
+        {
+            if (extensionPx <= 0f)
+                return rect;
+
+            return new RectangleF(rect.X, rect.Y - extensionPx, rect.Width, rect.Height + extensionPx);
         }
 
         private void RefreshQuestTrackerAreas(GameController gameController, long now)
@@ -313,21 +327,23 @@ namespace ClickIt.Services
         {
             using (LockManager.AcquireStatic(_screenAreasLock))
             {
-                return point.PointInRectangle(_fullScreenRectangle)
-                    && !point.PointInRectangle(_healthSquareRectangle)
-                    && !point.PointInRectangle(_flaskRectangle)
-                    && !point.PointInRectangle(_flaskTertiaryRectangle)
-                    && !point.PointInRectangle(_skillsRectangle)
-                    && !point.PointInRectangle(_skillsTertiaryRectangle)
-                    && !point.PointInRectangle(_manaSquareRectangle)
-                    && !point.PointInRectangle(_buffsAndDebuffsRectangle)
-                    && !PointInAnyRectangle(point, _buffsAndDebuffsRectangles)
-                    && !PointInAnyRectangle(point, _questTrackerBlockedRectangles)
-                    && !point.PointInRectangle(_chatPanelBlockedRectangle)
-                    && !point.PointInRectangle(_mapPanelBlockedRectangle)
-                    && !point.PointInRectangle(_xpBarBlockedRectangle)
-                    && !point.PointInRectangle(_altarBlockedRectangle)
-                    && !point.PointInRectangle(_ritualBlockedRectangle);
+                Vector2 windowTopLeft = new(_fullScreenRectangle.X, _fullScreenRectangle.Y);
+
+                return PointInRectangleEitherSpace(point, _fullScreenRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _healthSquareRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _flaskRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _flaskTertiaryRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _skillsRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _skillsTertiaryRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _manaSquareRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _buffsAndDebuffsRectangle, windowTopLeft)
+                    && !PointInAnyRectangleEitherSpace(point, _buffsAndDebuffsRectangles, windowTopLeft)
+                    && !PointInAnyRectangleEitherSpace(point, _questTrackerBlockedRectangles, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _chatPanelBlockedRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _mapPanelBlockedRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _xpBarBlockedRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _altarBlockedRectangle, windowTopLeft)
+                    && !PointInRectangleEitherSpace(point, _ritualBlockedRectangle, windowTopLeft);
             }
         }
 
@@ -338,15 +354,85 @@ namespace ClickIt.Services
             return PointIsInClickableArea(point);
         }
 
-        private static bool PointInAnyRectangle(Vector2 point, List<RectangleF> rectangles)
+        public bool PointIsInXpBarBlockedArea(GameController? gameController, Vector2 point, bool forceRefresh = false)
+        {
+            if (gameController != null)
+            {
+                if (forceRefresh)
+                {
+                    UpdateScreenAreasForced(gameController);
+                }
+                else
+                {
+                    UpdateScreenAreas(gameController);
+                }
+            }
+
+            using (LockManager.AcquireStatic(_screenAreasLock))
+            {
+                Vector2 windowTopLeft = new(_fullScreenRectangle.X, _fullScreenRectangle.Y);
+
+                bool insideExplicitXpRect = PointInRectangleEitherSpace(point, _xpBarBlockedRectangle, windowTopLeft);
+                RectangleF fallbackBand = ResolveWorldItemXpFallbackBand(_fullScreenRectangle, XpBarWorldItemFallbackBandHeightPx);
+                bool insideFallbackBand = PointInRectangleEitherSpace(point, fallbackBand, windowTopLeft);
+
+                return insideExplicitXpRect || insideFallbackBand;
+            }
+        }
+
+        internal static RectangleF ResolveWorldItemXpFallbackBand(RectangleF fullScreenRect, float bandHeightPx)
+        {
+            if (fullScreenRect.Width <= fullScreenRect.X || fullScreenRect.Height <= fullScreenRect.Y || bandHeightPx <= 0f)
+                return RectangleF.Empty;
+
+            float clampedBandHeight = Math.Min(bandHeightPx, fullScreenRect.Height - fullScreenRect.Y);
+            if (clampedBandHeight <= 0f)
+                return RectangleF.Empty;
+
+            return new RectangleF(
+                fullScreenRect.X,
+                fullScreenRect.Height - clampedBandHeight,
+                fullScreenRect.Width,
+                fullScreenRect.Height);
+        }
+
+        private void UpdateScreenAreasForced(GameController gameController)
+        {
+            using (LockManager.AcquireStatic(_screenAreasLock))
+            {
+                long now = Environment.TickCount64;
+                RefreshMainBlockedAreas(gameController, now);
+                RefreshBuffAndDebuffAreas(gameController);
+                _lastBlockedUiRectanglesRefreshTimestampMs = now;
+                _lastBuffsAndDebuffsRectanglesRefreshTimestampMs = now;
+            }
+        }
+
+        private static bool PointInAnyRectangleEitherSpace(Vector2 point, List<RectangleF> rectangles, Vector2 windowTopLeft)
         {
             for (int i = 0; i < rectangles.Count; i++)
             {
-                if (point.PointInRectangle(rectangles[i]))
+                if (PointInRectangleEitherSpace(point, rectangles[i], windowTopLeft))
                     return true;
             }
 
             return false;
+        }
+
+        internal static bool PointInRectangleEitherSpace(Vector2 point, RectangleF rect, Vector2 windowTopLeft)
+        {
+            if (rect.Width <= rect.X || rect.Height <= rect.Y)
+                return false;
+
+            if (point.PointInRectangle(rect))
+                return true;
+
+            Vector2 asClient = point - windowTopLeft;
+            if (asClient.PointInRectangle(rect))
+                return true;
+
+            Vector2 asScreen = point + windowTopLeft;
+            return asScreen.PointInRectangle(rect);
         }
 
         private static bool IsInTownOrHideout(GameController? gameController)
