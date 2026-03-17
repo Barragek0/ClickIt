@@ -40,6 +40,8 @@ namespace ClickIt
                     State.ClickHotkeyToggleRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"));
                 }
 
+                State.InventoryFullWarningRenderer?.Render(GameController ?? throw new InvalidOperationException("GameController is null during render"));
+
                 if (hasDebugRendering)
                 {
                     int debugTextStartCount = 0;
