@@ -15,6 +15,7 @@ namespace ClickIt
         public Coroutine? AltarCoroutine { get; set; }
         public Coroutine? ClickLabelCoroutine { get; set; }
         public Coroutine? DelveFlareCoroutine { get; set; }
+        public Coroutine? DeepMemoryDumpCoroutine { get; set; }
         public Stopwatch LastRenderTimer { get; } = new Stopwatch();
         public Stopwatch LastTickTimer { get; } = new Stopwatch();
         public Stopwatch Timer { get; } = new Stopwatch();

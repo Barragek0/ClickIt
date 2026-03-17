@@ -47,6 +47,16 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Copy Additional Debug Information", "Copies the current Additional Debug Information text to clipboard.", 5, 900)]
         public ButtonNode CopyAdditionalDebugInfoButton { get; set; } = new ButtonNode();
+        [JsonIgnore]
+        public bool MemoryDumpInProgress { get; set; } = false;
+        [JsonIgnore]
+        public int MemoryDumpProgressPercent { get; set; } = 0;
+        [JsonIgnore]
+        public bool MemoryDumpLastRunSucceeded { get; set; } = false;
+        [JsonIgnore]
+        public string MemoryDumpStatusText { get; set; } = string.Empty;
+        [JsonIgnore]
+        public string MemoryDumpOutputPath { get; set; } = string.Empty;
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Status", "Show/hide the status debug section", 1, 2)]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);

@@ -23,6 +23,36 @@ namespace ClickIt.Tests.Utils
             public List<int> Values { get; set; } = [1, 2, 3, 4];
         }
 
+        private sealed class ThrowingSequence : IEnumerable<int>
+        {
+            private readonly int _throwAfterMoves;
+
+            public ThrowingSequence(int throwAfterMoves)
+            {
+                _throwAfterMoves = throwAfterMoves;
+            }
+
+            public IEnumerator<int> GetEnumerator()
+            {
+                int i = 0;
+                while (true)
+                {
+                    if (i >= _throwAfterMoves)
+                        throw new InvalidOperationException("Enumeration exceeded expected preview limit.");
+
+                    yield return i;
+                    i++;
+                }
+            }
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+        }
+
+        private sealed class EnumerableRoot
+        {
+            public IEnumerable<int> Values { get; set; } = new ThrowingSequence(5);
+        }
+
         [TestMethod]
         public void BuildReport_IncludesTitleAndRootUnavailable_WhenNull()
         {
@@ -71,6 +101,33 @@ namespace ClickIt.Tests.Utils
                     MaxCollectionItems: 2,
                     PriorityMembers: []));
 
+            report.Should().Contain("Root.Values: collection output truncated");
+        }
+
+        [TestMethod]
+        public void BuildReport_CollectionPreview_DoesNotEnumerateBeyondPreviewLimit()
+        {
+            var root = new EnumerableRoot();
+
+            Action act = () => RuntimeObjectIntrospection.BuildReport(
+                root,
+                new RuntimeObjectIntrospectionOptions(
+                    Title: "Preview Report",
+                    MaxDepth: 2,
+                    MaxCollectionItems: 3,
+                    PriorityMembers: []));
+
+            act.Should().NotThrow();
+
+            string report = RuntimeObjectIntrospection.BuildReport(
+                root,
+                new RuntimeObjectIntrospectionOptions(
+                    Title: "Preview Report",
+                    MaxDepth: 2,
+                    MaxCollectionItems: 3,
+                    PriorityMembers: []));
+
+            report.Should().Contain("Root.Values: previewCount=3");
             report.Should().Contain("Root.Values: collection output truncated");
         }
     }

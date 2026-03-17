@@ -1,8 +1,12 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Collections;
 using System.Text;
+using System.Threading;
 using ClickIt.Utils;
 using ExileCore;
+using ExileCore.Shared;
+using ExileCore.Shared.Enums;
 
 namespace ClickIt
 {
@@ -113,7 +117,13 @@ namespace ClickIt
             }
         }
 
-        private const string DeepMemoryDumpFileName = "memoryData.dat";
+        private const IntrospectionProfile ActiveMemoryDumpProfile = IntrospectionProfile.Default;
+        private const int DeepMemoryDumpNodeBudgetPerYield = 8;
+        private static readonly object DeepMemoryDumpStateLock = new();
+        private bool _deepMemoryDumpInProgress;
+        private string? _lastDeepMemoryDumpPath;
+        private string? _lastDeepMemoryDumpError;
+        private string _activeMemoryDumpFileName = RuntimeObjectIntrospection.GetFileNameForProfile(ActiveMemoryDumpProfile);
 
         private void TryCopyAdditionalDebugInfo(string[] debugLines)
         {
@@ -121,16 +131,12 @@ namespace ClickIt
                 return;
 
             string payload = BuildDebugClipboardPayload(debugLines);
-            string? memoryDumpPath = TryWriteDeepMemoryDumpToFile();
-            if (!string.IsNullOrWhiteSpace(memoryDumpPath))
-            {
-                payload = payload
-                    + Environment.NewLine
-                    + Environment.NewLine
-                    + "Deep runtime memory dump (full GameController graph) written to:"
-                    + Environment.NewLine
-                    + memoryDumpPath;
-            }
+
+            QueueDeepMemoryDumpCoroutine();
+
+            string status = GetDeepMemoryDumpStatusMessage();
+            if (!string.IsNullOrWhiteSpace(status))
+                payload = payload + Environment.NewLine + Environment.NewLine + status;
 
             if (string.IsNullOrWhiteSpace(payload))
                 return;
@@ -138,16 +144,121 @@ namespace ClickIt
             _ = TrySetClipboardText(payload);
         }
 
-        private string? TryWriteDeepMemoryDumpToFile()
+        private void QueueDeepMemoryDumpCoroutine()
         {
-            try
+            lock (DeepMemoryDumpStateLock)
             {
-                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DeepMemoryDumpFileName);
-                return RuntimeObjectIntrospection.WriteVeryDeepMemorySnapshotToFile(GameController, path);
+                if (State.IsShuttingDown)
+                    return;
+
+                if (State.DeepMemoryDumpCoroutine != null && !State.DeepMemoryDumpCoroutine.IsDone)
+                    return;
+
+                _deepMemoryDumpInProgress = true;
+                _lastDeepMemoryDumpError = null;
+                _activeMemoryDumpFileName = RuntimeObjectIntrospection.GetFileNameForProfile(ActiveMemoryDumpProfile);
+                SetMemoryDumpUiState(inProgress: true, progressPercent: 0, succeeded: false, statusText: $"Writing {_activeMemoryDumpFileName}...", outputPath: null);
+
+                string path = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "Plugins",
+                    "Compiled",
+                    "ClickIt",
+                    _activeMemoryDumpFileName);
+
+                // Dump is always false here, so I can manually set it to true when I 
+                // need to generate dumps while testing.
+                bool dump = false;
+                if (dump)
+                {
+                    IEnumerator dumpEnumerator = RuntimeObjectIntrospection.WriteMemorySnapshotCoroutine(
+                        GameController,
+                        path,
+                        ActiveMemoryDumpProfile,
+                        OnDeepMemoryDumpCompleted,
+                        OnDeepMemoryDumpProgress,
+                        DeepMemoryDumpNodeBudgetPerYield);
+
+                    State.DeepMemoryDumpCoroutine = new Coroutine(
+                        dumpEnumerator,
+                        this,
+                        "ClickIt.DeepMemoryDump",
+                        true)
+                    {
+                        Priority = CoroutinePriority.Normal
+                    };
+
+                    _ = Core.ParallelRunner.Run(State.DeepMemoryDumpCoroutine);
+                    State.DeepMemoryDumpCoroutine.Resume();
+                }
             }
-            catch
+        }
+
+        private void OnDeepMemoryDumpProgress(int progressPercent)
+        {
+            SetMemoryDumpUiState(
+                inProgress: true,
+                progressPercent: Math.Clamp(progressPercent, 0, 100),
+                succeeded: false,
+                statusText: $"Writing {_activeMemoryDumpFileName}...",
+                outputPath: null);
+        }
+
+        private void OnDeepMemoryDumpCompleted(string? dumpedPath, string? error)
+        {
+            lock (DeepMemoryDumpStateLock)
             {
-                return null;
+                _deepMemoryDumpInProgress = false;
+                _lastDeepMemoryDumpPath = dumpedPath;
+                _lastDeepMemoryDumpError = error;
+
+                bool success = string.IsNullOrWhiteSpace(error) && !string.IsNullOrWhiteSpace(dumpedPath);
+                string statusText = success
+                    ? _activeMemoryDumpFileName + " written successfully."
+                    : "Memory dump failed: " + (error ?? "unknown error");
+
+                SetMemoryDumpUiState(
+                    inProgress: false,
+                    progressPercent: success ? 100 : 0,
+                    succeeded: success,
+                    statusText: statusText,
+                    outputPath: dumpedPath);
+            }
+        }
+
+        private void SetMemoryDumpUiState(bool inProgress, int progressPercent, bool succeeded, string statusText, string? outputPath)
+        {
+            ClickItSettings? settings = EffectiveSettings;
+            if (settings == null)
+                return;
+
+            settings.MemoryDumpInProgress = inProgress;
+            settings.MemoryDumpProgressPercent = Math.Clamp(progressPercent, 0, 100);
+            settings.MemoryDumpLastRunSucceeded = succeeded;
+            settings.MemoryDumpStatusText = statusText ?? string.Empty;
+            settings.MemoryDumpOutputPath = outputPath ?? string.Empty;
+        }
+
+        private string GetDeepMemoryDumpStatusMessage()
+        {
+            lock (DeepMemoryDumpStateLock)
+            {
+                bool isRunning = _deepMemoryDumpInProgress
+                    || (State.DeepMemoryDumpCoroutine != null && !State.DeepMemoryDumpCoroutine.IsDone);
+                if (isRunning)
+                    return $"Runtime memory dump: in progress (coroutine, node budget {DeepMemoryDumpNodeBudgetPerYield}/slice).";
+
+                if (!string.IsNullOrWhiteSpace(_lastDeepMemoryDumpPath))
+                    return "Runtime memory dump written to:"
+                        + Environment.NewLine
+                        + _lastDeepMemoryDumpPath;
+
+                if (!string.IsNullOrWhiteSpace(_lastDeepMemoryDumpError))
+                    return "Runtime memory dump failed: " + _lastDeepMemoryDumpError;
+
+                return "Runtime memory dump queued as coroutine ("
+                    + _activeMemoryDumpFileName
+                    + "). Available filenames by profile: memory.dat, structure.dat, full.dat.";
             }
         }
 

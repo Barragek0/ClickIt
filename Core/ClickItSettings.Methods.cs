@@ -134,6 +134,23 @@ namespace ClickIt
             }
             DrawInlineTooltip("Copies the current Additional Debug Information text to clipboard.");
 
+            if (MemoryDumpInProgress)
+            {
+                float progress = Math.Clamp(MemoryDumpProgressPercent, 0, 100) / 100f;
+                ImGui.ProgressBar(progress, new Vector2(-1f, 0f), $"Memory Dump: {MemoryDumpProgressPercent}%");
+                if (!string.IsNullOrWhiteSpace(MemoryDumpStatusText))
+                    ImGui.TextWrapped(MemoryDumpStatusText);
+            }
+            else if (MemoryDumpLastRunSucceeded && !string.IsNullOrWhiteSpace(MemoryDumpOutputPath))
+            {
+                ImGui.TextColored(new Vector4(0.25f, 0.85f, 0.35f, 1.0f), "memoryData.dat written to:");
+                ImGui.TextWrapped(MemoryDumpOutputPath);
+            }
+            else if (!string.IsNullOrWhiteSpace(MemoryDumpStatusText))
+            {
+                ImGui.TextColored(new Vector4(0.95f, 0.45f, 0.35f, 1.0f), MemoryDumpStatusText);
+            }
+
             if (RenderDebug.Value)
             {
                 ImGui.Indent();

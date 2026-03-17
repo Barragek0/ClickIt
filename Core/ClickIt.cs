@@ -45,15 +45,18 @@ namespace ClickIt
             State.AltarCoroutine?.Done();
             State.ClickLabelCoroutine?.Done();
             State.DelveFlareCoroutine?.Done();
+            State.DeepMemoryDumpCoroutine?.Done();
             StopAllClickItCoroutines();
             WaitForCoroutineShutdown(State.AltarCoroutine);
             WaitForCoroutineShutdown(State.ClickLabelCoroutine);
             WaitForCoroutineShutdown(State.DelveFlareCoroutine);
+            WaitForCoroutineShutdown(State.DeepMemoryDumpCoroutine);
             WaitForAllClickItCoroutinesShutdown();
 
             State.AltarCoroutine = null;
             State.ClickLabelCoroutine = null;
             State.DelveFlareCoroutine = null;
+            State.DeepMemoryDumpCoroutine = null;
 
             LockManager.Instance = null;
 
@@ -252,6 +255,8 @@ namespace ClickIt
         private void CopyAdditionalDebugInfoButtonPressed()
         {
             _copyAdditionalDebugInfoRequested = true;
+            if (GameController != null)
+                QueueDeepMemoryDumpCoroutine();
         }
 
         public override void Render()
