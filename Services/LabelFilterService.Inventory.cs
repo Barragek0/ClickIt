@@ -21,6 +21,17 @@ namespace ClickIt.Services
         private static IReadOnlyList<Entity> _inventoryItemsCacheValue = Array.Empty<Entity>();
         private static bool _inventoryItemsCacheHasValue;
 
+        private static long _inventoryLayoutCacheTimestampMs;
+        private static object? _inventoryLayoutCachePrimaryInventory;
+        private static int _inventoryLayoutCacheWidth;
+        private static int _inventoryLayoutCacheHeight;
+        private static IReadOnlyList<InventoryLayoutEntry> _inventoryLayoutCacheEntries = Array.Empty<InventoryLayoutEntry>();
+        private static string _inventoryLayoutCacheSource = string.Empty;
+        private static string _inventoryLayoutCacheDebugDetails = string.Empty;
+        private static bool _inventoryLayoutCacheIsReliable;
+        private static int _inventoryLayoutCacheRawEntryCount;
+        private static bool _inventoryLayoutCacheHasValue;
+
         private static readonly DebugSnapshotStore<InventoryDebugSnapshot> InventoryDebugStore = new(
             InventoryDebugSnapshot.Empty,
             InventoryDebugTrailCapacity,
@@ -102,6 +113,21 @@ namespace ClickIt.Services
                 IsFull: false,
                 Source: string.Empty,
                 Notes: string.Empty);
+        }
+
+        private readonly record struct InventoryLayoutSnapshot(
+            IReadOnlyList<InventoryLayoutEntry> Entries,
+            string Source,
+            string DebugDetails,
+            bool IsReliable,
+            int RawEntryCount)
+        {
+            public static readonly InventoryLayoutSnapshot Empty = new(
+                Entries: Array.Empty<InventoryLayoutEntry>(),
+                Source: string.Empty,
+                DebugDetails: string.Empty,
+                IsReliable: false,
+                RawEntryCount: 0);
         }
 
         internal readonly struct InventoryLayoutEntry
@@ -445,6 +471,17 @@ namespace ClickIt.Services
             if (inventoryWidth <= 0 || inventoryHeight <= 0)
                 return false;
 
+            long now = Environment.TickCount64;
+            if (TryGetCachedInventoryLayout(primaryInventory, now, inventoryWidth, inventoryHeight, out InventoryLayoutSnapshot cachedSnapshot))
+            {
+                entries = cachedSnapshot.Entries;
+                source = cachedSnapshot.Source;
+                debugDetails = cachedSnapshot.DebugDetails;
+                isReliable = cachedSnapshot.IsReliable;
+                rawEntryCount = cachedSnapshot.RawEntryCount;
+                return true;
+            }
+
             if (TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection) && slotItemsCollection != null)
             {
                 if (TryBuildInventoryLayoutEntriesFromCollection(slotItemsCollection, inventoryWidth, inventoryHeight, out List<InventoryLayoutEntry> slotEntries, out int slotRawCount))
@@ -454,12 +491,24 @@ namespace ClickIt.Services
                     rawEntryCount = slotRawCount;
                     isReliable = slotRawCount == 0 || slotEntries.Count > 0;
                     debugDetails = $"raw:{slotRawCount} parsed:{slotEntries.Count}";
+                    SetCachedInventoryLayout(
+                        primaryInventory,
+                        now,
+                        inventoryWidth,
+                        inventoryHeight,
+                        new InventoryLayoutSnapshot(entries, source, debugDetails, isReliable, rawEntryCount));
                     return true;
                 }
             }
 
             source = "PlayerInventories[0].InventorySlotItems";
             debugDetails = "read-failed: PlayerInventories[0].InventorySlotItems accessor unavailable or unreadable";
+            SetCachedInventoryLayout(
+                primaryInventory,
+                now,
+                inventoryWidth,
+                inventoryHeight,
+                new InventoryLayoutSnapshot(entries, source, debugDetails, isReliable, rawEntryCount));
             return false;
         }
 
@@ -1138,7 +1187,15 @@ namespace ClickIt.Services
 
         private static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection)
         {
-            return TryGetPrimaryServerInventorySlotItems(primaryInventory, out slotItemsCollection, out _);
+            slotItemsCollection = null;
+
+            if (!TryGetDynamicValue(primaryInventory, s => s.Inventory, out object? inventoryObj) || inventoryObj == null)
+                return false;
+
+            if (!TryGetDynamicValue(inventoryObj, s => s.InventorySlotItems, out slotItemsCollection))
+                return false;
+
+            return slotItemsCollection != null;
         }
 
         private static bool TryGetFirstCollectionObject(object collection, out object? first)
@@ -1266,6 +1323,57 @@ namespace ClickIt.Services
             return false;
         }
 
+        private static bool TryGetCachedInventoryLayout(
+            object primaryInventory,
+            long now,
+            int inventoryWidth,
+            int inventoryHeight,
+            out InventoryLayoutSnapshot snapshot)
+        {
+            lock (InventoryProbeCacheLock)
+            {
+                if (_inventoryLayoutCacheHasValue
+                    && ReferenceEquals(_inventoryLayoutCachePrimaryInventory, primaryInventory)
+                    && _inventoryLayoutCacheWidth == inventoryWidth
+                    && _inventoryLayoutCacheHeight == inventoryHeight
+                    && IsCacheFresh(now, _inventoryLayoutCacheTimestampMs, InventoryProbeCacheWindowMs))
+                {
+                    snapshot = new InventoryLayoutSnapshot(
+                        Entries: _inventoryLayoutCacheEntries,
+                        Source: _inventoryLayoutCacheSource,
+                        DebugDetails: _inventoryLayoutCacheDebugDetails,
+                        IsReliable: _inventoryLayoutCacheIsReliable,
+                        RawEntryCount: _inventoryLayoutCacheRawEntryCount);
+                    return true;
+                }
+            }
+
+            snapshot = InventoryLayoutSnapshot.Empty;
+            return false;
+        }
+
+        private static void SetCachedInventoryLayout(
+            object primaryInventory,
+            long now,
+            int inventoryWidth,
+            int inventoryHeight,
+            InventoryLayoutSnapshot snapshot)
+        {
+            lock (InventoryProbeCacheLock)
+            {
+                _inventoryLayoutCachePrimaryInventory = primaryInventory;
+                _inventoryLayoutCacheTimestampMs = now;
+                _inventoryLayoutCacheWidth = inventoryWidth;
+                _inventoryLayoutCacheHeight = inventoryHeight;
+                _inventoryLayoutCacheEntries = snapshot.Entries ?? Array.Empty<InventoryLayoutEntry>();
+                _inventoryLayoutCacheSource = snapshot.Source ?? string.Empty;
+                _inventoryLayoutCacheDebugDetails = snapshot.DebugDetails ?? string.Empty;
+                _inventoryLayoutCacheIsReliable = snapshot.IsReliable;
+                _inventoryLayoutCacheRawEntryCount = snapshot.RawEntryCount;
+                _inventoryLayoutCacheHasValue = true;
+            }
+        }
+
         private static void SetCachedInventoryItems(GameController? gameController, long now, IReadOnlyList<Entity> items)
         {
             lock (InventoryProbeCacheLock)
@@ -1299,6 +1407,17 @@ namespace ClickIt.Services
                 _inventoryItemsCacheController = null;
                 _inventoryItemsCacheValue = Array.Empty<Entity>();
                 _inventoryItemsCacheHasValue = false;
+
+                _inventoryLayoutCacheTimestampMs = 0;
+                _inventoryLayoutCachePrimaryInventory = null;
+                _inventoryLayoutCacheWidth = 0;
+                _inventoryLayoutCacheHeight = 0;
+                _inventoryLayoutCacheEntries = Array.Empty<InventoryLayoutEntry>();
+                _inventoryLayoutCacheSource = string.Empty;
+                _inventoryLayoutCacheDebugDetails = string.Empty;
+                _inventoryLayoutCacheIsReliable = false;
+                _inventoryLayoutCacheRawEntryCount = 0;
+                _inventoryLayoutCacheHasValue = false;
             }
         }
 

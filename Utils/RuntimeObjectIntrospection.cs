@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -61,6 +62,8 @@ namespace ClickIt.Utils
     internal static class RuntimeObjectIntrospection
     {
         private readonly record struct PendingNode(string Path, object? Value, int Depth);
+        private readonly record struct MemberCacheKey(Type Type, bool IncludeNonPublicMembers, string PriorityKey);
+        private static readonly ConcurrentDictionary<MemberCacheKey, MemberInfo[]> ReadableMembersCache = new();
 
         public static string GetFileNameForProfile(IntrospectionProfile profile)
         {
@@ -667,6 +670,13 @@ namespace ClickIt.Utils
 
         private static IReadOnlyList<MemberInfo> GetReadableMembers(Type type, IReadOnlyList<string> priorityMembers, bool includeNonPublicMembers)
         {
+            string priorityKey = priorityMembers.Count == 0
+                ? string.Empty
+                : string.Join("|", priorityMembers);
+            var cacheKey = new MemberCacheKey(type, includeNonPublicMembers, priorityKey);
+            if (ReadableMembersCache.TryGetValue(cacheKey, out MemberInfo[]? cachedMembers))
+                return cachedMembers;
+
             var members = new List<MemberInfo>();
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public;
             if (includeNonPublicMembers)
@@ -691,7 +701,11 @@ namespace ClickIt.Utils
                 members.Add(fields[i]);
 
             if (members.Count <= 1)
-                return members;
+            {
+                MemberInfo[] simpleMembers = [.. members];
+                ReadableMembersCache.TryAdd(cacheKey, simpleMembers);
+                return simpleMembers;
+            }
 
             var priorityIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < priorityMembers.Count; i++)
@@ -712,7 +726,9 @@ namespace ClickIt.Utils
                 return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
             });
 
-            return members;
+            MemberInfo[] sortedMembers = [.. members];
+            ReadableMembersCache.TryAdd(cacheKey, sortedMembers);
+            return sortedMembers;
         }
 
         private static bool TryGetMemberValue(object source, MemberInfo member, out object? value)
