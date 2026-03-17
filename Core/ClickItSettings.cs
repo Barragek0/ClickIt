@@ -231,6 +231,14 @@ namespace ClickIt
         [Menu("League Mechanic 'Chests'", "Click league mechanic related 'chests' (blight pustules, legion war hoards / chests, sentinel caches, etc).", 2, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
+        public ToggleNode PauseAfterOpeningBasicChests { get; set; } = new ToggleNode(true);
+        public RangeNode<int> PauseAfterOpeningBasicChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);
+        public RangeNode<int> PauseAfterOpeningBasicChestsPollIntervalMs { get; set; } = new RangeNode<int>(100, 50, 500);
+        public RangeNode<int> PauseAfterOpeningBasicChestsQuietWindowMs { get; set; } = new RangeNode<int>(500, 100, 2000);
+        public ToggleNode PauseAfterOpeningLeagueChests { get; set; } = new ToggleNode(true);
+        public RangeNode<int> PauseAfterOpeningLeagueChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);
+        public RangeNode<int> PauseAfterOpeningLeagueChestsPollIntervalMs { get; set; } = new RangeNode<int>(100, 50, 500);
+        public RangeNode<int> PauseAfterOpeningLeagueChestsQuietWindowMs { get; set; } = new RangeNode<int>(500, 100, 2000);
         [Menu("Shrines", "Click shrines", 3, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickShrines { get; set; } = new ToggleNode(true);

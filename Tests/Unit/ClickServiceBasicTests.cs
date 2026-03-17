@@ -493,6 +493,18 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldSkipOffscreenPathfindingForRitual_ReturnsTrue_WhenRitualIsActive()
+        {
+            ClickService.ShouldSkipOffscreenPathfindingForRitual(ritualActive: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldSkipOffscreenPathfindingForRitual_ReturnsFalse_WhenRitualIsNotActive()
+        {
+            ClickService.ShouldSkipOffscreenPathfindingForRitual(ritualActive: false).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void AreBothAltarOptionsActionable_ReturnsTrue_OnlyWhenTopAndBottomAreActionable()
         {
             ClickService.AreBothAltarOptionsActionable(
@@ -945,6 +957,158 @@ namespace ClickIt.Tests.Unit
                 blockUntilTimestampMs: 1_220,
                 out long expiredRemaining).Should().BeFalse();
             expiredRemaining.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void ShouldWaitForChestLootSettlement_ReturnsTrueForEnabledChestMechanics()
+        {
+            ClickService.ShouldWaitForChestLootSettlement(
+                mechanicId: "basic-chests",
+                waitAfterOpeningBasicChests: true,
+                waitAfterOpeningLeagueChests: false).Should().BeTrue();
+
+            ClickService.ShouldWaitForChestLootSettlement(
+                mechanicId: "league-chests",
+                waitAfterOpeningBasicChests: false,
+                waitAfterOpeningLeagueChests: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldWaitForChestLootSettlement_ReturnsFalseWhenDisabledOrNonChestMechanic()
+        {
+            ClickService.ShouldWaitForChestLootSettlement(
+                mechanicId: "basic-chests",
+                waitAfterOpeningBasicChests: false,
+                waitAfterOpeningLeagueChests: true).Should().BeFalse();
+
+            ClickService.ShouldWaitForChestLootSettlement(
+                mechanicId: "items",
+                waitAfterOpeningBasicChests: true,
+                waitAfterOpeningLeagueChests: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ResolvePostChestLootSettlementTimingSettings_UsesBasicChestTiming()
+        {
+            ClickService.ResolvePostChestLootSettlementTimingSettings(
+                mechanicId: "basic-chests",
+                basicInitialDelayMs: 650,
+                basicPollIntervalMs: 120,
+                basicQuietWindowMs: 900,
+                leagueInitialDelayMs: 500,
+                leaguePollIntervalMs: 100,
+                leagueQuietWindowMs: 500,
+                out int initialDelayMs,
+                out int pollIntervalMs,
+                out int quietWindowMs);
+
+            initialDelayMs.Should().Be(650);
+            pollIntervalMs.Should().Be(120);
+            quietWindowMs.Should().Be(900);
+        }
+
+        [TestMethod]
+        public void ResolvePostChestLootSettlementTimingSettings_UsesLeagueChestTiming()
+        {
+            ClickService.ResolvePostChestLootSettlementTimingSettings(
+                mechanicId: "league-chests",
+                basicInitialDelayMs: 500,
+                basicPollIntervalMs: 100,
+                basicQuietWindowMs: 500,
+                leagueInitialDelayMs: 750,
+                leaguePollIntervalMs: 140,
+                leagueQuietWindowMs: 1100,
+                out int initialDelayMs,
+                out int pollIntervalMs,
+                out int quietWindowMs);
+
+            initialDelayMs.Should().Be(750);
+            pollIntervalMs.Should().Be(140);
+            quietWindowMs.Should().Be(1100);
+        }
+
+        [TestMethod]
+        public void ResolvePostChestLootSettlementTimingSettings_ClampsInvalidValues()
+        {
+            ClickService.ResolvePostChestLootSettlementTimingSettings(
+                mechanicId: "basic-chests",
+                basicInitialDelayMs: -10,
+                basicPollIntervalMs: 0,
+                basicQuietWindowMs: -50,
+                leagueInitialDelayMs: 500,
+                leaguePollIntervalMs: 100,
+                leagueQuietWindowMs: 500,
+                out int initialDelayMs,
+                out int pollIntervalMs,
+                out int quietWindowMs);
+
+            initialDelayMs.Should().Be(0);
+            pollIntervalMs.Should().Be(1);
+            quietWindowMs.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void ShouldContinueChestOpenRetries_ReturnsTrue_OnlyWhenPendingAndVisible()
+        {
+            ClickService.ShouldContinueChestOpenRetries(
+                pendingChestOpenConfirmationActive: true,
+                chestLabelVisible: true).Should().BeTrue();
+
+            ClickService.ShouldContinueChestOpenRetries(
+                pendingChestOpenConfirmationActive: true,
+                chestLabelVisible: false).Should().BeFalse();
+
+            ClickService.ShouldContinueChestOpenRetries(
+                pendingChestOpenConfirmationActive: false,
+                chestLabelVisible: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldStartChestLootSettlementAfterClick_ReturnsTrue_OnlyWhenPendingAndLabelGone()
+        {
+            ClickService.ShouldStartChestLootSettlementAfterClick(
+                pendingChestOpenConfirmationActive: true,
+                chestLabelVisible: false).Should().BeTrue();
+
+            ClickService.ShouldStartChestLootSettlementAfterClick(
+                pendingChestOpenConfirmationActive: true,
+                chestLabelVisible: true).Should().BeFalse();
+
+            ClickService.ShouldStartChestLootSettlementAfterClick(
+                pendingChestOpenConfirmationActive: false,
+                chestLabelVisible: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsChestLootSettlementQuietPeriodElapsed_TracksRemainingWindow()
+        {
+            ClickService.IsChestLootSettlementQuietPeriodElapsed(
+                now: 5_000,
+                lastNewGroundItemTimestampMs: 4_700,
+                quietWindowMs: 500,
+                out long remainingMs).Should().BeFalse();
+            remainingMs.Should().Be(200);
+
+            ClickService.IsChestLootSettlementQuietPeriodElapsed(
+                now: 5_300,
+                lastNewGroundItemTimestampMs: 4_700,
+                quietWindowMs: 500,
+                out long settledRemainingMs).Should().BeTrue();
+            settledRemainingMs.Should().Be(0);
+
+            ClickService.IsChestLootSettlementQuietPeriodElapsed(
+                now: 5_300,
+                lastNewGroundItemTimestampMs: 0,
+                quietWindowMs: 500,
+                out long unknownRemainingMs).Should().BeFalse();
+            unknownRemainingMs.Should().Be(500);
+
+            ClickService.IsChestLootSettlementQuietPeriodElapsed(
+                now: 5_300,
+                lastNewGroundItemTimestampMs: 5_200,
+                quietWindowMs: 0,
+                out long zeroWindowRemainingMs).Should().BeTrue();
+            zeroWindowRemainingMs.Should().Be(0);
         }
 
         [TestMethod]

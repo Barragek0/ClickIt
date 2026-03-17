@@ -541,6 +541,8 @@ namespace ClickIt
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
+            new("league-chests", "League Mechanic Chests"),
+            new("basic-chests", "Basic Chests"),
             new("ritual-altars", "Ritual"),
             new("settlers", "Settlers"),
             new("delve", "Delve"),
@@ -550,7 +552,7 @@ namespace ClickIt
 
         private void DrawMechanicsTablePanel()
         {
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open subtype filter options.");
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open submenus.");
 
             ImGui.Spacing();
 
@@ -682,7 +684,67 @@ namespace ClickIt
                 ImGui.PopStyleColor();
             }
 
+            DrawMechanicGroupExtraSettings(group.Id);
+
             ImGui.Unindent();
+        }
+
+        private void DrawMechanicGroupExtraSettings(string groupId)
+        {
+            if (string.Equals(groupId, "basic-chests", StringComparison.OrdinalIgnoreCase))
+            {
+                ImGui.Spacing();
+                DrawToggleNodeControl(
+                    "Wait for drops to settle##BasicChestsPauseEnabled",
+                    PauseAfterOpeningBasicChests,
+                    "When enabled, ClickIt waits for new loot labels after opening a Basic Chest before resuming clicks.");
+                DrawRangeNodeControl(
+                    "Initial delay (ms)##BasicChestsInitialDelayMs",
+                    PauseAfterOpeningBasicChestsInitialDelayMs,
+                    100,
+                    1500,
+                    "How long to wait after click confirmation before checking for new labels.");
+                DrawRangeNodeControl(
+                    "Poll interval (ms)##BasicChestsPollIntervalMs",
+                    PauseAfterOpeningBasicChestsPollIntervalMs,
+                    50,
+                    500,
+                    "How frequently ClickIt checks ItemsOnGroundLabels for newly added drops.");
+                DrawRangeNodeControl(
+                    "Quiet window (ms)##BasicChestsQuietWindowMs",
+                    PauseAfterOpeningBasicChestsQuietWindowMs,
+                    100,
+                    2000,
+                    "Loot is considered settled after this many milliseconds pass without new labels.");
+                return;
+            }
+
+            if (string.Equals(groupId, "league-chests", StringComparison.OrdinalIgnoreCase))
+            {
+                ImGui.Spacing();
+                DrawToggleNodeControl(
+                    "Wait for drops to settle##LeagueChestsPauseEnabled",
+                    PauseAfterOpeningLeagueChests,
+                    "When enabled, ClickIt waits for new loot labels after opening a League Mechanic Chest before resuming clicks.");
+                DrawRangeNodeControl(
+                    "Initial delay (ms)##LeagueChestsInitialDelayMs",
+                    PauseAfterOpeningLeagueChestsInitialDelayMs,
+                    100,
+                    1500,
+                    "How long to wait after click confirmation before checking for new labels.");
+                DrawRangeNodeControl(
+                    "Poll interval (ms)##LeagueChestsPollIntervalMs",
+                    PauseAfterOpeningLeagueChestsPollIntervalMs,
+                    50,
+                    500,
+                    "How frequently ClickIt checks ItemsOnGroundLabels for newly added drops.");
+                DrawRangeNodeControl(
+                    "Quiet window (ms)##LeagueChestsQuietWindowMs",
+                    PauseAfterOpeningLeagueChestsQuietWindowMs,
+                    100,
+                    2000,
+                    "Loot is considered settled after this many milliseconds pass without new labels.");
+            }
         }
 
         private static bool ShouldRenderMechanicEntry(MechanicToggleTableEntry entry, bool moveToClick, string filter)
@@ -789,8 +851,8 @@ namespace ClickIt
         {
             return
             [
-                new(MechanicIds.BasicChests, "Basic Chests", ClickBasicChests, null, false),
-                new(MechanicIds.LeagueChests, "League Mechanic Chests", ClickLeagueChests, null, true),
+                new(MechanicIds.BasicChests, "Basic Chests", ClickBasicChests, "basic-chests", false),
+                new(MechanicIds.LeagueChests, "League Mechanic Chests", ClickLeagueChests, "league-chests", true),
                 new(MechanicIds.Shrines, "Shrines", ClickShrines, null, true),
                 new(MechanicIds.AreaTransitions, "Area Transitions", ClickAreaTransitions, null, false),
                 new(MechanicIds.LabyrinthTrials, "Labyrinth Trials", ClickLabyrinthTrials, null, false),

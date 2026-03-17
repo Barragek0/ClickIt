@@ -28,6 +28,9 @@ namespace ClickIt.Services
         private const int MovementSkillChainHookPostCastClickBlockMs = 220;
         private const int MovementSkillDefaultStatusPollExtraMs = 900;
         private const int MovementSkillExtendedStatusPollExtraMs = 1300;
+        private const int PostChestLootSettleDefaultInitialDelayMs = 500;
+        private const int PostChestLootSettleDefaultPollIntervalMs = 100;
+        private const int PostChestLootSettleDefaultQuietWindowMs = 500;
 
         private static readonly string[] MovementSkillInternalNameMarkers =
         [
@@ -113,6 +116,20 @@ namespace ClickIt.Services
                 yield break;
             }
 
+            long now = Environment.TickCount64;
+            if (IsPostChestLootSettlementBlocking(now, out string chestLootSettleReason))
+            {
+                DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
+                PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason);
+                yield break;
+            }
+
+            var allLabels = GetLabelsForRegularSelection();
+            if (TryHandlePendingChestOpenConfirmation(windowTopLeft, allLabels))
+            {
+                yield break;
+            }
+
             var nextShrine = ResolveNextShrineCandidate();
             LostShipmentCandidate? lostShipmentCandidate;
             SettlersOreCandidate? settlersOreCandidate;
@@ -180,7 +197,6 @@ namespace ClickIt.Services
             lostShipmentCandidate = ResolveNextLostShipmentCandidate();
             settlersOreCandidate = ResolveNextSettlersOreCandidate();
 
-            var allLabels = GetLabelsForRegularSelection();
             if (ShouldCaptureClickDebug())
             {
                 PublishClickFlowDebugStage("LabelSource", BuildLabelSourceDebugSummary(allLabels));
@@ -332,6 +348,7 @@ namespace ClickIt.Services
                     ClearStickyOffscreenTarget();
                 }
 
+                MarkPendingChestOpenConfirmation(nextLabelMechanicId, nextLabel);
                 MarkLeverClicked(nextLabel);
                 if (settings.WalkTowardOffscreenLabels.Value)
                 {
@@ -702,6 +719,280 @@ namespace ClickIt.Services
             return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
         }
 
+        private void StartPostChestLootSettlementWatch(string? mechanicId)
+        {
+            if (!ShouldWaitForChestLootSettlement(
+                mechanicId,
+                settings.PauseAfterOpeningBasicChests?.Value == true,
+                settings.PauseAfterOpeningLeagueChests?.Value == true))
+            {
+                return;
+            }
+
+            ResolvePostChestLootSettlementTimingSettings(
+                mechanicId,
+                settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
+                settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
+                settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs,
+                settings.PauseAfterOpeningLeagueChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
+                settings.PauseAfterOpeningLeagueChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
+                settings.PauseAfterOpeningLeagueChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs,
+                out int initialDelayMs,
+                out int pollIntervalMs,
+                out int quietWindowMs);
+
+            long now = Environment.TickCount64;
+            ClearPendingChestOpenConfirmation();
+            ClearPostChestLootSettlementWatch();
+            _postChestLootSettleWatcherActive = true;
+            _postChestLootSettleInitialDelayUntilTimestampMs = now + initialDelayMs;
+            _postChestLootSettleNextPollTimestampMs = _postChestLootSettleInitialDelayUntilTimestampMs;
+            _postChestLootSettleLastNewItemTimestampMs = _postChestLootSettleInitialDelayUntilTimestampMs;
+            _postChestLootSettlePollIntervalMs = pollIntervalMs;
+            _postChestLootSettleQuietWindowMs = quietWindowMs;
+            SeedKnownGroundItemAddresses(_postChestLootSettleKnownGroundItemAddresses, CollectGroundLabelEntityAddresses());
+        }
+
+        private bool TryHandlePendingChestOpenConfirmation(Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            if (!_pendingChestOpenConfirmationActive)
+                return false;
+
+            LabelOnGround? pendingChestLabel = FindPendingChestLabel(allLabels, _pendingChestOpenItemAddress, _pendingChestOpenLabelAddress);
+            bool chestLabelVisible = pendingChestLabel != null;
+            if (ShouldStartChestLootSettlementAfterClick(_pendingChestOpenConfirmationActive, chestLabelVisible))
+            {
+                PublishClickFlowDebugStage("PostChestOpenDetected", "Chest label disappeared; starting loot settle watch", _pendingChestOpenMechanicId);
+                StartPostChestLootSettlementWatch(_pendingChestOpenMechanicId);
+                return true;
+            }
+
+            if (!ShouldContinueChestOpenRetries(_pendingChestOpenConfirmationActive, chestLabelVisible) || pendingChestLabel == null)
+                return false;
+
+            if (!TryResolveLabelClickPosition(
+                pendingChestLabel,
+                _pendingChestOpenMechanicId,
+                windowTopLeft,
+                allLabels,
+                out Vector2 clickPos))
+            {
+                PublishClickFlowDebugStage("PostChestReclickResolveFailed", "Pending chest label visible but click point could not be resolved", _pendingChestOpenMechanicId);
+                return true;
+            }
+
+            bool clicked = PerformLabelClick(clickPos, pendingChestLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(pendingChestLabel));
+            PublishClickFlowDebugStage(
+                clicked ? "PostChestReclick" : "PostChestReclickRejected",
+                clicked ? "Chest label still visible; reattempted chest click" : "Chest label still visible; chest reclick was rejected",
+                _pendingChestOpenMechanicId);
+            return true;
+        }
+
+        private void MarkPendingChestOpenConfirmation(string? mechanicId, LabelOnGround? chestLabel)
+        {
+            if (!ShouldWaitForChestLootSettlement(
+                mechanicId,
+                settings.PauseAfterOpeningBasicChests?.Value == true,
+                settings.PauseAfterOpeningLeagueChests?.Value == true))
+            {
+                return;
+            }
+
+            ClearPendingChestOpenConfirmation();
+            _pendingChestOpenConfirmationActive = true;
+            _pendingChestOpenMechanicId = mechanicId;
+            _pendingChestOpenItemAddress = chestLabel?.ItemOnGround?.Address ?? 0;
+            _pendingChestOpenLabelAddress = chestLabel?.Label?.Address ?? 0;
+        }
+
+        private void ClearPendingChestOpenConfirmation()
+        {
+            _pendingChestOpenConfirmationActive = false;
+            _pendingChestOpenMechanicId = null;
+            _pendingChestOpenItemAddress = 0;
+            _pendingChestOpenLabelAddress = 0;
+        }
+
+        private static LabelOnGround? FindPendingChestLabel(IReadOnlyList<LabelOnGround>? allLabels, long itemAddress, long labelAddress)
+        {
+            if (allLabels == null || allLabels.Count == 0)
+                return null;
+
+            for (int i = 0; i < allLabels.Count; i++)
+            {
+                LabelOnGround? label = allLabels[i];
+                if (label == null)
+                    continue;
+
+                long currentItemAddress = label.ItemOnGround?.Address ?? 0;
+                long currentLabelAddress = label.Label?.Address ?? 0;
+                if ((itemAddress != 0 && currentItemAddress == itemAddress)
+                    || (labelAddress != 0 && currentLabelAddress == labelAddress))
+                {
+                    return label;
+                }
+            }
+
+            return null;
+        }
+
+        private bool IsPostChestLootSettlementBlocking(long now, out string reason)
+        {
+            reason = string.Empty;
+            if (!_postChestLootSettleWatcherActive)
+                return false;
+
+            if (now < _postChestLootSettleInitialDelayUntilTimestampMs)
+            {
+                long initialDelayRemainingMs = _postChestLootSettleInitialDelayUntilTimestampMs - now;
+                reason = $"waiting {initialDelayRemainingMs}ms before monitoring chest drops";
+                return true;
+            }
+
+            if (now >= _postChestLootSettleNextPollTimestampMs)
+            {
+                bool hasNewGroundItems = MergeNewGroundItemAddresses(
+                    _postChestLootSettleKnownGroundItemAddresses,
+                    CollectGroundLabelEntityAddresses());
+                if (hasNewGroundItems)
+                {
+                    _postChestLootSettleLastNewItemTimestampMs = now;
+                }
+
+                _postChestLootSettleNextPollTimestampMs = now + Math.Max(1, _postChestLootSettlePollIntervalMs);
+            }
+
+            if (IsChestLootSettlementQuietPeriodElapsed(
+                now,
+                _postChestLootSettleLastNewItemTimestampMs,
+                _postChestLootSettleQuietWindowMs,
+                out long quietWindowRemainingMs))
+            {
+                ClearPostChestLootSettlementWatch();
+                return false;
+            }
+
+            reason = $"waiting for chest loot to settle ({quietWindowRemainingMs}ms quiet window remaining)";
+            return true;
+        }
+
+        private void ClearPostChestLootSettlementWatch()
+        {
+            _postChestLootSettleWatcherActive = false;
+            _postChestLootSettleInitialDelayUntilTimestampMs = 0;
+            _postChestLootSettleNextPollTimestampMs = 0;
+            _postChestLootSettleLastNewItemTimestampMs = 0;
+            _postChestLootSettlePollIntervalMs = 0;
+            _postChestLootSettleQuietWindowMs = 0;
+            _postChestLootSettleKnownGroundItemAddresses.Clear();
+        }
+
+        private static void SeedKnownGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
+        {
+            knownAddresses.Clear();
+            _ = MergeNewGroundItemAddresses(knownAddresses, snapshot);
+        }
+
+        private static bool MergeNewGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
+        {
+            if (snapshot == null || snapshot.Count == 0)
+                return false;
+
+            bool addedAny = false;
+            foreach (long address in snapshot)
+            {
+                if (address == 0)
+                    continue;
+                if (knownAddresses.Add(address))
+                    addedAny = true;
+            }
+
+            return addedAny;
+        }
+
+        internal static bool ShouldWaitForChestLootSettlement(
+            string? mechanicId,
+            bool waitAfterOpeningBasicChests,
+            bool waitAfterOpeningLeagueChests)
+        {
+            if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
+                return waitAfterOpeningBasicChests;
+
+            if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
+                return waitAfterOpeningLeagueChests;
+
+            return false;
+        }
+
+        internal static void ResolvePostChestLootSettlementTimingSettings(
+            string? mechanicId,
+            int basicInitialDelayMs,
+            int basicPollIntervalMs,
+            int basicQuietWindowMs,
+            int leagueInitialDelayMs,
+            int leaguePollIntervalMs,
+            int leagueQuietWindowMs,
+            out int initialDelayMs,
+            out int pollIntervalMs,
+            out int quietWindowMs)
+        {
+            if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
+            {
+                initialDelayMs = Math.Max(0, basicInitialDelayMs);
+                pollIntervalMs = Math.Max(1, basicPollIntervalMs);
+                quietWindowMs = Math.Max(0, basicQuietWindowMs);
+                return;
+            }
+
+            if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
+            {
+                initialDelayMs = Math.Max(0, leagueInitialDelayMs);
+                pollIntervalMs = Math.Max(1, leaguePollIntervalMs);
+                quietWindowMs = Math.Max(0, leagueQuietWindowMs);
+                return;
+            }
+
+            initialDelayMs = PostChestLootSettleDefaultInitialDelayMs;
+            pollIntervalMs = PostChestLootSettleDefaultPollIntervalMs;
+            quietWindowMs = PostChestLootSettleDefaultQuietWindowMs;
+        }
+
+        internal static bool ShouldContinueChestOpenRetries(bool pendingChestOpenConfirmationActive, bool chestLabelVisible)
+            => pendingChestOpenConfirmationActive && chestLabelVisible;
+
+        internal static bool ShouldStartChestLootSettlementAfterClick(bool pendingChestOpenConfirmationActive, bool chestLabelVisible)
+            => pendingChestOpenConfirmationActive && !chestLabelVisible;
+
+        internal static bool IsChestLootSettlementQuietPeriodElapsed(
+            long now,
+            long lastNewGroundItemTimestampMs,
+            int quietWindowMs,
+            out long remainingMs)
+        {
+            if (quietWindowMs <= 0)
+            {
+                remainingMs = 0;
+                return true;
+            }
+
+            if (lastNewGroundItemTimestampMs <= 0)
+            {
+                remainingMs = quietWindowMs;
+                return false;
+            }
+
+            long elapsed = Math.Max(0, now - lastNewGroundItemTimestampMs);
+            if (elapsed >= quietWindowMs)
+            {
+                remainingMs = 0;
+                return true;
+            }
+
+            remainingMs = quietWindowMs - elapsed;
+            return false;
+        }
+
         private bool TryCorruptEssence(LabelOnGround label, Vector2 windowTopLeft)
         {
             if (settings.ClickEssences && labelFilterService.ShouldCorruptEssence(label))
@@ -748,6 +1039,15 @@ namespace ClickIt.Services
         {
             if (!settings.WalkTowardOffscreenLabels.Value)
                 return false;
+
+            if (ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(gameController)))
+            {
+                ClearStickyOffscreenTarget();
+                pathfindingService.ClearLatestPath();
+                DebugLog(() => "[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a RitualBlocker is active.");
+                PublishClickFlowDebugStage("OffscreenPathingBlockedByRitual", "RitualBlocker active");
+                return false;
+            }
 
             if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
             {
@@ -889,6 +1189,7 @@ namespace ClickIt.Services
                 : PerformLabelClick(clickPos, stickyLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(stickyLabel));
             if (clickedLabel)
             {
+                MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
                 ClearStickyOffscreenTarget();
             }
 
@@ -1252,6 +1553,9 @@ namespace ClickIt.Services
                     || hasClickableLostShipment
                     || hasClickableSettlersOre);
         }
+
+        internal static bool ShouldSkipOffscreenPathfindingForRitual(bool ritualActive)
+            => ritualActive;
 
         private string BuildNoLabelDebugSummary(IReadOnlyList<LabelOnGround>? allLabels)
         {

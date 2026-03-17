@@ -233,5 +233,41 @@ namespace ClickIt.Tests.Unit
             settings.ClickRitualInitiate.Value.Should().BeTrue();
             settings.ClickRitualCompleted.Value.Should().BeTrue();
         }
+
+        [TestMethod]
+        public void MechanicsSubmenuLogic_BasicAndLeagueChestRowsAreGroupedForSubmenus()
+        {
+            var settings = new ClickItSettings();
+
+            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
+            getEntriesMethod.Should().NotBeNull();
+
+            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
+            object basicChestEntry = entries.First(entry =>
+                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "basic-chests", StringComparison.Ordinal));
+            object leagueChestEntry = entries.First(entry =>
+                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "league-chests", StringComparison.Ordinal));
+
+            string? basicGroupId = (string?)basicChestEntry.GetType().GetProperty("GroupId")!.GetValue(basicChestEntry);
+            string? leagueGroupId = (string?)leagueChestEntry.GetType().GetProperty("GroupId")!.GetValue(leagueChestEntry);
+
+            basicGroupId.Should().Be("basic-chests");
+            leagueGroupId.Should().Be("league-chests");
+        }
+
+        [TestMethod]
+        public void ChestLootSettlementSettings_DefaultToEnabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.PauseAfterOpeningBasicChests.Value.Should().BeTrue();
+            settings.PauseAfterOpeningBasicChestsInitialDelayMs.Value.Should().Be(500);
+            settings.PauseAfterOpeningBasicChestsPollIntervalMs.Value.Should().Be(100);
+            settings.PauseAfterOpeningBasicChestsQuietWindowMs.Value.Should().Be(500);
+            settings.PauseAfterOpeningLeagueChests.Value.Should().BeTrue();
+            settings.PauseAfterOpeningLeagueChestsInitialDelayMs.Value.Should().Be(500);
+            settings.PauseAfterOpeningLeagueChestsPollIntervalMs.Value.Should().Be(100);
+            settings.PauseAfterOpeningLeagueChestsQuietWindowMs.Value.Should().Be(500);
+        }
     }
 }

@@ -48,6 +48,17 @@ namespace ClickIt.Services
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
         private ulong _lastLeverKey;
         private long _lastLeverClickTimestampMs;
+        private bool _postChestLootSettleWatcherActive;
+        private long _postChestLootSettleInitialDelayUntilTimestampMs;
+        private long _postChestLootSettleNextPollTimestampMs;
+        private long _postChestLootSettleLastNewItemTimestampMs;
+        private int _postChestLootSettlePollIntervalMs;
+        private int _postChestLootSettleQuietWindowMs;
+        private readonly HashSet<long> _postChestLootSettleKnownGroundItemAddresses = [];
+        private bool _pendingChestOpenConfirmationActive;
+        private string? _pendingChestOpenMechanicId;
+        private long _pendingChestOpenItemAddress;
+        private long _pendingChestOpenLabelAddress;
         private long _stickyOffscreenTargetAddress;
         private long _lastMovementSkillUseTimestampMs;
         private long _movementSkillPostCastClickBlockUntilTimestampMs;
