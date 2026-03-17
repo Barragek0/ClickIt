@@ -323,14 +323,13 @@ namespace ClickIt.Services
                 label: nextLabel,
                 resolvedClickPos: clickPos,
                 resolved: true,
-                notes: "Label candidate selected from ItemsOnGroundLabelsVisible");
+                notes: "Settlers label candidate selected from ItemsOnGroundLabelsVisible");
 
             bool forceUiHoverVerification = ShouldForceUiHoverVerificationForLabel(nextLabel);
-            string nextLabelPath = nextLabel.ItemOnGround?.Path ?? string.Empty;
 
             bool clicked = ShouldUseHoldClickForSettlersMechanic(nextLabelMechanicId)
-                ? PerformLabelHoldClick(clickPos, nextLabel.Label, gameController, holdDurationMs: 0, forceUiHoverVerification, nextLabelPath)
-                : PerformLabelClick(clickPos, nextLabel.Label, gameController, forceUiHoverVerification, nextLabelPath);
+                ? PerformLabelHoldClick(clickPos, nextLabel.Label, gameController, holdDurationMs: 0, forceUiHoverVerification)
+                : PerformLabelClick(clickPos, nextLabel.Label, gameController, forceUiHoverVerification);
 
             PublishLabelClickDebug(
                 stage: clicked ? "ClickSuccess" : "ClickFailed",
@@ -338,7 +337,7 @@ namespace ClickIt.Services
                 label: nextLabel,
                 resolvedClickPos: clickPos,
                 resolved: clicked,
-                notes: clicked ? "Label click completed via label pipeline" : "Label click attempt failed via label pipeline");
+                notes: clicked ? "Settlers click completed via label pipeline" : "Settlers click attempt failed via label pipeline");
 
             PublishClickFlowDebugStage(clicked ? "ClickExecuted" : "ClickRejected", clicked ? "Input click executed" : "Input click rejected", nextLabelMechanicId);
 
@@ -1005,8 +1004,7 @@ namespace ClickIt.Services
                         return false;
 
                     DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");
-                    if (!PerformLockedClick(corruptionPos.Value, null, gameController, expectedPath: label.ItemOnGround?.Path))
-                        return false;
+                    PerformLockedClick(corruptionPos.Value, null, gameController);
                     performanceMonitor.RecordClickInterval();
                     return true;
                 }
@@ -1015,71 +1013,26 @@ namespace ClickIt.Services
             return false;
         }
 
-        private bool PerformLabelClick(
-            Vector2 clickPos,
-            Element? expectedElement,
-            GameController? controller,
-            bool forceUiHoverVerification = false,
-            string? expectedPath = null)
+        private bool PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
         {
             if (!EnsureCursorInsideGameWindowForClick("[PerformLabelClick] Skipping label click - cursor outside PoE window"))
                 return false;
 
-            string clickPath = expectedPath ?? string.Empty;
-            bool pointIsClickableDirect = pointIsInClickableArea(clickPos, clickPath);
-            bool pointIsClickableEitherSpace = IsClickableInEitherSpace(clickPos, clickPath);
-            bool allowClick = ShouldAllowLabelClickForPoint(pointIsClickableDirect, pointIsClickableEitherSpace);
-            PublishClickFlowDebugStage("ClickAreaCheck", $"path='{clickPath}' direct:{pointIsClickableDirect} either:{pointIsClickableEitherSpace} allow:{allowClick}");
-            if (ShouldSkipLabelClickForUnclickablePoint(allowClick))
-            {
-                DebugLog(() => $"[PerformLabelClick] Skipping label click at ({clickPos.X:0.0},{clickPos.Y:0.0}) because point failed clickable checks (direct:{pointIsClickableDirect}, either:{pointIsClickableEitherSpace}).");
-                PublishClickFlowDebugStage("ClickBlockedByArea", $"Label click blocked at ({clickPos.X:0.0},{clickPos.Y:0.0}) path='{clickPath}' direct:{pointIsClickableDirect} either:{pointIsClickableEitherSpace}");
-                return false;
-            }
-
-            if (!PerformLockedClick(clickPos, expectedElement, controller, forceUiHoverVerification, clickPath))
-                return false;
+            PerformLockedClick(clickPos, expectedElement, controller, forceUiHoverVerification);
 
             performanceMonitor.RecordClickInterval();
             return true;
         }
 
-        private bool PerformLabelHoldClick(
-            Vector2 clickPos,
-            Element? expectedElement,
-            GameController? controller,
-            int holdDurationMs,
-            bool forceUiHoverVerification = false,
-            string? expectedPath = null)
+        private bool PerformLabelHoldClick(Vector2 clickPos, Element? expectedElement, GameController? controller, int holdDurationMs, bool forceUiHoverVerification = false)
         {
             if (!EnsureCursorInsideGameWindowForClick("[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"))
                 return false;
 
-            string clickPath = expectedPath ?? string.Empty;
-            bool pointIsClickableDirect = pointIsInClickableArea(clickPos, clickPath);
-            bool pointIsClickableEitherSpace = IsClickableInEitherSpace(clickPos, clickPath);
-            bool allowClick = ShouldAllowLabelClickForPoint(pointIsClickableDirect, pointIsClickableEitherSpace);
-            PublishClickFlowDebugStage("HoldClickAreaCheck", $"path='{clickPath}' direct:{pointIsClickableDirect} either:{pointIsClickableEitherSpace} allow:{allowClick}");
-            if (ShouldSkipLabelClickForUnclickablePoint(allowClick))
-            {
-                DebugLog(() => $"[PerformLabelHoldClick] Skipping hold click at ({clickPos.X:0.0},{clickPos.Y:0.0}) because point failed clickable checks (direct:{pointIsClickableDirect}, either:{pointIsClickableEitherSpace}).");
-                PublishClickFlowDebugStage("HoldClickBlockedByArea", $"Label hold click blocked at ({clickPos.X:0.0},{clickPos.Y:0.0}) path='{clickPath}' direct:{pointIsClickableDirect} either:{pointIsClickableEitherSpace}");
-                return false;
-            }
-
-            if (!PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, clickPath))
-                return false;
+            PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification);
 
             performanceMonitor.RecordClickInterval();
             return true;
-        }
-
-        internal static bool ShouldAllowLabelClickForPoint(bool pointIsClickableDirect, bool pointIsClickableEitherSpace)
-            => pointIsClickableDirect && pointIsClickableEitherSpace;
-
-        internal static bool ShouldSkipLabelClickForUnclickablePoint(bool allowClick)
-        {
-            return !allowClick;
         }
 
         private bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
@@ -1232,8 +1185,8 @@ namespace ClickIt.Services
             }
 
             bool clickedLabel = ShouldUseHoldClickForSettlersMechanic(mechanicId)
-                ? PerformLabelHoldClick(clickPos, stickyLabel.Label, gameController, holdDurationMs: 0, ShouldForceUiHoverVerificationForLabel(stickyLabel), stickyTarget.Path)
-                : PerformLabelClick(clickPos, stickyLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(stickyLabel), stickyTarget.Path);
+                ? PerformLabelHoldClick(clickPos, stickyLabel.Label, gameController, holdDurationMs: 0, ShouldForceUiHoverVerificationForLabel(stickyLabel))
+                : PerformLabelClick(clickPos, stickyLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(stickyLabel));
             if (clickedLabel)
             {
                 MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
@@ -1644,30 +1597,23 @@ namespace ClickIt.Services
             if (!ShouldCaptureClickDebug())
                 return;
 
-            var previous = GetLatestClickDebug();
-            SetLatestClickDebug(BuildClickFlowStageSnapshot(previous, stage, notes, mechanicId, Environment.TickCount64));
-        }
-
-        internal static ClickDebugSnapshot BuildClickFlowStageSnapshot(
-            ClickDebugSnapshot previous,
-            string stage,
-            string notes,
-            string? mechanicId,
-            long timestampMs)
-        {
-            string mergedMechanicId = !string.IsNullOrWhiteSpace(mechanicId)
-                ? mechanicId!
-                : previous.MechanicId;
-
-            return previous with
-            {
-                HasData = true,
-                Stage = stage,
-                MechanicId = mergedMechanicId,
-                Notes = notes,
-                Sequence = 0,
-                TimestampMs = timestampMs
-            };
+            SetLatestClickDebug(new ClickDebugSnapshot(
+                HasData: true,
+                Stage: stage,
+                MechanicId: mechanicId ?? string.Empty,
+                EntityPath: string.Empty,
+                Distance: 0f,
+                WorldScreenRaw: default,
+                WorldScreenAbsolute: default,
+                ResolvedClickPoint: default,
+                Resolved: false,
+                CenterInWindow: false,
+                CenterClickable: false,
+                ResolvedInWindow: false,
+                ResolvedClickable: false,
+                Notes: notes,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
         }
 
         private void PublishLabelClickDebug(

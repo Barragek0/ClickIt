@@ -109,14 +109,8 @@ namespace ClickIt.Services
             Func<Vector2, string, bool> clickabilityCheck,
             string path)
         {
-            if (clickabilityCheck(clientPoint, path))
-                return true;
-
-            if (clickabilityCheck(clientPoint + windowTopLeft, path))
-                return true;
-
-            Vector2 asClientFromAbsolute = clientPoint - windowTopLeft;
-            return clickabilityCheck(asClientFromAbsolute, path);
+            return clickabilityCheck(clientPoint, path)
+                || clickabilityCheck(clientPoint + windowTopLeft, path);
         }
 
         private bool EnsureCursorInsideGameWindowForClick(string outsideWindowLogMessage)
@@ -130,57 +124,20 @@ namespace ClickIt.Services
             return true;
         }
 
-        private bool PerformLockedClick(
-            Vector2 clickPos,
-            Element? expectedElement,
-            GameController? controller,
-            bool forceUiHoverVerification = false,
-            string? expectedPath = null)
+        private void PerformLockedClick(Vector2 clickPos, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
         {
-            string clickPath = expectedPath ?? string.Empty;
-            bool pointIsClickableDirect = pointIsInClickableArea(clickPos, clickPath);
-            bool pointIsClickableEitherSpace = IsClickableInEitherSpace(clickPos, clickPath);
-            bool allowClick = ShouldAllowLabelClickForPoint(pointIsClickableDirect, pointIsClickableEitherSpace);
-            if (ShouldSkipLabelClickForUnclickablePoint(allowClick))
-            {
-                DebugLog(() => $"[PerformLockedClick] Final click blocked at ({clickPos.X:0.0},{clickPos.Y:0.0}) path='{clickPath}' (direct:{pointIsClickableDirect}, either:{pointIsClickableEitherSpace}).");
-                PublishClickFlowDebugStage("FinalClickBlockedByArea", $"path='{clickPath}' direct:{pointIsClickableDirect} either:{pointIsClickableEitherSpace}");
-                return false;
-            }
-
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
                 inputHandler.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification);
             }
-
-            return true;
         }
 
-        private bool PerformLockedHoldClick(
-            Vector2 clickPos,
-            int holdDurationMs,
-            Element? expectedElement,
-            GameController? controller,
-            bool forceUiHoverVerification = false,
-            string? expectedPath = null)
+        private void PerformLockedHoldClick(Vector2 clickPos, int holdDurationMs, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
         {
-            string clickPath = expectedPath ?? string.Empty;
-            bool pointIsClickableDirect = pointIsInClickableArea(clickPos, clickPath);
-            bool pointIsClickableEitherSpace = IsClickableInEitherSpace(clickPos, clickPath);
-            bool allowClick = ShouldAllowLabelClickForPoint(pointIsClickableDirect, pointIsClickableEitherSpace);
-            if (ShouldSkipLabelClickForUnclickablePoint(allowClick))
-            {
-                DebugLog(() => $"[PerformLockedHoldClick] Final hold click blocked at ({clickPos.X:0.0},{clickPos.Y:0.0}) path='{clickPath}' (direct:{pointIsClickableDirect}, either:{pointIsClickableEitherSpace}).");
-                PublishClickFlowDebugStage("FinalHoldClickBlockedByArea", $"path='{clickPath}' direct:{pointIsClickableDirect} either:{pointIsClickableEitherSpace}");
-                return false;
-            }
-
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
                 inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification);
             }
-
-            return true;
         }
 
         private bool IsCursorInsideGameWindow()
