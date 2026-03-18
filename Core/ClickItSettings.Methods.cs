@@ -703,7 +703,7 @@ namespace ClickIt
             {
                 ImGui.Spacing();
                 DrawToggleNodeControl(
-                    "Wait for drops to settle##BasicChestsPauseEnabled",
+                    "Wait for Drops to Settle##BasicChestsPauseEnabled",
                     PauseAfterOpeningBasicChests,
                     "When enabled, ClickIt waits for new loot labels after opening a Basic Chest before resuming clicks.");
                 DrawRangeNodeControl(
@@ -731,7 +731,7 @@ namespace ClickIt
             {
                 ImGui.Spacing();
                 DrawToggleNodeControl(
-                    "Wait for drops to settle##LeagueChestsPauseEnabled",
+                    "Wait for Drops to Settle##LeagueChestsPauseEnabled",
                     PauseAfterOpeningLeagueChests,
                     "When enabled, ClickIt waits for new loot labels after opening a League Mechanic Chest before resuming clicks.");
                 DrawRangeNodeControl(
