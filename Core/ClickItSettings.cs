@@ -39,12 +39,6 @@ namespace ClickIt
         [Menu("Additional Debug Information", "Provides more debug text related to rendering the overlay.", 2, 900)]
         public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Auto-Copy Additional Debug Information", "Automatically copies the current Additional Debug Information text to clipboard.", 3, 900)]
-        public ToggleNode AutoCopyAdditionalDebugInfoToClipboard { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Auto-Copy Interval (ms)", "Minimum delay between clipboard updates when auto-copy is enabled.", 4, 900)]
-        public RangeNode<int> AutoCopyAdditionalDebugInfoIntervalMs { get; set; } = new RangeNode<int>(1000, 250, 10000);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Copy Additional Debug Information", "Copies the current Additional Debug Information text to clipboard.", 5, 900)]
         public ButtonNode CopyAdditionalDebugInfoButton { get; set; } = new ButtonNode();
         [JsonIgnore]

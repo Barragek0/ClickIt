@@ -6,7 +6,7 @@ using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Rendering
 {
-    public class InventoryFullWarningRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, AreaService? areaService = null)
+    public class InventoryFullWarningRenderer(DeferredTextQueue deferredTextQueue, AreaService? areaService = null)
     {
         private const string InventoryFullWarningText = "Your inventory is full";
         private const int InventoryFullWarningHoldMs = 10_000;
@@ -20,7 +20,6 @@ namespace ClickIt.Rendering
             new Vector2(0f, 1f)
         ];
 
-        private readonly ClickItSettings _settings = settings;
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
         private readonly AreaService? _areaService = areaService;
         private long _lastInventoryFullBlockedTimestampMs;
