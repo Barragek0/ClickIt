@@ -69,6 +69,40 @@ namespace ClickIt.Utils
             return isClickableArea == null || isClickableArea(point);
         }
 
+        internal static bool HasUnblockedOverlapProbePoint(RectangleF targetRect, Vector2 preferredPoint, IReadOnlyList<RectangleF> potentialBlockers)
+        {
+            if (potentialBlockers == null || potentialBlockers.Count == 0)
+                return true;
+
+            const float inset = 1f;
+            float left = targetRect.Left + inset;
+            float right = targetRect.Right - inset;
+            float top = targetRect.Top + inset;
+            float bottom = targetRect.Bottom - inset;
+            float centerY = targetRect.Top + (targetRect.Height * 0.5f);
+
+            Vector2[] probePoints =
+            [
+                ClampPointToRect(preferredPoint, targetRect),
+                new Vector2(left, top),
+                new Vector2(right, top),
+                new Vector2(left, bottom),
+                new Vector2(right, bottom),
+                new Vector2(targetRect.Center.X, top),
+                new Vector2(targetRect.Center.X, bottom),
+                new Vector2(left, centerY),
+                new Vector2(right, centerY)
+            ];
+
+            for (int i = 0; i < probePoints.Length; i++)
+            {
+                if (!IsPointBlocked(probePoints[i], potentialBlockers))
+                    return true;
+            }
+
+            return false;
+        }
+
         private static RectangleF GetVirtualScreenBounds()
         {
             var vs = SystemInformation.VirtualScreen;
@@ -287,11 +321,11 @@ namespace ClickIt.Utils
             return resolvedPoint;
         }
 
-        private static List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
+        internal static List<RectangleF> CollectPotentialBlockingLabelRects(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
         {
-            List<RectangleF> blockedAreas = new List<RectangleF>();
+            List<RectangleF> potentialBlockers = [];
             if (allLabels == null || allLabels.Count == 0)
-                return blockedAreas;
+                return potentialBlockers;
 
             for (int i = 0; i < allLabels.Count; i++)
             {
@@ -302,6 +336,29 @@ namespace ClickIt.Utils
                 if (!TryGetLabelClientRect(other, out RectangleF otherRect))
                     continue;
 
+                if (otherRect.Right <= targetRect.Left
+                    || otherRect.Left >= targetRect.Right
+                    || otherRect.Bottom <= targetRect.Top
+                    || otherRect.Top >= targetRect.Bottom)
+                {
+                    continue;
+                }
+
+                potentialBlockers.Add(otherRect);
+            }
+
+            return potentialBlockers;
+        }
+
+        internal static List<RectangleF> BuildIntersectionOverlaps(RectangleF targetRect, IReadOnlyList<RectangleF> potentialBlockers)
+        {
+            List<RectangleF> blockedAreas = new List<RectangleF>();
+            if (potentialBlockers == null || potentialBlockers.Count == 0)
+                return blockedAreas;
+
+            for (int i = 0; i < potentialBlockers.Count; i++)
+            {
+                RectangleF otherRect = potentialBlockers[i];
                 if (TryGetIntersection(targetRect, otherRect, out RectangleF overlap))
                 {
                     blockedAreas.Add(overlap);
@@ -309,6 +366,12 @@ namespace ClickIt.Utils
             }
 
             return blockedAreas;
+        }
+
+        private static List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRects(targetLabel, targetRect, allLabels);
+            return BuildIntersectionOverlaps(targetRect, potentialBlockers);
         }
     }
 }

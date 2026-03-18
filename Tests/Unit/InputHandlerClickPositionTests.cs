@@ -201,5 +201,46 @@ namespace ClickIt.Tests.Unit
             preferred.Y.Should().BeLessThan(rect.Bottom);
             preferred.X.Should().Be(rect.Center.X);
         }
+
+        [TestMethod]
+        public void HasUnblockedOverlapProbePoint_ReturnsTrue_WhenNoPotentialBlockers()
+        {
+            var target = new RectangleF(0, 0, 100, 40);
+            var preferred = new Vector2(50, 20);
+
+            bool hasUnblocked = InputHandler.HasUnblockedOverlapProbePoint(target, preferred, []);
+
+            hasUnblocked.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void HasUnblockedOverlapProbePoint_ReturnsTrue_WhenAtLeastOneProbePointIsVisible()
+        {
+            var target = new RectangleF(0, 0, 100, 40);
+            var preferred = new Vector2(50, 20);
+            var potentialBlockers = new List<RectangleF>
+            {
+                new RectangleF(45, 15, 10, 10)
+            };
+
+            bool hasUnblocked = InputHandler.HasUnblockedOverlapProbePoint(target, preferred, potentialBlockers);
+
+            hasUnblocked.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void HasUnblockedOverlapProbePoint_ReturnsFalse_WhenEveryProbePointIsBlocked()
+        {
+            var target = new RectangleF(0, 0, 100, 40);
+            var preferred = new Vector2(50, 20);
+            var potentialBlockers = new List<RectangleF>
+            {
+                new RectangleF(0, 0, 100, 40)
+            };
+
+            bool hasUnblocked = InputHandler.HasUnblockedOverlapProbePoint(target, preferred, potentialBlockers);
+
+            hasUnblocked.Should().BeFalse();
+        }
     }
 }

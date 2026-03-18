@@ -119,6 +119,7 @@ namespace ClickIt
 
         private const IntrospectionProfile ActiveMemoryDumpProfile = IntrospectionProfile.Default;
         private const int DeepMemoryDumpNodeBudgetPerYield = 8;
+        private static readonly bool EnableDeepMemoryDumpOnCopyAdditionalDebugInfo = false;
         private static readonly object DeepMemoryDumpStateLock = new();
         private bool _deepMemoryDumpInProgress;
         private string? _lastDeepMemoryDumpPath;
@@ -132,11 +133,14 @@ namespace ClickIt
 
             string payload = BuildDebugClipboardPayload(debugLines);
 
-            QueueDeepMemoryDumpCoroutine();
+            if (EnableDeepMemoryDumpOnCopyAdditionalDebugInfo)
+            {
+                QueueDeepMemoryDumpCoroutine();
 
-            string status = GetDeepMemoryDumpStatusMessage();
-            if (!string.IsNullOrWhiteSpace(status))
-                payload = payload + Environment.NewLine + Environment.NewLine + status;
+                string status = GetDeepMemoryDumpStatusMessage();
+                if (!string.IsNullOrWhiteSpace(status))
+                    payload = payload + Environment.NewLine + Environment.NewLine + status;
+            }
 
             if (string.IsNullOrWhiteSpace(payload))
                 return;
@@ -146,6 +150,9 @@ namespace ClickIt
 
         private void QueueDeepMemoryDumpCoroutine()
         {
+            if (!EnableDeepMemoryDumpOnCopyAdditionalDebugInfo)
+                return;
+
             lock (DeepMemoryDumpStateLock)
             {
                 if (State.IsShuttingDown)
@@ -166,31 +173,25 @@ namespace ClickIt
                     "ClickIt",
                     _activeMemoryDumpFileName);
 
-                // Dump is always false here, so I can manually set it to true when I 
-                // need to generate dumps while testing.
-                bool dump = false;
-                if (dump)
+                IEnumerator dumpEnumerator = RuntimeObjectIntrospection.WriteMemorySnapshotCoroutine(
+                    GameController,
+                    path,
+                    ActiveMemoryDumpProfile,
+                    OnDeepMemoryDumpCompleted,
+                    OnDeepMemoryDumpProgress,
+                    DeepMemoryDumpNodeBudgetPerYield);
+
+                State.DeepMemoryDumpCoroutine = new Coroutine(
+                    dumpEnumerator,
+                    this,
+                    "ClickIt.DeepMemoryDump",
+                    true)
                 {
-                    IEnumerator dumpEnumerator = RuntimeObjectIntrospection.WriteMemorySnapshotCoroutine(
-                        GameController,
-                        path,
-                        ActiveMemoryDumpProfile,
-                        OnDeepMemoryDumpCompleted,
-                        OnDeepMemoryDumpProgress,
-                        DeepMemoryDumpNodeBudgetPerYield);
+                    Priority = CoroutinePriority.Normal
+                };
 
-                    State.DeepMemoryDumpCoroutine = new Coroutine(
-                        dumpEnumerator,
-                        this,
-                        "ClickIt.DeepMemoryDump",
-                        true)
-                    {
-                        Priority = CoroutinePriority.Normal
-                    };
-
-                    _ = Core.ParallelRunner.Run(State.DeepMemoryDumpCoroutine);
-                    State.DeepMemoryDumpCoroutine.Resume();
-                }
+                _ = Core.ParallelRunner.Run(State.DeepMemoryDumpCoroutine);
+                State.DeepMemoryDumpCoroutine.Resume();
             }
         }
 
@@ -241,6 +242,9 @@ namespace ClickIt
 
         private string GetDeepMemoryDumpStatusMessage()
         {
+            if (!EnableDeepMemoryDumpOnCopyAdditionalDebugInfo)
+                return string.Empty;
+
             lock (DeepMemoryDumpStateLock)
             {
                 bool isRunning = _deepMemoryDumpInProgress

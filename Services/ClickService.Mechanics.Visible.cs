@@ -1,6 +1,7 @@
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
+using System.Diagnostics;
 using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Services
@@ -45,18 +46,45 @@ namespace ClickIt.Services
             return shrineService.GetNearestShrineInRange(settings.ClickDistance.Value, pos => pointIsInClickableArea(pos, ShrineMechanicId));
         }
 
-        private LostShipmentCandidate? ResolveNextLostShipmentCandidate()
+        private LostShipmentCandidate? ResolveNextLostShipmentCandidate(IReadOnlyList<LabelOnGround>? labelsOverride = null)
         {
             if (!settings.ClickLostShipmentCrates.Value)
                 return null;
 
             try
             {
+                LostShipmentCandidate? best = null;
+
+                if (labelsOverride != null)
+                {
+                    for (int i = 0; i < labelsOverride.Count; i++)
+                    {
+                        LabelOnGround? label = labelsOverride[i];
+                        Entity? entity = label?.ItemOnGround;
+                        if (label == null || entity == null)
+                            continue;
+                        if (ShouldSkipLostShipmentEntity(entity.IsValid, entity.DistancePlayer, settings.ClickDistance.Value, entity.IsOpened))
+                            continue;
+
+                        string path = entity.Path ?? string.Empty;
+                        if (!IsLostShipmentEntity(path, entity.RenderName))
+                            continue;
+
+                        if (!TryResolveLostShipmentClickPosition(entity, path, out Vector2 clickPos))
+                            continue;
+
+                        var candidate = new LostShipmentCandidate(entity, clickPos);
+                        if (!best.HasValue || candidate.Distance < best.Value.Distance)
+                            best = candidate;
+                    }
+
+                    return best;
+                }
+
                 var labels = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
                 if (labels == null || labels.Count == 0)
                     return null;
 
-                LostShipmentCandidate? best = null;
                 for (int i = 0; i < labels.Count; i++)
                 {
                     LabelOnGround? label = labels[i];
@@ -85,6 +113,65 @@ namespace ClickIt.Services
                 DebugLog(() => $"[ResolveNextLostShipmentCandidate] Failed to scan hidden labels: {ex.Message}");
                 return null;
             }
+        }
+
+        private void ResolveVisibleMechanicCandidates(
+            out LostShipmentCandidate? lostShipmentCandidate,
+            out SettlersOreCandidate? settlersOreCandidate,
+            IReadOnlyList<LabelOnGround>? labelsOverride = null)
+        {
+            int labelCount = labelsOverride?.Count
+                ?? gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.Count
+                ?? 0;
+
+            long now = Environment.TickCount64;
+
+            if (_visibleMechanicCandidateCacheHasValue
+                && ShouldReuseTimedLabelCountCache(
+                    now,
+                    _visibleMechanicCandidateCacheTimestampMs,
+                    _visibleMechanicCandidateLabelCount,
+                    labelCount,
+                    VisibleMechanicCandidateCacheWindowMs)
+                && IsLostShipmentCandidateUsable(_visibleMechanicCachedLostShipmentCandidate)
+                && IsSettlersCandidateUsable(_visibleMechanicCachedSettlersCandidate))
+            {
+                lostShipmentCandidate = _visibleMechanicCachedLostShipmentCandidate;
+                settlersOreCandidate = _visibleMechanicCachedSettlersCandidate;
+                return;
+            }
+
+            lostShipmentCandidate = ResolveNextLostShipmentCandidate(labelsOverride);
+            settlersOreCandidate = ResolveNextSettlersOreCandidate();
+
+            _visibleMechanicCachedLostShipmentCandidate = lostShipmentCandidate;
+            _visibleMechanicCachedSettlersCandidate = settlersOreCandidate;
+            _visibleMechanicCandidateCacheTimestampMs = now;
+            _visibleMechanicCandidateLabelCount = labelCount;
+            _visibleMechanicCandidateCacheHasValue = true;
+        }
+
+        private bool IsLostShipmentCandidateUsable(LostShipmentCandidate? candidate)
+        {
+            if (!candidate.HasValue)
+                return true;
+
+            Entity entity = candidate.Value.Entity;
+            return entity != null
+                && entity.IsValid
+                && !entity.IsOpened
+                && entity.DistancePlayer <= settings.ClickDistance.Value;
+        }
+
+        private bool IsSettlersCandidateUsable(SettlersOreCandidate? candidate)
+        {
+            if (!candidate.HasValue)
+                return true;
+
+            Entity entity = candidate.Value.Entity;
+            return entity != null
+                && entity.IsValid
+                && entity.DistancePlayer <= settings.ClickDistance.Value;
         }
 
         private bool TryResolveLostShipmentClickPosition(Entity entity, string path, out Vector2 clickPos)
@@ -146,9 +233,20 @@ namespace ClickIt.Services
             {
                 SettlersOreCandidate? best = null;
                 int scanned = 0;
-                int matchedPath = 0;
+                int prefiltered = 0;
+                int mechanicMatched = 0;
+                int probeAttempts = 0;
+                int probeResolved = 0;
                 int labelBacked = 0;
-                var labelEntityAddresses = CollectGroundLabelEntityAddresses();
+                long labelScanMs = 0;
+
+                var stopwatch = Stopwatch.StartNew();
+                IReadOnlySet<long>? labelEntityAddresses = ShouldScanSettlersGroundLabelAddresses(captureClickDebug)
+                    ? CollectGroundLabelEntityAddresses()
+                    : null;
+                labelScanMs = stopwatch.ElapsedMilliseconds;
+
+                stopwatch.Restart();
 
                 foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
                 {
@@ -164,10 +262,35 @@ namespace ClickIt.Services
 
                         scanned++;
 
-                        if (!TryBuildSettlersCandidate(entity, labelEntityAddresses, captureClickDebug, out SettlersOreCandidate candidate, out bool hadLabel))
+                        if (ShouldSkipSettlersEntityBeforeMechanicResolution(entity.IsValid, entity.IsHidden, entity.DistancePlayer, settings.ClickDistance.Value))
+                        {
+                            prefiltered++;
                             continue;
+                        }
 
-                        matchedPath++;
+                        if (!TryBuildSettlersCandidate(
+                                entity,
+                                labelEntityAddresses,
+                                captureClickDebug,
+                                out SettlersOreCandidate candidate,
+                                out bool hadLabel,
+                                out bool matchedMechanic,
+                                out bool attemptedProbe))
+                        {
+                            if (matchedMechanic)
+                                mechanicMatched++;
+                            if (attemptedProbe)
+                                probeAttempts++;
+
+                            continue;
+                        }
+
+                        if (matchedMechanic)
+                            mechanicMatched++;
+                        if (attemptedProbe)
+                            probeAttempts++;
+                        probeResolved++;
+
                         if (hadLabel)
                             labelBacked++;
 
@@ -180,11 +303,13 @@ namespace ClickIt.Services
                     }
                 }
 
+                long entityScanMs = stopwatch.ElapsedMilliseconds;
+
                 if (!best.HasValue)
                 {
-                    DebugLog(() => $"[ResolveNextSettlersOreCandidate] none scanned:{scanned} matched:{matchedPath} labelBacked:{labelBacked}");
+                    DebugLog(() => $"[ResolveNextSettlersOreCandidate] none scanned:{scanned} prefiltered:{prefiltered} mechanicMatched:{mechanicMatched} probeAttempts:{probeAttempts} probeResolved:{probeResolved} labelBacked:{labelBacked} labelScanMs:{labelScanMs} entityScanMs:{entityScanMs}");
                     if (captureClickDebug)
-                        PublishNoSettlersCandidateDebug(scanned, matchedPath, labelBacked);
+                        PublishNoSettlersCandidateDebug(scanned, prefiltered, mechanicMatched, probeAttempts, probeResolved, labelBacked, labelScanMs, entityScanMs);
                 }
 
                 return best;
@@ -196,7 +321,21 @@ namespace ClickIt.Services
             }
         }
 
-        private void PublishNoSettlersCandidateDebug(int scanned, int matchedPath, int labelBacked)
+        internal static bool ShouldScanSettlersGroundLabelAddresses(bool captureClickDebug)
+            => captureClickDebug;
+
+        internal static bool ShouldSkipSettlersEntityBeforeMechanicResolution(bool isValid, bool isHidden, float distance, int clickDistance)
+            => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
+
+        private void PublishNoSettlersCandidateDebug(
+            int scanned,
+            int prefiltered,
+            int mechanicMatched,
+            int probeAttempts,
+            int probeResolved,
+            int labelBacked,
+            long labelScanMs,
+            long entityScanMs)
         {
             SetLatestClickDebug(new ClickDebugSnapshot(
                 HasData: true,
@@ -212,31 +351,39 @@ namespace ClickIt.Services
                 CenterClickable: false,
                 ResolvedInWindow: false,
                 ResolvedClickable: false,
-                Notes: $"scanned={scanned}, matchedPath={matchedPath}, labelBacked={labelBacked}",
+                Notes: $"scanned={scanned}, prefiltered={prefiltered}, mechanicMatched={mechanicMatched}, probeAttempts={probeAttempts}, probeResolved={probeResolved}, labelBacked={labelBacked}, labelScanMs={labelScanMs}, entityScanMs={entityScanMs}",
                 Sequence: 0,
                 TimestampMs: Environment.TickCount64));
         }
 
         private bool TryBuildSettlersCandidate(
             Entity entity,
-            IReadOnlySet<long> labelEntityAddresses,
+            IReadOnlySet<long>? labelEntityAddresses,
             bool captureClickDebug,
             out SettlersOreCandidate candidate,
-            out bool hasGroundLabel)
+            out bool hasGroundLabel,
+            out bool matchedMechanic,
+            out bool attemptedProbe)
         {
             candidate = default;
             hasGroundLabel = false;
+            matchedMechanic = false;
+            attemptedProbe = false;
 
             if (!TryResolveSettlersMechanic(entity, out string mechanicId, out string path))
                 return false;
 
-            hasGroundLabel = IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
+            matchedMechanic = true;
+
+            hasGroundLabel = labelEntityAddresses != null
+                && IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
 
             var worldScreenRawVec = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
             Vector2 worldScreenRaw = new Vector2(worldScreenRawVec.X, worldScreenRawVec.Y);
             RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             Vector2 worldScreenAbsolute = new Vector2(worldScreenRaw.X + windowArea.X, worldScreenRaw.Y + windowArea.Y);
 
+            attemptedProbe = true;
             if (!TryResolveNearbyClickablePoint(worldScreenAbsolute, path, out Vector2 clickPos))
             {
                 if (captureClickDebug)

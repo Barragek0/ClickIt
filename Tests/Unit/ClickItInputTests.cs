@@ -90,7 +90,7 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenDue()
+        public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenDueAndNotDeferred()
         {
             var plugin = new ClickIt();
             plugin.__Test_SetSettings(new ClickItSettings());
@@ -116,9 +116,57 @@ namespace ClickIt.Tests.Unit
 
             var mi = typeof(ClickIt).GetMethod("ResumeAltarScanningIfDue", BindingFlags.Instance | BindingFlags.NonPublic)!;
             mi.Should().NotBeNull();
-            mi.Invoke(plugin, []);
+            mi.Invoke(plugin, [false]);
 
             state.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
+        }
+
+        [TestMethod]
+        public void ResumeAltarScanningIfDue_DoesNotRestartSecondTimer_WhenDeferredByHotkey()
+        {
+            var plugin = new ClickIt();
+            plugin.__Test_SetSettings(new ClickItSettings());
+
+            var state = new PluginContext();
+            var backing = plugin.GetType().GetField("<State>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            backing.Should().NotBeNull();
+            backing.SetValue(plugin, state);
+
+            var sw = state.SecondTimer;
+            var candidates = new[] { "_elapsed", "elapsed", "m_elapsed", "elapsedTicks", "_elapsedTicks", "_elapsedTick" };
+            foreach (var name in candidates)
+            {
+                var f = typeof(Stopwatch).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+                if (f != null)
+                {
+                    long ticks = TimeSpan.FromMilliseconds(500).Ticks;
+                    f.SetValue(sw, ticks);
+                    break;
+                }
+            }
+
+            long before = state.SecondTimer.ElapsedMilliseconds;
+
+            var mi = typeof(ClickIt).GetMethod("ResumeAltarScanningIfDue", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            mi.Should().NotBeNull();
+            mi.Invoke(plugin, [true]);
+
+            state.SecondTimer.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(before);
+        }
+
+        [DataTestMethod]
+        [DataRow(true, false, false, true)]
+        [DataRow(false, true, false, true)]
+        [DataRow(false, true, true, false)]
+        [DataRow(false, false, false, false)]
+        public void ShouldDeferAltarScanDuringInput_UsesExpectedInputState(
+            bool clickHotkeyPressed,
+            bool manualUiHoverEnabled,
+            bool lazyModeEnabled,
+            bool expected)
+        {
+            ClickIt.ShouldDeferAltarScanDuringInput(clickHotkeyPressed, manualUiHoverEnabled, lazyModeEnabled)
+                .Should().Be(expected);
         }
 
         [TestMethod]

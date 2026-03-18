@@ -196,8 +196,7 @@ namespace ClickIt.Services
                 yield break;
             }
 
-            lostShipmentCandidate = ResolveNextLostShipmentCandidate();
-            settlersOreCandidate = ResolveNextSettlersOreCandidate();
+            ResolveVisibleMechanicCandidates(out lostShipmentCandidate, out settlersOreCandidate, allLabels);
 
             if (ShouldCaptureClickDebug())
             {
@@ -587,7 +586,7 @@ namespace ClickIt.Services
                 }
             }
 
-            LostShipmentCandidate? lostShipment = ResolveNextLostShipmentCandidate();
+            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
             if (lostShipment.HasValue)
             {
                 LostShipmentCandidate candidate = lostShipment.Value;
@@ -605,7 +604,6 @@ namespace ClickIt.Services
                 }
             }
 
-            SettlersOreCandidate? settlers = ResolveNextSettlersOreCandidate();
             if (settlers.HasValue)
             {
                 SettlersOreCandidate candidate = settlers.Value;
@@ -1812,13 +1810,21 @@ namespace ClickIt.Services
         private bool ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable()
         {
             bool prioritizeOnscreen = settings.PrioritizeOnscreenClickableMechanicsOverPathfinding?.Value == true;
-            if (!prioritizeOnscreen)
+            bool shouldEvaluateOnscreenMechanicChecks = ShouldEvaluateOnscreenMechanicChecks(
+                prioritizeOnscreen,
+                settings.ClickShrines.Value,
+                settings.ClickLostShipmentCrates.Value,
+                settings.ClickSettlersOre.Value,
+                settings.ClickEaterAltars.Value,
+                settings.ClickExarchAltars.Value);
+            if (!shouldEvaluateOnscreenMechanicChecks)
                 return false;
 
             bool hasClickableAltars = HasClickableAltars();
             bool hasClickableShrine = ResolveNextShrineCandidate() != null;
-            bool hasClickableLostShipment = ResolveNextLostShipmentCandidate().HasValue;
-            bool hasClickableSettlers = ResolveNextSettlersOreCandidate().HasValue;
+            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate);
+            bool hasClickableLostShipment = lostShipmentCandidate.HasValue;
+            bool hasClickableSettlers = settlersOreCandidate.HasValue;
 
             bool shouldAvoid = ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
                 prioritizeOnscreen,
@@ -1849,6 +1855,24 @@ namespace ClickIt.Services
                     || hasClickableShrine
                     || hasClickableLostShipment
                     || hasClickableSettlersOre);
+        }
+
+        internal static bool ShouldEvaluateOnscreenMechanicChecks(
+            bool prioritizeOnscreenClickableMechanics,
+            bool clickShrinesEnabled,
+            bool clickLostShipmentEnabled,
+            bool clickSettlersOreEnabled,
+            bool clickEaterAltarsEnabled,
+            bool clickExarchAltarsEnabled)
+        {
+            if (!prioritizeOnscreenClickableMechanics)
+                return false;
+
+            return clickShrinesEnabled
+                || clickLostShipmentEnabled
+                || clickSettlersOreEnabled
+                || clickEaterAltarsEnabled
+                || clickExarchAltarsEnabled;
         }
 
         internal static bool ShouldSkipOffscreenPathfindingForRitual(bool ritualActive)
