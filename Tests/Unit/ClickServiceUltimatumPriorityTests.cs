@@ -40,6 +40,13 @@ namespace ClickIt.Tests.Unit
             return Convert.ToInt32(action);
         }
 
+        private static bool InvokeShouldSkipGruelingGauntletAutomationCore(bool isGruelingGauntletActive, bool gruelingGauntletAutoDecisionEnabled)
+        {
+            var method = typeof(ClickService).GetMethod("ShouldSkipGruelingGauntletAutomationCore", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+            return (bool)method!.Invoke(null, new object[] { isGruelingGauntletActive, gruelingGauntletAutoDecisionEnabled })!;
+        }
+
         [TestMethod]
         public void GetModifierPriorityIndex_MatchesTieredNameByPrefix()
         {
@@ -120,6 +127,19 @@ namespace ClickIt.Tests.Unit
             int action = InvokeDetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
 
             action.Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [DataRow(true, false, true)]
+        [DataRow(true, true, false)]
+        [DataRow(false, false, false)]
+        [DataRow(false, true, false)]
+        public void ShouldSkipGruelingGauntletAutomationCore_UsesToggleAndDetectionState(
+            bool isGruelingGauntletActive,
+            bool gruelingGauntletAutoDecisionEnabled,
+            bool expected)
+        {
+            InvokeShouldSkipGruelingGauntletAutomationCore(isGruelingGauntletActive, gruelingGauntletAutoDecisionEnabled).Should().Be(expected);
         }
 
         private sealed class ThrowingGetterStub

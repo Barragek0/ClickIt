@@ -421,7 +421,12 @@ namespace ClickIt
 
         [Menu("Take Reward when Modifier Is Chosen (Grueling Gauntlet)", 1195, 119)]
         public EmptyNode UltimatumTakeRewardWhenChosenCategory { get; set; } = new EmptyNode();
-        [Menu("", 1, 1195)]
+        [Menu("Enable Grueling Gauntlet Auto Decision", "When enabled, ClickIt uses the Take Reward / Keep Going table for Grueling Gauntlet.\nWhen disabled, the table is hidden and ClickIt will not auto-decide while Grueling Gauntlet is active.", 1, 1195)]
+        public ToggleNode GruelingGauntletAutoDecision { get; set; } = new ToggleNode(true);
+        [JsonIgnore]
+        public bool ShowUltimatumTakeRewardModifierTablePanel => IsGruelingGauntletAutoDecisionEnabled();
+        [Menu("", 2, 1195)]
+        [ConditionalDisplay(nameof(ShowUltimatumTakeRewardModifierTablePanel))]
         [JsonIgnore]
         public CustomNode UltimatumTakeRewardModifierTablePanel { get; }
 

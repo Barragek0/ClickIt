@@ -54,6 +54,18 @@ namespace ClickIt.Services
             DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel detected.");
 
             bool isGruelingGauntletActive = IsGruelingGauntletPassiveActive();
+            bool gruelingGauntletAutoDecisionEnabled = settings.IsGruelingGauntletAutoDecisionEnabled();
+            if (ShouldSkipGruelingGauntletAutomationCore(isGruelingGauntletActive, gruelingGauntletAutoDecisionEnabled))
+            {
+                PublishUltimatumDebug(
+                    stage: "PanelGruelingManual",
+                    source: "PanelUi",
+                    isPanelVisible: true,
+                    isGruelingGauntletActive: true,
+                    notes: "Grueling Gauntlet auto decision is disabled in settings");
+                return false;
+            }
+
             if (isGruelingGauntletActive)
                 return TryHandleGruelingGauntletPanelUi(panelObj, windowTopLeft);
 
@@ -454,6 +466,9 @@ namespace ClickIt.Services
                 ? GruelingGauntletAction.TakeRewards
                 : GruelingGauntletAction.ConfirmOnly;
         }
+
+        internal static bool ShouldSkipGruelingGauntletAutomationCore(bool isGruelingGauntletActive, bool gruelingGauntletAutoDecisionEnabled)
+            => isGruelingGauntletActive && !gruelingGauntletAutoDecisionEnabled;
 
         internal static bool ShouldTreatUltimatumChoiceAsSaturatedCore(bool hasSaturationState, bool isSaturated, bool fallbackVisible)
             => hasSaturationState ? isSaturated : fallbackVisible;

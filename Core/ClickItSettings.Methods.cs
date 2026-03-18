@@ -73,6 +73,11 @@ namespace ClickIt
             return IsInitialUltimatumClickEnabled() || IsOtherUltimatumClickEnabled();
         }
 
+        public bool IsGruelingGauntletAutoDecisionEnabled()
+        {
+            return GruelingGauntletAutoDecision?.Value != false;
+        }
+
         public bool IsAnyDetailedDebugSectionEnabled()
         {
             return DebugShowStatus
