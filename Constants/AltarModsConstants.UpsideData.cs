@@ -6,6 +6,7 @@ namespace ClickIt.Definitions
         public static readonly IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> UpsideMods = new List<(string, string, string, int)>
         {
             ("#% chance to drop an additional Divine Orb", "(1.6-3.2)%% chance to drop an additional Divine Orb", Minion, 100),
+            ("#% chance to drop an additional Ancient Orb", "(1.6-3.2)%% chance to drop an additional Ancient Orb", Minion, 75),
             ("#% chance to drop an additional Exalted Orb", "(1.6-3.2)%% chance to drop an additional Exalted Orb", Minion, 50),
             ("#% chance to drop an additional Chaos Orb", "(1.6-3.2)%% chance to drop an additional Chaos Orb", Minion, 20),
             ("#% chance to drop an additional Orb of Annulment", "(1.6-3.2)%% chance to drop an additional Orb of Annulment", Minion, 35),
@@ -79,6 +80,7 @@ namespace ClickIt.Definitions
             ("#% chance to drop an additional Divination Card which rewards other Divination Cards", "(1.6-3.2)%% chance to drop an additional Divination Card which rewards other Divination Cards", Minion, 10),
             ("#% chance to drop an additional Divination Card which rewards a Corrupted Item", "(1.6-3.2)%% chance to drop an additional Divination Card which rewards a Corrupted Item", Minion, 3),
             ("Final Boss drops # additional Divine Orbs", "Final Boss drops (2-4) additional Divine Orbs", Boss, 100),
+            ("Final Boss drops # additional Ancient Orbs", "Final Boss drops (2-4) additional Ancient Orbs", Boss, 75),
             ("Final Boss drops # additional Exalted Orbs", "Final Boss drops (2-4) additional Exalted Orbs", Boss, 50),
             ("Final Boss drops # additional Chaos Orbs", "Final Boss drops (2-4) additional Chaos Orbs", Boss, 20),
             ("Final Boss drops # additional Orbs of Annulment", "Final Boss drops (2-4) additional Orbs of Annulment", Boss, 35),
