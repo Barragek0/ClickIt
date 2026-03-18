@@ -888,6 +888,7 @@ namespace ClickIt
                 new(MechanicIds.SettlersCopper, "Copper", ClickSettlersCopper, "settlers", true),
                 new(MechanicIds.SettlersPetrifiedWood, "Petrified Wood", ClickSettlersPetrifiedWood, "settlers", true),
                 new(MechanicIds.SettlersBismuth, "Bismuth", ClickSettlersBismuth, "settlers", true),
+                new(MechanicIds.SettlersHourglass, "Hourglass", ClickSettlersOre, "settlers", true),
                 new(MechanicIds.SettlersVerisium, "Verisium", ClickSettlersVerisium, "settlers", true),
                 new(MechanicIds.DelveAzuriteVeins, "Azurite Veins", ClickAzuriteVeins, "delve", true),
                 new(MechanicIds.DelveSulphiteVeins, "Sulphite Veins", ClickSulphiteVeins, "delve", true),

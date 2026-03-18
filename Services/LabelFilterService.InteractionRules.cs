@@ -19,6 +19,7 @@ namespace ClickIt.Services
             (MechanicIds.SettlersCopper, IsSettlersCopperPath),
             (MechanicIds.SettlersPetrifiedWood, IsSettlersPetrifiedWoodPath),
             (MechanicIds.SettlersBismuth, IsSettlersBismuthPath),
+            (MechanicIds.SettlersHourglass, IsSettlersHourglassPath),
             (MechanicIds.SettlersVerisium, IsSettlersVerisiumPath)
         ];
 
@@ -220,6 +221,7 @@ namespace ClickIt.Services
                 var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCopper,
                 var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersPetrifiedWood,
                 var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersBismuth,
+                var id when string.Equals(id, MechanicIds.SettlersHourglass, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersOre,
                 var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersVerisium,
                 _ => false
             };
@@ -235,8 +237,8 @@ namespace ClickIt.Services
                 || IsSettlersCopperPath(path)
                 || IsSettlersPetrifiedWoodPath(path)
                 || IsSettlersBismuthPath(path)
-                || IsSettlersVerisiumPath(path)
-                || path.Contains(Constants.Hourglass, StringComparison.OrdinalIgnoreCase);
+                || IsSettlersHourglassPath(path)
+                || IsSettlersVerisiumPath(path);
         }
 
         private static bool IsSettlersCrimsonIronPath(string path)
@@ -250,6 +252,9 @@ namespace ClickIt.Services
 
         private static bool IsSettlersBismuthPath(string path)
             => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersBismuthMarker);
+
+        private static bool IsSettlersHourglassPath(string path)
+            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersHourglassMarker);
 
         private static bool IsSettlersVerisiumPath(string path)
             => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersVerisiumMarker)

@@ -293,6 +293,7 @@ namespace ClickIt
                 yield return MechanicIds.SettlersCopper;
                 yield return MechanicIds.SettlersPetrifiedWood;
                 yield return MechanicIds.SettlersBismuth;
+                yield return MechanicIds.SettlersHourglass;
                 yield return MechanicIds.SettlersVerisium;
                 yield break;
             }

@@ -1391,6 +1391,11 @@ namespace ClickIt.Tests.Unit
             bismuthMechanicId.Should().Be("settlers-bismuth");
 
             LabelFilterService.TryGetSettlersOreMechanicId(
+                "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/HourglassObjects/hourglass_altar",
+                out string? hourglassMechanicId).Should().BeTrue();
+            hourglassMechanicId.Should().Be("settlers-hourglass");
+
+            LabelFilterService.TryGetSettlersOreMechanicId(
                 "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium",
                 out string? verisiumMechanicId).Should().BeTrue();
             verisiumMechanicId.Should().Be("settlers-verisium");
@@ -1660,6 +1665,7 @@ namespace ClickIt.Tests.Unit
                 MechanicIds.SettlersCopper,
                 MechanicIds.SettlersPetrifiedWood,
                 MechanicIds.SettlersBismuth,
+                MechanicIds.SettlersHourglass,
                 MechanicIds.SettlersVerisium
             ];
 

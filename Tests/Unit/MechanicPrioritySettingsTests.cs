@@ -41,6 +41,7 @@ namespace ClickIt.Tests.Unit
             priorities.Should().Contain("settlers-copper");
             priorities.Should().Contain("settlers-petrified-wood");
             priorities.Should().Contain("settlers-bismuth");
+            priorities.Should().Contain("settlers-hourglass");
             priorities.Should().Contain("settlers-verisium");
             var priorityList = priorities.ToList();
             priorityList.IndexOf("shrines").Should().BeLessThan(priorityList.IndexOf("lost-shipment"));
@@ -171,6 +172,7 @@ namespace ClickIt.Tests.Unit
                 "settlers-copper",
                 "settlers-petrified-wood",
                 "settlers-bismuth",
+                "settlers-hourglass",
                 "settlers-verisium",
                 "items");
 
@@ -178,12 +180,14 @@ namespace ClickIt.Tests.Unit
             ignoreDistance.Should().Contain("settlers-copper");
             ignoreDistance.Should().Contain("settlers-petrified-wood");
             ignoreDistance.Should().Contain("settlers-bismuth");
+            ignoreDistance.Should().Contain("settlers-hourglass");
             ignoreDistance.Should().Contain("settlers-verisium");
 
             ignoreDistanceWithinById["settlers-crimson-iron"].Should().Be(90);
             ignoreDistanceWithinById["settlers-copper"].Should().Be(90);
             ignoreDistanceWithinById["settlers-petrified-wood"].Should().Be(90);
             ignoreDistanceWithinById["settlers-bismuth"].Should().Be(90);
+            ignoreDistanceWithinById["settlers-hourglass"].Should().Be(90);
             ignoreDistanceWithinById["settlers-verisium"].Should().Be(90);
         }
 

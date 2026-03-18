@@ -28,6 +28,7 @@ namespace ClickIt.Definitions
         public const string SettlersCopper = "settlers-copper";
         public const string SettlersPetrifiedWood = "settlers-petrified-wood";
         public const string SettlersBismuth = "settlers-bismuth";
+        public const string SettlersHourglass = "settlers-hourglass";
         public const string SettlersVerisium = "settlers-verisium";
         public const string AltarsSearingExarch = "altars-searing-exarch";
         public const string AltarsEaterOfWorlds = "altars-eater-of-worlds";
@@ -41,6 +42,7 @@ namespace ClickIt.Definitions
         public const string SettlersCopperMarker = SettlersNodeTypeRootPath + "DemonCopperObjects/copper_altar";
         public const string SettlersPetrifiedWoodMarker = SettlersNodeTypeRootPath + "PetrifiedWood";
         public const string SettlersBismuthMarker = SettlersNodeTypeRootPath + "Bismuth";
+        public const string SettlersHourglassMarker = SettlersNodeTypeRootPath + "HourglassObjects/" + Constants.Hourglass;
         public const string SettlersVerisiumMarker = SettlersNodeTypeRootPath + "Verisium";
         public const string VerisiumBossSubAreaTransitionPathMarker = "VerisiumBossSubAreaTransition";
     }
