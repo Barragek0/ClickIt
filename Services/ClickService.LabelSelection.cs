@@ -10,6 +10,7 @@ using Microsoft.CSharp.RuntimeBinder;
 using System.Windows.Forms;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
+using ExileCore.PoEMemory.Components;
 
 namespace ClickIt.Services
 {
@@ -1368,7 +1369,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (!target.IsValid || target.IsHidden)
+            if (!target.IsValid || target.IsHidden || (target.GetComponent<MinimapIcon>() != null && target.GetComponent<MinimapIcon>().IsHide))
             {
                 ClearStickyOffscreenTarget();
                 pathfindingService.ClearLatestPath();
@@ -1579,7 +1580,7 @@ namespace ClickIt.Services
                 return false;
 
             target = FindEntityByAddress(_stickyOffscreenTargetAddress);
-            if (target == null || !target.IsValid || target.IsHidden)
+            if (target == null || !target.IsValid || target.IsHidden || (target.GetComponent<MinimapIcon>() != null && target.GetComponent<MinimapIcon>().IsHide))
             {
                 ClearStickyOffscreenTarget();
                 return false;
@@ -1784,7 +1785,7 @@ namespace ClickIt.Services
                 for (int i = 0; i < entities.Count; i++)
                 {
                     Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden)
+                    if (entity == null || !entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
                         continue;
                     if (entity.DistancePlayer > maxDistance)
                         continue;
@@ -2015,7 +2016,7 @@ namespace ClickIt.Services
                 for (int i = 0; i < entities.Count; i++)
                 {
                     Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden)
+                    if (entity == null || !entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
                         continue;
                     if (entity.DistancePlayer > maxDistance)
                         continue;
@@ -2141,7 +2142,7 @@ namespace ClickIt.Services
             Entity? candidate,
             string? mechanicId)
         {
-            if (candidate == null || !candidate.IsValid || candidate.IsHidden || string.IsNullOrWhiteSpace(mechanicId))
+            if (candidate == null || !candidate.IsValid || candidate.IsHidden || (candidate.GetComponent<MinimapIcon>() != null && candidate.GetComponent<MinimapIcon>().IsHide) || string.IsNullOrWhiteSpace(mechanicId))
                 return;
 
             MechanicRank rank = BuildMechanicRank(candidate.DistancePlayer, mechanicId);
@@ -2177,7 +2178,7 @@ namespace ClickIt.Services
                 for (int i = 0; i < entities.Count; i++)
                 {
                     Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden)
+                    if (entity == null || !entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
                         continue;
                     if (entity.DistancePlayer > maxDistance)
                         continue;
@@ -2328,7 +2329,7 @@ namespace ClickIt.Services
                 Entity? entity = label?.ItemOnGround;
                 if (label == null || entity == null)
                     continue;
-                if (!entity.IsValid || entity.IsHidden)
+                if (!entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
                     continue;
                 if (entity.DistancePlayer > maxDistance)
                     continue;
