@@ -17,6 +17,7 @@ namespace ClickIt.Services
         private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
         private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
         private const int HiddenFallbackCandidateCacheWindowMs = 150;
+        private const int VisibleMechanicCandidateCacheWindowMs = 80;
         private const int GroundLabelEntityAddressCacheWindowMs = 150;
 
         private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
@@ -30,6 +31,11 @@ namespace ClickIt.Services
         private bool _hiddenFallbackCandidateCacheHasValue;
         private LostShipmentCandidate? _hiddenFallbackCachedLostShipmentCandidate;
         private SettlersOreCandidate? _hiddenFallbackCachedSettlersCandidate;
+        private long _visibleMechanicCandidateCacheTimestampMs;
+        private int _visibleMechanicCandidateLabelCount = -1;
+        private bool _visibleMechanicCandidateCacheHasValue;
+        private LostShipmentCandidate? _visibleMechanicCachedLostShipmentCandidate;
+        private SettlersOreCandidate? _visibleMechanicCachedSettlersCandidate;
         private readonly HashSet<long> _cachedGroundLabelEntityAddresses = [];
         private long _cachedGroundLabelEntityAddressesTimestampMs;
         private int _cachedGroundLabelEntityLabelCount = -1;

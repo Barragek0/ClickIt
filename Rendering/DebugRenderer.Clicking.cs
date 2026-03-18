@@ -51,6 +51,16 @@ namespace ClickIt.Rendering
                 return yPos + lineHeight;
             }
 
+            ClickItSettings settings = clickIt.Settings;
+            _deferredTextQueue.Enqueue("Click Settings Snapshot:", new Vector2(xPos, yPos), Color.LightBlue, 14);
+            yPos += lineHeight;
+
+            IReadOnlyList<string> clickSettingsLines = BuildClickSettingsDebugSnapshotLines(settings);
+            for (int i = 0; i < clickSettingsLines.Count; i++)
+            {
+                yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, clickSettingsLines[i], Color.LightGray, 13, 86);
+            }
+
             var snap = clickIt.State.ClickService.GetLatestClickDebug();
             if (!snap.HasData)
             {
@@ -91,6 +101,51 @@ namespace ClickIt.Rendering
             yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 78);
 
             return yPos;
+        }
+
+        internal static IReadOnlyList<string> BuildClickSettingsDebugSnapshotLines(ClickItSettings settings)
+        {
+            settings ??= new ClickItSettings();
+
+            string toggleLine = string.Join(", ",
+            [
+                $"hotkeyToggle:{settings.ClickHotkeyToggleMode.Value}",
+                $"manualCursor:{settings.ClickOnManualUiHoverOnly.Value}",
+                $"lazyMode:{settings.LazyMode.Value}",
+                $"leftHanded:{settings.LeftHanded.Value}"
+            ]);
+
+            string coreClickLine = string.Join(", ",
+            [
+                $"radius:{settings.ClickDistance.Value}",
+                $"freqTarget:{settings.ClickFrequencyTarget.Value}ms",
+                $"verifyCursorInWindow:{settings.VerifyCursorInGameWindowBeforeClick.Value}",
+                $"verifyUiHoverNonLazy:{settings.VerifyUIHoverWhenNotLazy.Value}",
+                $"avoidOverlap:{settings.AvoidOverlappingLabelClickPoints.Value}"
+            ]);
+
+            string inputSafetyLine = string.Join(", ",
+            [
+                $"blockPanels:{settings.BlockOnOpenLeftRightPanel.Value}",
+                $"toggleItems:{settings.ToggleItems.Value}",
+                $"toggleItemsInterval:{settings.ToggleItemsIntervalMs.Value}ms",
+                $"postToggleBlock:{settings.ToggleItemsPostToggleClickBlockMs.Value}ms"
+            ]);
+
+            string pathingLine = string.Join(", ",
+            [
+                $"walkOffscreen:{settings.WalkTowardOffscreenLabels.Value}",
+                $"prioritizeOnscreen:{settings.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value}",
+                $"pathBudget:{settings.OffscreenPathfindingSearchBudget.Value}"
+            ]);
+
+            return
+            [
+                toggleLine,
+                coreClickLine,
+                inputSafetyLine,
+                pathingLine
+            ];
         }
     }
 }

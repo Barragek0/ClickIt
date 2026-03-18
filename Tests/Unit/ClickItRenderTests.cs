@@ -168,5 +168,18 @@ namespace ClickIt.Tests.Unit
             payload.Should().Contain("Stage: ClickExecuted");
         }
 
+        [TestMethod]
+        public void GetDeepMemoryDumpStatusMessage_ReturnsEmpty_WhenCopyMemoryDumpFeatureDisabled()
+        {
+            var method = typeof(ClickIt).GetMethod("GetDeepMemoryDumpStatusMessage", BindingFlags.NonPublic | BindingFlags.Instance);
+            method.Should().NotBeNull();
+
+            var clickIt = new ClickIt();
+            clickIt.__Test_SetSettings(new ClickItSettings());
+
+            string status = (string)method!.Invoke(clickIt, null)!;
+            status.Should().BeEmpty();
+        }
+
     }
 }

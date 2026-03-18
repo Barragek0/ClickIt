@@ -62,7 +62,15 @@ namespace ClickIt.Utils
                 preferredPoint.Y -= _settings.ChestHeightOffset;
             }
 
-            List<RectangleF> blockedAreas = CollectBlockingOverlaps(label, rect, allLabels);
+            List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRects(label, rect, allLabels);
+            if (potentialBlockers.Count == 0)
+                return false;
+
+            // Fast path: if any probe point is visibly unblocked, skip expensive full overlap resolution.
+            if (HasUnblockedOverlapProbePoint(rect, preferredPoint, potentialBlockers))
+                return false;
+
+            List<RectangleF> blockedAreas = BuildIntersectionOverlaps(rect, potentialBlockers);
             return !TryResolveVisibleClickPoint(rect, preferredPoint, blockedAreas, out _);
         }
 

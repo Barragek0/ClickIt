@@ -183,5 +183,41 @@ namespace ClickIt.Tests.Unit
                 .Should().BeFalse();
         }
 
+        [TestMethod]
+        public void ShouldEvaluateRitualState_ReturnsTrue_ForLazyMode()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldEvaluateRitualState(lazyModeEnabled: true, clickHotkeyActive: true)
+                .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateRitualState_ReturnsTrue_WhenHotkeyInactive()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldEvaluateRitualState(lazyModeEnabled: false, clickHotkeyActive: false)
+                .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateRitualState_ReturnsFalse_WhenNonLazyAndHotkeyActive()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldEvaluateRitualState(lazyModeEnabled: false, clickHotkeyActive: true)
+                .Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateLazyModeRestrictedItems_ReturnsTrue_OnlyWhenLazyModeEnabled()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled: true)
+                .Should().BeTrue();
+
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled: false)
+                .Should().BeFalse();
+        }
+
     }
 }

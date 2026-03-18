@@ -1,4 +1,5 @@
 ﻿using ExileCore;
+using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
@@ -17,7 +18,15 @@ namespace ClickIt.Utils
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
         private readonly ErrorHandler _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        private const int LazyModeContextCacheMs = 50;
         private long _lastCanClickFailureLogTimestampMs;
+        private long _lastLazyModeContextRefreshTimestampMs = long.MinValue;
+        private bool _cachedRitualActive;
+        private bool _cachedHasLazyModeRestrictedItems;
+        private bool _cachedRitualEvaluated;
+        private bool _cachedRestrictedItemsEvaluated;
+        private IReadOnlyList<LabelOnGround>? _cachedLazyModeLabelsRef;
+        private int _cachedLazyModeLabelCount = -1;
 
         /// <summary>
         /// Check if a ritual is currently active by looking for RitualBlocker entities
@@ -25,6 +34,45 @@ namespace ClickIt.Utils
         private bool IsRitualActive()
         {
             return EntityHelpers.IsRitualActive(_gameController);
+        }
+
+        private (bool IsRitualActive, bool HasLazyModeRestrictedItems, IReadOnlyList<LabelOnGround>? Labels) GetCachedLazyModeContext(
+            bool shouldEvaluateRitualState,
+            bool shouldEvaluateRestrictedItems)
+        {
+            IReadOnlyList<LabelOnGround>? labels = _state.CachedLabels?.Value;
+            int labelCount = labels?.Count ?? 0;
+            long now = Environment.TickCount64;
+
+            bool cacheStillFresh = (now - _lastLazyModeContextRefreshTimestampMs) < LazyModeContextCacheMs
+                && ReferenceEquals(labels, _cachedLazyModeLabelsRef)
+                && labelCount == _cachedLazyModeLabelCount;
+
+            if (!cacheStillFresh)
+            {
+                _cachedLazyModeLabelsRef = labels;
+                _cachedLazyModeLabelCount = labelCount;
+                _lastLazyModeContextRefreshTimestampMs = now;
+                _cachedRitualEvaluated = false;
+                _cachedRestrictedItemsEvaluated = false;
+            }
+
+            if (shouldEvaluateRitualState && !_cachedRitualEvaluated)
+            {
+                _cachedRitualActive = IsRitualActive();
+                _cachedRitualEvaluated = true;
+            }
+
+            if (shouldEvaluateRestrictedItems && !_cachedRestrictedItemsEvaluated)
+            {
+                _cachedHasLazyModeRestrictedItems = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
+                _cachedRestrictedItemsEvaluated = true;
+            }
+
+            return (
+                shouldEvaluateRitualState ? _cachedRitualActive : false,
+                shouldEvaluateRestrictedItems ? _cachedHasLazyModeRestrictedItems : false,
+                labels);
         }
 
         private double GetTargetTime(double frequencyTarget, double averageTiming)
@@ -91,10 +139,15 @@ namespace ClickIt.Utils
 
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
-            bool isRitualActive = IsRitualActive();
-            var cached = _state.CachedLabels?.Value;
-            bool hasLazyModeRestrictedItemsOnScreen = _state.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(cached) ?? false;
-            bool lazyModeActive = _settings.LazyMode.Value &&
+            bool lazyModeEnabled = _settings.LazyMode.Value;
+            bool shouldEvaluateRestrictedItems = ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled);
+            bool shouldEvaluateRitualState = ShouldEvaluateRitualState(lazyModeEnabled, hotkeyActive);
+
+            var lazyModeContext = GetCachedLazyModeContext(shouldEvaluateRitualState, shouldEvaluateRestrictedItems);
+            bool isRitualActive = lazyModeContext.IsRitualActive;
+            bool hasLazyModeRestrictedItemsOnScreen = lazyModeContext.HasLazyModeRestrictedItems;
+            var cached = lazyModeContext.Labels;
+            bool lazyModeActive = lazyModeEnabled &&
                                   !hasLazyModeRestrictedItemsOnScreen &&
                                   !isRitualActive;
 
@@ -104,8 +157,7 @@ namespace ClickIt.Utils
             bool canClick = _state.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive) == true;
             if (!readyByTime || !canClick)
             {
-                bool hotkeyHeld = _state.InputHandler?.IsClickHotkeyPressed(_state.CachedLabels, _state.LabelFilterService) ?? true;
-                bool lazyModeEnabled = _settings.LazyMode?.Value == true;
+                bool hotkeyHeld = _state.InputHandler == null || hotkeyActive;
                 if (ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled, hotkeyHeld))
                 {
                     _state.ClickService?.CancelOffscreenPathingState();
@@ -161,7 +213,7 @@ namespace ClickIt.Utils
             if (!ShouldRunManualUiHoverCoroutine(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
                 yield break;
 
-            bool isRitualActive = IsRitualActive();
+            bool isRitualActive = GetCachedLazyModeContext(shouldEvaluateRitualState: true, shouldEvaluateRestrictedItems: false).IsRitualActive;
             if (isRitualActive)
                 yield break;
 
@@ -195,6 +247,16 @@ namespace ClickIt.Utils
         internal static bool ShouldCancelOffscreenPathingForInputRelease(bool lazyModeEnabled, bool clickHotkeyHeld)
         {
             return !lazyModeEnabled && !clickHotkeyHeld;
+        }
+
+        internal static bool ShouldEvaluateRitualState(bool lazyModeEnabled, bool clickHotkeyActive)
+        {
+            return lazyModeEnabled || !clickHotkeyActive;
+        }
+
+        internal static bool ShouldEvaluateLazyModeRestrictedItems(bool lazyModeEnabled)
+        {
+            return lazyModeEnabled;
         }
 
         internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)

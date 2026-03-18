@@ -35,15 +35,17 @@ namespace ClickIt.Services
 
         public bool HasClickableAltars()
         {
+            bool clickEater = settings.ClickEaterAltars;
+            bool clickExarch = settings.ClickExarchAltars;
+            if (!ShouldEvaluateAltarScan(clickEater, clickExarch))
+                return false;
+
             if (altarService == null)
                 return false;
 
             var altarSnapshot = altarService.GetAltarComponentsReadOnly();
             if (altarSnapshot.Count == 0)
                 return false;
-
-            bool clickEater = settings.ClickEaterAltars;
-            bool clickExarch = settings.ClickExarchAltars;
 
             for (int i = 0; i < altarSnapshot.Count; i++)
             {
@@ -54,6 +56,11 @@ namespace ClickIt.Services
             }
 
             return false;
+        }
+
+        internal static bool ShouldEvaluateAltarScan(bool clickEaterEnabled, bool clickExarchEnabled)
+        {
+            return clickEaterEnabled || clickExarchEnabled;
         }
 
         private bool TryClickManualCursorPreferredAltarOption(Vector2 cursorAbsolute, Vector2 windowTopLeft)

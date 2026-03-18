@@ -562,6 +562,67 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldEvaluateOnscreenMechanicChecks_ReturnsFalse_WhenPrioritizationDisabled()
+        {
+            ClickService.ShouldEvaluateOnscreenMechanicChecks(
+                prioritizeOnscreenClickableMechanics: false,
+                clickShrinesEnabled: true,
+                clickLostShipmentEnabled: true,
+                clickSettlersOreEnabled: true,
+                clickEaterAltarsEnabled: true,
+                clickExarchAltarsEnabled: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateOnscreenMechanicChecks_ReturnsFalse_WhenNoMechanicFeaturesEnabled()
+        {
+            ClickService.ShouldEvaluateOnscreenMechanicChecks(
+                prioritizeOnscreenClickableMechanics: true,
+                clickShrinesEnabled: false,
+                clickLostShipmentEnabled: false,
+                clickSettlersOreEnabled: false,
+                clickEaterAltarsEnabled: false,
+                clickExarchAltarsEnabled: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateOnscreenMechanicChecks_ReturnsTrue_WhenAnyMechanicFeatureEnabled()
+        {
+            ClickService.ShouldEvaluateOnscreenMechanicChecks(
+                prioritizeOnscreenClickableMechanics: true,
+                clickShrinesEnabled: false,
+                clickLostShipmentEnabled: true,
+                clickSettlersOreEnabled: false,
+                clickEaterAltarsEnabled: false,
+                clickExarchAltarsEnabled: false).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateAltarScan_ReturnsTrue_WhenAnyAltarToggleEnabled()
+        {
+            ClickService.ShouldEvaluateAltarScan(clickEaterEnabled: true, clickExarchEnabled: false).Should().BeTrue();
+            ClickService.ShouldEvaluateAltarScan(clickEaterEnabled: false, clickExarchEnabled: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateAltarScan_ReturnsFalse_WhenBothAltarTogglesDisabled()
+        {
+            ClickService.ShouldEvaluateAltarScan(clickEaterEnabled: false, clickExarchEnabled: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldScanSettlersGroundLabelAddresses_ReturnsTrue_WhenCapturingClickDebug()
+        {
+            ClickService.ShouldScanSettlersGroundLabelAddresses(captureClickDebug: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldScanSettlersGroundLabelAddresses_ReturnsFalse_WhenNotCapturingClickDebug()
+        {
+            ClickService.ShouldScanSettlersGroundLabelAddresses(captureClickDebug: false).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldSkipOffscreenPathfindingForRitual_ReturnsTrue_WhenRitualIsActive()
         {
             ClickService.ShouldSkipOffscreenPathfindingForRitual(ritualActive: true).Should().BeTrue();
@@ -1299,6 +1360,34 @@ namespace ClickIt.Tests.Unit
 
             ClickService.ShouldSkipVerisiumEntity(
                 isValid: true,
+                distance: 50f,
+                clickDistance: 100).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldSkipSettlersEntityBeforeMechanicResolution_RespectsValidityAndDistance()
+        {
+            ClickService.ShouldSkipSettlersEntityBeforeMechanicResolution(
+                isValid: true,
+                isHidden: true,
+                distance: 10f,
+            clickDistance: 100).Should().BeFalse();
+
+            ClickService.ShouldSkipSettlersEntityBeforeMechanicResolution(
+                isValid: false,
+                isHidden: false,
+                distance: 10f,
+                clickDistance: 100).Should().BeTrue();
+
+            ClickService.ShouldSkipSettlersEntityBeforeMechanicResolution(
+                isValid: true,
+                isHidden: false,
+                distance: 150f,
+                clickDistance: 100).Should().BeTrue();
+
+            ClickService.ShouldSkipSettlersEntityBeforeMechanicResolution(
+                isValid: true,
+                isHidden: false,
                 distance: 50f,
                 clickDistance: 100).Should().BeFalse();
         }
