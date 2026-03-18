@@ -12,12 +12,16 @@ namespace ClickIt.Services
             => ContainsAnyMetadataIdentifier(metadataPath, itemName, item: null, identifiers);
 
         private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, IReadOnlyList<string> identifiers)
+            => ContainsAnyMetadataIdentifier(metadataPath, itemName, item, labelText: string.Empty, identifiers);
+
+        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, string labelText, IReadOnlyList<string> identifiers)
         {
             if (identifiers == null || identifiers.Count == 0)
                 return false;
 
             metadataPath ??= string.Empty;
             itemName ??= string.Empty;
+            labelText ??= string.Empty;
 
             for (int i = 0; i < identifiers.Count; i++)
             {
@@ -27,7 +31,7 @@ namespace ClickIt.Services
 
                 if (TryGetSpecialRule(identifier, out string specialRule))
                 {
-                    if (MatchesSpecialRule(specialRule, metadataPath, itemName, item))
+                    if (MatchesSpecialRule(specialRule, metadataPath, itemName, item, labelText))
                         return true;
                     continue;
                 }
@@ -49,7 +53,7 @@ namespace ClickIt.Services
             return specialRule.Length > 0;
         }
 
-        private static bool MatchesSpecialRule(string specialRule, string metadataPath, string itemName, Entity? item)
+        private static bool MatchesSpecialRule(string specialRule, string metadataPath, string itemName, Entity? item, string labelText)
         {
             if (specialRule.Equals("unique-items", StringComparison.OrdinalIgnoreCase))
                 return item != null && IsUniqueItem(item);
@@ -64,6 +68,8 @@ namespace ClickIt.Services
             }
             if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase))
                 return IsRegularJewelsMetadataPath(metadataPath);
+            if (specialRule.Equals("mysterious-wombgift-label", StringComparison.OrdinalIgnoreCase))
+                return string.Equals(labelText.Trim(), "Mysterious Wombgift", StringComparison.OrdinalIgnoreCase);
 
             return false;
         }

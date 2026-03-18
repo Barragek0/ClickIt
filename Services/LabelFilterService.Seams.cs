@@ -15,14 +15,19 @@ namespace ClickIt.Services
 
         internal static bool MatchesMetadataFiltersForTests(string metadataPath, string itemName, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)
         {
+            return MatchesMetadataFiltersForTests(metadataPath, itemName, string.Empty, whitelist, blacklist);
+        }
+
+        internal static bool MatchesMetadataFiltersForTests(string metadataPath, string itemName, string labelText, IReadOnlyList<string>? whitelist, IReadOnlyList<string>? blacklist)
+        {
             whitelist ??= [];
             blacklist ??= [];
 
-            bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, whitelist);
+            bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, item: null, labelText ?? string.Empty, whitelist);
             if (!whitelistPass)
                 return false;
 
-            bool blacklistMatch = blacklist.Count > 0 && ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, blacklist);
+            bool blacklistMatch = blacklist.Count > 0 && ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, item: null, labelText ?? string.Empty, blacklist);
             return !blacklistMatch;
         }
     }

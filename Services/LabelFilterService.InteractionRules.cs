@@ -35,7 +35,7 @@ namespace ClickIt.Services
 
             if (type == EntityType.WorldItem)
             {
-                if (!ShouldAllowWorldItemByMetadata(settings, item, gameController))
+                if (!ShouldAllowWorldItemByMetadata(settings, item, gameController, label))
                     return null;
 
                 if (ShouldClickWorldItemCore(settings.ClickItems, type, item))

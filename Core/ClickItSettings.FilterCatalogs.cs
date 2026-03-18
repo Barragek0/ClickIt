@@ -48,6 +48,13 @@ namespace ClickIt
                 new("mana", "Mana Flasks", ["Items/Flasks/ManaFlask"]),
                 new("hybrid", "Hybrid Flasks", ["Items/Flasks/HybridFlask"]),
                 new("utility", "Utility Flasks", ["Items/Flasks/UtilityFlask"])
+            ],
+            ["wombgifts"] =
+            [
+                new("mysterious-wombgift", "Mysterious Wombgift", ["special:mysterious-wombgift-label"]),
+                new("provisioning-wombgift", "Provisioning Wombgift", ["Chayula/EquipmentFruit"]),
+                new("lavish-wombgift", "Lavish Wombgift", ["Chayula/CurrencyFruit"]),
+                new("ancient-wombgift", "Ancient Wombgift", ["Chayula/UniqueItemFruit"])
             ]
         };
 

@@ -38,6 +38,7 @@ namespace ClickIt.Definitions
         public static readonly ItemCategoryDefinition[] All =
         [
             new("currency", "Currency", "Items/Currency/", ItemListKind.Whitelist, ["Chaos Orb", "Divine Orb", "Orb of Alchemy"]),
+            new("wombgifts", "Wombgifts", ["special:mysterious-wombgift-label", "Chayula/EquipmentFruit", "Chayula/CurrencyFruit", "Chayula/UniqueItemFruit"], ItemListKind.Whitelist, ["Mysterious Wombgift", "Provisioning Wombgift", "Lavish Wombgift", "Ancient Wombgift"]),
             new("unique-items", "Unique Items", ["special:unique-items"], ItemListKind.Whitelist, ["Tabula Rasa", "Headhunter"]),
             new("inscribed-ultimatums", "Inscribed Ultimatums", ["special:inscribed-ultimatum"], ItemListKind.Whitelist, ["Inscribed Ultimatum"]),
             new("scarabs", "Scarabs", ["Items/Scarabs/", "Items/Currency/Scarabs/"], ItemListKind.Whitelist, ["Ambush Scarab", "Divination Scarab"]),

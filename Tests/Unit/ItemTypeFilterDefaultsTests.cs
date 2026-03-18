@@ -20,6 +20,7 @@ namespace ClickIt.Tests.Unit
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("inscribed-ultimatums");
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("scarabs");
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("heist-contracts");
+            ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("wombgifts");
             ItemCategoryCatalog.DefaultWhitelistIds.Should().NotContain("heist-quest-contracts");
             ItemCategoryCatalog.DefaultWhitelistIds.Should().Contain("maps");
 
@@ -43,6 +44,10 @@ namespace ClickIt.Tests.Unit
             whitelistMetadata.Should().Contain(x => x.Contains("Items/Scarabs/"));
             whitelistMetadata.Should().Contain(x => x.Contains("Items/Currency/Scarabs/"));
             whitelistMetadata.Should().Contain(x => x.Equals("special:heist-non-quest-contract", StringComparison.OrdinalIgnoreCase));
+            whitelistMetadata.Should().Contain(x => x.Equals("special:mysterious-wombgift-label", StringComparison.OrdinalIgnoreCase));
+            whitelistMetadata.Should().Contain(x => x.Contains("Chayula/EquipmentFruit", StringComparison.OrdinalIgnoreCase));
+            whitelistMetadata.Should().Contain(x => x.Contains("Chayula/CurrencyFruit", StringComparison.OrdinalIgnoreCase));
+            whitelistMetadata.Should().Contain(x => x.Contains("Chayula/UniqueItemFruit", StringComparison.OrdinalIgnoreCase));
             whitelistMetadata.Should().NotContain(x => x.Equals("special:heist-quest-contract", StringComparison.OrdinalIgnoreCase));
 
             blacklistMetadata.Should().Contain(x => x.Equals("special:heist-quest-contract", StringComparison.OrdinalIgnoreCase));
@@ -131,6 +136,24 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void MetadataFilter_SpecialMysteriousWombgiftRule_MatchesLabelText()
+        {
+            LabelFilterService.MatchesMetadataFiltersForTests(
+                "Metadata/Items/SomeWeirdPath",
+                "Mysterious Wombgift",
+                "Mysterious Wombgift",
+                new[] { "special:mysterious-wombgift-label" },
+                Array.Empty<string>()).Should().BeTrue();
+
+            LabelFilterService.MatchesMetadataFiltersForTests(
+                "Metadata/Items/SomeWeirdPath",
+                "Mysterious Wombgift",
+                "Ancient Wombgift",
+                new[] { "special:mysterious-wombgift-label" },
+                Array.Empty<string>()).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ItemCategoryCatalog_EdgeCaseMetadataIdentifiers_AreExpectedValues()
         {
             ItemCategoryCatalog.TryGet("labyrinth-trinkets", out var labyrinthTrinkets).Should().BeTrue();
@@ -145,12 +168,33 @@ namespace ClickIt.Tests.Unit
             scarabs.Should().NotBeNull();
             scarabs!.MetadataIdentifiers.Should().Contain("Items/Scarabs/");
             scarabs!.MetadataIdentifiers.Should().Contain("Items/Currency/Scarabs/");
+
+            ItemCategoryCatalog.TryGet("wombgifts", out var wombgifts).Should().BeTrue();
+            wombgifts.Should().NotBeNull();
+            wombgifts!.MetadataIdentifiers.Should().Contain("special:mysterious-wombgift-label");
+            wombgifts!.MetadataIdentifiers.Should().Contain("Chayula/EquipmentFruit");
+            wombgifts!.MetadataIdentifiers.Should().Contain("Chayula/CurrencyFruit");
+            wombgifts!.MetadataIdentifiers.Should().Contain("Chayula/UniqueItemFruit");
         }
 
         [TestMethod]
         public void ItemCategoryCatalog_AllCategories_HaveExampleItems()
         {
             ItemCategoryCatalog.All.Should().OnlyContain(x => x.ExampleItems != null && x.ExampleItems.Count > 0);
+        }
+
+        [TestMethod]
+        public void ExistingSettings_BackfillMissingItemCategories_ToDefaultList()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ItemTypeWhitelistIds.Remove("wombgifts");
+            settings.ItemTypeBlacklistIds.Remove("wombgifts");
+
+            _ = settings.GetItemTypeWhitelistMetadataIdentifiers();
+
+            settings.ItemTypeWhitelistIds.Should().Contain("wombgifts");
+            settings.ItemTypeBlacklistIds.Should().NotContain("wombgifts");
         }
 
         [TestMethod]

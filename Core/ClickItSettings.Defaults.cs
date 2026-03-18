@@ -59,8 +59,29 @@ namespace ClickIt
                 ItemTypeBlacklistIds.Remove(id);
             }
 
+            EnsureMissingItemTypeCategoriesAreAssignedToDefaultList();
+
             SanitizeSubtypeDictionary(ItemTypeWhitelistSubtypeIds, ItemTypeWhitelistIds);
             SanitizeSubtypeDictionary(ItemTypeBlacklistSubtypeIds, ItemTypeBlacklistIds);
+        }
+
+        private void EnsureMissingItemTypeCategoriesAreAssignedToDefaultList()
+        {
+            for (int i = 0; i < ItemCategoryCatalog.All.Length; i++)
+            {
+                ItemCategoryDefinition category = ItemCategoryCatalog.All[i];
+                if (ItemTypeWhitelistIds.Contains(category.Id) || ItemTypeBlacklistIds.Contains(category.Id))
+                    continue;
+
+                if (category.DefaultList == ItemListKind.Whitelist)
+                {
+                    ItemTypeWhitelistIds.Add(category.Id);
+                }
+                else
+                {
+                    ItemTypeBlacklistIds.Add(category.Id);
+                }
+            }
         }
 
         private static void SanitizeSubtypeDictionary(Dictionary<string, HashSet<string>> subtypeSelections, HashSet<string> parentCategoryIds)

@@ -204,7 +204,7 @@ namespace ClickIt.Services
                 if (item.Type == ExileCore.Shared.Enums.EntityType.WorldItem)
                 {
                     worldItem++;
-                    if (!ShouldAllowWorldItemByMetadata(clickSettings, item, _gameController))
+                    if (!ShouldAllowWorldItemByMetadata(clickSettings, item, _gameController, label))
                         worldItemMetadataRejected++;
                 }
 
