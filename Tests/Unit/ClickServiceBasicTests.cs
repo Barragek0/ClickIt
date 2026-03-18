@@ -431,11 +431,13 @@ namespace ClickIt.Tests.Unit
             ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 walkTowardOffscreenLabelsEnabled: true,
                 hasEntity: true,
+                isEntityHidden: false,
                 mechanicId: "essences").Should().BeTrue();
 
             ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 walkTowardOffscreenLabelsEnabled: true,
                 hasEntity: true,
+                isEntityHidden: false,
                 mechanicId: "items").Should().BeTrue();
         }
 
@@ -445,16 +447,25 @@ namespace ClickIt.Tests.Unit
             ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 walkTowardOffscreenLabelsEnabled: false,
                 hasEntity: true,
+                isEntityHidden: false,
                 mechanicId: "essences").Should().BeFalse();
 
             ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 walkTowardOffscreenLabelsEnabled: true,
                 hasEntity: false,
+                isEntityHidden: false,
                 mechanicId: "essences").Should().BeFalse();
 
             ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 walkTowardOffscreenLabelsEnabled: true,
                 hasEntity: true,
+                isEntityHidden: true,
+                mechanicId: "essences").Should().BeFalse();
+
+            ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasEntity: true,
+                isEntityHidden: false,
                 mechanicId: null).Should().BeFalse();
         }
 
@@ -464,21 +475,31 @@ namespace ClickIt.Tests.Unit
             ClickService.ShouldContinuePathingForSpecialAltarLabel(
                 walkTowardOffscreenLabelsEnabled: true,
                 hasBackingEntity: true,
+                isBackingEntityHidden: false,
                 hasClickableAltars: false).Should().BeTrue();
 
             ClickService.ShouldContinuePathingForSpecialAltarLabel(
                 walkTowardOffscreenLabelsEnabled: false,
                 hasBackingEntity: true,
+                isBackingEntityHidden: false,
                 hasClickableAltars: false).Should().BeFalse();
 
             ClickService.ShouldContinuePathingForSpecialAltarLabel(
                 walkTowardOffscreenLabelsEnabled: true,
                 hasBackingEntity: false,
+                isBackingEntityHidden: false,
                 hasClickableAltars: false).Should().BeFalse();
 
             ClickService.ShouldContinuePathingForSpecialAltarLabel(
                 walkTowardOffscreenLabelsEnabled: true,
                 hasBackingEntity: true,
+                isBackingEntityHidden: true,
+                hasClickableAltars: false).Should().BeFalse();
+
+            ClickService.ShouldContinuePathingForSpecialAltarLabel(
+                walkTowardOffscreenLabelsEnabled: true,
+                hasBackingEntity: true,
+                isBackingEntityHidden: false,
                 hasClickableAltars: true).Should().BeFalse();
         }
 

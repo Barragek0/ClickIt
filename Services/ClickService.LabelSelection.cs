@@ -306,6 +306,7 @@ namespace ClickIt.Services
                 bool shouldContinueEntityPathing = ShouldPathfindToEntityAfterClickPointResolveFailure(
                     settings.WalkTowardOffscreenLabels.Value,
                     nextLabel.ItemOnGround != null,
+                    nextLabel.ItemOnGround?.IsHidden == true,
                     nextLabelMechanicId);
                 if (shouldContinueEntityPathing)
                 {
@@ -775,6 +776,7 @@ namespace ClickIt.Services
                 bool shouldContinuePathing = ShouldContinuePathingForSpecialAltarLabel(
                     settings.WalkTowardOffscreenLabels.Value,
                     nextLabel.ItemOnGround != null,
+                    nextLabel.ItemOnGround?.IsHidden == true,
                     HasClickableAltars());
                 if (shouldContinuePathing)
                 {
@@ -803,10 +805,12 @@ namespace ClickIt.Services
         internal static bool ShouldContinuePathingForSpecialAltarLabel(
             bool walkTowardOffscreenLabelsEnabled,
             bool hasBackingEntity,
+            bool isBackingEntityHidden,
             bool hasClickableAltars)
         {
             return walkTowardOffscreenLabelsEnabled
                 && hasBackingEntity
+                && !isBackingEntityHidden
                 && !hasClickableAltars;
         }
 
@@ -1360,6 +1364,13 @@ namespace ClickIt.Services
                     ClearStickyOffscreenTarget();
                 }
 
+                pathfindingService.ClearLatestPath();
+                return false;
+            }
+
+            if (!target.IsValid || target.IsHidden)
+            {
+                ClearStickyOffscreenTarget();
                 pathfindingService.ClearLatestPath();
                 return false;
             }
@@ -2130,7 +2141,7 @@ namespace ClickIt.Services
             Entity? candidate,
             string? mechanicId)
         {
-            if (candidate == null || string.IsNullOrWhiteSpace(mechanicId))
+            if (candidate == null || !candidate.IsValid || candidate.IsHidden || string.IsNullOrWhiteSpace(mechanicId))
                 return;
 
             MechanicRank rank = BuildMechanicRank(candidate.DistancePlayer, mechanicId);
@@ -2397,9 +2408,10 @@ namespace ClickIt.Services
         internal static bool ShouldPathfindToEntityAfterClickPointResolveFailure(
             bool walkTowardOffscreenLabelsEnabled,
             bool hasEntity,
+            bool isEntityHidden,
             string? mechanicId)
         {
-            if (!walkTowardOffscreenLabelsEnabled || !hasEntity || string.IsNullOrWhiteSpace(mechanicId))
+            if (!walkTowardOffscreenLabelsEnabled || !hasEntity || isEntityHidden || string.IsNullOrWhiteSpace(mechanicId))
                 return false;
 
             return true;
