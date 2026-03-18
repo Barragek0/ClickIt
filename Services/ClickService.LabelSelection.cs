@@ -31,6 +31,8 @@ namespace ClickIt.Services
         private const int PostChestLootSettleDefaultInitialDelayMs = 500;
         private const int PostChestLootSettleDefaultPollIntervalMs = 100;
         private const int PostChestLootSettleDefaultQuietWindowMs = 500;
+        private const float ManualCursorTargetSnapDistancePx = 34f;
+        private const float ManualCursorGroundProjectionSnapDistancePx = 44f;
 
         private static readonly string[] MovementSkillInternalNameMarkers =
         [
@@ -400,6 +402,288 @@ namespace ClickIt.Services
         {
             LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
             return PreferUiHoverEssenceLabel(nextLabel, allLabels);
+        }
+
+        public bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            if (gameController?.Window == null)
+                return false;
+
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            var cursor = Mouse.GetCursorPosition();
+            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
+
+            if (TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft))
+                return true;
+
+            if (TryResolveManualCursorLabelCandidate(allLabels, cursorAbsolute, windowTopLeft, out LabelOnGround? hoveredLabel, out string? mechanicId))
+            {
+                if (ShouldAttemptManualCursorAltarClick(IsAltarLabel(hoveredLabel), HasClickableAltars()))
+                    return TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
+
+                if (TryCorruptEssence(hoveredLabel, windowTopLeft))
+                    return true;
+
+                if (settings.IsInitialUltimatumClickEnabled() && IsUltimatumLabel(hoveredLabel))
+                    return TryClickPreferredUltimatumModifier(hoveredLabel, windowTopLeft);
+
+                if (!TryResolveLabelClickPosition(
+                    hoveredLabel,
+                    mechanicId,
+                    windowTopLeft,
+                    allLabels,
+                    out Vector2 clickPos))
+                {
+                    return false;
+                }
+
+                bool clicked = ShouldUseHoldClickForSettlersMechanic(mechanicId)
+                    ? PerformLabelHoldClick(clickPos, null, gameController, holdDurationMs: 0, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true)
+                    : PerformLabelClick(clickPos, null, gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true);
+
+                if (!clicked)
+                    return false;
+
+                MarkPendingChestOpenConfirmation(mechanicId, hoveredLabel);
+                MarkLeverClicked(hoveredLabel);
+                if (settings.WalkTowardOffscreenLabels.Value)
+                {
+                    pathfindingService.ClearLatestPath();
+                }
+
+                return true;
+            }
+
+            return TryClickManualCursorVisibleMechanic(cursorAbsolute, windowTopLeft);
+        }
+
+        internal static bool ShouldAttemptManualCursorAltarClick(bool isAltarLabel, bool hasClickableAltars)
+        {
+            return isAltarLabel && hasClickableAltars;
+        }
+
+        private bool TryResolveManualCursorLabelCandidate(
+            IReadOnlyList<LabelOnGround>? allLabels,
+            Vector2 cursorAbsolute,
+            Vector2 windowTopLeft,
+            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out LabelOnGround? selectedLabel,
+            out string? selectedMechanicId)
+        {
+            selectedLabel = null;
+            selectedMechanicId = null;
+
+            if (allLabels == null || allLabels.Count == 0)
+                return false;
+
+            float bestScore = float.MaxValue;
+            for (int i = 0; i < allLabels.Count; i++)
+            {
+                LabelOnGround? candidate = allLabels[i];
+                if (candidate == null)
+                    continue;
+
+                if (ShouldSuppressLeverClick(candidate)
+                    || ShouldSuppressInactiveUltimatumLabel(candidate)
+                    || inputHandler.IsLabelFullyOverlapped(candidate, allLabels))
+                {
+                    continue;
+                }
+
+                string? mechanicId = labelFilterService.GetMechanicIdForLabel(candidate);
+                if (string.IsNullOrWhiteSpace(mechanicId))
+                    continue;
+
+                Entity? candidateEntity = candidate.ItemOnGround;
+                bool shouldUseGroundProjection = ShouldUseManualGroundProjectionForCandidate(
+                    hasBackingEntity: candidateEntity != null,
+                    isWorldItem: candidateEntity?.Type == ExileCore.Shared.Enums.EntityType.WorldItem);
+                Vector2 projectedGroundPoint = default;
+
+                bool hasLabelRect = TryGetLabelRect(candidate, out RectangleF rect);
+                bool cursorInsideLabelRect = hasLabelRect && IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
+                bool cursorNearGroundProjection = shouldUseGroundProjection
+                    && TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out projectedGroundPoint)
+                    && IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft, ManualCursorGroundProjectionSnapDistancePx);
+
+                if (!ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect, cursorNearGroundProjection))
+                    continue;
+
+                float score = float.MaxValue;
+                if (cursorInsideLabelRect)
+                {
+                    score = GetManualCursorLabelHitScore(rect, cursorAbsolute, windowTopLeft);
+                }
+
+                if (cursorNearGroundProjection)
+                {
+                    float objectScore = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft);
+                    score = Math.Min(score, objectScore);
+                }
+
+                if (score >= bestScore)
+                    continue;
+
+                bestScore = score;
+                selectedLabel = candidate;
+                selectedMechanicId = mechanicId;
+            }
+
+            return selectedLabel != null && !string.IsNullOrWhiteSpace(selectedMechanicId);
+        }
+
+        internal static bool ShouldUseManualGroundProjectionForCandidate(bool hasBackingEntity, bool isWorldItem)
+        {
+            return hasBackingEntity && !isWorldItem;
+        }
+
+        internal static bool ShouldTreatManualCursorAsHoveringCandidate(bool cursorInsideLabelRect, bool cursorNearGroundProjection)
+        {
+            return cursorInsideLabelRect || cursorNearGroundProjection;
+        }
+
+        private bool TryGetGroundProjectionPoint(Entity? item, Vector2 windowTopLeft, out Vector2 projectedPoint)
+        {
+            projectedPoint = default;
+            if (item == null || !item.IsValid)
+                return false;
+
+            try
+            {
+                var worldScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
+                projectedPoint = new Vector2(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
+                return float.IsFinite(projectedPoint.X) && float.IsFinite(projectedPoint.Y);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool TryClickManualCursorVisibleMechanic(Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        {
+            int selectedType = 0;
+            float bestDistanceSq = float.MaxValue;
+            Vector2 selectedClickPos = default;
+            Entity? selectedEntity = null;
+            string? selectedSettlersMechanicId = null;
+
+            Entity? shrine = ResolveNextShrineCandidate();
+            if (shrine != null)
+            {
+                var shrineScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
+                Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
+                if (IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft, ManualCursorTargetSnapDistancePx))
+                {
+                    float d2 = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft);
+                    if (d2 < bestDistanceSq)
+                    {
+                        selectedType = 1;
+                        bestDistanceSq = d2;
+                        selectedClickPos = shrineClickPos;
+                        selectedEntity = shrine;
+                        selectedSettlersMechanicId = null;
+                    }
+                }
+            }
+
+            LostShipmentCandidate? lostShipment = ResolveNextLostShipmentCandidate();
+            if (lostShipment.HasValue)
+            {
+                LostShipmentCandidate candidate = lostShipment.Value;
+                if (IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorTargetSnapDistancePx))
+                {
+                    float d2 = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
+                    if (d2 < bestDistanceSq)
+                    {
+                        selectedType = 2;
+                        bestDistanceSq = d2;
+                        selectedClickPos = candidate.ClickPosition;
+                        selectedEntity = candidate.Entity;
+                        selectedSettlersMechanicId = null;
+                    }
+                }
+            }
+
+            SettlersOreCandidate? settlers = ResolveNextSettlersOreCandidate();
+            if (settlers.HasValue)
+            {
+                SettlersOreCandidate candidate = settlers.Value;
+                if (IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorTargetSnapDistancePx))
+                {
+                    float d2 = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
+                    if (d2 < bestDistanceSq)
+                    {
+                        selectedType = 3;
+                        bestDistanceSq = d2;
+                        selectedClickPos = candidate.ClickPosition;
+                        selectedEntity = candidate.Entity;
+                        selectedSettlersMechanicId = candidate.MechanicId;
+                    }
+                }
+            }
+
+            if (selectedType == 0)
+                return false;
+
+            bool clicked = selectedType == 3 && ShouldUseHoldClickForSettlersMechanic(selectedSettlersMechanicId)
+                ? PerformLabelHoldClick(selectedClickPos, null, gameController, holdDurationMs: 0, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true)
+                : PerformLabelClick(selectedClickPos, null, gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true);
+
+            if (!clicked)
+                return false;
+
+            if (selectedType == 1)
+            {
+                shrineService.InvalidateCache();
+            }
+
+            HandleSuccessfulMechanicEntityClick(selectedEntity);
+            return true;
+        }
+
+        internal static bool IsPointInsideRectInEitherSpace(RectangleF rect, Vector2 absolutePoint, Vector2 windowTopLeft)
+        {
+            if (rect.Contains(absolutePoint.X, absolutePoint.Y))
+                return true;
+
+            Vector2 clientPoint = absolutePoint - windowTopLeft;
+            return rect.Contains(clientPoint.X, clientPoint.Y);
+        }
+
+        internal static bool IsWithinManualCursorMatchDistanceInEitherSpace(
+            Vector2 cursorAbsolute,
+            Vector2 candidatePoint,
+            Vector2 windowTopLeft,
+            float maxDistancePx)
+        {
+            if (maxDistancePx <= 0f)
+                return false;
+
+            float maxDistanceSq = maxDistancePx * maxDistancePx;
+            float distanceSq = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidatePoint, windowTopLeft);
+            return distanceSq <= maxDistanceSq;
+        }
+
+        internal static float GetManualCursorDistanceSquaredInEitherSpace(Vector2 cursorAbsolute, Vector2 candidatePoint, Vector2 windowTopLeft)
+        {
+            float absoluteDistanceSq = GetDistanceSquared(cursorAbsolute, candidatePoint);
+            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
+            float clientDistanceSq = GetDistanceSquared(cursorClient, candidatePoint);
+            return Math.Min(absoluteDistanceSq, clientDistanceSq);
+        }
+
+        private static float GetManualCursorLabelHitScore(RectangleF rect, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        {
+            Vector2 center = rect.Center;
+            return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, center, windowTopLeft);
+        }
+
+        private static float GetDistanceSquared(Vector2 a, Vector2 b)
+        {
+            float dx = a.X - b.X;
+            float dy = a.Y - b.Y;
+            return (dx * dx) + (dy * dy);
         }
 
         private LabelOnGround? PreferUiHoverEssenceLabel(LabelOnGround? nextLabel, IReadOnlyList<LabelOnGround>? allLabels)
@@ -1013,23 +1297,36 @@ namespace ClickIt.Services
             return false;
         }
 
-        private bool PerformLabelClick(Vector2 clickPos, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
+        private bool PerformLabelClick(
+            Vector2 clickPos,
+            Element? expectedElement,
+            GameController? controller,
+            bool forceUiHoverVerification = false,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
         {
             if (!EnsureCursorInsideGameWindowForClick("[PerformLabelClick] Skipping label click - cursor outside PoE window"))
                 return false;
 
-            PerformLockedClick(clickPos, expectedElement, controller, forceUiHoverVerification);
+            PerformLockedClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
 
             performanceMonitor.RecordClickInterval();
             return true;
         }
 
-        private bool PerformLabelHoldClick(Vector2 clickPos, Element? expectedElement, GameController? controller, int holdDurationMs, bool forceUiHoverVerification = false)
+        private bool PerformLabelHoldClick(
+            Vector2 clickPos,
+            Element? expectedElement,
+            GameController? controller,
+            int holdDurationMs,
+            bool forceUiHoverVerification = false,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
         {
             if (!EnsureCursorInsideGameWindowForClick("[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"))
                 return false;
 
-            PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification);
+            PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
 
             performanceMonitor.RecordClickInterval();
             return true;

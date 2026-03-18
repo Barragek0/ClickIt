@@ -42,6 +42,10 @@ namespace ClickIt.Utils
             _ = Core.ParallelRunner.Run(_state.ClickLabelCoroutine);
             _state.ClickLabelCoroutine.Priority = CoroutinePriority.High;
 
+            _state.ManualUiHoverCoroutine = new Coroutine(MainManualUiHoverClickCoroutine(), plugin, "ClickIt.ManualUiHoverLogic", false);
+            _ = Core.ParallelRunner.Run(_state.ManualUiHoverCoroutine);
+            _state.ManualUiHoverCoroutine.Priority = CoroutinePriority.High;
+
             _state.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
             _ = Core.ParallelRunner.Run(_state.DelveFlareCoroutine);
             _state.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
@@ -77,6 +81,14 @@ namespace ClickIt.Utils
         private IEnumerator ClickLabel()
         {
             if (_state.IsShuttingDown || _state.PerformanceMonitor == null || _state.ClickService == null) yield break;
+
+            bool hotkeyActive = _state.InputHandler?.IsClickHotkeyPressed(_state.CachedLabels, _state.LabelFilterService) == true;
+            if (ShouldSuppressRegularClickForManualUiHoverMode(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
+            {
+                _state.WorkFinished = true;
+                yield break;
+            }
+
             double avgClickTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
             bool isRitualActive = IsRitualActive();
@@ -131,6 +143,50 @@ namespace ClickIt.Utils
             _state.WorkFinished = true;
         }
 
+        private IEnumerator MainManualUiHoverClickCoroutine()
+        {
+            while (_settings.Enable && !_state.IsShuttingDown)
+            {
+                yield return ProcessManualUiHoverClick();
+                yield return new WaitTime(10);
+            }
+        }
+
+        private IEnumerator ProcessManualUiHoverClick()
+        {
+            if (_state.IsShuttingDown || _state.PerformanceMonitor == null || _state.ClickService == null || _state.InputHandler == null)
+                yield break;
+
+            bool hotkeyActive = _state.InputHandler.IsClickHotkeyPressed(_state.CachedLabels, _state.LabelFilterService);
+            if (!ShouldRunManualUiHoverCoroutine(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
+                yield break;
+
+            bool isRitualActive = IsRitualActive();
+            if (isRitualActive)
+                yield break;
+
+            if (!_state.InputHandler.CanClickWithoutInputState(_gameController))
+                yield break;
+
+            double avgClickTime = _state.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
+            double targetTime = GetTargetTime(_settings.ClickFrequencyTarget.Value, avgClickTime);
+            if (_state.Timer.ElapsedMilliseconds < targetTime)
+                yield break;
+
+            IReadOnlyList<ExileCore.PoEMemory.Elements.LabelOnGround>? labels = _state.CachedLabels?.Value;
+            long clickSequenceBefore = _state.InputHandler.GetSuccessfulClickSequence();
+
+            _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
+            bool clicked = _state.ClickService.TryClickManualUiHoverLabel(labels);
+            _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
+
+            long clickSequenceAfter = _state.InputHandler.GetSuccessfulClickSequence();
+            if (clicked && ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
+            {
+                _state.Timer.Restart();
+            }
+        }
+
         internal static bool ShouldRestartClickTimerAfterSuccessfulClick(long clickSequenceBefore, long clickSequenceAfter)
         {
             return clickSequenceAfter > clickSequenceBefore;
@@ -139,6 +195,16 @@ namespace ClickIt.Utils
         internal static bool ShouldCancelOffscreenPathingForInputRelease(bool lazyModeEnabled, bool clickHotkeyHeld)
         {
             return !lazyModeEnabled && !clickHotkeyHeld;
+        }
+
+        internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
+        {
+            return manualUiHoverEnabled && !lazyModeEnabled && !clickHotkeyActive;
+        }
+
+        internal static bool ShouldSuppressRegularClickForManualUiHoverMode(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
+        {
+            return ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive);
         }
 
         private IEnumerator FlareCoroutine()

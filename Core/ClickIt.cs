@@ -44,17 +44,20 @@ namespace ClickIt
 
             State.AltarCoroutine?.Done();
             State.ClickLabelCoroutine?.Done();
+            State.ManualUiHoverCoroutine?.Done();
             State.DelveFlareCoroutine?.Done();
             State.DeepMemoryDumpCoroutine?.Done();
             StopAllClickItCoroutines();
             WaitForCoroutineShutdown(State.AltarCoroutine);
             WaitForCoroutineShutdown(State.ClickLabelCoroutine);
+            WaitForCoroutineShutdown(State.ManualUiHoverCoroutine);
             WaitForCoroutineShutdown(State.DelveFlareCoroutine);
             WaitForCoroutineShutdown(State.DeepMemoryDumpCoroutine);
             WaitForAllClickItCoroutinesShutdown();
 
             State.AltarCoroutine = null;
             State.ClickLabelCoroutine = null;
+            State.ManualUiHoverCoroutine = null;
             State.DelveFlareCoroutine = null;
             State.DeepMemoryDumpCoroutine = null;
 

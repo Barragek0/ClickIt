@@ -124,19 +124,32 @@ namespace ClickIt.Services
             return true;
         }
 
-        private void PerformLockedClick(Vector2 clickPos, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
+        private void PerformLockedClick(
+            Vector2 clickPos,
+            Element? expectedElement,
+            GameController? controller,
+            bool forceUiHoverVerification = false,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
         {
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
-                inputHandler.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification);
+                inputHandler.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
             }
         }
 
-        private void PerformLockedHoldClick(Vector2 clickPos, int holdDurationMs, Element? expectedElement, GameController? controller, bool forceUiHoverVerification = false)
+        private void PerformLockedHoldClick(
+            Vector2 clickPos,
+            int holdDurationMs,
+            Element? expectedElement,
+            GameController? controller,
+            bool forceUiHoverVerification = false,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
         {
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
-                inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification);
+                inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
             }
         }
 

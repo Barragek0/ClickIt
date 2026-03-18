@@ -40,6 +40,8 @@ namespace ClickIt
                 return;
             }
 
+            State.ManualUiHoverCoroutine?.Pause();
+
             if (State.ClickLabelCoroutine?.IsDone == true)
             {
                 State.ClickLabelCoroutine = FindExistingClickLogicCoroutine();
@@ -51,12 +53,37 @@ namespace ClickIt
 
         private void HandleHotkeyReleased()
         {
+            if (ShouldUseManualUiHoverCoroutine())
+            {
+                State.ClickLabelCoroutine?.Pause();
+
+                if (State.ManualUiHoverCoroutine?.IsDone == true)
+                {
+                    State.ManualUiHoverCoroutine = FindExistingManualUiHoverCoroutine();
+                }
+
+                State.ManualUiHoverCoroutine?.Resume();
+            }
+            else
+            {
+                State.ManualUiHoverCoroutine?.Pause();
+            }
+
             if (State.WorkFinished)
             {
                 State.ClickLabelCoroutine?.Pause();
             }
+
             State.PerformanceMonitor?.ResetClickCount();
         }
+
+        private bool ShouldUseManualUiHoverCoroutine()
+            => ShouldRunManualUiHoverCoroutineForInputState(
+                Settings?.ClickOnManualUiHoverOnly?.Value == true,
+                Settings?.LazyMode?.Value == true);
+
+        internal static bool ShouldRunManualUiHoverCoroutineForInputState(bool manualUiHoverEnabled, bool lazyModeEnabled)
+            => manualUiHoverEnabled && !lazyModeEnabled;
 
         private static Coroutine? FindExistingClickLogicCoroutine()
         {
@@ -64,6 +91,21 @@ namespace ClickIt
             {
                 if (coroutine != null
                     && string.Equals(coroutine.Name, "ClickIt.ClickLogic", StringComparison.Ordinal)
+                    && !coroutine.IsDone)
+                {
+                    return coroutine;
+                }
+            }
+
+            return null;
+        }
+
+        private static Coroutine? FindExistingManualUiHoverCoroutine()
+        {
+            foreach (Coroutine coroutine in Core.ParallelRunner.Coroutines)
+            {
+                if (coroutine != null
+                    && string.Equals(coroutine.Name, "ClickIt.ManualUiHoverLogic", StringComparison.Ordinal)
                     && !coroutine.IsDone)
                 {
                     return coroutine;

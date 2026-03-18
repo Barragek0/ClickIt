@@ -54,5 +54,20 @@ namespace ClickIt.Tests.Unit
                 lazyModeEnabled: true,
                 clickHotkeyActive: false).Should().BeFalse();
         }
+
+        [TestMethod]
+        public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsFalse_WhenExplicitOverrideEnabled()
+        {
+            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: false,
+                clickHotkeyActive: false,
+                allowWhenHotkeyInactive: true).Should().BeFalse();
+
+            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: true,
+                clickHotkeyActive: false,
+                allowWhenHotkeyInactive: true).Should().BeFalse();
+        }
+
     }
 }

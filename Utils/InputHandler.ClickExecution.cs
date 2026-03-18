@@ -10,17 +10,28 @@ namespace ClickIt.Utils
 {
     public partial class InputHandler
     {
-        public void PerformClick(Vector2 position, Element? expectedElement = null, GameController? gameController = null, bool forceUiHoverVerification = false)
+        public void PerformClick(
+            Vector2 position,
+            Element? expectedElement = null,
+            GameController? gameController = null,
+            bool forceUiHoverVerification = false,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
         {
             if (!TryConsumeLazyModeLimiter())
                 return;
 
-            if (ShouldSkipClickWhenNotLazyAndHotkeyInactive(_settings.LazyMode.Value, IsClickHotkeyActiveForCurrentInputState()))
+            if (ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                _settings.LazyMode.Value,
+                IsClickHotkeyActiveForCurrentInputState(),
+                allowWhenHotkeyInactive))
                 return;
 
-            if (!TryValidateAutomationScreenPoint(position, gameController, out string invalidPointReason))
+            Vector2 executionPosition = ResolveClickExecutionPosition(position, avoidCursorMove);
+
+            if (!TryValidateAutomationScreenPoint(executionPosition, gameController, out string invalidPointReason))
             {
-                _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping click at {position} ({invalidPointReason}).", 10);
+                _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping click at {executionPosition} ({invalidPointReason}).", 10);
                 return;
             }
 
@@ -28,9 +39,9 @@ namespace ClickIt.Utils
             var before = Mouse.GetCursorPosition();
 
             var sw = Stopwatch.StartNew();
-            if (!Mouse.DisableNativeInput)
+            if (!avoidCursorMove && !Mouse.DisableNativeInput)
             {
-                Input.SetCursorPos(position);
+                Input.SetCursorPos(executionPosition);
             }
             sw.Stop();
 
@@ -83,7 +94,14 @@ namespace ClickIt.Utils
             swTotal.Stop();
         }
 
-        public void PerformClickAndHold(Vector2 position, int holdDurationMs, Element? expectedElement = null, GameController? gameController = null, bool forceUiHoverVerification = false)
+        public void PerformClickAndHold(
+            Vector2 position,
+            int holdDurationMs,
+            Element? expectedElement = null,
+            GameController? gameController = null,
+            bool forceUiHoverVerification = false,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
         {
             _ = holdDurationMs;
 
@@ -95,21 +113,26 @@ namespace ClickIt.Utils
                 return;
 
             var clickKey = clickKeyNode.Value;
-            if (ShouldSkipClickWhenNotLazyAndHotkeyInactive(_settings.LazyMode.Value, IsClickHotkeyActiveForCurrentInputState()))
+            if (ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                _settings.LazyMode.Value,
+                IsClickHotkeyActiveForCurrentInputState(),
+                allowWhenHotkeyInactive))
                 return;
 
-            if (!TryValidateAutomationScreenPoint(position, gameController, out string invalidPointReason))
+            Vector2 executionPosition = ResolveClickExecutionPosition(position, avoidCursorMove);
+
+            if (!TryValidateAutomationScreenPoint(executionPosition, gameController, out string invalidPointReason))
             {
-                _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping hold click at {position} ({invalidPointReason}).", 10);
+                _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping hold click at {executionPosition} ({invalidPointReason}).", 10);
                 return;
             }
 
             var swTotal = Stopwatch.StartNew();
             var before = Mouse.GetCursorPosition();
 
-            if (!Mouse.DisableNativeInput)
+            if (!avoidCursorMove && !Mouse.DisableNativeInput)
             {
-                Input.SetCursorPos(position);
+                Input.SetCursorPos(executionPosition);
             }
 
             if (_settings?.LazyMode?.Value == true)
@@ -166,9 +189,21 @@ namespace ClickIt.Utils
             swTotal.Stop();
         }
 
-        internal static bool ShouldSkipClickWhenNotLazyAndHotkeyInactive(bool lazyModeEnabled, bool clickHotkeyActive)
+        internal static bool ShouldSkipClickWhenNotLazyAndHotkeyInactive(bool lazyModeEnabled, bool clickHotkeyActive, bool allowWhenHotkeyInactive = false)
         {
+            if (allowWhenHotkeyInactive)
+                return false;
+
             return !lazyModeEnabled && !clickHotkeyActive;
+        }
+
+        internal static Vector2 ResolveClickExecutionPosition(Vector2 requestedPosition, bool avoidCursorMove)
+        {
+            if (!avoidCursorMove)
+                return requestedPosition;
+
+            var cursor = Mouse.GetCursorPosition();
+            return new Vector2(cursor.X, cursor.Y);
         }
 
         public static bool ShouldSkipClickDueToHoverMismatch(

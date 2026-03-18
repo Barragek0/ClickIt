@@ -121,42 +121,48 @@ namespace ClickIt
         public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
         [Menu("Click Hotkey Toggle Mode", "When enabled, pressing the Click Hotkey toggles clicking on/off.\nWhen disabled, clicking only occurs while holding the Click Hotkey (or via Lazy Mode).", 2, 1100)]
         public ToggleNode ClickHotkeyToggleMode { get; set; } = new ToggleNode(false);
+
+        [Menu("Manual Cursor Target Mode", "When enabled, ClickIt repeatedly checks what your cursor is currently over, and only clicks when that on-cursor target is a valid ClickIt mechanic.\n\nSimple version: point your mouse at what you want picked up/clicked, and ClickIt will click that target without moving your cursor.\n\nThis feature is only for non-lazy mode. If Lazy Mode is enabled, this feature is ignored.\n\nHolding your Click Hotkey still overrides this feature exactly like normal, and while the hotkey is active this manual-cursor click mode is paused.", 3, 1100)]
+        public ToggleNode ClickOnManualUiHoverOnly { get; set; } = new ToggleNode(false);
+
         [Menu("", 10001, 1100)]
         [JsonIgnore]
         public CustomNode ControlsSliderWidthStart { get; }
         [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 2, 1100)]
 
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
-        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 3, 1100)]
+        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 4, 1100)]
 
         public RangeNode<int> ClickFrequencyTarget { get; set; } = new RangeNode<int>(80, 80, 250);
         [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 4, 1100)]
+            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 5, 1100)]
 
         public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
 
         public EmptyNode InputAndSafetyCategory { get; set; } = new EmptyNode();
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 5, 1100)]
+        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 6, 1100)]
         public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
-        [Menu("Verify Cursor is within Game Window before Clicking", "When enabled, the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window, the click will be skipped.", 6, 1100)]
+        [Menu("Verify Cursor is within Game Window before Clicking", "When enabled, the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window, the click will be skipped.", 7, 1100)]
         public ToggleNode VerifyCursorInGameWindowBeforeClick { get; set; } = new ToggleNode(true);
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 7, 1100)]
+        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 8, 1100)]
         public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels.", 8, 1100)]
+        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels.", 9, 1100)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels.", 9, 1100)]
+        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels.", 10, 1100)]
         public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
-        [Menu("Toggle Item View Interval (ms)", "How often Toggle Item View is allowed to trigger.\n1000 ms = 1 second.", 10, 1100)]
+        [Menu("Toggle Item View Interval (ms)", "How often Toggle Item View is allowed to trigger.\n1000 ms = 1 second.", 11, 1100)]
         public RangeNode<int> ToggleItemsIntervalMs { get; set; } = new RangeNode<int>(1500, 500, 10000);
-        [Menu("Disable Clicking after Toggle Items (ms)", "Temporarily blocks further clicks after Toggle Item View triggers.\n\nIncrease this if clicks right after toggling are clicking incorrect labels.", 11, 1100)]
+        [Menu("Disable Clicking after Toggle Items (ms)", "Temporarily blocks further clicks after Toggle Item View triggers.\n\nIncrease this if clicks right after toggling are clicking incorrect labels.", 12, 1100)]
         public RangeNode<int> ToggleItemsPostToggleClickBlockMs { get; set; } = new RangeNode<int>(20, 0, 250);
         [Menu("", 10002, 1100)]
         [JsonIgnore]
         public CustomNode ControlsSliderWidthEnd { get; }
-        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while not in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 12, 1100)]
+        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while not in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 13, 1100)]
         public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
-        [Menu("Avoid Overlapping Labels when Clicking", "When enabled, the plugin attempts to click a visible, non-overlapped part of the target label instead of always clicking center. Helps when one label partially covers another.", 13, 1100)]
+
+        [Menu("Avoid Overlapping Labels when Clicking", "When enabled, the plugin attempts to click a visible, non-overlapped part of the target label instead of always clicking center. Helps when one label partially covers another.", 14, 1100)]
         public ToggleNode AvoidOverlappingLabelClickPoints { get; set; } = new ToggleNode(true);
+
         [Menu("Pathfinding", 1114, 1100)]
         public EmptyNode PathfindingCategory { get; set; } = new EmptyNode();
         [Menu("Walk toward Offscreen Labels", "When enabled and no clickable labels are on screen, attempt to walk toward the nearest offscreen interactable target using terrain pathfinding data.\n\nI would be careful enabling this feature as its somewhat likely GGG could flag you as a bot.\n\nWhile that hasn't happen to me while testing the feature, I wouldn't be surprised if it did happen during prolonged use.", 1, 1114)]

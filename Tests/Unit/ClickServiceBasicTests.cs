@@ -238,6 +238,75 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void IsPointInsideRectInEitherSpace_ReturnsTrue_ForAbsoluteCursorPoint()
+        {
+            var rect = new SharpDX.RectangleF(100f, 100f, 30f, 20f);
+            var cursorAbsolute = new SharpDX.Vector2(110f, 110f);
+            var windowTopLeft = new SharpDX.Vector2(800f, 600f);
+
+            bool inside = ClickService.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
+
+            inside.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsPointInsideRectInEitherSpace_ReturnsTrue_ForClientSpaceCursorPoint()
+        {
+            var rect = new SharpDX.RectangleF(10f, 10f, 20f, 20f);
+            var cursorAbsolute = new SharpDX.Vector2(814f, 614f);
+            var windowTopLeft = new SharpDX.Vector2(800f, 600f);
+
+            bool inside = ClickService.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
+
+            inside.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsWithinManualCursorMatchDistanceInEitherSpace_ReturnsExpectedValue()
+        {
+            var cursorAbsolute = new SharpDX.Vector2(814f, 614f);
+            var candidateClient = new SharpDX.Vector2(12f, 12f);
+            var windowTopLeft = new SharpDX.Vector2(800f, 600f);
+
+            ClickService.IsWithinManualCursorMatchDistanceInEitherSpace(
+                cursorAbsolute,
+                candidateClient,
+                windowTopLeft,
+                maxDistancePx: 8f).Should().BeTrue();
+
+            ClickService.IsWithinManualCursorMatchDistanceInEitherSpace(
+                cursorAbsolute,
+                candidateClient,
+                windowTopLeft,
+                maxDistancePx: 1f).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldAttemptManualCursorAltarClick_ReturnsTrue_OnlyForAltarLabelWithClickableAltars()
+        {
+            ClickService.ShouldAttemptManualCursorAltarClick(isAltarLabel: true, hasClickableAltars: true).Should().BeTrue();
+            ClickService.ShouldAttemptManualCursorAltarClick(isAltarLabel: true, hasClickableAltars: false).Should().BeFalse();
+            ClickService.ShouldAttemptManualCursorAltarClick(isAltarLabel: false, hasClickableAltars: true).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldTreatManualCursorAsHoveringCandidate_ReturnsTrue_WhenEitherSignalMatches()
+        {
+            ClickService.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect: true, cursorNearGroundProjection: false).Should().BeTrue();
+            ClickService.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect: false, cursorNearGroundProjection: true).Should().BeTrue();
+            ClickService.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect: true, cursorNearGroundProjection: true).Should().BeTrue();
+            ClickService.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect: false, cursorNearGroundProjection: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldUseManualGroundProjectionForCandidate_DisablesProjection_ForWorldItems()
+        {
+            ClickService.ShouldUseManualGroundProjectionForCandidate(hasBackingEntity: true, isWorldItem: true).Should().BeFalse();
+            ClickService.ShouldUseManualGroundProjectionForCandidate(hasBackingEntity: true, isWorldItem: false).Should().BeTrue();
+            ClickService.ShouldUseManualGroundProjectionForCandidate(hasBackingEntity: false, isWorldItem: false).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldReuseTimedLabelCountCache_ReturnsTrue_WhenFreshAndLabelCountMatches()
         {
             bool reuse = ClickService.ShouldReuseTimedLabelCountCache(

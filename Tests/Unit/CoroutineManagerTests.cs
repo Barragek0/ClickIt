@@ -151,5 +151,37 @@ namespace ClickIt.Tests.Unit
                 .Should().BeFalse();
         }
 
+        [TestMethod]
+        public void ShouldRunManualUiHoverCoroutine_ReturnsTrue_OnlyWhenEnabledNonLazyAndNoHotkeyOverride()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: false)
+                .Should().BeTrue();
+
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: true, clickHotkeyActive: false)
+                .Should().BeFalse();
+
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: true)
+                .Should().BeFalse();
+
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: false, lazyModeEnabled: false, clickHotkeyActive: false)
+                .Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldSuppressRegularClickForManualUiHoverMode_MatchesManualCoroutineRunCondition()
+        {
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldSuppressRegularClickForManualUiHoverMode(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: false)
+                .Should().BeTrue();
+
+            global::ClickIt.Utils.CoroutineManager
+                .ShouldSuppressRegularClickForManualUiHoverMode(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: true)
+                .Should().BeFalse();
+        }
+
     }
 }

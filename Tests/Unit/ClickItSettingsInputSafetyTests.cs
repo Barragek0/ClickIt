@@ -31,6 +31,14 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ClickOnManualUiHoverOnly_DefaultsToDisabled()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ClickOnManualUiHoverOnly.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void LazyModeRestoreCursorDelayMs_DefaultsToTwenty()
         {
             var settings = new ClickItSettings();

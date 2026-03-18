@@ -122,6 +122,26 @@ namespace ClickIt.Utils
             return "Clicking disabled.";
         }
 
+        public bool CanClickWithoutInputState(GameController gameController)
+        {
+            if (gameController == null)
+                return false;
+
+            return IsPOEActive(gameController)
+                && (_settings?.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController))
+                && !IsInTownOrHideout(gameController)
+                && !IsInToggleItemsPostClickBlockWindow()
+                && !IsBlockedByUiOrEscapeState(gameController);
+        }
+
+        public bool IsClickHotkeyPhysicallyHeld()
+        {
+            if (_settings?.ClickLabelKey == null)
+                return false;
+
+            return Input.GetKeyState(_settings.ClickLabelKey.Value);
+        }
+
         public bool IsClickHotkeyPressed(TimeCache<List<LabelOnGround>>? cachedLabels, Services.LabelFilterService? labelFilterService)
         {
             bool hotkeyHeld = IsClickHotkeyHeld();

@@ -136,5 +136,18 @@ namespace ClickIt.Tests.Unit
                 tie.InnerException.Should().BeOfType<NullReferenceException>();
             }
         }
+
+        [TestMethod]
+        public void ShouldRunManualUiHoverCoroutineForInputState_ReturnsTrue_OnlyWhenManualEnabledAndNotLazy()
+        {
+            ClickIt.ShouldRunManualUiHoverCoroutineForInputState(manualUiHoverEnabled: true, lazyModeEnabled: false)
+                .Should().BeTrue();
+
+            ClickIt.ShouldRunManualUiHoverCoroutineForInputState(manualUiHoverEnabled: true, lazyModeEnabled: true)
+                .Should().BeFalse();
+
+            ClickIt.ShouldRunManualUiHoverCoroutineForInputState(manualUiHoverEnabled: false, lazyModeEnabled: false)
+                .Should().BeFalse();
+        }
     }
 }

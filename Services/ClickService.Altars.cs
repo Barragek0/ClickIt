@@ -56,6 +56,39 @@ namespace ClickIt.Services
             return false;
         }
 
+        private bool TryClickManualCursorPreferredAltarOption(Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        {
+            var altarSnapshot = altarService.GetAltarComponentsReadOnly();
+            if (altarSnapshot.Count == 0)
+                return false;
+
+            bool clickEater = settings.ClickEaterAltars;
+            bool clickExarch = settings.ClickExarchAltars;
+
+            for (int i = 0; i < altarSnapshot.Count; i++)
+            {
+                if (!TryGetClickableAltarElement(altarSnapshot[i], clickEater, clickExarch, out Element? boxToClick))
+                    continue;
+
+                if (boxToClick == null)
+                    continue;
+
+                RectangleF optionRect = boxToClick.GetClientRect();
+                if (!IsPointInsideRectInEitherSpace(optionRect, cursorAbsolute, windowTopLeft))
+                    continue;
+
+                if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
+                {
+                    DebugLog(() => "[TryClickManualCursorPreferredAltarOption] Skipping click - cursor is outside the PoE window");
+                    return false;
+                }
+
+                return TryPerformClick(boxToClick, windowTopLeft, allowWhenHotkeyInactive: true, avoidCursorMove: true);
+            }
+
+            return false;
+        }
+
         public bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
         {
             return TryGetClickableAltarElement(altar, clickEater, clickExarch, out _);
@@ -219,7 +252,11 @@ namespace ClickIt.Services
             }
         }
 
-        private bool TryPerformClick(Element el, Vector2 windowTopLeft)
+        private bool TryPerformClick(
+            Element el,
+            Vector2 windowTopLeft,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
         {
             using (LockManager.AcquireStatic(_elementAccessLock))
             {
@@ -231,7 +268,7 @@ namespace ClickIt.Services
 
                 RectangleF r = el.GetClientRect();
                 Vector2 clickPos = r.Center + windowTopLeft;
-                PerformLockedClick(clickPos, el, gameController);
+                PerformLockedClick(clickPos, el, gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: allowWhenHotkeyInactive, avoidCursorMove: avoidCursorMove);
                 performanceMonitor.RecordClickInterval();
                 DebugLog(() => "[ClickAltarElement] Click performed");
                 return true;

@@ -45,6 +45,8 @@ namespace ClickIt.Rendering
             bool hotkeyHeld = Input.GetKeyState(clickLabelKey);
             bool lazyModeDisableHeld = _inputHandler.IsLazyModeDisableActiveForCurrentInputState();
             bool lazyModeDisableToggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
+            bool isRitualActive = EntityHelpers.IsRitualActive(gameController);
+            bool canActuallyClick = _inputHandler?.CanClick(gameController, false, isRitualActive) ?? false;
 
             var (textColor, line1, line2, line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,
@@ -56,7 +58,9 @@ namespace ClickIt.Rendering
                 leftClickBlocks,
                 rightClickBlocks,
                 gameController,
-                clickLabelKey);
+                clickLabelKey,
+                isRitualActive,
+                canActuallyClick);
 
             RenderLazyModeText(centerX, topY, textColor, line1, line2, line3);
         }
@@ -71,7 +75,9 @@ namespace ClickIt.Rendering
             bool leftClickBlocks,
             bool rightClickBlocks,
             GameController gameController,
-            Keys clickLabelKey)
+            Keys clickLabelKey,
+            bool isRitualActive,
+            bool canActuallyClick)
         {
             if (hasRestrictedItems)
             {
@@ -94,8 +100,6 @@ namespace ClickIt.Rendering
                 return (SharpDX.Color.Red, $"{GetBlockingMouseButtonName(leftClickBlocks, rightClickBlocks)} held.", "Release to resume lazy clicking.", string.Empty);
             }
 
-            bool isRitualActive = EntityHelpers.IsRitualActive(gameController);
-
             if (isRitualActive)
             {
                 return hotkeyHeld
@@ -103,7 +107,6 @@ namespace ClickIt.Rendering
                     : (SharpDX.Color.Red, RitualInProgressText, CompleteRitualToResumeText, string.Empty);
             }
 
-            bool canActuallyClick = _inputHandler?.CanClick(gameController, false, isRitualActive) ?? false;
             if (!canActuallyClick)
             {
                 return (SharpDX.Color.Red, _inputHandler?.GetCanClickFailureReason(gameController) ?? "Clicking disabled.", string.Empty, string.Empty);
