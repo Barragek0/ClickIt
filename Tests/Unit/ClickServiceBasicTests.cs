@@ -6,6 +6,8 @@ using ClickIt.Definitions;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using System;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
 namespace ClickIt.Tests.Unit
@@ -1260,6 +1262,61 @@ namespace ClickIt.Tests.Unit
                 quietWindowMs: 0,
                 out long zeroWindowRemainingMs).Should().BeTrue();
             zeroWindowRemainingMs.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void CancelPostChestLootSettlementState_ClearsPendingAndWatcherState()
+        {
+            var service = (ClickService)RuntimeHelpers.GetUninitializedObject(typeof(ClickService));
+
+            var knownAddresses = new System.Collections.Generic.HashSet<long> { 11L, 22L };
+
+            typeof(ClickService).GetField("_pendingChestOpenConfirmationActive", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, true);
+            typeof(ClickService).GetField("_pendingChestOpenMechanicId", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, "basic-chests");
+            typeof(ClickService).GetField("_pendingChestOpenItemAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, 123L);
+            typeof(ClickService).GetField("_pendingChestOpenLabelAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, 456L);
+            typeof(ClickService).GetField("_postChestLootSettleWatcherActive", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, true);
+            typeof(ClickService).GetField("_postChestLootSettleInitialDelayUntilTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, 1000L);
+            typeof(ClickService).GetField("_postChestLootSettleNextPollTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, 1100L);
+            typeof(ClickService).GetField("_postChestLootSettleLastNewItemTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, 1200L);
+            typeof(ClickService).GetField("_postChestLootSettlePollIntervalMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, 100);
+            typeof(ClickService).GetField("_postChestLootSettleQuietWindowMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, 500);
+            typeof(ClickService).GetField("_postChestLootSettleKnownGroundItemAddresses", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(service, knownAddresses);
+
+            service.CancelPostChestLootSettlementState();
+
+            typeof(ClickService).GetField("_pendingChestOpenConfirmationActive", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(false);
+            typeof(ClickService).GetField("_pendingChestOpenMechanicId", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().BeNull();
+            typeof(ClickService).GetField("_pendingChestOpenItemAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(0L);
+            typeof(ClickService).GetField("_pendingChestOpenLabelAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(0L);
+            typeof(ClickService).GetField("_postChestLootSettleWatcherActive", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(false);
+            typeof(ClickService).GetField("_postChestLootSettleInitialDelayUntilTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(0L);
+            typeof(ClickService).GetField("_postChestLootSettleNextPollTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(0L);
+            typeof(ClickService).GetField("_postChestLootSettleLastNewItemTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(0L);
+            typeof(ClickService).GetField("_postChestLootSettlePollIntervalMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(0);
+            typeof(ClickService).GetField("_postChestLootSettleQuietWindowMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(service).Should().Be(0);
+            knownAddresses.Should().BeEmpty();
         }
 
         [TestMethod]

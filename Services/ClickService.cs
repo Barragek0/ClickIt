@@ -103,6 +103,12 @@ namespace ClickIt.Services
             pathfindingService.ClearLatestPath();
         }
 
+        public void CancelPostChestLootSettlementState()
+        {
+            ClearPendingChestOpenConfirmation();
+            ClearPostChestLootSettlementWatch();
+        }
+
         internal static bool IsClickableInEitherSpace(
             Vector2 clientPoint,
             Vector2 windowTopLeft,

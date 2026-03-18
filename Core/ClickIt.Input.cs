@@ -53,6 +53,8 @@ namespace ClickIt
 
         private void HandleHotkeyReleased()
         {
+            State.ClickService?.CancelPostChestLootSettlementState();
+
             if (ShouldUseManualUiHoverCoroutine())
             {
                 State.ClickLabelCoroutine?.Pause();
