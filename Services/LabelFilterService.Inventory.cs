@@ -156,6 +156,22 @@ namespace ClickIt.Services
         {
             bool inventoryFull = IsInventoryFullCore(gameController, out InventoryFullProbe probe);
 
+            if (ShouldAllowPickupWhenPrimaryInventoryMissingCore(probe.HasPrimaryInventory, probe.Notes))
+            {
+                PublishInventoryDebug(CreateInventoryDebugSnapshot(
+                    stage: "PrimaryInventoryMissingAllow",
+                    probe,
+                    groundItemPath: string.Empty,
+                    groundItemName: GetWorldItemBaseName(groundItem),
+                    isStackable: false,
+                    matchingPathCount: 0,
+                    partialMatchingStackCount: 0,
+                    hasPartialMatchingStack: false,
+                    allowPickup: true));
+
+                return true;
+            }
+
             Entity? groundItemEntity = TryGetWorldItemEntity(groundItem);
             string groundItemPath = groundItemEntity?.Path ?? string.Empty;
             string groundItemName = GetWorldItemBaseName(groundItem);
@@ -258,6 +274,9 @@ namespace ClickIt.Services
 
         internal static bool IsInventoryCellUsageFullCore(int occupiedCellCount, int totalCellCapacity)
             => totalCellCapacity > 0 && occupiedCellCount >= totalCellCapacity;
+
+        internal static bool ShouldAllowPickupWhenPrimaryInventoryMissingCore(bool hasPrimaryInventory, string notes)
+            => !hasPrimaryInventory && notes == "Primary server inventory missing";
 
         private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
         {

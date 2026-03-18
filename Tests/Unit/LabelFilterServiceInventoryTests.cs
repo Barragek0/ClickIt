@@ -68,6 +68,14 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldAllowPickupWhenPrimaryInventoryMissingCore_ReturnsTrue_OnlyForMissingPrimaryInventorySignal()
+        {
+            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenPrimaryInventoryMissingCore", false, "Primary server inventory missing")!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenPrimaryInventoryMissingCore", true, "Primary server inventory missing")!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenPrimaryInventoryMissingCore", false, "Unable to resolve inventory capacity")!).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void HasSpaceForItemFootprintCore_ReturnsFalse_WhenFreeCellsAreFragmentedForTwoByFour()
         {
             const int inventoryWidth = 3;
