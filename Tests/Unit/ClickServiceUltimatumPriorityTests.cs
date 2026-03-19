@@ -40,6 +40,14 @@ namespace ClickIt.Tests.Unit
             return Convert.ToInt32(action);
         }
 
+        private static bool InvokeShouldSuppressGruelingGauntletClickCore(bool shouldTakeReward, bool canClickTakeReward)
+        {
+            var method = typeof(ClickService).GetMethod("ShouldSuppressGruelingGauntletClickCore", BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            return (bool)method!.Invoke(null, new object[] { shouldTakeReward, canClickTakeReward })!;
+        }
+
         [TestMethod]
         public void GetModifierPriorityIndex_MatchesTieredNameByPrefix()
         {
@@ -122,6 +130,20 @@ namespace ClickIt.Tests.Unit
             int action = InvokeDetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward, canClickTakeReward);
 
             action.Should().Be(expected);
+        }
+
+        [DataTestMethod]
+        [DataRow(true, false)]
+        [DataRow(false, false)]
+        [DataRow(true, true)]
+        public void ShouldSuppressGruelingGauntletClickCore_OnlySuppressesWhenRewardMatchesAndButtonClickDisabled(
+            bool shouldTakeReward,
+            bool canClickTakeReward)
+        {
+            bool suppress = InvokeShouldSuppressGruelingGauntletClickCore(shouldTakeReward, canClickTakeReward);
+            bool expected = shouldTakeReward && !canClickTakeReward;
+
+            suppress.Should().Be(expected);
         }
 
         private sealed class ThrowingGetterStub

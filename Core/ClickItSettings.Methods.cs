@@ -1266,15 +1266,8 @@ namespace ClickIt
             EnsureUltimatumTakeRewardModifiersInitialized();
 
             bool hasDetection = Services.ClickService.TryGetGruelingGauntletDetectionForSettings(out bool isGruelingGauntletActive);
-            if (!hasDetection || !isGruelingGauntletActive)
-            {
-                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "This table only does anything when Gruelling Gauntlet is allocated.");
-                ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "ClickIt auto-detects that passive in-game and shows this table when it is active.");
-                return;
-            }
+            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "This table only does anything when Gruelling Gauntlet is allocated.");
 
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Only used when Gruelling Gauntlet is allocated on your Atlas tree.");
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "ClickIt auto-detects that passive from game data and switches to this table automatically.");
             ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Rows with [v] can be clicked to open stage-specific submenu options.");
             ImGui.Spacing();
 

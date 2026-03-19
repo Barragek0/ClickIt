@@ -120,6 +120,28 @@ namespace ClickIt.Services
             GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward, canClickTakeRewards);
             DebugLog(() => $"[TryHandleUltimatumPanelUi] Grueling Gauntlet action={action}, saturatedModifier='{saturatedModifier}', shouldTakeReward={shouldTakeReward}");
 
+            if (ShouldSuppressGruelingGauntletClickCore(shouldTakeReward, canClickTakeRewards))
+            {
+                PublishUltimatumDebug(
+                    stage: "PanelGruelingHandled",
+                    source: "PanelUi",
+                    isPanelVisible: true,
+                    isGruelingGauntletActive: true,
+                    hasSaturatedChoice: hasSaturatedChoice,
+                    saturatedModifier: saturatedModifier,
+                    shouldTakeReward: shouldTakeReward,
+                    action: action.ToString(),
+                    candidateCount: candidateCount,
+                    saturatedCandidateCount: saturatedCandidateCount,
+                    bestModifier: bestModifier,
+                    bestPriority: bestPriority,
+                    clickedChoice: false,
+                    clickedConfirm: false,
+                    clickedTakeRewards: false,
+                    notes: "Take Reward matched but Click Take Reward Button is disabled; no click performed");
+                return false;
+            }
+
             bool clickedConfirm = false;
             bool clickedTakeRewards = false;
             if (action == GruelingGauntletAction.TakeRewards)
@@ -458,6 +480,9 @@ namespace ClickIt.Services
                 ? GruelingGauntletAction.TakeRewards
                 : GruelingGauntletAction.ConfirmOnly;
         }
+
+        internal static bool ShouldSuppressGruelingGauntletClickCore(bool shouldTakeReward, bool canClickTakeReward)
+            => shouldTakeReward && !canClickTakeReward;
 
         internal static bool ShouldTreatUltimatumChoiceAsSaturatedCore(bool hasSaturationState, bool isSaturated, bool fallbackVisible)
             => hasSaturationState ? isSaturated : fallbackVisible;
