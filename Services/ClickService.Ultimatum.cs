@@ -212,7 +212,10 @@ namespace ClickIt.Services
                 bool shouldTakeReward = hasSaturatedChoice
                     && settings.ShouldTakeRewardForGruelingGauntletModifier(saturatedChoice.ModifierName);
 
-                GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+                GruelingGauntletAction action = DetermineGruelingGauntletActionCore(
+                    hasSaturatedChoice,
+                    shouldTakeReward,
+                    settings.IsUltimatumTakeRewardButtonClickEnabled());
                 string saturatedModifierName = hasSaturatedChoice ? saturatedChoice.ModifierName : string.Empty;
                 DebugLog(() => $"[TryClickPreferredUltimatumModifier] Grueling Gauntlet action={action}, saturatedModifier='{saturatedModifierName}', shouldTakeReward={shouldTakeReward}");
 

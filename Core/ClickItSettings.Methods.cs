@@ -73,9 +73,9 @@ namespace ClickIt
             return IsInitialUltimatumClickEnabled() || IsOtherUltimatumClickEnabled();
         }
 
-        public bool IsGruelingGauntletAutoDecisionEnabled()
+        public bool IsUltimatumTakeRewardButtonClickEnabled()
         {
-            return GruelingGauntletAutoDecision?.Value != false;
+            return ClickUltimatumTakeRewardButton?.Value != false;
         }
 
         public bool IsAnyDetailedDebugSectionEnabled()

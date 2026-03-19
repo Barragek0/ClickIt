@@ -54,18 +54,6 @@ namespace ClickIt.Services
             DebugLog(() => "[TryHandleUltimatumPanelUi] UltimatumPanel detected.");
 
             bool isGruelingGauntletActive = IsGruelingGauntletPassiveActive();
-            bool gruelingGauntletAutoDecisionEnabled = settings.IsGruelingGauntletAutoDecisionEnabled();
-            if (ShouldSkipGruelingGauntletAutomationCore(isGruelingGauntletActive, gruelingGauntletAutoDecisionEnabled))
-            {
-                PublishUltimatumDebug(
-                    stage: "PanelGruelingManual",
-                    source: "PanelUi",
-                    isPanelVisible: true,
-                    isGruelingGauntletActive: true,
-                    notes: "Grueling Gauntlet auto decision is disabled in settings");
-                return false;
-            }
-
             if (isGruelingGauntletActive)
                 return TryHandleGruelingGauntletPanelUi(panelObj, windowTopLeft);
 
@@ -128,7 +116,8 @@ namespace ClickIt.Services
                 DebugLog(() => "[TryHandleUltimatumPanelUi] Grueling Gauntlet active but no saturated choice was found. Falling back to confirm-only action.");
             }
 
-            GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+            bool canClickTakeRewards = settings.IsUltimatumTakeRewardButtonClickEnabled();
+            GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward, canClickTakeRewards);
             DebugLog(() => $"[TryHandleUltimatumPanelUi] Grueling Gauntlet action={action}, saturatedModifier='{saturatedModifier}', shouldTakeReward={shouldTakeReward}");
 
             bool clickedConfirm = false;
@@ -183,7 +172,10 @@ namespace ClickIt.Services
             if (ShouldCaptureUltimatumDebug())
             {
                 ResolveGruelingSaturation(candidates, out bool hasSaturatedChoice, out string saturatedModifier, out bool shouldTakeReward, out int saturatedCount);
-                GruelingGauntletAction action = DetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+                GruelingGauntletAction action = DetermineGruelingGauntletActionCore(
+                    hasSaturatedChoice,
+                    shouldTakeReward,
+                    settings.IsUltimatumTakeRewardButtonClickEnabled());
 
                 PublishUltimatumDebug(
                     stage: "OverlayPreview",
@@ -460,15 +452,12 @@ namespace ClickIt.Services
             return TryGetBestUltimatumPanelChoice(candidates, out best);
         }
 
-        private static GruelingGauntletAction DetermineGruelingGauntletActionCore(bool hasSaturatedChoice, bool shouldTakeReward)
+        private static GruelingGauntletAction DetermineGruelingGauntletActionCore(bool hasSaturatedChoice, bool shouldTakeReward, bool canClickTakeReward)
         {
-            return hasSaturatedChoice && shouldTakeReward
+            return hasSaturatedChoice && shouldTakeReward && canClickTakeReward
                 ? GruelingGauntletAction.TakeRewards
                 : GruelingGauntletAction.ConfirmOnly;
         }
-
-        internal static bool ShouldSkipGruelingGauntletAutomationCore(bool isGruelingGauntletActive, bool gruelingGauntletAutoDecisionEnabled)
-            => isGruelingGauntletActive && !gruelingGauntletAutoDecisionEnabled;
 
         internal static bool ShouldTreatUltimatumChoiceAsSaturatedCore(bool hasSaturationState, bool isSaturated, bool fallbackVisible)
             => hasSaturationState ? isSaturated : fallbackVisible;

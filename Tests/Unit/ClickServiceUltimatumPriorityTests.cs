@@ -31,20 +31,13 @@ namespace ClickIt.Tests.Unit
             return (bool)method!.Invoke(null, new object[] { hasSaturationState, isSaturated, fallbackVisible })!;
         }
 
-        private static int InvokeDetermineGruelingGauntletActionCore(bool hasSaturatedChoice, bool shouldTakeReward)
+        private static int InvokeDetermineGruelingGauntletActionCore(bool hasSaturatedChoice, bool shouldTakeReward, bool canClickTakeReward)
         {
             var method = typeof(ClickService).GetMethod("DetermineGruelingGauntletActionCore", BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
 
-            object action = method!.Invoke(null, new object[] { hasSaturatedChoice, shouldTakeReward })!;
+            object action = method!.Invoke(null, new object[] { hasSaturatedChoice, shouldTakeReward, canClickTakeReward })!;
             return Convert.ToInt32(action);
-        }
-
-        private static bool InvokeShouldSkipGruelingGauntletAutomationCore(bool isGruelingGauntletActive, bool gruelingGauntletAutoDecisionEnabled)
-        {
-            var method = typeof(ClickService).GetMethod("ShouldSkipGruelingGauntletAutomationCore", BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-            return (bool)method!.Invoke(null, new object[] { isGruelingGauntletActive, gruelingGauntletAutoDecisionEnabled })!;
         }
 
         [TestMethod]
@@ -116,30 +109,19 @@ namespace ClickIt.Tests.Unit
         }
 
         [DataTestMethod]
-        [DataRow(true, true, 2)]
-        [DataRow(true, false, 1)]
-        [DataRow(false, false, 1)]
+        [DataRow(true, true, true, 2)]
+        [DataRow(true, true, false, 1)]
+        [DataRow(true, false, true, 1)]
+        [DataRow(false, false, true, 1)]
         public void DetermineGruelingGauntletActionCore_ReturnsExpectedAction(
             bool hasSaturatedChoice,
             bool shouldTakeReward,
+            bool canClickTakeReward,
             int expected)
         {
-            int action = InvokeDetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward);
+            int action = InvokeDetermineGruelingGauntletActionCore(hasSaturatedChoice, shouldTakeReward, canClickTakeReward);
 
             action.Should().Be(expected);
-        }
-
-        [DataTestMethod]
-        [DataRow(true, false, true)]
-        [DataRow(true, true, false)]
-        [DataRow(false, false, false)]
-        [DataRow(false, true, false)]
-        public void ShouldSkipGruelingGauntletAutomationCore_UsesToggleAndDetectionState(
-            bool isGruelingGauntletActive,
-            bool gruelingGauntletAutoDecisionEnabled,
-            bool expected)
-        {
-            InvokeShouldSkipGruelingGauntletAutomationCore(isGruelingGauntletActive, gruelingGauntletAutoDecisionEnabled).Should().Be(expected);
         }
 
         private sealed class ThrowingGetterStub

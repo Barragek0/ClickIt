@@ -133,21 +133,21 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
 
-            settings.GruelingGauntletAutoDecision.Value.Should().BeTrue();
+            settings.ClickUltimatumTakeRewardButton.Value.Should().BeTrue();
             settings.ShowUltimatumTakeRewardModifierTablePanel.Should().BeTrue();
             settings.GetUltimatumTakeRewardModifierNames().Should().BeEmpty();
             settings.UltimatumContinueModifierNames.Should().HaveCount(UltimatumModifiersConstants.AllModifierNamesWithStages.Length);
         }
 
         [TestMethod]
-        public void UltimatumTakeRewardTable_IsHidden_WhenGruelingGauntletAutoDecisionDisabled()
+        public void UltimatumTakeRewardTable_RemainsVisible_WhenTakeRewardButtonClickIsDisabled()
         {
             var settings = new ClickItSettings();
 
-            settings.GruelingGauntletAutoDecision.Value = false;
+            settings.ClickUltimatumTakeRewardButton.Value = false;
 
-            settings.IsGruelingGauntletAutoDecisionEnabled().Should().BeFalse();
-            settings.ShowUltimatumTakeRewardModifierTablePanel.Should().BeFalse();
+            settings.IsUltimatumTakeRewardButtonClickEnabled().Should().BeFalse();
+            settings.ShowUltimatumTakeRewardModifierTablePanel.Should().BeTrue();
         }
 
         [TestMethod]
