@@ -102,8 +102,16 @@ namespace ClickIt.Rendering
             if (!snapshot.HasData || snapshot.DecisionAllowPickup)
                 return false;
 
-            return string.Equals(snapshot.Stage, "InventoryFullDecision", StringComparison.Ordinal)
-                || string.Equals(snapshot.Stage, "InventoryNotFullNoFit", StringComparison.Ordinal);
+            if (string.Equals(snapshot.Stage, "InventoryFullDecision", StringComparison.Ordinal))
+                return true;
+
+            if (string.Equals(snapshot.Stage, "InventoryNotFullNoFit", StringComparison.Ordinal))
+            {
+                return !string.IsNullOrWhiteSpace(snapshot.GroundItemPath)
+                    || !string.IsNullOrWhiteSpace(snapshot.GroundItemName);
+            }
+
+            return false;
         }
 
         internal static bool ShouldRefreshInventoryFullWarningTimestamp(long lastProcessedSequence, long currentSequence, LabelFilterService.InventoryDebugSnapshot snapshot)

@@ -473,10 +473,10 @@ namespace ClickIt.Services
          => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 0);
 
         private static RectangleF ResolveMirageBlockedRectangle(GameController gameController)
-         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 17);
+         => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 17);
 
         private static RectangleF ResolveAltarBlockedRectangle(GameController gameController)
-         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 16);
+         => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 16);
 
         private static RectangleF ResolveRitualBlockedRectangle(GameController gameController)
          => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 0);

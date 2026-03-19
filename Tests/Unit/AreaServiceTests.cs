@@ -257,6 +257,27 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void AltarBlockedRectangle_VisibilityRule_RequiresVisibleElement()
+        {
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void MirageBlockedRectangle_VisibilityRule_RequiresVisibleElement()
+        {
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void RitualBlockedRectangle_VisibilityRule_RequiresVisibleElement()
+        {
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void PointIsInClickableArea_ReturnsFalse_InChatPanelBlockedRectangle()
         {
             var svc = new AreaService();
