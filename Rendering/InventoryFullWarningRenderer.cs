@@ -23,13 +23,20 @@ namespace ClickIt.Rendering
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
         private readonly AreaService? _areaService = areaService;
         private long _lastInventoryFullBlockedTimestampMs;
+        private long _lastProcessedInventoryDebugSequence = long.MinValue;
 
         public void Render(GameController gameController)
         {
 
             long now = Environment.TickCount64;
-            if (ShouldShowInventoryPickupBlockedWarning(LabelFilterService.GetLatestInventoryDebug()))
+            LabelFilterService.InventoryDebugSnapshot snapshot = LabelFilterService.GetLatestInventoryDebug();
+            if (ShouldRefreshInventoryFullWarningTimestamp(_lastProcessedInventoryDebugSequence, snapshot.Sequence, snapshot)
+                && ShouldShowInventoryPickupBlockedWarning(snapshot))
+            {
                 _lastInventoryFullBlockedTimestampMs = now;
+            }
+
+            _lastProcessedInventoryDebugSequence = snapshot.Sequence;
 
             if (!ShouldShowInventoryFullWarning(now, _lastInventoryFullBlockedTimestampMs))
                 return;
@@ -72,6 +79,9 @@ namespace ClickIt.Rendering
             return string.Equals(snapshot.Stage, "InventoryFullDecision", StringComparison.Ordinal)
                 || string.Equals(snapshot.Stage, "InventoryNotFullNoFit", StringComparison.Ordinal);
         }
+
+        internal static bool ShouldRefreshInventoryFullWarningTimestamp(long lastProcessedSequence, long currentSequence, LabelFilterService.InventoryDebugSnapshot snapshot)
+            => snapshot.HasData && currentSequence != lastProcessedSequence;
 
         internal static bool ShouldShowInventoryFullWarning(long now, long lastTriggeredTimestampMs)
         {

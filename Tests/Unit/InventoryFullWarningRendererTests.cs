@@ -38,6 +38,34 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsFalse_ForSameSnapshotSequence()
+        {
+            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+                "ShouldRefreshInventoryFullWarningTimestamp",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false, sequence: 42);
+
+            bool refresh = (bool)method!.Invoke(null, [42L, 42L, snapshot])!;
+            refresh.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsTrue_ForNewSnapshotSequence()
+        {
+            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+                "ShouldRefreshInventoryFullWarningTimestamp",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false, sequence: 43);
+
+            bool refresh = (bool)method!.Invoke(null, [42L, 43L, snapshot])!;
+            refresh.Should().BeTrue();
+        }
+
+        [TestMethod]
         public void ShouldShowInventoryFullWarning_HidesAfterTenSeconds()
         {
             var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
@@ -88,7 +116,7 @@ namespace ClickIt.Tests.Unit
             pos.Should().Be(feet);
         }
 
-        private static LabelFilterService.InventoryDebugSnapshot CreateInventorySnapshot(string stage, bool inventoryFull, bool allowPickup)
+        private static LabelFilterService.InventoryDebugSnapshot CreateInventorySnapshot(string stage, bool inventoryFull, bool allowPickup, long sequence = 0)
         {
             return new LabelFilterService.InventoryDebugSnapshot(
                 HasData: true,
@@ -111,7 +139,7 @@ namespace ClickIt.Tests.Unit
                 HasPartialMatchingStack: false,
                 DecisionAllowPickup: allowPickup,
                 Notes: string.Empty,
-                Sequence: 0,
+                Sequence: sequence,
                 TimestampMs: 0);
         }
     }
