@@ -177,6 +177,22 @@ namespace ClickIt.Services
             string groundItemName = GetWorldItemBaseName(groundItem);
             bool isStackable = IsGroundItemStackableCore(groundItemEntity);
 
+            if (ShouldAllowPickupWhenGroundItemEntityMissingCore(inventoryFull, groundItemEntity))
+            {
+                PublishInventoryDebug(CreateInventoryDebugSnapshot(
+                    stage: "InventoryNotFullUnknownItemAllow",
+                    probe,
+                    groundItemPath,
+                    groundItemName,
+                    isStackable,
+                    matchingPathCount: 0,
+                    partialMatchingStackCount: 0,
+                    hasPartialMatchingStack: false,
+                    allowPickup: true));
+
+                return true;
+            }
+
             int matchingPathCount = 0;
             int partialMatchingStackCount = 0;
             bool hasPartialMatchingStack = isStackable
@@ -277,6 +293,9 @@ namespace ClickIt.Services
 
         internal static bool ShouldAllowPickupWhenPrimaryInventoryMissingCore(bool hasPrimaryInventory, string notes)
             => !hasPrimaryInventory && notes == "Primary server inventory missing";
+
+        internal static bool ShouldAllowPickupWhenGroundItemEntityMissingCore(bool inventoryFull, Entity? groundItemEntity)
+            => !inventoryFull && groundItemEntity == null;
 
         private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
         {
