@@ -122,7 +122,7 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void ResumeAltarScanningIfDue_DoesNotRestartSecondTimer_WhenDeferredByHotkey()
+        public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenHotkeyHeld()
         {
             var plugin = new ClickIt();
             plugin.__Test_SetSettings(new ClickItSettings());
@@ -145,28 +145,11 @@ namespace ClickIt.Tests.Unit
                 }
             }
 
-            long before = state.SecondTimer.ElapsedMilliseconds;
-
             var mi = typeof(ClickIt).GetMethod("ResumeAltarScanningIfDue", BindingFlags.Instance | BindingFlags.NonPublic)!;
             mi.Should().NotBeNull();
             mi.Invoke(plugin, [true]);
 
-            state.SecondTimer.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(before);
-        }
-
-        [DataTestMethod]
-        [DataRow(true, false, false, true)]
-        [DataRow(false, true, false, true)]
-        [DataRow(false, true, true, false)]
-        [DataRow(false, false, false, false)]
-        public void ShouldDeferAltarScanDuringInput_UsesExpectedInputState(
-            bool clickHotkeyPressed,
-            bool manualUiHoverEnabled,
-            bool lazyModeEnabled,
-            bool expected)
-        {
-            ClickIt.ShouldDeferAltarScanDuringInput(clickHotkeyPressed, manualUiHoverEnabled, lazyModeEnabled)
-                .Should().Be(expected);
+            state.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
         }
 
         [TestMethod]

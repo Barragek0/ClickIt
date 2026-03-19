@@ -119,31 +119,12 @@ namespace ClickIt
 
         private void ResumeAltarScanningIfDue(bool clickHotkeyPressed)
         {
-            bool deferAltarScan = ShouldDeferAltarScanDuringInput(
-                clickHotkeyPressed,
-                Settings?.ClickOnManualUiHoverOnly?.Value == true,
-                Settings?.LazyMode?.Value == true);
-
-            if (deferAltarScan)
-            {
-                return;
-            }
 
             if (State.SecondTimer.ElapsedMilliseconds > 200)
             {
                 State.AltarCoroutine?.Resume();
                 State.SecondTimer.Restart();
             }
-        }
-
-        internal static bool ShouldDeferAltarScanDuringInput(bool clickHotkeyPressed, bool manualUiHoverEnabled, bool lazyModeEnabled)
-        {
-            if (clickHotkeyPressed)
-            {
-                return true;
-            }
-
-            return manualUiHoverEnabled && !lazyModeEnabled;
         }
     }
 }
