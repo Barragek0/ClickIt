@@ -31,6 +31,7 @@ namespace ClickIt.Services
         private RectangleF _chatPanelBlockedRectangle;
         private RectangleF _mapPanelBlockedRectangle;
         private RectangleF _xpBarBlockedRectangle;
+        private RectangleF _mirageBlockedRectangle;
         private RectangleF _altarBlockedRectangle;
         private RectangleF _ritualBlockedRectangle;
         private readonly List<RectangleF> _questTrackerBlockedRectangles = [];
@@ -55,6 +56,7 @@ namespace ClickIt.Services
         public RectangleF ChatPanelBlockedRectangle => _chatPanelBlockedRectangle;
         public RectangleF MapPanelBlockedRectangle => _mapPanelBlockedRectangle;
         public RectangleF XpBarBlockedRectangle => _xpBarBlockedRectangle;
+        public RectangleF MirageBlockedRectangle => _mirageBlockedRectangle;
         public RectangleF AltarBlockedRectangle => _altarBlockedRectangle;
         public RectangleF RitualBlockedRectangle => _ritualBlockedRectangle;
         public IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles => _questTrackerBlockedRectangles;
@@ -134,6 +136,7 @@ namespace ClickIt.Services
                 ? ResolveMapPanelBlockedRectangle(gameController)
                 : RectangleF.Empty;
             _xpBarBlockedRectangle = ResolveXpBarBlockedRectangle(gameController);
+            _mirageBlockedRectangle = ResolveMirageBlockedRectangle(gameController);
             _altarBlockedRectangle = ResolveAltarBlockedRectangle(gameController);
             _ritualBlockedRectangle = ResolveRitualBlockedRectangle(gameController);
         }
@@ -326,6 +329,7 @@ namespace ClickIt.Services
                     && !PointInBlockedUiRectangle(point, _chatPanelBlockedRectangle)
                     && !PointInBlockedUiRectangle(point, _mapPanelBlockedRectangle)
                     && !PointInBlockedUiRectangle(point, _xpBarBlockedRectangle)
+                    && !PointInBlockedUiRectangle(point, _mirageBlockedRectangle)
                     && !PointInBlockedUiRectangle(point, _altarBlockedRectangle)
                     && !PointInBlockedUiRectangle(point, _ritualBlockedRectangle);
             }
@@ -468,8 +472,11 @@ namespace ClickIt.Services
         private static RectangleF ResolveXpBarBlockedRectangle(GameController gameController)
          => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 0);
 
-        private static RectangleF ResolveAltarBlockedRectangle(GameController gameController)
+        private static RectangleF ResolveMirageBlockedRectangle(GameController gameController)
          => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 17);
+
+        private static RectangleF ResolveAltarBlockedRectangle(GameController gameController)
+         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 16);
 
         private static RectangleF ResolveRitualBlockedRectangle(GameController gameController)
          => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 0);
