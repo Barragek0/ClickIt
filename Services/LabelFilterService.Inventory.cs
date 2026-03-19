@@ -193,6 +193,22 @@ namespace ClickIt.Services
                 return true;
             }
 
+            if (ShouldAllowPickupWhenGroundItemIdentityMissingCore(inventoryFull, groundItemPath, groundItemName))
+            {
+                PublishInventoryDebug(CreateInventoryDebugSnapshot(
+                    stage: "InventoryNotFullUnknownIdentityAllow",
+                    probe,
+                    groundItemPath,
+                    groundItemName,
+                    isStackable,
+                    matchingPathCount: 0,
+                    partialMatchingStackCount: 0,
+                    hasPartialMatchingStack: false,
+                    allowPickup: true));
+
+                return true;
+            }
+
             int matchingPathCount = 0;
             int partialMatchingStackCount = 0;
             bool hasPartialMatchingStack = isStackable
@@ -296,6 +312,11 @@ namespace ClickIt.Services
 
         internal static bool ShouldAllowPickupWhenGroundItemEntityMissingCore(bool inventoryFull, Entity? groundItemEntity)
             => !inventoryFull && groundItemEntity == null;
+
+        internal static bool ShouldAllowPickupWhenGroundItemIdentityMissingCore(bool inventoryFull, string? groundItemPath, string? groundItemName)
+            => !inventoryFull
+                && string.IsNullOrWhiteSpace(groundItemPath)
+                && string.IsNullOrWhiteSpace(groundItemName);
 
         private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
         {

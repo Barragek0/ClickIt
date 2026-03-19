@@ -84,6 +84,15 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldAllowPickupWhenGroundItemIdentityMissingCore_AllowsOnlyWhenInventoryNotFullAndIdentityMissing()
+        {
+            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", false, string.Empty, string.Empty)!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", true, string.Empty, string.Empty)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", false, "Metadata/Items/Test", string.Empty)!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", false, string.Empty, "ItemName")!).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void HasSpaceForItemFootprintCore_ReturnsFalse_WhenFreeCellsAreFragmentedForTwoByFour()
         {
             const int inventoryWidth = 3;
