@@ -178,6 +178,11 @@ namespace ClickIt
             }
 
             DrawToggleNodeControl(
+                "Auto Copy Inventory Warning Debug",
+                AutoCopyInventoryWarningDebug,
+                "Automatically copies inventory warning debug details when the 'Your inventory is full' overlay is triggered. Copy attempts are throttled to once per second.");
+
+            DrawToggleNodeControl(
                 "Log messages",
                 LogMessages,
                 "This will flood your log and screen with debug text.");

@@ -97,6 +97,9 @@ namespace ClickIt
         [Menu("Debug Frames", "Show/hide the debug screen area frames", 15, 2)]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        [Menu("Auto Copy Inventory Warning Debug", "Automatically copies inventory warning debug details when the 'Your inventory is full' overlay is triggered. Copy attempts are throttled to once per second.", 4, 900)]
+        public ToggleNode AutoCopyInventoryWarningDebug { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Log messages", "This will flood your log and screen with debug text.", 5, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]

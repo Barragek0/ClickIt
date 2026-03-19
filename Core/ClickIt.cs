@@ -150,7 +150,10 @@ namespace ClickIt
             State.StrongboxRenderer = new Rendering.StrongboxRenderer(Settings, State.DeferredFrameQueue);
             State.LazyModeRenderer = new Rendering.LazyModeRenderer(Settings, State.DeferredTextQueue, State.InputHandler, labelFilterService);
             State.ClickHotkeyToggleRenderer = new Rendering.ClickHotkeyToggleRenderer(Settings, State.DeferredTextQueue, State.InputHandler);
-            State.InventoryFullWarningRenderer = new Rendering.InventoryFullWarningRenderer(State.DeferredTextQueue, State.AreaService);
+            State.InventoryFullWarningRenderer = new Rendering.InventoryFullWarningRenderer(
+                State.DeferredTextQueue,
+                State.AreaService,
+                TryAutoCopyInventoryWarningDebugSnapshot);
             State.PathfindingRenderer = new Rendering.PathfindingRenderer(State.PathfindingService);
             State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, LogMessage);
             LockManager.Instance = new LockManager(Settings);

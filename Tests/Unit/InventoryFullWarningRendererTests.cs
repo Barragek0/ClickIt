@@ -38,6 +38,24 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitHasMissingIdentity()
+        {
+            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+                "ShouldShowInventoryPickupBlockedWarning",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false) with
+            {
+                GroundItemPath = string.Empty,
+                GroundItemName = string.Empty
+            };
+
+            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            blocked.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsFalse_ForSameSnapshotSequence()
         {
             var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
@@ -78,6 +96,23 @@ namespace ClickIt.Tests.Unit
 
             withinWindow.Should().BeTrue();
             expired.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldAutoCopyInventoryWarning_ThrottlesToOneSecond()
+        {
+            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+                "ShouldAutoCopyInventoryWarning",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            bool first = (bool)method!.Invoke(null, [1_000L, 0L])!;
+            bool throttled = (bool)method!.Invoke(null, [1_500L, 1_000L])!;
+            bool allowedAfterWindow = (bool)method!.Invoke(null, [2_000L, 1_000L])!;
+
+            first.Should().BeTrue();
+            throttled.Should().BeFalse();
+            allowedAfterWindow.Should().BeTrue();
         }
 
         [TestMethod]

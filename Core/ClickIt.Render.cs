@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections;
 using System.Text;
 using System.Threading;
+using ClickIt.Services;
 using ClickIt.Utils;
 using ExileCore;
 using ExileCore.Shared;
@@ -121,6 +122,7 @@ namespace ClickIt
         private const int DeepMemoryDumpNodeBudgetPerYield = 8;
         private static readonly bool EnableDeepMemoryDumpOnCopyAdditionalDebugInfo = false;
         private static readonly object DeepMemoryDumpStateLock = new();
+        private long _lastInventoryWarningAutoCopySuccessTimestampMs;
         private bool _deepMemoryDumpInProgress;
         private string? _lastDeepMemoryDumpPath;
         private string? _lastDeepMemoryDumpError;
@@ -240,6 +242,7 @@ namespace ClickIt
             settings.MemoryDumpOutputPath = outputPath ?? string.Empty;
         }
 
+
         private string GetDeepMemoryDumpStatusMessage()
         {
             if (!EnableDeepMemoryDumpOnCopyAdditionalDebugInfo)
@@ -276,6 +279,64 @@ namespace ClickIt
                 if (!string.IsNullOrWhiteSpace(lines[i]))
                     sb.AppendLine(lines[i]);
             }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        private bool TryAutoCopyInventoryWarningDebugSnapshot(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
+        {
+            ClickItSettings? settings = EffectiveSettings;
+            if (settings?.AutoCopyInventoryWarningDebug?.Value != true)
+                return false;
+
+            string payload = BuildInventoryWarningClipboardPayload(snapshot, now);
+            if (string.IsNullOrWhiteSpace(payload))
+                return false;
+
+            bool copied = TrySetClipboardText(payload);
+            if (copied)
+                _lastInventoryWarningAutoCopySuccessTimestampMs = now;
+
+            return copied;
+        }
+
+        private string BuildInventoryWarningClipboardPayload(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
+        {
+            string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(0) ?? [];
+            string payload = BuildDebugClipboardPayload(debugLines);
+
+            var sb = new StringBuilder(payload.Length + 512);
+            if (!string.IsNullOrWhiteSpace(payload))
+            {
+                sb.AppendLine(payload);
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("=== Inventory Warning Trigger Snapshot ===");
+            sb.AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+            sb.AppendLine($"NowMs: {now}");
+            sb.AppendLine($"LastAutoCopySuccessMs: {_lastInventoryWarningAutoCopySuccessTimestampMs}");
+            sb.AppendLine($"Sequence: {snapshot.Sequence}");
+            sb.AppendLine($"TimestampMs: {snapshot.TimestampMs}");
+            sb.AppendLine($"Stage: {snapshot.Stage}");
+            sb.AppendLine($"DecisionAllowPickup: {snapshot.DecisionAllowPickup}");
+            sb.AppendLine($"InventoryFull: {snapshot.InventoryFull}");
+            sb.AppendLine($"InventoryFullSource: {snapshot.InventoryFullSource}");
+            sb.AppendLine($"HasPrimaryInventory: {snapshot.HasPrimaryInventory}");
+            sb.AppendLine($"UsedFullFlag: {snapshot.UsedFullFlag}");
+            sb.AppendLine($"FullFlagValue: {snapshot.FullFlagValue}");
+            sb.AppendLine($"UsedCellOccupancy: {snapshot.UsedCellOccupancy}");
+            sb.AppendLine($"CapacityCells: {snapshot.CapacityCells}");
+            sb.AppendLine($"OccupiedCells: {snapshot.OccupiedCells}");
+            sb.AppendLine($"InventoryEntityCount: {snapshot.InventoryEntityCount}");
+            sb.AppendLine($"LayoutEntryCount: {snapshot.LayoutEntryCount}");
+            sb.AppendLine($"GroundItemName: {snapshot.GroundItemName}");
+            sb.AppendLine($"GroundItemPath: {snapshot.GroundItemPath}");
+            sb.AppendLine($"IsGroundStackable: {snapshot.IsGroundStackable}");
+            sb.AppendLine($"MatchingPathCount: {snapshot.MatchingPathCount}");
+            sb.AppendLine($"PartialMatchingStackCount: {snapshot.PartialMatchingStackCount}");
+            sb.AppendLine($"HasPartialMatchingStack: {snapshot.HasPartialMatchingStack}");
+            sb.AppendLine($"Notes: {snapshot.Notes}");
 
             return sb.ToString().TrimEnd();
         }
