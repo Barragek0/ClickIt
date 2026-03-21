@@ -56,6 +56,23 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitLayoutIsUnreliable()
+        {
+            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+                "ShouldShowInventoryPickupBlockedWarning",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false) with
+            {
+                Notes = "Inventory layout unreliable from PlayerInventories[0].InventorySlotItems (raw:1 parsed:0)"
+            };
+
+            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            blocked.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsFalse_ForSameSnapshotSequence()
         {
             var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(

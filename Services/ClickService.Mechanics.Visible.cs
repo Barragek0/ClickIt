@@ -1,7 +1,6 @@
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
-using System.Diagnostics;
 using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Services
@@ -228,6 +227,7 @@ namespace ClickIt.Services
                 return null;
 
             bool captureClickDebug = ShouldCaptureClickDebug();
+            bool collectDiagnostics = captureClickDebug || settings.DebugMode?.Value == true;
 
             try
             {
@@ -239,14 +239,15 @@ namespace ClickIt.Services
                 int probeResolved = 0;
                 int labelBacked = 0;
                 long labelScanMs = 0;
-
-                var stopwatch = Stopwatch.StartNew();
+                long diagnosticsStartMs = collectDiagnostics ? Environment.TickCount64 : 0;
                 IReadOnlySet<long>? labelEntityAddresses = ShouldScanSettlersGroundLabelAddresses(captureClickDebug)
                     ? CollectGroundLabelEntityAddresses()
                     : null;
-                labelScanMs = stopwatch.ElapsedMilliseconds;
-
-                stopwatch.Restart();
+                if (collectDiagnostics)
+                {
+                    labelScanMs = Math.Max(0, Environment.TickCount64 - diagnosticsStartMs);
+                    diagnosticsStartMs = Environment.TickCount64;
+                }
 
                 foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
                 {
@@ -260,11 +261,13 @@ namespace ClickIt.Services
                         if (entity == null)
                             continue;
 
-                        scanned++;
+                        if (collectDiagnostics)
+                            scanned++;
 
                         if (ShouldSkipSettlersEntityBeforeMechanicResolution(entity.IsValid, entity.IsHidden, entity.DistancePlayer, settings.ClickDistance.Value))
                         {
-                            prefiltered++;
+                            if (collectDiagnostics)
+                                prefiltered++;
                             continue;
                         }
 
@@ -277,21 +280,22 @@ namespace ClickIt.Services
                                 out bool matchedMechanic,
                                 out bool attemptedProbe))
                         {
-                            if (matchedMechanic)
+                            if (collectDiagnostics && matchedMechanic)
                                 mechanicMatched++;
-                            if (attemptedProbe)
+                            if (collectDiagnostics && attemptedProbe)
                                 probeAttempts++;
 
                             continue;
                         }
 
-                        if (matchedMechanic)
+                        if (collectDiagnostics && matchedMechanic)
                             mechanicMatched++;
-                        if (attemptedProbe)
+                        if (collectDiagnostics && attemptedProbe)
                             probeAttempts++;
-                        probeResolved++;
+                        if (collectDiagnostics)
+                            probeResolved++;
 
-                        if (hadLabel)
+                        if (collectDiagnostics && hadLabel)
                             labelBacked++;
 
                         if (!best.HasValue || candidate.Distance < best.Value.Distance)
@@ -303,9 +307,11 @@ namespace ClickIt.Services
                     }
                 }
 
-                long entityScanMs = stopwatch.ElapsedMilliseconds;
+                long entityScanMs = collectDiagnostics
+                    ? Math.Max(0, Environment.TickCount64 - diagnosticsStartMs)
+                    : 0;
 
-                if (!best.HasValue)
+                if (!best.HasValue && collectDiagnostics)
                 {
                     DebugLog(() => $"[ResolveNextSettlersOreCandidate] none scanned:{scanned} prefiltered:{prefiltered} mechanicMatched:{mechanicMatched} probeAttempts:{probeAttempts} probeResolved:{probeResolved} labelBacked:{labelBacked} labelScanMs:{labelScanMs} entityScanMs:{entityScanMs}");
                     if (captureClickDebug)

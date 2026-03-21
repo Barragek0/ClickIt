@@ -1369,7 +1369,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (!target.IsValid || target.IsHidden || (target.GetComponent<MinimapIcon>() != null && target.GetComponent<MinimapIcon>().IsHide))
+            if (!target.IsValid || target.IsHidden || IsEntityHiddenByMinimapIcon(target))
             {
                 ClearStickyOffscreenTarget();
                 pathfindingService.ClearLatestPath();
@@ -1580,7 +1580,7 @@ namespace ClickIt.Services
                 return false;
 
             target = FindEntityByAddress(_stickyOffscreenTargetAddress);
-            if (target == null || !target.IsValid || target.IsHidden || (target.GetComponent<MinimapIcon>() != null && target.GetComponent<MinimapIcon>().IsHide))
+            if (target == null || !target.IsValid || target.IsHidden || IsEntityHiddenByMinimapIcon(target))
             {
                 ClearStickyOffscreenTarget();
                 return false;
@@ -1638,6 +1638,12 @@ namespace ClickIt.Services
         internal static bool IsSameEntityAddress(long leftAddress, long rightAddress)
         {
             return leftAddress != 0 && leftAddress == rightAddress;
+        }
+
+        private static bool IsEntityHiddenByMinimapIcon(Entity entity)
+        {
+            MinimapIcon? minimapIcon = entity.GetComponent<MinimapIcon>();
+            return minimapIcon != null && minimapIcon.IsHide;
         }
 
         private void PublishOffscreenMovementDebug(
@@ -1785,7 +1791,7 @@ namespace ClickIt.Services
                 for (int i = 0; i < entities.Count; i++)
                 {
                     Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
+                    if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
                         continue;
                     if (entity.DistancePlayer > maxDistance)
                         continue;
@@ -2016,7 +2022,7 @@ namespace ClickIt.Services
                 for (int i = 0; i < entities.Count; i++)
                 {
                     Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
+                    if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
                         continue;
                     if (entity.DistancePlayer > maxDistance)
                         continue;
@@ -2142,7 +2148,7 @@ namespace ClickIt.Services
             Entity? candidate,
             string? mechanicId)
         {
-            if (candidate == null || !candidate.IsValid || candidate.IsHidden || (candidate.GetComponent<MinimapIcon>() != null && candidate.GetComponent<MinimapIcon>().IsHide) || string.IsNullOrWhiteSpace(mechanicId))
+            if (candidate == null || !candidate.IsValid || candidate.IsHidden || IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
                 return;
 
             MechanicRank rank = BuildMechanicRank(candidate.DistancePlayer, mechanicId);
@@ -2178,7 +2184,7 @@ namespace ClickIt.Services
                 for (int i = 0; i < entities.Count; i++)
                 {
                     Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
+                    if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
                         continue;
                     if (entity.DistancePlayer > maxDistance)
                         continue;
@@ -2329,7 +2335,7 @@ namespace ClickIt.Services
                 Entity? entity = label?.ItemOnGround;
                 if (label == null || entity == null)
                     continue;
-                if (!entity.IsValid || entity.IsHidden || (entity.GetComponent<MinimapIcon>() != null && entity.GetComponent<MinimapIcon>().IsHide))
+                if (!entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
                     continue;
                 if (entity.DistancePlayer > maxDistance)
                     continue;

@@ -21,6 +21,9 @@ namespace ClickIt.Services
         private static IReadOnlyList<Entity> _inventoryItemsCacheValue = Array.Empty<Entity>();
         private static bool _inventoryItemsCacheHasValue;
 
+        [ThreadStatic]
+        private static HashSet<long>? _threadInventoryUniqueEntityAddresses;
+
         private static long _inventoryLayoutCacheTimestampMs;
         private static object? _inventoryLayoutCachePrimaryInventory;
         private static int _inventoryLayoutCacheWidth;
@@ -583,7 +586,7 @@ namespace ClickIt.Services
             if (inventoryWidth <= 0 || inventoryHeight <= 0)
                 return false;
 
-            List<InventoryLayoutEntry> resolved = new List<InventoryLayoutEntry>();
+            entries.EnsureCapacity(32);
             foreach (object? entry in EnumerateObjects(collection))
             {
                 if (entry == null)
@@ -603,10 +606,9 @@ namespace ClickIt.Services
                 int clampedWidth = Math.Max(1, Math.Min(width, inventoryWidth - clampedX));
                 int clampedHeight = Math.Max(1, Math.Min(height, inventoryHeight - clampedY));
 
-                resolved.Add(new InventoryLayoutEntry(clampedX, clampedY, clampedWidth, clampedHeight));
+                entries.Add(new InventoryLayoutEntry(clampedX, clampedY, clampedWidth, clampedHeight));
             }
 
-            entries = resolved;
             return true;
         }
 
@@ -623,7 +625,11 @@ namespace ClickIt.Services
             if (layoutEntries == null || layoutEntries.Count == 0)
                 return true;
 
-            bool[,] occupied = new bool[inventoryHeight, inventoryWidth];
+            int totalCells = inventoryWidth * inventoryHeight;
+            Span<byte> occupied = totalCells <= 256
+                ? stackalloc byte[totalCells]
+                : new byte[totalCells];
+
             for (int i = 0; i < layoutEntries.Count; i++)
             {
                 InventoryLayoutEntry entry = layoutEntries[i];
@@ -634,10 +640,11 @@ namespace ClickIt.Services
                 {
                     for (int x = Math.Max(0, entry.X); x < maxX; x++)
                     {
-                        if (occupied[y, x])
+                        int index = (y * inventoryWidth) + x;
+                        if (occupied[index] != 0)
                             continue;
 
-                        occupied[y, x] = true;
+                        occupied[index] = 1;
                         occupiedCellCount++;
                     }
                 }
@@ -794,7 +801,11 @@ namespace ClickIt.Services
             if (requiredWidth > inventoryWidth || requiredHeight > inventoryHeight)
                 return false;
 
-            bool[,] occupied = new bool[inventoryHeight, inventoryWidth];
+            int totalCells = inventoryWidth * inventoryHeight;
+            Span<byte> occupied = totalCells <= 256
+                ? stackalloc byte[totalCells]
+                : new byte[totalCells];
+
             for (int i = 0; i < occupiedEntries.Count; i++)
             {
                 InventoryLayoutEntry entry = occupiedEntries[i];
@@ -803,7 +814,7 @@ namespace ClickIt.Services
                 for (int y = Math.Max(0, entry.Y); y < maxY; y++)
                 {
                     for (int x = Math.Max(0, entry.X); x < maxX; x++)
-                        occupied[y, x] = true;
+                        occupied[(y * inventoryWidth) + x] = 1;
                 }
             }
 
@@ -813,7 +824,7 @@ namespace ClickIt.Services
             {
                 for (int startX = 0; startX <= maxStartX; startX++)
                 {
-                    if (CanPlaceAt(occupied, startX, startY, requiredWidth, requiredHeight))
+                    if (CanPlaceAt(occupied, inventoryWidth, startX, startY, requiredWidth, requiredHeight))
                         return true;
                 }
             }
@@ -821,13 +832,13 @@ namespace ClickIt.Services
             return false;
         }
 
-        private static bool CanPlaceAt(bool[,] occupied, int startX, int startY, int width, int height)
+        private static bool CanPlaceAt(Span<byte> occupied, int inventoryWidth, int startX, int startY, int width, int height)
         {
             for (int y = startY; y < startY + height; y++)
             {
                 for (int x = startX; x < startX + width; x++)
                 {
-                    if (occupied[y, x])
+                    if (occupied[(y * inventoryWidth) + x] != 0)
                         return false;
                 }
             }
@@ -1126,7 +1137,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (!TryEnumeratePrimaryInventoryItemEntities(primaryInventory, out IReadOnlyList<Entity> entities, out _))
+            if (!TryEnumeratePrimaryInventoryItemEntitiesFast(primaryInventory, out IReadOnlyList<Entity> entities))
             {
                 SetCachedInventoryItems(gameController, now, items);
                 return false;
@@ -1135,6 +1146,37 @@ namespace ClickIt.Services
             items = entities;
             SetCachedInventoryItems(gameController, now, items);
             return items.Count > 0;
+        }
+
+        private static bool TryEnumeratePrimaryInventoryItemEntitiesFast(object primaryInventory, out IReadOnlyList<Entity> items)
+        {
+            items = Array.Empty<Entity>();
+
+            if (!TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? collectionObj) || collectionObj == null)
+                return false;
+
+            HashSet<long> uniqueAddresses = GetThreadInventoryUniqueEntityAddressSet();
+            uniqueAddresses.Clear();
+
+            var uniqueEntities = new List<Entity>(32);
+
+            foreach (object? entry in EnumerateObjects(collectionObj))
+            {
+                if (entry == null)
+                    continue;
+
+                Entity? entity = TryGetInventoryItemEntityFromEntry(entry);
+                if (entity == null || !IsInventoryItemEntity(entity, out _))
+                    continue;
+
+                AddUniqueInventoryEntity(entity, uniqueAddresses, uniqueEntities);
+            }
+
+            if (uniqueEntities.Count == 0)
+                return false;
+
+            items = uniqueEntities;
+            return true;
         }
 
         private static bool TryEnumeratePrimaryInventoryItemEntities(object primaryInventory, out IReadOnlyList<Entity> items, out string debugDetails)
@@ -1152,7 +1194,8 @@ namespace ClickIt.Services
             int nullEntries = 0;
             int extractedEntityEntries = 0;
 
-            var uniqueAddresses = new HashSet<long>();
+            HashSet<long> uniqueAddresses = GetThreadInventoryUniqueEntityAddressSet();
+            uniqueAddresses.Clear();
             var uniqueEntities = new List<Entity>(32);
 
             foreach (object? entry in EnumerateObjects(collectionObj))
@@ -1181,6 +1224,17 @@ namespace ClickIt.Services
             items = uniqueEntities;
             debugDetails = $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} extracted:{extractedEntityEntries} dedup:{extractedEntityEntries}->{items.Count}";
             return true;
+        }
+
+        private static HashSet<long> GetThreadInventoryUniqueEntityAddressSet()
+        {
+            HashSet<long>? addresses = _threadInventoryUniqueEntityAddresses;
+            if (addresses != null)
+                return addresses;
+
+            addresses = new HashSet<long>();
+            _threadInventoryUniqueEntityAddresses = addresses;
+            return addresses;
         }
 
         private static void AddUniqueInventoryEntity(Entity entity, HashSet<long> uniqueAddresses, List<Entity> uniqueEntities)
@@ -1477,6 +1531,8 @@ namespace ClickIt.Services
                 _inventoryLayoutCacheIsReliable = false;
                 _inventoryLayoutCacheRawEntryCount = 0;
                 _inventoryLayoutCacheHasValue = false;
+
+                _threadInventoryUniqueEntityAddresses = null;
             }
         }
 

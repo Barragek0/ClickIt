@@ -10,8 +10,8 @@ namespace ClickIt.Services
     public class AreaService
     {
         private const int BlockedUiRectanglesRefreshIntervalMs = 10_000;
-        private const int BuffsAndDebuffsRectanglesRefreshIntervalMs = 500;
-        private const int QuestTrackerRectanglesHoldLastGoodMs = 200;
+        private const int BuffsAndDebuffsRectanglesRefreshIntervalMs = 1_000;
+        private const int QuestTrackerRectanglesHoldLastGoodMs = 1_000;
         private const float SideCompanionHeightRatio = 0.625f;
         private const float SideCompanionWidthRatio = 0.555f;
         private const float SideTertiaryCompanionHeightRatio = 0.85f;

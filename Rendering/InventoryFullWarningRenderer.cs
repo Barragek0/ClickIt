@@ -12,6 +12,7 @@ namespace ClickIt.Rendering
         Func<LabelFilterService.InventoryDebugSnapshot, long, bool>? tryAutoCopyOnWarningTrigger = null)
     {
         private const string InventoryFullWarningText = "Your inventory is full";
+        private const string InventoryLayoutUnreliableNotesPrefix = "Inventory layout unreliable";
         private const int InventoryFullWarningHoldMs = 10_000;
         private const int InventoryWarningAutoCopyThrottleMs = 1_000;
         private const int InventoryFullWarningTextSize = 48;
@@ -107,6 +108,9 @@ namespace ClickIt.Rendering
 
             if (string.Equals(snapshot.Stage, "InventoryNotFullNoFit", StringComparison.Ordinal))
             {
+                if (snapshot.Notes.StartsWith(InventoryLayoutUnreliableNotesPrefix, StringComparison.Ordinal))
+                    return false;
+
                 return !string.IsNullOrWhiteSpace(snapshot.GroundItemPath)
                     || !string.IsNullOrWhiteSpace(snapshot.GroundItemName);
             }
