@@ -41,7 +41,7 @@ Core design:
 dotnet test Tests\ClickIt.Tests.csproj -c Debug
 
 # Full solution build (requires local ExileCore package path)
-msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\PoeHelper\net48"
+msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\ExileAPI"
 ```
 
 If you are using VS Code tasks, run the default build/test workflow so tests and DLL copy steps run in sequence.
