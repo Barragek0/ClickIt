@@ -100,8 +100,39 @@ namespace ClickIt.Tests.Unit
         public void ShouldClickChest_RecognizesBasicChest_WhenSettingsAllow()
         {
             // Call internal helper directly - pass primitive path and renderName to avoid mutating ExileCore objects
-            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
+            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
             res.Should().Be("basic-chests");
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesOtherLeagueToggle_ForNonMirageLeagueChests()
+        {
+            var disabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                false,
+                true,
+                true,
+                true,
+                EntityType.Chest,
+                "content/some/chest",
+                "Some League Chest")!;
+
+            var enabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                true,
+                true,
+                true,
+                true,
+                EntityType.Chest,
+                "content/some/chest",
+                "Some League Chest")!;
+
+            disabled.Should().BeNull();
+            enabled.Should().Be("league-chests");
         }
 
         [TestMethod]

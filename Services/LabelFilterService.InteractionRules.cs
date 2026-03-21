@@ -64,7 +64,15 @@ namespace ClickIt.Services
 
         private static string? ResolveFallbackMechanicId(ClickSettings settings, EntityType type, string path, LabelOnGround label, Entity item)
         {
-            string? chest = GetChestMechanicId(settings.ClickBasicChests, settings.ClickLeagueChests, type, label);
+            string? chest = GetChestMechanicId(
+                settings.ClickBasicChests,
+                settings.ClickLeagueChests,
+                settings.ClickLeagueChestsOther,
+                settings.ClickMirageGoldenDjinnCache,
+                settings.ClickMirageSilverDjinnCache,
+                settings.ClickMirageBronzeDjinnCache,
+                type,
+                label);
             if (!string.IsNullOrWhiteSpace(chest))
                 return chest;
 
@@ -123,14 +131,40 @@ namespace ClickIt.Services
                 || !itemPath.Contains("strongbox", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string? GetChestMechanicId(bool clickBasicChests, bool clickLeagueChests, EntityType type, LabelOnGround label)
+        private static string? GetChestMechanicId(
+            bool clickBasicChests,
+            bool clickLeagueChests,
+            bool clickLeagueChestsOther,
+            bool clickMirageGoldenDjinnCache,
+            bool clickMirageSilverDjinnCache,
+            bool clickMirageBronzeDjinnCache,
+            EntityType type,
+            LabelOnGround label)
         {
             string? path = label.ItemOnGround?.Path;
             string renderName = label.ItemOnGround?.RenderName ?? string.Empty;
-            return GetChestMechanicIdInternal(clickBasicChests, clickLeagueChests, type, path, renderName);
+            return GetChestMechanicIdInternal(
+                clickBasicChests,
+                clickLeagueChests,
+                clickLeagueChestsOther,
+                clickMirageGoldenDjinnCache,
+                clickMirageSilverDjinnCache,
+                clickMirageBronzeDjinnCache,
+                type,
+                path,
+                renderName);
         }
 
-        private static string? GetChestMechanicIdInternal(bool clickBasicChests, bool clickLeagueChests, EntityType type, string? path, string renderName)
+        private static string? GetChestMechanicIdInternal(
+            bool clickBasicChests,
+            bool clickLeagueChests,
+            bool clickLeagueChestsOther,
+            bool clickMirageGoldenDjinnCache,
+            bool clickMirageSilverDjinnCache,
+            bool clickMirageBronzeDjinnCache,
+            EntityType type,
+            string? path,
+            string renderName)
         {
             if (type != EntityType.Chest)
                 return null;
@@ -141,10 +175,41 @@ namespace ClickIt.Services
             bool isBasic = IsBasicChestName(renderName);
             if (clickBasicChests && isBasic)
                 return MechanicIds.BasicChests;
-            if (clickLeagueChests && !isBasic)
+
+            if (!clickLeagueChests || isBasic)
+                return null;
+
+            if (IsMirageGoldenDjinnCacheName(renderName))
+                return clickMirageGoldenDjinnCache ? MechanicIds.LeagueChests : null;
+
+            if (IsMirageSilverDjinnCacheName(renderName))
+                return clickMirageSilverDjinnCache ? MechanicIds.LeagueChests : null;
+
+            if (IsMirageBronzeDjinnCacheName(renderName))
+                return clickMirageBronzeDjinnCache ? MechanicIds.LeagueChests : null;
+
+            if (clickLeagueChestsOther)
                 return MechanicIds.LeagueChests;
 
             return null;
+        }
+
+        private static bool IsMirageGoldenDjinnCacheName(string? name)
+            => IsDjinnCacheName(name, "golden");
+
+        private static bool IsMirageSilverDjinnCacheName(string? name)
+            => IsDjinnCacheName(name, "silver");
+
+        private static bool IsMirageBronzeDjinnCacheName(string? name)
+            => IsDjinnCacheName(name, "bronze");
+
+        private static bool IsDjinnCacheName(string? name, string tier)
+        {
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(tier))
+                return false;
+
+            return name.Equals($"{tier} djinn's cache", StringComparison.OrdinalIgnoreCase)
+                || name.Equals($"{tier} djinns cache", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string? GetSpecialPathMechanicId(ClickSettings settings, string path, LabelOnGround label)

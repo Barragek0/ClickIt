@@ -248,6 +248,14 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickLeagueChests { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickLeagueChestsOther { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickMirageGoldenDjinnCache { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickMirageSilverDjinnCache { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickMirageBronzeDjinnCache { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode PauseAfterOpeningBasicChests { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public RangeNode<int> PauseAfterOpeningBasicChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);

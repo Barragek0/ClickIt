@@ -50,6 +50,7 @@ namespace ClickIt.Services
             bool applyLazyRestrictions = s.LazyMode.Value && hasRestricted && !hotkeyHeld;
 
             bool settlersOreEnabled = !applyLazyRestrictions && s.ClickSettlersOre.Value;
+            bool leagueChestsEnabled = !applyLazyRestrictions && s.ClickLeagueChests.Value;
             IReadOnlyList<string> mechanicPriorities = s.GetMechanicPriorityOrder();
             IReadOnlyCollection<string> ignoreDistance = s.GetMechanicPriorityIgnoreDistanceIds();
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId = s.GetMechanicPriorityIgnoreDistanceWithinById();
@@ -62,7 +63,11 @@ namespace ClickIt.Services
                 ItemTypeWhitelistMetadata = s.GetItemTypeWhitelistMetadataIdentifiers(),
                 ItemTypeBlacklistMetadata = s.GetItemTypeBlacklistMetadataIdentifiers(),
                 ClickBasicChests = s.ClickBasicChests.Value,
-                ClickLeagueChests = !applyLazyRestrictions && s.ClickLeagueChests.Value,
+                ClickLeagueChests = leagueChestsEnabled,
+                ClickLeagueChestsOther = leagueChestsEnabled && s.ClickLeagueChestsOther.Value,
+                ClickMirageGoldenDjinnCache = leagueChestsEnabled && s.ClickMirageGoldenDjinnCache.Value,
+                ClickMirageSilverDjinnCache = leagueChestsEnabled && s.ClickMirageSilverDjinnCache.Value,
+                ClickMirageBronzeDjinnCache = leagueChestsEnabled && s.ClickMirageBronzeDjinnCache.Value,
                 ClickDoors = s.ClickDoors.Value,
                 ClickLevers = s.ClickLevers.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
@@ -110,6 +115,10 @@ namespace ClickIt.Services
             public IReadOnlyList<string> ItemTypeBlacklistMetadata { get; set; }
             public bool ClickBasicChests { get; set; }
             public bool ClickLeagueChests { get; set; }
+            public bool ClickLeagueChestsOther { get; set; }
+            public bool ClickMirageGoldenDjinnCache { get; set; }
+            public bool ClickMirageSilverDjinnCache { get; set; }
+            public bool ClickMirageBronzeDjinnCache { get; set; }
             public bool ClickDoors { get; set; }
             public bool ClickLevers { get; set; }
             public bool ClickAreaTransitions { get; set; }

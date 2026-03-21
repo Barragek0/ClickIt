@@ -6,6 +6,10 @@ namespace ClickIt.Definitions
         public const string Items = "items";
         public const string BasicChests = "basic-chests";
         public const string LeagueChests = "league-chests";
+        public const string LeagueChestsOther = "league-chests-other";
+        public const string MirageGoldenDjinnCache = "mirage-golden-djinn-cache";
+        public const string MirageSilverDjinnCache = "mirage-silver-djinn-cache";
+        public const string MirageBronzeDjinnCache = "mirage-bronze-djinn-cache";
         public const string Doors = "doors";
         public const string Levers = "levers";
         public const string AreaTransitions = "area-transitions";
