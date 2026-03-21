@@ -435,7 +435,10 @@ namespace ClickIt.Services
                 return false;
 
             if (!TryResolveInventoryItemSize(groundItemEntity, out int requiredWidth, out int requiredHeight))
-                return false;
+            {
+                if (!TryResolveFallbackInventoryItemSizeFromPathCore(groundItemEntity.Path, out requiredWidth, out requiredHeight))
+                    return false;
+            }
 
             if (requiredWidth <= 0 || requiredHeight <= 0)
                 return false;
@@ -957,6 +960,24 @@ namespace ClickIt.Services
             width = Math.Max(1, width);
             height = Math.Max(1, height);
             return true;
+        }
+
+        internal static bool TryResolveFallbackInventoryItemSizeFromPathCore(string? metadataPath, out int width, out int height)
+        {
+            width = 1;
+            height = 1;
+
+            if (string.IsNullOrWhiteSpace(metadataPath))
+                return false;
+
+            if (metadataPath.StartsWith("Metadata/Items/Currency/", StringComparison.OrdinalIgnoreCase)
+                || metadataPath.StartsWith("Metadata/Items/DivinationCards/", StringComparison.OrdinalIgnoreCase)
+                || metadataPath.StartsWith("Metadata/Items/Maps/", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private static bool TryResolveInventoryItemCellSizeFromInfo(object baseComponent, out int width, out int height)
