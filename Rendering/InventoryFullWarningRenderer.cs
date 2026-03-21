@@ -13,6 +13,7 @@ namespace ClickIt.Rendering
     {
         private const string InventoryFullWarningText = "Your inventory is full";
         private const string InventoryLayoutUnreliableNotesPrefix = "Inventory layout unreliable";
+        private const int NotFullNoFitMinFreeCellsToSuppressWarning = 12;
         private const int InventoryFullWarningHoldMs = 10_000;
         private const int InventoryWarningAutoCopyThrottleMs = 1_000;
         private const int InventoryFullWarningTextSize = 48;
@@ -111,11 +112,23 @@ namespace ClickIt.Rendering
                 if (snapshot.Notes.StartsWith(InventoryLayoutUnreliableNotesPrefix, StringComparison.Ordinal))
                     return false;
 
+                if (ShouldSuppressNotFullNoFitWarning(snapshot))
+                    return false;
+
                 return !string.IsNullOrWhiteSpace(snapshot.GroundItemPath)
                     || !string.IsNullOrWhiteSpace(snapshot.GroundItemName);
             }
 
             return false;
+        }
+
+        private static bool ShouldSuppressNotFullNoFitWarning(LabelFilterService.InventoryDebugSnapshot snapshot)
+        {
+            if (snapshot.InventoryFull || !snapshot.UsedCellOccupancy || snapshot.CapacityCells <= 0)
+                return false;
+
+            int freeCells = snapshot.CapacityCells - Math.Max(0, snapshot.OccupiedCells);
+            return freeCells >= NotFullNoFitMinFreeCellsToSuppressWarning;
         }
 
         internal static bool ShouldRefreshInventoryFullWarningTimestamp(long lastProcessedSequence, long currentSequence, LabelFilterService.InventoryDebugSnapshot snapshot)

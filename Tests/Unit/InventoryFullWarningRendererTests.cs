@@ -73,6 +73,29 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitHasLargeFreeCellCount()
+        {
+            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+                "ShouldShowInventoryPickupBlockedWarning",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            method.Should().NotBeNull();
+
+            var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false) with
+            {
+                CapacityCells = 60,
+                OccupiedCells = 2,
+                UsedCellOccupancy = true,
+                Notes = "Inventory fullness from PlayerInventories[0].InventorySlotItems footprint (raw:2 parsed:2)",
+                GroundItemPath = "Metadata/Items/Currency/CurrencyRerollRare",
+                GroundItemName = string.Empty,
+                IsGroundStackable = false
+            };
+
+            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            blocked.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsFalse_ForSameSnapshotSequence()
         {
             var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
