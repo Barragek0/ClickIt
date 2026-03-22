@@ -13,6 +13,32 @@ namespace ClickIt.Services
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
 
+        private readonly record struct LeagueChestToggles(
+            bool ClickLeagueChestsOther,
+            bool ClickMirageGoldenDjinnCache,
+            bool ClickMirageSilverDjinnCache,
+            bool ClickMirageBronzeDjinnCache,
+            bool ClickHeistSecureLocker);
+
+        private readonly record struct LeagueChestRule(
+            Func<string?, string?, bool> Matches,
+            Func<LeagueChestToggles, bool> IsEnabled);
+
+        private static readonly LeagueChestRule[] LeagueChestRules =
+        [
+            new(static (name, _) => IsMirageGoldenDjinnCacheName(name), static toggles => toggles.ClickMirageGoldenDjinnCache),
+            new(static (name, _) => IsMirageSilverDjinnCacheName(name), static toggles => toggles.ClickMirageSilverDjinnCache),
+            new(static (name, _) => IsMirageBronzeDjinnCacheName(name), static toggles => toggles.ClickMirageBronzeDjinnCache),
+            new(static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path), static toggles => toggles.ClickHeistSecureLocker)
+        ];
+
+        private enum LeagueChestRuleMatchState
+        {
+            None,
+            Enabled,
+            Disabled
+        }
+
         private static readonly (string MechanicId, Func<string, bool> MatchesPath)[] SettlersOreResolvers =
         [
             (MechanicIds.SettlersCrimsonIron, IsSettlersCrimsonIronPath),
@@ -71,6 +97,7 @@ namespace ClickIt.Services
                 settings.ClickMirageGoldenDjinnCache,
                 settings.ClickMirageSilverDjinnCache,
                 settings.ClickMirageBronzeDjinnCache,
+                settings.ClickHeistSecureLocker,
                 type,
                 label);
             if (!string.IsNullOrWhiteSpace(chest))
@@ -88,7 +115,8 @@ namespace ClickIt.Services
             string path = metadataPath?.Trim() ?? string.Empty;
 
             bool isDoor = path.Contains("MiscellaneousObjects/Lights", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("MiscellaneousObjects/Door", StringComparison.OrdinalIgnoreCase);
+                || path.Contains("MiscellaneousObjects/Door", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("Heist/Objects/Level/Door_Basic", StringComparison.OrdinalIgnoreCase);
             bool isLever = path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
 
             if (clickDoors && isDoor)
@@ -138,6 +166,7 @@ namespace ClickIt.Services
             bool clickMirageGoldenDjinnCache,
             bool clickMirageSilverDjinnCache,
             bool clickMirageBronzeDjinnCache,
+            bool clickHeistSecureLocker,
             EntityType type,
             LabelOnGround label)
         {
@@ -150,6 +179,7 @@ namespace ClickIt.Services
                 clickMirageGoldenDjinnCache,
                 clickMirageSilverDjinnCache,
                 clickMirageBronzeDjinnCache,
+                clickHeistSecureLocker,
                 type,
                 path,
                 renderName);
@@ -162,6 +192,7 @@ namespace ClickIt.Services
             bool clickMirageGoldenDjinnCache,
             bool clickMirageSilverDjinnCache,
             bool clickMirageBronzeDjinnCache,
+            bool clickHeistSecureLocker,
             EntityType type,
             string? path,
             string renderName)
@@ -179,19 +210,39 @@ namespace ClickIt.Services
             if (!clickLeagueChests || isBasic)
                 return null;
 
-            if (IsMirageGoldenDjinnCacheName(renderName))
-                return clickMirageGoldenDjinnCache ? MechanicIds.LeagueChests : null;
+            LeagueChestToggles leagueChestToggles = new(
+                clickLeagueChestsOther,
+                clickMirageGoldenDjinnCache,
+                clickMirageSilverDjinnCache,
+                clickMirageBronzeDjinnCache,
+                clickHeistSecureLocker);
 
-            if (IsMirageSilverDjinnCacheName(renderName))
-                return clickMirageSilverDjinnCache ? MechanicIds.LeagueChests : null;
+            LeagueChestRuleMatchState configuredLeagueChestMatchState = TryResolveConfiguredLeagueChestMechanicId(renderName, path, leagueChestToggles);
+            if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Enabled)
+                return MechanicIds.LeagueChests;
+            if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Disabled)
+                return null;
 
-            if (IsMirageBronzeDjinnCacheName(renderName))
-                return clickMirageBronzeDjinnCache ? MechanicIds.LeagueChests : null;
-
-            if (clickLeagueChestsOther)
+            if (leagueChestToggles.ClickLeagueChestsOther)
                 return MechanicIds.LeagueChests;
 
             return null;
+        }
+
+        private static LeagueChestRuleMatchState TryResolveConfiguredLeagueChestMechanicId(string? renderName, string? path, LeagueChestToggles toggles)
+        {
+            for (int i = 0; i < LeagueChestRules.Length; i++)
+            {
+                LeagueChestRule rule = LeagueChestRules[i];
+                if (!rule.Matches(renderName, path))
+                    continue;
+
+                return rule.IsEnabled(toggles)
+                    ? LeagueChestRuleMatchState.Enabled
+                    : LeagueChestRuleMatchState.Disabled;
+            }
+
+            return LeagueChestRuleMatchState.None;
         }
 
         private static bool IsMirageGoldenDjinnCacheName(string? name)
@@ -202,6 +253,14 @@ namespace ClickIt.Services
 
         private static bool IsMirageBronzeDjinnCacheName(string? name)
             => IsDjinnCacheName(name, "bronze");
+
+        private static bool IsHeistSecureLockerName(string? name)
+            => !string.IsNullOrWhiteSpace(name)
+               && name.Contains("Secure Locker", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsHeistSecureLockerPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains("/LeagueHeist/", StringComparison.OrdinalIgnoreCase);
 
         private static bool IsDjinnCacheName(string? name, string tier)
         {

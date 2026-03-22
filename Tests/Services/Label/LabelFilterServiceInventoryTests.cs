@@ -76,7 +76,6 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        [Ignore("Environment-specific ExileCore Entity type-load issue when reflecting methods with Entity parameters.")]
         public void ShouldAllowPickupWhenGroundItemEntityMissingCore_AllowsOnlyWhenInventoryNotFull()
         {
             ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemEntityMissingCore", false, null)!).Should().BeTrue();

@@ -556,7 +556,10 @@ namespace ClickIt
         }
 
         private sealed record MechanicToggleGroupEntry(string Id, string DisplayName);
-        private sealed record MechanicToggleTableEntry(string Id, string DisplayName, ToggleNode Node, string? GroupId = null, bool DefaultEnabled = false);
+        private sealed record MechanicToggleTableEntry(string Id, string DisplayName, ToggleNode Node, string? GroupId = null, bool DefaultEnabled = false, string? Subgroup = null);
+
+        private const string LeagueChestSubgroupMirage = "Mirage";
+        private const string LeagueChestSubgroupHeist = "Heist";
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
@@ -719,46 +722,65 @@ namespace ClickIt
         private void DrawLeagueChestGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-            ImGui.TextWrapped("All league mechanic chests will be added to this submenu in a future release.");
+            ImGui.TextWrapped("Additions to league chest types are configured from table entries by subgroup.");
             ImGui.PopStyleColor();
             ImGui.Spacing();
 
-            bool showMirage = MatchesMechanicsSearch("Mirage", mechanicsSearchFilter);
+            List<MechanicToggleTableEntry> leagueEntries = entries
+                .Where(e => string.Equals(e.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var subgroupNames = leagueEntries
+                .Where(static e => !string.IsNullOrWhiteSpace(e.Subgroup))
+                .Select(static e => e.Subgroup!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(static x => x, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
             bool searchIsEmpty = string.IsNullOrWhiteSpace(mechanicsSearchFilter);
 
-            MechanicToggleTableEntry[] mirageEntries =
-            [
-                entries.First(e => string.Equals(e.Id, MechanicIds.MirageGoldenDjinnCache, StringComparison.OrdinalIgnoreCase)),
-                entries.First(e => string.Equals(e.Id, MechanicIds.MirageSilverDjinnCache, StringComparison.OrdinalIgnoreCase)),
-                entries.First(e => string.Equals(e.Id, MechanicIds.MirageBronzeDjinnCache, StringComparison.OrdinalIgnoreCase))
-            ];
-
-            bool hasMirageEntryMatch = mirageEntries.Any(e => MatchesMechanicsSearch(e.DisplayName, mechanicsSearchFilter));
-            if (searchIsEmpty || showMirage || hasMirageEntryMatch)
+            foreach (string subgroupName in subgroupNames)
             {
-                bool openMirage = ImGui.TreeNodeEx($"Mirage##MechanicSubmenu_{listId}_{group.Id}_mirage", ImGuiTreeNodeFlags.DefaultOpen);
-                if (openMirage)
+                MechanicToggleTableEntry[] subgroupEntries = leagueEntries
+                    .Where(e => string.Equals(e.Subgroup, subgroupName, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                bool subgroupMatchesSearch = MatchesMechanicsSearch(subgroupName, mechanicsSearchFilter);
+                bool hasEntryMatch = subgroupEntries.Any(e => MatchesMechanicsSearch(e.DisplayName, mechanicsSearchFilter));
+                if (!searchIsEmpty && !subgroupMatchesSearch && !hasEntryMatch)
+                    continue;
+
+                bool isOpen = ImGui.TreeNodeEx($"{subgroupName}##MechanicSubmenu_{listId}_{group.Id}_{subgroupName}", ImGuiTreeNodeFlags.DefaultOpen);
+                if (!isOpen)
+                    continue;
+
+                for (int i = 0; i < subgroupEntries.Length; i++)
                 {
-                    for (int i = 0; i < mirageEntries.Length; i++)
-                    {
-                        MechanicToggleTableEntry entry = mirageEntries[i];
-                        if (!searchIsEmpty && !showMirage && !MatchesMechanicsSearch(entry.DisplayName, mechanicsSearchFilter))
-                            continue;
+                    MechanicToggleTableEntry entry = subgroupEntries[i];
+                    if (!searchIsEmpty && !subgroupMatchesSearch && !MatchesMechanicsSearch(entry.DisplayName, mechanicsSearchFilter))
+                        continue;
 
-                        DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
-                    }
-
-                    ImGui.TreePop();
+                    DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
                 }
+
+                ImGui.TreePop();
             }
 
-            MechanicToggleTableEntry? otherLeagueChestEntry = entries.FirstOrDefault(e => string.Equals(e.Id, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase));
-            if (otherLeagueChestEntry != null
-                && (searchIsEmpty
-                    || MatchesMechanicsSearch(otherLeagueChestEntry.DisplayName, mechanicsSearchFilter)
-                    || MatchesMechanicsSearch(group.DisplayName, mechanicsSearchFilter)))
+            MechanicToggleTableEntry[] ungroupedEntries = leagueEntries
+                .Where(static e => string.IsNullOrWhiteSpace(e.Subgroup))
+                .ToArray();
+
+            for (int i = 0; i < ungroupedEntries.Length; i++)
             {
-                DrawMechanicSubmenuCheckbox(listId, group.Id, otherLeagueChestEntry);
+                MechanicToggleTableEntry entry = ungroupedEntries[i];
+                if (!searchIsEmpty
+                    && !MatchesMechanicsSearch(entry.DisplayName, mechanicsSearchFilter)
+                    && !MatchesMechanicsSearch(group.DisplayName, mechanicsSearchFilter))
+                {
+                    continue;
+                }
+
+                DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
             }
         }
 
@@ -937,9 +959,10 @@ namespace ClickIt
             return
             [
                 new(MechanicIds.BasicChests, "Basic Chests", ClickBasicChests, "basic-chests", false),
-                new(MechanicIds.MirageGoldenDjinnCache, "Golden Djinn's Cache", ClickMirageGoldenDjinnCache, "league-chests", true),
-                new(MechanicIds.MirageSilverDjinnCache, "Silver Djinn's Cache", ClickMirageSilverDjinnCache, "league-chests", true),
-                new(MechanicIds.MirageBronzeDjinnCache, "Bronze Djinn's Cache", ClickMirageBronzeDjinnCache, "league-chests", true),
+                new(MechanicIds.MirageGoldenDjinnCache, "Golden Djinn's Cache", ClickMirageGoldenDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
+                new(MechanicIds.MirageSilverDjinnCache, "Silver Djinn's Cache", ClickMirageSilverDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
+                new(MechanicIds.MirageBronzeDjinnCache, "Bronze Djinn's Cache", ClickMirageBronzeDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
+                new(MechanicIds.HeistSecureLocker, "Secure Locker", ClickHeistSecureLocker, "league-chests", true, LeagueChestSubgroupHeist),
                 new(MechanicIds.LeagueChests, "Other League Mechanic Chests", ClickLeagueChestsOther, "league-chests", true),
                 new(MechanicIds.Shrines, "Shrines", ClickShrines, null, true),
                 new(MechanicIds.AreaTransitions, "Area Transitions", ClickAreaTransitions, null, false),

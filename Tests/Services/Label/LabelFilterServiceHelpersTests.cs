@@ -30,23 +30,29 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void GetChestMechanicIdInternal_Behaves_Correctly_ForVariousNames()
         {
-            var res1 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", true, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Monster, "some/path", "chest");
+            var res1 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", true, true, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Monster, "some/path", "chest");
             res1.Should().BeNull();
 
-            var res2 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", true, false, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Chest");
+            var res2 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", true, false, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Chest");
             res2.Should().Be("basic-chests");
 
-            var res3 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Some League");
+            var res3 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Some League");
             res3.Should().Be("league-chests");
 
-            var res4 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", true, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, "StrongBoxes/Strongbox", "strongbox");
+            var res4 = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", true, true, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, "StrongBoxes/Strongbox", "strongbox");
             res4.Should().BeNull();
 
-            var mirageDisabled = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, true, false, true, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Golden Djinn's Cache");
+            var mirageDisabled = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, false, false, false, false, false, ExileCore.Shared.Enums.EntityType.Chest, null, "Golden Djinn's Cache");
             mirageDisabled.Should().BeNull();
 
-            var mirageEnabled = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Golden Djinn's Cache");
+            var mirageEnabled = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, false, true, false, false, false, ExileCore.Shared.Enums.EntityType.Chest, null, "Golden Djinn's Cache");
             mirageEnabled.Should().Be("league-chests");
+
+            var heistDisabled = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, false, true, true, true, false, ExileCore.Shared.Enums.EntityType.Chest, null, "Secure Locker");
+            heistDisabled.Should().BeNull();
+
+            var heistEnabled = InvokePrivateStatic<string?>("GetChestMechanicIdInternal", false, true, false, true, true, true, true, ExileCore.Shared.Enums.EntityType.Chest, null, "Secure Locker");
+            heistEnabled.Should().Be("league-chests");
         }
 
         [TestMethod]

@@ -68,6 +68,7 @@ namespace ClickIt.Services
                 ClickMirageGoldenDjinnCache = leagueChestsEnabled && s.ClickMirageGoldenDjinnCache.Value,
                 ClickMirageSilverDjinnCache = leagueChestsEnabled && s.ClickMirageSilverDjinnCache.Value,
                 ClickMirageBronzeDjinnCache = leagueChestsEnabled && s.ClickMirageBronzeDjinnCache.Value,
+                ClickHeistSecureLocker = leagueChestsEnabled && s.ClickHeistSecureLocker.Value,
                 ClickDoors = s.ClickDoors.Value,
                 ClickLevers = s.ClickLevers.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
@@ -119,6 +120,7 @@ namespace ClickIt.Services
             public bool ClickMirageGoldenDjinnCache { get; set; }
             public bool ClickMirageSilverDjinnCache { get; set; }
             public bool ClickMirageBronzeDjinnCache { get; set; }
+            public bool ClickHeistSecureLocker { get; set; }
             public bool ClickDoors { get; set; }
             public bool ClickLevers { get; set; }
             public bool ClickAreaTransitions { get; set; }

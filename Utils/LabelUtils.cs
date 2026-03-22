@@ -167,6 +167,7 @@ namespace ClickIt.Utils
                    path.Contains("Bismuth") ||
                    path.Contains("MiscellaneousObjects/Lights") ||
                    path.Contains("MiscellaneousObjects/Door") ||
+                   path.Contains("Heist/Objects/Level/Door_Basic") ||
                    path.Contains("ClosedDoorPast") ||
                    path.Contains("LegionInitiator") ||
                    path.Contains("DarkShrine") ||

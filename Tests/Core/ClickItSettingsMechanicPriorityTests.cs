@@ -273,5 +273,24 @@ namespace ClickIt.Tests.Unit
             settings.PauseAfterOpeningLeagueChestsPollIntervalMs.Value.Should().Be(100);
             settings.PauseAfterOpeningLeagueChestsQuietWindowMs.Value.Should().Be(500);
         }
+
+        [TestMethod]
+        public void MechanicsSubmenuLogic_LeagueChestSubmenuContainsSecureLockerHeistEntry()
+        {
+            var settings = new ClickItSettings();
+
+            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
+            getEntriesMethod.Should().NotBeNull();
+
+            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
+            object secureLockerEntry = entries.First(entry =>
+                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "heist-secure-locker", StringComparison.Ordinal));
+
+            string? groupId = (string?)secureLockerEntry.GetType().GetProperty("GroupId")!.GetValue(secureLockerEntry);
+            string? subgroup = (string?)secureLockerEntry.GetType().GetProperty("Subgroup")!.GetValue(secureLockerEntry);
+
+            groupId.Should().Be("league-chests");
+            subgroup.Should().Be("Heist");
+        }
     }
 }

@@ -100,7 +100,7 @@ namespace ClickIt.Tests.Unit
         public void ShouldClickChest_RecognizesBasicChest_WhenSettingsAllow()
         {
             // Call internal helper directly - pass primitive path and renderName to avoid mutating ExileCore objects
-            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
+            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
             res.Should().Be("basic-chests");
         }
 
@@ -112,6 +112,7 @@ namespace ClickIt.Tests.Unit
                 false,
                 true,
                 false,
+                true,
                 true,
                 true,
                 true,
@@ -127,9 +128,78 @@ namespace ClickIt.Tests.Unit
                 true,
                 true,
                 true,
+                true,
                 EntityType.Chest,
                 "content/some/chest",
                 "Some League Chest")!;
+
+            disabled.Should().BeNull();
+            enabled.Should().Be("league-chests");
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesHeistToggle_ForSecureLockerRenderName()
+        {
+            var disabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                false,
+                true,
+                true,
+                true,
+                false,
+                EntityType.Chest,
+                "content/heist/chest",
+                "Secure Locker")!;
+
+            var enabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                false,
+                true,
+                true,
+                true,
+                true,
+                EntityType.Chest,
+                "content/heist/chest",
+                "Secure Locker")!;
+
+            disabled.Should().BeNull();
+            enabled.Should().Be("league-chests");
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesHeistToggle_ForLeagueHeistMetadataPath()
+        {
+            const string heistPath = "Metadata/Chests/LeagueHeist/MilitaryChests/HeistChestPathMilitary";
+
+            var disabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                true,
+                true,
+                true,
+                true,
+                false,
+                EntityType.Chest,
+                heistPath,
+                "Military Supplies")!;
+
+            var enabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                EntityType.Chest,
+                heistPath,
+                "Military Supplies")!;
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
