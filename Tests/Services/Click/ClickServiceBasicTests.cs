@@ -105,12 +105,9 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolveNearestOffscreenLabelBackedTarget_Exists_AsDedicatedHelper()
         {
-            var method = typeof(ClickService).GetMethod(
-                "ResolveNearestOffscreenLabelBackedTarget",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                binder: null,
-                types: [typeof(int)],
-                modifiers: null);
+            var method = typeof(ClickService)
+                .GetMethods(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .FirstOrDefault(m => string.Equals(m.Name, "ResolveNearestOffscreenLabelBackedTarget", StringComparison.Ordinal));
 
             method.Should().NotBeNull();
         }

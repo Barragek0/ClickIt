@@ -1235,53 +1235,6 @@ namespace ClickIt.Services
             return true;
         }
 
-        private static bool TryEnumeratePrimaryInventoryItemEntities(object primaryInventory, out IReadOnlyList<Entity> items, out string debugDetails)
-        {
-            items = Array.Empty<Entity>();
-            debugDetails = string.Empty;
-
-            if (!TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? collectionObj, out string collectionDebug) || collectionObj == null)
-            {
-                debugDetails = $"items-collection: {collectionDebug}";
-                return false;
-            }
-
-            int totalEntries = 0;
-            int nullEntries = 0;
-            int extractedEntityEntries = 0;
-
-            HashSet<long> uniqueAddresses = GetThreadInventoryUniqueEntityAddressSet();
-            uniqueAddresses.Clear();
-            var uniqueEntities = new List<Entity>(32);
-
-            foreach (object? entry in EnumerateObjects(collectionObj))
-            {
-                totalEntries++;
-                if (entry == null)
-                {
-                    nullEntries++;
-                    continue;
-                }
-
-                Entity? entity = TryGetInventoryItemEntityFromEntry(entry);
-                if (entity == null || !IsInventoryItemEntity(entity, out _))
-                    continue;
-
-                extractedEntityEntries++;
-                AddUniqueInventoryEntity(entity, uniqueAddresses, uniqueEntities);
-            }
-
-            if (uniqueEntities.Count == 0)
-            {
-                debugDetails = $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} extracted:{extractedEntityEntries}";
-                return false;
-            }
-
-            items = uniqueEntities;
-            debugDetails = $"{collectionDebug}; entries:{totalEntries} null:{nullEntries} extracted:{extractedEntityEntries} dedup:{extractedEntityEntries}->{items.Count}";
-            return true;
-        }
-
         private static HashSet<long> GetThreadInventoryUniqueEntityAddressSet()
         {
             HashSet<long>? addresses = _threadInventoryUniqueEntityAddresses;

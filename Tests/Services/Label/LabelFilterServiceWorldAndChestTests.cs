@@ -90,6 +90,27 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldSkipWorldItemAllocatedToSomeoneElse_ReturnsTrue_WhenAllocatedFlagIsTrue()
+        {
+            var res = (bool)InvokePrivateStatic("ShouldSkipWorldItemAllocatedToSomeoneElse", true)!;
+            res.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldSkipWorldItemAllocatedToSomeoneElse_ReturnsFalse_WhenAllocatedFlagIsFalse()
+        {
+            var res = (bool)InvokePrivateStatic("ShouldSkipWorldItemAllocatedToSomeoneElse", false)!;
+            res.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldSkipWorldItemAllocatedToSomeoneElse_ReturnsFalse_WhenAllocatedFlagIsNull()
+        {
+            var res = (bool)InvokePrivateStatic("ShouldSkipWorldItemAllocatedToSomeoneElse", (bool?)null)!;
+            res.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void IsBasicChest_DetectsSimpleNames_CaseInsensitive()
         {
             var res = (bool)InvokePrivateStatic("IsBasicChestName", "chest")!;

@@ -724,7 +724,7 @@ namespace ClickIt
         private void DrawLeagueChestGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-            ImGui.TextWrapped("Additions to league chest types are configured from table entries by subgroup.");
+            ImGui.TextWrapped("I'll add more specific league chests to this list in future releases of the plugin.");
             ImGui.PopStyleColor();
             ImGui.Spacing();
 

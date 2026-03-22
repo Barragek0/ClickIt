@@ -179,9 +179,15 @@ namespace ClickIt.Services
         private static IReadOnlyList<string> GetUltimatumChoicePanelModifierNames(UltimatumChoicePanel choicePanel, List<string>? diagnostics)
         {
             var modifiersObj = choicePanel.Modifiers;
+            return ExtractUltimatumModifierNames(modifiersObj, diagnostics, "ChoicePanel: Modifiers missing.");
+        }
+
+        private static IReadOnlyList<string> ExtractUltimatumModifierNames(object? modifiersObj, List<string>? diagnostics = null, string? missingModifiersMessage = null)
+        {
             if (modifiersObj == null)
             {
-                diagnostics?.Add("ChoicePanel: Modifiers missing.");
+                if (!string.IsNullOrWhiteSpace(missingModifiersMessage))
+                    diagnostics?.Add(missingModifiersMessage);
                 return [];
             }
 

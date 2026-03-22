@@ -128,18 +128,6 @@ namespace ClickIt.Services
         private static Vector2 GetWindowCenter(RectangleF window)
             => new Vector2(window.X + (window.Width * 0.5f), window.Y + (window.Height * 0.5f));
 
-        private float GetGridDeltaX(Entity target)
-        {
-            TryGetGridDelta(target, out float deltaX, out _);
-            return deltaX;
-        }
-
-        private float GetGridDeltaY(Entity target)
-        {
-            TryGetGridDelta(target, out _, out float deltaY);
-            return deltaY;
-        }
-
         private void TryGetGridDelta(Entity target, out float deltaX, out float deltaY)
         {
             var player = gameController.Player;

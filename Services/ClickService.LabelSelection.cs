@@ -369,11 +369,6 @@ namespace ClickIt.Services
             }
         }
 
-        private bool HasStickyOffscreenTarget()
-        {
-            return _stickyOffscreenTargetAddress != 0;
-        }
-
         private bool ShouldPreferShrineOverLabel(LabelOnGround? label, Entity? shrine)
         {
             if (shrine == null)
@@ -1778,51 +1773,14 @@ namespace ClickIt.Services
                 return null;
             }
 
-            Entity? best = null;
-            string? bestMechanicId = null;
-            float bestDistance = float.MaxValue;
-
-            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
-            {
-                var entities = kv.Value;
-                if (entities == null)
-                    continue;
-
-                for (int i = 0; i < entities.Count; i++)
-                {
-                    Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
-                        continue;
-                    if (entity.DistancePlayer > maxDistance)
-                        continue;
-                    if (!entity.IsTargetable)
-                        continue;
-
-                    string path = entity.Path ?? string.Empty;
-                    string? mechanicId = GetEldritchAltarMechanicIdForPath(
-                        settings.ClickExarchAltars.Value,
-                        settings.ClickEaterAltars.Value,
-                        path);
-                    if (string.IsNullOrWhiteSpace(mechanicId))
-                        continue;
-
-                    var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-                    Vector2 screen = new(screenRaw.X, screenRaw.Y);
-                    if (IsClickableInEitherSpace(screen, path))
-                        continue;
-
-                    float d = entity.DistancePlayer;
-                    if (d >= bestDistance)
-                        continue;
-
-                    bestDistance = d;
-                    best = entity;
-                    bestMechanicId = mechanicId;
-                }
-            }
-
-            selectedMechanicId = bestMechanicId;
-            return best;
+            return ResolveNearestOffscreenEntityTarget(
+                maxDistance,
+                includeEntity: (entity, _) => entity.IsTargetable,
+                resolveMechanicId: (_, path) => GetEldritchAltarMechanicIdForPath(
+                    settings.ClickExarchAltars.Value,
+                    settings.ClickEaterAltars.Value,
+                    path),
+                out selectedMechanicId);
         }
 
         private bool ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable()
@@ -2002,60 +1960,6 @@ namespace ClickIt.Services
                 TimestampMs: Environment.TickCount64));
         }
 
-        private Entity? ResolveNearestOffscreenSettlersOreTarget(int maxDistance, out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            if (!settings.ClickSettlersOre.Value || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
-                return null;
-
-            Entity? best = null;
-            float bestDistance = float.MaxValue;
-            var labelEntityAddresses = CollectGroundLabelEntityAddresses();
-
-            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
-            {
-                var entities = kv.Value;
-                if (entities == null)
-                    continue;
-
-                for (int i = 0; i < entities.Count; i++)
-                {
-                    Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
-                        continue;
-                    if (entity.DistancePlayer > maxDistance)
-                        continue;
-                    if (!IsBackedByGroundLabel(entity.Address, labelEntityAddresses))
-                        continue;
-
-                    string path = entity.Path ?? string.Empty;
-                    if (!LabelFilterService.TryGetSettlersOreMechanicId(path, out string? mechanicId) || string.IsNullOrWhiteSpace(mechanicId))
-                        continue;
-                    if (!IsSettlersMechanicEnabled(mechanicId))
-                        continue;
-
-                    var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-                    Vector2 screen = new(screenRaw.X, screenRaw.Y);
-                    if (IsInsideWindowInEitherSpace(screen))
-                        continue;
-
-                    if (IsClickableInEitherSpace(screen, path))
-                        continue;
-
-                    float d = entity.DistancePlayer;
-                    if (d >= bestDistance)
-                        continue;
-
-                    bestDistance = d;
-                    selectedMechanicId = mechanicId;
-                    best = entity;
-                }
-            }
-
-            return best;
-        }
-
         private IReadOnlySet<long> CollectGroundLabelEntityAddresses()
         {
             try
@@ -2099,17 +2003,6 @@ namespace ClickIt.Services
             }
 
             return _cachedGroundLabelEntityAddresses;
-        }
-
-        private static HashSet<long> GetThreadGroundLabelEntityAddresses()
-        {
-            HashSet<long>? addresses = _threadGroundLabelEntityAddresses;
-            if (addresses != null)
-                return addresses;
-
-            addresses = new HashSet<long>();
-            _threadGroundLabelEntityAddresses = addresses;
-            return addresses;
         }
 
         internal static bool IsBackedByGroundLabel(long entityAddress, IReadOnlySet<long>? labelEntityAddresses)
@@ -2171,50 +2064,15 @@ namespace ClickIt.Services
                 return null;
             }
 
-            Entity? best = null;
-            string? bestMechanicId = null;
-            float bestDistance = float.MaxValue;
-
-            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
-            {
-                var entities = kv.Value;
-                if (entities == null)
-                    continue;
-
-                for (int i = 0; i < entities.Count; i++)
-                {
-                    Entity entity = entities[i];
-                    if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
-                        continue;
-                    if (entity.DistancePlayer > maxDistance)
-                        continue;
-
-                    string path = entity.Path ?? string.Empty;
-                    string? mechanicId = GetAreaTransitionMechanicIdForPath(
-                        settings.ClickAreaTransitions.Value,
-                        settings.ClickLabyrinthTrials.Value,
-                        entity.Type,
-                        path);
-                    if (string.IsNullOrWhiteSpace(mechanicId))
-                        continue;
-
-                    var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-                    Vector2 screen = new(screenRaw.X, screenRaw.Y);
-                    if (IsClickableInEitherSpace(screen, path))
-                        continue;
-
-                    float d = entity.DistancePlayer;
-                    if (d >= bestDistance)
-                        continue;
-
-                    bestDistance = d;
-                    best = entity;
-                    bestMechanicId = mechanicId;
-                }
-            }
-
-            selectedMechanicId = bestMechanicId;
-            return best;
+            return ResolveNearestOffscreenEntityTarget(
+                maxDistance,
+                includeEntity: (_, _) => true,
+                resolveMechanicId: (entity, path) => GetAreaTransitionMechanicIdForPath(
+                    settings.ClickAreaTransitions.Value,
+                    settings.ClickLabyrinthTrials.Value,
+                    entity.Type,
+                    path),
+                out selectedMechanicId);
         }
 
         internal static string? GetAreaTransitionMechanicIdForPath(
@@ -2271,41 +2129,14 @@ namespace ClickIt.Services
             if (!settings.ClickShrines.Value || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
                 return null;
 
-            Entity? best = null;
-            float bestDistance = float.MaxValue;
-
-            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
-            {
-                var entities = kv.Value;
-                if (entities == null)
-                    continue;
-
-                for (int i = 0; i < entities.Count; i++)
-                {
-                    Entity entity = entities[i];
-                    if (!ShrineService.IsClickableShrineCandidate(entity))
-                        continue;
-                    if (entity.DistancePlayer > maxDistance)
-                        continue;
-
-                    var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-                    Vector2 screen = new(screenRaw.X, screenRaw.Y);
-                    string path = entity.Path ?? string.Empty;
-                    if (IsClickableInEitherSpace(screen, path))
-                        continue;
-
-                    float d = entity.DistancePlayer;
-                    if (d >= bestDistance)
-                        continue;
-
-                    bestDistance = d;
-                    best = entity;
-                }
-            }
-
-            return best;
+            return ResolveNearestOffscreenEntityTarget(
+                maxDistance,
+                includeEntity: (entity, _) => ShrineService.IsClickableShrineCandidate(entity),
+                resolveMechanicId: (_, _) => ShrineMechanicId,
+                out _);
         }
 
+        // Compatibility seam for reflection-based tests that assert this dedicated helper exists.
         private Entity? ResolveNearestOffscreenLabelBackedTarget(int maxDistance)
         {
             return ResolveNearestOffscreenLabelBackedTarget(maxDistance, out _);
@@ -2361,6 +2192,73 @@ namespace ClickIt.Services
 
             selectedMechanicId = bestMechanicId;
             return best;
+        }
+
+        private Entity? ResolveNearestOffscreenEntityTarget(
+            int maxDistance,
+            Func<Entity, string, bool> includeEntity,
+            Func<Entity, string, string?> resolveMechanicId,
+            out string? selectedMechanicId)
+        {
+            selectedMechanicId = null;
+
+            if (gameController?.EntityListWrapper?.ValidEntitiesByType == null)
+                return null;
+
+            Entity? best = null;
+            float bestDistance = float.MaxValue;
+            string? bestMechanicId = null;
+
+            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
+            {
+                var entities = kv.Value;
+                if (entities == null)
+                    continue;
+
+                for (int i = 0; i < entities.Count; i++)
+                {
+                    Entity entity = entities[i];
+                    if (!TryPrepareOffscreenEntityTargetCandidate(entity, maxDistance, out string path))
+                        continue;
+
+                    if (!includeEntity(entity, path))
+                        continue;
+
+                    string? mechanicId = resolveMechanicId(entity, path);
+                    if (string.IsNullOrWhiteSpace(mechanicId))
+                        continue;
+
+                    float d = entity.DistancePlayer;
+                    if (d >= bestDistance)
+                        continue;
+
+                    bestDistance = d;
+                    best = entity;
+                    bestMechanicId = mechanicId;
+                }
+            }
+
+            selectedMechanicId = bestMechanicId;
+            return best;
+        }
+
+        private bool TryPrepareOffscreenEntityTargetCandidate(Entity? entity, int maxDistance, out string path)
+        {
+            path = string.Empty;
+
+            if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
+                return false;
+            if (entity.DistancePlayer > maxDistance)
+                return false;
+
+            path = entity.Path ?? string.Empty;
+
+            var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+            Vector2 screen = new(screenRaw.X, screenRaw.Y);
+            if (IsClickableInEitherSpace(screen, path))
+                return false;
+
+            return true;
         }
 
         private bool ShouldSuppressPathfindingLabel(LabelOnGround label)

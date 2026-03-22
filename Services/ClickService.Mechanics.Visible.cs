@@ -56,27 +56,7 @@ namespace ClickIt.Services
 
                 if (labelsOverride != null)
                 {
-                    for (int i = 0; i < labelsOverride.Count; i++)
-                    {
-                        LabelOnGround? label = labelsOverride[i];
-                        Entity? entity = label?.ItemOnGround;
-                        if (label == null || entity == null)
-                            continue;
-                        if (ShouldSkipLostShipmentEntity(entity.IsValid, entity.DistancePlayer, settings.ClickDistance.Value, entity.IsOpened))
-                            continue;
-
-                        string path = entity.Path ?? string.Empty;
-                        if (!IsLostShipmentEntity(path, entity.RenderName))
-                            continue;
-
-                        if (!TryResolveLostShipmentClickPosition(entity, path, out Vector2 clickPos))
-                            continue;
-
-                        var candidate = new LostShipmentCandidate(entity, clickPos);
-                        if (!best.HasValue || candidate.Distance < best.Value.Distance)
-                            best = candidate;
-                    }
-
+                    ScanLostShipmentLabelsForBestCandidate(labelsOverride, ref best);
                     return best;
                 }
 
@@ -84,26 +64,7 @@ namespace ClickIt.Services
                 if (labels == null || labels.Count == 0)
                     return null;
 
-                for (int i = 0; i < labels.Count; i++)
-                {
-                    LabelOnGround? label = labels[i];
-                    Entity? entity = label?.ItemOnGround;
-                    if (label == null || entity == null)
-                        continue;
-                    if (ShouldSkipLostShipmentEntity(entity.IsValid, entity.DistancePlayer, settings.ClickDistance.Value, entity.IsOpened))
-                        continue;
-
-                    string path = entity.Path ?? string.Empty;
-                    if (!IsLostShipmentEntity(path, entity.RenderName))
-                        continue;
-
-                    if (!TryResolveLostShipmentClickPosition(entity, path, out Vector2 clickPos))
-                        continue;
-
-                    var candidate = new LostShipmentCandidate(entity, clickPos);
-                    if (!best.HasValue || candidate.Distance < best.Value.Distance)
-                        best = candidate;
-                }
+                ScanLostShipmentLabelsForBestCandidate(labels, ref best);
 
                 return best;
             }
@@ -112,6 +73,40 @@ namespace ClickIt.Services
                 DebugLog(() => $"[ResolveNextLostShipmentCandidate] Failed to scan hidden labels: {ex.Message}");
                 return null;
             }
+        }
+
+        private void ScanLostShipmentLabelsForBestCandidate(IEnumerable<LabelOnGround> labels, ref LostShipmentCandidate? best)
+        {
+            foreach (LabelOnGround label in labels)
+            {
+                if (!TryCreateLostShipmentCandidate(label, out LostShipmentCandidate candidate))
+                    continue;
+
+                if (!best.HasValue || candidate.Distance < best.Value.Distance)
+                    best = candidate;
+            }
+        }
+
+        private bool TryCreateLostShipmentCandidate(LabelOnGround? label, out LostShipmentCandidate candidate)
+        {
+            candidate = default;
+
+            Entity? entity = label?.ItemOnGround;
+            if (label == null || entity == null)
+                return false;
+
+            if (ShouldSkipLostShipmentEntity(entity.IsValid, entity.DistancePlayer, settings.ClickDistance.Value, entity.IsOpened))
+                return false;
+
+            string path = entity.Path ?? string.Empty;
+            if (!IsLostShipmentEntity(path, entity.RenderName))
+                return false;
+
+            if (!TryResolveLostShipmentClickPosition(entity, path, out Vector2 clickPos))
+                return false;
+
+            candidate = new LostShipmentCandidate(entity, clickPos);
+            return true;
         }
 
         private void ResolveVisibleMechanicCandidates(

@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using ExileCore.Shared.Cache;
 using System.Runtime.InteropServices;
-using System.Text;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Enums;
 using SharpDX;
@@ -37,15 +36,6 @@ namespace ClickIt.Utils
         {
             return Interlocked.Read(ref _successfulClickSequence);
         }
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        private static extern int GetWindowTextLength(IntPtr hWnd);
-
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
         public bool IsLabelFullyOverlapped(LabelOnGround label, IReadOnlyList<LabelOnGround>? allLabels)
         {

@@ -346,17 +346,6 @@ namespace ClickIt.Services
             return PointIsInClickableArea(point);
         }
 
-        private static bool PointInAnyRectangle(Vector2 point, List<RectangleF> rectangles)
-        {
-            for (int i = 0; i < rectangles.Count; i++)
-            {
-                if (point.PointInRectangle(rectangles[i]))
-                    return true;
-            }
-
-            return false;
-        }
-
         private bool PointInAnyBlockedUiRectangle(Vector2 point, List<RectangleF> rectangles)
         {
             for (int i = 0; i < rectangles.Count; i++)
@@ -490,26 +479,9 @@ namespace ClickIt.Services
 
         private static RectangleF ResolveVisibleRectangleFromNodePath(object? root, params int[] childPath)
         {
-            if (root == null || childPath == null || childPath.Length == 0)
-                return RectangleF.Empty;
-
-            object? current = root;
-            for (int i = 0; i < childPath.Length; i++)
-            {
-                if (!TryGetChildNode(current, childPath[i], out current) || current == null)
-                    return RectangleF.Empty;
-            }
-
-            if (current is not Element element)
-                return RectangleF.Empty;
-
-            if (!ShouldUseVisibleUiBlockedRectangle(element.IsValid, element.IsVisible))
-                return RectangleF.Empty;
-
-            if (!TryGetClientRect(element, out RectangleF rect))
-                return RectangleF.Empty;
-
-            return rect.Width > 1f && rect.Height > 1f ? rect : RectangleF.Empty;
+            return TryResolveRectangleFromNodePath(root, requireVisibleElement: true, childPath: childPath, out RectangleF rect)
+                ? rect
+                : RectangleF.Empty;
         }
 
         internal static bool ShouldUseVisibleUiBlockedRectangle(bool elementIsValid, bool elementIsVisible)
@@ -517,20 +489,42 @@ namespace ClickIt.Services
 
         private static RectangleF ResolveRectangleFromNodePath(object? root, params int[] childPath)
         {
+            return TryResolveRectangleFromNodePath(root, requireVisibleElement: false, childPath: childPath, out RectangleF rect)
+                ? rect
+                : RectangleF.Empty;
+        }
+
+        private static bool TryResolveRectangleFromNodePath(object? root, bool requireVisibleElement, int[]? childPath, out RectangleF rect)
+        {
+            rect = RectangleF.Empty;
             if (root == null || childPath == null || childPath.Length == 0)
-                return RectangleF.Empty;
+                return false;
 
             object? current = root;
             for (int i = 0; i < childPath.Length; i++)
             {
                 if (!TryGetChildNode(current, childPath[i], out current) || current == null)
-                    return RectangleF.Empty;
+                    return false;
             }
 
-            if (!TryGetClientRect(current, out RectangleF rect))
-                return RectangleF.Empty;
+            if (requireVisibleElement)
+            {
+                if (current is not Element element)
+                    return false;
 
-            return rect.Width > 1f && rect.Height > 1f ? rect : RectangleF.Empty;
+                if (!ShouldUseVisibleUiBlockedRectangle(element.IsValid, element.IsVisible))
+                    return false;
+            }
+
+            if (!TryGetClientRect(current, out RectangleF resolvedRect))
+                return false;
+
+            if (resolvedRect.Width <= 1f || resolvedRect.Height <= 1f)
+                return false;
+
+            rect = resolvedRect;
+
+            return true;
         }
 
         private static List<object?> ResolveChildNodes(object source)

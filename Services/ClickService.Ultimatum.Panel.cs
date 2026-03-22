@@ -404,26 +404,7 @@ namespace ClickIt.Services
 
         private static IReadOnlyList<string> GetUltimatumPanelModifierNames(UltimatumPanel panelObj)
         {
-            var modifiersObj = panelObj.Modifiers;
-            if (modifiersObj == null)
-                return [];
-
-            List<string>? names = null;
-
-            foreach (object? modifierObj in EnumerateObjects(modifiersObj))
-            {
-                names ??= new List<string>(3);
-
-                if (modifierObj is string modifierName)
-                {
-                    names.Add(NormalizeModifierText(modifierName));
-                    continue;
-                }
-
-                names.Add(NormalizeModifierText(modifierObj?.ToString() ?? string.Empty));
-            }
-
-            return names == null ? [] : [.. names];
+            return ExtractUltimatumModifierNames(panelObj.Modifiers);
         }
 
         private static bool TryGetBestUltimatumPanelChoice(IReadOnlyList<UltimatumPanelChoiceCandidate> candidates, out UltimatumPanelChoiceCandidate best)
