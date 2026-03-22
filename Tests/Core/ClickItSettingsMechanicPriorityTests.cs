@@ -311,5 +311,24 @@ namespace ClickIt.Tests.Unit
             groupId.Should().Be("league-chests");
             subgroup.Should().Be("Breach");
         }
+
+        [TestMethod]
+        public void MechanicsSubmenuLogic_LeagueChestSubmenuContainsSynthesisedStashSynthesisEntry()
+        {
+            var settings = new ClickItSettings();
+
+            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
+            getEntriesMethod.Should().NotBeNull();
+
+            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
+            object synthesisedStashEntry = entries.First(entry =>
+                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "synthesis-synthesised-stash", StringComparison.Ordinal));
+
+            string? groupId = (string?)synthesisedStashEntry.GetType().GetProperty("GroupId")!.GetValue(synthesisedStashEntry);
+            string? subgroup = (string?)synthesisedStashEntry.GetType().GetProperty("Subgroup")!.GetValue(synthesisedStashEntry);
+
+            groupId.Should().Be("league-chests");
+            subgroup.Should().Be("Synthesis");
+        }
     }
 }

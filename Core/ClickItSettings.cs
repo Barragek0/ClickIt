@@ -260,6 +260,8 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickBreachGraspingCoffers { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickSynthesisSynthesisedStash { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode PauseAfterOpeningBasicChests { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public RangeNode<int> PauseAfterOpeningBasicChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);

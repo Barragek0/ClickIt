@@ -13,6 +13,7 @@ namespace ClickIt.Services
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
         private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
+        private const string SynthesisSynthesisedStashPathMarker = "SynthesisChests/SynthesisChest";
 
         private readonly record struct LeagueChestToggles(
             bool ClickLeagueChestsOther,
@@ -20,7 +21,8 @@ namespace ClickIt.Services
             bool ClickMirageSilverDjinnCache,
             bool ClickMirageBronzeDjinnCache,
             bool ClickHeistSecureLocker,
-            bool ClickBreachGraspingCoffers);
+            bool ClickBreachGraspingCoffers,
+            bool ClickSynthesisSynthesisedStash);
 
         private readonly record struct LeagueChestRule(
             Func<string?, string?, bool> Matches,
@@ -32,7 +34,8 @@ namespace ClickIt.Services
             new(static (name, _) => IsMirageSilverDjinnCacheName(name), static toggles => toggles.ClickMirageSilverDjinnCache),
             new(static (name, _) => IsMirageBronzeDjinnCacheName(name), static toggles => toggles.ClickMirageBronzeDjinnCache),
             new(static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path), static toggles => toggles.ClickHeistSecureLocker),
-            new(static (_, path) => IsBreachGraspingCoffersPath(path), static toggles => toggles.ClickBreachGraspingCoffers)
+            new(static (_, path) => IsBreachGraspingCoffersPath(path), static toggles => toggles.ClickBreachGraspingCoffers),
+            new(static (_, path) => IsSynthesisSynthesisedStashPath(path), static toggles => toggles.ClickSynthesisSynthesisedStash)
         ];
 
         private enum LeagueChestRuleMatchState
@@ -102,6 +105,7 @@ namespace ClickIt.Services
                 settings.ClickMirageBronzeDjinnCache,
                 settings.ClickHeistSecureLocker,
                 settings.ClickBreachGraspingCoffers,
+                settings.ClickSynthesisSynthesisedStash,
                 type,
                 label);
             if (!string.IsNullOrWhiteSpace(chest))
@@ -172,6 +176,7 @@ namespace ClickIt.Services
             bool clickMirageBronzeDjinnCache,
             bool clickHeistSecureLocker,
             bool clickBreachGraspingCoffers,
+            bool clickSynthesisSynthesisedStash,
             EntityType type,
             LabelOnGround label)
         {
@@ -186,6 +191,7 @@ namespace ClickIt.Services
                 clickMirageBronzeDjinnCache,
                 clickHeistSecureLocker,
                 clickBreachGraspingCoffers,
+                clickSynthesisSynthesisedStash,
                 type,
                 path,
                 renderName);
@@ -200,6 +206,7 @@ namespace ClickIt.Services
             bool clickMirageBronzeDjinnCache,
             bool clickHeistSecureLocker,
             bool clickBreachGraspingCoffers,
+            bool clickSynthesisSynthesisedStash,
             EntityType type,
             string? path,
             string renderName)
@@ -223,7 +230,8 @@ namespace ClickIt.Services
                 clickMirageSilverDjinnCache,
                 clickMirageBronzeDjinnCache,
                 clickHeistSecureLocker,
-                clickBreachGraspingCoffers);
+                clickBreachGraspingCoffers,
+                clickSynthesisSynthesisedStash);
 
             LeagueChestRuleMatchState configuredLeagueChestMatchState = TryResolveConfiguredLeagueChestMechanicId(renderName, path, leagueChestToggles);
             if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Enabled)
@@ -273,6 +281,10 @@ namespace ClickIt.Services
         private static bool IsBreachGraspingCoffersPath(string? path)
             => !string.IsNullOrWhiteSpace(path)
                && path.Contains(BreachGraspingCoffersPathMarker, StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsSynthesisSynthesisedStashPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(SynthesisSynthesisedStashPathMarker, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsDjinnCacheName(string? name, string tier)
         {
