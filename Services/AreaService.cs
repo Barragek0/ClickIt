@@ -34,6 +34,7 @@ namespace ClickIt.Services
         private RectangleF _mirageBlockedRectangle;
         private RectangleF _altarBlockedRectangle;
         private RectangleF _ritualBlockedRectangle;
+        private RectangleF _sentinelBlockedRectangle;
         private readonly List<RectangleF> _questTrackerBlockedRectangles = [];
         private long _lastQuestTrackerRectanglesSuccessTimestampMs;
         private long _lastBlockedUiRectanglesRefreshTimestampMs;
@@ -59,6 +60,7 @@ namespace ClickIt.Services
         public RectangleF MirageBlockedRectangle => _mirageBlockedRectangle;
         public RectangleF AltarBlockedRectangle => _altarBlockedRectangle;
         public RectangleF RitualBlockedRectangle => _ritualBlockedRectangle;
+        public RectangleF SentinelBlockedRectangle => _sentinelBlockedRectangle;
         public IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles => _questTrackerBlockedRectangles;
 
         public void UpdateScreenAreas(GameController gameController)
@@ -139,6 +141,7 @@ namespace ClickIt.Services
             _mirageBlockedRectangle = ResolveMirageBlockedRectangle(gameController);
             _altarBlockedRectangle = ResolveAltarBlockedRectangle(gameController);
             _ritualBlockedRectangle = ResolveRitualBlockedRectangle(gameController);
+            _sentinelBlockedRectangle = ResolveSentinelBlockedRectangle(gameController);
         }
 
         private void RefreshQuestTrackerAreas(GameController gameController, long now)
@@ -331,7 +334,8 @@ namespace ClickIt.Services
                     && !PointInBlockedUiRectangle(point, _xpBarBlockedRectangle)
                     && !PointInBlockedUiRectangle(point, _mirageBlockedRectangle)
                     && !PointInBlockedUiRectangle(point, _altarBlockedRectangle)
-                    && !PointInBlockedUiRectangle(point, _ritualBlockedRectangle);
+                    && !PointInBlockedUiRectangle(point, _ritualBlockedRectangle)
+                    && !PointInBlockedUiRectangle(point, _sentinelBlockedRectangle);
             }
         }
 
@@ -480,6 +484,9 @@ namespace ClickIt.Services
 
         private static RectangleF ResolveRitualBlockedRectangle(GameController gameController)
          => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 0);
+
+        private static RectangleF ResolveSentinelBlockedRectangle(GameController gameController)
+         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 2, 0);
 
         private static RectangleF ResolveVisibleRectangleFromNodePath(object? root, params int[] childPath)
         {

@@ -368,6 +368,24 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void PointIsInClickableArea_ReturnsFalse_InSentinelBlockedRectangle()
+        {
+            var svc = new AreaService();
+
+            var full = new RectangleF(0, 0, 400, 300);
+            var health = new RectangleF(0, 290, 400, 300);
+            var mana = new RectangleF(390, 290, 400, 300);
+            var buffs = new RectangleF(0, 0, 30, 30);
+            var sentinelBlocked = new RectangleF(200, 120, 70, 80);
+
+            SetRectangles(svc, full, health, mana, buffs);
+            PrivateFieldAccessor.Set(svc, "_sentinelBlockedRectangle", sentinelBlocked);
+
+            svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeFalse();
+            svc.PointIsInClickableArea(new Vector2(300, 150)).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void PointIsInClickableArea_ReturnsFalse_InTertiaryFlaskAndSkillsRectangles()
         {
             var svc = new AreaService();
