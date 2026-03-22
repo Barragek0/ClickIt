@@ -11,6 +11,7 @@ namespace ClickIt.Definitions
         public const string MirageSilverDjinnCache = "mirage-silver-djinn-cache";
         public const string MirageBronzeDjinnCache = "mirage-bronze-djinn-cache";
         public const string HeistSecureLocker = "heist-secure-locker";
+        public const string BreachGraspingCoffers = "breach-grasping-coffers";
         public const string Doors = "doors";
         public const string Levers = "levers";
         public const string AreaTransitions = "area-transitions";

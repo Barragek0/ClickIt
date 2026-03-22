@@ -292,5 +292,24 @@ namespace ClickIt.Tests.Unit
             groupId.Should().Be("league-chests");
             subgroup.Should().Be("Heist");
         }
+
+        [TestMethod]
+        public void MechanicsSubmenuLogic_LeagueChestSubmenuContainsGraspingCoffersBreachEntry()
+        {
+            var settings = new ClickItSettings();
+
+            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
+            getEntriesMethod.Should().NotBeNull();
+
+            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
+            object graspingCoffersEntry = entries.First(entry =>
+                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "breach-grasping-coffers", StringComparison.Ordinal));
+
+            string? groupId = (string?)graspingCoffersEntry.GetType().GetProperty("GroupId")!.GetValue(graspingCoffersEntry);
+            string? subgroup = (string?)graspingCoffersEntry.GetType().GetProperty("Subgroup")!.GetValue(graspingCoffersEntry);
+
+            groupId.Should().Be("league-chests");
+            subgroup.Should().Be("Breach");
+        }
     }
 }

@@ -12,13 +12,15 @@ namespace ClickIt.Services
     public partial class LabelFilterService
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+        private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
 
         private readonly record struct LeagueChestToggles(
             bool ClickLeagueChestsOther,
             bool ClickMirageGoldenDjinnCache,
             bool ClickMirageSilverDjinnCache,
             bool ClickMirageBronzeDjinnCache,
-            bool ClickHeistSecureLocker);
+            bool ClickHeistSecureLocker,
+            bool ClickBreachGraspingCoffers);
 
         private readonly record struct LeagueChestRule(
             Func<string?, string?, bool> Matches,
@@ -29,7 +31,8 @@ namespace ClickIt.Services
             new(static (name, _) => IsMirageGoldenDjinnCacheName(name), static toggles => toggles.ClickMirageGoldenDjinnCache),
             new(static (name, _) => IsMirageSilverDjinnCacheName(name), static toggles => toggles.ClickMirageSilverDjinnCache),
             new(static (name, _) => IsMirageBronzeDjinnCacheName(name), static toggles => toggles.ClickMirageBronzeDjinnCache),
-            new(static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path), static toggles => toggles.ClickHeistSecureLocker)
+            new(static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path), static toggles => toggles.ClickHeistSecureLocker),
+            new(static (_, path) => IsBreachGraspingCoffersPath(path), static toggles => toggles.ClickBreachGraspingCoffers)
         ];
 
         private enum LeagueChestRuleMatchState
@@ -98,6 +101,7 @@ namespace ClickIt.Services
                 settings.ClickMirageSilverDjinnCache,
                 settings.ClickMirageBronzeDjinnCache,
                 settings.ClickHeistSecureLocker,
+                settings.ClickBreachGraspingCoffers,
                 type,
                 label);
             if (!string.IsNullOrWhiteSpace(chest))
@@ -167,6 +171,7 @@ namespace ClickIt.Services
             bool clickMirageSilverDjinnCache,
             bool clickMirageBronzeDjinnCache,
             bool clickHeistSecureLocker,
+            bool clickBreachGraspingCoffers,
             EntityType type,
             LabelOnGround label)
         {
@@ -180,6 +185,7 @@ namespace ClickIt.Services
                 clickMirageSilverDjinnCache,
                 clickMirageBronzeDjinnCache,
                 clickHeistSecureLocker,
+                clickBreachGraspingCoffers,
                 type,
                 path,
                 renderName);
@@ -193,6 +199,7 @@ namespace ClickIt.Services
             bool clickMirageSilverDjinnCache,
             bool clickMirageBronzeDjinnCache,
             bool clickHeistSecureLocker,
+            bool clickBreachGraspingCoffers,
             EntityType type,
             string? path,
             string renderName)
@@ -215,7 +222,8 @@ namespace ClickIt.Services
                 clickMirageGoldenDjinnCache,
                 clickMirageSilverDjinnCache,
                 clickMirageBronzeDjinnCache,
-                clickHeistSecureLocker);
+                clickHeistSecureLocker,
+                clickBreachGraspingCoffers);
 
             LeagueChestRuleMatchState configuredLeagueChestMatchState = TryResolveConfiguredLeagueChestMechanicId(renderName, path, leagueChestToggles);
             if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Enabled)
@@ -261,6 +269,10 @@ namespace ClickIt.Services
         private static bool IsHeistSecureLockerPath(string? path)
             => !string.IsNullOrWhiteSpace(path)
                && path.Contains("/LeagueHeist/", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsBreachGraspingCoffersPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(BreachGraspingCoffersPathMarker, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsDjinnCacheName(string? name, string tier)
         {

@@ -560,6 +560,7 @@ namespace ClickIt
 
         private const string LeagueChestSubgroupMirage = "Mirage";
         private const string LeagueChestSubgroupHeist = "Heist";
+        private const string LeagueChestSubgroupBreach = "Breach";
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
@@ -963,6 +964,7 @@ namespace ClickIt
                 new(MechanicIds.MirageSilverDjinnCache, "Silver Djinn's Cache", ClickMirageSilverDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
                 new(MechanicIds.MirageBronzeDjinnCache, "Bronze Djinn's Cache", ClickMirageBronzeDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
                 new(MechanicIds.HeistSecureLocker, "Secure Locker", ClickHeistSecureLocker, "league-chests", true, LeagueChestSubgroupHeist),
+                new(MechanicIds.BreachGraspingCoffers, "Grasping Coffers", ClickBreachGraspingCoffers, "league-chests", true, LeagueChestSubgroupBreach),
                 new(MechanicIds.LeagueChests, "Other League Mechanic Chests", ClickLeagueChestsOther, "league-chests", true),
                 new(MechanicIds.Shrines, "Shrines", ClickShrines, null, true),
                 new(MechanicIds.AreaTransitions, "Area Transitions", ClickAreaTransitions, null, false),
