@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Runtime.CompilerServices;
 
@@ -21,7 +21,7 @@ namespace ClickIt.Tests.Unit
             plugin.State.DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue();
             plugin.State.DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue();
 
-            plugin.State.AltarDisplayRenderer = (Rendering.AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(Rendering.AltarDisplayRenderer));
+            plugin.State.AltarDisplayRenderer = (global::ClickIt.Rendering.AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Rendering.AltarDisplayRenderer));
 
             global::ClickIt.Utils.LockManager.Instance = new global::ClickIt.Utils.LockManager(settings);
 

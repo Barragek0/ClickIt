@@ -4,6 +4,7 @@ using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -81,6 +82,60 @@ namespace ClickIt.Tests.Unit
         public void IsClickableShrineCandidate_ReturnsFalse_ForNull()
         {
             ShrineService.IsClickableShrineCandidate(null).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsShrine_ReturnsFalse_ForNull()
+        {
+            ShrineService.IsShrine(null!).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void Constructor_Throws_WhenGameControllerIsNull()
+        {
+            var camera = (Camera)RuntimeHelpers.GetUninitializedObject(typeof(Camera));
+
+            Action act = () => new ShrineService(null!, camera);
+
+            act.Should().Throw<ArgumentNullException>();
+        }
+
+        [TestMethod]
+        public void Constructor_Throws_WhenCameraIsNull()
+        {
+            var gc = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
+
+            Action act = () => new ShrineService(gc, null!);
+
+            act.Should().Throw<ArgumentNullException>();
+        }
+
+        [TestMethod]
+        public void AreShrinesPresentInClickableArea_ReturnsFalse_WhenCacheContainsOnlyNullEntries()
+        {
+            var service = CreateService();
+
+            PrivateFieldAccessor.Set(service, "_cachedShrines", new List<ExileCore.PoEMemory.MemoryObjects.Entity> { null! });
+            StartCacheTimer(service);
+            PrivateFieldAccessor.Set(service, "_lastShrineCacheTime", GetCacheElapsed(service));
+
+            bool result = service.AreShrinesPresentInClickableArea(_ => true);
+
+            result.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void GetNearestShrineInRange_ReturnsNull_WhenCacheContainsOnlyNullEntries()
+        {
+            var service = CreateService();
+
+            PrivateFieldAccessor.Set(service, "_cachedShrines", new List<ExileCore.PoEMemory.MemoryObjects.Entity> { null! });
+            StartCacheTimer(service);
+            PrivateFieldAccessor.Set(service, "_lastShrineCacheTime", GetCacheElapsed(service));
+
+            var nearest = service.GetNearestShrineInRange(100);
+
+            nearest.Should().BeNull();
         }
 
         private static ShrineService CreateService()

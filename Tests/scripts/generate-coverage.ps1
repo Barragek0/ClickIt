@@ -3,7 +3,7 @@ Runs the ClickIt tests with XPlat code coverage then produces a report using Rep
 It also extracts a simple CSV listing of files with the most missing lines.
 
 Usage:
-  pwsh -NoProfile -ExecutionPolicy Bypass -File ./Tests/scripts/generate-coverage.ps1
+  pwsh -NoProfile -ExecutionPolicy Bypass -File ./Tests/Scripts/generate-coverage.ps1
 
 Outputs:
   - Tests/TestResults/coverage.cobertura.xml
@@ -51,36 +51,38 @@ if (-not $chosen) { Write-Error "No cobertura coverage file found to parse"; exi
 
 Write-Host "Parsing coverage file: $($chosen.FullName)"
 foreach ($f in @($chosen)) {
-  try {
-    [xml]$c = Get-Content $f.FullName
-  } catch {
-    Write-Warning "Failed reading $($f.FullName): $_"
-    continue
-  }
-
-  $classes = $c.coverage.packages.package.classes.class -as [System.Collections.IEnumerable]
-  if (-not $classes) { continue }
-
-  foreach ($cl in $classes) {
-    $filePathAttr = $cl.filename
-    if (-not $filePathAttr) { continue }
-
-    $lines = @($cl.lines.line)
-    $totalLines = @($lines).Count
-    $missing = @($lines | Where-Object { $_.hits -eq '0' }).Count
-
-    if ($stats.ContainsKey($filePathAttr)) {
-      $stats[$filePathAttr].Total += $totalLines
-      $stats[$filePathAttr].Missing += $missing
-    } else {
-      $stats[$filePathAttr] = [PSCustomObject]@{ File = $filePathAttr; Total = $totalLines; Missing = $missing }
+    try {
+        [xml]$c = Get-Content $f.FullName
     }
-  }
+    catch {
+        Write-Warning "Failed reading $($f.FullName): $_"
+        continue
+    }
+
+    $classes = $c.coverage.packages.package.classes.class -as [System.Collections.IEnumerable]
+    if (-not $classes) { continue }
+
+    foreach ($cl in $classes) {
+        $filePathAttr = $cl.filename
+        if (-not $filePathAttr) { continue }
+
+        $lines = @($cl.lines.line)
+        $totalLines = @($lines).Count
+        $missing = @($lines | Where-Object { $_.hits -eq '0' }).Count
+
+        if ($stats.ContainsKey($filePathAttr)) {
+            $stats[$filePathAttr].Total += $totalLines
+            $stats[$filePathAttr].Missing += $missing
+        }
+        else {
+            $stats[$filePathAttr] = [PSCustomObject]@{ File = $filePathAttr; Total = $totalLines; Missing = $missing }
+        }
+    }
 }
 
 $out = $stats.GetEnumerator() | ForEach-Object {
-  $o = $_.Value
-  [PSCustomObject]@{ File = $o.File; MissingLines = $o.Missing; TotalLines = $o.Total; MissingPct = [math]::Round((($o.Missing / [double]$o.Total) * 100), 2) }
+    $o = $_.Value
+    [PSCustomObject]@{ File = $o.File; MissingLines = $o.Missing; TotalLines = $o.Total; MissingPct = [math]::Round((($o.Missing / [double]$o.Total) * 100), 2) }
 }
 
 $csvPath = Join-Path $resultsDir 'missing-files.csv'

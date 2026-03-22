@@ -22,11 +22,9 @@ dotnet test Tests/ClickIt.Tests.csproj -c Debug -p:IncludeIntegrationTests=true
 ```
 
 Collect coverage & generate reports
-- There is a helper script used throughout the repo at `Tests/scripts/generate-coverage.ps1` which runs the tests with XPlat coverage and produces `Tests/TestResults/cov/Summary.xml` and `missing-files.csv`.
+There is a helper script used throughout the repo at `Tests/Scripts/generate-coverage.ps1` which runs the tests with XPlat coverage and produces `Tests/TestResults/cov/Summary.xml` and `missing-files.csv`.
 
 Guidelines for new tests
-- Keep each test focused on a single behavior.
-- Use parameterized tests for similar cases (good for Phase 5 consolidation).
 - Update `Tests/TestSuitePlan.md` when you add tests so we can monitor coverage targets.
 
 CI notes

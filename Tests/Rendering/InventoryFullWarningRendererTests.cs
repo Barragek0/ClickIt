@@ -12,7 +12,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsTrue_WhenFullDecisionDisallowsPickup()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldShowInventoryPickupBlockedWarning",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -26,7 +26,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsTrue_WhenNotFullNoFitDisallowsPickup()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldShowInventoryPickupBlockedWarning",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -40,7 +40,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitHasMissingIdentity()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldShowInventoryPickupBlockedWarning",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -58,7 +58,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitLayoutIsUnreliable()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldShowInventoryPickupBlockedWarning",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -75,7 +75,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitHasLargeFreeCellCount()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldShowInventoryPickupBlockedWarning",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -98,7 +98,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsFalse_ForSameSnapshotSequence()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldRefreshInventoryFullWarningTimestamp",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -112,7 +112,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsTrue_ForNewSnapshotSequence()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldRefreshInventoryFullWarningTimestamp",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -126,7 +126,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldShowInventoryFullWarning_HidesAfterTenSeconds()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldShowInventoryFullWarning",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -141,7 +141,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldAutoCopyInventoryWarning_ThrottlesToOneSecond()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ShouldAutoCopyInventoryWarning",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -158,7 +158,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_UsesBetweenTertiaryRectangles()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ResolveInventoryFullWarningPosition",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
@@ -176,7 +176,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_PrefersPlayerFeetPosition()
         {
-            var method = typeof(Rendering.InventoryFullWarningRenderer).GetMethod(
+            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
                 "ResolveInventoryFullWarningPosition",
                 BindingFlags.NonPublic | BindingFlags.Static);
             method.Should().NotBeNull();
