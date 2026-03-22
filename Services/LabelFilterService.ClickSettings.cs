@@ -1,4 +1,5 @@
 using ExileCore.PoEMemory.Elements;
+using ClickIt.Definitions;
 
 namespace ClickIt.Services
 {
@@ -51,6 +52,7 @@ namespace ClickIt.Services
 
             bool settlersOreEnabled = !applyLazyRestrictions && s.ClickSettlersOre.Value;
             bool leagueChestsEnabled = !applyLazyRestrictions && s.ClickLeagueChests.Value;
+            IReadOnlySet<string> enabledLeagueChestSpecificIds = BuildEnabledLeagueChestSpecificIds(s, leagueChestsEnabled);
             IReadOnlyList<string> mechanicPriorities = s.GetMechanicPriorityOrder();
             IReadOnlyCollection<string> ignoreDistance = s.GetMechanicPriorityIgnoreDistanceIds();
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId = s.GetMechanicPriorityIgnoreDistanceWithinById();
@@ -65,12 +67,7 @@ namespace ClickIt.Services
                 ClickBasicChests = s.ClickBasicChests.Value,
                 ClickLeagueChests = leagueChestsEnabled,
                 ClickLeagueChestsOther = leagueChestsEnabled && s.ClickLeagueChestsOther.Value,
-                ClickMirageGoldenDjinnCache = leagueChestsEnabled && s.ClickMirageGoldenDjinnCache.Value,
-                ClickMirageSilverDjinnCache = leagueChestsEnabled && s.ClickMirageSilverDjinnCache.Value,
-                ClickMirageBronzeDjinnCache = leagueChestsEnabled && s.ClickMirageBronzeDjinnCache.Value,
-                ClickHeistSecureLocker = leagueChestsEnabled && s.ClickHeistSecureLocker.Value,
-                ClickBreachGraspingCoffers = leagueChestsEnabled && s.ClickBreachGraspingCoffers.Value,
-                ClickSynthesisSynthesisedStash = leagueChestsEnabled && s.ClickSynthesisSynthesisedStash.Value,
+                EnabledLeagueChestSpecificIds = enabledLeagueChestSpecificIds,
                 ClickDoors = s.ClickDoors.Value,
                 ClickLevers = s.ClickLevers.Value,
                 ClickAreaTransitions = s.ClickAreaTransitions.Value,
@@ -110,6 +107,29 @@ namespace ClickIt.Services
             };
         }
 
+        private static IReadOnlySet<string> BuildEnabledLeagueChestSpecificIds(ClickItSettings settings, bool leagueChestsEnabled)
+        {
+            if (!leagueChestsEnabled)
+                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            HashSet<string> enabled = new(StringComparer.OrdinalIgnoreCase);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickMirageGoldenDjinnCache.Value, MechanicIds.MirageGoldenDjinnCache);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickMirageSilverDjinnCache.Value, MechanicIds.MirageSilverDjinnCache);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickMirageBronzeDjinnCache.Value, MechanicIds.MirageBronzeDjinnCache);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickHeistSecureLocker.Value, MechanicIds.HeistSecureLocker);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickBreachGraspingCoffers.Value, MechanicIds.BreachGraspingCoffers);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickSynthesisSynthesisedStash.Value, MechanicIds.SynthesisSynthesisedStash);
+            return enabled;
+        }
+
+        private static void AddEnabledLeagueChestSpecificId(HashSet<string> enabledIds, bool isEnabled, string specificId)
+        {
+            if (!isEnabled || string.IsNullOrWhiteSpace(specificId))
+                return;
+
+            enabledIds.Add(specificId);
+        }
+
         internal struct ClickSettings
         {
             public int ClickDistance { get; set; }
@@ -119,12 +139,7 @@ namespace ClickIt.Services
             public bool ClickBasicChests { get; set; }
             public bool ClickLeagueChests { get; set; }
             public bool ClickLeagueChestsOther { get; set; }
-            public bool ClickMirageGoldenDjinnCache { get; set; }
-            public bool ClickMirageSilverDjinnCache { get; set; }
-            public bool ClickMirageBronzeDjinnCache { get; set; }
-            public bool ClickHeistSecureLocker { get; set; }
-            public bool ClickBreachGraspingCoffers { get; set; }
-            public bool ClickSynthesisSynthesisedStash { get; set; }
+            public IReadOnlySet<string> EnabledLeagueChestSpecificIds { get; set; }
             public bool ClickDoors { get; set; }
             public bool ClickLevers { get; set; }
             public bool ClickAreaTransitions { get; set; }

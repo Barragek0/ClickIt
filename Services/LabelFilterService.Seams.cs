@@ -1,4 +1,6 @@
 ﻿using ClickIt.Utils;
+using ClickIt.Definitions;
+using ExileCore.Shared.Enums;
 
 namespace ClickIt.Services
 {
@@ -29,6 +31,65 @@ namespace ClickIt.Services
 
             bool blacklistMatch = blacklist.Count > 0 && ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, item: null, labelText ?? string.Empty, blacklist);
             return !blacklistMatch;
+        }
+
+        // Legacy reflective seam retained in seams file so runtime interaction rules stay clean.
+        private static string? GetChestMechanicIdInternal(
+            bool clickBasicChests,
+            bool clickLeagueChests,
+            bool clickLeagueChestsOther,
+            bool clickMirageGoldenDjinnCache,
+            bool clickMirageSilverDjinnCache,
+            bool clickMirageBronzeDjinnCache,
+            bool clickHeistSecureLocker,
+            bool clickBreachGraspingCoffers,
+            bool clickSynthesisSynthesisedStash,
+            EntityType type,
+            string? path,
+            string renderName)
+        {
+            IReadOnlySet<string> enabledSpecificLeagueChestIds = BuildEnabledLeagueChestSpecificIdSetFromLegacyFlags(
+                clickMirageGoldenDjinnCache,
+                clickMirageSilverDjinnCache,
+                clickMirageBronzeDjinnCache,
+                clickHeistSecureLocker,
+                clickBreachGraspingCoffers,
+                clickSynthesisSynthesisedStash);
+
+            return GetChestMechanicIdFromConfiguredRules(
+                clickBasicChests,
+                clickLeagueChests,
+                clickLeagueChestsOther,
+                enabledSpecificLeagueChestIds,
+                type,
+                path,
+                renderName);
+        }
+
+        private static IReadOnlySet<string> BuildEnabledLeagueChestSpecificIdSetFromLegacyFlags(
+            bool clickMirageGoldenDjinnCache,
+            bool clickMirageSilverDjinnCache,
+            bool clickMirageBronzeDjinnCache,
+            bool clickHeistSecureLocker,
+            bool clickBreachGraspingCoffers,
+            bool clickSynthesisSynthesisedStash)
+        {
+            HashSet<string> enabled = new(StringComparer.OrdinalIgnoreCase);
+            AddLeagueChestSpecificIdIfEnabled(enabled, clickMirageGoldenDjinnCache, MechanicIds.MirageGoldenDjinnCache);
+            AddLeagueChestSpecificIdIfEnabled(enabled, clickMirageSilverDjinnCache, MechanicIds.MirageSilverDjinnCache);
+            AddLeagueChestSpecificIdIfEnabled(enabled, clickMirageBronzeDjinnCache, MechanicIds.MirageBronzeDjinnCache);
+            AddLeagueChestSpecificIdIfEnabled(enabled, clickHeistSecureLocker, MechanicIds.HeistSecureLocker);
+            AddLeagueChestSpecificIdIfEnabled(enabled, clickBreachGraspingCoffers, MechanicIds.BreachGraspingCoffers);
+            AddLeagueChestSpecificIdIfEnabled(enabled, clickSynthesisSynthesisedStash, MechanicIds.SynthesisSynthesisedStash);
+            return enabled;
+        }
+
+        private static void AddLeagueChestSpecificIdIfEnabled(HashSet<string> enabledIds, bool isEnabled, string specificId)
+        {
+            if (!isEnabled || string.IsNullOrWhiteSpace(specificId))
+                return;
+
+            enabledIds.Add(specificId);
         }
     }
 }

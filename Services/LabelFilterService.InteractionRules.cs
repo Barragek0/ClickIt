@@ -15,27 +15,18 @@ namespace ClickIt.Services
         private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
         private const string SynthesisSynthesisedStashPathMarker = "SynthesisChests/SynthesisChest";
 
-        private readonly record struct LeagueChestToggles(
-            bool ClickLeagueChestsOther,
-            bool ClickMirageGoldenDjinnCache,
-            bool ClickMirageSilverDjinnCache,
-            bool ClickMirageBronzeDjinnCache,
-            bool ClickHeistSecureLocker,
-            bool ClickBreachGraspingCoffers,
-            bool ClickSynthesisSynthesisedStash);
-
         private readonly record struct LeagueChestRule(
-            Func<string?, string?, bool> Matches,
-            Func<LeagueChestToggles, bool> IsEnabled);
+            string SpecificId,
+            Func<string?, string?, bool> Matches);
 
         private static readonly LeagueChestRule[] LeagueChestRules =
         [
-            new(static (name, _) => IsMirageGoldenDjinnCacheName(name), static toggles => toggles.ClickMirageGoldenDjinnCache),
-            new(static (name, _) => IsMirageSilverDjinnCacheName(name), static toggles => toggles.ClickMirageSilverDjinnCache),
-            new(static (name, _) => IsMirageBronzeDjinnCacheName(name), static toggles => toggles.ClickMirageBronzeDjinnCache),
-            new(static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path), static toggles => toggles.ClickHeistSecureLocker),
-            new(static (_, path) => IsBreachGraspingCoffersPath(path), static toggles => toggles.ClickBreachGraspingCoffers),
-            new(static (_, path) => IsSynthesisSynthesisedStashPath(path), static toggles => toggles.ClickSynthesisSynthesisedStash)
+            new(MechanicIds.MirageGoldenDjinnCache, static (name, _) => IsMirageGoldenDjinnCacheName(name)),
+            new(MechanicIds.MirageSilverDjinnCache, static (name, _) => IsMirageSilverDjinnCacheName(name)),
+            new(MechanicIds.MirageBronzeDjinnCache, static (name, _) => IsMirageBronzeDjinnCacheName(name)),
+            new(MechanicIds.HeistSecureLocker, static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path)),
+            new(MechanicIds.BreachGraspingCoffers, static (_, path) => IsBreachGraspingCoffersPath(path)),
+            new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path))
         ];
 
         private enum LeagueChestRuleMatchState
@@ -100,12 +91,7 @@ namespace ClickIt.Services
                 settings.ClickBasicChests,
                 settings.ClickLeagueChests,
                 settings.ClickLeagueChestsOther,
-                settings.ClickMirageGoldenDjinnCache,
-                settings.ClickMirageSilverDjinnCache,
-                settings.ClickMirageBronzeDjinnCache,
-                settings.ClickHeistSecureLocker,
-                settings.ClickBreachGraspingCoffers,
-                settings.ClickSynthesisSynthesisedStash,
+                settings.EnabledLeagueChestSpecificIds,
                 type,
                 label);
             if (!string.IsNullOrWhiteSpace(chest))
@@ -171,42 +157,27 @@ namespace ClickIt.Services
             bool clickBasicChests,
             bool clickLeagueChests,
             bool clickLeagueChestsOther,
-            bool clickMirageGoldenDjinnCache,
-            bool clickMirageSilverDjinnCache,
-            bool clickMirageBronzeDjinnCache,
-            bool clickHeistSecureLocker,
-            bool clickBreachGraspingCoffers,
-            bool clickSynthesisSynthesisedStash,
+            IReadOnlySet<string>? enabledSpecificLeagueChestIds,
             EntityType type,
             LabelOnGround label)
         {
             string? path = label.ItemOnGround?.Path;
             string renderName = label.ItemOnGround?.RenderName ?? string.Empty;
-            return GetChestMechanicIdInternal(
+            return GetChestMechanicIdFromConfiguredRules(
                 clickBasicChests,
                 clickLeagueChests,
                 clickLeagueChestsOther,
-                clickMirageGoldenDjinnCache,
-                clickMirageSilverDjinnCache,
-                clickMirageBronzeDjinnCache,
-                clickHeistSecureLocker,
-                clickBreachGraspingCoffers,
-                clickSynthesisSynthesisedStash,
+                enabledSpecificLeagueChestIds,
                 type,
                 path,
                 renderName);
         }
 
-        private static string? GetChestMechanicIdInternal(
+        private static string? GetChestMechanicIdFromConfiguredRules(
             bool clickBasicChests,
             bool clickLeagueChests,
             bool clickLeagueChestsOther,
-            bool clickMirageGoldenDjinnCache,
-            bool clickMirageSilverDjinnCache,
-            bool clickMirageBronzeDjinnCache,
-            bool clickHeistSecureLocker,
-            bool clickBreachGraspingCoffers,
-            bool clickSynthesisSynthesisedStash,
+            IReadOnlySet<string>? enabledSpecificLeagueChestIds,
             EntityType type,
             string? path,
             string renderName)
@@ -224,28 +195,19 @@ namespace ClickIt.Services
             if (!clickLeagueChests || isBasic)
                 return null;
 
-            LeagueChestToggles leagueChestToggles = new(
-                clickLeagueChestsOther,
-                clickMirageGoldenDjinnCache,
-                clickMirageSilverDjinnCache,
-                clickMirageBronzeDjinnCache,
-                clickHeistSecureLocker,
-                clickBreachGraspingCoffers,
-                clickSynthesisSynthesisedStash);
-
-            LeagueChestRuleMatchState configuredLeagueChestMatchState = TryResolveConfiguredLeagueChestMechanicId(renderName, path, leagueChestToggles);
+            LeagueChestRuleMatchState configuredLeagueChestMatchState = TryResolveConfiguredLeagueChestMechanicId(renderName, path, enabledSpecificLeagueChestIds);
             if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Enabled)
                 return MechanicIds.LeagueChests;
             if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Disabled)
                 return null;
 
-            if (leagueChestToggles.ClickLeagueChestsOther)
+            if (clickLeagueChestsOther)
                 return MechanicIds.LeagueChests;
 
             return null;
         }
 
-        private static LeagueChestRuleMatchState TryResolveConfiguredLeagueChestMechanicId(string? renderName, string? path, LeagueChestToggles toggles)
+        private static LeagueChestRuleMatchState TryResolveConfiguredLeagueChestMechanicId(string? renderName, string? path, IReadOnlySet<string>? enabledSpecificLeagueChestIds)
         {
             for (int i = 0; i < LeagueChestRules.Length; i++)
             {
@@ -253,13 +215,18 @@ namespace ClickIt.Services
                 if (!rule.Matches(renderName, path))
                     continue;
 
-                return rule.IsEnabled(toggles)
+                return IsLeagueChestSpecificRuleEnabled(enabledSpecificLeagueChestIds, rule.SpecificId)
                     ? LeagueChestRuleMatchState.Enabled
                     : LeagueChestRuleMatchState.Disabled;
             }
 
             return LeagueChestRuleMatchState.None;
         }
+
+        private static bool IsLeagueChestSpecificRuleEnabled(IReadOnlySet<string>? enabledSpecificLeagueChestIds, string? specificId)
+            => enabledSpecificLeagueChestIds != null
+               && !string.IsNullOrWhiteSpace(specificId)
+               && enabledSpecificLeagueChestIds.Contains(specificId);
 
         private static bool IsMirageGoldenDjinnCacheName(string? name)
             => IsDjinnCacheName(name, "golden");
