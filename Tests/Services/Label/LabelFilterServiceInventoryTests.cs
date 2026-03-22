@@ -92,6 +92,23 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void IsInventoryLayoutUnreliableNotesCore_DetectsExpectedPrefix()
+        {
+            ((bool)InvokePrivateStatic("IsInventoryLayoutUnreliableNotesCore", "Inventory layout unreliable from inventory slots (raw:4 parsed:0)")!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("IsInventoryLayoutUnreliableNotesCore", "Unable to resolve inventory dimensions")!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("IsInventoryLayoutUnreliableNotesCore", string.Empty)!).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldAllowClosedDoorPastMechanicCore_RequiresStoneUnlessLayoutUnreliable()
+        {
+            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", true, "")!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", false, "Inventory layout unreliable from inventory slots (raw:5 parsed:0)")!).Should().BeTrue();
+            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", false, "Primary server inventory missing")!).Should().BeFalse();
+            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", false, "")!).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void HasSpaceForItemFootprintCore_ReturnsFalse_WhenFreeCellsAreFragmentedForTwoByFour()
         {
             const int inventoryWidth = 3;

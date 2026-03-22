@@ -39,6 +39,32 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void MetadataFilter_StoneOfPassageMetadataPath_MatchesExpectedIdentifier()
+        {
+            LabelFilterService.MatchesMetadataFiltersForTests(
+                "Metadata/Items/QuestItems/Incursion/IncursionKey",
+                string.Empty,
+                "Stone of Passage",
+                new[] { "Incursion/IncursionKey" },
+                Array.Empty<string>()).Should().BeTrue();
+
+            LabelFilterService.MatchesMetadataFiltersForTests(
+                "Metadata/Items/QuestItems/Incursion/SomeOtherQuestItem",
+                string.Empty,
+                "Stone of Passage",
+                new[] { "Incursion/IncursionKey" },
+                Array.Empty<string>()).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ItemTypeCatalog_ContainsStoneOfPassageCategory_AsWhitelist()
+        {
+            ItemCategoryCatalog.TryGet("stone-of-passage", out ItemCategoryDefinition category).Should().BeTrue();
+            category.DefaultList.Should().Be(ItemListKind.Whitelist);
+            category.MetadataIdentifiers.Should().ContainSingle(x => x.Equals("Incursion/IncursionKey", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [TestMethod]
         public void UnifiedJewels_DefaultSubtypeSplit_PreservesClusterWhitelistBehavior()
         {
             var settings = new ClickItSettings();

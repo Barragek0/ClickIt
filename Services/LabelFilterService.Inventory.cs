@@ -9,6 +9,8 @@ namespace ClickIt.Services
     {
         private const int InventoryProbeCacheWindowMs = 50;
         private const int InventoryDebugTrailCapacity = 32;
+        private const string StoneOfPassageMetadataIdentifier = "Incursion/IncursionKey";
+        private const string InventoryLayoutUnreliableNotesPrefix = "Inventory layout unreliable";
 
         private static readonly object InventoryProbeCacheLock = new();
         private static long _inventoryProbeCacheTimestampMs;
@@ -320,6 +322,39 @@ namespace ClickIt.Services
             => !inventoryFull
                 && string.IsNullOrWhiteSpace(groundItemPath)
                 && string.IsNullOrWhiteSpace(groundItemName);
+
+        internal static bool IsInventoryLayoutUnreliableNotesCore(string? notes)
+            => !string.IsNullOrWhiteSpace(notes)
+               && notes.StartsWith(InventoryLayoutUnreliableNotesPrefix, StringComparison.Ordinal);
+
+        internal static bool ShouldAllowClosedDoorPastMechanicCore(bool hasStoneOfPassageInInventory, string? inventoryProbeNotes)
+            => hasStoneOfPassageInInventory || IsInventoryLayoutUnreliableNotesCore(inventoryProbeNotes);
+
+        private static bool ShouldAllowClosedDoorPastMechanic(GameController? gameController)
+        {
+            bool hasStoneOfPassageInInventory = HasStoneOfPassageInInventoryCore(gameController);
+            if (hasStoneOfPassageInInventory)
+                return true;
+
+            _ = IsInventoryFullCore(gameController, out InventoryFullProbe probe);
+            return ShouldAllowClosedDoorPastMechanicCore(hasStoneOfPassageInInventory, probe.Notes);
+        }
+
+        private static bool HasStoneOfPassageInInventoryCore(GameController? gameController)
+        {
+            if (!TryEnumerateInventoryItemEntities(gameController, out IReadOnlyList<Entity> inventoryItems))
+                return false;
+
+            for (int i = 0; i < inventoryItems.Count; i++)
+            {
+                Entity inventoryItem = inventoryItems[i];
+                string metadataPath = inventoryItem?.Path ?? string.Empty;
+                if (metadataPath.Contains(StoneOfPassageMetadataIdentifier, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
 
         private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
         {

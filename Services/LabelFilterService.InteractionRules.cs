@@ -56,7 +56,7 @@ namespace ClickIt.Services
                 ? GetWorldItemMetadataPath(item)
                 : (item.Path ?? string.Empty);
 
-            string? mechanicId = ResolvePrimaryMechanicId(settings, path, label);
+            string? mechanicId = ResolvePrimaryMechanicId(settings, path, label, gameController);
             if (!string.IsNullOrWhiteSpace(mechanicId))
                 return mechanicId;
 
@@ -72,9 +72,9 @@ namespace ClickIt.Services
             return ResolveFallbackMechanicId(settings, type, path, label, item);
         }
 
-        private static string? ResolvePrimaryMechanicId(ClickSettings settings, string path, LabelOnGround label)
+        private static string? ResolvePrimaryMechanicId(ClickSettings settings, string path, LabelOnGround label, ExileCore.GameController? gameController)
         {
-            string? special = GetSpecialPathMechanicId(settings, path, label);
+            string? special = GetSpecialPathMechanicId(settings, path, label, gameController);
             if (!string.IsNullOrWhiteSpace(special))
                 return special;
 
@@ -271,7 +271,7 @@ namespace ClickIt.Services
                 || name.Equals($"{tier} djinns cache", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string? GetSpecialPathMechanicId(ClickSettings settings, string path, LabelOnGround label)
+        private static string? GetSpecialPathMechanicId(ClickSettings settings, string path, LabelOnGround label, ExileCore.GameController? gameController)
         {
             if (string.IsNullOrEmpty(path))
                 return null;
@@ -283,10 +283,10 @@ namespace ClickIt.Services
                     : null;
             }
 
-            return ResolveSpecialNonSettlersMechanic(settings, path, label);
+            return ResolveSpecialNonSettlersMechanic(settings, path, label, gameController);
         }
 
-        private static string? ResolveSpecialNonSettlersMechanic(ClickSettings settings, string path, LabelOnGround label)
+        private static string? ResolveSpecialNonSettlersMechanic(ClickSettings settings, string path, LabelOnGround label, ExileCore.GameController? gameController)
         {
             if (settings.NearestHarvest && IsHarvestPath(path))
                 return MechanicIds.Harvest;
@@ -300,7 +300,9 @@ namespace ClickIt.Services
                 return MechanicIds.Betrayal;
             if (settings.ClickBlight && path.Contains("BlightPump", StringComparison.OrdinalIgnoreCase))
                 return MechanicIds.Blight;
-            if (settings.ClickAlvaTempleDoors && path.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase))
+            if (settings.ClickAlvaTempleDoors
+                && path.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase)
+                && ShouldAllowClosedDoorPastMechanic(gameController))
                 return MechanicIds.AlvaTempleDoors;
             if (settings.ClickLegionPillars && path.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase))
                 return MechanicIds.LegionPillars;
