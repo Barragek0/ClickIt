@@ -59,6 +59,8 @@ namespace ClickIt.Services
         private string? _pendingChestOpenMechanicId;
         private long _pendingChestOpenItemAddress;
         private long _pendingChestOpenLabelAddress;
+        private bool _postChestInteractionSourceGridValid;
+        private Vector2 _postChestInteractionSourceGrid;
         private long _stickyOffscreenTargetAddress;
         private long _lastMovementSkillUseTimestampMs;
         private long _movementSkillPostCastClickBlockUntilTimestampMs;

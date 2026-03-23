@@ -139,12 +139,21 @@ namespace ClickIt.Rendering
                 $"pathBudget:{settings.OffscreenPathfindingSearchBudget.Value}"
             ]);
 
+            string chestSettleLine = string.Join(", ",
+            [
+                $"waitBasicChestDrops:{settings.PauseAfterOpeningBasicChests.Value}",
+                $"waitLeagueChestDrops:{settings.PauseAfterOpeningLeagueChests.Value}",
+                $"allowNearbyDuringSettle:{settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value}",
+                $"nearbySettleDist:{settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance.Value}"
+            ]);
+
             return
             [
                 toggleLine,
                 coreClickLine,
                 inputSafetyLine,
-                pathingLine
+                pathingLine,
+                chestSettleLine
             ];
         }
     }

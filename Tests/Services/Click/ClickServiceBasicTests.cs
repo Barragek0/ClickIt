@@ -1138,6 +1138,29 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void IsMechanicEligibleForNearbyChestLootSettlementBypass_AllowsNonEmptyMechanics_IncludingItemsAndChests()
+        {
+            ClickService.IsMechanicEligibleForNearbyChestLootSettlementBypass(MechanicIds.Items).Should().BeTrue();
+            ClickService.IsMechanicEligibleForNearbyChestLootSettlementBypass(MechanicIds.BasicChests).Should().BeTrue();
+            ClickService.IsMechanicEligibleForNearbyChestLootSettlementBypass(MechanicIds.LeagueChests).Should().BeTrue();
+            ClickService.IsMechanicEligibleForNearbyChestLootSettlementBypass(MechanicIds.Shrines).Should().BeTrue();
+            ClickService.IsMechanicEligibleForNearbyChestLootSettlementBypass(string.Empty).Should().BeFalse();
+            ClickService.IsMechanicEligibleForNearbyChestLootSettlementBypass(null).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsWithinNearbyChestLootSettlementBypassDistance_UsesConfiguredDistanceThreshold()
+        {
+            var chest = new SharpDX.Vector2(100f, 100f);
+            var nearbyMechanic = new SharpDX.Vector2(106f, 108f);
+            var farMechanic = new SharpDX.Vector2(130f, 100f);
+
+            ClickService.IsWithinNearbyChestLootSettlementBypassDistance(chest, nearbyMechanic, maxDistance: 10).Should().BeTrue();
+            ClickService.IsWithinNearbyChestLootSettlementBypassDistance(chest, farMechanic, maxDistance: 10).Should().BeFalse();
+            ClickService.IsWithinNearbyChestLootSettlementBypassDistance(chest, nearbyMechanic, maxDistance: -1).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ResolvePostChestLootSettlementTimingSettings_UsesBasicChestTiming()
         {
             ClickService.ResolvePostChestLootSettlementTimingSettings(

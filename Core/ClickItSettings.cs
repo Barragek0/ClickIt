@@ -270,6 +270,10 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public RangeNode<int> PauseAfterOpeningBasicChestsQuietWindowMs { get; set; } = new RangeNode<int>(500, 100, 2000);
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode AllowNearbyMechanicsWhileWaitingForChestDropsToSettle { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public RangeNode<int> AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance { get; set; } = new RangeNode<int>(20, 1, 100);
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode PauseAfterOpeningLeagueChests { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public RangeNode<int> PauseAfterOpeningLeagueChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);

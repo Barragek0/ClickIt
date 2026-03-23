@@ -120,12 +120,7 @@ namespace ClickIt.Services
             }
 
             long now = Environment.TickCount64;
-            if (IsPostChestLootSettlementBlocking(now, out string chestLootSettleReason))
-            {
-                DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
-                PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason);
-                yield break;
-            }
+            bool isPostChestLootSettleBlocking = IsPostChestLootSettlementBlocking(now, out string chestLootSettleReason);
 
             var allLabels = GetLabelsForRegularSelection();
             if (TryHandlePendingChestOpenConfirmation(windowTopLeft, allLabels))
@@ -156,7 +151,12 @@ namespace ClickIt.Services
                         _cachedMechanicIgnoreDistanceWithinMap,
                         settings.MechanicPriorityDistancePenalty.Value))
                 {
-                    if (TryClickSettlersOre(settlersOreCandidate.Value))
+                    if (isPostChestLootSettleBlocking
+                        && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(settlersOreCandidate.Value.MechanicId, settlersOreCandidate.Value.Entity, out string bypassDecisionSettlersHidden))
+                    {
+                        PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionSettlersHidden}", settlersOreCandidate.Value.MechanicId);
+                    }
+                    else if (TryClickSettlersOre(settlersOreCandidate.Value))
                     {
                         PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", settlersOreCandidate.Value.MechanicId);
                         yield break;
@@ -176,14 +176,37 @@ namespace ClickIt.Services
                         _cachedMechanicIgnoreDistanceWithinMap,
                         settings.MechanicPriorityDistancePenalty.Value))
                 {
-                    TryClickLostShipment(lostShipmentCandidate.Value);
-                    yield break;
+                    if (isPostChestLootSettleBlocking
+                        && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, lostShipmentCandidate.Value.Entity, out string bypassDecisionLostShipmentHidden))
+                    {
+                        PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionLostShipmentHidden}", MechanicIds.LostShipment);
+                    }
+                    else
+                    {
+                        TryClickLostShipment(lostShipmentCandidate.Value);
+                        yield break;
+                    }
                 }
 
                 if (nextShrine != null && ShouldClickShrineWhenGroundItemsHidden(nextShrine))
                 {
-                    TryClickShrine(nextShrine);
-                    // Do not start offscreen pathfinding while actively attempting an on-screen shrine interaction.
+                    if (isPostChestLootSettleBlocking
+                        && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.Shrines, nextShrine, out string bypassDecisionShrineHidden))
+                    {
+                        PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionShrineHidden}", MechanicIds.Shrines);
+                    }
+                    else
+                    {
+                        TryClickShrine(nextShrine);
+                        // Do not start offscreen pathfinding while actively attempting an on-screen shrine interaction.
+                        yield break;
+                    }
+                }
+
+                if (isPostChestLootSettleBlocking)
+                {
+                    DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
+                    PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason);
                     yield break;
                 }
 
@@ -227,7 +250,12 @@ namespace ClickIt.Services
                     _cachedMechanicIgnoreDistanceWithinMap,
                     settings.MechanicPriorityDistancePenalty.Value))
             {
-                if (TryClickSettlersOre(settlersOreCandidate.Value))
+                if (isPostChestLootSettleBlocking
+                    && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(settlersOreCandidate.Value.MechanicId, settlersOreCandidate.Value.Entity, out string bypassDecisionSettlersVisible))
+                {
+                    PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionSettlersVisible}", settlersOreCandidate.Value.MechanicId);
+                }
+                else if (TryClickSettlersOre(settlersOreCandidate.Value))
                     yield break;
             }
 
@@ -242,20 +270,43 @@ namespace ClickIt.Services
                     _cachedMechanicIgnoreDistanceWithinMap,
                     settings.MechanicPriorityDistancePenalty.Value))
             {
-                TryClickLostShipment(lostShipmentCandidate.Value);
-                yield break;
+                if (isPostChestLootSettleBlocking
+                    && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, lostShipmentCandidate.Value.Entity, out string bypassDecisionLostShipmentVisible))
+                {
+                    PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionLostShipmentVisible}", MechanicIds.LostShipment);
+                }
+                else
+                {
+                    TryClickLostShipment(lostShipmentCandidate.Value);
+                    yield break;
+                }
             }
 
             bool useShrine = ShouldPreferShrineOverLabel(nextLabel, nextShrine);
             if (useShrine && nextShrine != null)
             {
-                TryClickShrine(nextShrine);
+                if (isPostChestLootSettleBlocking
+                    && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.Shrines, nextShrine, out string bypassDecisionShrineVisible))
+                {
+                    PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionShrineVisible}", MechanicIds.Shrines);
+                }
+                else
+                {
+                    TryClickShrine(nextShrine);
 
-                yield break;
+                    yield break;
+                }
             }
 
             if (nextLabel == null)
             {
+                if (isPostChestLootSettleBlocking)
+                {
+                    DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
+                    PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason);
+                    yield break;
+                }
+
                 labelFilterService.LogSelectionDiagnostics(allLabels, 0, allLabels?.Count ?? 0);
                 if (ShouldCaptureClickDebug())
                 {
@@ -274,6 +325,14 @@ namespace ClickIt.Services
 
                 DebugLog(() => "[ProcessRegularClick] No label to click found, breaking");
                 PublishClickFlowDebugStage("NoLabelExit", "No label click attempted");
+                yield break;
+            }
+
+            if (isPostChestLootSettleBlocking
+                && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(nextLabelMechanicId, nextLabel.ItemOnGround, out string bypassDecisionLabel))
+            {
+                DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
+                PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionLabel}", nextLabelMechanicId);
                 yield break;
             }
 
@@ -297,7 +356,12 @@ namespace ClickIt.Services
                     && ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(nextLabelMechanicId, settlersOreCandidate.Value.MechanicId))
                 {
                     PublishClickFlowDebugStage("SettlersEntityFallbackAttempt", "Label unresolved; attempting settlers entity click", settlersOreCandidate.Value.MechanicId);
-                    if (TryClickSettlersOre(settlersOreCandidate.Value))
+                    if (isPostChestLootSettleBlocking
+                        && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(settlersOreCandidate.Value.MechanicId, settlersOreCandidate.Value.Entity, out string bypassDecisionSettlersFallback))
+                    {
+                        PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionSettlersFallback}", settlersOreCandidate.Value.MechanicId);
+                    }
+                    else if (TryClickSettlersOre(settlersOreCandidate.Value))
                     {
                         PublishClickFlowDebugStage("SettlersEntityFallbackSuccess", "Settlers entity click succeeded after label resolve failure", settlersOreCandidate.Value.MechanicId);
                         yield break;
@@ -1024,6 +1088,8 @@ namespace ClickIt.Services
                 out int quietWindowMs);
 
             long now = Environment.TickCount64;
+            bool hadSourceGrid = _postChestInteractionSourceGridValid;
+            Vector2 sourceGrid = _postChestInteractionSourceGrid;
             ClearPendingChestOpenConfirmation();
             ClearPostChestLootSettlementWatch();
             _postChestLootSettleWatcherActive = true;
@@ -1032,6 +1098,8 @@ namespace ClickIt.Services
             _postChestLootSettleLastNewItemTimestampMs = _postChestLootSettleInitialDelayUntilTimestampMs;
             _postChestLootSettlePollIntervalMs = pollIntervalMs;
             _postChestLootSettleQuietWindowMs = quietWindowMs;
+            _postChestInteractionSourceGridValid = hadSourceGrid;
+            _postChestInteractionSourceGrid = sourceGrid;
             SeedKnownGroundItemAddresses(_postChestLootSettleKnownGroundItemAddresses, CollectGroundLabelEntityAddresses());
         }
 
@@ -1086,6 +1154,7 @@ namespace ClickIt.Services
             _pendingChestOpenMechanicId = mechanicId;
             _pendingChestOpenItemAddress = chestLabel?.ItemOnGround?.Address ?? 0;
             _pendingChestOpenLabelAddress = chestLabel?.Label?.Address ?? 0;
+            _postChestInteractionSourceGridValid = TryGetEntityGridPosition(chestLabel?.ItemOnGround, out _postChestInteractionSourceGrid);
         }
 
         private void ClearPendingChestOpenConfirmation()
@@ -1167,6 +1236,8 @@ namespace ClickIt.Services
             _postChestLootSettleLastNewItemTimestampMs = 0;
             _postChestLootSettlePollIntervalMs = 0;
             _postChestLootSettleQuietWindowMs = 0;
+            _postChestInteractionSourceGridValid = false;
+            _postChestInteractionSourceGrid = default;
             _postChestLootSettleKnownGroundItemAddresses.Clear();
         }
 
@@ -1191,6 +1262,72 @@ namespace ClickIt.Services
             }
 
             return addedAny;
+        }
+
+        private bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity)
+            => ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out _);
+
+        private bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity, out string decision)
+        {
+            decision = string.Empty;
+            if (!_postChestLootSettleWatcherActive)
+            {
+                decision = "watcher-inactive";
+                return false;
+            }
+            if (settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle?.Value != true)
+            {
+                decision = "setting-disabled";
+                return false;
+            }
+            if (!_postChestInteractionSourceGridValid)
+            {
+                decision = "source-grid-unavailable";
+                return false;
+            }
+            if (!IsMechanicEligibleForNearbyChestLootSettlementBypass(mechanicId))
+            {
+                decision = "mechanic-not-eligible";
+                return false;
+            }
+            if (!TryGetEntityGridPosition(entity, out Vector2 entityGridPos))
+            {
+                decision = "candidate-grid-unavailable";
+                return false;
+            }
+
+            int maxDistance = Math.Max(0, settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance?.Value ?? 10);
+            float distanceSq = GetDistanceSquared(_postChestInteractionSourceGrid, entityGridPos);
+            float distance = MathF.Sqrt(distanceSq);
+            bool allowed = IsWithinNearbyChestLootSettlementBypassDistance(_postChestInteractionSourceGrid, entityGridPos, maxDistance);
+            decision = $"{(allowed ? "allowed" : "blocked")}; mechanic:{mechanicId ?? "unknown"}; dist:{distance:0.0}; max:{maxDistance}; source:({_postChestInteractionSourceGrid.X:0.0},{_postChestInteractionSourceGrid.Y:0.0}); candidate:({entityGridPos.X:0.0},{entityGridPos.Y:0.0})";
+            return allowed;
+        }
+
+        internal static bool IsMechanicEligibleForNearbyChestLootSettlementBypass(string? mechanicId)
+        {
+            return !string.IsNullOrWhiteSpace(mechanicId);
+        }
+
+        internal static bool IsWithinNearbyChestLootSettlementBypassDistance(Vector2 sourceGridPos, Vector2 entityGridPos, int maxDistance)
+        {
+            if (maxDistance < 0)
+                return false;
+
+            float maxDistanceSq = maxDistance * maxDistance;
+            float distanceSq = GetDistanceSquared(sourceGridPos, entityGridPos);
+            return distanceSq <= maxDistanceSq;
+        }
+
+        private static bool TryGetEntityGridPosition(Entity? entity, out Vector2 gridPos)
+        {
+            gridPos = default;
+            if (entity == null || !entity.IsValid)
+                return false;
+
+            var grid = entity.GridPosNum;
+            gridPos = new Vector2(grid.X, grid.Y);
+            return true;
         }
 
         internal static bool ShouldWaitForChestLootSettlement(

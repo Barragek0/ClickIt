@@ -807,6 +807,16 @@ namespace ClickIt
                     "Wait for Drops to Settle##BasicChestsPauseEnabled",
                     PauseAfterOpeningBasicChests,
                     "When enabled, ClickIt waits for new loot labels after opening a Basic Chest before resuming clicks.");
+                DrawToggleNodeControl(
+                    "Allow Nearby Mechanics while Waiting##BasicChestsAllowNearbyMechanics",
+                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettle,
+                    "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.");
+                DrawRangeNodeControl(
+                    "Nearby mechanic distance##BasicChestsAllowNearbyMechanicsDistance",
+                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance,
+                    0,
+                    100,
+                    "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
                 DrawRangeNodeControl(
                     "Initial delay (ms)##BasicChestsInitialDelayMs",
                     PauseAfterOpeningBasicChestsInitialDelayMs,
@@ -835,6 +845,16 @@ namespace ClickIt
                     "Wait for Drops to Settle##LeagueChestsPauseEnabled",
                     PauseAfterOpeningLeagueChests,
                     "When enabled, ClickIt waits for new loot labels after opening a League Mechanic Chest before resuming clicks.");
+                DrawToggleNodeControl(
+                    "Allow Nearby Mechanics while Waiting##LeagueChestsAllowNearbyMechanics",
+                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettle,
+                    "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.");
+                DrawRangeNodeControl(
+                    "Nearby mechanic distance##LeagueChestsAllowNearbyMechanicsDistance",
+                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance,
+                    0,
+                    100,
+                    "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
                 DrawRangeNodeControl(
                     "Initial delay (ms)##LeagueChestsInitialDelayMs",
                     PauseAfterOpeningLeagueChestsInitialDelayMs,
