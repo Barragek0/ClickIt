@@ -560,6 +560,7 @@ namespace ClickIt
 
         private const string LeagueChestSubgroupMirage = "Mirage";
         private const string LeagueChestSubgroupHeist = "Heist";
+        private const string LeagueChestSubgroupBlight = "Blight";
         private const string LeagueChestSubgroupBreach = "Breach";
         private const string LeagueChestSubgroupSynthesis = "Synthesis";
 
@@ -985,6 +986,7 @@ namespace ClickIt
                 new(MechanicIds.MirageSilverDjinnCache, "Silver Djinn's Cache", ClickMirageSilverDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
                 new(MechanicIds.MirageBronzeDjinnCache, "Bronze Djinn's Cache", ClickMirageBronzeDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
                 new(MechanicIds.HeistSecureLocker, "Secure Locker", ClickHeistSecureLocker, "league-chests", true, LeagueChestSubgroupHeist),
+                new(MechanicIds.BlightCyst, "Blight Cyst", ClickBlightCyst, "league-chests", true, LeagueChestSubgroupBlight),
                 new(MechanicIds.BreachGraspingCoffers, "Grasping Coffers", ClickBreachGraspingCoffers, "league-chests", true, LeagueChestSubgroupBreach),
                 new(MechanicIds.SynthesisSynthesisedStash, "Synthesised Stash", ClickSynthesisSynthesisedStash, "league-chests", true, LeagueChestSubgroupSynthesis),
                 new(MechanicIds.LeagueChests, "Other League Mechanic Chests", ClickLeagueChestsOther, "league-chests", true),

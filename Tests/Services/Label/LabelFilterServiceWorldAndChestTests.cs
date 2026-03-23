@@ -121,7 +121,7 @@ namespace ClickIt.Tests.Unit
         public void ShouldClickChest_RecognizesBasicChest_WhenSettingsAllow()
         {
             // Call internal helper directly - pass primitive path and renderName to avoid mutating ExileCore objects
-            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
+            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
             res.Should().Be("basic-chests");
         }
 
@@ -139,6 +139,7 @@ namespace ClickIt.Tests.Unit
                 true,
                 true,
                 true,
+                true,
                 EntityType.Chest,
                 "content/some/chest",
                 "Some League Chest")!;
@@ -146,6 +147,7 @@ namespace ClickIt.Tests.Unit
             var enabled = (string?)InvokePrivateStatic(
                 "GetChestMechanicIdInternal",
                 false,
+                true,
                 true,
                 true,
                 true,
@@ -176,6 +178,7 @@ namespace ClickIt.Tests.Unit
                 false,
                 true,
                 true,
+                true,
                 EntityType.Chest,
                 "content/heist/chest",
                 "Secure Locker")!;
@@ -185,6 +188,7 @@ namespace ClickIt.Tests.Unit
                 false,
                 true,
                 false,
+                true,
                 true,
                 true,
                 true,
@@ -215,6 +219,7 @@ namespace ClickIt.Tests.Unit
                 false,
                 true,
                 true,
+                true,
                 EntityType.Chest,
                 heistPath,
                 "Military Supplies")!;
@@ -230,9 +235,51 @@ namespace ClickIt.Tests.Unit
                 true,
                 true,
                 true,
+                true,
                 EntityType.Chest,
                 heistPath,
                 "Military Supplies")!;
+
+            disabled.Should().BeNull();
+            enabled.Should().Be("league-chests");
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesBlightCystToggle_ForBlightChestMetadataPath()
+        {
+            const string blightPath = "Metadata/Chests/Blight/BlightChestObject";
+
+            var disabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                false,
+                true,
+                true,
+                true,
+                true,
+                false,
+                true,
+                true,
+                EntityType.Chest,
+                blightPath,
+                "Blight Cyst")!;
+
+            var enabled = (string?)InvokePrivateStatic(
+                "GetChestMechanicIdInternal",
+                false,
+                true,
+                false,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                EntityType.Chest,
+                blightPath,
+                "Blight Cyst")!;
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
@@ -252,6 +299,7 @@ namespace ClickIt.Tests.Unit
                 true,
                 true,
                 true,
+                true,
                 false,
                 true,
                 EntityType.Chest,
@@ -263,6 +311,7 @@ namespace ClickIt.Tests.Unit
                 false,
                 true,
                 false,
+                true,
                 true,
                 true,
                 true,
@@ -292,6 +341,7 @@ namespace ClickIt.Tests.Unit
                 true,
                 true,
                 true,
+                true,
                 false,
                 EntityType.Chest,
                 synthesisPath,
@@ -302,6 +352,7 @@ namespace ClickIt.Tests.Unit
                 false,
                 true,
                 false,
+                true,
                 true,
                 true,
                 true,

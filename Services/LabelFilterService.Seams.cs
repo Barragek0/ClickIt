@@ -42,6 +42,7 @@ namespace ClickIt.Services
             bool clickMirageSilverDjinnCache,
             bool clickMirageBronzeDjinnCache,
             bool clickHeistSecureLocker,
+            bool clickBlightCyst,
             bool clickBreachGraspingCoffers,
             bool clickSynthesisSynthesisedStash,
             EntityType type,
@@ -53,6 +54,7 @@ namespace ClickIt.Services
                 clickMirageSilverDjinnCache,
                 clickMirageBronzeDjinnCache,
                 clickHeistSecureLocker,
+                clickBlightCyst,
                 clickBreachGraspingCoffers,
                 clickSynthesisSynthesisedStash);
 
@@ -71,6 +73,7 @@ namespace ClickIt.Services
             bool clickMirageSilverDjinnCache,
             bool clickMirageBronzeDjinnCache,
             bool clickHeistSecureLocker,
+            bool clickBlightCyst,
             bool clickBreachGraspingCoffers,
             bool clickSynthesisSynthesisedStash)
         {
@@ -79,6 +82,7 @@ namespace ClickIt.Services
             AddLeagueChestSpecificIdIfEnabled(enabled, clickMirageSilverDjinnCache, MechanicIds.MirageSilverDjinnCache);
             AddLeagueChestSpecificIdIfEnabled(enabled, clickMirageBronzeDjinnCache, MechanicIds.MirageBronzeDjinnCache);
             AddLeagueChestSpecificIdIfEnabled(enabled, clickHeistSecureLocker, MechanicIds.HeistSecureLocker);
+            AddLeagueChestSpecificIdIfEnabled(enabled, clickBlightCyst, MechanicIds.BlightCyst);
             AddLeagueChestSpecificIdIfEnabled(enabled, clickBreachGraspingCoffers, MechanicIds.BreachGraspingCoffers);
             AddLeagueChestSpecificIdIfEnabled(enabled, clickSynthesisSynthesisedStash, MechanicIds.SynthesisSynthesisedStash);
             return enabled;

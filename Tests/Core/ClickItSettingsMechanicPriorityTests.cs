@@ -313,6 +313,25 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void MechanicsSubmenuLogic_LeagueChestSubmenuContainsBlightCystBlightEntry()
+        {
+            var settings = new ClickItSettings();
+
+            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
+            getEntriesMethod.Should().NotBeNull();
+
+            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
+            object blightCystEntry = entries.First(entry =>
+                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "blight-cyst", StringComparison.Ordinal));
+
+            string? groupId = (string?)blightCystEntry.GetType().GetProperty("GroupId")!.GetValue(blightCystEntry);
+            string? subgroup = (string?)blightCystEntry.GetType().GetProperty("Subgroup")!.GetValue(blightCystEntry);
+
+            groupId.Should().Be("league-chests");
+            subgroup.Should().Be("Blight");
+        }
+
+        [TestMethod]
         public void MechanicsSubmenuLogic_LeagueChestSubmenuContainsSynthesisedStashSynthesisEntry()
         {
             var settings = new ClickItSettings();

@@ -12,6 +12,7 @@ namespace ClickIt.Services
     public partial class LabelFilterService
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+        private const string BlightCystPathMarker = "Chests/Blight";
         private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
         private const string SynthesisSynthesisedStashPathMarker = "SynthesisChests/SynthesisChest";
 
@@ -25,6 +26,7 @@ namespace ClickIt.Services
             new(MechanicIds.MirageSilverDjinnCache, static (name, _) => IsMirageSilverDjinnCacheName(name)),
             new(MechanicIds.MirageBronzeDjinnCache, static (name, _) => IsMirageBronzeDjinnCacheName(name)),
             new(MechanicIds.HeistSecureLocker, static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path)),
+            new(MechanicIds.BlightCyst, static (_, path) => IsBlightCystPath(path)),
             new(MechanicIds.BreachGraspingCoffers, static (_, path) => IsBreachGraspingCoffersPath(path)),
             new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path))
         ];
@@ -267,6 +269,10 @@ namespace ClickIt.Services
         private static bool IsBreachGraspingCoffersPath(string? path)
             => !string.IsNullOrWhiteSpace(path)
                && path.Contains(BreachGraspingCoffersPathMarker, StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsBlightCystPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(BlightCystPathMarker, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsSynthesisSynthesisedStashPath(string? path)
             => !string.IsNullOrWhiteSpace(path)
