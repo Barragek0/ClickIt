@@ -64,9 +64,6 @@ namespace ClickIt.Services
                 if (!ShouldAllowWorldItemByMetadata(settings, item, gameController, label))
                     return null;
 
-                if (IsWorldItemAllocatedToSomeoneElse(item))
-                    return null;
-
                 if (ShouldClickWorldItemCore(settings.ClickItems, type, item))
                     return MechanicIds.Items;
             }
@@ -157,22 +154,6 @@ namespace ClickIt.Services
             return string.IsNullOrEmpty(itemPath)
                 || !itemPath.Contains("strongbox", StringComparison.OrdinalIgnoreCase);
         }
-
-        private static bool IsWorldItemAllocatedToSomeoneElse(Entity item)
-        {
-            try
-            {
-                WorldItem? worldItem = item.GetComponent<WorldItem>();
-                return ShouldSkipWorldItemAllocatedToSomeoneElse(worldItem?.AllocatedToSomeoneElse);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        internal static bool ShouldSkipWorldItemAllocatedToSomeoneElse(bool? allocatedToSomeoneElse)
-            => allocatedToSomeoneElse == true;
 
         private static string? GetChestMechanicId(
             bool clickBasicChests,
