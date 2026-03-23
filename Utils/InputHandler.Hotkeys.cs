@@ -73,8 +73,8 @@ namespace ClickIt.Utils
                 return "Betrayal window is open.";
             if (uiState?.SyndicatePanel?.IsVisible ?? false)
                 return "Syndicate panel is open.";
-            if (uiState?.SyndicateTree?.IsVisible ?? false)
-                return "Syndicate tree panel is open.";
+            //if (uiState?.SyndicateTree?.IsVisible ?? false)
+            //    return "Syndicate tree panel is open.";
             if (uiState?.IncursionWindow?.IsVisible ?? false)
                 return "Incursion window is open.";
             if (uiState?.RitualWindow?.IsVisible ?? false)
