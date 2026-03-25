@@ -427,6 +427,10 @@ namespace ClickIt.Services
         private static bool IsEntityTargetableForClick(LabelOnGround label, Entity item)
         {
             string path = item.Path ?? string.Empty;
+
+            if (!ShouldAllowHarvestRootElementVisibility(path, IsHarvestRootElementVisibleForClick(label)))
+                return false;
+
             if (!RequiresTargetabilityGate(path))
                 return true;
             if (!ShouldApplyPetrifiedWoodEntityTargetabilityGate(path))
@@ -434,6 +438,17 @@ namespace ClickIt.Services
 
             ResolveLabelEntityTargetableForClick(label, out bool hasLabelEntityTargetable, out bool labelEntityTargetable);
             return ShouldAllowPetrifiedWoodTargetability(hasLabelEntityTargetable, labelEntityTargetable);
+        }
+
+        private static bool IsHarvestRootElementVisibleForClick(LabelOnGround label)
+            => label?.Label?.GetChildAtIndex(0)?.IsVisible == true;
+
+        internal static bool ShouldAllowHarvestRootElementVisibility(string? path, bool harvestRootElementVisible)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !IsHarvestPath(path))
+                return true;
+
+            return harvestRootElementVisible;
         }
 
         private static bool RequiresTargetabilityGate(string path)

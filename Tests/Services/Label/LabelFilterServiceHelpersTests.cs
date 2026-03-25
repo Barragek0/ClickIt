@@ -98,6 +98,26 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldAllowHarvestRootElementVisibility_OnlyAppliesToHarvestPaths()
+        {
+            LabelFilterService.ShouldAllowHarvestRootElementVisibility(
+                "Metadata/MiscellaneousObjects/Harvest/Irrigator",
+                harvestRootElementVisible: false).Should().BeFalse();
+
+            LabelFilterService.ShouldAllowHarvestRootElementVisibility(
+                "Metadata/MiscellaneousObjects/Harvest/Extractor",
+                harvestRootElementVisible: true).Should().BeTrue();
+
+            LabelFilterService.ShouldAllowHarvestRootElementVisibility(
+                "Metadata/MiscellaneousObjects/Leagues/Ritual/Something",
+                harvestRootElementVisible: false).Should().BeTrue();
+
+            LabelFilterService.ShouldAllowHarvestRootElementVisibility(
+                null,
+                harvestRootElementVisible: false).Should().BeTrue();
+        }
+
+        [TestMethod]
         public void ShouldClickAltar_RequiresFlagAndPathPatterns()
         {
             var ra1 = InvokePrivateStatic<bool>("ShouldClickAltar", false, false, false, false, string.Empty);

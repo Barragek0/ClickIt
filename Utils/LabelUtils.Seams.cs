@@ -76,9 +76,13 @@
             return false;
         }
 
-        internal static bool IsValidClickableLabelForTests(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, ExileCore.Shared.Enums.EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment)
+        internal static bool IsValidClickableLabelForTests(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, ExileCore.Shared.Enums.EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment, bool harvestRootElementVisible)
         {
             if (!labelNotNull || !itemNotNull || !isVisible || !labelElementValid)
+                return false;
+
+            var p = path ?? string.Empty;
+            if ((p.Contains("Harvest/Irrigator") || p.Contains("Harvest/Extractor")) && !harvestRootElementVisible)
                 return false;
 
             if (!inClickableArea)

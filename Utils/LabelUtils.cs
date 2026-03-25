@@ -86,6 +86,12 @@ namespace ClickIt.Utils
                 return false;
             }
 
+            string path = label.ItemOnGround.Path ?? string.Empty;
+            if (IsHarvestPath(path) && !IsHarvestRootElementVisible(label))
+            {
+                return false;
+            }
+
             if (!IsLabelInClickableArea(label, pointIsInClickableArea))
             {
                 return false;
@@ -155,8 +161,7 @@ namespace ClickIt.Utils
             return path.Contains("DelveMineral") ||
                    path.Contains("Delve/Objects/Encounter") ||
                    path.Contains("AzuriteEncounterController") ||
-                   path.Contains("Harvest/Irrigator") ||
-                   path.Contains("Harvest/Extractor") ||
+                   IsHarvestPath(path) ||
                    path.Contains("CleansingFireAltar") ||
                    path.Contains("TangleAltar") ||
                    path.Contains("CraftingUnlocks") ||
@@ -177,6 +182,17 @@ namespace ClickIt.Utils
                    path.Contains("Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("Leagues/Ritual");
+        }
+
+        private static bool IsHarvestPath(string path)
+        {
+            return path.Contains("Harvest/Irrigator") ||
+                   path.Contains("Harvest/Extractor");
+        }
+
+        private static bool IsHarvestRootElementVisible(LabelOnGround label)
+        {
+            return label.Label?.GetChildAtIndex(0)?.IsVisible == true;
         }
 
         public static bool HasEssenceImprisonmentText(LabelOnGround label)

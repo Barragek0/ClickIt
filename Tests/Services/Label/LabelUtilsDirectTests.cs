@@ -6,6 +6,7 @@ using System.Reflection;
 using ClickIt.Utils;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.Shared.Enums;
 
 namespace ClickIt.Tests.Unit
 {
@@ -72,6 +73,60 @@ namespace ClickIt.Tests.Unit
 
             SetMemberValue(ent, "Path", "some/thing/PetrifiedWood/abc");
             LabelUtils.IsValidEntityPath(ent).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsValidClickableLabelForTests_HarvestRequiresVisibleRootElement()
+        {
+            var clickableHarvestPath = "Metadata/Terrain/Leagues/Harvest/Irrigator";
+
+            var blocked = LabelUtils.IsValidClickableLabelForTests(
+                labelNotNull: true,
+                itemNotNull: true,
+                isVisible: true,
+                labelElementValid: true,
+                inClickableArea: true,
+                type: EntityType.WorldItem,
+                path: clickableHarvestPath,
+                chestOpenOnDamage: false,
+                hasEssenceImprisonment: false,
+                harvestRootElementVisible: false);
+
+            blocked.Should().BeFalse();
+
+            var allowed = LabelUtils.IsValidClickableLabelForTests(
+                labelNotNull: true,
+                itemNotNull: true,
+                isVisible: true,
+                labelElementValid: true,
+                inClickableArea: true,
+                type: EntityType.WorldItem,
+                path: clickableHarvestPath,
+                chestOpenOnDamage: false,
+                hasEssenceImprisonment: false,
+                harvestRootElementVisible: true);
+
+            allowed.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsValidClickableLabelForTests_NonHarvestIgnoresRootElementVisibility()
+        {
+            var nonHarvestPath = "Metadata/Terrain/Leagues/Ritual/SomeObject";
+
+            var result = LabelUtils.IsValidClickableLabelForTests(
+                labelNotNull: true,
+                itemNotNull: true,
+                isVisible: true,
+                labelElementValid: true,
+                inClickableArea: true,
+                type: EntityType.WorldItem,
+                path: nonHarvestPath,
+                chestOpenOnDamage: false,
+                hasEssenceImprisonment: false,
+                harvestRootElementVisible: false);
+
+            result.Should().BeTrue();
         }
 
     }
