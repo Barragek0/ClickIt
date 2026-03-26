@@ -323,7 +323,10 @@ namespace ClickIt.Services
         }
 
         internal static bool ShouldScanSettlersGroundLabelAddresses(bool captureClickDebug)
-            => captureClickDebug;
+            => true;
+
+        internal static bool ShouldAcceptSettlersCandidate(bool hasGroundLabel)
+            => hasGroundLabel;
 
         internal static bool ShouldSkipSettlersEntityBeforeMechanicResolution(bool isValid, bool isHidden, float distance, int clickDistance)
             => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
@@ -378,6 +381,9 @@ namespace ClickIt.Services
 
             hasGroundLabel = labelEntityAddresses != null
                 && IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
+
+            if (!ShouldAcceptSettlersCandidate(hasGroundLabel))
+                return false;
 
             var worldScreenRawVec = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
             Vector2 worldScreenRaw = new Vector2(worldScreenRawVec.X, worldScreenRawVec.Y);

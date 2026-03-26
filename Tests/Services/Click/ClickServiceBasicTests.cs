@@ -637,9 +637,16 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void ShouldScanSettlersGroundLabelAddresses_ReturnsFalse_WhenNotCapturingClickDebug()
+        public void ShouldScanSettlersGroundLabelAddresses_ReturnsTrue_WhenNotCapturingClickDebug()
         {
-            ClickService.ShouldScanSettlersGroundLabelAddresses(captureClickDebug: false).Should().BeFalse();
+            ClickService.ShouldScanSettlersGroundLabelAddresses(captureClickDebug: false).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldAcceptSettlersCandidate_RequiresGroundLabelBacking()
+        {
+            ClickService.ShouldAcceptSettlersCandidate(hasGroundLabel: true).Should().BeTrue();
+            ClickService.ShouldAcceptSettlersCandidate(hasGroundLabel: false).Should().BeFalse();
         }
 
         [TestMethod]
