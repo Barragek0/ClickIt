@@ -81,5 +81,10 @@ namespace ClickIt
         {
             return GetOrCreateAlertService();
         }
+
+        internal ClickItSettings GetEffectiveSettingsForLifecycle()
+        {
+            return EffectiveSettings;
+        }
     }
 }

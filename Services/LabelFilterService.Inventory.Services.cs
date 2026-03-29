@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ClickIt.Utils;
 using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
 
@@ -154,6 +155,101 @@ namespace ClickIt.Services
                 return TryEnumeratePrimaryInventoryItemEntitiesFast(primaryInventory, out IReadOnlyList<Entity> entities)
                     ? entities
                     : Array.Empty<Entity>();
+            }
+        }
+
+        private static class InventoryDynamicAdapter
+        {
+            public static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
+                => DynamicAccess.TryReadBool(source, accessor, out value);
+
+            public static bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
+                => DynamicAccess.TryReadInt(source, accessor, out value);
+
+            public static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
+                => DynamicAccess.TryGetDynamicValue(source, accessor, out value);
+
+            public static bool TryGetPrimaryServerInventory(GameController? gameController, out object? primaryInventory)
+            {
+                primaryInventory = null;
+
+                object? data = gameController?.IngameState?.Data;
+                if (data == null)
+                    return false;
+
+                if (!TryGetDynamicValue(data, s => s.ServerData, out object? serverData) || serverData == null)
+                    return false;
+
+                if (!TryGetDynamicValue(serverData, s => s.PlayerInventories, out object? playerInventories) || playerInventories == null)
+                    return false;
+
+                if (!TryGetFirstCollectionObject(playerInventories, out object? firstInventory) || firstInventory == null)
+                    return false;
+
+                primaryInventory = firstInventory;
+                return true;
+            }
+
+            public static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection)
+            {
+                slotItemsCollection = null;
+
+                if (!TryGetDynamicValue(primaryInventory, s => s.Inventory, out object? inventoryObj) || inventoryObj == null)
+                    return false;
+
+                if (!TryGetDynamicValue(inventoryObj, s => s.InventorySlotItems, out slotItemsCollection))
+                    return false;
+
+                return slotItemsCollection != null;
+            }
+        }
+
+        private readonly record struct InventoryPickupSnapshot(
+            InventoryFullProbe Probe,
+            bool InventoryFull,
+            Entity? GroundItemEntity,
+            string GroundItemPath,
+            string GroundItemName,
+            bool IsStackable,
+            int MatchingPathCount,
+            int PartialMatchingStackCount,
+            bool HasPartialMatchingStack,
+            bool HasSpaceForGroundItem);
+
+        private static class InventoryPickupSnapshotBuilder
+        {
+            public static InventoryPickupSnapshot Build(Entity groundItem, GameController? gameController)
+            {
+                bool inventoryFull = IsInventoryFullCore(gameController, out InventoryFullProbe probe);
+
+                Entity? groundItemEntity = TryGetWorldItemEntity(groundItem);
+                string groundItemPath = groundItemEntity?.Path ?? string.Empty;
+                string groundItemName = GetWorldItemBaseName(groundItem);
+                bool isStackable = IsGroundItemStackableCore(groundItemEntity);
+
+                int matchingPathCount = 0;
+                int partialMatchingStackCount = 0;
+                bool hasPartialMatchingStack = isStackable
+                    && HasMatchingPartialStackInInventoryCore(
+                        groundItemPath,
+                        groundItemEntity,
+                        gameController,
+                        out matchingPathCount,
+                        out partialMatchingStackCount);
+
+                bool hasSpaceForGroundItem = HasInventorySpaceForGroundItemCore(groundItemEntity, gameController);
+
+                return new InventoryPickupSnapshot(
+                    Probe: probe,
+                    InventoryFull: inventoryFull,
+                    GroundItemEntity: groundItemEntity,
+                    GroundItemPath: groundItemPath,
+                    GroundItemName: groundItemName,
+                    IsStackable: isStackable,
+                    MatchingPathCount: matchingPathCount,
+                    PartialMatchingStackCount: partialMatchingStackCount,
+                    HasPartialMatchingStack: hasPartialMatchingStack,
+                    HasSpaceForGroundItem: hasSpaceForGroundItem);
             }
         }
 
@@ -581,15 +677,15 @@ namespace ClickIt.Services
         {
             public static bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
             {
-                bool inventoryFull = IsInventoryFullCore(gameController, out InventoryFullProbe probe);
+                InventoryPickupSnapshot snapshot = InventoryPickupSnapshotBuilder.Build(groundItem, gameController);
 
-                if (ShouldAllowPickupWhenPrimaryInventoryMissingCore(probe.HasPrimaryInventory, probe.Notes))
+                if (ShouldAllowPickupWhenPrimaryInventoryMissingCore(snapshot.Probe.HasPrimaryInventory, snapshot.Probe.Notes))
                 {
                     PublishInventoryDebug(CreateInventoryDebugSnapshot(
                         stage: "PrimaryInventoryMissingAllow",
-                        probe,
+                        snapshot.Probe,
                         groundItemPath: string.Empty,
-                        groundItemName: GetWorldItemBaseName(groundItem),
+                        groundItemName: snapshot.GroundItemName,
                         isStackable: false,
                         matchingPathCount: 0,
                         partialMatchingStackCount: 0,
@@ -599,19 +695,14 @@ namespace ClickIt.Services
                     return true;
                 }
 
-                Entity? groundItemEntity = TryGetWorldItemEntity(groundItem);
-                string groundItemPath = groundItemEntity?.Path ?? string.Empty;
-                string groundItemName = GetWorldItemBaseName(groundItem);
-                bool isStackable = IsGroundItemStackableCore(groundItemEntity);
-
-                if (ShouldAllowPickupWhenGroundItemEntityMissingCore(inventoryFull, groundItemEntity))
+                if (ShouldAllowPickupWhenGroundItemEntityMissingCore(snapshot.InventoryFull, snapshot.GroundItemEntity))
                 {
                     PublishInventoryDebug(CreateInventoryDebugSnapshot(
                         stage: "InventoryNotFullUnknownItemAllow",
-                        probe,
-                        groundItemPath,
-                        groundItemName,
-                        isStackable,
+                        snapshot.Probe,
+                        snapshot.GroundItemPath,
+                        snapshot.GroundItemName,
+                        snapshot.IsStackable,
                         matchingPathCount: 0,
                         partialMatchingStackCount: 0,
                         hasPartialMatchingStack: false,
@@ -620,14 +711,14 @@ namespace ClickIt.Services
                     return true;
                 }
 
-                if (ShouldAllowPickupWhenGroundItemIdentityMissingCore(inventoryFull, groundItemPath, groundItemName))
+                if (ShouldAllowPickupWhenGroundItemIdentityMissingCore(snapshot.InventoryFull, snapshot.GroundItemPath, snapshot.GroundItemName))
                 {
                     PublishInventoryDebug(CreateInventoryDebugSnapshot(
                         stage: "InventoryNotFullUnknownIdentityAllow",
-                        probe,
-                        groundItemPath,
-                        groundItemName,
-                        isStackable,
+                        snapshot.Probe,
+                        snapshot.GroundItemPath,
+                        snapshot.GroundItemName,
+                        snapshot.IsStackable,
                         matchingPathCount: 0,
                         partialMatchingStackCount: 0,
                         hasPartialMatchingStack: false,
@@ -636,32 +727,20 @@ namespace ClickIt.Services
                     return true;
                 }
 
-                int matchingPathCount = 0;
-                int partialMatchingStackCount = 0;
-                bool hasPartialMatchingStack = isStackable
-                    && HasMatchingPartialStackInInventoryCore(
-                        groundItemPath,
-                        groundItemEntity,
-                        gameController,
-                        out matchingPathCount,
-                        out partialMatchingStackCount);
-
-                bool hasSpaceForGroundItem = HasInventorySpaceForGroundItemCore(groundItemEntity, gameController);
-
-                if (!inventoryFull)
+                if (!snapshot.InventoryFull)
                 {
-                    bool allowPickupWhenNotFull = hasSpaceForGroundItem || (isStackable && hasPartialMatchingStack);
+                    bool allowPickupWhenNotFull = snapshot.HasSpaceForGroundItem || (snapshot.IsStackable && snapshot.HasPartialMatchingStack);
                     string stage = allowPickupWhenNotFull ? "InventoryNotFullAllow" : "InventoryNotFullNoFit";
 
                     PublishInventoryDebug(CreateInventoryDebugSnapshot(
                         stage,
-                        probe,
-                        groundItemPath,
-                        groundItemName,
-                        isStackable,
-                        matchingPathCount,
-                        partialMatchingStackCount,
-                        hasPartialMatchingStack,
+                        snapshot.Probe,
+                        snapshot.GroundItemPath,
+                        snapshot.GroundItemName,
+                        snapshot.IsStackable,
+                        snapshot.MatchingPathCount,
+                        snapshot.PartialMatchingStackCount,
+                        snapshot.HasPartialMatchingStack,
                         allowPickupWhenNotFull));
 
                     return allowPickupWhenNotFull;
@@ -669,18 +748,18 @@ namespace ClickIt.Services
 
                 bool allowPickup = ShouldPickupWhenInventoryFullCore(
                     inventoryFull: true,
-                    isStackable,
-                    hasPartialMatchingStack);
+                    snapshot.IsStackable,
+                    snapshot.HasPartialMatchingStack);
 
                 PublishInventoryDebug(CreateInventoryDebugSnapshot(
                     stage: "InventoryFullDecision",
-                    probe,
-                    groundItemPath,
-                    groundItemName,
-                    isStackable,
-                    matchingPathCount,
-                    partialMatchingStackCount,
-                    hasPartialMatchingStack,
+                    snapshot.Probe,
+                    snapshot.GroundItemPath,
+                    snapshot.GroundItemName,
+                    snapshot.IsStackable,
+                    snapshot.MatchingPathCount,
+                    snapshot.PartialMatchingStackCount,
+                    snapshot.HasPartialMatchingStack,
                     allowPickup));
 
                 return allowPickup;

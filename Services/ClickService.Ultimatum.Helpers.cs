@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using ClickIt.Definitions;
+using ClickIt.Utils;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
@@ -11,32 +12,10 @@ namespace ClickIt.Services
     public partial class ClickService
     {
         private static IEnumerable<object?> EnumerateObjects(object? source)
-        {
-            if (source == null)
-                yield break;
-
-            if (source is IEnumerable enumerable)
-            {
-                foreach (object? item in enumerable)
-                {
-                    yield return item;
-                }
-            }
-        }
+            => SharedDynamicAdapter.EnumerateObjects(source);
 
         private static bool TryExtractElement(object? source, out Element? element)
-        {
-            element = null;
-            if (source == null)
-                return false;
-
-            if (source is Element direct)
-            {
-                element = direct;
-                return true;
-            }
-            return false;
-        }
+            => SharedDynamicAdapter.TryExtractElement(source, out element);
 
         private void LogDiagnostics(string prefix, List<string> diagnostics)
         {
@@ -153,9 +132,9 @@ namespace ClickIt.Services
             IReadOnlyList<string> modifierNamesByIndex = GetUltimatumChoicePanelModifierNames(choicePanel, diagnostics);
 
             int seen = 0;
-            foreach (object? choiceObj in EnumerateObjects(choiceElements))
+            foreach (object? choiceObj in SharedDynamicAdapter.EnumerateObjects(choiceElements))
             {
-                if (!TryExtractElement(choiceObj, out Element? option) || option == null)
+                if (!SharedDynamicAdapter.TryExtractElement(choiceObj, out Element? option) || option == null)
                 {
                     diagnostics?.Add($"ChoicePanel option[{seen}] is not an Element.");
                     seen++;
@@ -193,7 +172,7 @@ namespace ClickIt.Services
 
             List<string>? names = null;
 
-            foreach (object? modifierObj in EnumerateObjects(modifiersObj))
+            foreach (object? modifierObj in SharedDynamicAdapter.EnumerateObjects(modifiersObj))
             {
                 names ??= new List<string>(3);
 
@@ -338,5 +317,63 @@ namespace ClickIt.Services
             return int.MaxValue;
         }
 
+    }
+
+    internal static class SharedDynamicAdapter
+    {
+        public static IEnumerable<object?> EnumerateObjects(object? source)
+        {
+            if (source == null)
+                yield break;
+
+            if (source is string)
+            {
+                yield return source;
+                yield break;
+            }
+
+            if (source is IEnumerable enumerable)
+            {
+                foreach (object? item in enumerable)
+                    yield return item;
+                yield break;
+            }
+
+            yield return source;
+        }
+
+        public static bool TryExtractElement(object? source, out Element? element)
+        {
+            element = source as Element;
+            return element != null;
+        }
+
+        public static bool TryGetValue(object? source, Func<dynamic, object?> accessor, out object? value)
+            => DynamicAccess.TryGetDynamicValue(source, accessor, out value);
+
+        public static bool TryReadBool(object? source, Func<dynamic, object?> accessor, out bool value)
+            => DynamicAccess.TryReadBool(source, accessor, out value);
+
+        public static bool TryReadInt(object? source, Func<dynamic, object?> accessor, out int value)
+            => DynamicAccess.TryReadInt(source, accessor, out value);
+
+        public static bool TryReadString(object? source, Func<dynamic, object?> accessor, out string value)
+            => DynamicAccess.TryReadString(source, accessor, out value);
+
+        public static bool TryReadBoolFromEither(object? primarySource, object? secondarySource, Func<dynamic, object?> accessor, out bool value)
+        {
+            if (TryReadBool(primarySource, accessor, out value))
+                return true;
+
+            return TryReadBool(secondarySource, accessor, out value);
+        }
+
+        public static bool TryReadStringFromEither(object? primarySource, object? secondarySource, Func<dynamic, object?> accessor, out string value)
+        {
+            if (TryReadString(primarySource, accessor, out value))
+                return true;
+
+            return TryReadString(secondarySource, accessor, out value);
+        }
     }
 }

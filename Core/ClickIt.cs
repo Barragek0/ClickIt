@@ -28,20 +28,6 @@ namespace ClickIt
                 EffectiveSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
             }
 
-            if (State.AlertService != null)
-            {
-                runtimeSettings.OpenConfigDirectory.OnPressed -= State.AlertService.OpenConfigDirectory;
-                runtimeSettings.ReloadAlertSound.OnPressed -= State.AlertService.ReloadAlertSound;
-
-                if (!ReferenceEquals(runtimeSettings, EffectiveSettings))
-                {
-                    EffectiveSettings.OpenConfigDirectory.OnPressed -= State.AlertService.OpenConfigDirectory;
-                    EffectiveSettings.ReloadAlertSound.OnPressed -= State.AlertService.ReloadAlertSound;
-                }
-            }
-
-            State.ErrorHandler?.UnregisterGlobalExceptionHandlers();
-
             State.AltarCoroutine?.Done();
             State.ClickLabelCoroutine?.Done();
             State.ManualUiHoverCoroutine?.Done();
@@ -69,37 +55,7 @@ namespace ClickIt
             Services.LabelFilterService.ClearInventoryProbeCacheForShutdown();
             State.AltarService?.ClearRuntimeCaches();
 
-            State.CachedLabels = null;
-
-            State.PerformanceMonitor?.ShutdownForHotReload();
-
-            State.PerformanceMonitor = null;
-            State.ErrorHandler = null;
-            State.AreaService = null;
-            State.AltarService = null;
-            State.ShrineService = null;
-            State.InputHandler = null;
-            State.DebugRenderer = null;
-            State.StrongboxRenderer = null;
-            State.UltimatumRenderer = null;
-            State.LazyModeRenderer = null;
-            State.ClickHotkeyToggleRenderer = null;
-            State.InventoryFullWarningRenderer = null;
-            State.PathfindingRenderer = null;
-            State.DeferredTextQueue = null;
-            State.DeferredFrameQueue = null;
-            State.AltarDisplayRenderer = null;
-            State.PathfindingService = null;
-            State.AlertService = null;
-            State.LabelService = null;
-            State.LabelFilterService = null;
-            State.ClickService = null;
-            State.Camera = null;
-
-            State.LastRenderTimer.Stop();
-            State.LastTickTimer.Stop();
-            State.Timer.Stop();
-            State.SecondTimer.Stop();
+            State.DisposeCompositionRoot();
 
             // Best-effort finalizer drain to reduce transient assembly/file lock windows during host hot-reload.
             try
@@ -124,75 +80,28 @@ namespace ClickIt
 
         public override bool Initialise()
         {
+            var settings = Settings
+                ?? throw new InvalidOperationException("Settings is null during plugin initialization.");
+
             State.IsShuttingDown = false;
-            Settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
-            Settings.CopyAdditionalDebugInfoButton.OnPressed += CopyAdditionalDebugInfoButtonPressed;
-            State.PerformanceMonitor = new PerformanceMonitor(Settings);
-            State.ErrorHandler = new ErrorHandler(Settings, LogError, LogMessage);
-            State.ErrorHandler.RegisterGlobalExceptionHandlers();
-            State.AreaService = new Services.AreaService();
-            State.AreaService.UpdateScreenAreas(GameController);
-            State.LabelService = new Services.LabelService(
-                GameController!,
-                point => State.AreaService?.PointIsInClickableArea(GameController, point) ?? false);
-            State.CachedLabels = State.LabelService.CachedLabels;
-            State.Camera = GameController?.Game?.IngameState?.Camera;
-            State.AltarService = new Services.AltarService(this, Settings, State.CachedLabels);
-            var labelFilterService = new Services.LabelFilterService(Settings, new Services.EssenceService(Settings), State.ErrorHandler, GameController);
-            State.LabelFilterService = labelFilterService;
-            State.ShrineService = new Services.ShrineService(GameController!, State.Camera!);
-            State.InputHandler = new InputHandler(Settings, State.PerformanceMonitor, State.ErrorHandler);
-            State.PathfindingService = new Services.PathfindingService(Settings, State.ErrorHandler);
-            var weightCalculator = new WeightCalculator(Settings);
-            State.DeferredTextQueue = new DeferredTextQueue();
-            State.DeferredFrameQueue = new DeferredFrameQueue();
-            State.DebugRenderer = new Rendering.DebugRenderer(this, State.AltarService, State.AreaService, weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue);
-            State.StrongboxRenderer = new Rendering.StrongboxRenderer(Settings, State.DeferredFrameQueue);
-            State.LazyModeRenderer = new Rendering.LazyModeRenderer(Settings, State.DeferredTextQueue, State.InputHandler, labelFilterService);
-            State.ClickHotkeyToggleRenderer = new Rendering.ClickHotkeyToggleRenderer(Settings, State.DeferredTextQueue, State.InputHandler);
-            State.InventoryFullWarningRenderer = new Rendering.InventoryFullWarningRenderer(
-                State.DeferredTextQueue,
-                State.AreaService,
-                TryAutoCopyInventoryWarningDebugSnapshot);
-            State.PathfindingRenderer = new Rendering.PathfindingRenderer(State.PathfindingService);
-            State.AltarDisplayRenderer = new Rendering.AltarDisplayRenderer(Graphics, Settings, GameController ?? throw new InvalidOperationException("GameController is null @ altarDisplayRenderer initialize"), weightCalculator, State.DeferredTextQueue, State.DeferredFrameQueue, State.AltarService, LogMessage);
-            LockManager.Instance = new LockManager(Settings);
-            State.ClickService = new Services.ClickService(
-                Settings,
-                GameController,
-                State.ErrorHandler,
-                State.AltarService,
-                weightCalculator,
-                State.AltarDisplayRenderer,
-                (point, path) => State.AreaService?.PointIsInClickableArea(GameController, point) ?? false,
-                State.InputHandler,
-                labelFilterService,
-                State.ShrineService,
-                State.PathfindingService,
-                new Func<bool>(State.LabelService.GroundItemsVisible),
-                State.CachedLabels,
-                State.PerformanceMonitor);
-            State.UltimatumRenderer = new Rendering.UltimatumRenderer(Settings, State.ClickService, State.DeferredFrameQueue);
-            var alertService = GetOrCreateAlertService();
-            State.PerformanceMonitor.Start();
+            settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
+            settings.CopyAdditionalDebugInfoButton.OnPressed += CopyAdditionalDebugInfoButtonPressed;
+            State.InitializeCompositionRoot(this, settings);
+            var errorHandler = State.ErrorHandler
+                ?? throw new InvalidOperationException("ErrorHandler was not initialized by composition root.");
+            if (GameController == null)
+                throw new InvalidOperationException("GameController is null during coroutine manager initialization.");
+            var gameController = GameController;
+            errorHandler.RegisterGlobalExceptionHandlers();
 
             var coroutineManager = new CoroutineManager(
-                State,
-                Settings,
-                GameController,
-                State.ErrorHandler);
+                State!,
+                settings,
+                gameController!,
+                errorHandler!);
             coroutineManager.StartCoroutines(this);
 
-            Settings.EnsureAllModsHaveWeights();
-
-            Settings.OpenConfigDirectory.OnPressed += alertService.OpenConfigDirectory;
-            Settings.ReloadAlertSound.OnPressed += alertService.ReloadAlertSound;
-            alertService.ReloadAlertSound();
-
-            State.LastRenderTimer.Start();
-            State.LastTickTimer.Start();
-            State.Timer.Start();
-            State.SecondTimer.Start();
+            State.FinalizeCompositionRootForStartup(this, settings);
 
             return true;
         }

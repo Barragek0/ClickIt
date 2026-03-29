@@ -16,7 +16,7 @@ namespace ClickIt.Tests.Unit
         {
             var plugin = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
 
-            // The runtime state type is PluginContext (not ClickItState) â€” create an instance via reflection
+            // The runtime state type is PluginContext; create an instance via reflection
             var stateType = typeof(ClickIt).Assembly.GetType("ClickIt.PluginContext");
             var state = stateType is null ? null : Activator.CreateInstance(stateType);
             var backingField = typeof(ClickIt).GetField("<State>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);

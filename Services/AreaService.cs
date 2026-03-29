@@ -17,6 +17,41 @@ namespace ClickIt.Services
         private const float SideTertiaryCompanionHeightRatio = 0.85f;
         private const float SideTertiaryCompanionWidthRatio = 0.79f;
 
+        private readonly record struct BlockedAreaEvaluationContext(AreaService Service, Vector2 Point);
+
+        private interface IBlockedAreaEvaluator
+        {
+            bool IsBlocked(in BlockedAreaEvaluationContext context);
+        }
+
+        private sealed class BlockedAreaEvaluator(Func<AreaService, Vector2, bool> isBlocked) : IBlockedAreaEvaluator
+        {
+            private readonly Func<AreaService, Vector2, bool> _isBlocked = isBlocked;
+
+            public bool IsBlocked(in BlockedAreaEvaluationContext context)
+                => _isBlocked(context.Service, context.Point);
+        }
+
+        private static readonly IBlockedAreaEvaluator[] BlockedAreaEvaluators =
+        [
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._healthSquareRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._flaskRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._flaskTertiaryRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._skillsRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._skillsTertiaryRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._manaSquareRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._buffsAndDebuffsRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInAnyBlockedUiRectangle(point, service._buffsAndDebuffsRectangles)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInAnyBlockedUiRectangle(point, service._questTrackerBlockedRectangles)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._chatPanelBlockedRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._mapPanelBlockedRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._xpBarBlockedRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._mirageBlockedRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._altarBlockedRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._ritualBlockedRectangle)),
+            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._sentinelBlockedRectangle))
+        ];
+
         private RectangleF _fullScreenRectangle;
         private RectangleF _healthAndFlaskRectangle;
         private RectangleF _manaAndSkillsRectangle;
@@ -319,24 +354,23 @@ namespace ClickIt.Services
         {
             using (LockManager.AcquireStatic(_screenAreasLock))
             {
-                return point.PointInRectangle(_fullScreenRectangle)
-                    && !point.PointInRectangle(_healthSquareRectangle)
-                    && !point.PointInRectangle(_flaskRectangle)
-                    && !point.PointInRectangle(_flaskTertiaryRectangle)
-                    && !point.PointInRectangle(_skillsRectangle)
-                    && !point.PointInRectangle(_skillsTertiaryRectangle)
-                    && !point.PointInRectangle(_manaSquareRectangle)
-                    && !PointInBlockedUiRectangle(point, _buffsAndDebuffsRectangle)
-                    && !PointInAnyBlockedUiRectangle(point, _buffsAndDebuffsRectangles)
-                    && !PointInAnyBlockedUiRectangle(point, _questTrackerBlockedRectangles)
-                    && !PointInBlockedUiRectangle(point, _chatPanelBlockedRectangle)
-                    && !PointInBlockedUiRectangle(point, _mapPanelBlockedRectangle)
-                    && !PointInBlockedUiRectangle(point, _xpBarBlockedRectangle)
-                    && !PointInBlockedUiRectangle(point, _mirageBlockedRectangle)
-                    && !PointInBlockedUiRectangle(point, _altarBlockedRectangle)
-                    && !PointInBlockedUiRectangle(point, _ritualBlockedRectangle)
-                    && !PointInBlockedUiRectangle(point, _sentinelBlockedRectangle);
+                if (!point.PointInRectangle(_fullScreenRectangle))
+                    return false;
+
+                return !IsBlockedByAreaEvaluatorPipeline(point);
             }
+        }
+
+        private bool IsBlockedByAreaEvaluatorPipeline(Vector2 point)
+        {
+            BlockedAreaEvaluationContext context = new(this, point);
+            for (int i = 0; i < BlockedAreaEvaluators.Length; i++)
+            {
+                if (BlockedAreaEvaluators[i].IsBlocked(context))
+                    return true;
+            }
+
+            return false;
         }
 
         public bool PointIsInClickableArea(GameController? gameController, Vector2 point)

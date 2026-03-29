@@ -95,78 +95,34 @@ namespace ClickIt.Services
         {
             float distance = candidate.Distance ?? float.MaxValue;
             float cursorDistance = candidate.CursorDistance ?? float.MaxValue;
-            int priorityIndex = ResolvePriorityIndex(candidate.MechanicId, context.PriorityIndexMap);
-            bool ignored = IsIgnoreDistanceActiveForMechanic(candidate.MechanicId, distance, context.IgnoreDistanceSet, context.IgnoreDistanceWithinByMechanicId);
 
-            float weightedDistance = priorityIndex == int.MaxValue
-                ? float.MaxValue
-                : distance + (priorityIndex * Math.Max(0, context.PriorityDistancePenalty));
-
-            return new MechanicRank(ignored, priorityIndex, weightedDistance, distance, cursorDistance);
+            CandidateScoreEngine.CandidateScoreContext scoreContext = CreateCandidateScoreContext(context);
+            CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(distance, candidate.MechanicId, cursorDistance, scoreContext);
+            return new MechanicRank(score.Ignored, score.PriorityIndex, score.WeightedDistance, score.RawDistance, score.CursorDistance);
         }
+
+        private static CandidateScoreEngine.CandidateScoreContext CreateCandidateScoreContext(in MechanicPriorityContext context)
+            => new(
+                context.PriorityIndexMap,
+                context.IgnoreDistanceSet,
+                context.IgnoreDistanceWithinByMechanicId,
+                context.PriorityDistancePenalty);
 
         private static int ResolvePriorityIndex(string? mechanicId, IReadOnlyDictionary<string, int> priorityIndexMap)
-        {
-            if (string.IsNullOrWhiteSpace(mechanicId))
-                return int.MaxValue;
-
-            return priorityIndexMap.TryGetValue(mechanicId, out int index)
-                ? index
-                : int.MaxValue;
-        }
+            => CandidateScoreEngine.ResolvePriorityIndex(mechanicId, priorityIndexMap);
 
         private static bool IsIgnoreDistanceActiveForMechanic(
             string? mechanicId,
             float distance,
             IReadOnlySet<string> ignoreDistanceSet,
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
-        {
-            if (string.IsNullOrWhiteSpace(mechanicId) || !ignoreDistanceSet.Contains(mechanicId))
-                return false;
-
-            int maxDistance = ignoreDistanceWithinByMechanicId.TryGetValue(mechanicId, out int configuredDistance)
-                ? configuredDistance
-                : 100;
-
-            return distance <= maxDistance;
-        }
+            => CandidateScoreEngine.IsIgnoreDistanceActive(mechanicId, distance, ignoreDistanceSet, ignoreDistanceWithinByMechanicId);
 
         private static int CompareMechanicRanks(MechanicRank left, MechanicRank right)
-        {
-            if (left.Ignored && right.Ignored)
-            {
-                int byPriority = left.PriorityIndex.CompareTo(right.PriorityIndex);
-                if (byPriority != 0)
-                    return byPriority;
+            => CandidateScoreEngine.Compare(ToCandidateScore(left), ToCandidateScore(right));
 
-                int byRawDistanceIgnored = left.RawDistance.CompareTo(right.RawDistance);
-                if (byRawDistanceIgnored != 0)
-                    return byRawDistanceIgnored;
-
-                return left.CursorDistance.CompareTo(right.CursorDistance);
-            }
-
-            if (left.Ignored != right.Ignored)
-            {
-                return left.Ignored
-                    ? (left.PriorityIndex <= right.PriorityIndex ? -1 : 1)
-                    : (right.PriorityIndex <= left.PriorityIndex ? 1 : -1);
-            }
-
-            int byWeightedDistance = left.WeightedDistance.CompareTo(right.WeightedDistance);
-            if (byWeightedDistance != 0)
-                return byWeightedDistance;
-
-            int byRawDistanceNonIgnored = left.RawDistance.CompareTo(right.RawDistance);
-            if (byRawDistanceNonIgnored != 0)
-                return byRawDistanceNonIgnored;
-
-            int byCursorDistance = left.CursorDistance.CompareTo(right.CursorDistance);
-            if (byCursorDistance != 0)
-                return byCursorDistance;
-
-            return left.PriorityIndex.CompareTo(right.PriorityIndex);
-        }
+        private static CandidateScoreEngine.CandidateScore ToCandidateScore(MechanicRank rank)
+            => new(rank.Ignored, rank.PriorityIndex, rank.WeightedDistance, rank.RawDistance, rank.CursorDistance);
 
         private static bool ContainsAny(string? value, params string[] markers)
         {

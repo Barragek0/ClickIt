@@ -297,17 +297,11 @@ namespace ClickIt.Services
                 return null;
 
             SelectionStats stats = default;
-
-            LabelOnGround? bestNonIgnored = null;
-            string? bestNonIgnoredMechanicId = null;
-            float bestNonIgnoredDistance = float.MaxValue;
-            float bestNonIgnoredWeightedScore = float.MaxValue;
-            float bestNonIgnoredCursorDistance = float.MaxValue;
-
-            LabelOnGround? bestIgnored = null;
-            int bestIgnoredPriority = int.MaxValue;
-            float bestIgnoredDistance = float.MaxValue;
-            float bestIgnoredCursorDistance = float.MaxValue;
+            CandidateScoreEngine.CandidateScoreContext scoreContext = CreateCandidateScoreContext(clickSettings);
+            LabelOnGround? bestCandidate = null;
+            CandidateScoreEngine.CandidateScore bestScore = default;
+            bool hasBestScore = false;
+            string? bestMechanicId = null;
 
             for (int i = start; i < end; i++)
             {
@@ -322,45 +316,30 @@ namespace ClickIt.Services
 
                 float cursorDistance = GetCursorDistanceSquaredToLabel(label);
 
-                if (TryPromoteIgnoredCandidate(
-                    label,
-                    mechanicId!,
+                CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(
                     item!.DistancePlayer,
-                    cursorDistance,
-                    clickSettings,
-                    ref bestIgnored,
-                    ref bestIgnoredPriority,
-                    ref bestIgnoredDistance,
-                    ref bestIgnoredCursorDistance))
-                {
-                    stats.IgnoredByDistanceCandidates++;
-                    continue;
-                }
-
-                PromoteNonIgnoredCandidate(
-                    label,
                     mechanicId!,
-                    item.DistancePlayer,
                     cursorDistance,
-                    clickSettings,
-                    ref bestNonIgnored,
-                    ref bestNonIgnoredMechanicId,
-                    ref bestNonIgnoredDistance,
-                    ref bestNonIgnoredWeightedScore,
-                    ref bestNonIgnoredCursorDistance);
+                    scoreContext);
+
+                if (score.Ignored)
+                    stats.IgnoredByDistanceCandidates++;
+
+                if (!hasBestScore || CandidateScoreEngine.Compare(score, bestScore) < 0)
+                {
+                    bestCandidate = label;
+                    bestScore = score;
+                    hasBestScore = true;
+                    bestMechanicId = mechanicId;
+                }
             }
 
-            LabelOnGround? selected = ResolveWinningCandidate(
-                bestNonIgnored,
-                bestNonIgnoredMechanicId,
-                bestIgnored,
-                bestIgnoredPriority,
-                clickSettings);
+            LabelOnGround? selected = bestCandidate;
             if (ShouldCaptureLabelDebug())
             {
                 Entity? selectedEntity = selected?.ItemOnGround;
                 string? selectedMechanicId = selectedEntity != null
-                    ? GetClickableMechanicId(selected!, selectedEntity, clickSettings, _gameController)
+                    ? bestMechanicId
                     : string.Empty;
 
                 PublishLabelDebugStage(new LabelDebugEvent(
@@ -383,6 +362,13 @@ namespace ClickIt.Services
 
             return selected;
         }
+
+        private static CandidateScoreEngine.CandidateScoreContext CreateCandidateScoreContext(ClickSettings clickSettings)
+            => new(
+                clickSettings.MechanicPriorityIndexMap,
+                clickSettings.IgnoreDistanceMechanicIds,
+                clickSettings.IgnoreDistanceWithinByMechanicId,
+                clickSettings.MechanicPriorityDistancePenalty);
 
         private struct SelectionStats
         {
@@ -562,78 +548,6 @@ namespace ClickIt.Services
             return !itemIsTargetable;
         }
 
-        private static bool TryPromoteIgnoredCandidate(
-            LabelOnGround label,
-            string mechanicId,
-            float distance,
-            float cursorDistance,
-            ClickSettings clickSettings,
-            ref LabelOnGround? bestIgnoredByPriority,
-            ref int bestIgnoredPriority,
-            ref float bestIgnoredDistance,
-            ref float bestIgnoredCursorDistance)
-        {
-            if (!IsIgnoreDistanceActiveForMechanic(mechanicId, distance, clickSettings.IgnoreDistanceMechanicIds, clickSettings.IgnoreDistanceWithinByMechanicId))
-                return false;
-
-            int candidatePriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
-            bool isBetter = candidatePriority < bestIgnoredPriority
-                || (candidatePriority == bestIgnoredPriority && distance < bestIgnoredDistance)
-                || (candidatePriority == bestIgnoredPriority && Math.Abs(distance - bestIgnoredDistance) <= 0.001f && cursorDistance < bestIgnoredCursorDistance);
-            if (isBetter)
-            {
-                bestIgnoredPriority = candidatePriority;
-                bestIgnoredDistance = distance;
-                bestIgnoredCursorDistance = cursorDistance;
-                bestIgnoredByPriority = label;
-            }
-
-            return true;
-        }
-
-        private static bool IsIgnoreDistanceActiveForMechanic(
-            string? mechanicId,
-            float distance,
-            IReadOnlySet<string> ignoreDistanceMechanicIds,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
-        {
-            if (string.IsNullOrWhiteSpace(mechanicId) || !ignoreDistanceMechanicIds.Contains(mechanicId))
-                return false;
-
-            int maxDistance = ignoreDistanceWithinByMechanicId.TryGetValue(mechanicId, out int configured)
-                ? configured
-                : 100;
-            return distance <= maxDistance;
-        }
-
-        private static void PromoteNonIgnoredCandidate(
-            LabelOnGround label,
-            string mechanicId,
-            float distance,
-            float cursorDistance,
-            ClickSettings clickSettings,
-            ref LabelOnGround? bestNonIgnoredByDistance,
-            ref string? bestNonIgnoredMechanicId,
-            ref float bestNonIgnoredDistance,
-            ref float bestNonIgnoredWeightedScore,
-            ref float bestNonIgnoredCursorDistance)
-        {
-            int priorityIndex = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
-            float weightedScore = CalculateNonIgnoredWeightedScore(distance, priorityIndex, clickSettings.MechanicPriorityDistancePenalty);
-            bool better = weightedScore < bestNonIgnoredWeightedScore
-                || (Math.Abs(weightedScore - bestNonIgnoredWeightedScore) < 0.001f && distance < bestNonIgnoredDistance)
-                || (Math.Abs(weightedScore - bestNonIgnoredWeightedScore) < 0.001f
-                    && Math.Abs(distance - bestNonIgnoredDistance) <= 0.001f
-                    && cursorDistance < bestNonIgnoredCursorDistance);
-            if (!better)
-                return;
-
-            bestNonIgnoredByDistance = label;
-            bestNonIgnoredMechanicId = mechanicId;
-            bestNonIgnoredDistance = distance;
-            bestNonIgnoredWeightedScore = weightedScore;
-            bestNonIgnoredCursorDistance = cursorDistance;
-        }
 
         private float GetCursorDistanceSquaredToLabel(LabelOnGround? label)
         {
@@ -660,27 +574,8 @@ namespace ClickIt.Services
             return Math.Min(absoluteDistanceSq, clientDistanceSq);
         }
 
-        private static LabelOnGround? ResolveWinningCandidate(
-            LabelOnGround? bestNonIgnoredByDistance,
-            string? bestNonIgnoredMechanicId,
-            LabelOnGround? bestIgnoredByPriority,
-            int bestIgnoredPriority,
-            ClickSettings clickSettings)
-        {
-            if (bestIgnoredByPriority == null)
-                return bestNonIgnoredByDistance;
-            if (bestNonIgnoredByDistance == null)
-                return bestIgnoredByPriority;
-
-            int nonIgnoredPriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, bestNonIgnoredMechanicId);
-            return bestIgnoredPriority <= nonIgnoredPriority ? bestIgnoredByPriority : bestNonIgnoredByDistance;
-        }
-
         private static int GetMechanicPriorityIndex(IReadOnlyDictionary<string, int> priorityMap, string? mechanicId)
             => CandidateScoreEngine.ResolvePriorityIndex(mechanicId, priorityMap);
-
-        private static float CalculateNonIgnoredWeightedScore(float distance, int priorityIndex, int penalty)
-            => CandidateScoreEngine.CalculateWeightedDistance(distance, priorityIndex, penalty);
 
         public bool ShouldCorruptEssence(LabelOnGround label)
             => _essenceService.ShouldCorruptEssence(label.Label);

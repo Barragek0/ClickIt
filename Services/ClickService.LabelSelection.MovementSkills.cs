@@ -256,17 +256,12 @@ namespace ClickIt.Services
 
         private static bool TryReadBoolSkillMember(object skillObject, object entry, out bool value, Func<dynamic, object?> accessor)
         {
-            value = false;
-
-            if (TryReadBool(accessor, skillObject, out value))
-                return true;
-
-            return TryReadBool(accessor, entry, out value);
+            return SharedDynamicAdapter.TryReadBoolFromEither(skillObject, entry, accessor, out value);
         }
 
         private static bool TryReadBool(Func<dynamic, object?> accessor, object? source, out bool value)
         {
-            return DynamicAccess.TryReadBool(source, accessor, out value);
+            return SharedDynamicAdapter.TryReadBool(source, accessor, out value);
         }
 
         internal static int ResolveMovementSkillPostCastClickBlockMs(string? movementSkillInternalName)
@@ -677,22 +672,17 @@ namespace ClickIt.Services
 
         private static bool TryReadStringSkillMember(object skillObject, object entry, out string value, Func<dynamic, object?> accessor)
         {
-            value = string.Empty;
-
-            if (TryReadString(accessor, entry, out value))
-                return true;
-
-            return TryReadString(accessor, skillObject, out value);
+            return SharedDynamicAdapter.TryReadStringFromEither(entry, skillObject, accessor, out value);
         }
 
         private static bool TryReadString(Func<dynamic, object?> accessor, object? source, out string value)
         {
-            return DynamicAccess.TryReadString(source, accessor, out value);
+            return SharedDynamicAdapter.TryReadString(source, accessor, out value);
         }
 
         private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
         {
-            return DynamicAccess.TryGetDynamicValue(source, accessor, out value);
+            return SharedDynamicAdapter.TryGetValue(source, accessor, out value);
         }
     }
 }

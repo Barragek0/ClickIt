@@ -624,7 +624,7 @@ namespace ClickIt.Services
 
             var uniqueEntities = new List<Entity>(32);
 
-            foreach (object? entry in EnumerateObjects(collectionObj))
+            foreach (object? entry in SharedDynamicAdapter.EnumerateObjects(collectionObj))
             {
                 if (entry == null)
                     continue;
@@ -667,25 +667,7 @@ namespace ClickIt.Services
         }
 
         private static bool TryGetPrimaryServerInventory(GameController? gameController, out object? primaryInventory)
-        {
-            primaryInventory = null;
-
-            object? data = gameController?.IngameState?.Data;
-            if (data == null)
-                return false;
-
-            if (!TryGetDynamicValue(data, s => s.ServerData, out object? serverData) || serverData == null)
-                return false;
-
-            if (!TryGetDynamicValue(serverData, s => s.PlayerInventories, out object? playerInventories) || playerInventories == null)
-                return false;
-
-            if (!TryGetFirstCollectionObject(playerInventories, out object? firstInventory) || firstInventory == null)
-                return false;
-
-            primaryInventory = firstInventory;
-            return true;
-        }
+            => InventoryDynamicAdapter.TryGetPrimaryServerInventory(gameController, out primaryInventory);
 
         private static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection, out string debugDetails)
         {
@@ -716,17 +698,7 @@ namespace ClickIt.Services
         }
 
         private static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection)
-        {
-            slotItemsCollection = null;
-
-            if (!TryGetDynamicValue(primaryInventory, s => s.Inventory, out object? inventoryObj) || inventoryObj == null)
-                return false;
-
-            if (!TryGetDynamicValue(inventoryObj, s => s.InventorySlotItems, out slotItemsCollection))
-                return false;
-
-            return slotItemsCollection != null;
-        }
+            => InventoryDynamicAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out slotItemsCollection);
 
         private static bool TryGetFirstCollectionObject(object collection, out object? first)
         {
@@ -741,7 +713,7 @@ namespace ClickIt.Services
                 return first != null;
             }
 
-            foreach (object? entry in EnumerateObjects(collection))
+            foreach (object? entry in SharedDynamicAdapter.EnumerateObjects(collection))
             {
                 first = entry;
                 return first != null;
@@ -772,25 +744,7 @@ namespace ClickIt.Services
         }
 
         private static IEnumerable<object?> EnumerateObjects(object? source)
-        {
-            if (source == null)
-                yield break;
-
-            if (source is string)
-            {
-                yield return source;
-                yield break;
-            }
-
-            if (source is System.Collections.IEnumerable enumerable)
-            {
-                foreach (object? entry in enumerable)
-                    yield return entry;
-                yield break;
-            }
-
-            yield return source;
-        }
+            => SharedDynamicAdapter.EnumerateObjects(source);
 
         private static int CountPreviewObjects(object? source, int maxCount)
         {
@@ -798,7 +752,7 @@ namespace ClickIt.Services
                 return 0;
 
             int count = 0;
-            foreach (object? _ in EnumerateObjects(source))
+            foreach (object? _ in SharedDynamicAdapter.EnumerateObjects(source))
             {
                 count++;
                 if (count >= maxCount)
@@ -954,12 +908,12 @@ namespace ClickIt.Services
         }
 
         private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
-            => DynamicAccess.TryReadBool(source, accessor, out value);
+            => SharedDynamicAdapter.TryReadBool(source, accessor, out value);
 
         private static bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
-            => DynamicAccess.TryReadInt(source, accessor, out value);
+            => SharedDynamicAdapter.TryReadInt(source, accessor, out value);
 
         private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
-            => DynamicAccess.TryGetDynamicValue(source, accessor, out value);
+            => SharedDynamicAdapter.TryGetValue(source, accessor, out value);
     }
 }

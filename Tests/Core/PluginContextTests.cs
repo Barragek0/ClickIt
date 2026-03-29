@@ -4,12 +4,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace ClickIt.Tests.Unit
 {
     [TestClass]
-    public class ClickItStateTests
+    public class PluginContextTests
     {
         [TestMethod]
         public void Constructor_InitializesExpectedDefaults()
         {
-            var state = new ClickItState();
+            var state = new PluginContext();
 
             state.Random.Should().NotBeNull();
             state.LastRenderTimer.Should().NotBeNull();
@@ -26,7 +26,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void MutableProperties_CanBeSetAndReadBack()
         {
-            var state = new ClickItState
+            var state = new PluginContext
             {
                 LastHotkeyState = true,
                 WorkFinished = true

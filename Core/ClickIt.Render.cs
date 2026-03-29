@@ -300,6 +300,11 @@ namespace ClickIt
             return copied;
         }
 
+        internal bool TryAutoCopyInventoryWarningDebugSnapshotForLifecycle(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
+        {
+            return TryAutoCopyInventoryWarningDebugSnapshot(snapshot, now);
+        }
+
         private string BuildInventoryWarningClipboardPayload(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
         {
             string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(0) ?? [];
