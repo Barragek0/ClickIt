@@ -123,10 +123,14 @@ namespace ClickIt.Services
             return false;
         }
 
-        public Entity? GetNearestShrineInRange(int clickDistance, Func<Vector2, bool>? isInClickableArea = null)
+        public Entity? GetNearestShrineInRange(
+            int clickDistance,
+            Func<Vector2, bool>? isInClickableArea = null,
+            Func<Entity, float>? cursorDistanceResolver = null)
         {
             Entity? nearestShrine = null;
             float minDistance = float.MaxValue;
+            float minCursorDistance = float.MaxValue;
 
             var shrines = GetCachedShrineEntities();
 
@@ -138,7 +142,7 @@ namespace ClickIt.Services
                 float distance = shrine.DistancePlayer;
 
                 // Early distance check to avoid expensive calculations
-                if (distance > clickDistance || distance >= minDistance)
+                if (distance > clickDistance)
                     continue;
 
                 if (isInClickableArea != null)
@@ -149,7 +153,15 @@ namespace ClickIt.Services
                         continue;
                 }
 
+                float cursorDistance = cursorDistanceResolver?.Invoke(shrine) ?? float.MaxValue;
+                bool isCloserByDistance = distance < minDistance;
+                bool isDistanceTieButCursorCloser = Math.Abs(distance - minDistance) <= 0.001f
+                    && cursorDistance < minCursorDistance;
+                if (!isCloserByDistance && !isDistanceTieButCursorCloser)
+                    continue;
+
                 minDistance = distance;
+                minCursorDistance = cursorDistance;
                 nearestShrine = shrine;
             }
 

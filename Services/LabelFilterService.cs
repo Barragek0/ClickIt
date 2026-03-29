@@ -8,6 +8,7 @@ using ExileCore.Shared.Enums;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics.CodeAnalysis;
+using System.Windows.Forms;
 
 namespace ClickIt.Services
 {
@@ -305,9 +306,12 @@ namespace ClickIt.Services
             string? bestNonIgnoredMechanicId = null;
             float bestNonIgnoredDistance = float.MaxValue;
             float bestNonIgnoredWeightedScore = float.MaxValue;
+            float bestNonIgnoredCursorDistance = float.MaxValue;
 
             LabelOnGround? bestIgnored = null;
             int bestIgnoredPriority = int.MaxValue;
+            float bestIgnoredDistance = float.MaxValue;
+            float bestIgnoredCursorDistance = float.MaxValue;
 
             for (int i = start; i < end; i++)
             {
@@ -320,7 +324,18 @@ namespace ClickIt.Services
                     continue;
                 }
 
-                if (TryPromoteIgnoredCandidate(label, mechanicId!, item!.DistancePlayer, clickSettings, ref bestIgnored, ref bestIgnoredPriority))
+                float cursorDistance = GetCursorDistanceSquaredToLabel(label);
+
+                if (TryPromoteIgnoredCandidate(
+                    label,
+                    mechanicId!,
+                    item!.DistancePlayer,
+                    cursorDistance,
+                    clickSettings,
+                    ref bestIgnored,
+                    ref bestIgnoredPriority,
+                    ref bestIgnoredDistance,
+                    ref bestIgnoredCursorDistance))
                 {
                     stats.IgnoredByDistanceCandidates++;
                     continue;
@@ -330,11 +345,13 @@ namespace ClickIt.Services
                     label,
                     mechanicId!,
                     item.DistancePlayer,
+                    cursorDistance,
                     clickSettings,
                     ref bestNonIgnored,
                     ref bestNonIgnoredMechanicId,
                     ref bestNonIgnoredDistance,
-                    ref bestNonIgnoredWeightedScore);
+                    ref bestNonIgnoredWeightedScore,
+                    ref bestNonIgnoredCursorDistance);
             }
 
             LabelOnGround? selected = ResolveWinningCandidate(bestNonIgnored, bestNonIgnoredMechanicId, bestIgnored, bestIgnoredPriority, clickSettings);
@@ -546,17 +563,26 @@ namespace ClickIt.Services
             LabelOnGround label,
             string mechanicId,
             float distance,
+            float cursorDistance,
             ClickSettings clickSettings,
             ref LabelOnGround? bestIgnoredByPriority,
-            ref int bestIgnoredPriority)
+            ref int bestIgnoredPriority,
+            ref float bestIgnoredDistance,
+            ref float bestIgnoredCursorDistance)
         {
             if (!IsIgnoreDistanceActiveForMechanic(mechanicId, distance, clickSettings.IgnoreDistanceMechanicIds, clickSettings.IgnoreDistanceWithinByMechanicId))
                 return false;
 
             int candidatePriority = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
-            if (candidatePriority < bestIgnoredPriority)
+            bool isBetter = candidatePriority < bestIgnoredPriority
+                || (candidatePriority == bestIgnoredPriority && distance < bestIgnoredDistance)
+                || (candidatePriority == bestIgnoredPriority && Math.Abs(distance - bestIgnoredDistance) <= 0.001f && cursorDistance < bestIgnoredCursorDistance);
+
+            if (isBetter)
             {
                 bestIgnoredPriority = candidatePriority;
+                bestIgnoredDistance = distance;
+                bestIgnoredCursorDistance = cursorDistance;
                 bestIgnoredByPriority = label;
             }
 
@@ -582,16 +608,21 @@ namespace ClickIt.Services
             LabelOnGround label,
             string mechanicId,
             float distance,
+            float cursorDistance,
             ClickSettings clickSettings,
             ref LabelOnGround? bestNonIgnoredByDistance,
             ref string? bestNonIgnoredMechanicId,
             ref float bestNonIgnoredDistance,
-            ref float bestNonIgnoredWeightedScore)
+            ref float bestNonIgnoredWeightedScore,
+            ref float bestNonIgnoredCursorDistance)
         {
             int priorityIndex = GetMechanicPriorityIndex(clickSettings.MechanicPriorityIndexMap, mechanicId);
             float weightedScore = CalculateNonIgnoredWeightedScore(distance, priorityIndex, clickSettings.MechanicPriorityDistancePenalty);
             bool better = weightedScore < bestNonIgnoredWeightedScore
-                || (Math.Abs(weightedScore - bestNonIgnoredWeightedScore) < 0.001f && distance < bestNonIgnoredDistance);
+                || (Math.Abs(weightedScore - bestNonIgnoredWeightedScore) < 0.001f && distance < bestNonIgnoredDistance)
+                || (Math.Abs(weightedScore - bestNonIgnoredWeightedScore) < 0.001f
+                    && Math.Abs(distance - bestNonIgnoredDistance) <= 0.001f
+                    && cursorDistance < bestNonIgnoredCursorDistance);
             if (!better)
                 return;
 
@@ -599,6 +630,32 @@ namespace ClickIt.Services
             bestNonIgnoredMechanicId = mechanicId;
             bestNonIgnoredDistance = distance;
             bestNonIgnoredWeightedScore = weightedScore;
+            bestNonIgnoredCursorDistance = cursorDistance;
+        }
+
+        private float GetCursorDistanceSquaredToLabel(LabelOnGround? label)
+        {
+            if (label == null || _gameController?.Window == null)
+                return float.MaxValue;
+
+            if (!TryGetClickableLabelRectCenter(label, out Vector2 center))
+                return float.MaxValue;
+
+            RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            var cursor = Mouse.GetCursorPosition();
+            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
+            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
+
+            float absDx = cursorAbsolute.X - center.X;
+            float absDy = cursorAbsolute.Y - center.Y;
+            float absoluteDistanceSq = (absDx * absDx) + (absDy * absDy);
+
+            float clientDx = cursorClient.X - center.X;
+            float clientDy = cursorClient.Y - center.Y;
+            float clientDistanceSq = (clientDx * clientDx) + (clientDy * clientDy);
+
+            return Math.Min(absoluteDistanceSq, clientDistanceSq);
         }
 
         private static LabelOnGround? ResolveWinningCandidate(

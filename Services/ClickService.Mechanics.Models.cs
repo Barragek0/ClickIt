@@ -84,18 +84,20 @@ namespace ClickIt.Services
 
         private readonly struct MechanicRank
         {
-            public MechanicRank(bool ignored, int priorityIndex, float weightedDistance, float rawDistance)
+            public MechanicRank(bool ignored, int priorityIndex, float weightedDistance, float rawDistance, float cursorDistance)
             {
                 Ignored = ignored;
                 PriorityIndex = priorityIndex;
                 WeightedDistance = weightedDistance;
                 RawDistance = rawDistance;
+                CursorDistance = cursorDistance;
             }
 
             public bool Ignored { get; }
             public int PriorityIndex { get; }
             public float WeightedDistance { get; }
             public float RawDistance { get; }
+            public float CursorDistance { get; }
         }
     }
 }

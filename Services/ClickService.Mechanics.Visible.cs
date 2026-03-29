@@ -42,7 +42,18 @@ namespace ClickIt.Services
             if (!settings.ClickShrines.Value)
                 return null;
 
-            return shrineService.GetNearestShrineInRange(settings.ClickDistance.Value, pos => pointIsInClickableArea(pos, ShrineMechanicId));
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            Vector2 cursorAbsolute = GetCursorAbsolutePosition();
+            return shrineService.GetNearestShrineInRange(
+                settings.ClickDistance.Value,
+                isInClickableArea: pos => pointIsInClickableArea(pos, ShrineMechanicId),
+                cursorDistanceResolver: shrine =>
+                {
+                    var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
+                    Vector2 shrineScreenAbsolute = new(screenRaw.X + windowTopLeft.X, screenRaw.Y + windowTopLeft.Y);
+                    return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineScreenAbsolute, windowTopLeft);
+                });
         }
 
         private LostShipmentCandidate? ResolveNextLostShipmentCandidate(IReadOnlyList<LabelOnGround>? labelsOverride = null)
@@ -53,10 +64,13 @@ namespace ClickIt.Services
             try
             {
                 LostShipmentCandidate? best = null;
+                RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+                Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+                Vector2 cursorAbsolute = GetCursorAbsolutePosition();
 
                 if (labelsOverride != null)
                 {
-                    ScanLostShipmentLabelsForBestCandidate(labelsOverride, ref best);
+                    ScanLostShipmentLabelsForBestCandidate(labelsOverride, ref best, cursorAbsolute, windowTopLeft);
                     return best;
                 }
 
@@ -64,7 +78,7 @@ namespace ClickIt.Services
                 if (labels == null || labels.Count == 0)
                     return null;
 
-                ScanLostShipmentLabelsForBestCandidate(labels, ref best);
+                ScanLostShipmentLabelsForBestCandidate(labels, ref best, cursorAbsolute, windowTopLeft);
 
                 return best;
             }
@@ -75,14 +89,21 @@ namespace ClickIt.Services
             }
         }
 
-        private void ScanLostShipmentLabelsForBestCandidate(IEnumerable<LabelOnGround> labels, ref LostShipmentCandidate? best)
+        private void ScanLostShipmentLabelsForBestCandidate(
+            IEnumerable<LabelOnGround> labels,
+            ref LostShipmentCandidate? best,
+            Vector2 cursorAbsolute,
+            Vector2 windowTopLeft)
         {
             foreach (LabelOnGround label in labels)
             {
                 if (!TryCreateLostShipmentCandidate(label, out LostShipmentCandidate candidate))
                     continue;
 
-                if (!best.HasValue || candidate.Distance < best.Value.Distance)
+                if (!best.HasValue
+                    || candidate.Distance < best.Value.Distance
+                    || (ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
+                        && IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
                     best = candidate;
             }
         }
@@ -227,6 +248,9 @@ namespace ClickIt.Services
             try
             {
                 SettlersOreCandidate? best = null;
+                RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+                Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+                Vector2 cursorAbsolute = GetCursorAbsolutePosition();
                 int scanned = 0;
                 int prefiltered = 0;
                 int mechanicMatched = 0;
@@ -293,7 +317,10 @@ namespace ClickIt.Services
                         if (collectDiagnostics && hadLabel)
                             labelBacked++;
 
-                        if (!best.HasValue || candidate.Distance < best.Value.Distance)
+                        if (!best.HasValue
+                            || candidate.Distance < best.Value.Distance
+                            || (ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
+                                && IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
                         {
                             best = candidate;
                             if (captureClickDebug)
@@ -514,6 +541,16 @@ namespace ClickIt.Services
 
             clickPos = default;
             return false;
+        }
+
+        private static bool ArePlayerDistancesEquivalent(float left, float right)
+            => Math.Abs(left - right) <= 0.001f;
+
+        private static bool IsFirstCandidateCloserToCursor(Vector2 firstClickPoint, Vector2 secondClickPoint, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        {
+            float first = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, firstClickPoint, windowTopLeft);
+            float second = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, secondClickPoint, windowTopLeft);
+            return first < second;
         }
 
         private void TryClickLostShipment(LostShipmentCandidate candidate)

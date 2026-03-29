@@ -36,17 +36,43 @@ namespace ClickIt.Services
             IReadOnlySet<string> ignoreDistanceSet,
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
+            => ShouldPreferLostShipmentOverVisibleCandidates(
+                lostShipmentDistance,
+                labelDistance,
+                labelMechanicId,
+                shrineDistance,
+                lostShipmentCursorDistance: null,
+                labelCursorDistance: null,
+                shrineCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        internal static bool ShouldPreferLostShipmentOverVisibleCandidates(
+            float lostShipmentDistance,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentCursorDistance,
+            float? labelCursorDistance,
+            float? shrineCursorDistance,
+            IReadOnlyDictionary<string, int> priorityIndexMap,
+            IReadOnlySet<string> ignoreDistanceSet,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
         {
             MechanicRank candidate = BuildMechanicRank(
                 lostShipmentDistance,
+                lostShipmentCursorDistance ?? float.MaxValue,
                 LostShipmentMechanicId,
                 priorityIndexMap,
                 ignoreDistanceSet,
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
 
-            return BeatsOtherCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsOtherCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
+            return BeatsOtherCandidate(candidate, labelDistance, labelCursorDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
+                && BeatsOtherCandidate(candidate, shrineDistance, shrineCursorDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
         }
 
         internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
@@ -60,18 +86,50 @@ namespace ClickIt.Services
             IReadOnlySet<string> ignoreDistanceSet,
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
+            => ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance,
+                settlersOreMechanicId,
+                labelDistance,
+                labelMechanicId,
+                shrineDistance,
+                lostShipmentDistance,
+                settlersOreCursorDistance: null,
+                labelCursorDistance: null,
+                shrineCursorDistance: null,
+                lostShipmentCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
+            float settlersOreDistance,
+            string settlersOreMechanicId,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            float? settlersOreCursorDistance,
+            float? labelCursorDistance,
+            float? shrineCursorDistance,
+            float? lostShipmentCursorDistance,
+            IReadOnlyDictionary<string, int> priorityIndexMap,
+            IReadOnlySet<string> ignoreDistanceSet,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
         {
             MechanicRank candidate = BuildMechanicRank(
                 settlersOreDistance,
+                settlersOreCursorDistance ?? float.MaxValue,
                 settlersOreMechanicId,
                 priorityIndexMap,
                 ignoreDistanceSet,
                 ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty);
 
-            return BeatsOtherCandidate(candidate, labelDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsOtherCandidate(candidate, shrineDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsOtherCandidate(candidate, lostShipmentDistance, LostShipmentMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
+            return BeatsOtherCandidate(candidate, labelDistance, labelCursorDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
+                && BeatsOtherCandidate(candidate, shrineDistance, shrineCursorDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
+                && BeatsOtherCandidate(candidate, lostShipmentDistance, lostShipmentCursorDistance, LostShipmentMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
         }
 
         internal static bool ShouldPreferVerisiumOverVisibleCandidates(
@@ -84,6 +142,35 @@ namespace ClickIt.Services
             IReadOnlySet<string> ignoreDistanceSet,
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
+            => ShouldPreferVerisiumOverVisibleCandidates(
+                verisiumDistance,
+                labelDistance,
+                labelMechanicId,
+                shrineDistance,
+                lostShipmentDistance,
+                verisiumCursorDistance: null,
+                labelCursorDistance: null,
+                shrineCursorDistance: null,
+                lostShipmentCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        internal static bool ShouldPreferVerisiumOverVisibleCandidates(
+            float verisiumDistance,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            float? verisiumCursorDistance,
+            float? labelCursorDistance,
+            float? shrineCursorDistance,
+            float? lostShipmentCursorDistance,
+            IReadOnlyDictionary<string, int> priorityIndexMap,
+            IReadOnlySet<string> ignoreDistanceSet,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
             => ShouldPreferSettlersOreOverVisibleCandidates(
                 verisiumDistance,
                 VerisiumMechanicId,
@@ -91,6 +178,10 @@ namespace ClickIt.Services
                 labelMechanicId,
                 shrineDistance,
                 lostShipmentDistance,
+                verisiumCursorDistance,
+                labelCursorDistance,
+                shrineCursorDistance,
+                lostShipmentCursorDistance,
                 priorityIndexMap,
                 ignoreDistanceSet,
                 ignoreDistanceWithinByMechanicId,
@@ -104,9 +195,31 @@ namespace ClickIt.Services
             IReadOnlySet<string> ignoreDistanceSet,
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
             int priorityDistancePenalty)
+            => ShouldPreferShrineOverLabelForOffscreen(
+                shrineDistance,
+                labelDistance,
+                labelMechanicId,
+                shrineCursorDistance: null,
+                labelCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        internal static bool ShouldPreferShrineOverLabelForOffscreen(
+            float shrineDistance,
+            float labelDistance,
+            string? labelMechanicId,
+            float? shrineCursorDistance,
+            float? labelCursorDistance,
+            IReadOnlyDictionary<string, int> priorityIndexMap,
+            IReadOnlySet<string> ignoreDistanceSet,
+            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
         {
             MechanicRank shrineRank = BuildMechanicRank(
                 shrineDistance,
+                shrineCursorDistance ?? float.MaxValue,
                 ShrineMechanicId,
                 priorityIndexMap,
                 ignoreDistanceSet,
@@ -115,6 +228,7 @@ namespace ClickIt.Services
 
             MechanicRank labelRank = BuildMechanicRank(
                 labelDistance,
+                labelCursorDistance ?? float.MaxValue,
                 labelMechanicId,
                 priorityIndexMap,
                 ignoreDistanceSet,
@@ -127,6 +241,7 @@ namespace ClickIt.Services
         private static bool BeatsOtherCandidate(
             MechanicRank candidate,
             float? otherDistance,
+            float? otherCursorDistance,
             string? otherMechanicId,
             IReadOnlyDictionary<string, int> priorityIndexMap,
             IReadOnlySet<string> ignoreDistanceSet,
@@ -138,6 +253,7 @@ namespace ClickIt.Services
 
             MechanicRank other = BuildMechanicRank(
                 otherDistance.Value,
+                otherCursorDistance ?? float.MaxValue,
                 otherMechanicId,
                 priorityIndexMap,
                 ignoreDistanceSet,
@@ -150,6 +266,7 @@ namespace ClickIt.Services
         private MechanicRank BuildMechanicRank(float distance, string? mechanicId)
             => BuildMechanicRank(
                 distance,
+                float.MaxValue,
                 mechanicId,
                 _cachedMechanicPriorityIndexMap,
                 _cachedMechanicIgnoreDistanceSet,
@@ -158,6 +275,7 @@ namespace ClickIt.Services
 
         private static MechanicRank BuildMechanicRank(
             float distance,
+            float cursorDistance,
             string? mechanicId,
             IReadOnlyDictionary<string, int> priorityIndexMap,
             IReadOnlySet<string> ignoreDistanceSet,
@@ -171,7 +289,7 @@ namespace ClickIt.Services
                 ? float.MaxValue
                 : distance + (priorityIndex * Math.Max(0, priorityDistancePenalty));
 
-            return new MechanicRank(ignored, priorityIndex, weightedDistance, distance);
+            return new MechanicRank(ignored, priorityIndex, weightedDistance, distance, cursorDistance);
         }
 
         private static int ResolvePriorityIndex(string? mechanicId, IReadOnlyDictionary<string, int> priorityIndexMap)
@@ -205,7 +323,14 @@ namespace ClickIt.Services
             if (left.Ignored && right.Ignored)
             {
                 int byPriority = left.PriorityIndex.CompareTo(right.PriorityIndex);
-                return byPriority != 0 ? byPriority : left.RawDistance.CompareTo(right.RawDistance);
+                if (byPriority != 0)
+                    return byPriority;
+
+                int byRawDistanceIgnored = left.RawDistance.CompareTo(right.RawDistance);
+                if (byRawDistanceIgnored != 0)
+                    return byRawDistanceIgnored;
+
+                return left.CursorDistance.CompareTo(right.CursorDistance);
             }
 
             if (left.Ignored != right.Ignored)
@@ -219,9 +344,13 @@ namespace ClickIt.Services
             if (byWeightedDistance != 0)
                 return byWeightedDistance;
 
-            int byRawDistance = left.RawDistance.CompareTo(right.RawDistance);
-            if (byRawDistance != 0)
-                return byRawDistance;
+            int byRawDistanceNonIgnored = left.RawDistance.CompareTo(right.RawDistance);
+            if (byRawDistanceNonIgnored != 0)
+                return byRawDistanceNonIgnored;
+
+            int byCursorDistance = left.CursorDistance.CompareTo(right.CursorDistance);
+            if (byCursorDistance != 0)
+                return byCursorDistance;
 
             return left.PriorityIndex.CompareTo(right.PriorityIndex);
         }

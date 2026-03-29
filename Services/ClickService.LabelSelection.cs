@@ -100,6 +100,7 @@ namespace ClickIt.Services
 
             RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            Vector2 cursorAbsolute = GetCursorAbsolutePosition();
 
             // Keep regular clicking alive even if Ultimatum UI shape differs on a given ExileAPI/runtime build.
             try
@@ -146,10 +147,14 @@ namespace ClickIt.Services
                         labelMechanicId: null,
                         shrineDistance: nextShrine?.DistancePlayer,
                         lostShipmentDistance: lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
-                        _cachedMechanicPriorityIndexMap,
-                        _cachedMechanicIgnoreDistanceSet,
-                        _cachedMechanicIgnoreDistanceWithinMap,
-                        settings.MechanicPriorityDistancePenalty.Value))
+                        settlersOreCursorDistance: GetCursorDistanceSquaredToPoint(settlersOreCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
+                        labelCursorDistance: null,
+                        shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
+                        lostShipmentCursorDistance: lostShipmentCandidate.HasValue ? GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft) : null,
+                        priorityIndexMap: _cachedMechanicPriorityIndexMap,
+                        ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
+                        ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
+                        priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
                 {
                     if (isPostChestLootSettleBlocking
                         && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(settlersOreCandidate.Value.MechanicId, settlersOreCandidate.Value.Entity, out string bypassDecisionSettlersHidden))
@@ -171,10 +176,13 @@ namespace ClickIt.Services
                         labelDistance: null,
                         labelMechanicId: null,
                         shrineDistance: nextShrine?.DistancePlayer,
-                        _cachedMechanicPriorityIndexMap,
-                        _cachedMechanicIgnoreDistanceSet,
-                        _cachedMechanicIgnoreDistanceWithinMap,
-                        settings.MechanicPriorityDistancePenalty.Value))
+                        lostShipmentCursorDistance: GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
+                        labelCursorDistance: null,
+                        shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
+                        priorityIndexMap: _cachedMechanicPriorityIndexMap,
+                        ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
+                        ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
+                        priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
                 {
                     if (isPostChestLootSettleBlocking
                         && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, lostShipmentCandidate.Value.Entity, out string bypassDecisionLostShipmentHidden))
@@ -245,10 +253,14 @@ namespace ClickIt.Services
                     nextLabelMechanicId,
                     nextShrine?.DistancePlayer,
                     lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
-                    _cachedMechanicPriorityIndexMap,
-                    _cachedMechanicIgnoreDistanceSet,
-                    _cachedMechanicIgnoreDistanceWithinMap,
-                    settings.MechanicPriorityDistancePenalty.Value))
+                    settlersOreCursorDistance: GetCursorDistanceSquaredToPoint(settlersOreCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
+                    labelCursorDistance: TryGetCursorDistanceSquaredToLabel(nextLabel, cursorAbsolute, windowTopLeft),
+                    shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
+                    lostShipmentCursorDistance: lostShipmentCandidate.HasValue ? GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft) : null,
+                    priorityIndexMap: _cachedMechanicPriorityIndexMap,
+                    ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
+                    ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
+                    priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
             {
                 if (isPostChestLootSettleBlocking
                     && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(settlersOreCandidate.Value.MechanicId, settlersOreCandidate.Value.Entity, out string bypassDecisionSettlersVisible))
@@ -265,10 +277,13 @@ namespace ClickIt.Services
                     nextLabel?.ItemOnGround?.DistancePlayer,
                     nextLabelMechanicId,
                     nextShrine?.DistancePlayer,
-                    _cachedMechanicPriorityIndexMap,
-                    _cachedMechanicIgnoreDistanceSet,
-                    _cachedMechanicIgnoreDistanceWithinMap,
-                    settings.MechanicPriorityDistancePenalty.Value))
+                    lostShipmentCursorDistance: GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
+                    labelCursorDistance: TryGetCursorDistanceSquaredToLabel(nextLabel, cursorAbsolute, windowTopLeft),
+                    shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
+                    priorityIndexMap: _cachedMechanicPriorityIndexMap,
+                    ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
+                    ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
+                    priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
             {
                 if (isPostChestLootSettleBlocking
                     && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, lostShipmentCandidate.Value.Entity, out string bypassDecisionLostShipmentVisible))
@@ -448,14 +463,19 @@ namespace ClickIt.Services
 
             float labelDistance = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;
             float shrineDistance = shrine.DistancePlayer;
+            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            Vector2 cursorAbsolute = GetCursorAbsolutePosition();
             return ShouldPreferShrineOverLabelForOffscreen(
                 shrineDistance,
                 labelDistance,
                 labelMechanicId,
-                _cachedMechanicPriorityIndexMap,
-                _cachedMechanicIgnoreDistanceSet,
-                _cachedMechanicIgnoreDistanceWithinMap,
-                settings.MechanicPriorityDistancePenalty.Value);
+                shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(shrine, cursorAbsolute, windowTopLeft),
+                labelCursorDistance: TryGetCursorDistanceSquaredToLabel(label, cursorAbsolute, windowTopLeft),
+                priorityIndexMap: _cachedMechanicPriorityIndexMap,
+                ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
+                ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
+                priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value);
         }
 
         private LabelOnGround? ResolveNextLabelCandidate(IReadOnlyList<LabelOnGround>? allLabels)
@@ -743,6 +763,40 @@ namespace ClickIt.Services
             float dx = a.X - b.X;
             float dy = a.Y - b.Y;
             return (dx * dx) + (dy * dy);
+        }
+
+        private static Vector2 GetCursorAbsolutePosition()
+        {
+            var cursor = Mouse.GetCursorPosition();
+            return new Vector2(cursor.X, cursor.Y);
+        }
+
+        private static float GetCursorDistanceSquaredToPoint(Vector2 point, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+            => GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, point, windowTopLeft);
+
+        private float? TryGetCursorDistanceSquaredToEntity(Entity? entity, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        {
+            if (entity == null || !entity.IsValid)
+                return null;
+
+            try
+            {
+                var worldScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+                Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
+                return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, worldScreenAbsolute, windowTopLeft);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static float? TryGetCursorDistanceSquaredToLabel(LabelOnGround? label, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        {
+            if (!TryGetLabelRect(label, out RectangleF rect))
+                return null;
+
+            return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, rect.Center, windowTopLeft);
         }
 
         private LabelOnGround? PreferUiHoverEssenceLabel(LabelOnGround? nextLabel, IReadOnlyList<LabelOnGround>? allLabels)
