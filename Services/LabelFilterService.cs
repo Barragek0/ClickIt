@@ -97,20 +97,18 @@ namespace ClickIt.Services
                         ? GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController)
                         : null;
 
-                    PublishLabelDebugStage(
-                        stage: "SelectionReturned",
-                        startIndex: start,
-                        endExclusive: end,
-                        totalLabels: allLabels.Count,
-                        consideredCandidates: 0,
-                        nullOrDistanceRejected: 0,
-                        untargetableRejected: 0,
-                        noMechanicRejected: 0,
-                        ignoredByDistanceCandidates: 0,
-                        selectedMechanicId: selectedMechanic,
-                        selectedEntityPath: selectedItem?.Path,
-                        selectedDistance: selectedItem?.DistancePlayer ?? 0f,
-                        notes: "Selected label returned to click service");
+                    PublishLabelDebugStage(new LabelDebugEvent("SelectionReturned", start, end, allLabels.Count)
+                    {
+                        ConsideredCandidates = 0,
+                        NullOrDistanceRejected = 0,
+                        UntargetableRejected = 0,
+                        NoMechanicRejected = 0,
+                        IgnoredByDistanceCandidates = 0,
+                        SelectedMechanicId = selectedMechanic,
+                        SelectedEntityPath = selectedItem?.Path,
+                        SelectedDistance = selectedItem?.DistancePlayer ?? 0f,
+                        Notes = "Selected label returned to click service"
+                    });
                 }
             }
 
@@ -119,20 +117,18 @@ namespace ClickIt.Services
 
         private void PublishSelectionLifecycleDebug(string stage, IReadOnlyList<LabelOnGround>? allLabels, int start, int end, string notes)
         {
-            PublishLabelDebugStage(
-                stage: stage,
-                startIndex: start,
-                endExclusive: end,
-                totalLabels: allLabels?.Count ?? 0,
-                consideredCandidates: 0,
-                nullOrDistanceRejected: 0,
-                untargetableRejected: 0,
-                noMechanicRejected: 0,
-                ignoredByDistanceCandidates: 0,
-                selectedMechanicId: string.Empty,
-                selectedEntityPath: string.Empty,
-                selectedDistance: 0f,
-                notes: notes);
+            PublishLabelDebugStage(new LabelDebugEvent(stage, start, end, allLabels?.Count ?? 0)
+            {
+                ConsideredCandidates = 0,
+                NullOrDistanceRejected = 0,
+                UntargetableRejected = 0,
+                NoMechanicRejected = 0,
+                IgnoredByDistanceCandidates = 0,
+                SelectedMechanicId = string.Empty,
+                SelectedEntityPath = string.Empty,
+                SelectedDistance = 0f,
+                Notes = notes
+            });
         }
 
         public readonly struct SelectionDebugSummary(
@@ -362,20 +358,22 @@ namespace ClickIt.Services
                     ? GetClickableMechanicId(selected!, selectedEntity, clickSettings, _gameController)
                     : string.Empty;
 
-                PublishLabelDebugStage(
-                    stage: selected == null ? "SelectionScanNone" : "SelectionScanSelected",
-                    startIndex: start,
-                    endExclusive: end,
-                    totalLabels: allLabels.Count,
-                    consideredCandidates: stats.ConsideredCandidates,
-                    nullOrDistanceRejected: stats.NullOrDistanceRejected,
-                    untargetableRejected: stats.UntargetableRejected,
-                    noMechanicRejected: stats.NoMechanicRejected,
-                    ignoredByDistanceCandidates: stats.IgnoredByDistanceCandidates,
-                    selectedMechanicId: selectedMechanicId,
-                    selectedEntityPath: selectedEntity?.Path,
-                    selectedDistance: selectedEntity?.DistancePlayer ?? 0f,
-                    notes: $"c:{stats.ConsideredCandidates} nd:{stats.NullOrDistanceRejected} u:{stats.UntargetableRejected} nm:{stats.NoMechanicRejected} ig:{stats.IgnoredByDistanceCandidates}");
+                PublishLabelDebugStage(new LabelDebugEvent(
+                    selected == null ? "SelectionScanNone" : "SelectionScanSelected",
+                    start,
+                    end,
+                    allLabels.Count)
+                {
+                    ConsideredCandidates = stats.ConsideredCandidates,
+                    NullOrDistanceRejected = stats.NullOrDistanceRejected,
+                    UntargetableRejected = stats.UntargetableRejected,
+                    NoMechanicRejected = stats.NoMechanicRejected,
+                    IgnoredByDistanceCandidates = stats.IgnoredByDistanceCandidates,
+                    SelectedMechanicId = selectedMechanicId,
+                    SelectedEntityPath = selectedEntity?.Path,
+                    SelectedDistance = selectedEntity?.DistancePlayer ?? 0f,
+                    Notes = $"c:{stats.ConsideredCandidates} nd:{stats.NullOrDistanceRejected} u:{stats.UntargetableRejected} nm:{stats.NoMechanicRejected} ig:{stats.IgnoredByDistanceCandidates}"
+                });
             }
 
             return selected;

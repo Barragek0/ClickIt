@@ -27,267 +27,80 @@ namespace ClickIt.Services
         internal static bool ShouldSkipVerisiumEntity(bool isValid, float distance, int clickDistance)
             => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
 
-        internal static bool ShouldPreferLostShipmentOverVisibleCandidates(
-            float lostShipmentDistance,
-            float? labelDistance,
-            string? labelMechanicId,
-            float? shrineDistance,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-            => ShouldPreferLostShipmentOverVisibleCandidates(
-                lostShipmentDistance,
-                labelDistance,
-                labelMechanicId,
-                shrineDistance,
-                lostShipmentCursorDistance: null,
-                labelCursorDistance: null,
-                shrineCursorDistance: null,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-        internal static bool ShouldPreferLostShipmentOverVisibleCandidates(
-            float lostShipmentDistance,
-            float? labelDistance,
-            string? labelMechanicId,
-            float? shrineDistance,
-            float? lostShipmentCursorDistance,
-            float? labelCursorDistance,
-            float? shrineCursorDistance,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-        {
-            MechanicRank candidate = BuildMechanicRank(
-                lostShipmentDistance,
-                lostShipmentCursorDistance ?? float.MaxValue,
-                LostShipmentMechanicId,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-            return BeatsOtherCandidate(candidate, labelDistance, labelCursorDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsOtherCandidate(candidate, shrineDistance, shrineCursorDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
-        }
-
-        internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
-            float settlersOreDistance,
-            string settlersOreMechanicId,
-            float? labelDistance,
-            string? labelMechanicId,
-            float? shrineDistance,
-            float? lostShipmentDistance,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-            => ShouldPreferSettlersOreOverVisibleCandidates(
-                settlersOreDistance,
-                settlersOreMechanicId,
-                labelDistance,
-                labelMechanicId,
-                shrineDistance,
-                lostShipmentDistance,
-                settlersOreCursorDistance: null,
-                labelCursorDistance: null,
-                shrineCursorDistance: null,
-                lostShipmentCursorDistance: null,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-        internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
-            float settlersOreDistance,
-            string settlersOreMechanicId,
-            float? labelDistance,
-            string? labelMechanicId,
-            float? shrineDistance,
-            float? lostShipmentDistance,
-            float? settlersOreCursorDistance,
-            float? labelCursorDistance,
-            float? shrineCursorDistance,
-            float? lostShipmentCursorDistance,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-        {
-            MechanicRank candidate = BuildMechanicRank(
-                settlersOreDistance,
-                settlersOreCursorDistance ?? float.MaxValue,
-                settlersOreMechanicId,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-            return BeatsOtherCandidate(candidate, labelDistance, labelCursorDistance, labelMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsOtherCandidate(candidate, shrineDistance, shrineCursorDistance, ShrineMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty)
-                && BeatsOtherCandidate(candidate, lostShipmentDistance, lostShipmentCursorDistance, LostShipmentMechanicId, priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
-        }
-
-        internal static bool ShouldPreferVerisiumOverVisibleCandidates(
-            float verisiumDistance,
-            float? labelDistance,
-            string? labelMechanicId,
-            float? shrineDistance,
-            float? lostShipmentDistance,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-            => ShouldPreferVerisiumOverVisibleCandidates(
-                verisiumDistance,
-                labelDistance,
-                labelMechanicId,
-                shrineDistance,
-                lostShipmentDistance,
-                verisiumCursorDistance: null,
-                labelCursorDistance: null,
-                shrineCursorDistance: null,
-                lostShipmentCursorDistance: null,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-        internal static bool ShouldPreferVerisiumOverVisibleCandidates(
-            float verisiumDistance,
-            float? labelDistance,
-            string? labelMechanicId,
-            float? shrineDistance,
-            float? lostShipmentDistance,
-            float? verisiumCursorDistance,
-            float? labelCursorDistance,
-            float? shrineCursorDistance,
-            float? lostShipmentCursorDistance,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-            => ShouldPreferSettlersOreOverVisibleCandidates(
-                verisiumDistance,
-                VerisiumMechanicId,
-                labelDistance,
-                labelMechanicId,
-                shrineDistance,
-                lostShipmentDistance,
-                verisiumCursorDistance,
-                labelCursorDistance,
-                shrineCursorDistance,
-                lostShipmentCursorDistance,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-        internal static bool ShouldPreferShrineOverLabelForOffscreen(
-            float shrineDistance,
-            float labelDistance,
-            string? labelMechanicId,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-            => ShouldPreferShrineOverLabelForOffscreen(
-                shrineDistance,
-                labelDistance,
-                labelMechanicId,
-                shrineCursorDistance: null,
-                labelCursorDistance: null,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-        internal static bool ShouldPreferShrineOverLabelForOffscreen(
-            float shrineDistance,
-            float labelDistance,
-            string? labelMechanicId,
-            float? shrineCursorDistance,
-            float? labelCursorDistance,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-        {
-            MechanicRank shrineRank = BuildMechanicRank(
-                shrineDistance,
-                shrineCursorDistance ?? float.MaxValue,
-                ShrineMechanicId,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-            MechanicRank labelRank = BuildMechanicRank(
-                labelDistance,
-                labelCursorDistance ?? float.MaxValue,
-                labelMechanicId,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-            return CompareMechanicRanks(shrineRank, labelRank) < 0;
-        }
-
-        private static bool BeatsOtherCandidate(
-            MechanicRank candidate,
-            float? otherDistance,
-            float? otherCursorDistance,
-            string? otherMechanicId,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-        {
-            if (!otherDistance.HasValue)
-                return true;
-
-            MechanicRank other = BuildMechanicRank(
-                otherDistance.Value,
-                otherCursorDistance ?? float.MaxValue,
-                otherMechanicId,
-                priorityIndexMap,
-                ignoreDistanceSet,
-                ignoreDistanceWithinByMechanicId,
-                priorityDistancePenalty);
-
-            return CompareMechanicRanks(candidate, other) < 0;
-        }
-
-        private MechanicRank BuildMechanicRank(float distance, string? mechanicId)
-            => BuildMechanicRank(
-                distance,
-                float.MaxValue,
-                mechanicId,
+        private MechanicPriorityContext CreateMechanicPriorityContext()
+            => new(
                 _cachedMechanicPriorityIndexMap,
                 _cachedMechanicIgnoreDistanceSet,
                 _cachedMechanicIgnoreDistanceWithinMap,
                 settings.MechanicPriorityDistancePenalty.Value);
 
-        private static MechanicRank BuildMechanicRank(
-            float distance,
-            float cursorDistance,
+        private static MechanicCandidateSignal CreateMechanicCandidateSignal(
             string? mechanicId,
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
+            float? distance,
+            float? cursorDistance = null)
+            => new(mechanicId, distance, cursorDistance);
+
+        internal static bool ShouldPreferLostShipmentOverVisibleCandidates(
+            in MechanicCandidateSignal lostShipment,
+            in MechanicCandidateSignal label,
+            in MechanicCandidateSignal shrine,
+            in MechanicPriorityContext context)
+            => ShouldPreferCandidate(lostShipment, context, label, shrine);
+
+        internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
+            in MechanicCandidateSignal settlers,
+            in MechanicCandidateSignal label,
+            in MechanicCandidateSignal shrine,
+            in MechanicCandidateSignal lostShipment,
+            in MechanicPriorityContext context)
+            => ShouldPreferCandidate(settlers, context, label, shrine, lostShipment);
+
+        internal static bool ShouldPreferShrineOverLabelForOffscreen(
+            in MechanicCandidateSignal shrine,
+            in MechanicCandidateSignal label,
+            in MechanicPriorityContext context)
+            => ShouldPreferCandidate(shrine, context, label);
+
+        private static bool ShouldPreferCandidate(
+            in MechanicCandidateSignal candidate,
+            in MechanicPriorityContext context,
+            params MechanicCandidateSignal[] others)
         {
-            int priorityIndex = ResolvePriorityIndex(mechanicId, priorityIndexMap);
-            bool ignored = IsIgnoreDistanceActiveForMechanic(mechanicId, distance, ignoreDistanceSet, ignoreDistanceWithinByMechanicId);
+            if (!candidate.Exists)
+                return false;
+
+            MechanicRank candidateRank = BuildMechanicRank(candidate, context);
+            for (int i = 0; i < others.Length; i++)
+            {
+                MechanicCandidateSignal other = others[i];
+                if (!other.Exists)
+                    continue;
+
+                MechanicRank otherRank = BuildMechanicRank(other, context);
+                if (CompareMechanicRanks(candidateRank, otherRank) >= 0)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private MechanicRank BuildMechanicRank(float distance, string? mechanicId)
+            => BuildMechanicRank(
+                CreateMechanicCandidateSignal(mechanicId, distance),
+                CreateMechanicPriorityContext());
+
+        private static MechanicRank BuildMechanicRank(
+            in MechanicCandidateSignal candidate,
+            in MechanicPriorityContext context)
+        {
+            float distance = candidate.Distance ?? float.MaxValue;
+            float cursorDistance = candidate.CursorDistance ?? float.MaxValue;
+            int priorityIndex = ResolvePriorityIndex(candidate.MechanicId, context.PriorityIndexMap);
+            bool ignored = IsIgnoreDistanceActiveForMechanic(candidate.MechanicId, distance, context.IgnoreDistanceSet, context.IgnoreDistanceWithinByMechanicId);
 
             float weightedDistance = priorityIndex == int.MaxValue
                 ? float.MaxValue
-                : distance + (priorityIndex * Math.Max(0, priorityDistancePenalty));
+                : distance + (priorityIndex * Math.Max(0, context.PriorityDistancePenalty));
 
             return new MechanicRank(ignored, priorityIndex, weightedDistance, distance, cursorDistance);
         }

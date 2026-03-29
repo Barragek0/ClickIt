@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
 using FluentAssertions;
 using ClickIt.Services;
@@ -747,7 +747,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferShrine = ClickService.ShouldPreferShrineOverLabelForOffscreen(
+            bool preferShrine = ShouldPreferShrineOverLabelForOffscreen(
                 shrineDistance: 80f,
                 labelDistance: 40f,
                 labelMechanicId: "expedition",
@@ -770,7 +770,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferShrine = ClickService.ShouldPreferShrineOverLabelForOffscreen(
+            bool preferShrine = ShouldPreferShrineOverLabelForOffscreen(
                 shrineDistance: 90f,
                 labelDistance: 35f,
                 labelMechanicId: "expedition",
@@ -799,7 +799,7 @@ namespace ClickIt.Tests.Unit
                 ["shrines"] = 100
             };
 
-            bool preferShrineWithinThreshold = ClickService.ShouldPreferShrineOverLabelForOffscreen(
+            bool preferShrineWithinThreshold = ShouldPreferShrineOverLabelForOffscreen(
                 shrineDistance: 90f,
                 labelDistance: 40f,
                 labelMechanicId: "expedition",
@@ -808,7 +808,7 @@ namespace ClickIt.Tests.Unit
                 ignoreDistanceWithinByMechanicId: ignoreDistanceWithinByMechanicId,
                 priorityDistancePenalty: 25);
 
-            bool preferShrineOutsideThreshold = ClickService.ShouldPreferShrineOverLabelForOffscreen(
+            bool preferShrineOutsideThreshold = ShouldPreferShrineOverLabelForOffscreen(
                 shrineDistance: 120f,
                 labelDistance: 40f,
                 labelMechanicId: "expedition",
@@ -1170,61 +1170,43 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolvePostChestLootSettlementTimingSettings_UsesBasicChestTiming()
         {
-            ClickService.ResolvePostChestLootSettlementTimingSettings(
+            ClickService.ChestLootSettlementTiming resolved = ClickService.ResolvePostChestLootSettlementTimingSettings(
                 mechanicId: "basic-chests",
-                basicInitialDelayMs: 650,
-                basicPollIntervalMs: 120,
-                basicQuietWindowMs: 900,
-                leagueInitialDelayMs: 500,
-                leaguePollIntervalMs: 100,
-                leagueQuietWindowMs: 500,
-                out int initialDelayMs,
-                out int pollIntervalMs,
-                out int quietWindowMs);
+                new ClickService.ChestLootSettlementTimingOptions(
+                    new ClickService.ChestLootSettlementTiming(650, 120, 900),
+                    new ClickService.ChestLootSettlementTiming(500, 100, 500)));
 
-            initialDelayMs.Should().Be(650);
-            pollIntervalMs.Should().Be(120);
-            quietWindowMs.Should().Be(900);
+            resolved.InitialDelayMs.Should().Be(650);
+            resolved.PollIntervalMs.Should().Be(120);
+            resolved.QuietWindowMs.Should().Be(900);
         }
 
         [TestMethod]
         public void ResolvePostChestLootSettlementTimingSettings_UsesLeagueChestTiming()
         {
-            ClickService.ResolvePostChestLootSettlementTimingSettings(
+            ClickService.ChestLootSettlementTiming resolved = ClickService.ResolvePostChestLootSettlementTimingSettings(
                 mechanicId: "league-chests",
-                basicInitialDelayMs: 500,
-                basicPollIntervalMs: 100,
-                basicQuietWindowMs: 500,
-                leagueInitialDelayMs: 750,
-                leaguePollIntervalMs: 140,
-                leagueQuietWindowMs: 1100,
-                out int initialDelayMs,
-                out int pollIntervalMs,
-                out int quietWindowMs);
+                new ClickService.ChestLootSettlementTimingOptions(
+                    new ClickService.ChestLootSettlementTiming(500, 100, 500),
+                    new ClickService.ChestLootSettlementTiming(750, 140, 1100)));
 
-            initialDelayMs.Should().Be(750);
-            pollIntervalMs.Should().Be(140);
-            quietWindowMs.Should().Be(1100);
+            resolved.InitialDelayMs.Should().Be(750);
+            resolved.PollIntervalMs.Should().Be(140);
+            resolved.QuietWindowMs.Should().Be(1100);
         }
 
         [TestMethod]
         public void ResolvePostChestLootSettlementTimingSettings_ClampsInvalidValues()
         {
-            ClickService.ResolvePostChestLootSettlementTimingSettings(
+            ClickService.ChestLootSettlementTiming resolved = ClickService.ResolvePostChestLootSettlementTimingSettings(
                 mechanicId: "basic-chests",
-                basicInitialDelayMs: -10,
-                basicPollIntervalMs: 0,
-                basicQuietWindowMs: -50,
-                leagueInitialDelayMs: 500,
-                leaguePollIntervalMs: 100,
-                leagueQuietWindowMs: 500,
-                out int initialDelayMs,
-                out int pollIntervalMs,
-                out int quietWindowMs);
+                new ClickService.ChestLootSettlementTimingOptions(
+                    new ClickService.ChestLootSettlementTiming(-10, 0, -50),
+                    new ClickService.ChestLootSettlementTiming(500, 100, 500)));
 
-            initialDelayMs.Should().Be(0);
-            pollIntervalMs.Should().Be(1);
-            quietWindowMs.Should().Be(0);
+            resolved.InitialDelayMs.Should().Be(0);
+            resolved.PollIntervalMs.Should().Be(1);
+            resolved.QuietWindowMs.Should().Be(0);
         }
 
         [TestMethod]
@@ -1526,7 +1508,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferLostShipment = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+            bool preferLostShipment = ShouldPreferLostShipmentOverVisibleCandidates(
                 lostShipmentDistance: 70f,
                 labelDistance: 95f,
                 labelMechanicId: "items",
@@ -1552,7 +1534,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferLostShipment = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+            bool preferLostShipment = ShouldPreferLostShipmentOverVisibleCandidates(
                 lostShipmentDistance: 80f,
                 labelDistance: 10f,
                 labelMechanicId: "items",
@@ -1579,7 +1561,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferVerisium = ClickService.ShouldPreferVerisiumOverVisibleCandidates(
+            bool preferVerisium = ShouldPreferVerisiumOverVisibleCandidates(
                 verisiumDistance: 90f,
                 labelDistance: 80f,
                 labelMechanicId: "items",
@@ -1607,7 +1589,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferVerisium = ClickService.ShouldPreferVerisiumOverVisibleCandidates(
+            bool preferVerisium = ShouldPreferVerisiumOverVisibleCandidates(
                 verisiumDistance: 90f,
                 labelDistance: null,
                 labelMechanicId: null,
@@ -1636,7 +1618,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferSettlersOre = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersOre = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 90f,
                 settlersOreMechanicId: "settlers-crimson-iron",
                 labelDistance: 80f,
@@ -1665,7 +1647,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferSettlersOre = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersOre = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 90f,
                 settlersOreMechanicId: "settlers-verisium",
                 labelDistance: null,
@@ -1714,7 +1696,7 @@ namespace ClickIt.Tests.Unit
                         [settlersMechanic] = 1
                     };
 
-                    bool preferSettlersOre = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                    bool preferSettlersOre = ShouldPreferSettlersOreOverVisibleCandidates(
                         settlersOreDistance: 80f,
                         settlersOreMechanicId: settlersMechanic,
                         labelDistance: 80f,
@@ -1745,7 +1727,7 @@ namespace ClickIt.Tests.Unit
                 [MechanicIds.LostShipment] = 2
             };
 
-            bool preferSettlersWithHigherShrine = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersWithHigherShrine = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 80f,
                 settlersOreMechanicId: settlersMechanic,
                 labelDistance: null,
@@ -1766,7 +1748,7 @@ namespace ClickIt.Tests.Unit
                 [MechanicIds.Shrines] = 2
             };
 
-            bool preferSettlersWithHigherLost = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersWithHigherLost = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 80f,
                 settlersOreMechanicId: settlersMechanic,
                 labelDistance: null,
@@ -1795,7 +1777,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferSettlersWhenClosest = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersWhenClosest = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 40f,
                 settlersOreMechanicId: MechanicIds.SettlersVerisium,
                 labelDistance: 60f,
@@ -1809,7 +1791,7 @@ namespace ClickIt.Tests.Unit
 
             preferSettlersWhenClosest.Should().BeTrue();
 
-            bool preferSettlersWhenFarther = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersWhenFarther = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 70f,
                 settlersOreMechanicId: MechanicIds.SettlersVerisium,
                 labelDistance: 60f,
@@ -1837,7 +1819,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferLostWhenClosest = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+            bool preferLostWhenClosest = ShouldPreferLostShipmentOverVisibleCandidates(
                 lostShipmentDistance: 25f,
                 labelDistance: 35f,
                 labelMechanicId: "items",
@@ -1849,7 +1831,7 @@ namespace ClickIt.Tests.Unit
 
             preferLostWhenClosest.Should().BeTrue();
 
-            bool preferLostWhenFarther = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+            bool preferLostWhenFarther = ShouldPreferLostShipmentOverVisibleCandidates(
                 lostShipmentDistance: 45f,
                 labelDistance: 35f,
                 labelMechanicId: "items",
@@ -1876,7 +1858,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferSettlersWhenCursorCloser = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersWhenCursorCloser = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 80f,
                 settlersOreMechanicId: MechanicIds.SettlersVerisium,
                 labelDistance: 80f,
@@ -1894,7 +1876,7 @@ namespace ClickIt.Tests.Unit
 
             preferSettlersWhenCursorCloser.Should().BeTrue();
 
-            bool preferSettlersWhenCursorFarther = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferSettlersWhenCursorFarther = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 80f,
                 settlersOreMechanicId: MechanicIds.SettlersVerisium,
                 labelDistance: 80f,
@@ -1926,7 +1908,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferLostWhenCursorCloser = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+            bool preferLostWhenCursorCloser = ShouldPreferLostShipmentOverVisibleCandidates(
                 lostShipmentDistance: 80f,
                 labelDistance: 80f,
                 labelMechanicId: "items",
@@ -1941,7 +1923,7 @@ namespace ClickIt.Tests.Unit
 
             preferLostWhenCursorCloser.Should().BeTrue();
 
-            bool preferLostWhenCursorFarther = ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+            bool preferLostWhenCursorFarther = ShouldPreferLostShipmentOverVisibleCandidates(
                 lostShipmentDistance: 80f,
                 labelDistance: 80f,
                 labelMechanicId: "items",
@@ -1969,7 +1951,7 @@ namespace ClickIt.Tests.Unit
             var ignoreSet = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ignoreDistanceWithinByMechanicId = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            bool preferShrineWhenCursorCloser = ClickService.ShouldPreferShrineOverLabelForOffscreen(
+            bool preferShrineWhenCursorCloser = ShouldPreferShrineOverLabelForOffscreen(
                 shrineDistance: 80f,
                 labelDistance: 80f,
                 labelMechanicId: "items",
@@ -1982,7 +1964,7 @@ namespace ClickIt.Tests.Unit
 
             preferShrineWhenCursorCloser.Should().BeTrue();
 
-            bool preferShrineWhenCursorFarther = ClickService.ShouldPreferShrineOverLabelForOffscreen(
+            bool preferShrineWhenCursorFarther = ShouldPreferShrineOverLabelForOffscreen(
                 shrineDistance: 80f,
                 labelDistance: 80f,
                 labelMechanicId: "items",
@@ -2017,7 +1999,7 @@ namespace ClickIt.Tests.Unit
                 [MechanicIds.SettlersVerisium] = 120
             };
 
-            bool preferIgnoredWithinRange = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferIgnoredWithinRange = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 100f,
                 settlersOreMechanicId: MechanicIds.SettlersVerisium,
                 labelDistance: 80f,
@@ -2031,7 +2013,7 @@ namespace ClickIt.Tests.Unit
 
             preferIgnoredWithinRange.Should().BeTrue();
 
-            bool preferIgnoredOutOfRange = ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+            bool preferIgnoredOutOfRange = ShouldPreferSettlersOreOverVisibleCandidates(
                 settlersOreDistance: 130f,
                 settlersOreMechanicId: MechanicIds.SettlersVerisium,
                 labelDistance: 80f,
@@ -2045,6 +2027,188 @@ namespace ClickIt.Tests.Unit
 
             preferIgnoredOutOfRange.Should().BeFalse();
         }
+
+        private static bool ShouldPreferLostShipmentOverVisibleCandidates(
+            float lostShipmentDistance,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ShouldPreferLostShipmentOverVisibleCandidates(
+                lostShipmentDistance,
+                labelDistance,
+                labelMechanicId,
+                shrineDistance,
+                lostShipmentCursorDistance: null,
+                labelCursorDistance: null,
+                shrineCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        private static bool ShouldPreferLostShipmentOverVisibleCandidates(
+            float lostShipmentDistance,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentCursorDistance,
+            float? labelCursorDistance,
+            float? shrineCursorDistance,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+                CreateMechanicCandidateSignal(MechanicIds.LostShipment, lostShipmentDistance, lostShipmentCursorDistance),
+                CreateMechanicCandidateSignal(labelMechanicId, labelDistance, labelCursorDistance),
+                CreateMechanicCandidateSignal(MechanicIds.Shrines, shrineDistance, shrineCursorDistance),
+                CreateMechanicPriorityContext(priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty));
+
+        private static bool ShouldPreferSettlersOreOverVisibleCandidates(
+            float settlersOreDistance,
+            string settlersOreMechanicId,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersOreDistance,
+                settlersOreMechanicId,
+                labelDistance,
+                labelMechanicId,
+                shrineDistance,
+                lostShipmentDistance,
+                settlersOreCursorDistance: null,
+                labelCursorDistance: null,
+                shrineCursorDistance: null,
+                lostShipmentCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        private static bool ShouldPreferSettlersOreOverVisibleCandidates(
+            float settlersOreDistance,
+            string settlersOreMechanicId,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            float? settlersOreCursorDistance,
+            float? labelCursorDistance,
+            float? shrineCursorDistance,
+            float? lostShipmentCursorDistance,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                CreateMechanicCandidateSignal(settlersOreMechanicId, settlersOreDistance, settlersOreCursorDistance),
+                CreateMechanicCandidateSignal(labelMechanicId, labelDistance, labelCursorDistance),
+                CreateMechanicCandidateSignal(MechanicIds.Shrines, shrineDistance, shrineCursorDistance),
+                CreateMechanicCandidateSignal(MechanicIds.LostShipment, lostShipmentDistance, lostShipmentCursorDistance),
+                CreateMechanicPriorityContext(priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty));
+
+        private static bool ShouldPreferVerisiumOverVisibleCandidates(
+            float verisiumDistance,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ShouldPreferVerisiumOverVisibleCandidates(
+                verisiumDistance,
+                labelDistance,
+                labelMechanicId,
+                shrineDistance,
+                lostShipmentDistance,
+                verisiumCursorDistance: null,
+                labelCursorDistance: null,
+                shrineCursorDistance: null,
+                lostShipmentCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        private static bool ShouldPreferVerisiumOverVisibleCandidates(
+            float verisiumDistance,
+            float? labelDistance,
+            string? labelMechanicId,
+            float? shrineDistance,
+            float? lostShipmentDistance,
+            float? verisiumCursorDistance,
+            float? labelCursorDistance,
+            float? shrineCursorDistance,
+            float? lostShipmentCursorDistance,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                CreateMechanicCandidateSignal(MechanicIds.SettlersVerisium, verisiumDistance, verisiumCursorDistance),
+                CreateMechanicCandidateSignal(labelMechanicId, labelDistance, labelCursorDistance),
+                CreateMechanicCandidateSignal(MechanicIds.Shrines, shrineDistance, shrineCursorDistance),
+                CreateMechanicCandidateSignal(MechanicIds.LostShipment, lostShipmentDistance, lostShipmentCursorDistance),
+                CreateMechanicPriorityContext(priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty));
+
+        private static bool ShouldPreferShrineOverLabelForOffscreen(
+            float shrineDistance,
+            float labelDistance,
+            string? labelMechanicId,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ShouldPreferShrineOverLabelForOffscreen(
+                shrineDistance,
+                labelDistance,
+                labelMechanicId,
+                shrineCursorDistance: null,
+                labelCursorDistance: null,
+                priorityIndexMap,
+                ignoreDistanceSet,
+                ignoreDistanceWithinByMechanicId,
+                priorityDistancePenalty);
+
+        private static bool ShouldPreferShrineOverLabelForOffscreen(
+            float shrineDistance,
+            float labelDistance,
+            string? labelMechanicId,
+            float? shrineCursorDistance,
+            float? labelCursorDistance,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => ClickService.ShouldPreferShrineOverLabelForOffscreen(
+                CreateMechanicCandidateSignal(MechanicIds.Shrines, shrineDistance, shrineCursorDistance),
+                CreateMechanicCandidateSignal(labelMechanicId, labelDistance, labelCursorDistance),
+                CreateMechanicPriorityContext(priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty));
+
+        private static ClickService.MechanicCandidateSignal CreateMechanicCandidateSignal(
+            string? mechanicId,
+            float? distance,
+            float? cursorDistance = null)
+            => new(mechanicId, distance, cursorDistance);
+
+        private static ClickService.MechanicPriorityContext CreateMechanicPriorityContext(
+            System.Collections.Generic.IReadOnlyDictionary<string, int> priorityIndexMap,
+            System.Collections.Generic.IReadOnlySet<string> ignoreDistanceSet,
+            System.Collections.Generic.IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+            int priorityDistancePenalty)
+            => new(priorityIndexMap, ignoreDistanceSet, ignoreDistanceWithinByMechanicId, priorityDistancePenalty);
 
         public sealed class SkillNode
         {
@@ -2083,3 +2247,4 @@ namespace ClickIt.Tests.Unit
 
     }
 }
+

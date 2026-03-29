@@ -133,6 +133,7 @@ namespace ClickIt.Services
             LostShipmentCandidate? lostShipmentCandidate;
             SettlersOreCandidate? settlersOreCandidate;
             RefreshMechanicPriorityCaches();
+            MechanicPriorityContext mechanicPriorityContext = CreateMechanicPriorityContext();
 
             if (!groundItemsVisible())
             {
@@ -141,20 +142,20 @@ namespace ClickIt.Services
 
                 if (settlersOreCandidate.HasValue
                     && ShouldPreferSettlersOreOverVisibleCandidates(
-                        settlersOreCandidate.Value.Distance,
-                        settlersOreCandidate.Value.MechanicId,
-                        labelDistance: null,
-                        labelMechanicId: null,
-                        shrineDistance: nextShrine?.DistancePlayer,
-                        lostShipmentDistance: lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
-                        settlersOreCursorDistance: GetCursorDistanceSquaredToPoint(settlersOreCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
-                        labelCursorDistance: null,
-                        shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
-                        lostShipmentCursorDistance: lostShipmentCandidate.HasValue ? GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft) : null,
-                        priorityIndexMap: _cachedMechanicPriorityIndexMap,
-                        ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
-                        ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
-                        priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
+                        CreateMechanicCandidateSignal(
+                            settlersOreCandidate.Value.MechanicId,
+                            settlersOreCandidate.Value.Distance,
+                            GetCursorDistanceSquaredToPoint(settlersOreCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft)),
+                        MechanicCandidateSignal.None,
+                        CreateMechanicCandidateSignal(
+                            ShrineMechanicId,
+                            nextShrine?.DistancePlayer,
+                            TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft)),
+                        CreateMechanicCandidateSignal(
+                            LostShipmentMechanicId,
+                            lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
+                            lostShipmentCandidate.HasValue ? GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft) : null),
+                        mechanicPriorityContext))
                 {
                     if (isPostChestLootSettleBlocking
                         && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(settlersOreCandidate.Value.MechanicId, settlersOreCandidate.Value.Entity, out string bypassDecisionSettlersHidden))
@@ -172,17 +173,16 @@ namespace ClickIt.Services
 
                 if (lostShipmentCandidate.HasValue
                     && ShouldPreferLostShipmentOverVisibleCandidates(
-                        lostShipmentCandidate.Value.Distance,
-                        labelDistance: null,
-                        labelMechanicId: null,
-                        shrineDistance: nextShrine?.DistancePlayer,
-                        lostShipmentCursorDistance: GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
-                        labelCursorDistance: null,
-                        shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
-                        priorityIndexMap: _cachedMechanicPriorityIndexMap,
-                        ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
-                        ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
-                        priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
+                        CreateMechanicCandidateSignal(
+                            LostShipmentMechanicId,
+                            lostShipmentCandidate.Value.Distance,
+                            GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft)),
+                        MechanicCandidateSignal.None,
+                        CreateMechanicCandidateSignal(
+                            ShrineMechanicId,
+                            nextShrine?.DistancePlayer,
+                            TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft)),
+                        mechanicPriorityContext))
                 {
                     if (isPostChestLootSettleBlocking
                         && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, lostShipmentCandidate.Value.Entity, out string bypassDecisionLostShipmentHidden))
@@ -247,20 +247,23 @@ namespace ClickIt.Services
 
             if (settlersOreCandidate.HasValue
                 && ShouldPreferSettlersOreOverVisibleCandidates(
-                    settlersOreCandidate.Value.Distance,
-                    settlersOreCandidate.Value.MechanicId,
-                    nextLabel?.ItemOnGround?.DistancePlayer,
-                    nextLabelMechanicId,
-                    nextShrine?.DistancePlayer,
-                    lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
-                    settlersOreCursorDistance: GetCursorDistanceSquaredToPoint(settlersOreCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
-                    labelCursorDistance: TryGetCursorDistanceSquaredToLabel(nextLabel, cursorAbsolute, windowTopLeft),
-                    shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
-                    lostShipmentCursorDistance: lostShipmentCandidate.HasValue ? GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft) : null,
-                    priorityIndexMap: _cachedMechanicPriorityIndexMap,
-                    ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
-                    ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
-                    priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
+                    CreateMechanicCandidateSignal(
+                        settlersOreCandidate.Value.MechanicId,
+                        settlersOreCandidate.Value.Distance,
+                        GetCursorDistanceSquaredToPoint(settlersOreCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft)),
+                    CreateMechanicCandidateSignal(
+                        nextLabelMechanicId,
+                        nextLabel?.ItemOnGround?.DistancePlayer,
+                        TryGetCursorDistanceSquaredToLabel(nextLabel, cursorAbsolute, windowTopLeft)),
+                    CreateMechanicCandidateSignal(
+                        ShrineMechanicId,
+                        nextShrine?.DistancePlayer,
+                        TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft)),
+                    CreateMechanicCandidateSignal(
+                        LostShipmentMechanicId,
+                        lostShipmentCandidate.HasValue ? lostShipmentCandidate.Value.Distance : null,
+                        lostShipmentCandidate.HasValue ? GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft) : null),
+                    mechanicPriorityContext))
             {
                 if (isPostChestLootSettleBlocking
                     && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(settlersOreCandidate.Value.MechanicId, settlersOreCandidate.Value.Entity, out string bypassDecisionSettlersVisible))
@@ -273,17 +276,19 @@ namespace ClickIt.Services
 
             if (lostShipmentCandidate.HasValue
                 && ShouldPreferLostShipmentOverVisibleCandidates(
-                    lostShipmentCandidate.Value.Distance,
-                    nextLabel?.ItemOnGround?.DistancePlayer,
-                    nextLabelMechanicId,
-                    nextShrine?.DistancePlayer,
-                    lostShipmentCursorDistance: GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft),
-                    labelCursorDistance: TryGetCursorDistanceSquaredToLabel(nextLabel, cursorAbsolute, windowTopLeft),
-                    shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft),
-                    priorityIndexMap: _cachedMechanicPriorityIndexMap,
-                    ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
-                    ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
-                    priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value))
+                    CreateMechanicCandidateSignal(
+                        LostShipmentMechanicId,
+                        lostShipmentCandidate.Value.Distance,
+                        GetCursorDistanceSquaredToPoint(lostShipmentCandidate.Value.ClickPosition, cursorAbsolute, windowTopLeft)),
+                    CreateMechanicCandidateSignal(
+                        nextLabelMechanicId,
+                        nextLabel?.ItemOnGround?.DistancePlayer,
+                        TryGetCursorDistanceSquaredToLabel(nextLabel, cursorAbsolute, windowTopLeft)),
+                    CreateMechanicCandidateSignal(
+                        ShrineMechanicId,
+                        nextShrine?.DistancePlayer,
+                        TryGetCursorDistanceSquaredToEntity(nextShrine, cursorAbsolute, windowTopLeft)),
+                    mechanicPriorityContext))
             {
                 if (isPostChestLootSettleBlocking
                     && !ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, lostShipmentCandidate.Value.Entity, out string bypassDecisionLostShipmentVisible))
@@ -460,6 +465,7 @@ namespace ClickIt.Services
                 return true;
 
             RefreshMechanicPriorityCaches();
+            MechanicPriorityContext mechanicPriorityContext = CreateMechanicPriorityContext();
 
             float labelDistance = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;
             float shrineDistance = shrine.DistancePlayer;
@@ -467,15 +473,15 @@ namespace ClickIt.Services
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 cursorAbsolute = GetCursorAbsolutePosition();
             return ShouldPreferShrineOverLabelForOffscreen(
-                shrineDistance,
-                labelDistance,
-                labelMechanicId,
-                shrineCursorDistance: TryGetCursorDistanceSquaredToEntity(shrine, cursorAbsolute, windowTopLeft),
-                labelCursorDistance: TryGetCursorDistanceSquaredToLabel(label, cursorAbsolute, windowTopLeft),
-                priorityIndexMap: _cachedMechanicPriorityIndexMap,
-                ignoreDistanceSet: _cachedMechanicIgnoreDistanceSet,
-                ignoreDistanceWithinByMechanicId: _cachedMechanicIgnoreDistanceWithinMap,
-                priorityDistancePenalty: settings.MechanicPriorityDistancePenalty.Value);
+                CreateMechanicCandidateSignal(
+                    ShrineMechanicId,
+                    shrineDistance,
+                    TryGetCursorDistanceSquaredToEntity(shrine, cursorAbsolute, windowTopLeft)),
+                CreateMechanicCandidateSignal(
+                    labelMechanicId,
+                    labelDistance,
+                    TryGetCursorDistanceSquaredToLabel(label, cursorAbsolute, windowTopLeft)),
+                mechanicPriorityContext);
         }
 
         private LabelOnGround? ResolveNextLabelCandidate(IReadOnlyList<LabelOnGround>? allLabels)
@@ -1119,6 +1125,17 @@ namespace ClickIt.Services
             return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
         }
 
+        private ChestLootSettlementTimingOptions ResolvePostChestLootSettlementTimingOptions()
+            => new(
+                new ChestLootSettlementTiming(
+                    settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
+                    settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
+                    settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs),
+                new ChestLootSettlementTiming(
+                    settings.PauseAfterOpeningLeagueChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
+                    settings.PauseAfterOpeningLeagueChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
+                    settings.PauseAfterOpeningLeagueChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs));
+
         private void StartPostChestLootSettlementWatch(string? mechanicId)
         {
             if (!ShouldWaitForChestLootSettlement(
@@ -1129,17 +1146,9 @@ namespace ClickIt.Services
                 return;
             }
 
-            ResolvePostChestLootSettlementTimingSettings(
+            ChestLootSettlementTiming timing = ResolvePostChestLootSettlementTimingSettings(
                 mechanicId,
-                settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
-                settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
-                settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs,
-                settings.PauseAfterOpeningLeagueChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
-                settings.PauseAfterOpeningLeagueChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
-                settings.PauseAfterOpeningLeagueChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs,
-                out int initialDelayMs,
-                out int pollIntervalMs,
-                out int quietWindowMs);
+                ResolvePostChestLootSettlementTimingOptions());
 
             long now = Environment.TickCount64;
             bool hadSourceGrid = _postChestInteractionSourceGridValid;
@@ -1147,11 +1156,11 @@ namespace ClickIt.Services
             ClearPendingChestOpenConfirmation();
             ClearPostChestLootSettlementWatch();
             _postChestLootSettleWatcherActive = true;
-            _postChestLootSettleInitialDelayUntilTimestampMs = now + initialDelayMs;
+            _postChestLootSettleInitialDelayUntilTimestampMs = now + timing.InitialDelayMs;
             _postChestLootSettleNextPollTimestampMs = _postChestLootSettleInitialDelayUntilTimestampMs;
             _postChestLootSettleLastNewItemTimestampMs = _postChestLootSettleInitialDelayUntilTimestampMs;
-            _postChestLootSettlePollIntervalMs = pollIntervalMs;
-            _postChestLootSettleQuietWindowMs = quietWindowMs;
+            _postChestLootSettlePollIntervalMs = timing.PollIntervalMs;
+            _postChestLootSettleQuietWindowMs = timing.QuietWindowMs;
             _postChestInteractionSourceGridValid = hadSourceGrid;
             _postChestInteractionSourceGrid = sourceGrid;
             SeedKnownGroundItemAddresses(_postChestLootSettleKnownGroundItemAddresses, CollectGroundLabelEntityAddresses());
@@ -1398,38 +1407,31 @@ namespace ClickIt.Services
             return false;
         }
 
-        internal static void ResolvePostChestLootSettlementTimingSettings(
+        internal static ChestLootSettlementTiming ResolvePostChestLootSettlementTimingSettings(
             string? mechanicId,
-            int basicInitialDelayMs,
-            int basicPollIntervalMs,
-            int basicQuietWindowMs,
-            int leagueInitialDelayMs,
-            int leaguePollIntervalMs,
-            int leagueQuietWindowMs,
-            out int initialDelayMs,
-            out int pollIntervalMs,
-            out int quietWindowMs)
+            in ChestLootSettlementTimingOptions options)
         {
             if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
             {
-                initialDelayMs = Math.Max(0, basicInitialDelayMs);
-                pollIntervalMs = Math.Max(1, basicPollIntervalMs);
-                quietWindowMs = Math.Max(0, basicQuietWindowMs);
-                return;
+                return NormalizeChestLootSettlementTiming(options.Basic);
             }
 
             if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
             {
-                initialDelayMs = Math.Max(0, leagueInitialDelayMs);
-                pollIntervalMs = Math.Max(1, leaguePollIntervalMs);
-                quietWindowMs = Math.Max(0, leagueQuietWindowMs);
-                return;
+                return NormalizeChestLootSettlementTiming(options.League);
             }
 
-            initialDelayMs = PostChestLootSettleDefaultInitialDelayMs;
-            pollIntervalMs = PostChestLootSettleDefaultPollIntervalMs;
-            quietWindowMs = PostChestLootSettleDefaultQuietWindowMs;
+            return new ChestLootSettlementTiming(
+                PostChestLootSettleDefaultInitialDelayMs,
+                PostChestLootSettleDefaultPollIntervalMs,
+                PostChestLootSettleDefaultQuietWindowMs);
         }
+
+        private static ChestLootSettlementTiming NormalizeChestLootSettlementTiming(in ChestLootSettlementTiming timing)
+            => new(
+                Math.Max(0, timing.InitialDelayMs),
+                Math.Max(1, timing.PollIntervalMs),
+                Math.Max(0, timing.QuietWindowMs));
 
         internal static bool ShouldContinueChestOpenRetries(bool pendingChestOpenConfirmationActive, bool chestLabelVisible)
             => pendingChestOpenConfirmationActive && chestLabelVisible;

@@ -220,21 +220,19 @@ namespace ClickIt.Services
                 DebugLog(() => $"[TryClickPreferredUltimatumModifier] Grueling Gauntlet action={action}, saturatedModifier='{saturatedModifierName}', shouldTakeReward={shouldTakeReward}");
 
                 bool clickedBegin = TryClickUltimatumBeginButton(label, windowTopLeft);
-                PublishUltimatumDebug(
-                    stage: "InitialGruelingHandled",
-                    source: "InitialLabel",
-                    isPanelVisible: false,
-                    isGruelingGauntletActive: true,
-                    hasSaturatedChoice: hasSaturatedChoice,
-                    saturatedModifier: saturatedModifierName,
-                    shouldTakeReward: shouldTakeReward,
-                    action: action.ToString(),
-                    candidateCount: options.Count,
-                    saturatedCandidateCount: hasSaturatedChoice ? 1 : 0,
-                    clickedChoice: false,
-                    clickedConfirm: clickedBegin,
-                    clickedTakeRewards: false,
-                    notes: clickedBegin ? "Clicked begin/confirm path on initial label" : "Begin/confirm click failed on initial label");
+                PublishUltimatumDebug(new UltimatumDebugEvent("InitialGruelingHandled", "InitialLabel", false, true)
+                {
+                    HasSaturatedChoice = hasSaturatedChoice,
+                    SaturatedModifier = saturatedModifierName,
+                    ShouldTakeReward = shouldTakeReward,
+                    Action = action.ToString(),
+                    CandidateCount = options.Count,
+                    SaturatedCandidateCount = hasSaturatedChoice ? 1 : 0,
+                    ClickedChoice = false,
+                    ClickedConfirm = clickedBegin,
+                    ClickedTakeRewards = false,
+                    Notes = clickedBegin ? "Clicked begin/confirm path on initial label" : "Begin/confirm click failed on initial label"
+                });
                 return clickedBegin;
             }
 
@@ -264,13 +262,11 @@ namespace ClickIt.Services
             if (bestOption == null || bestIndex == int.MaxValue)
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] No candidate matched configured priorities.");
-                PublishUltimatumDebug(
-                    stage: "InitialNoPriorityCandidate",
-                    source: "InitialLabel",
-                    isPanelVisible: false,
-                    isGruelingGauntletActive: false,
-                    candidateCount: options.Count,
-                    notes: "No candidate matched ultimatum priority table");
+                PublishUltimatumDebug(new UltimatumDebugEvent("InitialNoPriorityCandidate", "InitialLabel", false, false)
+                {
+                    CandidateCount = options.Count,
+                    Notes = "No candidate matched ultimatum priority table"
+                });
                 return false;
             }
 
@@ -283,44 +279,42 @@ namespace ClickIt.Services
 
             if (!clicked)
             {
-                PublishUltimatumDebug(
-                    stage: "InitialChoiceClickFailed",
-                    source: "InitialLabel",
-                    isPanelVisible: false,
-                    isGruelingGauntletActive: false,
-                    candidateCount: options.Count,
-                    bestModifier: bestModifier,
-                    bestPriority: bestIndex,
-                    clickedChoice: false,
-                    notes: "Preferred choice click failed");
+                PublishUltimatumDebug(new UltimatumDebugEvent("InitialChoiceClickFailed", "InitialLabel", false, false)
+                {
+                    CandidateCount = options.Count,
+                    BestModifier = bestModifier,
+                    BestPriority = bestIndex,
+                    ClickedChoice = false,
+                    Notes = "Preferred choice click failed"
+                });
                 return false;
             }
 
             Thread.Sleep(UltimatumChoiceToBeginDelayMs);
             bool clickedBeginButton = TryClickUltimatumBeginButton(label, windowTopLeft);
-            PublishUltimatumDebug(
-                stage: "InitialHandled",
-                source: "InitialLabel",
-                isPanelVisible: false,
-                isGruelingGauntletActive: false,
-                candidateCount: options.Count,
-                bestModifier: bestModifier,
-                bestPriority: bestIndex,
-                clickedChoice: true,
-                clickedConfirm: clickedBeginButton,
-                notes: clickedBeginButton ? "Clicked preferred choice and begin" : "Choice clicked but begin click failed");
+            PublishUltimatumDebug(new UltimatumDebugEvent("InitialHandled", "InitialLabel", false, false)
+            {
+                CandidateCount = options.Count,
+                BestModifier = bestModifier,
+                BestPriority = bestIndex,
+                ClickedChoice = true,
+                ClickedConfirm = clickedBeginButton,
+                Notes = clickedBeginButton ? "Clicked preferred choice and begin" : "Choice clicked but begin click failed"
+            });
             return clickedBeginButton;
         }
 
         private bool PublishInitialUltimatumFailure(string stage, string notes, int candidateCount = 0)
         {
-            PublishUltimatumDebug(
-                stage: stage,
-                source: "InitialLabel",
-                isPanelVisible: false,
-                isGruelingGauntletActive: ShouldCaptureUltimatumDebug() && IsGruelingGauntletPassiveActive(),
-                candidateCount: candidateCount,
-                notes: notes);
+            PublishUltimatumDebug(new UltimatumDebugEvent(
+                stage,
+                "InitialLabel",
+                false,
+                ShouldCaptureUltimatumDebug() && IsGruelingGauntletPassiveActive())
+            {
+                CandidateCount = candidateCount,
+                Notes = notes
+            });
             return false;
         }
 

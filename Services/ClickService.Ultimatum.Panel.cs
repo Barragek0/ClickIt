@@ -31,23 +31,19 @@ namespace ClickIt.Services
         {
             if (!settings.IsOtherUltimatumClickEnabled())
             {
-                PublishUltimatumDebug(
-                    stage: "PanelSkip",
-                    source: "PanelUi",
-                    isPanelVisible: false,
-                    isGruelingGauntletActive: false,
-                    notes: "Other Ultimatum click setting disabled");
+                PublishUltimatumDebug(new UltimatumDebugEvent("PanelSkip", "PanelUi", false, false)
+                {
+                    Notes = "Other Ultimatum click setting disabled"
+                });
                 return false;
             }
 
             if (!TryGetVisibleUltimatumPanel(out UltimatumPanel? panelObj) || panelObj == null)
             {
-                PublishUltimatumDebug(
-                    stage: "PanelMissing",
-                    source: "PanelUi",
-                    isPanelVisible: false,
-                    isGruelingGauntletActive: GetGruelingGauntletDetectionForDebug(),
-                    notes: "Ultimatum panel not visible/available");
+                PublishUltimatumDebug(new UltimatumDebugEvent("PanelMissing", "PanelUi", false, GetGruelingGauntletDetectionForDebug())
+                {
+                    Notes = "Ultimatum panel not visible/available"
+                });
                 return false;
             }
 
@@ -75,15 +71,13 @@ namespace ClickIt.Services
                 Thread.Sleep(UltimatumPostBeginDelayMs);
             }
 
-            PublishUltimatumDebug(
-                stage: "PanelHandled",
-                source: "PanelUi",
-                isPanelVisible: true,
-                isGruelingGauntletActive: false,
-                clickedChoice: clickedChoice,
-                clickedConfirm: clickedConfirm,
-                clickedTakeRewards: false,
-                notes: clickedAny ? "Panel action executed" : "No panel action executed");
+            PublishUltimatumDebug(new UltimatumDebugEvent("PanelHandled", "PanelUi", true, false)
+            {
+                ClickedChoice = clickedChoice,
+                ClickedConfirm = clickedConfirm,
+                ClickedTakeRewards = false,
+                Notes = clickedAny ? "Panel action executed" : "No panel action executed"
+            });
 
             return clickedAny;
         }
@@ -122,23 +116,21 @@ namespace ClickIt.Services
 
             if (ShouldSuppressGruelingGauntletClickCore(shouldTakeReward, canClickTakeRewards))
             {
-                PublishUltimatumDebug(
-                    stage: "PanelGruelingHandled",
-                    source: "PanelUi",
-                    isPanelVisible: true,
-                    isGruelingGauntletActive: true,
-                    hasSaturatedChoice: hasSaturatedChoice,
-                    saturatedModifier: saturatedModifier,
-                    shouldTakeReward: shouldTakeReward,
-                    action: action.ToString(),
-                    candidateCount: candidateCount,
-                    saturatedCandidateCount: saturatedCandidateCount,
-                    bestModifier: bestModifier,
-                    bestPriority: bestPriority,
-                    clickedChoice: false,
-                    clickedConfirm: false,
-                    clickedTakeRewards: false,
-                    notes: "Take Reward matched but Click Take Reward Button is disabled; no click performed");
+                PublishUltimatumDebug(new UltimatumDebugEvent("PanelGruelingHandled", "PanelUi", true, true)
+                {
+                    HasSaturatedChoice = hasSaturatedChoice,
+                    SaturatedModifier = saturatedModifier,
+                    ShouldTakeReward = shouldTakeReward,
+                    Action = action.ToString(),
+                    CandidateCount = candidateCount,
+                    SaturatedCandidateCount = saturatedCandidateCount,
+                    BestModifier = bestModifier,
+                    BestPriority = bestPriority,
+                    ClickedChoice = false,
+                    ClickedConfirm = false,
+                    ClickedTakeRewards = false,
+                    Notes = "Take Reward matched but Click Take Reward Button is disabled; no click performed"
+                });
                 return false;
             }
 
@@ -157,23 +149,21 @@ namespace ClickIt.Services
                 ? (clickedTakeRewards ? "Take Rewards clicked" : "Take Rewards action selected but click failed")
                 : (clickedConfirm ? "Confirm clicked" : "Confirm action selected but click failed");
 
-            PublishUltimatumDebug(
-                stage: "PanelGruelingHandled",
-                source: "PanelUi",
-                isPanelVisible: true,
-                isGruelingGauntletActive: true,
-                hasSaturatedChoice: hasSaturatedChoice,
-                saturatedModifier: saturatedModifier,
-                shouldTakeReward: shouldTakeReward,
-                action: action.ToString(),
-                candidateCount: candidateCount,
-                saturatedCandidateCount: saturatedCandidateCount,
-                bestModifier: bestModifier,
-                bestPriority: bestPriority,
-                clickedChoice: false,
-                clickedConfirm: clickedConfirm,
-                clickedTakeRewards: clickedTakeRewards,
-                notes: note);
+            PublishUltimatumDebug(new UltimatumDebugEvent("PanelGruelingHandled", "PanelUi", true, true)
+            {
+                HasSaturatedChoice = hasSaturatedChoice,
+                SaturatedModifier = saturatedModifier,
+                ShouldTakeReward = shouldTakeReward,
+                Action = action.ToString(),
+                CandidateCount = candidateCount,
+                SaturatedCandidateCount = saturatedCandidateCount,
+                BestModifier = bestModifier,
+                BestPriority = bestPriority,
+                ClickedChoice = false,
+                ClickedConfirm = clickedConfirm,
+                ClickedTakeRewards = clickedTakeRewards,
+                Notes = note
+            });
 
             return clickedAny;
         }
@@ -199,20 +189,18 @@ namespace ClickIt.Services
                     shouldTakeReward,
                     settings.IsUltimatumTakeRewardButtonClickEnabled());
 
-                PublishUltimatumDebug(
-                    stage: "OverlayPreview",
-                    source: "PanelPreview",
-                    isPanelVisible: true,
-                    isGruelingGauntletActive: isGruelingGauntletActive,
-                    hasSaturatedChoice: hasSaturatedChoice,
-                    saturatedModifier: saturatedModifier,
-                    shouldTakeReward: shouldTakeReward,
-                    action: action.ToString(),
-                    candidateCount: candidates.Count,
-                    saturatedCandidateCount: saturatedCount,
-                    bestModifier: hasBest ? best.ModifierName : string.Empty,
-                    bestPriority: hasBest ? best.PriorityIndex : int.MaxValue,
-                    notes: "Snapshot published from overlay preview polling");
+                PublishUltimatumDebug(new UltimatumDebugEvent("OverlayPreview", "PanelPreview", true, isGruelingGauntletActive)
+                {
+                    HasSaturatedChoice = hasSaturatedChoice,
+                    SaturatedModifier = saturatedModifier,
+                    ShouldTakeReward = shouldTakeReward,
+                    Action = action.ToString(),
+                    CandidateCount = candidates.Count,
+                    SaturatedCandidateCount = saturatedCount,
+                    BestModifier = hasBest ? best.ModifierName : string.Empty,
+                    BestPriority = hasBest ? best.PriorityIndex : int.MaxValue,
+                    Notes = "Snapshot published from overlay preview polling"
+                });
             }
 
             foreach (UltimatumPanelChoiceCandidate candidate in candidates)

@@ -99,5 +99,42 @@ namespace ClickIt.Services
             public float RawDistance { get; }
             public float CursorDistance { get; }
         }
+
+        internal readonly struct MechanicPriorityContext
+        {
+            public MechanicPriorityContext(
+                IReadOnlyDictionary<string, int> priorityIndexMap,
+                IReadOnlySet<string> ignoreDistanceSet,
+                IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+                int priorityDistancePenalty)
+            {
+                PriorityIndexMap = priorityIndexMap;
+                IgnoreDistanceSet = ignoreDistanceSet;
+                IgnoreDistanceWithinByMechanicId = ignoreDistanceWithinByMechanicId;
+                PriorityDistancePenalty = priorityDistancePenalty;
+            }
+
+            public IReadOnlyDictionary<string, int> PriorityIndexMap { get; }
+            public IReadOnlySet<string> IgnoreDistanceSet { get; }
+            public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; }
+            public int PriorityDistancePenalty { get; }
+        }
+
+        internal readonly struct MechanicCandidateSignal
+        {
+            public MechanicCandidateSignal(string? mechanicId, float? distance, float? cursorDistance)
+            {
+                MechanicId = mechanicId;
+                Distance = distance;
+                CursorDistance = cursorDistance;
+            }
+
+            public string? MechanicId { get; }
+            public float? Distance { get; }
+            public float? CursorDistance { get; }
+            public bool Exists => Distance.HasValue;
+
+            public static MechanicCandidateSignal None => new(null, null, null);
+        }
     }
 }
