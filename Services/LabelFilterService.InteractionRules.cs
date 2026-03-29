@@ -509,7 +509,8 @@ namespace ClickIt.Services
                 || name.Contains("cocoon", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("weapon rack", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("armour rack", StringComparison.OrdinalIgnoreCase)
-                || name.Equals("trunk", StringComparison.OrdinalIgnoreCase);
+                || name.Equals("trunk", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("sealed remains", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
