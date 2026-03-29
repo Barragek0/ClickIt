@@ -46,6 +46,12 @@ namespace ClickIt.Services
             LabelOnGround? NextLabel,
             string? NextLabelMechanicId);
 
+        private readonly record struct RankingResult(
+            bool PreferSettlers,
+            bool PreferLostShipment,
+            bool PreferShrine,
+            bool GroundItemsVisible);
+
         private readonly record struct DecisionResult(
             bool TrySettlers,
             bool TryLostShipment,
@@ -94,23 +100,23 @@ namespace ClickIt.Services
             }
         }
 
-        private sealed class InteractionPolicyEngine(ClickService owner)
+        private sealed class CandidateRankingPhase(ClickService owner)
         {
-            public DecisionResult Evaluate(ClickContext context, ClickCandidates candidates)
+            public RankingResult Rank(ClickContext context, ClickCandidates candidates)
             {
                 if (!context.GroundItemsVisible)
                 {
-                    return new DecisionResult(
-                        TrySettlers: ShouldTryHiddenSettlers(context, candidates),
-                        TryLostShipment: ShouldTryHiddenLostShipment(context, candidates),
-                        TryShrine: ShouldTryHiddenShrine(context),
+                    return new RankingResult(
+                        PreferSettlers: ShouldTryHiddenSettlers(context, candidates),
+                        PreferLostShipment: ShouldTryHiddenLostShipment(context, candidates),
+                        PreferShrine: ShouldTryHiddenShrine(context),
                         GroundItemsVisible: false);
                 }
 
-                return new DecisionResult(
-                    TrySettlers: ShouldTryVisibleSettlers(context, candidates),
-                    TryLostShipment: ShouldTryVisibleLostShipment(context, candidates),
-                    TryShrine: owner.ShouldPreferShrineOverLabel(candidates.NextLabel, context.NextShrine),
+                return new RankingResult(
+                    PreferSettlers: ShouldTryVisibleSettlers(context, candidates),
+                    PreferLostShipment: ShouldTryVisibleLostShipment(context, candidates),
+                    PreferShrine: owner.ShouldPreferShrineOverLabel(candidates.NextLabel, context.NextShrine),
                     GroundItemsVisible: true);
             }
 
@@ -119,7 +125,7 @@ namespace ClickIt.Services
                 if (!candidates.SettlersOre.HasValue)
                     return false;
 
-                return ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                return ShouldPreferSettlersWithSharedRankingEngine(
                     ClickService.CreateMechanicCandidateSignal(
                         candidates.SettlersOre.Value.MechanicId,
                         candidates.SettlersOre.Value.Distance,
@@ -133,7 +139,7 @@ namespace ClickIt.Services
                         LostShipmentMechanicId,
                         candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
                         candidates.LostShipment.HasValue ? GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
-                    context.MechanicPriorityContext);
+                        context.MechanicPriorityContext);
             }
 
             private bool ShouldTryHiddenLostShipment(ClickContext context, ClickCandidates candidates)
@@ -141,7 +147,7 @@ namespace ClickIt.Services
                 if (!candidates.LostShipment.HasValue)
                     return false;
 
-                return ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+                return ShouldPreferLostShipmentWithSharedRankingEngine(
                     ClickService.CreateMechanicCandidateSignal(
                         LostShipmentMechanicId,
                         candidates.LostShipment.Value.Distance,
@@ -151,7 +157,7 @@ namespace ClickIt.Services
                         ShrineMechanicId,
                         context.NextShrine?.DistancePlayer,
                         owner.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
-                    context.MechanicPriorityContext);
+                        context.MechanicPriorityContext);
             }
 
             private bool ShouldTryHiddenShrine(ClickContext context)
@@ -164,7 +170,7 @@ namespace ClickIt.Services
                 if (!candidates.SettlersOre.HasValue)
                     return false;
 
-                return ClickService.ShouldPreferSettlersOreOverVisibleCandidates(
+                return ShouldPreferSettlersWithSharedRankingEngine(
                     ClickService.CreateMechanicCandidateSignal(
                         candidates.SettlersOre.Value.MechanicId,
                         candidates.SettlersOre.Value.Distance,
@@ -181,7 +187,7 @@ namespace ClickIt.Services
                         LostShipmentMechanicId,
                         candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
                         candidates.LostShipment.HasValue ? GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
-                    context.MechanicPriorityContext);
+                        context.MechanicPriorityContext);
             }
 
             private bool ShouldTryVisibleLostShipment(ClickContext context, ClickCandidates candidates)
@@ -189,7 +195,7 @@ namespace ClickIt.Services
                 if (!candidates.LostShipment.HasValue)
                     return false;
 
-                return ClickService.ShouldPreferLostShipmentOverVisibleCandidates(
+                return ShouldPreferLostShipmentWithSharedRankingEngine(
                     ClickService.CreateMechanicCandidateSignal(
                         LostShipmentMechanicId,
                         candidates.LostShipment.Value.Distance,
@@ -206,6 +212,18 @@ namespace ClickIt.Services
             }
         }
 
+        private sealed class CandidateGatingPhase
+        {
+            public DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)
+            {
+                return new DecisionResult(
+                    TrySettlers: ranking.PreferSettlers && candidates.SettlersOre.HasValue,
+                    TryLostShipment: ranking.PreferLostShipment && candidates.LostShipment.HasValue,
+                    TryShrine: ranking.PreferShrine,
+                    GroundItemsVisible: ranking.GroundItemsVisible);
+            }
+        }
+
         private sealed class ClickExecutor(ClickService owner)
         {
             public ExecutionResult Execute(ClickContext context, ClickCandidates candidates, DecisionResult decision)
@@ -215,50 +233,83 @@ namespace ClickIt.Services
                     : ExecuteHidden(context, candidates, decision);
             }
 
+            private bool IsBlockedByPostChestLootSettlement(ClickContext context, string? mechanicId, Entity? entity)
+            {
+                if (!context.IsPostChestLootSettleBlocking)
+                    return false;
+
+                if (owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out string bypassDecision))
+                    return false;
+
+                owner.PublishClickFlowDebugStage(
+                    "PostChestLootSettleBlocked",
+                    $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecision}",
+                    mechanicId);
+                return true;
+            }
+
+            private bool TryExecuteSettlersHidden(ClickContext context, SettlersOreCandidate candidate)
+            {
+                if (!IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
+                    && owner.TryClickSettlersOre(candidate))
+                {
+                    owner.PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", candidate.MechanicId);
+                    return true;
+                }
+
+                owner.PublishClickFlowDebugStage("HiddenSettlersFallbackSkipped", "Hidden settlers candidate was not targetable/valid at click time", candidate.MechanicId);
+                return false;
+            }
+
+            private bool TryExecuteSettlersVisible(ClickContext context, SettlersOreCandidate candidate)
+            {
+                return !IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
+                    && owner.TryClickSettlersOre(candidate);
+            }
+
+            private bool TryExecuteLostShipment(ClickContext context, LostShipmentCandidate candidate)
+            {
+                if (IsBlockedByPostChestLootSettlement(context, MechanicIds.LostShipment, candidate.Entity))
+                    return false;
+
+                owner.TryClickLostShipment(candidate);
+                return true;
+            }
+
+            private bool TryExecuteShrine(ClickContext context)
+            {
+                if (context.NextShrine == null)
+                    return false;
+                if (IsBlockedByPostChestLootSettlement(context, MechanicIds.Shrines, context.NextShrine))
+                    return false;
+
+                owner.TryClickShrine(context.NextShrine);
+                return true;
+            }
+
+            private static ExecutionResult StopExecution()
+            {
+                return new ExecutionResult(false);
+            }
+
             private ExecutionResult ExecuteHidden(ClickContext context, ClickCandidates candidates, DecisionResult decision)
             {
                 if (decision.TrySettlers && candidates.SettlersOre.HasValue)
                 {
-                    if (context.IsPostChestLootSettleBlocking
-                        && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(candidates.SettlersOre.Value.MechanicId, candidates.SettlersOre.Value.Entity, out string bypassDecisionSettlersHidden))
-                    {
-                        owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecisionSettlersHidden}", candidates.SettlersOre.Value.MechanicId);
-                    }
-                    else if (owner.TryClickSettlersOre(candidates.SettlersOre.Value))
-                    {
-                        owner.PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", candidates.SettlersOre.Value.MechanicId);
-                        return new ExecutionResult(false);
-                    }
-
-                    owner.PublishClickFlowDebugStage("HiddenSettlersFallbackSkipped", "Hidden settlers candidate was not targetable/valid at click time", candidates.SettlersOre.Value.MechanicId);
+                    if (TryExecuteSettlersHidden(context, candidates.SettlersOre.Value))
+                        return StopExecution();
                 }
 
                 if (decision.TryLostShipment && candidates.LostShipment.HasValue)
                 {
-                    if (context.IsPostChestLootSettleBlocking
-                        && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, candidates.LostShipment.Value.Entity, out string bypassDecisionLostShipmentHidden))
-                    {
-                        owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecisionLostShipmentHidden}", MechanicIds.LostShipment);
-                    }
-                    else
-                    {
-                        owner.TryClickLostShipment(candidates.LostShipment.Value);
-                        return new ExecutionResult(false);
-                    }
+                    if (TryExecuteLostShipment(context, candidates.LostShipment.Value))
+                        return StopExecution();
                 }
 
                 if (decision.TryShrine && context.NextShrine != null)
                 {
-                    if (context.IsPostChestLootSettleBlocking
-                        && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.Shrines, context.NextShrine, out string bypassDecisionShrineHidden))
-                    {
-                        owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecisionShrineHidden}", MechanicIds.Shrines);
-                    }
-                    else
-                    {
-                        owner.TryClickShrine(context.NextShrine);
-                        return new ExecutionResult(false);
-                    }
+                    if (TryExecuteShrine(context))
+                        return StopExecution();
                 }
 
                 if (context.IsPostChestLootSettleBlocking)
@@ -266,7 +317,7 @@ namespace ClickIt.Services
                     string chestLootSettleReason = context.ChestLootSettleReason;
                     owner.DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
                     owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason);
-                    return new ExecutionResult(false);
+                    return StopExecution();
                 }
 
                 if (owner.settings.WalkTowardOffscreenLabels.Value)
@@ -276,136 +327,93 @@ namespace ClickIt.Services
 
                 owner.DebugLog(() => "[ProcessRegularClick] Ground items not visible, breaking");
                 owner.PublishClickFlowDebugStage("GroundItemsHiddenExit", "No clickable hidden fallback selected");
-                return new ExecutionResult(false);
+                return StopExecution();
             }
 
             private ExecutionResult ExecuteVisible(ClickContext context, ClickCandidates candidates, DecisionResult decision)
             {
                 if (decision.TrySettlers && candidates.SettlersOre.HasValue)
                 {
-                    if (context.IsPostChestLootSettleBlocking
-                        && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(candidates.SettlersOre.Value.MechanicId, candidates.SettlersOre.Value.Entity, out string bypassDecisionSettlersVisible))
-                    {
-                        owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecisionSettlersVisible}", candidates.SettlersOre.Value.MechanicId);
-                    }
-                    else if (owner.TryClickSettlersOre(candidates.SettlersOre.Value))
-                    {
-                        return new ExecutionResult(false);
-                    }
+                    if (TryExecuteSettlersVisible(context, candidates.SettlersOre.Value))
+                        return StopExecution();
                 }
 
                 if (decision.TryLostShipment && candidates.LostShipment.HasValue)
                 {
-                    if (context.IsPostChestLootSettleBlocking
-                        && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.LostShipment, candidates.LostShipment.Value.Entity, out string bypassDecisionLostShipmentVisible))
-                    {
-                        owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecisionLostShipmentVisible}", MechanicIds.LostShipment);
-                    }
-                    else
-                    {
-                        owner.TryClickLostShipment(candidates.LostShipment.Value);
-                        return new ExecutionResult(false);
-                    }
+                    if (TryExecuteLostShipment(context, candidates.LostShipment.Value))
+                        return StopExecution();
                 }
 
                 if (decision.TryShrine && context.NextShrine != null)
                 {
-                    if (context.IsPostChestLootSettleBlocking
-                        && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(MechanicIds.Shrines, context.NextShrine, out string bypassDecisionShrineVisible))
-                    {
-                        owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecisionShrineVisible}", MechanicIds.Shrines);
-                    }
-                    else
-                    {
-                        owner.TryClickShrine(context.NextShrine);
-                        return new ExecutionResult(false);
-                    }
+                    if (TryExecuteShrine(context))
+                        return StopExecution();
                 }
 
                 if (candidates.NextLabel == null)
                 {
-                    if (context.IsPostChestLootSettleBlocking)
-                    {
-                        string chestLootSettleReason = context.ChestLootSettleReason;
-                        owner.DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
-                        owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason);
-                        return new ExecutionResult(false);
-                    }
-
-                    owner.labelFilterService.LogSelectionDiagnostics(context.AllLabels, 0, context.AllLabels?.Count ?? 0);
-                    if (owner.ShouldCaptureClickDebug())
-                    {
-                        owner.PublishClickFlowDebugStage("NoLabelCandidate", owner.BuildNoLabelDebugSummary(context.AllLabels));
-                    }
-
-                    if (owner.settings.WalkTowardOffscreenLabels.Value && owner.TryHandleStickyOffscreenTarget(context.WindowTopLeft, context.AllLabels))
-                    {
-                        return new ExecutionResult(false);
-                    }
-
-                    if (owner.settings.WalkTowardOffscreenLabels.Value)
-                    {
-                        owner.TryWalkTowardOffscreenTarget();
-                    }
-
-                    owner.DebugLog(() => "[ProcessRegularClick] No label to click found, breaking");
-                    owner.PublishClickFlowDebugStage("NoLabelExit", "No label click attempted");
-                    return new ExecutionResult(false);
+                    return HandleNoVisibleLabel(context);
                 }
 
-                if (context.IsPostChestLootSettleBlocking
-                    && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(candidates.NextLabelMechanicId, candidates.NextLabel.ItemOnGround, out string bypassDecisionLabel))
+                return HandleVisibleLabel(context, candidates);
+            }
+
+            private ExecutionResult HandleNoVisibleLabel(ClickContext context)
+            {
+                if (context.IsPostChestLootSettleBlocking)
                 {
                     string chestLootSettleReason = context.ChestLootSettleReason;
                     owner.DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
-                    owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{chestLootSettleReason} | nearby-bypass:{bypassDecisionLabel}", candidates.NextLabelMechanicId);
-                    return new ExecutionResult(false);
+                    owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason);
+                    return StopExecution();
                 }
 
-                if (owner.ShouldSkipOrHandleSpecialLabel(candidates.NextLabel, context.WindowTopLeft))
+                owner.labelFilterService.LogSelectionDiagnostics(context.AllLabels, 0, context.AllLabels?.Count ?? 0);
+                if (owner.ShouldCaptureClickDebug())
+                {
+                    owner.PublishClickFlowDebugStage("NoLabelCandidate", owner.BuildNoLabelDebugSummary(context.AllLabels));
+                }
+
+                if (owner.settings.WalkTowardOffscreenLabels.Value && owner.TryHandleStickyOffscreenTarget(context.WindowTopLeft, context.AllLabels))
+                {
+                    return StopExecution();
+                }
+
+                if (owner.settings.WalkTowardOffscreenLabels.Value)
+                {
+                    owner.TryWalkTowardOffscreenTarget();
+                }
+
+                owner.DebugLog(() => "[ProcessRegularClick] No label to click found, breaking");
+                owner.PublishClickFlowDebugStage("NoLabelExit", "No label click attempted");
+                return StopExecution();
+            }
+
+            private ExecutionResult HandleVisibleLabel(ClickContext context, ClickCandidates candidates)
+            {
+                LabelOnGround nextLabel = candidates.NextLabel!;
+
+                if (IsBlockedByPostChestLootSettlement(context, candidates.NextLabelMechanicId, nextLabel.ItemOnGround))
+                {
+                    string chestLootSettleReason = context.ChestLootSettleReason;
+                    owner.DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
+                    return StopExecution();
+                }
+
+                if (owner.ShouldSkipOrHandleSpecialLabel(nextLabel, context.WindowTopLeft))
                 {
                     owner.PublishClickFlowDebugStage("SpecialLabelHandled", "Special label handling consumed click tick", candidates.NextLabelMechanicId);
-                    return new ExecutionResult(false);
+                    return StopExecution();
                 }
 
                 if (!owner.TryResolveLabelClickPosition(
-                    candidates.NextLabel,
+                    nextLabel,
                     candidates.NextLabelMechanicId,
                     context.WindowTopLeft,
                     context.AllLabels,
                     out Vector2 clickPos))
                 {
-                    owner.DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
-                    owner.PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", candidates.NextLabelMechanicId);
-
-                    if (candidates.SettlersOre.HasValue
-                        && ClickService.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(candidates.NextLabelMechanicId, candidates.SettlersOre.Value.MechanicId))
-                    {
-                        owner.PublishClickFlowDebugStage("SettlersEntityFallbackAttempt", "Label unresolved; attempting settlers entity click", candidates.SettlersOre.Value.MechanicId);
-                        if (context.IsPostChestLootSettleBlocking
-                            && !owner.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(candidates.SettlersOre.Value.MechanicId, candidates.SettlersOre.Value.Entity, out string bypassDecisionSettlersFallback))
-                        {
-                            owner.PublishClickFlowDebugStage("PostChestLootSettleBlocked", $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecisionSettlersFallback}", candidates.SettlersOre.Value.MechanicId);
-                        }
-                        else if (owner.TryClickSettlersOre(candidates.SettlersOre.Value))
-                        {
-                            owner.PublishClickFlowDebugStage("SettlersEntityFallbackSuccess", "Settlers entity click succeeded after label resolve failure", candidates.SettlersOre.Value.MechanicId);
-                            return new ExecutionResult(false);
-                        }
-                    }
-
-                    bool shouldContinueEntityPathing = ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
-                        owner.settings.WalkTowardOffscreenLabels.Value,
-                        candidates.NextLabel.ItemOnGround != null,
-                        candidates.NextLabel.ItemOnGround?.IsHidden == true,
-                        candidates.NextLabelMechanicId);
-                    if (shouldContinueEntityPathing)
-                    {
-                        owner.PublishClickFlowDebugStage("EntityPathingFallback", "Label visible but unresolved click point; continuing pathing", candidates.NextLabelMechanicId);
-                        _ = owner.TryWalkTowardOffscreenTarget(candidates.NextLabel.ItemOnGround);
-                    }
-
-                    return new ExecutionResult(false);
+                    return HandleVisibleLabelResolveFailure(context, candidates, nextLabel);
                 }
 
                 owner.PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", candidates.NextLabelMechanicId);
@@ -413,21 +421,21 @@ namespace ClickIt.Services
                 owner.PublishLabelClickDebug(
                     stage: "LabelCandidate",
                     mechanicId: candidates.NextLabelMechanicId,
-                    label: candidates.NextLabel,
+                    label: nextLabel,
                     resolvedClickPos: clickPos,
                     resolved: true,
                     notes: "Settlers label candidate selected from ItemsOnGroundLabelsVisible");
 
-                bool forceUiHoverVerification = ClickService.ShouldForceUiHoverVerificationForLabel(candidates.NextLabel);
+                bool forceUiHoverVerification = ClickService.ShouldForceUiHoverVerificationForLabel(nextLabel);
 
                 bool clicked = ClickService.ShouldUseHoldClickForSettlersMechanic(candidates.NextLabelMechanicId)
-                    ? owner.PerformLabelHoldClick(clickPos, candidates.NextLabel.Label, owner.gameController, holdDurationMs: 0, forceUiHoverVerification)
-                    : owner.PerformLabelClick(clickPos, candidates.NextLabel.Label, owner.gameController, forceUiHoverVerification);
+                    ? owner.PerformLabelHoldClick(clickPos, nextLabel.Label, owner.gameController, holdDurationMs: 0, forceUiHoverVerification)
+                    : owner.PerformLabelClick(clickPos, nextLabel.Label, owner.gameController, forceUiHoverVerification);
 
                 owner.PublishLabelClickDebug(
                     stage: clicked ? "ClickSuccess" : "ClickFailed",
                     mechanicId: candidates.NextLabelMechanicId,
-                    label: candidates.NextLabel,
+                    label: nextLabel,
                     resolvedClickPos: clickPos,
                     resolved: clicked,
                     notes: clicked ? "Settlers click completed via label pipeline" : "Settlers click attempt failed via label pipeline");
@@ -436,13 +444,13 @@ namespace ClickIt.Services
 
                 if (clicked)
                 {
-                    if (owner.IsStickyTarget(candidates.NextLabel.ItemOnGround))
+                    if (owner.IsStickyTarget(nextLabel.ItemOnGround))
                     {
                         owner.ClearStickyOffscreenTarget();
                     }
 
-                    owner.MarkPendingChestOpenConfirmation(candidates.NextLabelMechanicId, candidates.NextLabel);
-                    owner.MarkLeverClicked(candidates.NextLabel);
+                    owner.MarkPendingChestOpenConfirmation(candidates.NextLabelMechanicId, nextLabel);
+                    owner.MarkLeverClicked(nextLabel);
                     if (owner.settings.WalkTowardOffscreenLabels.Value)
                     {
                         owner.pathfindingService.ClearLatestPath();
@@ -450,6 +458,37 @@ namespace ClickIt.Services
                 }
 
                 return new ExecutionResult(true);
+            }
+
+            private ExecutionResult HandleVisibleLabelResolveFailure(ClickContext context, ClickCandidates candidates, LabelOnGround nextLabel)
+            {
+                owner.DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
+                owner.PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", candidates.NextLabelMechanicId);
+
+                if (candidates.SettlersOre.HasValue
+                    && ClickService.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(candidates.NextLabelMechanicId, candidates.SettlersOre.Value.MechanicId))
+                {
+                    owner.PublishClickFlowDebugStage("SettlersEntityFallbackAttempt", "Label unresolved; attempting settlers entity click", candidates.SettlersOre.Value.MechanicId);
+                    if (!IsBlockedByPostChestLootSettlement(context, candidates.SettlersOre.Value.MechanicId, candidates.SettlersOre.Value.Entity)
+                        && owner.TryClickSettlersOre(candidates.SettlersOre.Value))
+                    {
+                        owner.PublishClickFlowDebugStage("SettlersEntityFallbackSuccess", "Settlers entity click succeeded after label resolve failure", candidates.SettlersOre.Value.MechanicId);
+                        return StopExecution();
+                    }
+                }
+
+                bool shouldContinueEntityPathing = ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                    owner.settings.WalkTowardOffscreenLabels.Value,
+                    nextLabel.ItemOnGround != null,
+                    nextLabel.ItemOnGround?.IsHidden == true,
+                    candidates.NextLabelMechanicId);
+                if (shouldContinueEntityPathing)
+                {
+                    owner.PublishClickFlowDebugStage("EntityPathingFallback", "Label visible but unresolved click point; continuing pathing", candidates.NextLabelMechanicId);
+                    _ = owner.TryWalkTowardOffscreenTarget(nextLabel.ItemOnGround);
+                }
+
+                return StopExecution();
             }
         }
 
@@ -473,21 +512,23 @@ namespace ClickIt.Services
 
         private sealed class RegularClickPipeline(ClickService owner)
         {
-            private readonly IClickCandidateProvider candidateProvider = new RegularClickCandidateProvider(owner);
-            private readonly InteractionPolicyEngine policyEngine = new(owner);
-            private readonly ClickExecutor executor = new(owner);
-            private readonly PostClickHandler postClickHandler = new(owner);
+            private readonly IClickCandidateProvider acquisitionPhase = new RegularClickCandidateProvider(owner);
+            private readonly CandidateRankingPhase rankingPhase = new(owner);
+            private readonly CandidateGatingPhase gatingPhase = new();
+            private readonly ClickExecutor executionPhase = new(owner);
+            private readonly PostClickHandler postActionsPhase = new(owner);
 
             public IEnumerator Run()
             {
                 if (!TryBuildContext(out ClickContext context))
                     yield break;
 
-                ClickCandidates candidates = candidateProvider.Collect(context);
-                DecisionResult decision = policyEngine.Evaluate(context, candidates);
-                ExecutionResult executionResult = executor.Execute(context, candidates, decision);
+                ClickCandidates candidates = acquisitionPhase.Collect(context);
+                RankingResult ranking = rankingPhase.Rank(context, candidates);
+                DecisionResult decision = gatingPhase.Gate(candidates, ranking);
+                ExecutionResult executionResult = executionPhase.Execute(context, candidates, decision);
 
-                IEnumerator postActions = postClickHandler.Run(executionResult);
+                IEnumerator postActions = postActionsPhase.Run(executionResult);
                 while (postActions.MoveNext())
                 {
                     yield return postActions.Current;

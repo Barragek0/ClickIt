@@ -2033,6 +2033,34 @@ namespace ClickIt.Services
             return new MechanicRank(score.Ignored, score.PriorityIndex, score.WeightedDistance, score.RawDistance, score.CursorDistance);
         }
 
+        private static bool ShouldPreferSettlersWithSharedRankingEngine(
+            MechanicCandidateSignal settlersSignal,
+            MechanicCandidateSignal labelSignal,
+            MechanicCandidateSignal shrineSignal,
+            MechanicCandidateSignal lostShipmentSignal,
+            in MechanicPriorityContext mechanicPriorityContext)
+        {
+            return ShouldPreferSettlersOreOverVisibleCandidates(
+                settlersSignal,
+                labelSignal,
+                shrineSignal,
+                lostShipmentSignal,
+                mechanicPriorityContext);
+        }
+
+        private static bool ShouldPreferLostShipmentWithSharedRankingEngine(
+            MechanicCandidateSignal lostShipmentSignal,
+            MechanicCandidateSignal labelSignal,
+            MechanicCandidateSignal shrineSignal,
+            in MechanicPriorityContext mechanicPriorityContext)
+        {
+            return ShouldPreferLostShipmentOverVisibleCandidates(
+                lostShipmentSignal,
+                labelSignal,
+                shrineSignal,
+                mechanicPriorityContext);
+        }
+
         private Entity? ResolveNearestOffscreenEntityTarget(
             int maxDistance,
             Func<Entity, string, bool> includeEntity,

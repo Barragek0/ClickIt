@@ -567,6 +567,31 @@ namespace ClickIt
         private string[] _mechanicIgnoreDistanceSnapshot = [];
         private KeyValuePair<string, int>[] _mechanicIgnoreDistanceWithinSnapshot = [];
         private IReadOnlyDictionary<string, int> _mechanicIgnoreDistanceWithinMapSnapshot = new Dictionary<string, int>(PriorityComparer);
+
+        private static CustomNode CreateSliderWidthStartNode()
+        {
+            return new CustomNode
+            {
+                DrawDelegate = PushStandardSliderWidth
+            };
+        }
+
+        private static CustomNode CreateSliderWidthEndNode()
+        {
+            return new CustomNode
+            {
+                DrawDelegate = PopStandardSliderWidth
+            };
+        }
+
+        private CustomNode CreateSafePanelNode(string panelName, Action drawPanel)
+        {
+            return new CustomNode
+            {
+                DrawDelegate = () => DrawPanelSafe(panelName, drawPanel)
+            };
+        }
+
         public ClickItSettings()
         {
             InitializeDefaultWeights();
@@ -577,90 +602,27 @@ namespace ClickIt
             EnsureUltimatumModifiersInitialized();
             EnsureUltimatumTakeRewardModifiersInitialized();
             EnsureLazyModeNearbyMonsterFiltersInitialized();
-            DebugTestingPanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("DebugTestingPanel", DrawDebugTestingPanel)
-            };
-            ControlsSliderWidthStart = new CustomNode
-            {
-                DrawDelegate = PushStandardSliderWidth
-            };
-            ControlsSliderWidthEnd = new CustomNode
-            {
-                DrawDelegate = PopStandardSliderWidth
-            };
-            PathfindingSliderWidthStart = new CustomNode
-            {
-                DrawDelegate = PushStandardSliderWidth
-            };
-            PathfindingSliderWidthEnd = new CustomNode
-            {
-                DrawDelegate = PopStandardSliderWidth
-            };
-            LazyModeSliderWidthStart = new CustomNode
-            {
-                DrawDelegate = PushStandardSliderWidth
-            };
-            LazyModeSliderWidthEnd = new CustomNode
-            {
-                DrawDelegate = PopStandardSliderWidth
-            };
-            LazyModeNearbyMonsterRulesPanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("LazyModeNearbyMonsterRulesPanel", DrawLazyModeNearbyMonsterRulesPanel)
-            };
-            PrioritiesSliderWidthStart = new CustomNode
-            {
-                DrawDelegate = PushStandardSliderWidth
-            };
-            PrioritiesSliderWidthEnd = new CustomNode
-            {
-                DrawDelegate = PopStandardSliderWidth
-            };
-            DelveSliderWidthStart = new CustomNode
-            {
-                DrawDelegate = PushStandardSliderWidth
-            };
-            DelveSliderWidthEnd = new CustomNode
-            {
-                DrawDelegate = PopStandardSliderWidth
-            };
-            AltarsPanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("AltarsPanel", DrawAltarsPanel)
-            };
-            AltarModWeights = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("AltarModWeights", DrawAltarModWeights)
-            };
-            ItemTypeFiltersPanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("ItemTypeFiltersPanel", DrawItemTypeFiltersPanel)
-            };
-            MechanicPriorityTablePanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("MechanicPriorityTablePanel", DrawMechanicPriorityTablePanel)
-            };
-            EssenceCorruptionTablePanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel)
-            };
-            StrongboxFilterTablePanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("StrongboxFilterTablePanel", DrawStrongboxFilterTablePanel)
-            };
-            MechanicsTablePanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("MechanicsTablePanel", DrawMechanicsTablePanel)
-            };
-            UltimatumModifierTablePanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("UltimatumModifierTablePanel", DrawUltimatumModifierTablePanel)
-            };
-            UltimatumTakeRewardModifierTablePanel = new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe("UltimatumTakeRewardModifierTablePanel", DrawUltimatumTakeRewardModifierTablePanel)
-            };
+            DebugTestingPanel = CreateSafePanelNode("DebugTestingPanel", DrawDebugTestingPanel);
+            ControlsSliderWidthStart = CreateSliderWidthStartNode();
+            ControlsSliderWidthEnd = CreateSliderWidthEndNode();
+            PathfindingSliderWidthStart = CreateSliderWidthStartNode();
+            PathfindingSliderWidthEnd = CreateSliderWidthEndNode();
+            LazyModeSliderWidthStart = CreateSliderWidthStartNode();
+            LazyModeSliderWidthEnd = CreateSliderWidthEndNode();
+            LazyModeNearbyMonsterRulesPanel = CreateSafePanelNode("LazyModeNearbyMonsterRulesPanel", DrawLazyModeNearbyMonsterRulesPanel);
+            PrioritiesSliderWidthStart = CreateSliderWidthStartNode();
+            PrioritiesSliderWidthEnd = CreateSliderWidthEndNode();
+            DelveSliderWidthStart = CreateSliderWidthStartNode();
+            DelveSliderWidthEnd = CreateSliderWidthEndNode();
+            AltarsPanel = CreateSafePanelNode("AltarsPanel", DrawAltarsPanel);
+            AltarModWeights = CreateSafePanelNode("AltarModWeights", DrawAltarModWeights);
+            ItemTypeFiltersPanel = CreateSafePanelNode("ItemTypeFiltersPanel", DrawItemTypeFiltersPanel);
+            MechanicPriorityTablePanel = CreateSafePanelNode("MechanicPriorityTablePanel", DrawMechanicPriorityTablePanel);
+            EssenceCorruptionTablePanel = CreateSafePanelNode("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel);
+            StrongboxFilterTablePanel = CreateSafePanelNode("StrongboxFilterTablePanel", DrawStrongboxFilterTablePanel);
+            MechanicsTablePanel = CreateSafePanelNode("MechanicsTablePanel", DrawMechanicsTablePanel);
+            UltimatumModifierTablePanel = CreateSafePanelNode("UltimatumModifierTablePanel", DrawUltimatumModifierTablePanel);
+            UltimatumTakeRewardModifierTablePanel = CreateSafePanelNode("UltimatumTakeRewardModifierTablePanel", DrawUltimatumTakeRewardModifierTablePanel);
         }
 
     }

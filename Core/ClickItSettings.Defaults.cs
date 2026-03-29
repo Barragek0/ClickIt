@@ -134,6 +134,72 @@ namespace ClickIt
             return defaults;
         }
 
+        private void ResetItemTypeFilterDefaults()
+        {
+            ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
+            ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
+            ItemTypeWhitelistSubtypeIds.Clear();
+            ItemTypeBlacklistSubtypeIds.Clear();
+            _expandedItemTypeRowKey = string.Empty;
+        }
+
+        private void ResetEssenceCorruptionDefaults()
+        {
+            EssenceCorruptNames = BuildDefaultCorruptEssenceNames();
+            EssenceDontCorruptNames = BuildDefaultDontCorruptEssenceNames();
+        }
+
+        private void ResetStrongboxFilterDefaults()
+        {
+            StrongboxClickIds = BuildDefaultClickStrongboxIds();
+            StrongboxDontClickIds = BuildDefaultDontClickStrongboxIds();
+        }
+
+        private void ResetUltimatumModifierPriorityDefaults()
+        {
+            UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
+        }
+
+        private void ResetUltimatumTakeRewardModifierDefaults()
+        {
+            UltimatumTakeRewardModifierNames.Clear();
+            UltimatumContinueModifierNames = new HashSet<string>(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private void ResetMechanicPriorityDefaults()
+        {
+            MechanicPriorityOrder = MechanicPriorityDefaultOrderIds.ToList();
+            MechanicPriorityIgnoreDistanceIds = new HashSet<string>(PriorityComparer)
+            {
+                MechanicIds.Shrines
+            };
+            MechanicPriorityIgnoreDistanceWithinById = MechanicPriorityIds
+                .ToDictionary(static x => x, static _ => MechanicIgnoreDistanceWithinDefault, PriorityComparer);
+        }
+
+        private static void SanitizeMutuallyExclusiveSets(
+            HashSet<string> primarySet,
+            HashSet<string> secondarySet,
+            HashSet<string> allowedValues,
+            IEnumerable<string> canonicalOrder)
+        {
+            primarySet.RemoveWhere(x => !allowedValues.Contains(x));
+            secondarySet.RemoveWhere(x => !allowedValues.Contains(x));
+
+            foreach (string value in primarySet.ToArray())
+            {
+                secondarySet.Remove(value);
+            }
+
+            foreach (string value in canonicalOrder)
+            {
+                if (!primarySet.Contains(value) && !secondarySet.Contains(value))
+                {
+                    secondarySet.Add(value);
+                }
+            }
+        }
+
         private void EnsureEssenceCorruptionFiltersInitialized()
         {
             EssenceCorruptNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -147,22 +213,7 @@ namespace ClickIt
             }
 
             HashSet<string> allowed = new HashSet<string>(EssenceAllTableNames, StringComparer.OrdinalIgnoreCase);
-
-            EssenceCorruptNames.RemoveWhere(x => !allowed.Contains(x));
-            EssenceDontCorruptNames.RemoveWhere(x => !allowed.Contains(x));
-
-            foreach (string name in EssenceCorruptNames.ToArray())
-            {
-                EssenceDontCorruptNames.Remove(name);
-            }
-
-            foreach (string essenceName in EssenceAllTableNames)
-            {
-                if (!EssenceCorruptNames.Contains(essenceName) && !EssenceDontCorruptNames.Contains(essenceName))
-                {
-                    EssenceDontCorruptNames.Add(essenceName);
-                }
-            }
+            SanitizeMutuallyExclusiveSets(EssenceCorruptNames, EssenceDontCorruptNames, allowed, EssenceAllTableNames);
         }
 
         private void EnsureMechanicPrioritiesInitialized()
@@ -347,22 +398,11 @@ namespace ClickIt
             }
 
             HashSet<string> allowed = new HashSet<string>(StrongboxTableEntries.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
-
-            StrongboxClickIds.RemoveWhere(x => !allowed.Contains(x));
-            StrongboxDontClickIds.RemoveWhere(x => !allowed.Contains(x));
-
-            foreach (string id in StrongboxClickIds.ToArray())
-            {
-                StrongboxDontClickIds.Remove(id);
-            }
-
-            foreach (StrongboxFilterEntry entry in StrongboxTableEntries)
-            {
-                if (!StrongboxClickIds.Contains(entry.Id) && !StrongboxDontClickIds.Contains(entry.Id))
-                {
-                    StrongboxDontClickIds.Add(entry.Id);
-                }
-            }
+            SanitizeMutuallyExclusiveSets(
+                StrongboxClickIds,
+                StrongboxDontClickIds,
+                allowed,
+                StrongboxTableEntries.Select(static x => x.Id));
         }
 
         private static StrongboxFilterEntry? TryGetStrongboxFilterById(string id)
@@ -419,21 +459,11 @@ namespace ClickIt
             }
 
             HashSet<string> allowed = new(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
-            UltimatumTakeRewardModifierNames.RemoveWhere(x => !allowed.Contains(x));
-            UltimatumContinueModifierNames.RemoveWhere(x => !allowed.Contains(x));
-
-            foreach (string name in UltimatumTakeRewardModifierNames.ToArray())
-            {
-                UltimatumContinueModifierNames.Remove(name);
-            }
-
-            foreach (string name in UltimatumModifiersConstants.AllModifierNamesWithStages)
-            {
-                if (!UltimatumTakeRewardModifierNames.Contains(name) && !UltimatumContinueModifierNames.Contains(name))
-                {
-                    UltimatumContinueModifierNames.Add(name);
-                }
-            }
+            SanitizeMutuallyExclusiveSets(
+                UltimatumTakeRewardModifierNames,
+                UltimatumContinueModifierNames,
+                allowed,
+                UltimatumModifiersConstants.AllModifierNamesWithStages);
         }
 
     }

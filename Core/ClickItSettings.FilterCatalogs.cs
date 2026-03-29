@@ -7,6 +7,11 @@ namespace ClickIt
 {
     public partial class ClickItSettings
     {
+        private static Dictionary<string, TEntry> BuildIdLookup<TEntry>(IEnumerable<TEntry> entries, Func<TEntry, string> idSelector)
+        {
+            return entries.ToDictionary(idSelector, static x => x, StringComparer.OrdinalIgnoreCase);
+        }
+
         private sealed record ItemSubtypeDefinition(string Id, string DisplayName, IReadOnlyList<string> MetadataIdentifiers);
 
         private static readonly Dictionary<string, ItemSubtypeDefinition[]> ItemSubtypeCatalog = new(StringComparer.OrdinalIgnoreCase)
@@ -101,7 +106,7 @@ namespace ClickIt
         ];
 
         private static readonly Dictionary<string, StrongboxFilterEntry> StrongboxTableEntriesById =
-            StrongboxTableEntries.ToDictionary(static x => x.Id, static x => x, StringComparer.OrdinalIgnoreCase);
+            BuildIdLookup(StrongboxTableEntries, static x => x.Id);
 
         private static readonly string[] StrongboxDefaultClickIds =
         [
@@ -161,7 +166,7 @@ namespace ClickIt
         ];
 
         private static readonly Dictionary<string, MechanicPriorityEntry> MechanicPriorityEntriesById =
-            MechanicPriorityEntries.ToDictionary(static x => x.Id, static x => x, StringComparer.OrdinalIgnoreCase);
+            BuildIdLookup(MechanicPriorityEntries, static x => x.Id);
 
         private static readonly string[] MechanicPriorityDefaultOrderIds =
         [

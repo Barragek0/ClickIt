@@ -160,21 +160,7 @@ namespace ClickIt
             if (RenderDebug.Value)
             {
                 ImGui.Indent();
-                DrawToggleNodeControl("Status", DebugShowStatus, "Show/hide the status debug section");
-                DrawToggleNodeControl("Game State", DebugShowGameState, "Show/hide the Game State debug section");
-                DrawToggleNodeControl("Performance", DebugShowPerformance, "Show/hide the performance debug section");
-                DrawToggleNodeControl("Click Frequency Target", DebugShowClickFrequencyTarget, "Show/hide the Click Frequency Target debug section");
-                DrawToggleNodeControl("Altar Detection", DebugShowAltarDetection, "Show/hide the Altar Detection debug section");
-                DrawToggleNodeControl("Altar Service", DebugShowAltarService, "Show/hide the Altar Service debug section");
-                DrawToggleNodeControl("Labels", DebugShowLabels, "Show/hide the labels debug section");
-                DrawToggleNodeControl("Inventory Pickup", DebugShowInventoryPickup, "Show/hide inventory pickup/fullness debug section");
-                DrawToggleNodeControl("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section");
-                DrawToggleNodeControl("Pathfinding", DebugShowPathfinding, "Show/hide offscreen pathfinding debug section");
-                DrawToggleNodeControl("Ultimatum", DebugShowUltimatum, "Show/hide ultimatum automation debug section");
-                DrawToggleNodeControl("Clicking", DebugShowClicking, "Show/hide clicking debug section");
-                DrawToggleNodeControl("Debug Log Overlay", DebugShowRuntimeDebugLogOverlay, "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail");
-                DrawToggleNodeControl("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section");
-                DrawToggleNodeControl("Debug Frames", DebugShowFrames, "Show/hide the debug screen area frames");
+                DrawDebugSectionToggles();
                 ImGui.Unindent();
             }
 
@@ -195,6 +181,33 @@ namespace ClickIt
             DrawInlineTooltip("If you run into a bug that hasn't already been reported, please report it here.");
         }
 
+        private void DrawDebugSectionToggles()
+        {
+            var toggles = new[]
+            {
+                new DebugSectionToggleDescriptor("Status", DebugShowStatus, "Show/hide the status debug section"),
+                new DebugSectionToggleDescriptor("Game State", DebugShowGameState, "Show/hide the Game State debug section"),
+                new DebugSectionToggleDescriptor("Performance", DebugShowPerformance, "Show/hide the performance debug section"),
+                new DebugSectionToggleDescriptor("Click Frequency Target", DebugShowClickFrequencyTarget, "Show/hide the Click Frequency Target debug section"),
+                new DebugSectionToggleDescriptor("Altar Detection", DebugShowAltarDetection, "Show/hide the Altar Detection debug section"),
+                new DebugSectionToggleDescriptor("Altar Service", DebugShowAltarService, "Show/hide the Altar Service debug section"),
+                new DebugSectionToggleDescriptor("Labels", DebugShowLabels, "Show/hide the labels debug section"),
+                new DebugSectionToggleDescriptor("Inventory Pickup", DebugShowInventoryPickup, "Show/hide inventory pickup/fullness debug section"),
+                new DebugSectionToggleDescriptor("Hovered Item Metadata", DebugShowHoveredItemMetadata, "Show/hide the hovered item metadata debug section"),
+                new DebugSectionToggleDescriptor("Pathfinding", DebugShowPathfinding, "Show/hide offscreen pathfinding debug section"),
+                new DebugSectionToggleDescriptor("Ultimatum", DebugShowUltimatum, "Show/hide ultimatum automation debug section"),
+                new DebugSectionToggleDescriptor("Clicking", DebugShowClicking, "Show/hide clicking debug section"),
+                new DebugSectionToggleDescriptor("Debug Log Overlay", DebugShowRuntimeDebugLogOverlay, "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail"),
+                new DebugSectionToggleDescriptor("Recent Errors", DebugShowRecentErrors, "Show/hide the Recent Errors debug section"),
+                new DebugSectionToggleDescriptor("Debug Frames", DebugShowFrames, "Show/hide the debug screen area frames")
+            };
+
+            foreach (DebugSectionToggleDescriptor toggle in toggles)
+            {
+                DrawToggleNodeControl(toggle.Label, toggle.Node, toggle.Tooltip);
+            }
+        }
+
         private void DrawItemTypeFiltersPanel()
         {
             EnsureItemTypeFiltersInitialized();
@@ -206,11 +219,7 @@ namespace ClickIt
             DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref itemTypeSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
             {
-                ItemTypeWhitelistIds = new HashSet<string>(ItemCategoryCatalog.DefaultWhitelistIds, StringComparer.OrdinalIgnoreCase);
-                ItemTypeBlacklistIds = new HashSet<string>(ItemCategoryCatalog.DefaultBlacklistIds, StringComparer.OrdinalIgnoreCase);
-                ItemTypeWhitelistSubtypeIds.Clear();
-                ItemTypeBlacklistSubtypeIds.Clear();
-                _expandedItemTypeRowKey = string.Empty;
+                ResetItemTypeFilterDefaults();
             }
 
             ImGui.Spacing();
@@ -229,52 +238,64 @@ namespace ClickIt
         {
             EnsureLazyModeNearbyMonsterFiltersInitialized();
 
-            DrawLazyModeNearbyMonsterRuleRow(
-                "Normal",
-                "Normal",
-                LazyModeNormalMonsterBlockCount,
-                LazyModeNormalMonsterBlockDistance,
-                (count, distance) =>
-                {
-                    LazyModeNormalMonsterBlockCount = count;
-                    LazyModeNormalMonsterBlockDistance = distance;
-                });
-
-            DrawLazyModeNearbyMonsterRuleRow(
-                "Magic",
-                "Magic",
-                LazyModeMagicMonsterBlockCount,
-                LazyModeMagicMonsterBlockDistance,
-                (count, distance) =>
-                {
-                    LazyModeMagicMonsterBlockCount = count;
-                    LazyModeMagicMonsterBlockDistance = distance;
-                });
-
-            DrawLazyModeNearbyMonsterRuleRow(
-                "Rare",
-                "Rare",
-                LazyModeRareMonsterBlockCount,
-                LazyModeRareMonsterBlockDistance,
-                (count, distance) =>
-                {
-                    LazyModeRareMonsterBlockCount = count;
-                    LazyModeRareMonsterBlockDistance = distance;
-                });
-
-            DrawLazyModeNearbyMonsterRuleRow(
-                "Unique",
-                "Unique",
-                LazyModeUniqueMonsterBlockCount,
-                LazyModeUniqueMonsterBlockDistance,
-                (count, distance) =>
-                {
-                    LazyModeUniqueMonsterBlockCount = count;
-                    LazyModeUniqueMonsterBlockDistance = distance;
-                });
+            DrawLazyModeNearbyMonsterRuleRows([
+                new LazyModeNearbyMonsterRuleDescriptor(
+                    "Normal",
+                    "Normal",
+                    () => LazyModeNormalMonsterBlockCount,
+                    () => LazyModeNormalMonsterBlockDistance,
+                    (count, distance) =>
+                    {
+                        LazyModeNormalMonsterBlockCount = count;
+                        LazyModeNormalMonsterBlockDistance = distance;
+                    }),
+                new LazyModeNearbyMonsterRuleDescriptor(
+                    "Magic",
+                    "Magic",
+                    () => LazyModeMagicMonsterBlockCount,
+                    () => LazyModeMagicMonsterBlockDistance,
+                    (count, distance) =>
+                    {
+                        LazyModeMagicMonsterBlockCount = count;
+                        LazyModeMagicMonsterBlockDistance = distance;
+                    }),
+                new LazyModeNearbyMonsterRuleDescriptor(
+                    "Rare",
+                    "Rare",
+                    () => LazyModeRareMonsterBlockCount,
+                    () => LazyModeRareMonsterBlockDistance,
+                    (count, distance) =>
+                    {
+                        LazyModeRareMonsterBlockCount = count;
+                        LazyModeRareMonsterBlockDistance = distance;
+                    }),
+                new LazyModeNearbyMonsterRuleDescriptor(
+                    "Unique",
+                    "Unique",
+                    () => LazyModeUniqueMonsterBlockCount,
+                    () => LazyModeUniqueMonsterBlockDistance,
+                    (count, distance) =>
+                    {
+                        LazyModeUniqueMonsterBlockCount = count;
+                        LazyModeUniqueMonsterBlockDistance = distance;
+                    })
+            ]);
 
             ImGui.Spacing();
             ImGui.TextDisabled("Set count to 0 to disable a specific rarity rule.");
+        }
+
+        private void DrawLazyModeNearbyMonsterRuleRows(IReadOnlyList<LazyModeNearbyMonsterRuleDescriptor> rows)
+        {
+            foreach (LazyModeNearbyMonsterRuleDescriptor row in rows)
+            {
+                DrawLazyModeNearbyMonsterRuleRow(
+                    row.RowId,
+                    row.RarityLabel,
+                    row.GetCount(),
+                    row.GetDistance(),
+                    row.Apply);
+            }
         }
 
         private void DrawLazyModeNearbyMonsterRuleRow(string rowId, string rarityLabel, int currentCount, int currentDistance, Action<int, int> apply)
@@ -461,8 +482,7 @@ namespace ClickIt
             DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref essenceSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
             {
-                EssenceCorruptNames = BuildDefaultCorruptEssenceNames();
-                EssenceDontCorruptNames = BuildDefaultDontCorruptEssenceNames();
+                ResetEssenceCorruptionDefaults();
             }
 
             ImGui.Spacing();
@@ -512,8 +532,7 @@ namespace ClickIt
             DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref strongboxSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
             {
-                StrongboxClickIds = BuildDefaultClickStrongboxIds();
-                StrongboxDontClickIds = BuildDefaultDontClickStrongboxIds();
+                ResetStrongboxFilterDefaults();
             }
 
             ImGui.Spacing();
@@ -563,6 +582,43 @@ namespace ClickIt
         private const string LeagueChestSubgroupBlight = "Blight";
         private const string LeagueChestSubgroupBreach = "Breach";
         private const string LeagueChestSubgroupSynthesis = "Synthesis";
+
+        private readonly struct DebugSectionToggleDescriptor(string label, ToggleNode node, string tooltip)
+        {
+            public string Label { get; } = label;
+            public ToggleNode Node { get; } = node;
+            public string Tooltip { get; } = tooltip;
+        }
+
+        private readonly struct LazyModeNearbyMonsterRuleDescriptor(
+            string rowId,
+            string rarityLabel,
+            Func<int> getCount,
+            Func<int> getDistance,
+            Action<int, int> apply)
+        {
+            public string RowId { get; } = rowId;
+            public string RarityLabel { get; } = rarityLabel;
+            public Func<int> GetCount { get; } = getCount;
+            public Func<int> GetDistance { get; } = getDistance;
+            public Action<int, int> Apply { get; } = apply;
+        }
+
+        private readonly struct ChestDropSettleSettingsDescriptor(
+            string labelPrefix,
+            string idPrefix,
+            ToggleNode pauseNode,
+            RangeNode<int> initialDelayNode,
+            RangeNode<int> pollIntervalNode,
+            RangeNode<int> quietWindowNode)
+        {
+            public string LabelPrefix { get; } = labelPrefix;
+            public string IdPrefix { get; } = idPrefix;
+            public ToggleNode PauseNode { get; } = pauseNode;
+            public RangeNode<int> InitialDelayNode { get; } = initialDelayNode;
+            public RangeNode<int> PollIntervalNode { get; } = pollIntervalNode;
+            public RangeNode<int> QuietWindowNode { get; } = quietWindowNode;
+        }
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
@@ -803,78 +859,65 @@ namespace ClickIt
         {
             if (string.Equals(groupId, "basic-chests", StringComparison.OrdinalIgnoreCase))
             {
-                ImGui.Spacing();
-                DrawToggleNodeControl(
-                    "Wait for Drops to Settle##BasicChestsPauseEnabled",
-                    PauseAfterOpeningBasicChests,
-                    "When enabled, ClickIt waits for new loot labels after opening a Basic Chest before resuming clicks.");
-                DrawToggleNodeControl(
-                    "Allow Nearby Mechanics while Waiting##BasicChestsAllowNearbyMechanics",
-                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettle,
-                    "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.");
-                DrawRangeNodeControl(
-                    "Nearby mechanic distance##BasicChestsAllowNearbyMechanicsDistance",
-                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance,
-                    0,
-                    100,
-                    "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
-                DrawRangeNodeControl(
-                    "Initial delay (ms)##BasicChestsInitialDelayMs",
-                    PauseAfterOpeningBasicChestsInitialDelayMs,
-                    100,
-                    1500,
-                    "How long to wait after click confirmation before checking for new labels.");
-                DrawRangeNodeControl(
-                    "Poll interval (ms)##BasicChestsPollIntervalMs",
-                    PauseAfterOpeningBasicChestsPollIntervalMs,
-                    50,
-                    500,
-                    "How frequently ClickIt checks ItemsOnGroundLabels for newly added drops.");
-                DrawRangeNodeControl(
-                    "Quiet window (ms)##BasicChestsQuietWindowMs",
-                    PauseAfterOpeningBasicChestsQuietWindowMs,
-                    100,
-                    2000,
-                    "Loot is considered settled after this many milliseconds pass without new labels.");
+                DrawChestDropSettleSettings(
+                    new ChestDropSettleSettingsDescriptor(
+                        "Basic Chest",
+                        "BasicChests",
+                        PauseAfterOpeningBasicChests,
+                        PauseAfterOpeningBasicChestsInitialDelayMs,
+                        PauseAfterOpeningBasicChestsPollIntervalMs,
+                        PauseAfterOpeningBasicChestsQuietWindowMs));
                 return;
             }
 
             if (string.Equals(groupId, "league-chests", StringComparison.OrdinalIgnoreCase))
             {
-                ImGui.Spacing();
-                DrawToggleNodeControl(
-                    "Wait for Drops to Settle##LeagueChestsPauseEnabled",
-                    PauseAfterOpeningLeagueChests,
-                    "When enabled, ClickIt waits for new loot labels after opening a League Mechanic Chest before resuming clicks.");
-                DrawToggleNodeControl(
-                    "Allow Nearby Mechanics while Waiting##LeagueChestsAllowNearbyMechanics",
-                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettle,
-                    "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.");
-                DrawRangeNodeControl(
-                    "Nearby mechanic distance##LeagueChestsAllowNearbyMechanicsDistance",
-                    AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance,
-                    0,
-                    100,
-                    "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
-                DrawRangeNodeControl(
-                    "Initial delay (ms)##LeagueChestsInitialDelayMs",
-                    PauseAfterOpeningLeagueChestsInitialDelayMs,
-                    100,
-                    1500,
-                    "How long to wait after click confirmation before checking for new labels.");
-                DrawRangeNodeControl(
-                    "Poll interval (ms)##LeagueChestsPollIntervalMs",
-                    PauseAfterOpeningLeagueChestsPollIntervalMs,
-                    50,
-                    500,
-                    "How frequently ClickIt checks ItemsOnGroundLabels for newly added drops.");
-                DrawRangeNodeControl(
-                    "Quiet window (ms)##LeagueChestsQuietWindowMs",
-                    PauseAfterOpeningLeagueChestsQuietWindowMs,
-                    100,
-                    2000,
-                    "Loot is considered settled after this many milliseconds pass without new labels.");
+                DrawChestDropSettleSettings(
+                    new ChestDropSettleSettingsDescriptor(
+                        "League Mechanic Chest",
+                        "LeagueChests",
+                        PauseAfterOpeningLeagueChests,
+                        PauseAfterOpeningLeagueChestsInitialDelayMs,
+                        PauseAfterOpeningLeagueChestsPollIntervalMs,
+                        PauseAfterOpeningLeagueChestsQuietWindowMs));
             }
+        }
+
+        private void DrawChestDropSettleSettings(ChestDropSettleSettingsDescriptor descriptor)
+        {
+            ImGui.Spacing();
+            DrawToggleNodeControl(
+                $"Wait for Drops to Settle##{descriptor.IdPrefix}PauseEnabled",
+                descriptor.PauseNode,
+                $"When enabled, ClickIt waits for new loot labels after opening a {descriptor.LabelPrefix} before resuming clicks.");
+            DrawToggleNodeControl(
+                $"Allow Nearby Mechanics while Waiting##{descriptor.IdPrefix}AllowNearbyMechanics",
+                AllowNearbyMechanicsWhileWaitingForChestDropsToSettle,
+                "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.");
+            DrawRangeNodeControl(
+                $"Nearby mechanic distance##{descriptor.IdPrefix}AllowNearbyMechanicsDistance",
+                AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance,
+                0,
+                100,
+                "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
+            DrawRangeNodeControl(
+                $"Initial delay (ms)##{descriptor.IdPrefix}InitialDelayMs",
+                descriptor.InitialDelayNode,
+                100,
+                1500,
+                "How long to wait after click confirmation before checking for new labels.");
+            DrawRangeNodeControl(
+                $"Poll interval (ms)##{descriptor.IdPrefix}PollIntervalMs",
+                descriptor.PollIntervalNode,
+                50,
+                500,
+                "How frequently ClickIt checks ItemsOnGroundLabels for newly added drops.");
+            DrawRangeNodeControl(
+                $"Quiet window (ms)##{descriptor.IdPrefix}QuietWindowMs",
+                descriptor.QuietWindowNode,
+                100,
+                2000,
+                "Loot is considered settled after this many milliseconds pass without new labels.");
         }
 
         private static bool ShouldRenderMechanicEntry(MechanicToggleTableEntry entry, bool moveToClick, string filter)
@@ -1317,7 +1360,7 @@ namespace ClickIt
             DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref ultimatumSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##UltimatumResetDefaults"))
             {
-                UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
+                ResetUltimatumModifierPriorityDefaults();
             }
 
             ImGui.Spacing();
@@ -1398,8 +1441,7 @@ namespace ClickIt
             DrawSearchBar("##UltimatumTakeRewardSearch", "Clear##UltimatumTakeRewardSearchClear", ref ultimatumTakeRewardSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##UltimatumTakeRewardResetDefaults"))
             {
-                UltimatumTakeRewardModifierNames.Clear();
-                UltimatumContinueModifierNames = new HashSet<string>(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
+                ResetUltimatumTakeRewardModifierDefaults();
             }
 
             ImGui.Spacing();
@@ -1793,13 +1835,7 @@ namespace ClickIt
 
             if (DrawResetDefaultsButton("Reset Defaults##MechanicPriorityResetDefaults"))
             {
-                MechanicPriorityOrder = MechanicPriorityDefaultOrderIds.ToList();
-                MechanicPriorityIgnoreDistanceIds = new HashSet<string>(PriorityComparer)
-                {
-                    MechanicIds.Shrines
-                };
-                MechanicPriorityIgnoreDistanceWithinById = MechanicPriorityIds
-                    .ToDictionary(static x => x, static _ => MechanicIgnoreDistanceWithinDefault, PriorityComparer);
+                ResetMechanicPriorityDefaults();
             }
 
             DrawMechanicPrioritySectionDescription();
