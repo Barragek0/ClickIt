@@ -8,24 +8,52 @@ namespace ClickIt.Services
         private const int ClickDebugTrailCapacity = 24;
         private const int RuntimeDebugLogTrailCapacity = 48;
         private const int UltimatumDebugTrailCapacity = 48;
-        private readonly DebugSnapshotStore<ClickDebugSnapshot> _clickDebugStore = new(
+        private readonly DebugChannel<ClickDebugSnapshot, ClickDebugSnapshot> _clickDebugChannel = new(
             ClickDebugSnapshot.Empty,
             ClickDebugTrailCapacity,
             static (snapshot, sequence) => snapshot with { Sequence = sequence },
-            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}");
-        private readonly DebugSnapshotStore<RuntimeDebugLogSnapshot> _runtimeDebugLogStore = new(
+            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}",
+            static snapshot => snapshot);
+        private readonly DebugChannel<RuntimeDebugLogSnapshot, string> _runtimeDebugLogChannel = new(
             RuntimeDebugLogSnapshot.Empty,
             RuntimeDebugLogTrailCapacity,
             static (snapshot, sequence) => snapshot with { Sequence = sequence },
-            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Message}");
-        private readonly DebugSnapshotStore<UltimatumDebugSnapshot> _ultimatumDebugStore = new(
+            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Message}",
+            static message => new RuntimeDebugLogSnapshot(
+                HasData: true,
+                Message: message,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
+        private readonly DebugChannel<UltimatumDebugSnapshot, UltimatumDebugEvent> _ultimatumDebugChannel = new(
             UltimatumDebugSnapshot.Empty,
             UltimatumDebugTrailCapacity,
             static (snapshot, sequence) => snapshot with { Sequence = sequence },
             static snapshot =>
                 $"{snapshot.Sequence:00000} {snapshot.Stage} [{snapshot.Source}] GG={snapshot.IsGruelingGauntletActive} Action={snapshot.Action} "
                 + $"Sat={snapshot.HasSaturatedChoice}/{snapshot.SaturatedModifier} Reward={snapshot.ShouldTakeReward} Cands={snapshot.CandidateCount} "
-                + $"Clicks C/Q/R={snapshot.ClickedChoice}/{snapshot.ClickedConfirm}/{snapshot.ClickedTakeRewards} | {snapshot.Notes}");
+                + $"Clicks C/Q/R={snapshot.ClickedChoice}/{snapshot.ClickedConfirm}/{snapshot.ClickedTakeRewards} | {snapshot.Notes}",
+            debugEvent => new UltimatumDebugSnapshot(
+                HasData: true,
+                Stage: debugEvent.Stage,
+                Source: debugEvent.Source,
+                IsInitialUltimatumEnabled: settings.IsInitialUltimatumClickEnabled(),
+                IsOtherUltimatumEnabled: settings.IsOtherUltimatumClickEnabled(),
+                IsPanelVisible: debugEvent.IsPanelVisible,
+                IsGruelingGauntletActive: debugEvent.IsGruelingGauntletActive,
+                HasSaturatedChoice: debugEvent.HasSaturatedChoice,
+                SaturatedModifier: debugEvent.SaturatedModifier ?? string.Empty,
+                ShouldTakeReward: debugEvent.ShouldTakeReward,
+                Action: debugEvent.Action ?? string.Empty,
+                CandidateCount: debugEvent.CandidateCount,
+                SaturatedCandidateCount: debugEvent.SaturatedCandidateCount,
+                BestModifier: debugEvent.BestModifier ?? string.Empty,
+                BestPriority: debugEvent.BestPriority,
+                ClickedChoice: debugEvent.ClickedChoice,
+                ClickedConfirm: debugEvent.ClickedConfirm,
+                ClickedTakeRewards: debugEvent.ClickedTakeRewards,
+                Notes: debugEvent.Notes ?? string.Empty,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
 
         public sealed record ClickDebugSnapshot(
             bool HasData,
@@ -126,32 +154,32 @@ namespace ClickIt.Services
 
         public ClickDebugSnapshot GetLatestClickDebug()
         {
-            return _clickDebugStore.GetLatest();
+            return _clickDebugChannel.GetLatest();
         }
 
         public IReadOnlyList<string> GetLatestClickDebugTrail()
         {
-            return _clickDebugStore.GetTrail();
+            return _clickDebugChannel.GetTrail();
         }
 
         public RuntimeDebugLogSnapshot GetLatestRuntimeDebugLog()
         {
-            return _runtimeDebugLogStore.GetLatest();
+            return _runtimeDebugLogChannel.GetLatest();
         }
 
         public IReadOnlyList<string> GetLatestRuntimeDebugLogTrail()
         {
-            return _runtimeDebugLogStore.GetTrail();
+            return _runtimeDebugLogChannel.GetTrail();
         }
 
         public UltimatumDebugSnapshot GetLatestUltimatumDebug()
         {
-            return _ultimatumDebugStore.GetLatest();
+            return _ultimatumDebugChannel.GetLatest();
         }
 
         public IReadOnlyList<string> GetLatestUltimatumDebugTrail()
         {
-            return _ultimatumDebugStore.GetTrail();
+            return _ultimatumDebugChannel.GetTrail();
         }
 
         private void SetLatestClickDebug(ClickDebugSnapshot snapshot)
@@ -159,7 +187,7 @@ namespace ClickIt.Services
             if (!ShouldCaptureClickDebug())
                 return;
 
-            _clickDebugStore.SetLatest(snapshot);
+            _clickDebugChannel.PublishSnapshot(snapshot);
         }
 
         private bool ShouldCaptureClickDebug()
@@ -177,33 +205,15 @@ namespace ClickIt.Services
             if (!ShouldCaptureUltimatumDebug())
                 return;
 
-            _ultimatumDebugStore.SetLatest(snapshot);
+            _ultimatumDebugChannel.PublishSnapshot(snapshot);
         }
 
         private void PublishUltimatumDebug(UltimatumDebugEvent debugEvent)
         {
-            SetLatestUltimatumDebug(new UltimatumDebugSnapshot(
-                HasData: true,
-                Stage: debugEvent.Stage,
-                Source: debugEvent.Source,
-                IsInitialUltimatumEnabled: settings.IsInitialUltimatumClickEnabled(),
-                IsOtherUltimatumEnabled: settings.IsOtherUltimatumClickEnabled(),
-                IsPanelVisible: debugEvent.IsPanelVisible,
-                IsGruelingGauntletActive: debugEvent.IsGruelingGauntletActive,
-                HasSaturatedChoice: debugEvent.HasSaturatedChoice,
-                SaturatedModifier: debugEvent.SaturatedModifier ?? string.Empty,
-                ShouldTakeReward: debugEvent.ShouldTakeReward,
-                Action: debugEvent.Action ?? string.Empty,
-                CandidateCount: debugEvent.CandidateCount,
-                SaturatedCandidateCount: debugEvent.SaturatedCandidateCount,
-                BestModifier: debugEvent.BestModifier ?? string.Empty,
-                BestPriority: debugEvent.BestPriority,
-                ClickedChoice: debugEvent.ClickedChoice,
-                ClickedConfirm: debugEvent.ClickedConfirm,
-                ClickedTakeRewards: debugEvent.ClickedTakeRewards,
-                Notes: debugEvent.Notes ?? string.Empty,
-                Sequence: 0,
-                TimestampMs: Environment.TickCount64));
+            if (!ShouldCaptureUltimatumDebug())
+                return;
+
+            _ultimatumDebugChannel.PublishEvent(debugEvent);
         }
 
         private void SetLatestRuntimeDebugLog(string message)
@@ -211,11 +221,7 @@ namespace ClickIt.Services
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
-            _runtimeDebugLogStore.SetLatest(new RuntimeDebugLogSnapshot(
-                HasData: true,
-                Message: message,
-                Sequence: 0,
-                TimestampMs: Environment.TickCount64));
+            _runtimeDebugLogChannel.PublishEvent(message);
         }
     }
 }

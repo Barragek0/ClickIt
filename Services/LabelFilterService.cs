@@ -350,7 +350,12 @@ namespace ClickIt.Services
                     ref bestNonIgnoredCursorDistance);
             }
 
-            LabelOnGround? selected = ResolveWinningCandidate(bestNonIgnored, bestNonIgnoredMechanicId, bestIgnored, bestIgnoredPriority, clickSettings);
+            LabelOnGround? selected = ResolveWinningCandidate(
+                bestNonIgnored,
+                bestNonIgnoredMechanicId,
+                bestIgnored,
+                bestIgnoredPriority,
+                clickSettings);
             if (ShouldCaptureLabelDebug())
             {
                 Entity? selectedEntity = selected?.ItemOnGround;
@@ -575,7 +580,6 @@ namespace ClickIt.Services
             bool isBetter = candidatePriority < bestIgnoredPriority
                 || (candidatePriority == bestIgnoredPriority && distance < bestIgnoredDistance)
                 || (candidatePriority == bestIgnoredPriority && Math.Abs(distance - bestIgnoredDistance) <= 0.001f && cursorDistance < bestIgnoredCursorDistance);
-
             if (isBetter)
             {
                 bestIgnoredPriority = candidatePriority;
@@ -673,17 +677,10 @@ namespace ClickIt.Services
         }
 
         private static int GetMechanicPriorityIndex(IReadOnlyDictionary<string, int> priorityMap, string? mechanicId)
-        {
-            if (string.IsNullOrWhiteSpace(mechanicId))
-                return int.MaxValue;
-
-            return priorityMap.TryGetValue(mechanicId, out int index) ? index : int.MaxValue;
-        }
+            => CandidateScoreEngine.ResolvePriorityIndex(mechanicId, priorityMap);
 
         private static float CalculateNonIgnoredWeightedScore(float distance, int priorityIndex, int penalty)
-            => priorityIndex == int.MaxValue
-                ? float.MaxValue
-                : distance + (priorityIndex * Math.Max(0, penalty));
+            => CandidateScoreEngine.CalculateWeightedDistance(distance, priorityIndex, penalty);
 
         public bool ShouldCorruptEssence(LabelOnGround label)
             => _essenceService.ShouldCorruptEssence(label.Label);
@@ -691,4 +688,5 @@ namespace ClickIt.Services
         public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)
             => EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
     }
+
 }

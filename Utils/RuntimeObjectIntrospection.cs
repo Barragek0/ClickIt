@@ -62,6 +62,44 @@ namespace ClickIt.Utils
     internal static class RuntimeObjectIntrospection
     {
         private readonly record struct PendingNode(string Path, object? Value, int Depth);
+        private readonly record struct NormalizedTraversalOptions(
+            string Title,
+            int MaxDepth,
+            int MaxCollectionItems,
+            IReadOnlyList<string> PriorityMembers,
+            int MaxMembersPerObject,
+            bool IncludeNonPublicMembers,
+            int MaxValueChars,
+            int MaxTotalNodes,
+            int MaxElapsedMs);
+        private readonly record struct TraversalEvent(
+            TraversalEventKind Kind,
+            string Path,
+            Type? RuntimeType = null,
+            object? Value = null,
+            int Count = 0,
+            string? Message = null);
+        private enum TraversalEventKind
+        {
+            NodeNull,
+            NodeSimple,
+            NodeType,
+            NodeCycle,
+            NodeMaxDepth,
+            NodeNoReadableMembers,
+            EnumerableType,
+            EnumerablePreviewCount,
+            EnumerableTruncated,
+            MemberUnavailable,
+            MemberNull,
+            MemberSimple,
+            MemberOutputTruncated,
+            NodeBudgetReachedWhileSchedulingMembers,
+            TraversalStoppedTimeBudget,
+            TraversalStoppedNodeBudget,
+            TraversalCompleted,
+            NodeProcessingError
+        }
         private readonly record struct MemberCacheKey(Type Type, bool IncludeNonPublicMembers, string PriorityKey);
         private static readonly ConcurrentDictionary<MemberCacheKey, MemberInfo[]> ReadableMembersCache = new();
 
@@ -87,18 +125,10 @@ namespace ClickIt.Utils
 
         public static string BuildReport(object? root, RuntimeObjectIntrospectionOptions options)
         {
-            string title = string.IsNullOrWhiteSpace(options.Title)
-                ? RuntimeObjectIntrospectionOptions.Default.Title
-                : options.Title;
-
-            int maxDepth = Math.Max(0, options.MaxDepth);
-            int maxCollectionItems = Math.Max(1, options.MaxCollectionItems);
-            int maxMembersPerObject = Math.Max(1, options.MaxMembersPerObject);
-            int maxValueChars = Math.Max(1, options.MaxValueChars);
-            int maxTotalNodes = Math.Max(1, options.MaxTotalNodes);
+            NormalizedTraversalOptions normalized = NormalizeOptions(options);
 
             var sb = new StringBuilder(1024);
-            sb.AppendLine($"--- {title} ---");
+            sb.AppendLine($"--- {normalized.Title} ---");
 
             if (root == null)
             {
@@ -106,22 +136,12 @@ namespace ClickIt.Utils
                 return sb.ToString().TrimEnd();
             }
 
-            var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-            int nodesProcessed = 0;
-            AppendNode(
-                sb,
-                "Root",
-                root,
-                0,
-                maxDepth,
-                maxCollectionItems,
-                options.PriorityMembers ?? [],
-                options.IncludeNonPublicMembers,
-                maxMembersPerObject,
-                maxValueChars,
-                visited,
-                maxTotalNodes,
-                ref nodesProcessed);
+            var engine = new TraversalEngine(root, normalized, enforceElapsedBudget: false);
+            while (!engine.IsFinished)
+            {
+                IReadOnlyList<TraversalEvent> events = engine.ProcessNext();
+                AppendTraversalEvents(sb, events, normalized.MaxValueChars);
+            }
 
             return sb.ToString().TrimEnd();
         }
@@ -183,18 +203,8 @@ namespace ClickIt.Utils
             Action<int>? onProgress = null,
             int nodeBudgetPerYield = 250)
         {
-            int maxDepth = Math.Max(0, options.MaxDepth);
-            int maxCollectionItems = Math.Max(1, options.MaxCollectionItems);
-            int maxMembersPerObject = Math.Max(1, options.MaxMembersPerObject);
-            int maxValueChars = Math.Max(1, options.MaxValueChars);
-            int maxTotalNodes = Math.Max(1, options.MaxTotalNodes);
-            int maxElapsedMs = Math.Max(500, options.MaxElapsedMs);
+            NormalizedTraversalOptions normalized = NormalizeOptions(options);
             int budget = Math.Max(1, nodeBudgetPerYield);
-            IReadOnlyList<string> priorityMembers = options.PriorityMembers ?? [];
-
-            string title = string.IsNullOrWhiteSpace(options.Title)
-                ? RuntimeObjectIntrospectionOptions.Default.Title
-                : options.Title;
 
             string fullPath = Path.GetFullPath(filePath);
             string? directory = Path.GetDirectoryName(fullPath);
@@ -222,7 +232,7 @@ namespace ClickIt.Utils
 
             using (writer)
             {
-                if (!TryWriteLine(writer, $"--- {title} ---", out string? headerWriteError))
+                if (!TryWriteLine(writer, $"--- {normalized.Title} ---", out string? headerWriteError))
                 {
                     SafeInvokeCompleted(onCompleted, null, headerWriteError);
                     yield break;
@@ -238,175 +248,30 @@ namespace ClickIt.Utils
                     yield break;
                 }
 
-                var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-                var stack = new Stack<PendingNode>();
-                stack.Push(new PendingNode("Root", root, 0));
-                int totalProcessedNodes = 0;
+                var engine = new TraversalEngine(root, normalized, enforceElapsedBudget: true);
                 const int maxSliceMs = 1;
                 var sliceStopwatch = Stopwatch.StartNew();
-                var totalStopwatch = Stopwatch.StartNew();
 
                 int processedSinceYield = 0;
-                bool stoppedByNodeBudget = false;
-                bool stoppedByTimeBudget = false;
-                while (stack.Count > 0)
+                int previousProcessedNodes = 0;
+                while (!engine.IsFinished)
                 {
-                    if (totalStopwatch.ElapsedMilliseconds >= maxElapsedMs)
+                    IReadOnlyList<TraversalEvent> events = engine.ProcessNext();
+                    if (!TryWriteTraversalEvents(writer, events, normalized.MaxValueChars, out string? traversalWriteError))
                     {
-                        if (!TryWriteLine(writer, $"Traversal stopped: elapsed-time budget reached ({maxElapsedMs}ms).", out string? timeWriteError))
-                        {
-                            SafeInvokeCompleted(onCompleted, null, timeWriteError);
-                            yield break;
-                        }
-
-                        stoppedByTimeBudget = true;
-                        SafeInvokeProgress(onProgress, 100);
-                        break;
+                        SafeInvokeCompleted(onCompleted, null, traversalWriteError);
+                        yield break;
                     }
 
-                    if (totalProcessedNodes >= maxTotalNodes)
-                    {
-                        if (!TryWriteLine(writer, $"Traversal stopped: node budget reached ({maxTotalNodes}).", out string? budgetWriteError))
-                        {
-                            SafeInvokeCompleted(onCompleted, null, budgetWriteError);
-                            yield break;
-                        }
+                    if (engine.TotalProcessedNodes > previousProcessedNodes)
+                        processedSinceYield += engine.TotalProcessedNodes - previousProcessedNodes;
+                    previousProcessedNodes = engine.TotalProcessedNodes;
 
-                        stoppedByNodeBudget = true;
-                        SafeInvokeProgress(onProgress, 100);
-                        break;
-                    }
-
-                    PendingNode pending = stack.Pop();
-                    totalProcessedNodes++;
-                    try
-                    {
-                        object? value = pending.Value;
-
-                        if (value == null)
-                        {
-                            writer.WriteLine($"{pending.Path}: null");
-                        }
-                        else
-                        {
-                            Type type = value.GetType();
-                            if (IsSimpleType(type))
-                            {
-                                writer.WriteLine($"{pending.Path}: {type.Name} = {FormatValue(value, maxValueChars)}");
-                            }
-                            else
-                            {
-                                if (!type.IsValueType)
-                                {
-                                    if (!visited.Add(value))
-                                    {
-                                        writer.WriteLine($"{pending.Path}: {type.FullName} (cycle)");
-                                        goto AfterNode;
-                                    }
-                                }
-
-                                if (value is IEnumerable enumerable && value is not string)
-                                {
-                                    writer.WriteLine($"{pending.Path}: {type.FullName} (enumerable)");
-
-                                    var stagedEntries = new List<PendingNode>();
-                                    int previewCount = 0;
-                                    bool hasMore = false;
-                                    foreach (object? entry in enumerable)
-                                    {
-                                        if (previewCount < maxCollectionItems)
-                                        {
-                                            stagedEntries.Add(new PendingNode($"{pending.Path}[{previewCount}]", entry, pending.Depth + 1));
-                                            previewCount++;
-                                            continue;
-                                        }
-
-                                        hasMore = true;
-                                        break;
-                                    }
-
-                                    writer.WriteLine($"{pending.Path}: previewCount={previewCount}");
-                                    if (hasMore)
-                                        writer.WriteLine($"{pending.Path}: collection output truncated (more entries omitted)");
-
-                                    for (int i = stagedEntries.Count - 1; i >= 0; i--)
-                                        stack.Push(stagedEntries[i]);
-
-                                    goto AfterNode;
-                                }
-
-                                writer.WriteLine($"{pending.Path}: {type.FullName}");
-                                if (pending.Depth >= maxDepth)
-                                {
-                                    writer.WriteLine($"{pending.Path}: max depth reached");
-                                    goto AfterNode;
-                                }
-
-                                IReadOnlyList<MemberInfo> members = GetReadableMembers(type, priorityMembers, options.IncludeNonPublicMembers);
-                                if (members.Count == 0)
-                                {
-                                    writer.WriteLine($"{pending.Path}: no readable public members");
-                                    goto AfterNode;
-                                }
-
-                                int memberCount = Math.Min(members.Count, maxMembersPerObject);
-                                if (members.Count > maxMembersPerObject)
-                                    writer.WriteLine($"{pending.Path}: member output truncated ({members.Count - maxMembersPerObject} omitted)");
-
-                                var stagedMembers = new List<PendingNode>();
-                                for (int i = 0; i < memberCount; i++)
-                                {
-                                    MemberInfo member = members[i];
-                                    string memberPath = $"{pending.Path}.{member.Name}";
-
-                                    if (!TryGetMemberValue(value, member, out object? memberValue))
-                                    {
-                                        writer.WriteLine($"{memberPath}: <unavailable>");
-                                        continue;
-                                    }
-
-                                    if (memberValue == null)
-                                    {
-                                        writer.WriteLine($"{memberPath}: null");
-                                        continue;
-                                    }
-
-                                    if (IsSimpleType(memberValue.GetType()))
-                                    {
-                                        writer.WriteLine($"{memberPath}: {FormatValue(memberValue, maxValueChars)}");
-                                        continue;
-                                    }
-
-                                    if (totalProcessedNodes + stack.Count + stagedMembers.Count >= maxTotalNodes)
-                                    {
-                                        writer.WriteLine($"{pending.Path}: node budget reached while scheduling members");
-                                        break;
-                                    }
-
-                                    stagedMembers.Add(new PendingNode(memberPath, memberValue, pending.Depth + 1));
-                                }
-
-                                for (int i = stagedMembers.Count - 1; i >= 0; i--)
-                                    stack.Push(stagedMembers[i]);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        if (!TryWriteLine(writer, $"{pending.Path}: <node processing error> {ex.GetType().Name}: {ex.Message}", out string? nodeErrorWriteFailure))
-                        {
-                            SafeInvokeCompleted(onCompleted, null, nodeErrorWriteFailure);
-                            yield break;
-                        }
-                    }
-
-                AfterNode:
-                    processedSinceYield++;
                     if (processedSinceYield >= budget || sliceStopwatch.ElapsedMilliseconds >= maxSliceMs)
                     {
                         processedSinceYield = 0;
                         sliceStopwatch.Restart();
-                        int pct = Math.Min(99, (int)((long)totalProcessedNodes * 100L / Math.Max(1, maxTotalNodes)));
+                        int pct = Math.Min(99, (int)((long)engine.TotalProcessedNodes * 100L / Math.Max(1, normalized.MaxTotalNodes)));
                         SafeInvokeProgress(onProgress, pct);
 
                         if (!TryFlush(writer, out string? flushError))
@@ -419,15 +284,6 @@ namespace ClickIt.Utils
                     }
                 }
 
-                if (!stoppedByNodeBudget && !stoppedByTimeBudget)
-                {
-                    if (!TryWriteLine(writer, $"Traversal completed: processed {totalProcessedNodes} nodes.", out string? completeWriteError))
-                    {
-                        SafeInvokeCompleted(onCompleted, null, completeWriteError);
-                        yield break;
-                    }
-                }
-
                 if (!TryFlush(writer, out string? finalFlushError))
                 {
                     SafeInvokeCompleted(onCompleted, null, finalFlushError);
@@ -437,6 +293,68 @@ namespace ClickIt.Utils
                 SafeInvokeProgress(onProgress, 100);
                 SafeInvokeCompleted(onCompleted, fullPath, null);
             }
+        }
+
+        private static NormalizedTraversalOptions NormalizeOptions(RuntimeObjectIntrospectionOptions options)
+        {
+            string title = string.IsNullOrWhiteSpace(options.Title)
+                ? RuntimeObjectIntrospectionOptions.Default.Title
+                : options.Title;
+
+            return new NormalizedTraversalOptions(
+                Title: title,
+                MaxDepth: Math.Max(0, options.MaxDepth),
+                MaxCollectionItems: Math.Max(1, options.MaxCollectionItems),
+                PriorityMembers: options.PriorityMembers ?? [],
+                MaxMembersPerObject: Math.Max(1, options.MaxMembersPerObject),
+                IncludeNonPublicMembers: options.IncludeNonPublicMembers,
+                MaxValueChars: Math.Max(1, options.MaxValueChars),
+                MaxTotalNodes: Math.Max(1, options.MaxTotalNodes),
+                MaxElapsedMs: Math.Max(500, options.MaxElapsedMs));
+        }
+
+        private static void AppendTraversalEvents(StringBuilder sb, IReadOnlyList<TraversalEvent> events, int maxValueChars)
+        {
+            for (int i = 0; i < events.Count; i++)
+                sb.AppendLine(FormatTraversalEvent(events[i], maxValueChars));
+        }
+
+        private static bool TryWriteTraversalEvents(StreamWriter writer, IReadOnlyList<TraversalEvent> events, int maxValueChars, out string? error)
+        {
+            for (int i = 0; i < events.Count; i++)
+            {
+                if (!TryWriteLine(writer, FormatTraversalEvent(events[i], maxValueChars), out error))
+                    return false;
+            }
+
+            error = null;
+            return true;
+        }
+
+        private static string FormatTraversalEvent(TraversalEvent evt, int maxValueChars)
+        {
+            return evt.Kind switch
+            {
+                TraversalEventKind.NodeNull => $"{evt.Path}: null",
+                TraversalEventKind.NodeSimple => $"{evt.Path}: {evt.RuntimeType?.Name} = {FormatValue(evt.Value, maxValueChars)}",
+                TraversalEventKind.NodeType => $"{evt.Path}: {evt.RuntimeType?.FullName}",
+                TraversalEventKind.NodeCycle => $"{evt.Path}: {evt.RuntimeType?.FullName} (cycle)",
+                TraversalEventKind.NodeMaxDepth => $"{evt.Path}: max depth reached",
+                TraversalEventKind.NodeNoReadableMembers => $"{evt.Path}: no readable public members",
+                TraversalEventKind.EnumerableType => $"{evt.Path}: {evt.RuntimeType?.FullName} (enumerable)",
+                TraversalEventKind.EnumerablePreviewCount => $"{evt.Path}: previewCount={evt.Count}",
+                TraversalEventKind.EnumerableTruncated => $"{evt.Path}: collection output truncated (more entries omitted)",
+                TraversalEventKind.MemberUnavailable => $"{evt.Path}: <unavailable>",
+                TraversalEventKind.MemberNull => $"{evt.Path}: null",
+                TraversalEventKind.MemberSimple => $"{evt.Path}: {FormatValue(evt.Value, maxValueChars)}",
+                TraversalEventKind.MemberOutputTruncated => $"{evt.Path}: member output truncated ({evt.Count} omitted)",
+                TraversalEventKind.NodeBudgetReachedWhileSchedulingMembers => $"{evt.Path}: node budget reached while scheduling members",
+                TraversalEventKind.TraversalStoppedTimeBudget => $"Traversal stopped: elapsed-time budget reached ({evt.Count}ms).",
+                TraversalEventKind.TraversalStoppedNodeBudget => $"Traversal stopped: node budget reached ({evt.Count}).",
+                TraversalEventKind.TraversalCompleted => $"Traversal completed: processed {evt.Count} nodes.",
+                TraversalEventKind.NodeProcessingError => $"{evt.Path}: <node processing error> {evt.Message}",
+                _ => $"{evt.Path}: <unknown traversal event>"
+            };
         }
 
         private static bool TryWriteLine(StreamWriter writer, string line, out string? error)
@@ -493,179 +411,167 @@ namespace ClickIt.Utils
             }
         }
 
-        private static void AppendNode(
-            StringBuilder sb,
-            string path,
-            object? value,
-            int depth,
-            int maxDepth,
-            int maxCollectionItems,
-            IReadOnlyList<string> priorityMembers,
-            bool includeNonPublicMembers,
-            int maxMembersPerObject,
-            int maxValueChars,
-            HashSet<object> visited,
-            int maxTotalNodes,
-            ref int nodesProcessed)
+        private sealed class TraversalEngine
         {
-            if (nodesProcessed >= maxTotalNodes)
+            private readonly Stack<PendingNode> _stack;
+            private readonly HashSet<object> _visited;
+            private readonly Stopwatch _elapsedStopwatch;
+
+            public TraversalEngine(object root, NormalizedTraversalOptions options, bool enforceElapsedBudget)
             {
-                sb.AppendLine($"{path}: node budget reached ({maxTotalNodes})");
-                return;
+                Options = options;
+                EnforceElapsedBudget = enforceElapsedBudget;
+                _stack = new Stack<PendingNode>();
+                _visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+                _elapsedStopwatch = Stopwatch.StartNew();
+                _stack.Push(new PendingNode("Root", root, 0));
             }
 
-            nodesProcessed++;
+            public NormalizedTraversalOptions Options { get; }
+            public bool EnforceElapsedBudget { get; }
+            public int TotalProcessedNodes { get; private set; }
+            public bool IsFinished { get; private set; }
 
-            if (value == null)
+            public IReadOnlyList<TraversalEvent> ProcessNext()
             {
-                sb.AppendLine($"{path}: null");
-                return;
-            }
+                if (IsFinished)
+                    return [];
 
-            Type type = value.GetType();
-            if (IsSimpleType(type))
-            {
-                sb.AppendLine($"{path}: {type.Name} = {FormatValue(value, maxValueChars)}");
-                return;
-            }
-
-            if (!type.IsValueType)
-            {
-                if (!visited.Add(value))
+                if (EnforceElapsedBudget && _elapsedStopwatch.ElapsedMilliseconds >= Options.MaxElapsedMs)
                 {
-                    sb.AppendLine($"{path}: {type.FullName} (cycle)");
-                    return;
-                }
-            }
-
-            if (value is IEnumerable enumerable && value is not string)
-            {
-                AppendEnumerable(
-                    sb,
-                    path,
-                    type,
-                    enumerable,
-                    depth,
-                    maxDepth,
-                    maxCollectionItems,
-                    priorityMembers,
-                    includeNonPublicMembers,
-                    maxMembersPerObject,
-                    maxValueChars,
-                    visited,
-                    maxTotalNodes,
-                    ref nodesProcessed);
-                return;
-            }
-
-            sb.AppendLine($"{path}: {type.FullName}");
-            if (depth >= maxDepth)
-            {
-                sb.AppendLine($"{path}: max depth reached");
-                return;
-            }
-
-            IReadOnlyList<MemberInfo> members = GetReadableMembers(type, priorityMembers, includeNonPublicMembers);
-            if (members.Count == 0)
-            {
-                sb.AppendLine($"{path}: no readable public members");
-                return;
-            }
-
-            int memberCount = Math.Min(members.Count, maxMembersPerObject);
-            for (int i = 0; i < memberCount; i++)
-            {
-                MemberInfo member = members[i];
-                string memberPath = $"{path}.{member.Name}";
-
-                if (!TryGetMemberValue(value, member, out object? memberValue))
-                {
-                    sb.AppendLine($"{memberPath}: <unavailable>");
-                    continue;
+                    IsFinished = true;
+                    return [new TraversalEvent(TraversalEventKind.TraversalStoppedTimeBudget, string.Empty, Count: Options.MaxElapsedMs)];
                 }
 
-                if (memberValue == null)
+                if (TotalProcessedNodes >= Options.MaxTotalNodes)
                 {
-                    sb.AppendLine($"{memberPath}: null");
-                    continue;
+                    IsFinished = true;
+                    return [new TraversalEvent(TraversalEventKind.TraversalStoppedNodeBudget, string.Empty, Count: Options.MaxTotalNodes)];
                 }
 
-                if (IsSimpleType(memberValue.GetType()))
+                if (_stack.Count == 0)
                 {
-                    sb.AppendLine($"{memberPath}: {FormatValue(memberValue, maxValueChars)}");
-                    continue;
+                    IsFinished = true;
+                    return [new TraversalEvent(TraversalEventKind.TraversalCompleted, string.Empty, Count: TotalProcessedNodes)];
                 }
 
-                AppendNode(
-                    sb,
-                    memberPath,
-                    memberValue,
-                    depth + 1,
-                    maxDepth,
-                    maxCollectionItems,
-                    priorityMembers,
-                    includeNonPublicMembers,
-                    maxMembersPerObject,
-                    maxValueChars,
-                        visited,
-                        maxTotalNodes,
-                        ref nodesProcessed);
+                PendingNode pending = _stack.Pop();
+                TotalProcessedNodes++;
+
+                var events = new List<TraversalEvent>();
+                try
+                {
+                    object? value = pending.Value;
+                    if (value == null)
+                    {
+                        events.Add(new TraversalEvent(TraversalEventKind.NodeNull, pending.Path));
+                        return events;
+                    }
+
+                    Type type = value.GetType();
+                    if (IsSimpleType(type))
+                    {
+                        events.Add(new TraversalEvent(TraversalEventKind.NodeSimple, pending.Path, RuntimeType: type, Value: value));
+                        return events;
+                    }
+
+                    if (!type.IsValueType && !_visited.Add(value))
+                    {
+                        events.Add(new TraversalEvent(TraversalEventKind.NodeCycle, pending.Path, RuntimeType: type));
+                        return events;
+                    }
+
+                    if (value is IEnumerable enumerable && value is not string)
+                    {
+                        events.Add(new TraversalEvent(TraversalEventKind.EnumerableType, pending.Path, RuntimeType: type));
+
+                        var stagedEntries = new List<PendingNode>();
+                        int previewCount = 0;
+                        bool hasMore = false;
+                        foreach (object? entry in enumerable)
+                        {
+                            if (previewCount < Options.MaxCollectionItems)
+                            {
+                                stagedEntries.Add(new PendingNode($"{pending.Path}[{previewCount}]", entry, pending.Depth + 1));
+                                previewCount++;
+                                continue;
+                            }
+
+                            hasMore = true;
+                            break;
+                        }
+
+                        events.Add(new TraversalEvent(TraversalEventKind.EnumerablePreviewCount, pending.Path, Count: previewCount));
+                        if (hasMore)
+                            events.Add(new TraversalEvent(TraversalEventKind.EnumerableTruncated, pending.Path));
+
+                        for (int i = stagedEntries.Count - 1; i >= 0; i--)
+                            _stack.Push(stagedEntries[i]);
+
+                        return events;
+                    }
+
+                    events.Add(new TraversalEvent(TraversalEventKind.NodeType, pending.Path, RuntimeType: type));
+                    if (pending.Depth >= Options.MaxDepth)
+                    {
+                        events.Add(new TraversalEvent(TraversalEventKind.NodeMaxDepth, pending.Path));
+                        return events;
+                    }
+
+                    IReadOnlyList<MemberInfo> members = GetReadableMembers(type, Options.PriorityMembers, Options.IncludeNonPublicMembers);
+                    if (members.Count == 0)
+                    {
+                        events.Add(new TraversalEvent(TraversalEventKind.NodeNoReadableMembers, pending.Path));
+                        return events;
+                    }
+
+                    int memberCount = Math.Min(members.Count, Options.MaxMembersPerObject);
+                    if (members.Count > Options.MaxMembersPerObject)
+                        events.Add(new TraversalEvent(TraversalEventKind.MemberOutputTruncated, pending.Path, Count: members.Count - Options.MaxMembersPerObject));
+
+                    var stagedMembers = new List<PendingNode>();
+                    for (int i = 0; i < memberCount; i++)
+                    {
+                        MemberInfo member = members[i];
+                        string memberPath = $"{pending.Path}.{member.Name}";
+
+                        if (!TryGetMemberValue(value, member, out object? memberValue))
+                        {
+                            events.Add(new TraversalEvent(TraversalEventKind.MemberUnavailable, memberPath));
+                            continue;
+                        }
+
+                        if (memberValue == null)
+                        {
+                            events.Add(new TraversalEvent(TraversalEventKind.MemberNull, memberPath));
+                            continue;
+                        }
+
+                        if (IsSimpleType(memberValue.GetType()))
+                        {
+                            events.Add(new TraversalEvent(TraversalEventKind.MemberSimple, memberPath, Value: memberValue));
+                            continue;
+                        }
+
+                        if (TotalProcessedNodes + _stack.Count + stagedMembers.Count >= Options.MaxTotalNodes)
+                        {
+                            events.Add(new TraversalEvent(TraversalEventKind.NodeBudgetReachedWhileSchedulingMembers, pending.Path));
+                            break;
+                        }
+
+                        stagedMembers.Add(new PendingNode(memberPath, memberValue, pending.Depth + 1));
+                    }
+
+                    for (int i = stagedMembers.Count - 1; i >= 0; i--)
+                        _stack.Push(stagedMembers[i]);
+                }
+                catch (Exception ex)
+                {
+                    events.Add(new TraversalEvent(TraversalEventKind.NodeProcessingError, pending.Path, Message: $"{ex.GetType().Name}: {ex.Message}"));
+                }
+
+                return events;
             }
-
-            if (members.Count > maxMembersPerObject)
-                sb.AppendLine($"{path}: member output truncated ({members.Count - maxMembersPerObject} omitted)");
-        }
-
-        private static void AppendEnumerable(
-            StringBuilder sb,
-            string path,
-            Type type,
-            IEnumerable enumerable,
-            int depth,
-            int maxDepth,
-            int maxCollectionItems,
-            IReadOnlyList<string> priorityMembers,
-            bool includeNonPublicMembers,
-            int maxMembersPerObject,
-            int maxValueChars,
-            HashSet<object> visited,
-            int maxTotalNodes,
-            ref int nodesProcessed)
-        {
-            sb.AppendLine($"{path}: {type.FullName} (enumerable)");
-
-            int previewCount = 0;
-            bool hasMore = false;
-            foreach (object? entry in enumerable)
-            {
-                if (previewCount < maxCollectionItems)
-                {
-                    AppendNode(
-                        sb,
-                        $"{path}[{previewCount}]",
-                        entry,
-                        depth + 1,
-                        maxDepth,
-                        maxCollectionItems,
-                        priorityMembers,
-                        includeNonPublicMembers,
-                        maxMembersPerObject,
-                        maxValueChars,
-                        visited,
-                        maxTotalNodes,
-                        ref nodesProcessed);
-
-                    previewCount++;
-                    continue;
-                }
-
-                hasMore = true;
-                break;
-            }
-
-            sb.AppendLine($"{path}: previewCount={previewCount}");
-            if (hasMore)
-                sb.AppendLine($"{path}: collection output truncated (more entries omitted)");
         }
 
         private static IReadOnlyList<MemberInfo> GetReadableMembers(Type type, IReadOnlyList<string> priorityMembers, bool includeNonPublicMembers)

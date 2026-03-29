@@ -6,8 +6,29 @@ namespace ClickIt.Services
 {
     public sealed partial class PathfindingService(ClickItSettings settings, Utils.ErrorHandler? errorHandler = null)
     {
+        private const int OffscreenMovementDebugTrailCapacity = 24;
         private readonly ClickItSettings _settings = settings;
         private readonly Utils.ErrorHandler? _errorHandler = errorHandler;
+        private readonly DebugChannel<OffscreenMovementDebugSnapshot, OffscreenMovementDebugEvent> _offscreenMovementDebugChannel = new(
+            OffscreenMovementDebugSnapshot.Empty,
+            OffscreenMovementDebugTrailCapacity,
+            static (snapshot, _) => snapshot,
+            static snapshot =>
+                $"{snapshot.Stage} Path={snapshot.TargetPath} Built={snapshot.BuiltPath} Resolved={snapshot.ResolvedClickPoint} | {snapshot.MovementSkillDebug}",
+            static debugEvent => new OffscreenMovementDebugSnapshot(
+                HasData: true,
+                Stage: debugEvent.Stage,
+                TargetPath: debugEvent.TargetPath,
+                BuiltPath: debugEvent.BuiltPath,
+                ResolvedFromPath: debugEvent.ResolvedFromPath,
+                ResolvedClickPoint: debugEvent.ResolvedClickPoint,
+                WindowCenter: debugEvent.WindowCenter,
+                TargetScreen: debugEvent.TargetScreen,
+                ClickScreen: debugEvent.ClickScreen,
+                PlayerGrid: debugEvent.PlayerGrid,
+                TargetGrid: debugEvent.TargetGrid,
+                MovementSkillDebug: debugEvent.MovementSkillDebug,
+                TimestampMs: Environment.TickCount64));
 
         public readonly record struct GridPoint(int X, int Y);
 
@@ -50,6 +71,28 @@ namespace ClickIt.Services
                 TargetGrid: default,
                 MovementSkillDebug: string.Empty,
                 TimestampMs: 0);
+        }
+
+        public sealed record OffscreenMovementDebugEvent(
+            string Stage,
+            string TargetPath,
+            bool BuiltPath,
+            bool ResolvedFromPath,
+            bool ResolvedClickPoint,
+            Vector2 WindowCenter,
+            Vector2 TargetScreen,
+            Vector2 ClickScreen,
+            Vector2 PlayerGrid,
+            Vector2 TargetGrid,
+            string MovementSkillDebug);
+
+        public IReadOnlyList<string> GetLatestOffscreenMovementDebugTrail()
+            => _offscreenMovementDebugChannel.GetTrail();
+
+        public void PublishOffscreenMovementDebugEvent(OffscreenMovementDebugEvent debugEvent)
+        {
+            _offscreenMovementDebugChannel.PublishEvent(debugEvent);
+            SetLatestOffscreenMovementDebug(_offscreenMovementDebugChannel.GetLatest());
         }
 
         public bool TryBuildPathToTarget(GameController? gameController, Entity? target, int maxExpandedNodes)
