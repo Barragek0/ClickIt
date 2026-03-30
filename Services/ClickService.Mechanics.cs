@@ -1,11 +1,28 @@
 using ClickIt.Definitions;
+using ExileCore.PoEMemory.MemoryObjects;
+using SharpDX;
 
 namespace ClickIt.Services
 {
     public partial class ClickService
     {
+        private static readonly Vector2[] NearbyClickProbeOffsets =
+        [
+            new Vector2(0f, 0f),
+            new Vector2(12f, 0f),
+            new Vector2(-12f, 0f),
+            new Vector2(0f, 12f),
+            new Vector2(0f, -12f),
+            new Vector2(24f, 0f),
+            new Vector2(-24f, 0f),
+            new Vector2(0f, 24f),
+            new Vector2(0f, -24f)
+        ];
+
         internal static bool IsLostShipmentPath(string? path)
             => ContainsAny(path, LostShipmentPathMarker, LostShipmentLoosePathMarker);
+
+        internal static bool ShouldClickShrineWhenGroundItemsHidden(Entity? shrine) => shrine != null;
 
         internal static bool IsVerisiumPath(string? path)
             => ContainsAny(path, Definitions.Constants.Verisium)
@@ -25,6 +42,27 @@ namespace ClickIt.Services
             => !isValid || distance > clickDistance;
 
         internal static bool ShouldSkipVerisiumEntity(bool isValid, float distance, int clickDistance)
+            => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
+
+        internal static bool ShouldReuseTimedLabelCountCache(long now, long cachedAtMs, int cachedLabelCount, int currentLabelCount, int cacheWindowMs)
+        {
+            if (cachedAtMs <= 0 || cacheWindowMs <= 0)
+                return false;
+
+            if (cachedLabelCount != currentLabelCount)
+                return false;
+
+            long age = now - cachedAtMs;
+            return age >= 0 && age <= cacheWindowMs;
+        }
+
+        internal static bool ShouldScanSettlersGroundLabelAddresses(bool captureClickDebug)
+            => true;
+
+        internal static bool ShouldAcceptSettlersCandidate(bool hasGroundLabel)
+            => hasGroundLabel;
+
+        internal static bool ShouldSkipSettlersEntityBeforeMechanicResolution(bool isValid, bool isHidden, float distance, int clickDistance)
             => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
 
         private MechanicPriorityContext CreateMechanicPriorityContext()
@@ -136,6 +174,16 @@ namespace ClickIt.Services
             }
 
             return false;
+        }
+
+        private static bool ArePlayerDistancesEquivalent(float left, float right)
+            => Math.Abs(left - right) <= 0.001f;
+
+        private static bool IsFirstCandidateCloserToCursor(Vector2 firstClickPoint, Vector2 secondClickPoint, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        {
+            float first = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, firstClickPoint, windowTopLeft);
+            float second = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, secondClickPoint, windowTopLeft);
+            return first < second;
         }
 
         private void RefreshMechanicPriorityCaches()

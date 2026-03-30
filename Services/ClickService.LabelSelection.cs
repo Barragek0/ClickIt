@@ -6,7 +6,6 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ClickIt.Definitions;
 using ClickIt.Utils;
-using Microsoft.CSharp.RuntimeBinder;
 using System.Windows.Forms;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
@@ -87,169 +86,21 @@ namespace ClickIt.Services
         [ThreadStatic]
         private static HashSet<long>? _threadGroundLabelEntityAddresses;
 
-        private bool ShouldPreferShrineOverLabel(LabelOnGround? label, Entity? shrine)
+        internal bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? allLabels)
         {
-            if (shrine == null)
-                return false;
-            if (label == null)
-                return true;
-
-            string? labelMechanicId = labelFilterService.GetMechanicIdForLabel(label);
-            if (string.IsNullOrWhiteSpace(labelMechanicId))
-                return true;
-
-            RefreshMechanicPriorityCaches();
-            MechanicPriorityContext mechanicPriorityContext = CreateMechanicPriorityContext();
-
-            float labelDistance = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;
-            float shrineDistance = shrine.DistancePlayer;
-            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            Vector2 cursorAbsolute = GetCursorAbsolutePosition();
-            return ShouldPreferShrineOverLabelForOffscreen(
-                CreateMechanicCandidateSignal(
-                    ShrineMechanicId,
-                    shrineDistance,
-                    TryGetCursorDistanceSquaredToEntity(shrine, cursorAbsolute, windowTopLeft)),
-                CreateMechanicCandidateSignal(
-                    labelMechanicId,
-                    labelDistance,
-                    TryGetCursorDistanceSquaredToLabel(label, cursorAbsolute, windowTopLeft)),
-                mechanicPriorityContext);
+            // Stable ClickService facade entry point; implementation lives in the label-selection coordinator.
+            return LabelSelection.TryClickManualUiHoverLabel(allLabels);
         }
 
-        private LabelOnGround? ResolveNextLabelCandidate(IReadOnlyList<LabelOnGround>? allLabels)
+        internal IEnumerator ProcessRegularClick()
         {
-            LabelOnGround? nextLabel = FindNextLabelToClick(allLabels);
-            return PreferUiHoverEssenceLabel(nextLabel, allLabels);
-        }
-
-        public bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (gameController?.Window == null)
-                return false;
-
-            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            var cursor = Mouse.GetCursorPosition();
-            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
-
-            if (TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft))
-                return true;
-
-            if (TryResolveManualCursorLabelCandidate(allLabels, cursorAbsolute, windowTopLeft, out LabelOnGround? hoveredLabel, out string? mechanicId))
-            {
-                if (ShouldAttemptManualCursorAltarClick(IsAltarLabel(hoveredLabel), HasClickableAltars()))
-                    return TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
-
-                if (TryCorruptEssence(hoveredLabel, windowTopLeft))
-                    return true;
-
-                if (settings.IsInitialUltimatumClickEnabled() && IsUltimatumLabel(hoveredLabel))
-                    return TryClickPreferredUltimatumModifier(hoveredLabel, windowTopLeft);
-
-                if (!TryResolveLabelClickPosition(
-                    hoveredLabel,
-                    mechanicId,
-                    windowTopLeft,
-                    allLabels,
-                    out Vector2 clickPos))
-                {
-                    return false;
-                }
-
-                bool clicked = ShouldUseHoldClickForSettlersMechanic(mechanicId)
-                    ? PerformLabelHoldClick(clickPos, null, gameController, holdDurationMs: 0, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true)
-                    : PerformLabelClick(clickPos, null, gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true);
-
-                if (!clicked)
-                    return false;
-
-                MarkPendingChestOpenConfirmation(mechanicId, hoveredLabel);
-                MarkLeverClicked(hoveredLabel);
-                if (settings.WalkTowardOffscreenLabels.Value)
-                {
-                    pathfindingService.ClearLatestPath();
-                }
-
-                return true;
-            }
-
-            return TryClickManualCursorVisibleMechanic(cursorAbsolute, windowTopLeft);
+            // Stable ClickService facade entry point; orchestration lives in the regular-click coordinator.
+            return RegularClick.Run();
         }
 
         internal static bool ShouldAttemptManualCursorAltarClick(bool isAltarLabel, bool hasClickableAltars)
         {
             return isAltarLabel && hasClickableAltars;
-        }
-
-        private bool TryResolveManualCursorLabelCandidate(
-            IReadOnlyList<LabelOnGround>? allLabels,
-            Vector2 cursorAbsolute,
-            Vector2 windowTopLeft,
-            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out LabelOnGround? selectedLabel,
-            out string? selectedMechanicId)
-        {
-            selectedLabel = null;
-            selectedMechanicId = null;
-
-            if (allLabels == null || allLabels.Count == 0)
-                return false;
-
-            float bestScore = float.MaxValue;
-            for (int i = 0; i < allLabels.Count; i++)
-            {
-                LabelOnGround? candidate = allLabels[i];
-                if (candidate == null)
-                    continue;
-
-                if (ShouldSuppressLeverClick(candidate)
-                    || ShouldSuppressInactiveUltimatumLabel(candidate)
-                    || inputHandler.IsLabelFullyOverlapped(candidate, allLabels))
-                {
-                    continue;
-                }
-
-                string? mechanicId = labelFilterService.GetMechanicIdForLabel(candidate);
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                    continue;
-
-                Entity? candidateEntity = candidate.ItemOnGround;
-                bool shouldUseGroundProjection = ShouldUseManualGroundProjectionForCandidate(
-                    hasBackingEntity: candidateEntity != null,
-                    isWorldItem: candidateEntity?.Type == ExileCore.Shared.Enums.EntityType.WorldItem);
-                Vector2 projectedGroundPoint = default;
-
-                bool hasLabelRect = TryGetLabelRect(candidate, out RectangleF rect);
-                bool cursorInsideLabelRect = hasLabelRect && IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
-                bool cursorNearGroundProjection = shouldUseGroundProjection
-                    && TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out projectedGroundPoint)
-                    && IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft, ManualCursorGroundProjectionSnapDistancePx);
-
-                if (!ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect, cursorNearGroundProjection))
-                    continue;
-
-                float score = float.MaxValue;
-                if (cursorInsideLabelRect)
-                {
-                    score = GetManualCursorLabelHitScore(rect, cursorAbsolute, windowTopLeft);
-                }
-
-                if (cursorNearGroundProjection)
-                {
-                    float objectScore = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft);
-                    score = Math.Min(score, objectScore);
-                }
-
-                if (score >= bestScore)
-                    continue;
-
-                bestScore = score;
-                selectedLabel = candidate;
-                selectedMechanicId = mechanicId;
-            }
-
-            return selectedLabel != null && !string.IsNullOrWhiteSpace(selectedMechanicId);
         }
 
         internal static bool ShouldUseManualGroundProjectionForCandidate(bool hasBackingEntity, bool isWorldItem)
@@ -262,104 +113,6 @@ namespace ClickIt.Services
             return cursorInsideLabelRect || cursorNearGroundProjection;
         }
 
-        private bool TryGetGroundProjectionPoint(Entity? item, Vector2 windowTopLeft, out Vector2 projectedPoint)
-        {
-            projectedPoint = default;
-            if (item == null || !item.IsValid)
-                return false;
-
-            try
-            {
-                var worldScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
-                projectedPoint = new Vector2(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
-                return float.IsFinite(projectedPoint.X) && float.IsFinite(projectedPoint.Y);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private bool TryClickManualCursorVisibleMechanic(Vector2 cursorAbsolute, Vector2 windowTopLeft)
-        {
-            int selectedType = 0;
-            float bestDistanceSq = float.MaxValue;
-            Vector2 selectedClickPos = default;
-            Entity? selectedEntity = null;
-            string? selectedSettlersMechanicId = null;
-
-            Entity? shrine = ResolveNextShrineCandidate();
-            if (shrine != null)
-            {
-                var shrineScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
-                Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-                if (IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft, ManualCursorTargetSnapDistancePx))
-                {
-                    float d2 = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft);
-                    if (d2 < bestDistanceSq)
-                    {
-                        selectedType = 1;
-                        bestDistanceSq = d2;
-                        selectedClickPos = shrineClickPos;
-                        selectedEntity = shrine;
-                        selectedSettlersMechanicId = null;
-                    }
-                }
-            }
-
-            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
-            if (lostShipment.HasValue)
-            {
-                LostShipmentCandidate candidate = lostShipment.Value;
-                if (IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorTargetSnapDistancePx))
-                {
-                    float d2 = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
-                    if (d2 < bestDistanceSq)
-                    {
-                        selectedType = 2;
-                        bestDistanceSq = d2;
-                        selectedClickPos = candidate.ClickPosition;
-                        selectedEntity = candidate.Entity;
-                        selectedSettlersMechanicId = null;
-                    }
-                }
-            }
-
-            if (settlers.HasValue)
-            {
-                SettlersOreCandidate candidate = settlers.Value;
-                if (IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorTargetSnapDistancePx))
-                {
-                    float d2 = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
-                    if (d2 < bestDistanceSq)
-                    {
-                        selectedType = 3;
-                        bestDistanceSq = d2;
-                        selectedClickPos = candidate.ClickPosition;
-                        selectedEntity = candidate.Entity;
-                        selectedSettlersMechanicId = candidate.MechanicId;
-                    }
-                }
-            }
-
-            if (selectedType == 0)
-                return false;
-
-            bool clicked = selectedType == 3 && ShouldUseHoldClickForSettlersMechanic(selectedSettlersMechanicId)
-                ? PerformLabelHoldClick(selectedClickPos, null, gameController, holdDurationMs: 0, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true)
-                : PerformLabelClick(selectedClickPos, null, gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true);
-
-            if (!clicked)
-                return false;
-
-            if (selectedType == 1)
-            {
-                shrineService.InvalidateCache();
-            }
-
-            HandleSuccessfulMechanicEntityClick(selectedEntity);
-            return true;
-        }
 
         internal static bool IsPointInsideRectInEitherSpace(RectangleF rect, Vector2 absolutePoint, Vector2 windowTopLeft)
         {
@@ -439,33 +192,6 @@ namespace ClickIt.Services
             return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, rect.Center, windowTopLeft);
         }
 
-        private LabelOnGround? PreferUiHoverEssenceLabel(LabelOnGround? nextLabel, IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (allLabels == null)
-                return nextLabel;
-
-            var uiHover = gameController?.IngameState?.UIHoverElement;
-            if (uiHover == null)
-                return nextLabel;
-
-            LabelOnGround? hovered = FindLabelByAddress(allLabels, uiHover.Address);
-            if (hovered == null)
-                return nextLabel;
-
-            bool hoveredIsEssence = IsEssenceLabel(hovered);
-            bool nextIsEssence = nextLabel != null && IsEssenceLabel(nextLabel);
-            bool hoveredHasOverlappingEssence = hoveredIsEssence && HasOverlappingEssenceLabel(hovered, allLabels);
-            bool hoveredDiffersFromNext = !ReferenceEquals(hovered, nextLabel);
-
-            if (ShouldPreferHoveredEssenceLabel(hoveredIsEssence, hoveredHasOverlappingEssence, nextIsEssence, hoveredDiffersFromNext))
-            {
-                DebugLog(() => "[ProcessRegularClick] UIHover-first: switching target to UIHover label");
-                return hovered;
-            }
-
-            return nextLabel;
-        }
-
         internal static bool ShouldPreferHoveredEssenceLabel(
             bool hoveredIsEssence,
             bool hoveredHasOverlappingEssence,
@@ -484,27 +210,6 @@ namespace ClickIt.Services
             return nextIsEssence;
         }
 
-        private static bool HasOverlappingEssenceLabel(LabelOnGround hoveredEssence, IReadOnlyList<LabelOnGround> allLabels)
-        {
-            if (!TryGetLabelRect(hoveredEssence, out RectangleF hoveredRect))
-                return false;
-
-            for (int i = 0; i < allLabels.Count; i++)
-            {
-                LabelOnGround? candidate = allLabels[i];
-                if (candidate == null || ReferenceEquals(candidate, hoveredEssence) || !IsEssenceLabel(candidate))
-                    continue;
-
-                if (!TryGetLabelRect(candidate, out RectangleF candidateRect))
-                    continue;
-
-                if (hoveredRect.Intersects(candidateRect))
-                    return true;
-            }
-
-            return false;
-        }
-
         private static bool TryGetLabelRect(LabelOnGround? label, out RectangleF rect)
         {
             rect = default;
@@ -520,39 +225,6 @@ namespace ClickIt.Services
                 return false;
 
             rect = r;
-            return true;
-        }
-
-        private bool ShouldSkipOrHandleSpecialLabel(LabelOnGround nextLabel, Vector2 windowTopLeft)
-        {
-            if (IsAltarLabel(nextLabel))
-            {
-                bool shouldContinuePathing = ShouldContinuePathingForSpecialAltarLabel(
-                    settings.WalkTowardOffscreenLabels.Value,
-                    nextLabel.ItemOnGround != null,
-                    nextLabel.ItemOnGround?.IsHidden == true,
-                    HasClickableAltars());
-                if (shouldContinuePathing)
-                {
-                    _ = TryWalkTowardOffscreenTarget(nextLabel.ItemOnGround);
-                    DebugLog(() => "[ProcessRegularClick] Item is an altar and altar choices are not fully clickable yet; continuing pathing");
-                    return true;
-                }
-
-                DebugLog(() => "[ProcessRegularClick] Item is an altar, breaking");
-                return true;
-            }
-
-            if (TryCorruptEssence(nextLabel, windowTopLeft))
-                return true;
-
-            if (!settings.IsInitialUltimatumClickEnabled() || !IsUltimatumLabel(nextLabel))
-                return false;
-
-            if (TryClickPreferredUltimatumModifier(nextLabel, windowTopLeft))
-                return true;
-
-            DebugLog(() => "[ProcessRegularClick] Ultimatum label detected but no preferred modifier matched; skipping generic label click");
             return true;
         }
 
@@ -576,15 +248,6 @@ namespace ClickIt.Services
             return LabelUtils.HasEssenceImprisonmentText(lbl);
         }
 
-        private LabelOnGround? FindNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (allLabels == null || allLabels.Count == 0)
-                return null;
-
-            int searchLimit = GetGroundLabelSearchLimit(allLabels.Count);
-            return FindLabelInRange(allLabels, 0, searchLimit);
-        }
-
         internal static int GetGroundLabelSearchLimit(int totalVisibleLabels)
             => Math.Max(0, totalVisibleLabels);
 
@@ -595,83 +258,6 @@ namespace ClickIt.Services
                 LabelOnGround? label = labels[i];
                 if (label?.Label != null && label.Label.Address == address)
                     return label;
-            }
-
-            return null;
-        }
-
-        private LabelOnGround? FindLabelInRange(IReadOnlyList<LabelOnGround> allLabels, int start, int endExclusive)
-        {
-            int currentStart = start;
-            int examined = 0;
-            int leverSuppressed = 0;
-            int ultimatumSuppressed = 0;
-            int overlappedSuppressed = 0;
-            int indexMisses = 0;
-
-            while (currentStart < endExclusive)
-            {
-                LabelOnGround? label = labelFilterService.GetNextLabelToClick(allLabels, currentStart, endExclusive - currentStart);
-                if (label == null)
-                {
-                    if (ShouldCaptureClickDebug())
-                    {
-                        string noLabelSummary = BuildLabelRangeRejectionDebugSummary(allLabels, start, endExclusive, examined);
-                        PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
-                    }
-                    if (examined > 0)
-                    {
-                        DebugLog(() =>
-                            $"[LabelSelectDiag] range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
-                    }
-                    return null;
-                }
-
-                examined++;
-
-                bool suppressLever = ShouldSuppressLeverClick(label);
-                bool suppressUltimatum = ShouldSuppressInactiveUltimatumLabel(label);
-                bool fullyOverlapped = inputHandler.IsLabelFullyOverlapped(label, allLabels);
-
-                if (suppressLever)
-                    leverSuppressed++;
-                if (suppressUltimatum)
-                    ultimatumSuppressed++;
-
-                if (fullyOverlapped)
-                    overlappedSuppressed++;
-
-                if (!suppressLever
-                    && !suppressUltimatum
-                    && !fullyOverlapped)
-                {
-                    PublishClickFlowDebugStage("FindLabelMatch", $"range:{start}-{endExclusive} examined:{examined}");
-                    return label;
-                }
-
-                if (fullyOverlapped)
-                {
-                    DebugLog(() => "[ProcessRegularClick] Skipping fully-overlapped label");
-                }
-
-                int idx = IndexOfLabelReference(allLabels, label, currentStart, endExclusive);
-                if (idx < 0)
-                {
-                    indexMisses++;
-                    PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
-                    DebugLog(() =>
-                        $"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
-                    return null;
-                }
-
-                currentStart = idx + 1;
-            }
-
-            if (examined > 0)
-            {
-                PublishClickFlowDebugStage("FindLabelExhausted", $"range:{start}-{endExclusive} examined:{examined}");
-                DebugLog(() =>
-                    $"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
             }
 
             return null;
@@ -688,20 +274,6 @@ namespace ClickIt.Services
             return -1;
         }
 
-        private bool ShouldSuppressLeverClick(LabelOnGround label)
-        {
-            if (!settings.LazyMode.Value)
-                return false;
-            if (!IsLeverLabel(label))
-                return false;
-
-            int cooldownMs = settings.LazyModeLeverReclickDelay?.Value ?? 1200;
-            ulong currentLeverKey = GetLeverIdentityKey(label);
-            long now = Environment.TickCount64;
-
-            return IsLeverClickSuppressedByCooldown(_lastLeverKey, _lastLeverClickTimestampMs, currentLeverKey, now, cooldownMs);
-        }
-
         private static bool IsLeverClickSuppressedByCooldown(ulong lastLeverKey, long lastLeverClickTimestampMs, ulong currentLeverKey, long now, int cooldownMs)
         {
             if (cooldownMs <= 0)
@@ -715,21 +287,6 @@ namespace ClickIt.Services
 
             long elapsed = now - lastLeverClickTimestampMs;
             return elapsed >= 0 && elapsed < cooldownMs;
-        }
-
-        private void MarkLeverClicked(LabelOnGround label)
-        {
-            if (!settings.LazyMode.Value)
-                return;
-            if (!IsLeverLabel(label))
-                return;
-
-            ulong key = GetLeverIdentityKey(label);
-            if (key == 0)
-                return;
-
-            _lastLeverKey = key;
-            _lastLeverClickTimestampMs = Environment.TickCount64;
         }
 
         private static bool IsLeverLabel(LabelOnGround? label)
@@ -759,109 +316,6 @@ namespace ClickIt.Services
             return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
         }
 
-        private ChestLootSettlementTimingOptions ResolvePostChestLootSettlementTimingOptions()
-            => new(
-                new ChestLootSettlementTiming(
-                    settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
-                    settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
-                    settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs),
-                new ChestLootSettlementTiming(
-                    settings.PauseAfterOpeningLeagueChestsInitialDelayMs?.Value ?? PostChestLootSettleDefaultInitialDelayMs,
-                    settings.PauseAfterOpeningLeagueChestsPollIntervalMs?.Value ?? PostChestLootSettleDefaultPollIntervalMs,
-                    settings.PauseAfterOpeningLeagueChestsQuietWindowMs?.Value ?? PostChestLootSettleDefaultQuietWindowMs));
-
-        private void StartPostChestLootSettlementWatch(string? mechanicId)
-        {
-            if (!ShouldWaitForChestLootSettlement(
-                mechanicId,
-                settings.PauseAfterOpeningBasicChests?.Value == true,
-                settings.PauseAfterOpeningLeagueChests?.Value == true))
-            {
-                return;
-            }
-
-            ChestLootSettlementTiming timing = ResolvePostChestLootSettlementTimingSettings(
-                mechanicId,
-                ResolvePostChestLootSettlementTimingOptions());
-
-            long now = Environment.TickCount64;
-            bool hadSourceGrid = _postChestInteractionSourceGridValid;
-            Vector2 sourceGrid = _postChestInteractionSourceGrid;
-            ClearPendingChestOpenConfirmation();
-            ClearPostChestLootSettlementWatch();
-            _postChestLootSettleWatcherActive = true;
-            _postChestLootSettleInitialDelayUntilTimestampMs = now + timing.InitialDelayMs;
-            _postChestLootSettleNextPollTimestampMs = _postChestLootSettleInitialDelayUntilTimestampMs;
-            _postChestLootSettleLastNewItemTimestampMs = _postChestLootSettleInitialDelayUntilTimestampMs;
-            _postChestLootSettlePollIntervalMs = timing.PollIntervalMs;
-            _postChestLootSettleQuietWindowMs = timing.QuietWindowMs;
-            _postChestInteractionSourceGridValid = hadSourceGrid;
-            _postChestInteractionSourceGrid = sourceGrid;
-            SeedKnownGroundItemAddresses(_postChestLootSettleKnownGroundItemAddresses, CollectGroundLabelEntityAddresses());
-        }
-
-        private bool TryHandlePendingChestOpenConfirmation(Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (!_pendingChestOpenConfirmationActive)
-                return false;
-
-            LabelOnGround? pendingChestLabel = FindPendingChestLabel(allLabels, _pendingChestOpenItemAddress, _pendingChestOpenLabelAddress);
-            bool chestLabelVisible = pendingChestLabel != null;
-            if (ShouldStartChestLootSettlementAfterClick(_pendingChestOpenConfirmationActive, chestLabelVisible))
-            {
-                PublishClickFlowDebugStage("PostChestOpenDetected", "Chest label disappeared; starting loot settle watch", _pendingChestOpenMechanicId);
-                StartPostChestLootSettlementWatch(_pendingChestOpenMechanicId);
-                return true;
-            }
-
-            if (!ShouldContinueChestOpenRetries(_pendingChestOpenConfirmationActive, chestLabelVisible) || pendingChestLabel == null)
-                return false;
-
-            if (!TryResolveLabelClickPosition(
-                pendingChestLabel,
-                _pendingChestOpenMechanicId,
-                windowTopLeft,
-                allLabels,
-                out Vector2 clickPos))
-            {
-                PublishClickFlowDebugStage("PostChestReclickResolveFailed", "Pending chest label visible but click point could not be resolved", _pendingChestOpenMechanicId);
-                return true;
-            }
-
-            bool clicked = PerformLabelClick(clickPos, pendingChestLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(pendingChestLabel));
-            PublishClickFlowDebugStage(
-                clicked ? "PostChestReclick" : "PostChestReclickRejected",
-                clicked ? "Chest label still visible; reattempted chest click" : "Chest label still visible; chest reclick was rejected",
-                _pendingChestOpenMechanicId);
-            return true;
-        }
-
-        private void MarkPendingChestOpenConfirmation(string? mechanicId, LabelOnGround? chestLabel)
-        {
-            if (!ShouldWaitForChestLootSettlement(
-                mechanicId,
-                settings.PauseAfterOpeningBasicChests?.Value == true,
-                settings.PauseAfterOpeningLeagueChests?.Value == true))
-            {
-                return;
-            }
-
-            ClearPendingChestOpenConfirmation();
-            _pendingChestOpenConfirmationActive = true;
-            _pendingChestOpenMechanicId = mechanicId;
-            _pendingChestOpenItemAddress = chestLabel?.ItemOnGround?.Address ?? 0;
-            _pendingChestOpenLabelAddress = chestLabel?.Label?.Address ?? 0;
-            _postChestInteractionSourceGridValid = TryGetEntityGridPosition(chestLabel?.ItemOnGround, out _postChestInteractionSourceGrid);
-        }
-
-        private void ClearPendingChestOpenConfirmation()
-        {
-            _pendingChestOpenConfirmationActive = false;
-            _pendingChestOpenMechanicId = null;
-            _pendingChestOpenItemAddress = 0;
-            _pendingChestOpenLabelAddress = 0;
-        }
-
         private static LabelOnGround? FindPendingChestLabel(IReadOnlyList<LabelOnGround>? allLabels, long itemAddress, long labelAddress)
         {
             if (allLabels == null || allLabels.Count == 0)
@@ -885,59 +339,6 @@ namespace ClickIt.Services
             return null;
         }
 
-        private bool IsPostChestLootSettlementBlocking(long now, out string reason)
-        {
-            reason = string.Empty;
-            if (!_postChestLootSettleWatcherActive)
-                return false;
-
-            if (now < _postChestLootSettleInitialDelayUntilTimestampMs)
-            {
-                long initialDelayRemainingMs = _postChestLootSettleInitialDelayUntilTimestampMs - now;
-                reason = $"waiting {initialDelayRemainingMs}ms before monitoring chest drops";
-                return true;
-            }
-
-            if (now >= _postChestLootSettleNextPollTimestampMs)
-            {
-                bool hasNewGroundItems = MergeNewGroundItemAddresses(
-                    _postChestLootSettleKnownGroundItemAddresses,
-                    CollectGroundLabelEntityAddresses());
-                if (hasNewGroundItems)
-                {
-                    _postChestLootSettleLastNewItemTimestampMs = now;
-                }
-
-                _postChestLootSettleNextPollTimestampMs = now + Math.Max(1, _postChestLootSettlePollIntervalMs);
-            }
-
-            if (IsChestLootSettlementQuietPeriodElapsed(
-                now,
-                _postChestLootSettleLastNewItemTimestampMs,
-                _postChestLootSettleQuietWindowMs,
-                out long quietWindowRemainingMs))
-            {
-                ClearPostChestLootSettlementWatch();
-                return false;
-            }
-
-            reason = $"waiting for chest loot to settle ({quietWindowRemainingMs}ms quiet window remaining)";
-            return true;
-        }
-
-        private void ClearPostChestLootSettlementWatch()
-        {
-            _postChestLootSettleWatcherActive = false;
-            _postChestLootSettleInitialDelayUntilTimestampMs = 0;
-            _postChestLootSettleNextPollTimestampMs = 0;
-            _postChestLootSettleLastNewItemTimestampMs = 0;
-            _postChestLootSettlePollIntervalMs = 0;
-            _postChestLootSettleQuietWindowMs = 0;
-            _postChestInteractionSourceGridValid = false;
-            _postChestInteractionSourceGrid = default;
-            _postChestLootSettleKnownGroundItemAddresses.Clear();
-        }
-
         private static void SeedKnownGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
         {
             knownAddresses.Clear();
@@ -959,46 +360,6 @@ namespace ClickIt.Services
             }
 
             return addedAny;
-        }
-
-        private bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity)
-            => ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out _);
-
-        private bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity, out string decision)
-        {
-            decision = string.Empty;
-            if (!_postChestLootSettleWatcherActive)
-            {
-                decision = "watcher-inactive";
-                return false;
-            }
-            if (settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle?.Value != true)
-            {
-                decision = "setting-disabled";
-                return false;
-            }
-            if (!_postChestInteractionSourceGridValid)
-            {
-                decision = "source-grid-unavailable";
-                return false;
-            }
-            if (!IsMechanicEligibleForNearbyChestLootSettlementBypass(mechanicId))
-            {
-                decision = "mechanic-not-eligible";
-                return false;
-            }
-            if (!TryGetEntityGridPosition(entity, out Vector2 entityGridPos))
-            {
-                decision = "candidate-grid-unavailable";
-                return false;
-            }
-
-            int maxDistance = Math.Max(0, settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance?.Value ?? 10);
-            float distanceSq = GetDistanceSquared(_postChestInteractionSourceGrid, entityGridPos);
-            float distance = MathF.Sqrt(distanceSq);
-            bool allowed = IsWithinNearbyChestLootSettlementBypassDistance(_postChestInteractionSourceGrid, entityGridPos, maxDistance);
-            decision = $"{(allowed ? "allowed" : "blocked")}; mechanic:{mechanicId ?? "unknown"}; dist:{distance:0.0}; max:{maxDistance}; source:({_postChestInteractionSourceGrid.X:0.0},{_postChestInteractionSourceGrid.Y:0.0}); candidate:({entityGridPos.X:0.0},{entityGridPos.Y:0.0})";
-            return allowed;
         }
 
         internal static bool IsMechanicEligibleForNearbyChestLootSettlementBypass(string? mechanicId)
@@ -1157,179 +518,6 @@ namespace ClickIt.Services
             return true;
         }
 
-        private bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
-        {
-            if (!settings.WalkTowardOffscreenLabels.Value)
-                return false;
-
-            if (ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(gameController)))
-            {
-                ClearStickyOffscreenTarget();
-                pathfindingService.ClearLatestPath();
-                DebugLog(() => "[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a RitualBlocker is active.");
-                PublishClickFlowDebugStage("OffscreenPathingBlockedByRitual", "RitualBlocker active");
-                return false;
-            }
-
-            if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
-            {
-                ClearStickyOffscreenTarget();
-                pathfindingService.ClearLatestPath();
-                DebugLog(() => "[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a clickable on-screen mechanic is available.");
-                return false;
-            }
-
-            Entity? target = preferredTarget ?? ResolveNearestOffscreenWalkTarget();
-            if (target == null)
-            {
-                if (preferredTarget != null)
-                {
-                    ClearStickyOffscreenTarget();
-                }
-
-                pathfindingService.ClearLatestPath();
-                return false;
-            }
-
-            if (!target.IsValid || target.IsHidden || IsEntityHiddenByMinimapIcon(target))
-            {
-                ClearStickyOffscreenTarget();
-                pathfindingService.ClearLatestPath();
-                return false;
-            }
-
-            SetStickyOffscreenTarget(target);
-
-            string targetPath = target.Path ?? string.Empty;
-            bool builtPath = pathfindingService.TryBuildPathToTarget(gameController, target, settings.OffscreenPathfindingSearchBudget.Value);
-            if (!builtPath)
-            {
-                DebugLog(() => "[TryWalkTowardOffscreenTarget] Pathfinding route not found; trying directional walk click.");
-            }
-
-            Vector2 targetScreen = default;
-            bool resolvedFromPath = builtPath && TryResolveOffscreenTargetScreenPointFromPath(out targetScreen);
-            if (!resolvedFromPath && !TryResolveOffscreenTargetScreenPoint(target, out targetScreen))
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, resolvedClickPoint: false, targetScreen, clickScreen: default, stage: "ResolveTargetScreenFailed");
-                DebugLog(() => "[TryWalkTowardOffscreenTarget] Failed to resolve target screen point.");
-                return false;
-            }
-
-            if (!TryResolveDirectionalWalkClickPosition(targetScreen, targetPath, out Vector2 walkClick))
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, resolvedClickPoint: false, targetScreen, clickScreen: default, stage: "ResolveClickPointFailed");
-                DebugLog(() => "[TryWalkTowardOffscreenTarget] Failed to resolve directional click point.");
-                return false;
-            }
-
-            string movementSkillDebug;
-            if (TryUseMovementSkillForOffscreenPathing(targetPath, targetScreen, builtPath, out Vector2 movementSkillCastPoint, out movementSkillDebug))
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, resolvedClickPoint: true, targetScreen, movementSkillCastPoint, stage: "MovementSkillUsed", movementSkillDebug);
-                DebugLog(() => $"[TryWalkTowardOffscreenTarget] Used movement skill toward offscreen target: {targetPath}");
-                return true;
-            }
-
-            if (!string.IsNullOrWhiteSpace(movementSkillDebug))
-            {
-                DebugLog(() => $"[TryWalkTowardOffscreenTarget] Movement skill not used: {movementSkillDebug}");
-            }
-
-            PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, resolvedClickPoint: true, targetScreen, walkClick, stage: "BeforeClick", movementSkillDebug);
-
-            bool clicked = PerformLabelClick(walkClick, null, gameController);
-            if (clicked)
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, resolvedClickPoint: true, targetScreen, walkClick, stage: "Clicked", movementSkillDebug);
-                _ = pathfindingService.TryBuildPathToTarget(gameController, target, settings.OffscreenPathfindingSearchBudget.Value);
-                DebugLog(() => $"[TryWalkTowardOffscreenTarget] Walking toward offscreen target: {targetPath}");
-            }
-            else
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, resolvedClickPoint: true, targetScreen, walkClick, stage: "ClickRejected", movementSkillDebug);
-            }
-
-            return clicked;
-        }
-
-        private bool TryHandleStickyOffscreenTarget(Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (!TryResolveStickyOffscreenTarget(out Entity? stickyTarget) || stickyTarget == null)
-                return false;
-
-            if (TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels))
-                return true;
-
-            _ = TryWalkTowardOffscreenTarget(stickyTarget);
-            return true;
-        }
-
-        private bool TryClickStickyTargetIfPossible(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (ShrineService.IsShrine(stickyTarget))
-            {
-                var shrineScreenRaw = gameController.Game.IngameState.Camera.WorldToScreen(stickyTarget.PosNum);
-                Vector2 shrinePos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-                string path = stickyTarget.Path ?? string.Empty;
-                if (!IsClickableInEitherSpace(shrinePos, path))
-                    return false;
-
-                bool clickedShrine = PerformLabelClick(shrinePos, null, gameController);
-                if (clickedShrine)
-                {
-                    ClearStickyOffscreenTarget();
-                    shrineService.InvalidateCache();
-                }
-
-                return clickedShrine;
-            }
-
-            LabelOnGround? stickyLabel = FindVisibleLabelForEntity(stickyTarget, allLabels);
-            if (stickyLabel == null)
-                return false;
-
-            if (ShouldSuppressPathfindingLabel(stickyLabel))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            string? mechanicId = labelFilterService.GetMechanicIdForLabel(stickyLabel);
-            if (string.IsNullOrWhiteSpace(mechanicId))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            if (!TryResolveLabelClickPosition(
-                stickyLabel,
-                mechanicId,
-                windowTopLeft,
-                allLabels,
-                out Vector2 clickPos,
-                explicitPath: stickyTarget.Path))
-            {
-                return false;
-            }
-
-            bool clickedLabel = ShouldUseHoldClickForSettlersMechanic(mechanicId)
-                ? PerformLabelHoldClick(clickPos, stickyLabel.Label, gameController, holdDurationMs: 0, ShouldForceUiHoverVerificationForLabel(stickyLabel))
-                : PerformLabelClick(clickPos, stickyLabel.Label, gameController, ShouldForceUiHoverVerificationForLabel(stickyLabel));
-            if (clickedLabel)
-            {
-                MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
-                ClearStickyOffscreenTarget();
-            }
-
-            return clickedLabel;
-        }
-
-        private void SetStickyOffscreenTarget(Entity target)
-        {
-            _stickyOffscreenTargetAddress = target.Address;
-        }
-
         private bool TryResolveLabelClickPosition(
             LabelOnGround label,
             string? mechanicId,
@@ -1389,72 +577,9 @@ namespace ClickIt.Services
             return IsInsideWindowInEitherSpace(worldScreenAbsolute);
         }
 
-        private void ClearStickyOffscreenTarget()
-        {
-            _stickyOffscreenTargetAddress = 0;
-        }
-
-        private bool TryResolveStickyOffscreenTarget(out Entity? target)
-        {
-            target = null;
-
-            if (_stickyOffscreenTargetAddress == 0)
-                return false;
-
-            target = FindEntityByAddress(_stickyOffscreenTargetAddress);
-            if (target == null || !target.IsValid || target.IsHidden || IsEntityHiddenByMinimapIcon(target))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            if (ShrineService.IsShrine(target) && !ShrineService.IsClickableShrineCandidate(target))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            string stickyPath = target.Path ?? string.Empty;
-            bool isEldritchAltar = IsEldritchAltarPath(stickyPath);
-            if (ShouldDropStickyTargetForUntargetableEldritchAltar(isEldritchAltar, target.IsTargetable))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            return true;
-        }
-
         internal static bool ShouldDropStickyTargetForUntargetableEldritchAltar(bool isEldritchAltar, bool isTargetable)
         {
             return isEldritchAltar && !isTargetable;
-        }
-
-        private Entity? FindEntityByAddress(long address)
-        {
-            if (address == 0 || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
-                return null;
-
-            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
-            {
-                var entities = kv.Value;
-                if (entities == null)
-                    continue;
-
-                for (int i = 0; i < entities.Count; i++)
-                {
-                    Entity entity = entities[i];
-                    if (entity != null && IsSameEntityAddress(address, entity.Address))
-                        return entity;
-                }
-            }
-
-            return null;
-        }
-
-        private bool IsStickyTarget(Entity? entity)
-        {
-            return entity != null && IsSameEntityAddress(_stickyOffscreenTargetAddress, entity.Address);
         }
 
         internal static bool IsSameEntityAddress(long leftAddress, long rightAddress)
@@ -1468,183 +593,6 @@ namespace ClickIt.Services
             return minimapIcon != null && minimapIcon.IsHide;
         }
 
-        private void PublishOffscreenMovementDebug(
-            Entity target,
-            string targetPath,
-            bool builtPath,
-            bool resolvedFromPath,
-            bool resolvedClickPoint,
-            Vector2 targetScreen,
-            Vector2 clickScreen,
-            string stage,
-            string movementSkillDebug = "")
-        {
-            var player = gameController.Player;
-            Vector2 playerGrid = player != null
-                ? new Vector2(player.GridPosNum.X, player.GridPosNum.Y)
-                : default;
-            Vector2 targetGrid = new(target.GridPosNum.X, target.GridPosNum.Y);
-            RectangleF win = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 center = new(win.X + (win.Width * 0.5f), win.Y + (win.Height * 0.5f));
-
-            pathfindingService.SetLatestOffscreenMovementDebug(new PathfindingService.OffscreenMovementDebugSnapshot(
-                HasData: true,
-                Stage: stage,
-                TargetPath: targetPath,
-                BuiltPath: builtPath,
-                ResolvedFromPath: resolvedFromPath,
-                ResolvedClickPoint: resolvedClickPoint,
-                WindowCenter: center,
-                TargetScreen: targetScreen,
-                ClickScreen: clickScreen,
-                PlayerGrid: playerGrid,
-                TargetGrid: targetGrid,
-                MovementSkillDebug: movementSkillDebug ?? string.Empty,
-                TimestampMs: Environment.TickCount64));
-        }
-
-        private bool TryResolveDirectionalWalkClickPosition(Vector2 targetScreen, string targetPath, out Vector2 clickPos)
-        {
-            clickPos = default;
-
-            RectangleF win = gameController.Window.GetWindowRectangleTimeCache;
-            if (win.Width <= 0 || win.Height <= 0)
-                return false;
-
-            float insetX = Math.Max(28f, win.Width * 0.10f);
-            float insetY = Math.Max(28f, win.Height * 0.10f);
-            float safeLeft = win.Left + insetX;
-            float safeRight = win.Right - insetX;
-            float safeTop = win.Top + insetY;
-            float safeBottom = win.Bottom - insetY;
-
-            Vector2 center = new(win.X + (win.Width * 0.5f), win.Y + (win.Height * 0.5f));
-            Vector2 direction = targetScreen - center;
-            float lenSq = (direction.X * direction.X) + (direction.Y * direction.Y);
-            if (lenSq < 1f)
-                return false;
-
-            for (float t = 1.05f; t >= 0.30f; t -= 0.1f)
-            {
-                Vector2 candidate = center + (direction * t);
-                if (!IsInsideWindow(win, candidate))
-                    continue;
-                if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
-                    continue;
-                if (!pointIsInClickableArea(candidate, targetPath))
-                    continue;
-
-                clickPos = candidate;
-                return true;
-            }
-
-            Vector2 clamped = new(
-                Math.Clamp(targetScreen.X, safeLeft, safeRight),
-                Math.Clamp(targetScreen.Y, safeTop, safeBottom));
-
-            if (pointIsInClickableArea(clamped, targetPath))
-            {
-                clickPos = clamped;
-                return true;
-            }
-
-            return false;
-        }
-
-        private Entity? ResolveNearestOffscreenWalkTarget()
-        {
-            if (gameController?.EntityListWrapper?.ValidEntitiesByType == null)
-                return null;
-
-            if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
-            {
-                ClearStickyOffscreenTarget();
-                return null;
-            }
-
-            if (TryResolveStickyOffscreenTarget(out Entity? stickyTarget) && stickyTarget != null)
-                return stickyTarget;
-
-            int maxDistance = GetOffscreenPathfindingTargetSearchDistance();
-
-            Entity? labelBackedTarget = ResolveNearestOffscreenLabelBackedTarget(maxDistance, out string? labelMechanicId);
-            Entity? eldritchAltarTarget = ResolveNearestOffscreenEldritchAltarTarget(maxDistance, out string? eldritchAltarMechanicId);
-            Entity? shrineTarget = ResolveNearestOffscreenShrineTarget(maxDistance);
-            Entity? areaTransitionTarget = ResolveNearestOffscreenAreaTransitionTarget(maxDistance, out string? areaTransitionMechanicId);
-
-            if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null)
-                return null;
-
-            RefreshMechanicPriorityCaches();
-
-            Entity? best = null;
-            string? bestMechanicId = null;
-            MechanicRank bestRank = default;
-            bool hasBest = false;
-
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, labelBackedTarget, labelMechanicId);
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId);
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, ShrineMechanicId);
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId);
-
-            return best;
-        }
-
-        private Entity? ResolveNearestOffscreenEldritchAltarTarget(int maxDistance, out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            if ((!settings.ClickExarchAltars.Value && !settings.ClickEaterAltars.Value)
-                || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
-            {
-                return null;
-            }
-
-            return ResolveNearestOffscreenEntityTarget(
-                maxDistance,
-                includeEntity: (entity, _) => entity.IsTargetable,
-                resolveMechanicId: (_, path) => GetEldritchAltarMechanicIdForPath(
-                    settings.ClickExarchAltars.Value,
-                    settings.ClickEaterAltars.Value,
-                    path),
-                out selectedMechanicId);
-        }
-
-        private bool ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable()
-        {
-            bool prioritizeOnscreen = settings.PrioritizeOnscreenClickableMechanicsOverPathfinding?.Value == true;
-            bool shouldEvaluateOnscreenMechanicChecks = ShouldEvaluateOnscreenMechanicChecks(
-                prioritizeOnscreen,
-                settings.ClickShrines.Value,
-                settings.ClickLostShipmentCrates.Value,
-                settings.ClickSettlersOre.Value,
-                settings.ClickEaterAltars.Value,
-                settings.ClickExarchAltars.Value);
-            if (!shouldEvaluateOnscreenMechanicChecks)
-                return false;
-
-            bool hasClickableAltars = HasClickableAltars();
-            bool hasClickableShrine = ResolveNextShrineCandidate() != null;
-            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate);
-            bool hasClickableLostShipment = lostShipmentCandidate.HasValue;
-            bool hasClickableSettlers = settlersOreCandidate.HasValue;
-
-            bool shouldAvoid = ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
-                prioritizeOnscreen,
-                hasClickableAltars,
-                hasClickableShrine,
-                hasClickableLostShipment,
-                hasClickableSettlers);
-
-            if (shouldAvoid)
-            {
-                PublishClickFlowDebugStage(
-                    "OffscreenPathingBlocked",
-                    $"onscreen clickable mechanic detected (altar={hasClickableAltars}, shrine={hasClickableShrine}, lost={hasClickableLostShipment}, settlers={hasClickableSettlers})");
-            }
-
-            return shouldAvoid;
-        }
 
         internal static bool ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
             bool prioritizeOnscreenClickableMechanics,
@@ -1881,27 +829,6 @@ namespace ClickIt.Services
             }
         }
 
-        private Entity? ResolveNearestOffscreenAreaTransitionTarget(int maxDistance, out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            if ((!settings.ClickAreaTransitions.Value && !settings.ClickLabyrinthTrials.Value)
-                || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
-            {
-                return null;
-            }
-
-            return ResolveNearestOffscreenEntityTarget(
-                maxDistance,
-                includeEntity: (_, _) => true,
-                resolveMechanicId: (entity, path) => GetAreaTransitionMechanicIdForPath(
-                    settings.ClickAreaTransitions.Value,
-                    settings.ClickLabyrinthTrials.Value,
-                    entity.Type,
-                    path),
-                out selectedMechanicId);
-        }
-
         internal static string? GetAreaTransitionMechanicIdForPath(
             bool clickAreaTransitions,
             bool clickLabyrinthTrials,
@@ -1951,76 +878,6 @@ namespace ClickIt.Services
                 || path.Contains("TrialPortal", StringComparison.OrdinalIgnoreCase);
         }
 
-        private Entity? ResolveNearestOffscreenShrineTarget(int maxDistance)
-        {
-            if (!settings.ClickShrines.Value || gameController?.EntityListWrapper?.ValidEntitiesByType == null)
-                return null;
-
-            return ResolveNearestOffscreenEntityTarget(
-                maxDistance,
-                includeEntity: (entity, _) => ShrineService.IsClickableShrineCandidate(entity),
-                resolveMechanicId: (_, _) => ShrineMechanicId,
-                out _);
-        }
-
-        // Compatibility seam for reflection-based tests that assert this dedicated helper exists.
-        private Entity? ResolveNearestOffscreenLabelBackedTarget(int maxDistance)
-        {
-            return ResolveNearestOffscreenLabelBackedTarget(maxDistance, out _);
-        }
-
-        private Entity? ResolveNearestOffscreenLabelBackedTarget(int maxDistance, out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            var labels = GetLabelsForOffscreenSelection();
-            if (labels == null || labels.Count == 0)
-                return null;
-
-            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-
-            RefreshMechanicPriorityCaches();
-
-            Entity? best = null;
-            string? bestMechanicId = null;
-            MechanicRank bestRank = default;
-            bool hasBestRank = false;
-
-            for (int i = 0; i < labels.Count; i++)
-            {
-                LabelOnGround? label = labels[i];
-                Entity? entity = label?.ItemOnGround;
-                if (label == null || entity == null)
-                    continue;
-                if (!entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
-                    continue;
-                if (entity.DistancePlayer > maxDistance)
-                    continue;
-                if (ShouldSuppressPathfindingLabel(label))
-                    continue;
-
-                string? mechanicId = labelFilterService.GetMechanicIdForLabel(label);
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                    continue;
-
-                if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft))
-                    continue;
-
-                MechanicRank rank = BuildMechanicRankWithSharedEngine(entity.DistancePlayer, mechanicId);
-                if (hasBestRank && CompareMechanicRanks(rank, bestRank) >= 0)
-                    continue;
-
-                best = entity;
-                bestMechanicId = mechanicId;
-                bestRank = rank;
-                hasBestRank = true;
-            }
-
-            selectedMechanicId = bestMechanicId;
-            return best;
-        }
-
         private MechanicRank BuildMechanicRankWithSharedEngine(float distance, string? mechanicId)
         {
             var context = new CandidateScoreEngine.CandidateScoreContext(
@@ -2061,115 +918,16 @@ namespace ClickIt.Services
                 mechanicPriorityContext);
         }
 
-        private Entity? ResolveNearestOffscreenEntityTarget(
-            int maxDistance,
-            Func<Entity, string, bool> includeEntity,
-            Func<Entity, string, string?> resolveMechanicId,
-            out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            if (gameController?.EntityListWrapper?.ValidEntitiesByType == null)
-                return null;
-
-            Entity? best = null;
-            float bestDistance = float.MaxValue;
-            string? bestMechanicId = null;
-
-            foreach (var kv in gameController.EntityListWrapper.ValidEntitiesByType)
-            {
-                var entities = kv.Value;
-                if (entities == null)
-                    continue;
-
-                for (int i = 0; i < entities.Count; i++)
-                {
-                    Entity entity = entities[i];
-                    if (!TryPrepareOffscreenEntityTargetCandidate(entity, maxDistance, out string path))
-                        continue;
-
-                    if (!includeEntity(entity, path))
-                        continue;
-
-                    string? mechanicId = resolveMechanicId(entity, path);
-                    if (string.IsNullOrWhiteSpace(mechanicId))
-                        continue;
-
-                    float d = entity.DistancePlayer;
-                    if (d >= bestDistance)
-                        continue;
-
-                    bestDistance = d;
-                    best = entity;
-                    bestMechanicId = mechanicId;
-                }
-            }
-
-            selectedMechanicId = bestMechanicId;
-            return best;
-        }
-
-        private bool TryPrepareOffscreenEntityTargetCandidate(Entity? entity, int maxDistance, out string path)
-        {
-            path = string.Empty;
-
-            if (entity == null || !entity.IsValid || entity.IsHidden || IsEntityHiddenByMinimapIcon(entity))
-                return false;
-            if (entity.DistancePlayer > maxDistance)
-                return false;
-
-            path = entity.Path ?? string.Empty;
-
-            var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-            Vector2 screen = new(screenRaw.X, screenRaw.Y);
-            if (IsClickableInEitherSpace(screen, path))
-                return false;
-
-            return true;
-        }
-
         private bool ShouldSuppressPathfindingLabel(LabelOnGround label)
         {
             return ShouldSuppressPathfindingLabelCore(
-                ShouldSuppressLeverClick(label),
+                LabelSelection.ShouldSuppressLeverClick(label),
                 ShouldSuppressInactiveUltimatumLabel(label));
         }
 
         internal static bool ShouldSuppressPathfindingLabelCore(bool suppressLeverClick, bool suppressInactiveUltimatum)
         {
             return suppressLeverClick || suppressInactiveUltimatum;
-        }
-
-        private bool ShouldContinuePathfindingToLabel(
-            LabelOnGround label,
-            Entity entity,
-            IReadOnlyList<LabelOnGround>? allLabels,
-            Vector2 windowTopLeft)
-        {
-            if (!TryGetLabelRect(label, out RectangleF rect))
-                return true;
-
-            string path = entity.Path ?? string.Empty;
-            bool labelInWindow = IsInsideWindowInEitherSpace(rect.Center);
-            bool labelClickable = IsClickableInEitherSpace(rect.Center, path);
-
-            if (!labelInWindow || !labelClickable)
-                return true;
-
-            bool clickPointResolvable = allLabels != null
-                && inputHandler.TryCalculateClickPosition(
-                    label,
-                    windowTopLeft,
-                    allLabels,
-                    point => IsClickableInEitherSpace(point, path),
-                    out _);
-
-            return ShouldContinuePathfindingWhenLabelActionable(labelInWindow, labelClickable, clickPointResolvable);
-        }
-
-        internal static bool ShouldContinuePathfindingWhenLabelClickable(bool labelClickable)
-        {
-            return !labelClickable;
         }
 
         internal static bool ShouldContinuePathfindingWhenLabelActionable(bool labelInWindow, bool labelClickable, bool clickPointResolvable)
@@ -2291,122 +1049,5 @@ namespace ClickIt.Services
             return null;
         }
 
-    }
-
-    internal static class CandidateScoreEngine
-    {
-        internal readonly struct CandidateScoreContext
-        {
-            public CandidateScoreContext(
-                IReadOnlyDictionary<string, int> priorityIndexMap,
-                IReadOnlySet<string> ignoreDistanceSet,
-                IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-                int priorityDistancePenalty)
-            {
-                PriorityIndexMap = priorityIndexMap;
-                IgnoreDistanceSet = ignoreDistanceSet;
-                IgnoreDistanceWithinByMechanicId = ignoreDistanceWithinByMechanicId;
-                PriorityDistancePenalty = priorityDistancePenalty;
-            }
-
-            public IReadOnlyDictionary<string, int> PriorityIndexMap { get; }
-            public IReadOnlySet<string> IgnoreDistanceSet { get; }
-            public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; }
-            public int PriorityDistancePenalty { get; }
-        }
-
-        internal readonly struct CandidateScore
-        {
-            public CandidateScore(bool ignored, int priorityIndex, float weightedDistance, float rawDistance, float cursorDistance)
-            {
-                Ignored = ignored;
-                PriorityIndex = priorityIndex;
-                WeightedDistance = weightedDistance;
-                RawDistance = rawDistance;
-                CursorDistance = cursorDistance;
-            }
-
-            public bool Ignored { get; }
-            public int PriorityIndex { get; }
-            public float WeightedDistance { get; }
-            public float RawDistance { get; }
-            public float CursorDistance { get; }
-        }
-
-        public static CandidateScore Build(float distance, string? mechanicId, float cursorDistance, in CandidateScoreContext context)
-        {
-            int priorityIndex = ResolvePriorityIndex(mechanicId, context.PriorityIndexMap);
-            bool ignored = IsIgnoreDistanceActive(mechanicId, distance, context.IgnoreDistanceSet, context.IgnoreDistanceWithinByMechanicId);
-            float weightedDistance = CalculateWeightedDistance(distance, priorityIndex, context.PriorityDistancePenalty);
-            return new CandidateScore(ignored, priorityIndex, weightedDistance, distance, cursorDistance);
-        }
-
-        public static int ResolvePriorityIndex(string? mechanicId, IReadOnlyDictionary<string, int> priorityIndexMap)
-        {
-            if (string.IsNullOrWhiteSpace(mechanicId))
-                return int.MaxValue;
-
-            return priorityIndexMap.TryGetValue(mechanicId, out int index)
-                ? index
-                : int.MaxValue;
-        }
-
-        public static bool IsIgnoreDistanceActive(
-            string? mechanicId,
-            float distance,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
-        {
-            if (string.IsNullOrWhiteSpace(mechanicId) || !ignoreDistanceSet.Contains(mechanicId))
-                return false;
-
-            int maxDistance = ignoreDistanceWithinByMechanicId.TryGetValue(mechanicId, out int configuredDistance)
-                ? configuredDistance
-                : 100;
-
-            return distance <= maxDistance;
-        }
-
-        public static float CalculateWeightedDistance(float distance, int priorityIndex, int penalty)
-            => priorityIndex == int.MaxValue
-                ? float.MaxValue
-                : distance + (priorityIndex * Math.Max(0, penalty));
-
-        public static int Compare(CandidateScore left, CandidateScore right)
-        {
-            if (left.Ignored && right.Ignored)
-            {
-                int byPriority = left.PriorityIndex.CompareTo(right.PriorityIndex);
-                if (byPriority != 0)
-                    return byPriority;
-
-                int byRawDistanceIgnored = left.RawDistance.CompareTo(right.RawDistance);
-                if (byRawDistanceIgnored != 0)
-                    return byRawDistanceIgnored;
-
-                return left.CursorDistance.CompareTo(right.CursorDistance);
-            }
-
-            if (left.Ignored != right.Ignored)
-            {
-                return left.Ignored
-                    ? (left.PriorityIndex <= right.PriorityIndex ? -1 : 1)
-                    : (right.PriorityIndex <= left.PriorityIndex ? 1 : -1);
-            }
-
-            int byWeightedDistance = left.WeightedDistance.CompareTo(right.WeightedDistance);
-            if (byWeightedDistance != 0)
-                return byWeightedDistance;
-
-            int byRawDistanceNonIgnored = left.RawDistance.CompareTo(right.RawDistance);
-            if (byRawDistanceNonIgnored != 0)
-                return byRawDistanceNonIgnored;
-
-            int byCursorDistance = left.CursorDistance.CompareTo(right.CursorDistance);
-            if (byCursorDistance != 0)
-                return byCursorDistance;
-
-            return left.PriorityIndex.CompareTo(right.PriorityIndex);
-        }
     }
 }

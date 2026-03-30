@@ -72,7 +72,7 @@ namespace ClickIt.Services
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
-        public object GetElementAccessLock()
+        internal object GetElementAccessLock()
         {
             return _elementAccessLock;
         }
@@ -99,16 +99,16 @@ namespace ClickIt.Services
             return IsClickableInEitherSpace(clientPoint, windowTopLeft, pointIsInClickableArea, path);
         }
 
-        public void CancelOffscreenPathingState()
+        internal void CancelOffscreenPathingState()
         {
-            ClearStickyOffscreenTarget();
+            OffscreenPathing.ClearStickyOffscreenTarget();
             pathfindingService.ClearLatestPath();
         }
 
-        public void CancelPostChestLootSettlementState()
+        internal void CancelPostChestLootSettlementState()
         {
-            ClearPendingChestOpenConfirmation();
-            ClearPostChestLootSettlementWatch();
+            ChestLootSettlement.ClearPendingChestOpenConfirmation();
+            ChestLootSettlement.ClearPostChestLootSettlementWatch();
         }
 
         internal static bool IsClickableInEitherSpace(

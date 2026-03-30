@@ -14,7 +14,7 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
-        public IEnumerator ProcessAltarClicking()
+        internal IEnumerator ProcessAltarClicking()
         {
             var altarSnapshot = altarService.GetAltarComponentsReadOnly();
             if (altarSnapshot.Count == 0)
@@ -33,7 +33,7 @@ namespace ClickIt.Services
             }
         }
 
-        public bool HasClickableAltars()
+        internal bool HasClickableAltars()
         {
             bool clickEater = settings.ClickEaterAltars;
             bool clickExarch = settings.ClickExarchAltars;
@@ -96,7 +96,7 @@ namespace ClickIt.Services
             return false;
         }
 
-        public bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
+        internal bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
         {
             return TryGetClickableAltarElement(altar, clickEater, clickExarch, out _);
         }

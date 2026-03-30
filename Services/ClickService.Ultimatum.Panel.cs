@@ -459,7 +459,7 @@ namespace ClickIt.Services
         private static bool TryReadUltimatumChoiceSaturation(Element choiceElement, out bool isSaturated)
         {
             isSaturated = false;
-            if (!TryGetDynamicValue(choiceElement, s => s.IsSaturated, out object? rawSaturated) || rawSaturated == null)
+            if (!SharedDynamicAdapter.TryGetValue(choiceElement, s => s.IsSaturated, out object? rawSaturated) || rawSaturated == null)
                 return false;
 
             if (rawSaturated is bool boolValue)
@@ -492,9 +492,9 @@ namespace ClickIt.Services
 
             bool isActive = false;
             object? data = gameController?.IngameState?.Data;
-            if (TryGetDynamicValue(data, s => s.ServerData, out object? serverData)
+            if (SharedDynamicAdapter.TryGetValue(data, s => s.ServerData, out object? serverData)
                 && serverData != null
-                && TryGetDynamicValue(serverData, s => s.AtlasPassiveSkillIds, out object? atlasPassiveIds)
+                && SharedDynamicAdapter.TryGetValue(serverData, s => s.AtlasPassiveSkillIds, out object? atlasPassiveIds)
                 && atlasPassiveIds != null)
             {
                 isActive = ContainsAtlasPassiveSkillId(atlasPassiveIds, GruelingGauntletAtlasPassiveSkillId);

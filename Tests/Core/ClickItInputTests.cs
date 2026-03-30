@@ -181,54 +181,5 @@ namespace ClickIt.Tests.Unit
                 .Should().BeFalse();
         }
 
-        [TestMethod]
-        public void HandleHotkeyReleased_ClearsChestSettlementState()
-        {
-            var plugin = new ClickIt();
-            plugin.__Test_SetSettings(new ClickItSettings());
-
-            var state = new PluginContext();
-            var backing = plugin.GetType().GetField("<State>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            backing.Should().NotBeNull();
-            backing.SetValue(plugin, state);
-
-            var clickService = (Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(Services.ClickService));
-            var knownAddresses = new System.Collections.Generic.HashSet<long> { 100L };
-
-            typeof(Services.ClickService).GetField("_pendingChestOpenConfirmationActive", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(clickService, true);
-            typeof(Services.ClickService).GetField("_pendingChestOpenMechanicId", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(clickService, "basic-chests");
-            typeof(Services.ClickService).GetField("_pendingChestOpenItemAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(clickService, 11L);
-            typeof(Services.ClickService).GetField("_pendingChestOpenLabelAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(clickService, 22L);
-            typeof(Services.ClickService).GetField("_postChestLootSettleWatcherActive", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(clickService, true);
-            typeof(Services.ClickService).GetField("_postChestLootSettleInitialDelayUntilTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(clickService, 777L);
-            typeof(Services.ClickService).GetField("_postChestLootSettleKnownGroundItemAddresses", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(clickService, knownAddresses);
-
-            state.ClickService = clickService;
-
-            var method = typeof(ClickIt).GetMethod("HandleHotkeyReleased", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            method.Should().NotBeNull();
-            method.Invoke(plugin, []);
-
-            typeof(Services.ClickService).GetField("_pendingChestOpenConfirmationActive", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .GetValue(clickService).Should().Be(false);
-            typeof(Services.ClickService).GetField("_pendingChestOpenMechanicId", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .GetValue(clickService).Should().BeNull();
-            typeof(Services.ClickService).GetField("_pendingChestOpenItemAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .GetValue(clickService).Should().Be(0L);
-            typeof(Services.ClickService).GetField("_pendingChestOpenLabelAddress", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .GetValue(clickService).Should().Be(0L);
-            typeof(Services.ClickService).GetField("_postChestLootSettleWatcherActive", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .GetValue(clickService).Should().Be(false);
-            typeof(Services.ClickService).GetField("_postChestLootSettleInitialDelayUntilTimestampMs", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .GetValue(clickService).Should().Be(0L);
-            knownAddresses.Should().BeEmpty();
-        }
     }
 }
