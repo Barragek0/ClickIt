@@ -144,3 +144,4 @@ GlobalSuppressions.cs
 # Copilot
 .github/copilot-instructions.md
 *plan.md
+*changes.md
