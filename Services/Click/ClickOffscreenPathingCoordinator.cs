@@ -235,9 +235,13 @@ namespace ClickIt.Services
                     return false;
                 }
 
-                bool clickedLabel = ShouldUseHoldClickForSettlersMechanic(mechanicId)
-                    ? owner.PerformLabelHoldClick(clickPos, stickyLabel.Label, owner.gameController, holdDurationMs: 0, ShouldForceUiHoverVerificationForLabel(stickyLabel))
-                    : owner.PerformLabelClick(clickPos, stickyLabel.Label, owner.gameController, ShouldForceUiHoverVerificationForLabel(stickyLabel));
+                bool clickedLabel = owner.ClickActions.ExecuteLabelInteraction(
+                    clickPos,
+                    stickyLabel.Label,
+                    owner.gameController,
+                    useHoldClick: ShouldUseHoldClickForSettlersMechanic(mechanicId),
+                    holdDurationMs: 0,
+                    forceUiHoverVerification: ShouldForceUiHoverVerificationForLabel(stickyLabel));
                 if (clickedLabel)
                 {
                     owner.ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);

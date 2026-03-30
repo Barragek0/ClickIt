@@ -129,9 +129,12 @@ namespace ClickIt.Services
                 if (captureClickDebug)
                     PublishSettlersCandidateDebug("ClickAttempt", candidate, "Attempting settlers click");
 
-                bool clicked = ShouldUseHoldClickForSettlersMechanic(candidate.MechanicId)
-                    ? owner.PerformLabelHoldClick(candidate.ClickPosition, null, owner.gameController, holdDurationMs: 0)
-                    : owner.PerformLabelClick(candidate.ClickPosition, null, owner.gameController);
+                bool clicked = owner.ClickActions.ExecuteLabelInteraction(
+                    candidate.ClickPosition,
+                    expectedElement: null,
+                    controller: owner.gameController,
+                    useHoldClick: ShouldUseHoldClickForSettlersMechanic(candidate.MechanicId),
+                    holdDurationMs: 0);
 
                 if (!clicked)
                     return false;
@@ -285,9 +288,7 @@ namespace ClickIt.Services
                     int labelBacked = 0;
                     long labelScanMs = 0;
                     long diagnosticsStartMs = collectDiagnostics ? Environment.TickCount64 : 0;
-                    IReadOnlySet<long>? labelEntityAddresses = ShouldScanSettlersGroundLabelAddresses(captureClickDebug)
-                        ? owner.CollectGroundLabelEntityAddresses()
-                        : null;
+                    IReadOnlySet<long>? labelEntityAddresses = owner.CollectGroundLabelEntityAddresses();
                     if (collectDiagnostics)
                     {
                         labelScanMs = Math.Max(0, Environment.TickCount64 - diagnosticsStartMs);
@@ -309,7 +310,7 @@ namespace ClickIt.Services
                             if (collectDiagnostics)
                                 scanned++;
 
-                            if (ShouldSkipSettlersEntityBeforeMechanicResolution(entity.IsValid, entity.IsHidden, entity.DistancePlayer, owner.settings.ClickDistance.Value))
+                            if (ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, owner.settings.ClickDistance.Value))
                             {
                                 if (collectDiagnostics)
                                     prefiltered++;
@@ -318,6 +319,7 @@ namespace ClickIt.Services
 
                             if (!TryBuildSettlersCandidate(
                                     entity,
+                                    windowArea,
                                     labelEntityAddresses,
                                     captureClickDebug,
                                     out SettlersOreCandidate candidate,
@@ -406,6 +408,7 @@ namespace ClickIt.Services
 
             private bool TryBuildSettlersCandidate(
                 Entity entity,
+                RectangleF windowArea,
                 IReadOnlySet<long>? labelEntityAddresses,
                 bool captureClickDebug,
                 out SettlersOreCandidate candidate,
@@ -426,12 +429,11 @@ namespace ClickIt.Services
                 hasGroundLabel = labelEntityAddresses != null
                     && IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
 
-                if (!ShouldAcceptSettlersCandidate(hasGroundLabel))
+                if (!hasGroundLabel)
                     return false;
 
                 var worldScreenRawVec = owner.gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
                 Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
-                RectangleF windowArea = owner.gameController.Window.GetWindowRectangleTimeCache;
                 Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowArea.X, worldScreenRaw.Y + windowArea.Y);
 
                 attemptedProbe = true;

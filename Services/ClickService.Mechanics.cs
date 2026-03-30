@@ -24,10 +24,6 @@ namespace ClickIt.Services
 
         internal static bool ShouldClickShrineWhenGroundItemsHidden(Entity? shrine) => shrine != null;
 
-        internal static bool IsVerisiumPath(string? path)
-            => ContainsAny(path, Definitions.Constants.Verisium)
-               && !ContainsAny(path, VerisiumBossSubAreaTransitionPathMarker);
-
         internal static bool ShouldUseHoldClickForSettlersMechanic(string? mechanicId)
             => string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase);
 
@@ -41,9 +37,6 @@ namespace ClickIt.Services
         internal static bool ShouldSkipSettlersOreEntity(bool isValid, float distance, int clickDistance)
             => !isValid || distance > clickDistance;
 
-        internal static bool ShouldSkipVerisiumEntity(bool isValid, float distance, int clickDistance)
-            => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
-
         internal static bool ShouldReuseTimedLabelCountCache(long now, long cachedAtMs, int cachedLabelCount, int currentLabelCount, int cacheWindowMs)
         {
             if (cachedAtMs <= 0 || cacheWindowMs <= 0)
@@ -55,15 +48,6 @@ namespace ClickIt.Services
             long age = now - cachedAtMs;
             return age >= 0 && age <= cacheWindowMs;
         }
-
-        internal static bool ShouldScanSettlersGroundLabelAddresses(bool captureClickDebug)
-            => true;
-
-        internal static bool ShouldAcceptSettlersCandidate(bool hasGroundLabel)
-            => hasGroundLabel;
-
-        internal static bool ShouldSkipSettlersEntityBeforeMechanicResolution(bool isValid, bool isHidden, float distance, int clickDistance)
-            => ShouldSkipSettlersOreEntity(isValid, distance, clickDistance);
 
         private MechanicPriorityContext CreateMechanicPriorityContext()
             => new(

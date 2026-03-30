@@ -2,6 +2,8 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
+        private ClickTickContextFactory? _tickContextFactory;
+        private ClickActionExecutor? _clickActionExecutor;
         private LabelSelectionCoordinator? _labelSelectionCoordinator;
         private ChestLootSettlementTracker? _chestLootSettlementTracker;
         private VisibleMechanicCoordinator? _visibleMechanicCoordinator;
@@ -20,5 +22,9 @@ namespace ClickIt.Services
         private MovementSkillCoordinator MovementSkills => _movementSkillCoordinator ??= new(this);
 
         private RegularClickCoordinator RegularClick => _regularClickCoordinator ??= new(this);
+
+        private ClickTickContextFactory TickContextFactory => _tickContextFactory ??= new(this);
+
+        private ClickActionExecutor ClickActions => _clickActionExecutor ??= new(this);
     }
 }

@@ -4,7 +4,6 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using SharpDX;
-using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Services
 {
@@ -33,7 +32,7 @@ namespace ClickIt.Services
 
             private IEnumerator RunCore()
             {
-                if (!TryBuildContext(out ClickContext context))
+                if (!owner.TickContextFactory.TryCreateRegularClickContext(out ClickTickContext context))
                     yield break;
 
                 ClickCandidates candidates = _acquisitionPhase.Collect(context);
@@ -47,71 +46,6 @@ namespace ClickIt.Services
                     yield return postActions.Current;
                 }
             }
-
-            private bool TryBuildContext(out ClickContext context)
-            {
-                RectangleF windowArea = owner.gameController.Window.GetWindowRectangleTimeCache;
-                Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-                Vector2 cursorAbsolute = GetCursorAbsolutePosition();
-
-                try
-                {
-                    if (owner.TryHandleUltimatumPanelUi(windowTopLeft))
-                    {
-                        context = default;
-                        return false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    owner.DebugLog(() => $"[ProcessRegularClick] Ultimatum UI handler failed, continuing regular click path: {ex.Message}");
-                }
-
-                if (owner.MovementSkills.TryGetMovementSkillPostCastBlockState(Environment.TickCount64, out string movementSkillBlockReason))
-                {
-                    owner.DebugLog(() => $"[ProcessRegularClick] Skipping click attempt while movement skill is still executing ({movementSkillBlockReason}).");
-                    owner.PublishClickFlowDebugStage("MovementBlocked", movementSkillBlockReason);
-                    context = default;
-                    return false;
-                }
-
-                long now = Environment.TickCount64;
-                bool isPostChestLootSettleBlocking = owner.ChestLootSettlement.IsPostChestLootSettlementBlocking(now, out string chestLootSettleReason);
-                IReadOnlyList<LabelOnGround>? allLabels = owner.GetLabelsForRegularSelection();
-                if (owner.ChestLootSettlement.TryHandlePendingChestOpenConfirmation(windowTopLeft, allLabels))
-                {
-                    context = default;
-                    return false;
-                }
-
-                Entity? nextShrine = owner.VisibleMechanics.ResolveNextShrineCandidate();
-                owner.RefreshMechanicPriorityCaches();
-                MechanicPriorityContext mechanicPriorityContext = owner.CreateMechanicPriorityContext();
-
-                context = new ClickContext(
-                    windowTopLeft,
-                    cursorAbsolute,
-                    now,
-                    isPostChestLootSettleBlocking,
-                    chestLootSettleReason,
-                    allLabels,
-                    nextShrine,
-                    mechanicPriorityContext,
-                    owner.groundItemsVisible());
-
-                return true;
-            }
-
-            private readonly record struct ClickContext(
-                Vector2 WindowTopLeft,
-                Vector2 CursorAbsolute,
-                long Now,
-                bool IsPostChestLootSettleBlocking,
-                string ChestLootSettleReason,
-                IReadOnlyList<LabelOnGround>? AllLabels,
-                Entity? NextShrine,
-                MechanicPriorityContext MechanicPriorityContext,
-                bool GroundItemsVisible);
 
             private readonly record struct ClickCandidates(
                 LostShipmentCandidate? LostShipment,
@@ -135,12 +69,12 @@ namespace ClickIt.Services
 
             private interface IClickCandidateProvider
             {
-                ClickCandidates Collect(ClickContext context);
+                ClickCandidates Collect(ClickTickContext context);
             }
 
             private sealed class RegularClickCandidateProvider(ClickService owner) : IClickCandidateProvider
             {
-                public ClickCandidates Collect(ClickContext context)
+                public ClickCandidates Collect(ClickTickContext context)
                 {
                     LostShipmentCandidate? lostShipment;
                     SettlersOreCandidate? settlersOre;
@@ -175,7 +109,7 @@ namespace ClickIt.Services
 
             private sealed class CandidateRankingPhase(ClickService owner)
             {
-                public RankingResult Rank(ClickContext context, ClickCandidates candidates)
+                public RankingResult Rank(ClickTickContext context, ClickCandidates candidates)
                 {
                     if (!context.GroundItemsVisible)
                     {
@@ -193,7 +127,7 @@ namespace ClickIt.Services
                         GroundItemsVisible: true);
                 }
 
-                private bool ShouldTryHiddenSettlers(ClickContext context, ClickCandidates candidates)
+                private bool ShouldTryHiddenSettlers(ClickTickContext context, ClickCandidates candidates)
                 {
                     if (!candidates.SettlersOre.HasValue)
                         return false;
@@ -215,7 +149,7 @@ namespace ClickIt.Services
                         context.MechanicPriorityContext);
                 }
 
-                private bool ShouldTryHiddenLostShipment(ClickContext context, ClickCandidates candidates)
+                private bool ShouldTryHiddenLostShipment(ClickTickContext context, ClickCandidates candidates)
                 {
                     if (!candidates.LostShipment.HasValue)
                         return false;
@@ -233,12 +167,12 @@ namespace ClickIt.Services
                         context.MechanicPriorityContext);
                 }
 
-                private static bool ShouldTryHiddenShrine(ClickContext context)
+                private static bool ShouldTryHiddenShrine(ClickTickContext context)
                 {
                     return context.NextShrine != null && ClickService.ShouldClickShrineWhenGroundItemsHidden(context.NextShrine);
                 }
 
-                private bool ShouldTryVisibleSettlers(ClickContext context, ClickCandidates candidates)
+                private bool ShouldTryVisibleSettlers(ClickTickContext context, ClickCandidates candidates)
                 {
                     if (!candidates.SettlersOre.HasValue)
                         return false;
@@ -263,7 +197,7 @@ namespace ClickIt.Services
                         context.MechanicPriorityContext);
                 }
 
-                private bool ShouldTryVisibleLostShipment(ClickContext context, ClickCandidates candidates)
+                private bool ShouldTryVisibleLostShipment(ClickTickContext context, ClickCandidates candidates)
                 {
                     if (!candidates.LostShipment.HasValue)
                         return false;
@@ -299,14 +233,14 @@ namespace ClickIt.Services
 
             private sealed class ClickExecutor(ClickService owner)
             {
-                public ExecutionResult Execute(ClickContext context, ClickCandidates candidates, DecisionResult decision)
+                public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
                 {
                     return decision.GroundItemsVisible
                         ? ExecuteVisible(context, candidates, decision)
                         : ExecuteHidden(context, candidates, decision);
                 }
 
-                private bool IsBlockedByPostChestLootSettlement(ClickContext context, string? mechanicId, Entity? entity)
+                private bool IsBlockedByPostChestLootSettlement(ClickTickContext context, string? mechanicId, Entity? entity)
                 {
                     if (!context.IsPostChestLootSettleBlocking)
                         return false;
@@ -321,7 +255,7 @@ namespace ClickIt.Services
                     return true;
                 }
 
-                private bool TryExecuteSettlersHidden(ClickContext context, SettlersOreCandidate candidate)
+                private bool TryExecuteSettlersHidden(ClickTickContext context, SettlersOreCandidate candidate)
                 {
                     if (!IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
                         && owner.VisibleMechanics.TryClickSettlersOre(candidate))
@@ -334,13 +268,13 @@ namespace ClickIt.Services
                     return false;
                 }
 
-                private bool TryExecuteSettlersVisible(ClickContext context, SettlersOreCandidate candidate)
+                private bool TryExecuteSettlersVisible(ClickTickContext context, SettlersOreCandidate candidate)
                 {
                     return !IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
                         && owner.VisibleMechanics.TryClickSettlersOre(candidate);
                 }
 
-                private bool TryExecuteLostShipment(ClickContext context, LostShipmentCandidate candidate)
+                private bool TryExecuteLostShipment(ClickTickContext context, LostShipmentCandidate candidate)
                 {
                     if (IsBlockedByPostChestLootSettlement(context, MechanicIds.LostShipment, candidate.Entity))
                         return false;
@@ -349,7 +283,7 @@ namespace ClickIt.Services
                     return true;
                 }
 
-                private bool TryExecuteShrine(ClickContext context)
+                private bool TryExecuteShrine(ClickTickContext context)
                 {
                     if (context.NextShrine == null)
                         return false;
@@ -365,7 +299,7 @@ namespace ClickIt.Services
                     return new ExecutionResult(false);
                 }
 
-                private ExecutionResult ExecuteHidden(ClickContext context, ClickCandidates candidates, DecisionResult decision)
+                private ExecutionResult ExecuteHidden(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
                 {
                     if (decision.TrySettlers && candidates.SettlersOre.HasValue)
                     {
@@ -403,7 +337,7 @@ namespace ClickIt.Services
                     return StopExecution();
                 }
 
-                private ExecutionResult ExecuteVisible(ClickContext context, ClickCandidates candidates, DecisionResult decision)
+                private ExecutionResult ExecuteVisible(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
                 {
                     if (decision.TrySettlers && candidates.SettlersOre.HasValue)
                     {
@@ -431,7 +365,7 @@ namespace ClickIt.Services
                     return HandleVisibleLabel(context, candidates);
                 }
 
-                private ExecutionResult HandleNoVisibleLabel(ClickContext context)
+                private ExecutionResult HandleNoVisibleLabel(ClickTickContext context)
                 {
                     if (context.IsPostChestLootSettleBlocking)
                     {
@@ -462,7 +396,7 @@ namespace ClickIt.Services
                     return StopExecution();
                 }
 
-                private ExecutionResult HandleVisibleLabel(ClickContext context, ClickCandidates candidates)
+                private ExecutionResult HandleVisibleLabel(ClickTickContext context, ClickCandidates candidates)
                 {
                     LabelOnGround nextLabel = candidates.NextLabel!;
 
@@ -501,9 +435,13 @@ namespace ClickIt.Services
 
                     bool forceUiHoverVerification = ClickService.ShouldForceUiHoverVerificationForLabel(nextLabel);
 
-                    bool clicked = ClickService.ShouldUseHoldClickForSettlersMechanic(candidates.NextLabelMechanicId)
-                        ? owner.PerformLabelHoldClick(clickPos, nextLabel.Label, owner.gameController, holdDurationMs: 0, forceUiHoverVerification)
-                        : owner.PerformLabelClick(clickPos, nextLabel.Label, owner.gameController, forceUiHoverVerification);
+                    bool clicked = owner.ClickActions.ExecuteLabelInteraction(
+                        clickPos,
+                        nextLabel.Label,
+                        owner.gameController,
+                        useHoldClick: ClickService.ShouldUseHoldClickForSettlersMechanic(candidates.NextLabelMechanicId),
+                        holdDurationMs: 0,
+                        forceUiHoverVerification: forceUiHoverVerification);
 
                     owner.PublishLabelClickDebug(
                         stage: clicked ? "ClickSuccess" : "ClickFailed",
@@ -533,7 +471,7 @@ namespace ClickIt.Services
                     return new ExecutionResult(true);
                 }
 
-                private ExecutionResult HandleVisibleLabelResolveFailure(ClickContext context, ClickCandidates candidates, LabelOnGround nextLabel)
+                private ExecutionResult HandleVisibleLabelResolveFailure(ClickTickContext context, ClickCandidates candidates, LabelOnGround nextLabel)
                 {
                     owner.DebugLog(() => "[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
                     owner.PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", candidates.NextLabelMechanicId);

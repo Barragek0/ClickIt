@@ -1,0 +1,17 @@
+using ExileCore.PoEMemory.Elements;
+using ExileCore.PoEMemory.MemoryObjects;
+using SharpDX;
+
+namespace ClickIt.Services
+{
+    internal readonly record struct ClickTickContext(
+        Vector2 WindowTopLeft,
+        Vector2 CursorAbsolute,
+        long Now,
+        bool IsPostChestLootSettleBlocking,
+        string ChestLootSettleReason,
+        IReadOnlyList<LabelOnGround>? AllLabels,
+        Entity? NextShrine,
+        ClickService.MechanicPriorityContext MechanicPriorityContext,
+        bool GroundItemsVisible);
+}

@@ -84,9 +84,15 @@ namespace ClickIt.Services
                         return false;
                     }
 
-                    bool clicked = ShouldUseHoldClickForSettlersMechanic(mechanicId)
-                        ? owner.PerformLabelHoldClick(clickPos, null, owner.gameController, holdDurationMs: 0, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true)
-                        : owner.PerformLabelClick(clickPos, null, owner.gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true);
+                    bool clicked = owner.ClickActions.ExecuteLabelInteraction(
+                        clickPos,
+                        expectedElement: null,
+                        controller: owner.gameController,
+                        useHoldClick: ShouldUseHoldClickForSettlersMechanic(mechanicId),
+                        holdDurationMs: 0,
+                        forceUiHoverVerification: false,
+                        allowWhenHotkeyInactive: true,
+                        avoidCursorMove: true);
 
                     if (!clicked)
                         return false;
@@ -300,9 +306,15 @@ namespace ClickIt.Services
                 if (selectedType == 0)
                     return false;
 
-                bool clicked = selectedType == 3 && ShouldUseHoldClickForSettlersMechanic(selectedSettlersMechanicId)
-                    ? owner.PerformLabelHoldClick(selectedClickPos, null, owner.gameController, holdDurationMs: 0, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true)
-                    : owner.PerformLabelClick(selectedClickPos, null, owner.gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: true, avoidCursorMove: true);
+                bool clicked = owner.ClickActions.ExecuteLabelInteraction(
+                    selectedClickPos,
+                    expectedElement: null,
+                    controller: owner.gameController,
+                    useHoldClick: selectedType == 3 && ShouldUseHoldClickForSettlersMechanic(selectedSettlersMechanicId),
+                    holdDurationMs: 0,
+                    forceUiHoverVerification: false,
+                    allowWhenHotkeyInactive: true,
+                    avoidCursorMove: true);
 
                 if (!clicked)
                     return false;
