@@ -12,10 +12,13 @@ namespace ClickIt.Services
     public partial class ClickService
     {
         private static IEnumerable<object?> EnumerateObjects(object? source)
-            => SharedDynamicAdapter.EnumerateObjects(source);
+            => DynamicObjectAdapter.EnumerateObjects(source);
 
         private static bool TryExtractElement(object? source, out Element? element)
-            => SharedDynamicAdapter.TryExtractElement(source, out element);
+        {
+            element = source as Element;
+            return element != null;
+        }
 
         private void LogDiagnostics(string prefix, List<string> diagnostics)
         {
@@ -132,9 +135,9 @@ namespace ClickIt.Services
             IReadOnlyList<string> modifierNamesByIndex = GetUltimatumChoicePanelModifierNames(choicePanel, diagnostics);
 
             int seen = 0;
-            foreach (object? choiceObj in SharedDynamicAdapter.EnumerateObjects(choiceElements))
+            foreach (object? choiceObj in DynamicObjectAdapter.EnumerateObjects(choiceElements))
             {
-                if (!SharedDynamicAdapter.TryExtractElement(choiceObj, out Element? option) || option == null)
+                if (!TryExtractElement(choiceObj, out Element? option) || option == null)
                 {
                     diagnostics?.Add($"ChoicePanel option[{seen}] is not an Element.");
                     seen++;
@@ -172,7 +175,7 @@ namespace ClickIt.Services
 
             List<string>? names = null;
 
-            foreach (object? modifierObj in SharedDynamicAdapter.EnumerateObjects(modifiersObj))
+            foreach (object? modifierObj in DynamicObjectAdapter.EnumerateObjects(modifiersObj))
             {
                 names ??= new List<string>(3);
 
@@ -319,61 +322,4 @@ namespace ClickIt.Services
 
     }
 
-    internal static class SharedDynamicAdapter
-    {
-        public static IEnumerable<object?> EnumerateObjects(object? source)
-        {
-            if (source == null)
-                yield break;
-
-            if (source is string)
-            {
-                yield return source;
-                yield break;
-            }
-
-            if (source is IEnumerable enumerable)
-            {
-                foreach (object? item in enumerable)
-                    yield return item;
-                yield break;
-            }
-
-            yield return source;
-        }
-
-        public static bool TryExtractElement(object? source, out Element? element)
-        {
-            element = source as Element;
-            return element != null;
-        }
-
-        public static bool TryGetValue(object? source, Func<dynamic, object?> accessor, out object? value)
-            => DynamicAccess.TryGetDynamicValue(source, accessor, out value);
-
-        public static bool TryReadBool(object? source, Func<dynamic, object?> accessor, out bool value)
-            => DynamicAccess.TryReadBool(source, accessor, out value);
-
-        public static bool TryReadInt(object? source, Func<dynamic, object?> accessor, out int value)
-            => DynamicAccess.TryReadInt(source, accessor, out value);
-
-        public static bool TryReadString(object? source, Func<dynamic, object?> accessor, out string value)
-            => DynamicAccess.TryReadString(source, accessor, out value);
-
-        public static bool TryReadBoolFromEither(object? primarySource, object? secondarySource, Func<dynamic, object?> accessor, out bool value)
-        {
-            if (TryReadBool(primarySource, accessor, out value))
-                return true;
-
-            return TryReadBool(secondarySource, accessor, out value);
-        }
-
-        public static bool TryReadStringFromEither(object? primarySource, object? secondarySource, Func<dynamic, object?> accessor, out string value)
-        {
-            if (TryReadString(primarySource, accessor, out value))
-                return true;
-
-            return TryReadString(secondarySource, accessor, out value);
-        }
-    }
 }

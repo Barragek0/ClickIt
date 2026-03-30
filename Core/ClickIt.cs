@@ -1,74 +1,64 @@
-﻿using ClickIt.Utils;
-using ExileCore;
+﻿using ExileCore;
+using System.IO;
 using System.Diagnostics;
-using System.Threading;
+using System.Reflection;
 
 namespace ClickIt
 {
     public partial class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
         public PluginContext State { get; } = new PluginContext();
+        private ClickItSettings? _testSettingsForTests;
+        private bool _testDisableAutoDownload;
+        private string? _testConfigDirectory;
+        private Services.AlertService? _seamAlertService;
+
+        private ClickItSettings EffectiveSettings => _testSettingsForTests ?? Settings;
 
         public override void OnLoad()
         {
             CanUseMultiThreading = true;
         }
 
+        internal ClickItSettings __Test_GetSettings()
+        {
+            return _testSettingsForTests ?? Settings ?? new ClickItSettings();
+        }
+
+        internal void __Test_SetSettings(ClickItSettings settings)
+        {
+            _testSettingsForTests = settings;
+
+            if (TrySetViaSettingsProperty(settings))
+                return;
+
+            TrySetViaLikelyFields(settings);
+        }
+
+        internal void __Test_SetDisableAutoDownload(bool value)
+        {
+            _testDisableAutoDownload = value;
+        }
+
+        internal bool __Test_GetDisableAutoDownload()
+        {
+            return _testDisableAutoDownload;
+        }
+
+        internal void __Test_SetConfigDirectory(string? path)
+        {
+            _testConfigDirectory = path;
+        }
+
+        internal string? __Test_GetConfigDirectory()
+        {
+            return _testConfigDirectory;
+        }
+
         public override void OnClose()
         {
             ClickItSettings runtimeSettings = Settings ?? EffectiveSettings;
-            State.IsShuttingDown = true;
-
-            // Remove event handlers to prevent issues during DLL reload
-            runtimeSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
-            runtimeSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
-            if (!ReferenceEquals(runtimeSettings, EffectiveSettings))
-            {
-                EffectiveSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
-                EffectiveSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
-            }
-
-            State.AltarCoroutine?.Done();
-            State.ClickLabelCoroutine?.Done();
-            State.ManualUiHoverCoroutine?.Done();
-            State.DelveFlareCoroutine?.Done();
-            State.DeepMemoryDumpCoroutine?.Done();
-            StopAllClickItCoroutines();
-            WaitForCoroutineShutdown(State.AltarCoroutine);
-            WaitForCoroutineShutdown(State.ClickLabelCoroutine);
-            WaitForCoroutineShutdown(State.ManualUiHoverCoroutine);
-            WaitForCoroutineShutdown(State.DelveFlareCoroutine);
-            WaitForCoroutineShutdown(State.DeepMemoryDumpCoroutine);
-            WaitForAllClickItCoroutinesShutdown();
-
-            State.AltarCoroutine = null;
-            State.ClickLabelCoroutine = null;
-            State.ManualUiHoverCoroutine = null;
-            State.DelveFlareCoroutine = null;
-            State.DeepMemoryDumpCoroutine = null;
-
-            LockManager.Instance = null;
-
-            LabelUtils.ClearThreadLocalStorage();
-            Services.ShrineService.ClearThreadLocalStorageForCurrentThread();
-            Services.ClickService.ClearThreadLocalStorageForCurrentThread();
-            Services.LabelFilterService.ClearInventoryProbeCacheForShutdown();
-            State.AltarService?.ClearRuntimeCaches();
-
-            State.DisposeCompositionRoot();
-
-            // Best-effort finalizer drain to reduce transient assembly/file lock windows during host hot-reload.
-            try
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-                Thread.Sleep(50);
-            }
-            catch
-            {
-                // Best effort only.
-            }
+            PluginLifecycleCoordinator.Shutdown(this, runtimeSettings);
 
             // In some test scenarios the Settings property isn't populated on the base class even though tests inject settings via the test seam.
             // Avoid invoking base.OnClose when the real Settings property is null to prevent ExileCore.BaseSettingsPlugin from attempting to save a null settings instance.
@@ -83,82 +73,23 @@ namespace ClickIt
             var settings = Settings
                 ?? throw new InvalidOperationException("Settings is null during plugin initialization.");
 
-            State.IsShuttingDown = false;
+            return PluginLifecycleCoordinator.Initialise(this, settings);
+        }
+
+        internal void SubscribeLifecycleButtonHandlers(ClickItSettings settings)
+        {
             settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
             settings.CopyAdditionalDebugInfoButton.OnPressed += CopyAdditionalDebugInfoButtonPressed;
-            State.InitializeCompositionRoot(this, settings);
-            var errorHandler = State.ErrorHandler
-                ?? throw new InvalidOperationException("ErrorHandler was not initialized by composition root.");
-            if (GameController == null)
-                throw new InvalidOperationException("GameController is null during coroutine manager initialization.");
-            var gameController = GameController;
-            errorHandler.RegisterGlobalExceptionHandlers();
-
-            var coroutineManager = new CoroutineManager(
-                State!,
-                settings,
-                gameController!,
-                errorHandler!);
-            coroutineManager.StartCoroutines(this);
-
-            State.FinalizeCompositionRootForStartup(this, settings);
-
-            return true;
         }
 
-        private static void WaitForCoroutineShutdown(ExileCore.Shared.Coroutine? coroutine, int timeoutMs = 750)
+        internal void UnsubscribeLifecycleButtonHandlers(ClickItSettings runtimeSettings)
         {
-            if (coroutine == null)
-                return;
-
-            var sw = Stopwatch.StartNew();
-            while (!coroutine.IsDone && sw.ElapsedMilliseconds < timeoutMs)
+            runtimeSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
+            runtimeSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
+            if (!ReferenceEquals(runtimeSettings, EffectiveSettings))
             {
-                Thread.Sleep(10);
-            }
-        }
-
-        private static void StopAllClickItCoroutines()
-        {
-            try
-            {
-                var coroutines = Core.ParallelRunner.Coroutines
-                    .Where(c => c != null && c.Name != null && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-                foreach (var coroutine in coroutines)
-                {
-                    coroutine.Done();
-                }
-            }
-            catch
-            {
-                // Best effort cleanup during shutdown.
-            }
-        }
-
-        private static void WaitForAllClickItCoroutinesShutdown(int timeoutMs = 2000)
-        {
-            try
-            {
-                var sw = Stopwatch.StartNew();
-                while (sw.ElapsedMilliseconds < timeoutMs)
-                {
-                    bool anyActive = Core.ParallelRunner.Coroutines
-                        .Any(c => c != null
-                            && c.Name != null
-                            && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase)
-                            && !c.IsDone);
-
-                    if (!anyActive)
-                        break;
-
-                    Thread.Sleep(10);
-                }
-            }
-            catch
-            {
-                // Best effort cleanup during shutdown.
+                EffectiveSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
+                EffectiveSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
             }
         }
 
@@ -211,6 +142,125 @@ namespace ClickIt
             // Skip logging during render loop to prevent crashes
             if (State.IsRendering) return;
             base.LogError(message, frame);
+        }
+
+        internal Services.AlertService __Test_GetAlertService()
+        {
+            return GetOrCreateAlertService();
+        }
+
+        internal Services.AlertService GetAlertService()
+        {
+            return GetOrCreateAlertService();
+        }
+
+        internal ClickItSettings GetEffectiveSettingsForLifecycle()
+        {
+            return EffectiveSettings;
+        }
+
+        private bool TrySetViaSettingsProperty(ClickItSettings settings)
+        {
+            var prop = GetType().GetProperty("Settings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+            if (prop == null)
+                return false;
+
+            var setMethod = prop.GetSetMethod(true);
+            if (setMethod != null)
+            {
+                setMethod.Invoke(this, [settings]);
+                return true;
+            }
+
+            if (!prop.CanWrite)
+                return false;
+
+            prop.SetValue(this, settings);
+            return true;
+        }
+
+        private void TrySetViaLikelyFields(ClickItSettings settings)
+        {
+            for (Type? current = GetType(); current != null; current = current.BaseType)
+            {
+                if (TrySetBackingField(settings, current))
+                    return;
+                if (TrySetCandidateField(settings, current))
+                    return;
+            }
+        }
+
+        private bool TrySetBackingField(ClickItSettings settings, Type current)
+        {
+            var backingField = current.GetField("<Settings>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (backingField == null)
+                return false;
+
+            backingField.SetValue(this, settings);
+            return true;
+        }
+
+        private bool TrySetCandidateField(ClickItSettings settings, Type current)
+        {
+            var fields = current.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            foreach (var field in fields)
+            {
+                if (field.FieldType != null && field.FieldType.IsInstanceOfType(settings))
+                {
+                    field.SetValue(this, settings);
+                    return true;
+                }
+
+                if (!string.IsNullOrEmpty(field.Name) && field.Name.IndexOf("setting", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    field.SetValue(this, settings);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Services.AlertService GetOrCreateAlertService()
+        {
+            if (State == null)
+            {
+                _seamAlertService ??= new Services.AlertService(
+                    () => Settings,
+                    () => EffectiveSettings,
+                    SafeGetConfigDirectory,
+                    __Test_GetConfigDirectory,
+                    __Test_GetDisableAutoDownload,
+                    () => GameController,
+                    LogMessage,
+                    LogError);
+
+                return _seamAlertService;
+            }
+
+            State.AlertService ??= new Services.AlertService(
+                () => Settings,
+                () => EffectiveSettings,
+                SafeGetConfigDirectory,
+                __Test_GetConfigDirectory,
+                __Test_GetDisableAutoDownload,
+                () => GameController,
+                LogMessage,
+                LogError);
+
+            return State.AlertService;
+        }
+
+        private string SafeGetConfigDirectory()
+        {
+            try
+            {
+                return ConfigDirectory;
+            }
+            catch
+            {
+                return Path.GetTempPath();
+            }
         }
 
     }

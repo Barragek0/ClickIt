@@ -168,12 +168,12 @@ namespace ClickIt
 
         private void ResetMechanicPriorityDefaults()
         {
-            MechanicPriorityOrder = MechanicPriorityDefaultOrderIds.ToList();
+            MechanicPriorityOrder = MechanicPriorityCatalog.DefaultOrderIds.ToList();
             MechanicPriorityIgnoreDistanceIds = new HashSet<string>(PriorityComparer)
             {
                 MechanicIds.Shrines
             };
-            MechanicPriorityIgnoreDistanceWithinById = MechanicPriorityIds
+            MechanicPriorityIgnoreDistanceWithinById = MechanicPriorityCatalog.Ids
                 .ToDictionary(static x => x, static _ => MechanicIgnoreDistanceWithinDefault, PriorityComparer);
         }
 
@@ -224,7 +224,7 @@ namespace ClickIt
 
             NormalizeLegacyMechanicPriorityFields();
 
-            HashSet<string> valid = new(MechanicPriorityIds, PriorityComparer);
+            HashSet<string> valid = new(MechanicPriorityCatalog.Ids, PriorityComparer);
 
             bool applyDefaultIgnoreDistance = MechanicPriorityIgnoreDistanceIds.Count == 0;
             MechanicPriorityOrder = BuildSanitizedMechanicPriorityOrder(valid);
@@ -268,13 +268,13 @@ namespace ClickIt
 
         private List<string> BuildSanitizedMechanicPriorityOrder(HashSet<string> validMechanicIds)
         {
-            var sanitizedOrder = new List<string>(MechanicPriorityEntries.Length);
+            var sanitizedOrder = new List<string>(MechanicPriorityCatalog.Entries.Length);
             HashSet<string> seen = new(PriorityComparer);
 
             AddValidUniqueMechanicIds(MechanicPriorityOrder, validMechanicIds, seen, sanitizedOrder);
-            AddValidUniqueMechanicIds(MechanicPriorityDefaultOrderIds, validMechanicIds, seen, sanitizedOrder);
+            AddValidUniqueMechanicIds(MechanicPriorityCatalog.DefaultOrderIds, validMechanicIds, seen, sanitizedOrder);
 
-            foreach (MechanicPriorityEntry entry in MechanicPriorityEntries)
+            foreach (MechanicPriorityEntry entry in MechanicPriorityCatalog.Entries)
             {
                 if (seen.Add(entry.Id))
                     sanitizedOrder.Add(entry.Id);

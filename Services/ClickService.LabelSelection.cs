@@ -15,10 +15,10 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
-        private const int MovementSkillRecastDelayMs = 450;
-        private const int MovementSkillKeyTapDelayMs = 30;
+        internal const int MovementSkillRecastDelayMs = 450;
+        internal const int MovementSkillKeyTapDelayMs = 30;
         private const int MovementSkillDefaultPostCastClickBlockMs = 120;
-        private const int MovementSkillShieldChargePostCastClickBlockMs = 100;
+        internal const int MovementSkillShieldChargePostCastClickBlockMs = 100;
         private const int MovementSkillLeapSlamPostCastClickBlockMs = 230;
         private const int MovementSkillWhirlingBladesPostCastClickBlockMs = 170;
         private const int MovementSkillBlinkArrowPostCastClickBlockMs = 260;
@@ -28,11 +28,11 @@ namespace ClickIt.Services
         private const int MovementSkillChainHookPostCastClickBlockMs = 220;
         private const int MovementSkillDefaultStatusPollExtraMs = 900;
         private const int MovementSkillExtendedStatusPollExtraMs = 1300;
-        private const int PostChestLootSettleDefaultInitialDelayMs = 500;
-        private const int PostChestLootSettleDefaultPollIntervalMs = 100;
-        private const int PostChestLootSettleDefaultQuietWindowMs = 500;
-        private const float ManualCursorTargetSnapDistancePx = 34f;
-        private const float ManualCursorGroundProjectionSnapDistancePx = 44f;
+        internal const int PostChestLootSettleDefaultInitialDelayMs = 500;
+        internal const int PostChestLootSettleDefaultPollIntervalMs = 100;
+        internal const int PostChestLootSettleDefaultQuietWindowMs = 500;
+        internal const float ManualCursorTargetSnapDistancePx = 34f;
+        internal const float ManualCursorGroundProjectionSnapDistancePx = 44f;
 
         private static readonly string[] MovementSkillInternalNameMarkers =
         [
@@ -145,7 +145,7 @@ namespace ClickIt.Services
             return Math.Min(absoluteDistanceSq, clientDistanceSq);
         }
 
-        private static float GetManualCursorLabelHitScore(RectangleF rect, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        internal static float GetManualCursorLabelHitScore(RectangleF rect, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
             Vector2 center = rect.Center;
             return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, center, windowTopLeft);
@@ -158,13 +158,13 @@ namespace ClickIt.Services
             return (dx * dx) + (dy * dy);
         }
 
-        private static Vector2 GetCursorAbsolutePosition()
+        internal static Vector2 GetCursorAbsolutePosition()
         {
             var cursor = Mouse.GetCursorPosition();
             return new Vector2(cursor.X, cursor.Y);
         }
 
-        private static float GetCursorDistanceSquaredToPoint(Vector2 point, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        internal static float GetCursorDistanceSquaredToPoint(Vector2 point, Vector2 cursorAbsolute, Vector2 windowTopLeft)
             => GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, point, windowTopLeft);
 
         private float? TryGetCursorDistanceSquaredToEntity(Entity? entity, Vector2 cursorAbsolute, Vector2 windowTopLeft)
@@ -184,7 +184,7 @@ namespace ClickIt.Services
             }
         }
 
-        private static float? TryGetCursorDistanceSquaredToLabel(LabelOnGround? label, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        internal static float? TryGetCursorDistanceSquaredToLabel(LabelOnGround? label, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
             if (!TryGetLabelRect(label, out RectangleF rect))
                 return null;
@@ -210,7 +210,7 @@ namespace ClickIt.Services
             return nextIsEssence;
         }
 
-        private static bool TryGetLabelRect(LabelOnGround? label, out RectangleF rect)
+        internal static bool TryGetLabelRect(LabelOnGround? label, out RectangleF rect)
         {
             rect = default;
             Element? element = label?.Label;
@@ -240,7 +240,7 @@ namespace ClickIt.Services
                 && !hasClickableAltars;
         }
 
-        private static bool IsEssenceLabel(LabelOnGround lbl)
+        internal static bool IsEssenceLabel(LabelOnGround lbl)
         {
             if (lbl == null || lbl.Label == null)
                 return false;
@@ -251,7 +251,7 @@ namespace ClickIt.Services
         internal static int GetGroundLabelSearchLimit(int totalVisibleLabels)
             => Math.Max(0, totalVisibleLabels);
 
-        private static LabelOnGround? FindLabelByAddress(IReadOnlyList<LabelOnGround> labels, long address)
+        internal static LabelOnGround? FindLabelByAddress(IReadOnlyList<LabelOnGround> labels, long address)
         {
             for (int i = 0; i < labels.Count; i++)
             {
@@ -263,7 +263,7 @@ namespace ClickIt.Services
             return null;
         }
 
-        private static int IndexOfLabelReference(IReadOnlyList<LabelOnGround> labels, LabelOnGround target, int start, int endExclusive)
+        internal static int IndexOfLabelReference(IReadOnlyList<LabelOnGround> labels, LabelOnGround target, int start, int endExclusive)
         {
             for (int i = start; i < endExclusive; i++)
             {
@@ -274,7 +274,7 @@ namespace ClickIt.Services
             return -1;
         }
 
-        private static bool IsLeverClickSuppressedByCooldown(ulong lastLeverKey, long lastLeverClickTimestampMs, ulong currentLeverKey, long now, int cooldownMs)
+        internal static bool IsLeverClickSuppressedByCooldown(ulong lastLeverKey, long lastLeverClickTimestampMs, ulong currentLeverKey, long now, int cooldownMs)
         {
             if (cooldownMs <= 0)
                 return false;
@@ -289,14 +289,14 @@ namespace ClickIt.Services
             return elapsed >= 0 && elapsed < cooldownMs;
         }
 
-        private static bool IsLeverLabel(LabelOnGround? label)
+        internal static bool IsLeverLabel(LabelOnGround? label)
         {
             string? path = label?.ItemOnGround?.Path;
             return !string.IsNullOrWhiteSpace(path)
                 && path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static ulong GetLeverIdentityKey(LabelOnGround label)
+        internal static ulong GetLeverIdentityKey(LabelOnGround label)
         {
             ulong itemAddress = unchecked((ulong)(label.ItemOnGround?.Address ?? 0));
             if (itemAddress != 0)
@@ -309,14 +309,14 @@ namespace ClickIt.Services
             return 0;
         }
 
-        private static bool IsAltarLabel(LabelOnGround label)
+        internal static bool IsAltarLabel(LabelOnGround label)
         {
             var item = label.ItemOnGround;
             string path = item.Path ?? string.Empty;
             return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
         }
 
-        private static LabelOnGround? FindPendingChestLabel(IReadOnlyList<LabelOnGround>? allLabels, long itemAddress, long labelAddress)
+        internal static LabelOnGround? FindPendingChestLabel(IReadOnlyList<LabelOnGround>? allLabels, long itemAddress, long labelAddress)
         {
             if (allLabels == null || allLabels.Count == 0)
                 return null;
@@ -339,13 +339,13 @@ namespace ClickIt.Services
             return null;
         }
 
-        private static void SeedKnownGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
+        internal static void SeedKnownGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
         {
             knownAddresses.Clear();
             _ = MergeNewGroundItemAddresses(knownAddresses, snapshot);
         }
 
-        private static bool MergeNewGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
+        internal static bool MergeNewGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
         {
             if (snapshot == null || snapshot.Count == 0)
                 return false;
@@ -377,7 +377,7 @@ namespace ClickIt.Services
             return distanceSq <= maxDistanceSq;
         }
 
-        private static bool TryGetEntityGridPosition(Entity? entity, out Vector2 gridPos)
+        internal static bool TryGetEntityGridPosition(Entity? entity, out Vector2 gridPos)
         {
             gridPos = default;
             if (entity == null || !entity.IsValid)
@@ -587,7 +587,7 @@ namespace ClickIt.Services
             return leftAddress != 0 && leftAddress == rightAddress;
         }
 
-        private static bool IsEntityHiddenByMinimapIcon(Entity entity)
+        internal static bool IsEntityHiddenByMinimapIcon(Entity entity)
         {
             MinimapIcon? minimapIcon = entity.GetComponent<MinimapIcon>();
             return minimapIcon != null && minimapIcon.IsHide;
@@ -735,51 +735,6 @@ namespace ClickIt.Services
                 TimestampMs: Environment.TickCount64));
         }
 
-        private IReadOnlySet<long> CollectGroundLabelEntityAddresses()
-        {
-            try
-            {
-                var labels = gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
-                int labelCount = labels?.Count ?? 0;
-                if (labels == null || labelCount == 0)
-                {
-                    _cachedGroundLabelEntityAddresses.Clear();
-                    _cachedGroundLabelEntityLabelCount = 0;
-                    _cachedGroundLabelEntityAddressesTimestampMs = Environment.TickCount64;
-                    return _cachedGroundLabelEntityAddresses;
-                }
-
-                long now = Environment.TickCount64;
-                if (ShouldReuseTimedLabelCountCache(
-                        now,
-                        _cachedGroundLabelEntityAddressesTimestampMs,
-                        _cachedGroundLabelEntityLabelCount,
-                        labelCount,
-                        GroundLabelEntityAddressCacheWindowMs))
-                {
-                    return _cachedGroundLabelEntityAddresses;
-                }
-
-                _cachedGroundLabelEntityAddresses.Clear();
-                _cachedGroundLabelEntityAddresses.EnsureCapacity(labelCount);
-
-                for (int i = 0; i < labelCount; i++)
-                {
-                    long address = labels[i]?.ItemOnGround?.Address ?? 0;
-                    if (address != 0)
-                        _cachedGroundLabelEntityAddresses.Add(address);
-                }
-
-                _cachedGroundLabelEntityAddressesTimestampMs = now;
-                _cachedGroundLabelEntityLabelCount = labelCount;
-            }
-            catch
-            {
-            }
-
-            return _cachedGroundLabelEntityAddresses;
-        }
-
         internal static bool IsBackedByGroundLabel(long entityAddress, IReadOnlySet<long>? labelEntityAddresses)
         {
             return entityAddress != 0
@@ -890,7 +845,7 @@ namespace ClickIt.Services
             return new MechanicRank(score.Ignored, score.PriorityIndex, score.WeightedDistance, score.RawDistance, score.CursorDistance);
         }
 
-        private static bool ShouldPreferSettlersWithSharedRankingEngine(
+        internal static bool ShouldPreferSettlersWithSharedRankingEngine(
             MechanicCandidateSignal settlersSignal,
             MechanicCandidateSignal labelSignal,
             MechanicCandidateSignal shrineSignal,
@@ -905,7 +860,7 @@ namespace ClickIt.Services
                 mechanicPriorityContext);
         }
 
-        private static bool ShouldPreferLostShipmentWithSharedRankingEngine(
+        internal static bool ShouldPreferLostShipmentWithSharedRankingEngine(
             MechanicCandidateSignal lostShipmentSignal,
             MechanicCandidateSignal labelSignal,
             MechanicCandidateSignal shrineSignal,
@@ -975,7 +930,7 @@ namespace ClickIt.Services
             return string.Equals(labelMechanicId, settlersCandidateMechanicId, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static bool ShouldForceUiHoverVerificationForLabel(LabelOnGround? label)
+        internal static bool ShouldForceUiHoverVerificationForLabel(LabelOnGround? label)
         {
             Entity? item = label?.ItemOnGround;
             if (item == null || item.Type != ExileCore.Shared.Enums.EntityType.WorldItem)
@@ -984,12 +939,12 @@ namespace ClickIt.Services
             return InputHandler.ShouldForceUiHoverVerificationForWorldItem(item.Path, item.RenderName);
         }
 
-        private static int GetOffscreenPathfindingTargetSearchDistance()
+        internal static int GetOffscreenPathfindingTargetSearchDistance()
         {
             return 50000;
         }
 
-        private static LabelOnGround? FindVisibleLabelForEntity(Entity entity, IReadOnlyList<LabelOnGround>? labels)
+        internal static LabelOnGround? FindVisibleLabelForEntity(Entity entity, IReadOnlyList<LabelOnGround>? labels)
         {
             if (entity == null || labels == null || labels.Count == 0)
                 return null;

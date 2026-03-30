@@ -10,23 +10,13 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldClickAltar_RespectsFlagsAndPath()
         {
-            var method = typeof(LabelFilterService).GetMethod("ShouldClickAltar", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            method.Should().NotBeNull();
+            LabelFilterService.ShouldClickAltar(false, false, false, false, string.Empty).Should().BeFalse();
 
-            bool Invoke(params object[] args)
-            {
-                var value = method!.Invoke(null, args);
-                value.Should().NotBeNull();
-                return (bool)value!;
-            }
+            LabelFilterService.ShouldClickAltar(false, false, false, false, "CleansingFireAltar").Should().BeFalse();
 
-            Invoke(false, false, false, false, string.Empty).Should().BeFalse();
-
-            Invoke(false, false, false, false, "CleansingFireAltar").Should().BeFalse();
-
-            Invoke(true, false, false, false, "CleansingFireAltar").Should().BeTrue();
-            Invoke(false, true, false, false, "TangleAltar").Should().BeTrue();
-            Invoke(false, false, true, false, "CleansingFireAltar").Should().BeTrue();
+            LabelFilterService.ShouldClickAltar(true, false, false, false, "CleansingFireAltar").Should().BeTrue();
+            LabelFilterService.ShouldClickAltar(false, true, false, false, "TangleAltar").Should().BeTrue();
+            LabelFilterService.ShouldClickAltar(false, false, true, false, "CleansingFireAltar").Should().BeTrue();
         }
     }
 }

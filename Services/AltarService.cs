@@ -131,7 +131,7 @@ namespace ClickIt.Services
             return (upsides ?? [], downsides ?? [], false);
         }
 
-        private void RecordUnmatchedMod(string mod, string negativeModType)
+        internal void RecordUnmatchedMod(string mod, string negativeModType)
         {
             DebugInfo.ModsUnmatched++;
             string cleanedMod = AltarModMatcher.NormalizeLetters(mod);
@@ -147,6 +147,13 @@ namespace ClickIt.Services
             {
                 _clickIt.LogError($"Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{negativeModType}'", 10);
             }
+        }
+
+        internal static void UpdateAltarComponentFromAdapter(bool top, PrimaryAltarComponent altarComponent, IElementAdapter element,
+            List<string> upsides, List<string> downsides, bool hasUnmatchedMods)
+        {
+            if (element == null) throw new ArgumentNullException(nameof(element));
+            UpdateAltarComponent(top, altarComponent, element.Underlying, upsides, downsides, hasUnmatchedMods);
         }
 
         private static void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element? element,

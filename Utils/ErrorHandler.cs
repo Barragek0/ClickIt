@@ -1,4 +1,6 @@
-﻿namespace ClickIt.Utils
+﻿using ClickIt.Services.Observability;
+
+namespace ClickIt.Utils
 {
     /// <summary>
     /// Centralized error handling and logging system for the ClickIt plugin.
@@ -12,11 +14,20 @@
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly Action<string, int> _logError = logError ?? throw new ArgumentNullException(nameof(logError));
         private readonly Action<string, int> _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
-        private readonly List<string> _recentErrors = [];
         private bool _globalHandlersRegistered;
         private const int MAX_ERRORS_TO_TRACK = 10;
+        private readonly DebugSnapshotChannel<ErrorDebugSnapshot, string> _errorDebugChannel = new(
+            ErrorDebugSnapshot.Empty,
+            MAX_ERRORS_TO_TRACK,
+            static (snapshot, sequence) => snapshot with { Sequence = sequence },
+            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Message}",
+            static message => new ErrorDebugSnapshot(
+                HasData: true,
+                Message: message,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
 
-        public IReadOnlyList<string> RecentErrors => _recentErrors.AsReadOnly();
+        public IReadOnlyList<string> RecentErrors => _errorDebugChannel.GetTrail();
 
         /// <summary>
         /// Registers global exception handlers to improve crash visibility and safe cleanup.
@@ -136,11 +147,7 @@
         /// </summary>
         private void TrackError(string message)
         {
-            _recentErrors.Add(message);
-            if (_recentErrors.Count > MAX_ERRORS_TO_TRACK)
-            {
-                _recentErrors.RemoveAt(0);
-            }
+            _errorDebugChannel.PublishEvent(message);
         }
 
     }

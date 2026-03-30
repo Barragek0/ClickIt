@@ -54,7 +54,7 @@ namespace ClickIt.Utils
             return result;
         }
 
-        private static string GetModString(SecondaryAltarComponent component, int index, bool isDownside)
+        internal static string GetModString(SecondaryAltarComponent component, int index, bool isDownside)
         {
             if (component == null)
                 return string.Empty;

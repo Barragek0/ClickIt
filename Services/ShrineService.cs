@@ -3,6 +3,7 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace ClickIt.Services
 {
@@ -175,6 +176,21 @@ namespace ClickIt.Services
         {
             _cachedShrines = null;
             _lastShrineCacheTime = 0;
+        }
+
+        internal static void ClearThreadLocalStorageForCurrentThread()
+        {
+            _threadLocalShrineList = null;
+        }
+
+        internal static void ClearThreadLocalStorageForTests()
+        {
+            _threadLocalShrineList = null;
+        }
+
+        internal static int GetThreadLocalShrineListInstanceIdForTests()
+        {
+            return RuntimeHelpers.GetHashCode(GetThreadLocalShrineList());
         }
     }
 }

@@ -9,6 +9,7 @@ using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows.Forms;
+using ClickIt.Services.Label.Selection;
 
 namespace ClickIt.Services
 {
@@ -288,58 +289,24 @@ namespace ClickIt.Services
 
         private LabelOnGround? SelectNextLabelByPriority(IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
         {
-            if (allLabels.Count == 0)
-                return null;
-
             int start = Math.Max(0, startIndex);
             int end = Math.Min(allLabels.Count, endExclusive);
-            if (start >= end)
-                return null;
+            LabelSelectionResult selection = LabelSelectionEngine.SelectNextLabelByPriority(
+                allLabels,
+                start,
+                end,
+                clickSettings,
+                label => TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
+                    ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
+                    : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason),
+                GetCursorDistanceSquaredToLabel);
 
-            SelectionStats stats = default;
-            CandidateScoreEngine.CandidateScoreContext scoreContext = CreateCandidateScoreContext(clickSettings);
-            LabelOnGround? bestCandidate = null;
-            CandidateScoreEngine.CandidateScore bestScore = default;
-            bool hasBestScore = false;
-            string? bestMechanicId = null;
-
-            for (int i = start; i < end; i++)
-            {
-                LabelOnGround label = allLabels[i];
-                stats.ConsideredCandidates++;
-
-                if (!TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason))
-                {
-                    SelectionStats.AddReject(ref stats, rejectReason);
-                    continue;
-                }
-
-                float cursorDistance = GetCursorDistanceSquaredToLabel(label);
-
-                CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(
-                    item!.DistancePlayer,
-                    mechanicId!,
-                    cursorDistance,
-                    scoreContext);
-
-                if (score.Ignored)
-                    stats.IgnoredByDistanceCandidates++;
-
-                if (!hasBestScore || CandidateScoreEngine.Compare(score, bestScore) < 0)
-                {
-                    bestCandidate = label;
-                    bestScore = score;
-                    hasBestScore = true;
-                    bestMechanicId = mechanicId;
-                }
-            }
-
-            LabelOnGround? selected = bestCandidate;
+            LabelOnGround? selected = selection.SelectedCandidate;
             if (ShouldCaptureLabelDebug())
             {
                 Entity? selectedEntity = selected?.ItemOnGround;
                 string? selectedMechanicId = selectedEntity != null
-                    ? bestMechanicId
+                    ? selection.SelectedMechanicId
                     : string.Empty;
 
                 PublishLabelDebugStage(new LabelDebugEvent(
@@ -348,53 +315,19 @@ namespace ClickIt.Services
                     end,
                     allLabels.Count)
                 {
-                    ConsideredCandidates = stats.ConsideredCandidates,
-                    NullOrDistanceRejected = stats.NullOrDistanceRejected,
-                    UntargetableRejected = stats.UntargetableRejected,
-                    NoMechanicRejected = stats.NoMechanicRejected,
-                    IgnoredByDistanceCandidates = stats.IgnoredByDistanceCandidates,
+                    ConsideredCandidates = selection.Stats.ConsideredCandidates,
+                    NullOrDistanceRejected = selection.Stats.NullOrDistanceRejected,
+                    UntargetableRejected = selection.Stats.UntargetableRejected,
+                    NoMechanicRejected = selection.Stats.NoMechanicRejected,
+                    IgnoredByDistanceCandidates = selection.Stats.IgnoredByDistanceCandidates,
                     SelectedMechanicId = selectedMechanicId,
                     SelectedEntityPath = selectedEntity?.Path,
                     SelectedDistance = selectedEntity?.DistancePlayer ?? 0f,
-                    Notes = $"c:{stats.ConsideredCandidates} nd:{stats.NullOrDistanceRejected} u:{stats.UntargetableRejected} nm:{stats.NoMechanicRejected} ig:{stats.IgnoredByDistanceCandidates}"
+                    Notes = $"c:{selection.Stats.ConsideredCandidates} nd:{selection.Stats.NullOrDistanceRejected} u:{selection.Stats.UntargetableRejected} nm:{selection.Stats.NoMechanicRejected} ig:{selection.Stats.IgnoredByDistanceCandidates}"
                 });
             }
 
             return selected;
-        }
-
-        private static CandidateScoreEngine.CandidateScoreContext CreateCandidateScoreContext(ClickSettings clickSettings)
-            => new(
-                clickSettings.MechanicPriorityIndexMap,
-                clickSettings.IgnoreDistanceMechanicIds,
-                clickSettings.IgnoreDistanceWithinByMechanicId,
-                clickSettings.MechanicPriorityDistancePenalty);
-
-        private struct SelectionStats
-        {
-            public int ConsideredCandidates;
-            public int NullOrDistanceRejected;
-            public int UntargetableRejected;
-            public int NoMechanicRejected;
-            public int IgnoredByDistanceCandidates;
-
-            public static void AddReject(ref SelectionStats stats, LabelCandidateRejectReason rejectReason)
-            {
-                if (rejectReason == LabelCandidateRejectReason.NullItemOrOutOfDistance)
-                    stats.NullOrDistanceRejected++;
-                else if (rejectReason == LabelCandidateRejectReason.Untargetable)
-                    stats.UntargetableRejected++;
-                else if (rejectReason == LabelCandidateRejectReason.NoMechanic)
-                    stats.NoMechanicRejected++;
-            }
-        }
-
-        private enum LabelCandidateRejectReason
-        {
-            None = 0,
-            NullItemOrOutOfDistance = 1,
-            Untargetable = 2,
-            NoMechanic = 3
         }
 
         private bool TryBuildLabelCandidate(
@@ -457,7 +390,7 @@ namespace ClickIt.Services
             return harvestRootElementVisible;
         }
 
-        private static bool RequiresTargetabilityGate(string path)
+        internal static bool RequiresTargetabilityGate(string path)
             => !string.IsNullOrEmpty(path) && IsSettlersOrePath(path);
 
         internal static bool ShouldApplyPetrifiedWoodEntityTargetabilityGate(string? path)

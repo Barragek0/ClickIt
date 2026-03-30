@@ -4,13 +4,14 @@ using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using System.Diagnostics;
 using ClickIt.Services;
+using ClickIt.Composition;
 using ClickIt.Utils;
 
 namespace ClickIt
 {
     public class PluginContext
     {
-        private readonly DisposableServiceRegistry _serviceRegistry = new();
+        private readonly ServiceDisposalRegistry _serviceRegistry = new();
 
         public Utils.PerformanceMonitor? PerformanceMonitor { get; set; }
         public Utils.ErrorHandler? ErrorHandler { get; set; }
@@ -35,7 +36,7 @@ namespace ClickIt
         public Rendering.UltimatumRenderer? UltimatumRenderer { get; set; }
         public Rendering.LazyModeRenderer? LazyModeRenderer { get; set; }
         public Rendering.ClickHotkeyToggleRenderer? ClickHotkeyToggleRenderer { get; set; }
-        public Rendering.InventoryFullWarningRenderer? InventoryFullWarningRenderer { get; set; }
+        internal Rendering.InventoryFullWarningRenderer? InventoryFullWarningRenderer { get; set; }
         public Rendering.PathfindingRenderer? PathfindingRenderer { get; set; }
         public Rendering.AltarDisplayRenderer? AltarDisplayRenderer { get; set; }
         public Utils.DeferredTextQueue? DeferredTextQueue { get; set; }
@@ -71,108 +72,33 @@ namespace ClickIt
             _serviceRegistry.Reset();
             IsShuttingDown = false;
 
-            var gameController = owner.GameController;
-            if (gameController == null)
-                throw new InvalidOperationException("GameController is null during plugin initialization.");
+            ComposedServices services = ServiceCompositionRoot.Compose(owner, settings);
 
-            var performanceMonitor = new PerformanceMonitor(settings);
-            var errorHandler = new ErrorHandler(settings, owner.LogError, owner.LogMessage);
-            var areaService = new Services.AreaService();
-            areaService.UpdateScreenAreas(gameController);
+            PerformanceMonitor = services.PerformanceMonitor;
+            ErrorHandler = services.ErrorHandler;
+            AreaService = services.AreaService;
+            LabelService = services.LabelService;
+            CachedLabels = services.CachedLabels;
+            Camera = services.Camera;
+            AltarService = services.AltarService;
+            LabelFilterService = services.LabelFilterService;
+            ShrineService = services.ShrineService;
+            InputHandler = services.InputHandler;
+            PathfindingService = services.PathfindingService;
+            DeferredTextQueue = services.DeferredTextQueue;
+            DeferredFrameQueue = services.DeferredFrameQueue;
+            DebugRenderer = services.DebugRenderer;
+            StrongboxRenderer = services.StrongboxRenderer;
+            LazyModeRenderer = services.LazyModeRenderer;
+            ClickHotkeyToggleRenderer = services.ClickHotkeyToggleRenderer;
+            InventoryFullWarningRenderer = services.InventoryFullWarningRenderer;
+            PathfindingRenderer = services.PathfindingRenderer;
+            AltarDisplayRenderer = services.AltarDisplayRenderer;
+            ClickService = services.ClickService;
+            UltimatumRenderer = services.UltimatumRenderer;
+            AlertService = services.AlertService;
 
-            var labelService = new Services.LabelService(
-                gameController,
-                point => AreaService?.PointIsInClickableArea(gameController, point) ?? false);
-            var cachedLabels = labelService.CachedLabels;
-            var camera = gameController.Game?.IngameState?.Camera;
-            var altarService = new Services.AltarService(owner, settings, cachedLabels);
-            var labelFilterService = new Services.LabelFilterService(settings, new Services.EssenceService(settings), errorHandler, gameController);
-            var shrineService = new Services.ShrineService(gameController, camera ?? throw new InvalidOperationException("Camera is null during plugin initialization."));
-            var inputHandler = new InputHandler(settings, performanceMonitor, errorHandler);
-            var pathfindingService = new Services.PathfindingService(settings, errorHandler);
-            var weightCalculator = new WeightCalculator(settings);
-            var deferredTextQueue = new DeferredTextQueue();
-            var deferredFrameQueue = new DeferredFrameQueue();
-            var debugRenderer = new Rendering.DebugRenderer(owner, altarService, areaService, weightCalculator, deferredTextQueue, deferredFrameQueue);
-            var strongboxRenderer = new Rendering.StrongboxRenderer(settings, deferredFrameQueue);
-            var lazyModeRenderer = new Rendering.LazyModeRenderer(settings, deferredTextQueue, inputHandler, labelFilterService);
-            var clickHotkeyToggleRenderer = new Rendering.ClickHotkeyToggleRenderer(settings, deferredTextQueue, inputHandler);
-            var inventoryFullWarningRenderer = new Rendering.InventoryFullWarningRenderer(
-                deferredTextQueue,
-                areaService,
-                owner.TryAutoCopyInventoryWarningDebugSnapshotForLifecycle);
-            var pathfindingRenderer = new Rendering.PathfindingRenderer(pathfindingService);
-            var altarDisplayRenderer = new Rendering.AltarDisplayRenderer(
-                owner.Graphics,
-                settings,
-                gameController,
-                weightCalculator,
-                deferredTextQueue,
-                deferredFrameQueue,
-                altarService,
-                owner.LogMessage);
-
-            LockManager.Instance = new LockManager(settings);
-
-            var clickService = new Services.ClickService(
-                settings,
-                gameController,
-                errorHandler,
-                altarService,
-                weightCalculator,
-                altarDisplayRenderer,
-                (point, path) => AreaService?.PointIsInClickableArea(gameController, point) ?? false,
-                inputHandler,
-                labelFilterService,
-                shrineService,
-                pathfindingService,
-                new Func<bool>(labelService.GroundItemsVisible),
-                cachedLabels,
-                performanceMonitor);
-
-            var ultimatumRenderer = new Rendering.UltimatumRenderer(settings, clickService, deferredFrameQueue);
-            var alertService = owner.GetAlertService();
-            var effectiveSettings = owner.GetEffectiveSettingsForLifecycle();
-
-            PerformanceMonitor = performanceMonitor;
-            ErrorHandler = errorHandler;
-            AreaService = areaService;
-            LabelService = labelService;
-            CachedLabels = cachedLabels;
-            Camera = camera;
-            AltarService = altarService;
-            LabelFilterService = labelFilterService;
-            ShrineService = shrineService;
-            InputHandler = inputHandler;
-            PathfindingService = pathfindingService;
-            DeferredTextQueue = deferredTextQueue;
-            DeferredFrameQueue = deferredFrameQueue;
-            DebugRenderer = debugRenderer;
-            StrongboxRenderer = strongboxRenderer;
-            LazyModeRenderer = lazyModeRenderer;
-            ClickHotkeyToggleRenderer = clickHotkeyToggleRenderer;
-            InventoryFullWarningRenderer = inventoryFullWarningRenderer;
-            PathfindingRenderer = pathfindingRenderer;
-            AltarDisplayRenderer = altarDisplayRenderer;
-            ClickService = clickService;
-            UltimatumRenderer = ultimatumRenderer;
-            AlertService = alertService;
-
-            settings.OpenConfigDirectory.OnPressed += alertService.OpenConfigDirectory;
-            settings.ReloadAlertSound.OnPressed += alertService.ReloadAlertSound;
-            if (!ReferenceEquals(settings, effectiveSettings))
-            {
-                effectiveSettings.OpenConfigDirectory.OnPressed += alertService.OpenConfigDirectory;
-                effectiveSettings.ReloadAlertSound.OnPressed += alertService.ReloadAlertSound;
-            }
-
-            _serviceRegistry.Register(() => settings.OpenConfigDirectory.OnPressed -= alertService.OpenConfigDirectory);
-            _serviceRegistry.Register(() => settings.ReloadAlertSound.OnPressed -= alertService.ReloadAlertSound);
-            if (!ReferenceEquals(settings, effectiveSettings))
-            {
-                _serviceRegistry.Register(() => effectiveSettings.OpenConfigDirectory.OnPressed -= alertService.OpenConfigDirectory);
-                _serviceRegistry.Register(() => effectiveSettings.ReloadAlertSound.OnPressed -= alertService.ReloadAlertSound);
-            }
+            ServiceCompositionRoot.WireSettingsActions(settings, services.EffectiveSettings, services.AlertService, _serviceRegistry);
             _serviceRegistry.Register(() => ErrorHandler?.UnregisterGlobalExceptionHandlers());
             _serviceRegistry.Register(() => PerformanceMonitor?.ShutdownForHotReload());
             _serviceRegistry.Register(() => LastRenderTimer.Stop());
@@ -226,40 +152,6 @@ namespace ClickIt
             PerformanceMonitor = null;
             ErrorHandler = null;
             CachedLabels = null;
-        }
-
-        private sealed class DisposableServiceRegistry
-        {
-            private readonly List<Action> _teardownActions = new();
-
-            public void Register(Action action)
-            {
-                if (action == null)
-                    return;
-                _teardownActions.Add(action);
-            }
-
-            public void DisposeAll()
-            {
-                for (int i = _teardownActions.Count - 1; i >= 0; i--)
-                {
-                    try
-                    {
-                        _teardownActions[i]();
-                    }
-                    catch
-                    {
-                        // Best effort shutdown.
-                    }
-                }
-
-                _teardownActions.Clear();
-            }
-
-            public void Reset()
-            {
-                _teardownActions.Clear();
-            }
         }
     }
 }

@@ -9,20 +9,17 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldClickAltar_ReturnsFalse_WhenNoFlagsEnabledOrPathEmpty()
         {
-            var mi = typeof(Services.LabelFilterService).GetMethod("ShouldClickAltar", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-            bool res = (bool)mi.Invoke(null, new object[] { false, false, false, false, "" })!;
+            bool res = Services.LabelFilterService.ShouldClickAltar(false, false, false, false, string.Empty);
             res.Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldClickAltar_ReturnsTrue_WhenFlagEnabled_AndPathContainsAltar()
         {
-            var mi = typeof(Services.LabelFilterService).GetMethod("ShouldClickAltar", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-
-            bool res1 = (bool)mi.Invoke(null, new object[] { true, false, false, false, "CleansingFireAltar/abc" })!;
+            bool res1 = Services.LabelFilterService.ShouldClickAltar(true, false, false, false, "CleansingFireAltar/abc");
             res1.Should().BeTrue();
 
-            bool res2 = (bool)mi.Invoke(null, new object[] { false, true, false, true, "TangleAltar/whatever" })!;
+            bool res2 = Services.LabelFilterService.ShouldClickAltar(false, true, false, true, "TangleAltar/whatever");
             res2.Should().BeTrue();
         }
     }

@@ -6,7 +6,28 @@ namespace ClickIt.Services
 {
     public partial class ClickService
     {
-        private static readonly Vector2[] NearbyClickProbeOffsets =
+        internal const string ShrineMechanicId = MechanicIds.Shrines;
+        internal const string LostShipmentMechanicId = MechanicIds.LostShipment;
+        private const string LostShipmentPathMarker = "Metadata/Chests/LostShipmentCrate";
+        private const string LostShipmentLoosePathMarker = "LostShipment";
+        private const string LostGoodsRenderNameMarker = "Lost Goods";
+        private const string LostShipmentRenderNameMarker = "Lost Shipment";
+        private const string VerisiumMechanicId = MechanicIds.SettlersVerisium;
+        private const string VerisiumBossSubAreaTransitionPathMarker = MechanicIds.VerisiumBossSubAreaTransitionPathMarker;
+        private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
+        private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
+        internal const int HiddenFallbackCandidateCacheWindowMs = 150;
+        internal const int VisibleMechanicCandidateCacheWindowMs = 80;
+        internal const int GroundLabelEntityAddressCacheWindowMs = 150;
+
+        private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
+        private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
+        private IReadOnlyDictionary<string, int>? _cachedMechanicIgnoreDistanceWithinById;
+        private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        internal static readonly Vector2[] NearbyClickProbeOffsets =
         [
             new Vector2(0f, 0f),
             new Vector2(12f, 0f),
@@ -27,7 +48,7 @@ namespace ClickIt.Services
         internal static bool ShouldUseHoldClickForSettlersMechanic(string? mechanicId)
             => string.Equals(mechanicId, VerisiumMechanicId, StringComparison.OrdinalIgnoreCase);
 
-        private static bool IsLostShipmentEntity(string? path, string? renderName)
+        internal static bool IsLostShipmentEntity(string? path, string? renderName)
             => IsLostShipmentPath(path)
                || ContainsAny(renderName, LostGoodsRenderNameMarker, LostShipmentRenderNameMarker);
 
@@ -56,7 +77,7 @@ namespace ClickIt.Services
                 _cachedMechanicIgnoreDistanceWithinMap,
                 settings.MechanicPriorityDistancePenalty.Value);
 
-        private static MechanicCandidateSignal CreateMechanicCandidateSignal(
+        internal static MechanicCandidateSignal CreateMechanicCandidateSignal(
             string? mechanicId,
             float? distance,
             float? cursorDistance = null)
@@ -140,7 +161,7 @@ namespace ClickIt.Services
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
             => CandidateScoreEngine.IsIgnoreDistanceActive(mechanicId, distance, ignoreDistanceSet, ignoreDistanceWithinByMechanicId);
 
-        private static int CompareMechanicRanks(MechanicRank left, MechanicRank right)
+        internal static int CompareMechanicRanks(MechanicRank left, MechanicRank right)
             => CandidateScoreEngine.Compare(ToCandidateScore(left), ToCandidateScore(right));
 
         private static CandidateScoreEngine.CandidateScore ToCandidateScore(MechanicRank rank)
@@ -160,10 +181,10 @@ namespace ClickIt.Services
             return false;
         }
 
-        private static bool ArePlayerDistancesEquivalent(float left, float right)
+        internal static bool ArePlayerDistancesEquivalent(float left, float right)
             => Math.Abs(left - right) <= 0.001f;
 
-        private static bool IsFirstCandidateCloserToCursor(Vector2 firstClickPoint, Vector2 secondClickPoint, Vector2 cursorAbsolute, Vector2 windowTopLeft)
+        internal static bool IsFirstCandidateCloserToCursor(Vector2 firstClickPoint, Vector2 secondClickPoint, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
             float first = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, firstClickPoint, windowTopLeft);
             float second = GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, secondClickPoint, windowTopLeft);

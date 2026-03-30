@@ -1,4 +1,5 @@
 using SharpDX;
+using ClickIt.Services.Observability;
 using ClickIt.Utils;
 
 namespace ClickIt.Services
@@ -8,13 +9,13 @@ namespace ClickIt.Services
         private const int ClickDebugTrailCapacity = 24;
         private const int RuntimeDebugLogTrailCapacity = 48;
         private const int UltimatumDebugTrailCapacity = 48;
-        private readonly DebugChannel<ClickDebugSnapshot, ClickDebugSnapshot> _clickDebugChannel = new(
+        private readonly DebugSnapshotChannel<ClickDebugSnapshot, ClickDebugSnapshot> _clickDebugChannel = new(
             ClickDebugSnapshot.Empty,
             ClickDebugTrailCapacity,
             static (snapshot, sequence) => snapshot with { Sequence = sequence },
             static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}",
             static snapshot => snapshot);
-        private readonly DebugChannel<RuntimeDebugLogSnapshot, string> _runtimeDebugLogChannel = new(
+        private readonly DebugSnapshotChannel<RuntimeDebugLogSnapshot, string> _runtimeDebugLogChannel = new(
             RuntimeDebugLogSnapshot.Empty,
             RuntimeDebugLogTrailCapacity,
             static (snapshot, sequence) => snapshot with { Sequence = sequence },
@@ -24,7 +25,7 @@ namespace ClickIt.Services
                 Message: message,
                 Sequence: 0,
                 TimestampMs: Environment.TickCount64));
-        private readonly DebugChannel<UltimatumDebugSnapshot, UltimatumDebugEvent> _ultimatumDebugChannel = new(
+        private readonly DebugSnapshotChannel<UltimatumDebugSnapshot, UltimatumDebugEvent> _ultimatumDebugChannel = new(
             UltimatumDebugSnapshot.Empty,
             UltimatumDebugTrailCapacity,
             static (snapshot, sequence) => snapshot with { Sequence = sequence },

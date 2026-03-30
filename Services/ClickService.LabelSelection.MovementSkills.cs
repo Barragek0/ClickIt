@@ -5,7 +5,7 @@ namespace ClickIt.Services
     public partial class ClickService
     {
         [ThreadStatic]
-        private static List<object?>? _threadSkillBarEntriesBuffer;
+        internal static List<object?>? _threadSkillBarEntriesBuffer;
 
         internal static bool ShouldAttemptMovementSkill(
             bool movementSkillsEnabled,
@@ -120,7 +120,7 @@ namespace ClickIt.Services
             return skillName.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        private static bool IsShieldChargeMovementSkill(string? movementSkillInternalName)
+        internal static bool IsShieldChargeMovementSkill(string? movementSkillInternalName)
         {
             if (string.IsNullOrWhiteSpace(movementSkillInternalName))
                 return false;

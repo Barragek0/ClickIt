@@ -1,4 +1,5 @@
 using ClickIt.Utils;
+using ClickIt.Services.Label.Inventory;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -7,51 +8,271 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
+        internal sealed record InventoryDebugSnapshot(
+            bool HasData,
+            string Stage,
+            bool InventoryFull,
+            string InventoryFullSource,
+            bool HasPrimaryInventory,
+            bool UsedFullFlag,
+            bool FullFlagValue,
+            bool UsedCellOccupancy,
+            int CapacityCells,
+            int OccupiedCells,
+            int InventoryEntityCount,
+            int LayoutEntryCount,
+            string GroundItemPath,
+            string GroundItemName,
+            bool IsGroundStackable,
+            int MatchingPathCount,
+            int PartialMatchingStackCount,
+            bool HasPartialMatchingStack,
+            bool DecisionAllowPickup,
+            string Notes,
+            long Sequence,
+            long TimestampMs)
+        {
+            public static readonly InventoryDebugSnapshot Empty = new(
+                HasData: false,
+                Stage: string.Empty,
+                InventoryFull: false,
+                InventoryFullSource: string.Empty,
+                HasPrimaryInventory: false,
+                UsedFullFlag: false,
+                FullFlagValue: false,
+                UsedCellOccupancy: false,
+                CapacityCells: 0,
+                OccupiedCells: 0,
+                InventoryEntityCount: 0,
+                LayoutEntryCount: 0,
+                GroundItemPath: string.Empty,
+                GroundItemName: string.Empty,
+                IsGroundStackable: false,
+                MatchingPathCount: 0,
+                PartialMatchingStackCount: 0,
+                HasPartialMatchingStack: false,
+                DecisionAllowPickup: false,
+                Notes: string.Empty,
+                Sequence: 0,
+                TimestampMs: 0);
+        }
+
         private const int InventoryProbeCacheWindowMs = 50;
         private const int InventoryDebugTrailCapacity = 32;
         private const string StoneOfPassageMetadataIdentifier = "Incursion/IncursionKey";
-        private const string InventoryLayoutUnreliableNotesPrefix = "Inventory layout unreliable";
 
-        private static readonly object InventoryProbeCacheLock = new();
-        private static long _inventoryProbeCacheTimestampMs;
-        private static GameController? _inventoryProbeCacheController;
-        private static InventoryFullProbe _inventoryProbeCacheValue = InventoryFullProbe.Empty;
-        private static bool _inventoryProbeCacheHasValue;
+        private static readonly InventoryDynamicAdapter InventoryDynamicAccessAdapter = new(CreateInventoryDynamicAdapterDependencies());
+        private static readonly InventoryProbeService InventoryProbeServiceInstance = new(CreateInventoryProbeServiceDependencies());
+        private static readonly InventorySnapshotProvider InventorySnapshotProviderService = new(CreateInventorySnapshotProviderDependencies());
+        private static readonly InventoryLayoutParser InventoryLayoutParserService = new(CreateInventoryLayoutParserDependencies());
+        private static readonly InventoryPickupPolicy InventoryPickupPolicyService = new(CreateInventoryPickupPolicyDependencies());
 
-        private static long _inventoryItemsCacheTimestampMs;
-        private static GameController? _inventoryItemsCacheController;
-        private static IReadOnlyList<Entity> _inventoryItemsCacheValue = Array.Empty<Entity>();
-        private static bool _inventoryItemsCacheHasValue;
+        internal static InventoryDebugSnapshot GetLatestInventoryDebug() => InventoryProbeServiceInstance.GetLatestDebug();
 
-        [ThreadStatic]
-        private static HashSet<long>? _threadInventoryUniqueEntityAddresses;
+        internal static IReadOnlyList<string> GetLatestInventoryDebugTrail() => InventoryProbeServiceInstance.GetLatestDebugTrail();
 
-        private static long _inventoryLayoutCacheTimestampMs;
-        private static object? _inventoryLayoutCachePrimaryInventory;
-        private static int _inventoryLayoutCacheWidth;
-        private static int _inventoryLayoutCacheHeight;
-        private static IReadOnlyList<InventoryLayoutEntry> _inventoryLayoutCacheEntries = Array.Empty<InventoryLayoutEntry>();
-        private static string _inventoryLayoutCacheSource = string.Empty;
-        private static string _inventoryLayoutCacheDebugDetails = string.Empty;
-        private static bool _inventoryLayoutCacheIsReliable;
-        private static int _inventoryLayoutCacheRawEntryCount;
-        private static bool _inventoryLayoutCacheHasValue;
+        private static void PublishInventoryDebug(InventoryDebugSnapshot snapshot) => InventoryProbeServiceInstance.PublishDebug(snapshot);
 
-        private static readonly DebugSnapshotStore<InventoryDebugSnapshot> InventoryDebugStore = new(
-            InventoryDebugSnapshot.Empty,
-            InventoryDebugTrailCapacity,
-            static (snapshot, sequence) => snapshot with { Sequence = sequence },
-            static snapshot =>
-                $"{snapshot.Sequence:00000} {snapshot.Stage} | f:{snapshot.InventoryFull} a:{snapshot.DecisionAllowPickup} c:{snapshot.CapacityCells} o:{snapshot.OccupiedCells} s:{snapshot.IsGroundStackable} p:{snapshot.HasPartialMatchingStack} n:{snapshot.Notes}");
+        private static InventoryDynamicAdapterDependencies CreateInventoryDynamicAdapterDependencies()
+            => new(collection =>
+            {
+                bool success = TryGetFirstCollectionObject(collection, out object? first);
+                return (success, first);
+            });
 
-        public static InventoryDebugSnapshot GetLatestInventoryDebug() => InventoryDebugStore.GetLatest();
+        private static InventoryProbeServiceDependencies CreateInventoryProbeServiceDependencies()
+            => new(
+                InventoryProbeCacheWindowMs,
+                InventoryDebugTrailCapacity,
+                TryBuildInventorySnapshotForInventoryProbeService,
+                TryGetPrimaryServerInventoryForInventoryProbeService,
+                TryGetPrimaryServerInventorySlotItemsForInventoryProbeService,
+                EnumerateObjects,
+                TryGetInventoryItemEntityFromEntry,
+                ClassifyInventoryItemEntityForInventoryProbeService);
 
-        public static IReadOnlyList<string> GetLatestInventoryDebugTrail() => InventoryDebugStore.GetTrail();
+        private static InventorySnapshotProviderDependencies CreateInventorySnapshotProviderDependencies()
+            => new(
+                TryGetPrimaryServerInventoryForSnapshotProvider,
+                TryResolveInventoryCapacityForSnapshotProvider,
+                TryResolveInventoryDimensionsForSnapshotProvider,
+                TryResolveInventoryLayoutEntriesForSnapshotProvider,
+                TryReadInventoryFullFlagForSnapshotProvider,
+                CreateInventoryFullFlagProbe,
+                TryResolveOccupiedInventoryCellsFromLayoutForSnapshotProvider,
+                IsInventoryCellUsageFullCore,
+                TryEnumeratePrimaryInventoryItemEntitiesFastForSnapshotProvider);
 
-        private static void PublishInventoryDebug(InventoryDebugSnapshot snapshot) => InventoryDebugStore.SetLatest(snapshot);
+        private static InventoryLayoutParserDependencies CreateInventoryLayoutParserDependencies()
+            => new(
+                EnumerateObjects,
+                TryGetCachedInventoryLayoutForLayoutParser,
+                SetCachedInventoryLayoutForLayoutParser,
+                TryGetPrimaryServerInventorySlotItemsForLayoutParser,
+                TryGetInventoryItemEntityFromEntry,
+                TryResolveInventoryItemSizeForLayoutParser,
+                TryGetDynamicValueForLayoutParser,
+                TryReadIntForLayoutParser);
+
+        private static InventoryPickupPolicyDependencies CreateInventoryPickupPolicyDependencies()
+            => new(
+                IsInventoryFullForPickupPolicy,
+                TryGetWorldItemEntity,
+                GetWorldItemBaseName,
+                IsGroundItemStackableCore,
+                HasMatchingPartialStackInInventoryForPickupPolicy,
+                HasInventorySpaceForGroundItemCore,
+                ShouldAllowPickupWhenPrimaryInventoryMissingCore,
+                ShouldAllowPickupWhenGroundItemEntityMissingCore,
+                ShouldAllowPickupWhenGroundItemIdentityMissingCore,
+                ShouldPickupWhenInventoryFullCore,
+                CreateInventoryDebugSnapshot,
+                PublishInventoryDebug);
+
+        private static (bool Success, InventorySnapshot Snapshot) TryBuildInventorySnapshotForInventoryProbeService(GameController? gameController)
+        {
+            bool success = InventorySnapshotProviderService.TryBuild(gameController, out InventorySnapshot snapshot);
+            return (success, snapshot);
+        }
+
+        private static (bool Success, object? PrimaryInventory) TryGetPrimaryServerInventoryForInventoryProbeService(GameController? gameController)
+        {
+            bool success = InventoryDynamicAccessAdapter.TryGetPrimaryServerInventory(gameController, out object? primaryInventory);
+            return (success, primaryInventory);
+        }
+
+        private static (bool Success, object? SlotItemsCollection) TryGetPrimaryServerInventorySlotItemsForInventoryProbeService(object primaryInventory)
+        {
+            bool success = InventoryDynamicAccessAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
+            return (success, slotItemsCollection);
+        }
+
+        private static (bool IsInventoryItem, string Reason) ClassifyInventoryItemEntityForInventoryProbeService(Entity? entity)
+        {
+            bool success = IsInventoryItemEntity(entity, out string reason);
+            return (success, reason);
+        }
+
+        private static (bool Success, object? PrimaryInventory) TryGetPrimaryServerInventoryForSnapshotProvider(GameController? gameController)
+        {
+            bool success = InventoryDynamicAccessAdapter.TryGetPrimaryServerInventory(gameController, out object? primaryInventory);
+            return (success, primaryInventory);
+        }
+
+        private static (bool Success, int CapacityCells) TryResolveInventoryCapacityForSnapshotProvider(object primaryInventory)
+        {
+            bool success = TryResolveInventoryCapacity(primaryInventory, out int totalCellCapacity);
+            return (success, totalCellCapacity);
+        }
+
+        private static (bool Success, int Width, int Height) TryResolveInventoryDimensionsForSnapshotProvider(object primaryInventory)
+        {
+            bool success = TryResolveInventoryDimensions(primaryInventory, out int width, out int height);
+            return (success, width, height);
+        }
+
+        private static (bool Success, IReadOnlyList<InventoryLayoutEntry> Entries, string Source, string DebugDetails, bool IsReliable, int RawEntryCount) TryResolveInventoryLayoutEntriesForSnapshotProvider(
+            object primaryInventory,
+            int inventoryWidth,
+            int inventoryHeight)
+        {
+            bool success = TryResolveInventoryLayoutEntries(
+                primaryInventory,
+                inventoryWidth,
+                inventoryHeight,
+                out IReadOnlyList<InventoryLayoutEntry> entries,
+                out string source,
+                out string debugDetails,
+                out bool isReliable,
+                out int rawEntryCount);
+            return (success, entries, source, debugDetails, isReliable, rawEntryCount);
+        }
+
+        private static (bool Success, bool Full, string Source) TryReadInventoryFullFlagForSnapshotProvider(object primaryInventory)
+        {
+            bool success = TryReadInventoryFullFlag(primaryInventory, out bool full, out string source);
+            return (success, full, source);
+        }
+
+        private static (bool Success, int OccupiedCellCount) TryResolveOccupiedInventoryCellsFromLayoutForSnapshotProvider(
+            IReadOnlyList<InventoryLayoutEntry> layoutEntries,
+            int inventoryWidth,
+            int inventoryHeight)
+        {
+            bool success = TryResolveOccupiedInventoryCellsFromLayout(layoutEntries, inventoryWidth, inventoryHeight, out int occupiedCellCount);
+            return (success, occupiedCellCount);
+        }
+
+        private static (bool Success, IReadOnlyList<Entity> Entities) TryEnumeratePrimaryInventoryItemEntitiesFastForSnapshotProvider(object primaryInventory)
+        {
+            bool success = InventoryProbeServiceInstance.TryEnumeratePrimaryInventoryItemEntitiesFast(primaryInventory, out IReadOnlyList<Entity> entities);
+            return (success, entities);
+        }
+
+        private static (bool Success, InventoryLayoutSnapshot Snapshot) TryGetCachedInventoryLayoutForLayoutParser(
+            object primaryInventory,
+            long now,
+            int inventoryWidth,
+            int inventoryHeight)
+        {
+            bool success = InventoryProbeServiceInstance.TryGetCachedInventoryLayout(primaryInventory, now, inventoryWidth, inventoryHeight, out InventoryLayoutSnapshot snapshot);
+            return (success, snapshot);
+        }
+
+        private static void SetCachedInventoryLayoutForLayoutParser(
+            object primaryInventory,
+            long now,
+            int inventoryWidth,
+            int inventoryHeight,
+            InventoryLayoutSnapshot snapshot)
+            => InventoryProbeServiceInstance.SetCachedInventoryLayout(primaryInventory, now, inventoryWidth, inventoryHeight, snapshot);
+
+        private static (bool Success, object? SlotItemsCollection) TryGetPrimaryServerInventorySlotItemsForLayoutParser(object primaryInventory)
+        {
+            bool success = TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
+            return (success, slotItemsCollection);
+        }
+
+        private static (bool Success, int Width, int Height) TryResolveInventoryItemSizeForLayoutParser(Entity itemEntity)
+        {
+            bool success = TryResolveInventoryItemSize(itemEntity, out int width, out int height);
+            return (success, width, height);
+        }
+
+        private static (bool Success, object? Value) TryGetDynamicValueForLayoutParser(object? source, Func<dynamic, object?> accessor)
+        {
+            bool success = TryGetDynamicValue(source, accessor, out object? value);
+            return (success, value);
+        }
+
+        private static (bool Success, int Value) TryReadIntForLayoutParser(object? source, Func<dynamic, object?> accessor)
+        {
+            bool success = TryReadInt(source, out int value, accessor);
+            return (success, value);
+        }
+
+        private static (bool InventoryFull, InventoryFullProbe Probe) IsInventoryFullForPickupPolicy(GameController? gameController)
+        {
+            bool inventoryFull = InventoryProbeServiceInstance.IsInventoryFull(gameController, out InventoryFullProbe probe);
+            return (inventoryFull, probe);
+        }
+
+        private static (bool HasPartialMatchingStack, int MatchingPathCount, int PartialMatchingStackCount) HasMatchingPartialStackInInventoryForPickupPolicy(
+            string groundItemPath,
+            Entity? groundItemEntity,
+            GameController? gameController)
+        {
+            bool hasPartialMatchingStack = HasMatchingPartialStackInInventoryCore(
+                groundItemPath,
+                groundItemEntity,
+                gameController,
+                out int matchingPathCount,
+                out int partialMatchingStackCount);
+            return (hasPartialMatchingStack, matchingPathCount, partialMatchingStackCount);
+        }
 
         private static bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
-            => InventoryPickupPolicy.ShouldAllowWorldItemWhenInventoryFull(groundItem, gameController);
+            => InventoryPickupPolicyService.ShouldAllowWorldItemWhenInventoryFull(groundItem, gameController);
 
         private static InventoryDebugSnapshot CreateInventoryDebugSnapshot(
             string stage,
@@ -90,34 +311,31 @@ namespace ClickIt.Services
         }
 
         internal static bool ShouldPickupWhenInventoryFullCore(bool inventoryFull, bool isStackable, bool hasPartialMatchingStack)
-            => !inventoryFull || (isStackable && hasPartialMatchingStack);
+            => InventoryCoreLogic.ShouldPickupWhenInventoryFull(inventoryFull, isStackable, hasPartialMatchingStack);
 
         internal static bool IsPartialStackCore(int currentStackSize, int maxStackSize)
-            => currentStackSize > 0 && maxStackSize > 0 && currentStackSize < maxStackSize;
+            => InventoryCoreLogic.IsPartialStack(currentStackSize, maxStackSize);
 
         internal static bool IsPartialServerStackCore(bool fullStack, int size)
-            => size > 0 && !fullStack;
+            => InventoryCoreLogic.IsPartialServerStack(fullStack, size);
 
         internal static bool IsInventoryCellUsageFullCore(int occupiedCellCount, int totalCellCapacity)
-            => totalCellCapacity > 0 && occupiedCellCount >= totalCellCapacity;
+            => InventoryCoreLogic.IsInventoryCellUsageFull(occupiedCellCount, totalCellCapacity);
 
         internal static bool ShouldAllowPickupWhenPrimaryInventoryMissingCore(bool hasPrimaryInventory, string notes)
-            => !hasPrimaryInventory && notes == "Primary server inventory missing";
+            => InventoryCoreLogic.ShouldAllowPickupWhenPrimaryInventoryMissing(hasPrimaryInventory, notes);
 
         internal static bool ShouldAllowPickupWhenGroundItemEntityMissingCore(bool inventoryFull, Entity? groundItemEntity)
-            => !inventoryFull && groundItemEntity == null;
+            => InventoryCoreLogic.ShouldAllowPickupWhenGroundItemEntityMissing(inventoryFull, groundItemEntity);
 
         internal static bool ShouldAllowPickupWhenGroundItemIdentityMissingCore(bool inventoryFull, string? groundItemPath, string? groundItemName)
-            => !inventoryFull
-                && string.IsNullOrWhiteSpace(groundItemPath)
-                && string.IsNullOrWhiteSpace(groundItemName);
+            => InventoryCoreLogic.ShouldAllowPickupWhenGroundItemIdentityMissing(inventoryFull, groundItemPath, groundItemName);
 
         internal static bool IsInventoryLayoutUnreliableNotesCore(string? notes)
-            => !string.IsNullOrWhiteSpace(notes)
-               && notes.StartsWith(InventoryLayoutUnreliableNotesPrefix, StringComparison.Ordinal);
+            => InventoryCoreLogic.IsInventoryLayoutUnreliableNotes(notes);
 
         internal static bool ShouldAllowClosedDoorPastMechanicCore(bool hasStoneOfPassageInInventory, string? inventoryProbeNotes)
-            => hasStoneOfPassageInInventory || IsInventoryLayoutUnreliableNotesCore(inventoryProbeNotes);
+            => InventoryCoreLogic.ShouldAllowClosedDoorPastMechanic(hasStoneOfPassageInInventory, inventoryProbeNotes);
 
         private static bool ShouldAllowClosedDoorPastMechanic(GameController? gameController)
         {
@@ -146,26 +364,7 @@ namespace ClickIt.Services
         }
 
         private static bool IsInventoryFullCore(GameController? gameController, out InventoryFullProbe probe)
-        {
-            long now = Environment.TickCount64;
-            if (TryGetCachedInventoryProbe(gameController, now, out InventoryFullProbe cachedProbe))
-            {
-                probe = cachedProbe;
-                return probe.IsFull;
-            }
-
-            if (!InventorySnapshotProvider.TryBuild(gameController, out InventorySnapshot snapshot))
-            {
-                probe = InventoryFullProbe.Empty with { Notes = "Primary server inventory missing" };
-                SetCachedInventoryProbe(gameController, now, probe);
-                return probe.IsFull;
-            }
-
-            probe = snapshot.FullProbe;
-
-            SetCachedInventoryProbe(gameController, now, probe);
-            return probe.IsFull;
-        }
+            => InventoryProbeServiceInstance.IsInventoryFull(gameController, out probe);
 
         private static bool HasInventorySpaceForGroundItemCore(Entity? groundItemEntity, GameController? gameController)
         {
@@ -181,7 +380,7 @@ namespace ClickIt.Services
             if (requiredWidth <= 0 || requiredHeight <= 0)
                 return false;
 
-            if (!InventorySnapshotProvider.TryBuild(gameController, out InventorySnapshot snapshot))
+            if (!InventorySnapshotProviderService.TryBuild(gameController, out InventorySnapshot snapshot))
                 return false;
 
             if (!snapshot.HasPrimaryInventory || !snapshot.Layout.IsReliable)
@@ -196,22 +395,7 @@ namespace ClickIt.Services
         }
 
         private static bool TryResolveInventoryDimensions(object primaryInventory, out int width, out int height)
-            => InventoryLayoutParser.TryResolveInventoryDimensions(primaryInventory, out width, out height);
-
-        private static bool TryResolveInventoryLayoutEntries(
-            object primaryInventory,
-            int inventoryWidth,
-            int inventoryHeight,
-            out IReadOnlyList<InventoryLayoutEntry> entries)
-            => TryResolveInventoryLayoutEntries(primaryInventory, inventoryWidth, inventoryHeight, out entries, out _, out _, out _, out _);
-
-        private static bool TryResolveInventoryLayoutEntries(
-            object primaryInventory,
-            int inventoryWidth,
-            int inventoryHeight,
-            out IReadOnlyList<InventoryLayoutEntry> entries,
-            out string source)
-            => TryResolveInventoryLayoutEntries(primaryInventory, inventoryWidth, inventoryHeight, out entries, out source, out _, out _, out _);
+            => InventoryLayoutParserService.TryResolveInventoryDimensions(primaryInventory, out width, out height);
 
         private static bool TryResolveInventoryLayoutEntries(
             object primaryInventory,
@@ -222,7 +406,7 @@ namespace ClickIt.Services
             out string debugDetails,
             out bool isReliable,
             out int rawEntryCount)
-            => InventoryLayoutParser.TryResolveInventoryLayoutEntries(
+            => InventoryLayoutParserService.TryResolveInventoryLayoutEntries(
                 primaryInventory,
                 inventoryWidth,
                 inventoryHeight,
@@ -230,19 +414,6 @@ namespace ClickIt.Services
                 out source,
                 out debugDetails,
                 out isReliable,
-                out rawEntryCount);
-
-        private static bool TryBuildInventoryLayoutEntriesFromCollection(
-            object collection,
-            int inventoryWidth,
-            int inventoryHeight,
-            out List<InventoryLayoutEntry> entries,
-            out int rawEntryCount)
-            => InventoryLayoutParser.TryBuildInventoryLayoutEntriesFromCollection(
-                collection,
-                inventoryWidth,
-                inventoryHeight,
-                out entries,
                 out rawEntryCount);
 
         private static bool TryResolveOccupiedInventoryCellsFromLayout(
@@ -276,21 +447,6 @@ namespace ClickIt.Services
             return null;
         }
 
-        private static bool TryResolveInventoryItemPosition(object entry, Entity? itemEntity, out int x, out int y)
-            => InventoryLayoutParser.TryResolveInventoryItemPosition(entry, itemEntity, out x, out y);
-
-        private static bool TryResolveInventoryEntrySize(object entry, Entity? itemEntity, out int width, out int height)
-            => InventoryLayoutParser.TryResolveInventoryEntrySize(entry, itemEntity, out width, out height);
-
-        private static bool TryReadInventoryCoordinates(object source, out int x, out int y)
-            => InventoryLayoutParser.TryReadInventoryCoordinates(source, out x, out y);
-
-        private static bool TryReadCoordinatePair(object source, string xFieldName, string yFieldName, out int x, out int y)
-            => InventoryLayoutParser.TryReadCoordinatePair(source, xFieldName, yFieldName, out x, out y);
-
-        private static bool TryReadIntByName(object source, string memberName, out int value)
-            => InventoryLayoutParser.TryReadIntByName(source, memberName, out value);
-
         internal static bool HasSpaceForItemFootprintCore(
             int inventoryWidth,
             int inventoryHeight,
@@ -304,22 +460,8 @@ namespace ClickIt.Services
                 requiredWidth,
                 requiredHeight);
 
-        private static bool CanPlaceAt(Span<byte> occupied, int inventoryWidth, int startX, int startY, int width, int height)
-        {
-            for (int y = startY; y < startY + height; y++)
-            {
-                for (int x = startX; x < startX + width; x++)
-                {
-                    if (occupied[(y * inventoryWidth) + x] != 0)
-                        return false;
-                }
-            }
-
-            return true;
-        }
-
         private static bool TryResolveInventoryCapacity(object primaryInventory, out int totalCellCapacity)
-            => InventoryLayoutParser.TryResolveInventoryCapacity(primaryInventory, out totalCellCapacity);
+            => InventoryLayoutParserService.TryResolveInventoryCapacity(primaryInventory, out totalCellCapacity);
 
         private static bool TryReadInventoryFullFlag(object primaryInventory, out bool full, out string source)
         {
@@ -364,81 +506,13 @@ namespace ClickIt.Services
         }
 
         private static bool TryResolveInventoryItemSize(Entity itemEntity, out int width, out int height)
-        {
-            width = 1;
-            height = 1;
-
-            try
-            {
-                Base? baseComponent = itemEntity.GetComponent<Base>();
-                return TryResolveInventoryItemSizeFromBase(baseComponent, out width, out height);
-            }
-            catch
-            {
-                return false;
-            }
-        }
+            => InventoryCoreLogic.TryResolveInventoryItemSize(itemEntity, out width, out height);
 
         internal static bool TryResolveInventoryItemSizeFromBase(object? baseComponent, out int width, out int height)
-        {
-            width = 1;
-            height = 1;
-
-            if (baseComponent == null)
-                return false;
-
-            if (TryResolveInventoryItemCellSizeFromInfo(baseComponent, out width, out height))
-            {
-                width = Math.Max(1, width);
-                height = Math.Max(1, height);
-                return true;
-            }
-
-            if (!TryReadInt(baseComponent, out width, s => s.ItemCellsSizeX)
-                || !TryReadInt(baseComponent, out height, s => s.ItemCellsSizeY))
-            {
-                return false;
-            }
-
-            width = Math.Max(1, width);
-            height = Math.Max(1, height);
-            return true;
-        }
+            => InventoryCoreLogic.TryResolveInventoryItemSizeFromBase(baseComponent, out width, out height);
 
         internal static bool TryResolveFallbackInventoryItemSizeFromPathCore(string? metadataPath, out int width, out int height)
-        {
-            width = 1;
-            height = 1;
-
-            if (string.IsNullOrWhiteSpace(metadataPath))
-                return false;
-
-            if (metadataPath.StartsWith("Metadata/Items/Currency/", StringComparison.OrdinalIgnoreCase)
-                || metadataPath.StartsWith("Metadata/Items/DivinationCards/", StringComparison.OrdinalIgnoreCase)
-                || metadataPath.StartsWith("Metadata/Items/Maps/", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private static bool TryResolveInventoryItemCellSizeFromInfo(object baseComponent, out int width, out int height)
-        {
-            width = 0;
-            height = 0;
-
-            if (!TryGetDynamicValue(baseComponent, s => s.Info, out object? info) || info == null)
-                return false;
-
-            if (!TryReadInt(info, out width, s => s.ItemCellsSizeX)
-                || !TryReadInt(info, out height, s => s.ItemCellsSizeY))
-            {
-                return false;
-            }
-
-            return width > 0 && height > 0;
-        }
+            => InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath(metadataPath, out width, out height);
 
         private static bool IsGroundItemStackableCore(Entity? itemEntity)
             => itemEntity != null && TryResolveServerStackState(itemEntity, out _, out _);
@@ -586,119 +660,10 @@ namespace ClickIt.Services
         }
 
         private static bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
-        {
-            long now = Environment.TickCount64;
-            if (TryGetCachedInventoryItems(gameController, now, out IReadOnlyList<Entity> cachedItems))
-            {
-                items = cachedItems;
-                return items.Count > 0;
-            }
-
-            items = Array.Empty<Entity>();
-            if (!TryGetPrimaryServerInventory(gameController, out object? primaryInventory) || primaryInventory == null)
-            {
-                SetCachedInventoryItems(gameController, now, items);
-                return false;
-            }
-
-            if (!TryEnumeratePrimaryInventoryItemEntitiesFast(primaryInventory, out IReadOnlyList<Entity> entities))
-            {
-                SetCachedInventoryItems(gameController, now, items);
-                return false;
-            }
-
-            items = entities;
-            SetCachedInventoryItems(gameController, now, items);
-            return items.Count > 0;
-        }
-
-        private static bool TryEnumeratePrimaryInventoryItemEntitiesFast(object primaryInventory, out IReadOnlyList<Entity> items)
-        {
-            items = Array.Empty<Entity>();
-
-            if (!TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? collectionObj) || collectionObj == null)
-                return false;
-
-            HashSet<long> uniqueAddresses = GetThreadInventoryUniqueEntityAddressSet();
-            uniqueAddresses.Clear();
-
-            var uniqueEntities = new List<Entity>(32);
-
-            foreach (object? entry in SharedDynamicAdapter.EnumerateObjects(collectionObj))
-            {
-                if (entry == null)
-                    continue;
-
-                Entity? entity = TryGetInventoryItemEntityFromEntry(entry);
-                if (entity == null || !IsInventoryItemEntity(entity, out _))
-                    continue;
-
-                AddUniqueInventoryEntity(entity, uniqueAddresses, uniqueEntities);
-            }
-
-            if (uniqueEntities.Count == 0)
-                return false;
-
-            items = uniqueEntities;
-            return true;
-        }
-
-        private static HashSet<long> GetThreadInventoryUniqueEntityAddressSet()
-        {
-            HashSet<long>? addresses = _threadInventoryUniqueEntityAddresses;
-            if (addresses != null)
-                return addresses;
-
-            addresses = new HashSet<long>();
-            _threadInventoryUniqueEntityAddresses = addresses;
-            return addresses;
-        }
-
-        private static void AddUniqueInventoryEntity(Entity entity, HashSet<long> uniqueAddresses, List<Entity> uniqueEntities)
-        {
-            if (entity == null)
-                return;
-
-            long address = entity.Address;
-            if (address == 0 || !uniqueAddresses.Add(address))
-                return;
-
-            uniqueEntities.Add(entity);
-        }
-
-        private static bool TryGetPrimaryServerInventory(GameController? gameController, out object? primaryInventory)
-            => InventoryDynamicAdapter.TryGetPrimaryServerInventory(gameController, out primaryInventory);
-
-        private static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection, out string debugDetails)
-        {
-            slotItemsCollection = null;
-            debugDetails = string.Empty;
-
-            if (!TryGetDynamicValue(primaryInventory, s => s.Inventory, out object? inventoryObj) || inventoryObj == null)
-            {
-                debugDetails = "read-failed: PlayerInventories[0].Inventory accessor unavailable";
-                return false;
-            }
-
-            if (!TryGetDynamicValue(inventoryObj, s => s.InventorySlotItems, out slotItemsCollection))
-            {
-                debugDetails = "read-failed: PlayerInventories[0].Inventory.InventorySlotItems accessor unavailable";
-                return false;
-            }
-
-            if (slotItemsCollection == null)
-            {
-                debugDetails = "read-ok: PlayerInventories[0].Inventory.InventorySlotItems is null";
-                return false;
-            }
-
-            int previewCount = CountPreviewObjects(slotItemsCollection, 8);
-            debugDetails = $"read-ok: PlayerInventories[0].Inventory.InventorySlotItems type={slotItemsCollection.GetType().Name} previewCount={previewCount}";
-            return true;
-        }
+            => InventoryProbeServiceInstance.TryEnumerateInventoryItemEntities(gameController, out items);
 
         private static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection)
-            => InventoryDynamicAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out slotItemsCollection);
+            => InventoryDynamicAccessAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out slotItemsCollection);
 
         private static bool TryGetFirstCollectionObject(object collection, out object? first)
         {
@@ -713,7 +678,7 @@ namespace ClickIt.Services
                 return first != null;
             }
 
-            foreach (object? entry in SharedDynamicAdapter.EnumerateObjects(collection))
+            foreach (object? entry in DynamicObjectAdapter.EnumerateObjects(collection))
             {
                 first = entry;
                 return first != null;
@@ -744,176 +709,18 @@ namespace ClickIt.Services
         }
 
         private static IEnumerable<object?> EnumerateObjects(object? source)
-            => SharedDynamicAdapter.EnumerateObjects(source);
-
-        private static int CountPreviewObjects(object? source, int maxCount)
-        {
-            if (maxCount <= 0)
-                return 0;
-
-            int count = 0;
-            foreach (object? _ in SharedDynamicAdapter.EnumerateObjects(source))
-            {
-                count++;
-                if (count >= maxCount)
-                    break;
-            }
-
-            return count;
-        }
-
-        private static bool TryGetCachedInventoryProbe(GameController? gameController, long now, out InventoryFullProbe probe)
-        {
-            lock (InventoryProbeCacheLock)
-            {
-                if (_inventoryProbeCacheHasValue
-                    && ReferenceEquals(_inventoryProbeCacheController, gameController)
-                    && IsCacheFresh(now, _inventoryProbeCacheTimestampMs, InventoryProbeCacheWindowMs))
-                {
-                    probe = _inventoryProbeCacheValue;
-                    return true;
-                }
-            }
-
-            probe = InventoryFullProbe.Empty;
-            return false;
-        }
-
-        private static void SetCachedInventoryProbe(GameController? gameController, long now, InventoryFullProbe probe)
-        {
-            lock (InventoryProbeCacheLock)
-            {
-                _inventoryProbeCacheController = gameController;
-                _inventoryProbeCacheTimestampMs = now;
-                _inventoryProbeCacheValue = probe;
-                _inventoryProbeCacheHasValue = true;
-            }
-        }
-
-        private static bool TryGetCachedInventoryItems(GameController? gameController, long now, out IReadOnlyList<Entity> items)
-        {
-            lock (InventoryProbeCacheLock)
-            {
-                if (_inventoryItemsCacheHasValue
-                    && ReferenceEquals(_inventoryItemsCacheController, gameController)
-                    && IsCacheFresh(now, _inventoryItemsCacheTimestampMs, InventoryProbeCacheWindowMs))
-                {
-                    items = _inventoryItemsCacheValue;
-                    return true;
-                }
-            }
-
-            items = Array.Empty<Entity>();
-            return false;
-        }
-
-        private static bool TryGetCachedInventoryLayout(
-            object primaryInventory,
-            long now,
-            int inventoryWidth,
-            int inventoryHeight,
-            out InventoryLayoutSnapshot snapshot)
-        {
-            lock (InventoryProbeCacheLock)
-            {
-                if (_inventoryLayoutCacheHasValue
-                    && ReferenceEquals(_inventoryLayoutCachePrimaryInventory, primaryInventory)
-                    && _inventoryLayoutCacheWidth == inventoryWidth
-                    && _inventoryLayoutCacheHeight == inventoryHeight
-                    && IsCacheFresh(now, _inventoryLayoutCacheTimestampMs, InventoryProbeCacheWindowMs))
-                {
-                    snapshot = new InventoryLayoutSnapshot(
-                        Entries: _inventoryLayoutCacheEntries,
-                        Source: _inventoryLayoutCacheSource,
-                        DebugDetails: _inventoryLayoutCacheDebugDetails,
-                        IsReliable: _inventoryLayoutCacheIsReliable,
-                        RawEntryCount: _inventoryLayoutCacheRawEntryCount);
-                    return true;
-                }
-            }
-
-            snapshot = InventoryLayoutSnapshot.Empty;
-            return false;
-        }
-
-        private static void SetCachedInventoryLayout(
-            object primaryInventory,
-            long now,
-            int inventoryWidth,
-            int inventoryHeight,
-            InventoryLayoutSnapshot snapshot)
-        {
-            lock (InventoryProbeCacheLock)
-            {
-                _inventoryLayoutCachePrimaryInventory = primaryInventory;
-                _inventoryLayoutCacheTimestampMs = now;
-                _inventoryLayoutCacheWidth = inventoryWidth;
-                _inventoryLayoutCacheHeight = inventoryHeight;
-                _inventoryLayoutCacheEntries = snapshot.Entries ?? Array.Empty<InventoryLayoutEntry>();
-                _inventoryLayoutCacheSource = snapshot.Source ?? string.Empty;
-                _inventoryLayoutCacheDebugDetails = snapshot.DebugDetails ?? string.Empty;
-                _inventoryLayoutCacheIsReliable = snapshot.IsReliable;
-                _inventoryLayoutCacheRawEntryCount = snapshot.RawEntryCount;
-                _inventoryLayoutCacheHasValue = true;
-            }
-        }
-
-        private static void SetCachedInventoryItems(GameController? gameController, long now, IReadOnlyList<Entity> items)
-        {
-            lock (InventoryProbeCacheLock)
-            {
-                _inventoryItemsCacheController = gameController;
-                _inventoryItemsCacheTimestampMs = now;
-                _inventoryItemsCacheValue = items;
-                _inventoryItemsCacheHasValue = true;
-            }
-        }
-
-        private static bool IsCacheFresh(long now, long cachedAtMs, int windowMs)
-        {
-            if (cachedAtMs <= 0 || windowMs <= 0)
-                return false;
-
-            long age = now - cachedAtMs;
-            return age >= 0 && age <= windowMs;
-        }
+            => DynamicObjectAdapter.EnumerateObjects(source);
 
         internal static void ClearInventoryProbeCacheForShutdown()
-        {
-            lock (InventoryProbeCacheLock)
-            {
-                _inventoryProbeCacheTimestampMs = 0;
-                _inventoryProbeCacheController = null;
-                _inventoryProbeCacheValue = InventoryFullProbe.Empty;
-                _inventoryProbeCacheHasValue = false;
-
-                _inventoryItemsCacheTimestampMs = 0;
-                _inventoryItemsCacheController = null;
-                _inventoryItemsCacheValue = Array.Empty<Entity>();
-                _inventoryItemsCacheHasValue = false;
-
-                _inventoryLayoutCacheTimestampMs = 0;
-                _inventoryLayoutCachePrimaryInventory = null;
-                _inventoryLayoutCacheWidth = 0;
-                _inventoryLayoutCacheHeight = 0;
-                _inventoryLayoutCacheEntries = Array.Empty<InventoryLayoutEntry>();
-                _inventoryLayoutCacheSource = string.Empty;
-                _inventoryLayoutCacheDebugDetails = string.Empty;
-                _inventoryLayoutCacheIsReliable = false;
-                _inventoryLayoutCacheRawEntryCount = 0;
-                _inventoryLayoutCacheHasValue = false;
-
-                _threadInventoryUniqueEntityAddresses = null;
-            }
-        }
+            => InventoryProbeServiceInstance.ClearForShutdown();
 
         private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
-            => SharedDynamicAdapter.TryReadBool(source, accessor, out value);
+            => DynamicObjectAdapter.TryReadBool(source, accessor, out value);
 
         private static bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
-            => SharedDynamicAdapter.TryReadInt(source, accessor, out value);
+            => DynamicObjectAdapter.TryReadInt(source, accessor, out value);
 
         private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
-            => SharedDynamicAdapter.TryGetValue(source, accessor, out value);
+            => DynamicObjectAdapter.TryGetValue(source, accessor, out value);
     }
 }

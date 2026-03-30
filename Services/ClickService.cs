@@ -46,21 +46,9 @@ namespace ClickIt.Services
         private readonly Func<bool> groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
+        private readonly ChestLootSettlementState chestLootSettlementState = new();
         private ulong _lastLeverKey;
         private long _lastLeverClickTimestampMs;
-        private bool _postChestLootSettleWatcherActive;
-        private long _postChestLootSettleInitialDelayUntilTimestampMs;
-        private long _postChestLootSettleNextPollTimestampMs;
-        private long _postChestLootSettleLastNewItemTimestampMs;
-        private int _postChestLootSettlePollIntervalMs;
-        private int _postChestLootSettleQuietWindowMs;
-        private readonly HashSet<long> _postChestLootSettleKnownGroundItemAddresses = [];
-        private bool _pendingChestOpenConfirmationActive;
-        private string? _pendingChestOpenMechanicId;
-        private long _pendingChestOpenItemAddress;
-        private long _pendingChestOpenLabelAddress;
-        private bool _postChestInteractionSourceGridValid;
-        private Vector2 _postChestInteractionSourceGrid;
         private long _stickyOffscreenTargetAddress;
         private long _lastMovementSkillUseTimestampMs;
         private long _movementSkillPostCastClickBlockUntilTimestampMs;
@@ -161,6 +149,34 @@ namespace ClickIt.Services
             }
         }
 
+        internal bool ExecuteLabelInteraction(
+            Vector2 clickPos,
+            Element? expectedElement,
+            GameController? controller,
+            bool useHoldClick,
+            int holdDurationMs = 0,
+            bool forceUiHoverVerification = false,
+            bool allowWhenHotkeyInactive = false,
+            bool avoidCursorMove = false)
+        {
+            return useHoldClick
+                ? PerformLabelHoldClick(
+                    clickPos,
+                    expectedElement,
+                    controller,
+                    holdDurationMs,
+                    forceUiHoverVerification,
+                    allowWhenHotkeyInactive,
+                    avoidCursorMove)
+                : PerformLabelClick(
+                    clickPos,
+                    expectedElement,
+                    controller,
+                    forceUiHoverVerification,
+                    allowWhenHotkeyInactive,
+                    avoidCursorMove);
+        }
+
         private bool IsCursorInsideGameWindow()
         {
             try
@@ -175,6 +191,20 @@ namespace ClickIt.Services
                 // If we cannot determine the cursor/window bounds assume it's fine so we don't block clicks unexpectedly
                 return true;
             }
+        }
+
+        internal static void ClearThreadLocalStorageForCurrentThread()
+        {
+            _threadGroundLabelEntityAddresses?.Clear();
+            _threadGroundLabelEntityAddresses = null;
+
+            _threadSkillBarEntriesBuffer?.Clear();
+            _threadSkillBarEntriesBuffer = null;
+        }
+
+        internal static void ClearThreadLocalStorageForTests()
+        {
+            ClearThreadLocalStorageForCurrentThread();
         }
 
     }

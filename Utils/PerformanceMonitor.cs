@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using ClickIt.Services.Observability;
 
 namespace ClickIt.Utils
 {
@@ -133,6 +134,39 @@ namespace ClickIt.Utils
         {
             double averageFps = _fpsSampleCount > 0 ? _fpsSampleSum / _fpsSampleCount : 0;
             return (_currentFps, averageFps, _maxFps);
+        }
+
+        internal PerformanceMetricsSnapshot GetDebugSnapshot()
+        {
+            TimingMetricsSnapshot MapRenderSection(RenderSection section)
+            {
+                var stats = GetRenderSectionStats(section);
+                return new TimingMetricsSnapshot(stats.LastMs, stats.AverageMs, stats.MaxMs, stats.SampleCount);
+            }
+
+            TimingMetricsSnapshot MapTimingChannel(TimingChannel channel)
+                => new(GetLastTiming(channel), GetAverageTiming(channel), GetMaxTiming(channel), GetTimingSampleCount(channel));
+
+            var renderStats = GetRenderTimingStats();
+            var fpsStats = GetFpsStats();
+
+            return new PerformanceMetricsSnapshot(
+                new FpsMetricsSnapshot(fpsStats.Current, fpsStats.Average, fpsStats.Max),
+                new TimingMetricsSnapshot(renderStats.LastMs, renderStats.AverageMs, renderStats.MaxMs, renderStats.SampleCount),
+                MapRenderSection(RenderSection.LazyMode),
+                MapRenderSection(RenderSection.DebugOverlay),
+                MapRenderSection(RenderSection.AltarOverlay),
+                MapRenderSection(RenderSection.UltimatumOverlay),
+                MapRenderSection(RenderSection.StrongboxOverlay),
+                MapRenderSection(RenderSection.PathfindingOverlay),
+                MapRenderSection(RenderSection.TextFlush),
+                MapRenderSection(RenderSection.FrameFlush),
+                MapTimingChannel(TimingChannel.Altar),
+                MapTimingChannel(TimingChannel.Click),
+                MapTimingChannel(TimingChannel.Flare),
+                GetClickTargetInterval(),
+                GetAverageSuccessfulClickTiming(),
+                GetAverageClickInterval());
         }
 
         internal void RecordFpsSampleForTests(double fps)
@@ -297,7 +331,7 @@ namespace ClickIt.Utils
         {
             lock (_clickIntervalsLock)
             {
-                return _clickIntervals.Count > 0 ? _clickIntervals.Average() : 0;
+                return CalculateAverage(_clickIntervals);
             }
         }
 
@@ -342,7 +376,7 @@ namespace ClickIt.Utils
         {
             lock (_successfulClickTimingsLock)
             {
-                return _successfulClickTimings.Count > 0 ? _successfulClickTimings.Average() : 0;
+                return CalculateAverage(_successfulClickTimings);
             }
         }
     }

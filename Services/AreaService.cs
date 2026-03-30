@@ -451,18 +451,12 @@ namespace ClickIt.Services
 
         private static long ResolveCurrentAreaHash(GameController? gameController)
         {
-            try
-            {
-                if (gameController == null)
-                    return long.MinValue;
-
-                dynamic game = gameController.Game;
-                return Convert.ToInt64(game.CurrentAreaHash);
-            }
-            catch
-            {
+            if (gameController == null)
                 return long.MinValue;
-            }
+
+            return TryReadCurrentAreaHash(gameController.Game, out long areaHash)
+                ? areaHash
+                : long.MinValue;
         }
 
         private static List<RectangleF> ResolveQuestTrackerBlockedRectangles(GameController gameController)
@@ -600,23 +594,42 @@ namespace ClickIt.Services
             if (gameController?.IngameState?.IngameUi == null || string.IsNullOrWhiteSpace(propertyName))
                 return null;
 
+            return propertyName switch
+            {
+                "QuestTracker" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.QuestTracker),
+                "ChatPanel" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.ChatPanel),
+                "Map" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.Map),
+                "GameUI" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.GameUI),
+                "Root" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.Root),
+                _ => null,
+            };
+        }
+
+        private static bool TryReadCurrentAreaHash(object? game, out long areaHash)
+        {
+            areaHash = long.MinValue;
+            if (!DynamicAccess.TryGetDynamicValue(game, static source => source.CurrentAreaHash, out object? rawAreaHash)
+                || rawAreaHash == null)
+            {
+                return false;
+            }
+
             try
             {
-                dynamic ui = gameController.IngameState.IngameUi;
-                return propertyName switch
-                {
-                    "QuestTracker" => ui.QuestTracker,
-                    "ChatPanel" => ui.ChatPanel,
-                    "Map" => ui.Map,
-                    "GameUI" => ui.GameUI,
-                    "Root" => ui.Root,
-                    _ => null,
-                };
+                areaHash = Convert.ToInt64(rawAreaHash);
+                return true;
             }
             catch
             {
-                return null;
+                return false;
             }
+        }
+
+        private static object? TryGetIngameUiMember(object? ingameUi, Func<dynamic, object?> accessor)
+        {
+            return DynamicAccess.TryGetDynamicValue(ingameUi, accessor, out object? value)
+                ? value
+                : null;
         }
     }
 }

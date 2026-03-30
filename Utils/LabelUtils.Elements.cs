@@ -38,6 +38,16 @@ namespace ClickIt.Utils
             return elementsList;
         }
 
+        internal static int GetThreadLocalElementsCountForTests()
+        {
+            return _threadLocalElementsList.Value?.Count ?? 0;
+        }
+
+        internal static void AddNullElementToThreadLocalForTests()
+        {
+            _threadLocalElementsList.Value?.Add(null!);
+        }
+
         private static void AddMatchingChildrenFromContainer(Element? container, string str, List<Element> elementsList)
         {
             if (container == null)

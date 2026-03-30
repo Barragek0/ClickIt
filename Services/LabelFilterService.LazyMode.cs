@@ -2,12 +2,17 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
+using ClickIt.Utils;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
+        internal static Func<Keys, bool> KeyStateProvider { get; set; } = Keyboard.IsKeyDown;
+
+        internal static Func<LabelFilterService, IReadOnlyList<global::ExileCore.PoEMemory.Elements.LabelOnGround>?, bool> LazyModeRestrictedChecker { get; set; } = (svc, labels) => svc.HasLazyModeRestrictedItemsOnScreenImpl(labels);
+
         private const int NearbyMonsterRestrictionCacheDurationMs = 50;
         private const int LazyModeRestrictionLogThrottleMs = 500;
         private long _cachedNearbyMonsterRestrictionTimestampMs = long.MinValue;
@@ -223,7 +228,7 @@ namespace ClickIt.Services
             return maxDistance;
         }
 
-        private static string BuildNearbyMonsterBlockReason(
+        internal static string BuildNearbyMonsterBlockReason(
             int nearbyNormalCount,
             int normalThreshold,
             int normalDistance,
@@ -256,7 +261,7 @@ namespace ClickIt.Services
                 : $"Blocked by nearby monsters: {string.Join("; ", blockers)}";
         }
 
-        private static bool ShouldBlockLazyModeForNearbyMonsters(
+        internal static bool ShouldBlockLazyModeForNearbyMonsters(
             int nearbyNormalCount,
             int normalThreshold,
             int nearbyMagicCount,

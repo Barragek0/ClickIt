@@ -139,7 +139,7 @@
 
             lock (lockObj)
             {
-                return queue.Count > 0 ? queue.Average() : 0;
+                return CalculateAverage(queue);
             }
         }
 
@@ -168,6 +168,18 @@
             return GetMaxTiming(MapTimingChannel(timingType));
         }
 
+        internal int GetTimingSampleCount(TimingChannel channel)
+        {
+            return channel switch
+            {
+                TimingChannel.Click => GetQueueCount(_clickCoroutineTimings, _clickTimingsLock),
+                TimingChannel.Altar => GetQueueCount(_altarCoroutineTimings, _altarTimingsLock),
+                TimingChannel.Flare => GetQueueCount(_flareCoroutineTimings, _flareTimingsLock),
+                TimingChannel.Render => GetQueueCount(_renderTimings, _renderTimingsLock),
+                _ => 0,
+            };
+        }
+
         private static TimingChannel MapTimingChannel(string? timingType)
         {
             switch (timingType)
@@ -194,6 +206,29 @@
                 {
                     queue.Dequeue();
                 }
+            }
+        }
+
+        private static double CalculateAverage(Queue<long> queue)
+        {
+            int count = queue.Count;
+            if (count == 0)
+                return 0;
+
+            long sum = 0;
+            foreach (long value in queue)
+            {
+                sum += value;
+            }
+
+            return (double)sum / count;
+        }
+
+        private static int GetQueueCount(Queue<long> queue, object lockObject)
+        {
+            lock (lockObject)
+            {
+                return queue.Count;
             }
         }
     }

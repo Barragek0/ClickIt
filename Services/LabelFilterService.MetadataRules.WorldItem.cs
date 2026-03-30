@@ -46,7 +46,7 @@ namespace ClickIt.Services
             }
         }
 
-        private static string SelectBestWorldItemMetadataPath(string resolvedMetadata, string componentMetadata)
+        internal static string SelectBestWorldItemMetadataPath(string resolvedMetadata, string componentMetadata)
         {
             if (string.IsNullOrWhiteSpace(componentMetadata))
                 return resolvedMetadata ?? string.Empty;

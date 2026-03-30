@@ -5,6 +5,7 @@ using ClickIt.Utils;
 using Color = SharpDX.Color;
 using RectangleF = SharpDX.RectangleF;
 using ClickIt.Services;
+using ClickIt.Services.Observability;
 
 #nullable enable
 
@@ -58,6 +59,8 @@ namespace ClickIt.Rendering
             const int columnShiftPx = DetailedDebugColumnShiftPx;
             const int maxColumns = DetailedDebugMaxColumns;
 
+            PerformanceMetricsSnapshot performanceSnapshot = performanceMonitor.GetDebugSnapshot();
+
             int currentColumn = 0;
             int xPos = baseX;
             int yPos = startY;
@@ -107,8 +110,8 @@ namespace ClickIt.Rendering
 
             RenderSectionIfEnabled(settings.DebugShowStatus, (x, y, h) => RenderPluginStatusDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowGameState, (x, y, h) => RenderGameStateDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowPerformance, (x, y, h) => RenderPerformanceDebug(x, y, h, performanceMonitor));
-            RenderSectionIfEnabled(settings.DebugShowClickFrequencyTarget, (x, y, h) => RenderClickFrequencyTargetDebug(x, y, h, performanceMonitor));
+            RenderSectionIfEnabled(settings.DebugShowPerformance, (x, y, h) => RenderPerformanceDebug(x, y, h, performanceSnapshot));
+            RenderSectionIfEnabled(settings.DebugShowClickFrequencyTarget, (x, y, h) => RenderClickFrequencyTargetDebug(x, y, h, performanceSnapshot));
             RenderSectionIfEnabled(settings.DebugShowAltarDetection, (x, y, h) => RenderAltarDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowAltarService, (x, y, h) => RenderAltarServiceDebug(x, y, h));
             RenderSectionIfEnabledWithPosition(settings.DebugShowLabels, (x, y, h) =>

@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using System.Runtime.CompilerServices;
+using ClickIt.Definitions;
 
 namespace ClickIt.Tests.Unit
 {
@@ -55,17 +57,46 @@ namespace ClickIt.Tests.Unit
             // Last resort: cannot set this member via reflection - fail with clearer message
             throw new InvalidOperationException($"Unable to set member '{memberName}' on type '{type.FullName}' in test.");
         }
-        private static object? InvokePrivateStatic(string name, params object?[] args)
+        private static string? InvokeChestMechanicFromConfiguredRules(
+            bool clickBasicChests,
+            bool clickLeagueChests,
+            bool clickLeagueChestsOther,
+            bool clickMirageGoldenDjinnCache,
+            bool clickMirageSilverDjinnCache,
+            bool clickMirageBronzeDjinnCache,
+            bool clickHeistSecureLocker,
+            bool clickBlightCyst,
+            bool clickBreachGraspingCoffers,
+            bool clickSynthesisSynthesisedStash,
+            EntityType type,
+            string? path,
+            string renderName)
         {
-            var method = typeof(Services.LabelFilterService).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-            return method!.Invoke(null, args);
+            HashSet<string> enabledSpecificLeagueChestIds = new(StringComparer.OrdinalIgnoreCase);
+            if (clickMirageGoldenDjinnCache) enabledSpecificLeagueChestIds.Add(MechanicIds.MirageGoldenDjinnCache);
+            if (clickMirageSilverDjinnCache) enabledSpecificLeagueChestIds.Add(MechanicIds.MirageSilverDjinnCache);
+            if (clickMirageBronzeDjinnCache) enabledSpecificLeagueChestIds.Add(MechanicIds.MirageBronzeDjinnCache);
+            if (clickHeistSecureLocker) enabledSpecificLeagueChestIds.Add(MechanicIds.HeistSecureLocker);
+            if (clickBlightCyst) enabledSpecificLeagueChestIds.Add(MechanicIds.BlightCyst);
+            if (clickBreachGraspingCoffers) enabledSpecificLeagueChestIds.Add(MechanicIds.BreachGraspingCoffers);
+            if (clickSynthesisSynthesisedStash) enabledSpecificLeagueChestIds.Add(MechanicIds.SynthesisSynthesisedStash);
+
+            return Services.LabelFilterService.GetChestMechanicIdFromConfiguredRules(
+                clickBasicChests,
+                clickLeagueChests,
+                clickLeagueChestsOther,
+                enabledSpecificLeagueChestIds,
+                type,
+                path,
+                renderName);
         }
 
         [TestMethod]
         public void ShouldClickWorldItemCore_ReturnsFalse_WhenClickItemsDisabled()
         {
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItemCore", false, EntityType.WorldItem, null)!;
+            var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
+
+            var res = Services.LabelFilterService.ShouldClickWorldItemCore(false, EntityType.WorldItem, ent);
             res.Should().BeFalse();
         }
 
@@ -75,7 +106,7 @@ namespace ClickIt.Tests.Unit
             var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             SetMemberValue(ent, "Path", "some/StrongBoxes/Strongbox/x");
 
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItemCore", true, EntityType.WorldItem, ent)!;
+            var res = Services.LabelFilterService.ShouldClickWorldItemCore(true, EntityType.WorldItem, ent);
             res.Should().BeFalse();
         }
 
@@ -85,7 +116,7 @@ namespace ClickIt.Tests.Unit
             var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             SetMemberValue(ent, "Path", "some/Item/Name");
 
-            var res = (bool)InvokePrivateStatic("ShouldClickWorldItemCore", true, EntityType.WorldItem, ent)!;
+            var res = Services.LabelFilterService.ShouldClickWorldItemCore(true, EntityType.WorldItem, ent);
             res.Should().BeTrue();
         }
 
@@ -94,7 +125,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void IsBasicChest_DetectsSimpleNames_CaseInsensitive()
         {
-            var res = (bool)InvokePrivateStatic("IsBasicChestName", "chest")!;
+            var res = Services.LabelFilterService.IsBasicChestName("chest");
             res.Should().BeTrue();
         }
 
@@ -102,44 +133,16 @@ namespace ClickIt.Tests.Unit
         public void ShouldClickChest_RecognizesBasicChest_WhenSettingsAllow()
         {
             // Call internal helper directly - pass primitive path and renderName to avoid mutating ExileCore objects
-            var res = (string?)InvokePrivateStatic("GetChestMechanicIdInternal", true, false, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest")!;
+            var res = InvokeChestMechanicFromConfiguredRules(true, false, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest");
             res.Should().Be("basic-chests");
         }
 
         [TestMethod]
         public void ShouldClickChest_UsesOtherLeagueToggle_ForNonMirageLeagueChests()
         {
-            var disabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                "content/some/chest",
-                "Some League Chest")!;
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                "content/some/chest",
-                "Some League Chest")!;
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
@@ -148,37 +151,9 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldClickChest_UsesHeistToggle_ForSecureLockerRenderName()
         {
-            var disabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                false,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                "content/heist/chest",
-                "Secure Locker")!;
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, false, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                "content/heist/chest",
-                "Secure Locker")!;
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
@@ -189,37 +164,9 @@ namespace ClickIt.Tests.Unit
         {
             const string heistPath = "Metadata/Chests/LeagueHeist/MilitaryChests/HeistChestPathMilitary";
 
-            var disabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                false,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                heistPath,
-                "Military Supplies")!;
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                heistPath,
-                "Military Supplies")!;
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
@@ -230,37 +177,9 @@ namespace ClickIt.Tests.Unit
         {
             const string blightPath = "Metadata/Chests/Blight/BlightChestObject";
 
-            var disabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                false,
-                true,
-                true,
-                EntityType.Chest,
-                blightPath,
-                "Blight Cyst")!;
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, false, true, true, EntityType.Chest, blightPath, "Blight Cyst");
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                blightPath,
-                "Blight Cyst")!;
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, blightPath, "Blight Cyst");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
@@ -271,37 +190,9 @@ namespace ClickIt.Tests.Unit
         {
             const string breachPath = "Metadata/Chests/Breach/BreachBoxChest02";
 
-            var disabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                false,
-                true,
-                EntityType.Chest,
-                breachPath,
-                "Grasping Coffers")!;
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, EntityType.Chest, breachPath, "Grasping Coffers");
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                breachPath,
-                "Grasping Coffers")!;
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, breachPath, "Grasping Coffers");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
@@ -312,37 +203,9 @@ namespace ClickIt.Tests.Unit
         {
             const string synthesisPath = "Metadata/Chests/SynthesisChests/SynthesisChest";
 
-            var disabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                false,
-                EntityType.Chest,
-                synthesisPath,
-                "Synthesised Stash")!;
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, false, EntityType.Chest, synthesisPath, "Synthesised Stash");
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetChestMechanicIdInternal",
-                false,
-                true,
-                false,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                EntityType.Chest,
-                synthesisPath,
-                "Synthesised Stash")!;
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, synthesisPath, "Synthesised Stash");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
@@ -354,10 +217,10 @@ namespace ClickIt.Tests.Unit
             var settlersNodePath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/CrimsonIron";
             var monsterPath = "Metadata/Monsters/LeagueKalguur/CrimsonIron/SmallGrowthMaps@83";
 
-            var settlersMatch = (bool)InvokePrivateStatic("IsSettlersOrePath", settlersNodePath)!;
+            var settlersMatch = Services.LabelFilterService.IsSettlersOrePath(settlersNodePath);
             settlersMatch.Should().BeTrue();
 
-            var monsterMatch = (bool)InvokePrivateStatic("IsSettlersOrePath", monsterPath)!;
+            var monsterMatch = Services.LabelFilterService.IsSettlersOrePath(monsterPath);
             monsterMatch.Should().BeFalse();
         }
 
@@ -366,15 +229,13 @@ namespace ClickIt.Tests.Unit
         {
             string path = "Metadata/Terrain/Labyrinth/Objects/LabyrinthTrialPortalAreaTransition";
 
-            var disabled = (string?)InvokePrivateStatic(
-                "GetAreaTransitionMechanicId",
+            var disabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
                 true,
                 false,
                 EntityType.AreaTransition,
                 path);
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetAreaTransitionMechanicId",
+            var enabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
                 false,
                 true,
                 EntityType.AreaTransition,
@@ -389,15 +250,13 @@ namespace ClickIt.Tests.Unit
         {
             string path = "Metadata/Terrain/Leagues/Delve/Objects/SomeAreaTransition";
 
-            var disabled = (string?)InvokePrivateStatic(
-                "GetAreaTransitionMechanicId",
+            var disabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
                 false,
                 true,
                 EntityType.AreaTransition,
                 path);
 
-            var enabled = (string?)InvokePrivateStatic(
-                "GetAreaTransitionMechanicId",
+            var enabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
                 true,
                 false,
                 EntityType.AreaTransition,
@@ -410,31 +269,30 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_RequiresMatchingLevels_WhenIncubatorPathRuleApplies()
         {
-            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, true, 68, true, 69)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, true, 68, true, 68)!).Should().BeTrue();
+            Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, true, 68, true, 69).Should().BeFalse();
+            Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, true, 68, true, 68).Should().BeTrue();
         }
 
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_Rejects_WhenEitherLevelIsMissing()
         {
-            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, false, 68, true, 68)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", true, true, 68, false, 68)!).Should().BeFalse();
+            Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, false, 68, true, 68).Should().BeFalse();
+            Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, true, 68, false, 68).Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_AllowsAllLevels_WhenRuleDoesNotApply()
         {
-            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", false, false, 0, false, 0)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("ShouldAllowIncubatorStackMatchCore", false, true, 1, true, 999)!).Should().BeTrue();
+            Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(false, false, 0, false, 0).Should().BeTrue();
+            Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(false, true, 1, true, 999).Should().BeTrue();
         }
 
         [TestMethod]
         public void SelectBestWorldItemMetadataPath_PrefersComponentMetadata_ForMiscObjectsFallback()
         {
-            string selected = (string)InvokePrivateStatic(
-                "SelectBestWorldItemMetadataPath",
+            string selected = Services.LabelFilterService.SelectBestWorldItemMetadataPath(
                 "Metadata/MiscellaneousObjects/Monolith",
-                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst")!;
+                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
 
             selected.Should().Be("Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
         }
@@ -442,10 +300,9 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void SelectBestWorldItemMetadataPath_KeepsResolvedMetadata_WhenAlreadySpecific()
         {
-            string selected = (string)InvokePrivateStatic(
-                "SelectBestWorldItemMetadataPath",
+            string selected = Services.LabelFilterService.SelectBestWorldItemMetadataPath(
                 "Metadata/Items/Currency/StackableCurrency/ChaosOrb",
-                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst")!;
+                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
 
             selected.Should().Be("Metadata/Items/Currency/StackableCurrency/ChaosOrb");
         }

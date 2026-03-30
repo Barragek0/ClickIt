@@ -16,6 +16,26 @@ namespace ClickIt.Services
         private const int UltimatumPostBeginDelayMs = 60;
         private const int UltimatumPostBeginAdditionalClickDelayMs = 200;
 
+        private sealed record UltimatumDebugEvent(
+            string Stage,
+            string Source,
+            bool IsPanelVisible,
+            bool IsGruelingGauntletActive)
+        {
+            public bool HasSaturatedChoice { get; init; }
+            public string? SaturatedModifier { get; init; }
+            public bool ShouldTakeReward { get; init; }
+            public string? Action { get; init; }
+            public int CandidateCount { get; init; }
+            public int SaturatedCandidateCount { get; init; }
+            public string? BestModifier { get; init; }
+            public int BestPriority { get; init; } = int.MaxValue;
+            public bool ClickedChoice { get; init; }
+            public bool ClickedConfirm { get; init; }
+            public bool ClickedTakeRewards { get; init; }
+            public string? Notes { get; init; }
+        }
+
         public readonly struct UltimatumPanelOptionPreview(RectangleF rect, string modifierName, int priorityIndex, bool isSelected)
         {
             public RectangleF Rect { get; } = rect;
@@ -38,7 +58,7 @@ namespace ClickIt.Services
 
         private static bool IsUltimatumPath(string? path) => Constants.IsUltimatumInteractablePath(path);
 
-        private static bool IsUltimatumLabel(LabelOnGround? label)
+        internal static bool IsUltimatumLabel(LabelOnGround? label)
         {
             if (!IsUltimatumPath(label?.ItemOnGround?.Path))
                 return false;
@@ -47,7 +67,7 @@ namespace ClickIt.Services
             return child0?.IsVisible == true;
         }
 
-        private static bool ShouldSuppressInactiveUltimatumLabel(LabelOnGround? label)
+        internal static bool ShouldSuppressInactiveUltimatumLabel(LabelOnGround? label)
         {
             return IsUltimatumPath(label?.ItemOnGround?.Path) && !IsUltimatumLabel(label);
         }

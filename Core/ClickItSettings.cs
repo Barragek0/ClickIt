@@ -21,6 +21,7 @@ namespace ClickIt
         private static readonly Vector4 BlacklistTextColor = new(0.8f, 0.4f, 0.4f, 1.0f);
 
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
+        public int SettingsVersion { get; set; } = ClickItSettingsMigrationService.CurrentVersion;
 
         [Menu("Debug/Testing", 900)]
         public EmptyNode EmptyTesting { get; set; } = new EmptyNode();
@@ -595,13 +596,7 @@ namespace ClickIt
         public ClickItSettings()
         {
             InitializeDefaultWeights();
-            EnsureItemTypeFiltersInitialized();
-            EnsureMechanicPrioritiesInitialized();
-            EnsureEssenceCorruptionFiltersInitialized();
-            EnsureStrongboxFiltersInitialized();
-            EnsureUltimatumModifiersInitialized();
-            EnsureUltimatumTakeRewardModifiersInitialized();
-            EnsureLazyModeNearbyMonsterFiltersInitialized();
+            ClickItSettingsMigrationService.Apply(this);
             DebugTestingPanel = CreateSafePanelNode("DebugTestingPanel", DrawDebugTestingPanel);
             ControlsSliderWidthStart = CreateSliderWidthStartNode();
             ControlsSliderWidthEnd = CreateSliderWidthEndNode();

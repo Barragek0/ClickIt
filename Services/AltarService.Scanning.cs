@@ -105,7 +105,7 @@ namespace ClickIt.Services
             _ = altar.GetBottomModsRect();
         }
 
-        private static void WarmAddedAltarData(PrimaryAltarComponent altar, bool wasAdded)
+        internal static void WarmAddedAltarData(PrimaryAltarComponent altar, bool wasAdded)
         {
             if (!wasAdded)
                 return;
@@ -113,7 +113,7 @@ namespace ClickIt.Services
             PreCacheAltarData(altar);
         }
 
-        private static AltarType DetermineAltarType(string path)
+        internal static AltarType DetermineAltarType(string path)
         {
             if (string.IsNullOrEmpty(path))
                 return AltarType.Unknown;

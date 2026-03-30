@@ -317,7 +317,7 @@ namespace ClickIt.Utils
             yield return new WaitTime(1000);
         }
 
-        private float GetPlayerHealthPercent()
+        internal float GetPlayerHealthPercent()
         {
 #if RUNTIME_EXILECORE
             if (_gameController?.Player == null) return 100f;
@@ -329,7 +329,7 @@ namespace ClickIt.Utils
 #endif
         }
 
-        private float GetPlayerEnergyShieldPercent()
+        internal float GetPlayerEnergyShieldPercent()
         {
 #if RUNTIME_EXILECORE
             if (_gameController?.Player == null) return 100f;

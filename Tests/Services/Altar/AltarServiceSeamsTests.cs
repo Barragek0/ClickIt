@@ -47,17 +47,13 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var svc = new AltarService(clickIt, settings, null);
 
-            var mi = typeof(AltarService).GetMethod("RecordUnmatchedMod", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                     ?? throw new System.InvalidOperationException("RecordUnmatchedMod method not found.");
-            mi.Should().NotBeNull();
-
             string neg = "N";
-            _ = mi.Invoke(svc, ["a1", neg]);
-            mi.Invoke(svc, ["b2", neg]);
-            mi.Invoke(svc, ["c3", neg]);
-            mi.Invoke(svc, ["d4", neg]);
-            mi.Invoke(svc, ["e5", neg]);
-            mi.Invoke(svc, ["f6", neg]);
+            svc.RecordUnmatchedMod("a1", neg);
+            svc.RecordUnmatchedMod("b2", neg);
+            svc.RecordUnmatchedMod("c3", neg);
+            svc.RecordUnmatchedMod("d4", neg);
+            svc.RecordUnmatchedMod("e5", neg);
+            svc.RecordUnmatchedMod("f6", neg);
 
             svc.DebugInfo.ModsUnmatched.Should().Be(6);
 
@@ -73,14 +69,10 @@ namespace ClickIt.Tests.Unit
             var settings = new ClickItSettings();
             var svc = new AltarService(clickIt, settings, null);
 
-            var mi = typeof(AltarService).GetMethod("RecordUnmatchedMod", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                     ?? throw new System.InvalidOperationException("RecordUnmatchedMod method not found.");
-            mi.Should().NotBeNull();
-
             string neg = "X";
-            mi.Invoke(svc, ["dup1", neg]);
-            mi.Invoke(svc, ["dup1", neg]);
-            mi.Invoke(svc, ["other1", neg]);
+            svc.RecordUnmatchedMod("dup1", neg);
+            svc.RecordUnmatchedMod("dup1", neg);
+            svc.RecordUnmatchedMod("other1", neg);
 
             svc.DebugInfo.ModsUnmatched.Should().Be(3);
             svc.DebugInfo.RecentUnmatchedMods.Count.Should().Be(2);

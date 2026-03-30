@@ -6,7 +6,7 @@ using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Rendering
 {
-    public class InventoryFullWarningRenderer(
+    internal class InventoryFullWarningRenderer(
         DeferredTextQueue deferredTextQueue,
         AreaService? areaService = null,
         Func<LabelFilterService.InventoryDebugSnapshot, long, bool>? tryAutoCopyOnWarningTrigger = null)

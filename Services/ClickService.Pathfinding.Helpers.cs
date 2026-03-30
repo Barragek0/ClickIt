@@ -191,7 +191,7 @@ namespace ClickIt.Services
             return nearHorizontal && nearVertical;
         }
 
-        private static bool IsInsideWindow(RectangleF window, Vector2 point)
+        internal static bool IsInsideWindow(RectangleF window, Vector2 point)
             => point.X >= window.Left && point.X <= window.Right && point.Y >= window.Top && point.Y <= window.Bottom;
     }
 }

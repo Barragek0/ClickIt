@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using ExileCore.PoEMemory.MemoryObjects;
+using ClickIt.Services.Label.Inventory;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -10,13 +8,6 @@ namespace ClickIt.Tests.Unit
     [TestClass]
     public class LabelFilterServiceInventoryTests
     {
-        private static object? InvokePrivateStatic(string name, params object?[] args)
-        {
-            var method = typeof(Services.LabelFilterService).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-            return method!.Invoke(null, args);
-        }
-
         public sealed class FakeBaseInfo
         {
             public int ItemCellsSizeX { get; set; }
@@ -33,79 +24,79 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldPickupWhenInventoryFullCore_OnlyAllowsMatchingPartialStacks()
         {
-            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", true, false, false)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", true, true, false)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", true, true, true)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("ShouldPickupWhenInventoryFullCore", false, false, false)!).Should().BeTrue();
+            InventoryCoreLogic.ShouldPickupWhenInventoryFull(true, false, false).Should().BeFalse();
+            InventoryCoreLogic.ShouldPickupWhenInventoryFull(true, true, false).Should().BeFalse();
+            InventoryCoreLogic.ShouldPickupWhenInventoryFull(true, true, true).Should().BeTrue();
+            InventoryCoreLogic.ShouldPickupWhenInventoryFull(false, false, false).Should().BeTrue();
         }
 
         [TestMethod]
         public void IsPartialStackCore_ReturnsTrue_OnlyForStrictlyPartialStacks()
         {
-            ((bool)InvokePrivateStatic("IsPartialStackCore", 11, 20)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("IsPartialStackCore", 0, 20)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("IsPartialStackCore", 20, 20)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("IsPartialStackCore", 25, 20)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("IsPartialStackCore", 5, 0)!).Should().BeFalse();
+            InventoryCoreLogic.IsPartialStack(11, 20).Should().BeTrue();
+            InventoryCoreLogic.IsPartialStack(0, 20).Should().BeFalse();
+            InventoryCoreLogic.IsPartialStack(20, 20).Should().BeFalse();
+            InventoryCoreLogic.IsPartialStack(25, 20).Should().BeFalse();
+            InventoryCoreLogic.IsPartialStack(5, 0).Should().BeFalse();
         }
 
         [TestMethod]
         public void IsPartialServerStackCore_ReturnsTrue_OnlyWhenNotFullAndSizePositive()
         {
-            ((bool)InvokePrivateStatic("IsPartialServerStackCore", false, 1)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("IsPartialServerStackCore", false, 10)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("IsPartialServerStackCore", true, 10)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("IsPartialServerStackCore", false, 0)!).Should().BeFalse();
+            InventoryCoreLogic.IsPartialServerStack(false, 1).Should().BeTrue();
+            InventoryCoreLogic.IsPartialServerStack(false, 10).Should().BeTrue();
+            InventoryCoreLogic.IsPartialServerStack(true, 10).Should().BeFalse();
+            InventoryCoreLogic.IsPartialServerStack(false, 0).Should().BeFalse();
         }
 
         [TestMethod]
         public void IsInventoryCellUsageFullCore_ReturnsTrue_WhenOccupiedCellsMeetOrExceedCapacity()
         {
-            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 59, 60)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 60, 60)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 61, 60)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("IsInventoryCellUsageFullCore", 10, 0)!).Should().BeFalse();
+            InventoryCoreLogic.IsInventoryCellUsageFull(59, 60).Should().BeFalse();
+            InventoryCoreLogic.IsInventoryCellUsageFull(60, 60).Should().BeTrue();
+            InventoryCoreLogic.IsInventoryCellUsageFull(61, 60).Should().BeTrue();
+            InventoryCoreLogic.IsInventoryCellUsageFull(10, 0).Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldAllowPickupWhenPrimaryInventoryMissingCore_ReturnsTrue_OnlyForMissingPrimaryInventorySignal()
         {
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenPrimaryInventoryMissingCore", false, "Primary server inventory missing")!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenPrimaryInventoryMissingCore", true, "Primary server inventory missing")!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenPrimaryInventoryMissingCore", false, "Unable to resolve inventory capacity")!).Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowPickupWhenPrimaryInventoryMissing(false, "Primary server inventory missing").Should().BeTrue();
+            InventoryCoreLogic.ShouldAllowPickupWhenPrimaryInventoryMissing(true, "Primary server inventory missing").Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowPickupWhenPrimaryInventoryMissing(false, "Unable to resolve inventory capacity").Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldAllowPickupWhenGroundItemEntityMissingCore_AllowsOnlyWhenInventoryNotFull()
         {
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemEntityMissingCore", false, null)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemEntityMissingCore", true, null)!).Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowPickupWhenGroundItemEntityMissing(false, null).Should().BeTrue();
+            InventoryCoreLogic.ShouldAllowPickupWhenGroundItemEntityMissing(true, null).Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldAllowPickupWhenGroundItemIdentityMissingCore_AllowsOnlyWhenInventoryNotFullAndIdentityMissing()
         {
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", false, string.Empty, string.Empty)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", true, string.Empty, string.Empty)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", false, "Metadata/Items/Test", string.Empty)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldAllowPickupWhenGroundItemIdentityMissingCore", false, string.Empty, "ItemName")!).Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowPickupWhenGroundItemIdentityMissing(false, string.Empty, string.Empty).Should().BeTrue();
+            InventoryCoreLogic.ShouldAllowPickupWhenGroundItemIdentityMissing(true, string.Empty, string.Empty).Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowPickupWhenGroundItemIdentityMissing(false, "Metadata/Items/Test", string.Empty).Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowPickupWhenGroundItemIdentityMissing(false, string.Empty, "ItemName").Should().BeFalse();
         }
 
         [TestMethod]
         public void IsInventoryLayoutUnreliableNotesCore_DetectsExpectedPrefix()
         {
-            ((bool)InvokePrivateStatic("IsInventoryLayoutUnreliableNotesCore", "Inventory layout unreliable from inventory slots (raw:4 parsed:0)")!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("IsInventoryLayoutUnreliableNotesCore", "Unable to resolve inventory dimensions")!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("IsInventoryLayoutUnreliableNotesCore", string.Empty)!).Should().BeFalse();
+            InventoryCoreLogic.IsInventoryLayoutUnreliableNotes("Inventory layout unreliable from inventory slots (raw:4 parsed:0)").Should().BeTrue();
+            InventoryCoreLogic.IsInventoryLayoutUnreliableNotes("Unable to resolve inventory dimensions").Should().BeFalse();
+            InventoryCoreLogic.IsInventoryLayoutUnreliableNotes(string.Empty).Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldAllowClosedDoorPastMechanicCore_RequiresStoneUnlessLayoutUnreliable()
         {
-            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", true, "")!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", false, "Inventory layout unreliable from inventory slots (raw:5 parsed:0)")!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", false, "Primary server inventory missing")!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("ShouldAllowClosedDoorPastMechanicCore", false, "")!).Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowClosedDoorPastMechanic(true, "").Should().BeTrue();
+            InventoryCoreLogic.ShouldAllowClosedDoorPastMechanic(false, "Inventory layout unreliable from inventory slots (raw:5 parsed:0)").Should().BeTrue();
+            InventoryCoreLogic.ShouldAllowClosedDoorPastMechanic(false, "Primary server inventory missing").Should().BeFalse();
+            InventoryCoreLogic.ShouldAllowClosedDoorPastMechanic(false, "").Should().BeFalse();
         }
 
         [TestMethod]
@@ -114,7 +105,7 @@ namespace ClickIt.Tests.Unit
             const int inventoryWidth = 3;
             const int inventoryHeight = 5;
 
-            var occupied = new List<Services.LabelFilterService.InventoryLayoutEntry>
+            var occupied = new List<InventoryLayoutEntry>
             {
                 new(0, 0, 1, 4),
                 new(1, 2, 1, 1),
@@ -122,7 +113,7 @@ namespace ClickIt.Tests.Unit
                 new(2, 4, 1, 1)
             };
 
-            bool hasSpace = Services.LabelFilterService.HasSpaceForItemFootprintCore(
+            bool hasSpace = InventoryFitEvaluator.HasSpaceForItemFootprint(
                 inventoryWidth,
                 inventoryHeight,
                 occupied,
@@ -138,12 +129,12 @@ namespace ClickIt.Tests.Unit
             const int inventoryWidth = 3;
             const int inventoryHeight = 5;
 
-            var occupied = new List<Services.LabelFilterService.InventoryLayoutEntry>
+            var occupied = new List<InventoryLayoutEntry>
             {
                 new(0, 0, 1, 5)
             };
 
-            bool hasSpace = Services.LabelFilterService.HasSpaceForItemFootprintCore(
+            bool hasSpace = InventoryFitEvaluator.HasSpaceForItemFootprint(
                 inventoryWidth,
                 inventoryHeight,
                 occupied,
@@ -156,11 +147,6 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void TryResolveInventoryItemSizeFromBase_PrefersInfoItemCellsSize()
         {
-            var method = typeof(Services.LabelFilterService).GetMethod(
-                "TryResolveInventoryItemSizeFromBase",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var fakeBase = new FakeBaseWithInfo
             {
                 Info = new FakeBaseInfo
@@ -170,28 +156,27 @@ namespace ClickIt.Tests.Unit
                 }
             };
 
-            object?[] args = [fakeBase, 0, 0];
-            bool resolved = (bool)method!.Invoke(null, args)!;
+            bool resolved = InventoryCoreLogic.TryResolveInventoryItemSizeFromBase(fakeBase, out int width, out int height);
 
             resolved.Should().BeTrue();
-            ((int)args[1]!).Should().Be(2);
-            ((int)args[2]!).Should().Be(4);
+            width.Should().Be(2);
+            height.Should().Be(4);
         }
 
         [TestMethod]
         public void TryResolveFallbackInventoryItemSizeFromPathCore_ReturnsOneByOne_ForCurrencyAndCardsAndMaps()
         {
-            ((bool)InvokePrivateStatic("TryResolveFallbackInventoryItemSizeFromPathCore", "Metadata/Items/Currency/CurrencyRerollRare", 0, 0)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("TryResolveFallbackInventoryItemSizeFromPathCore", "Metadata/Items/DivinationCards/DivinationCardDeck", 0, 0)!).Should().BeTrue();
-            ((bool)InvokePrivateStatic("TryResolveFallbackInventoryItemSizeFromPathCore", "Metadata/Items/Maps/Atlas2Maps/SomeMap", 0, 0)!).Should().BeTrue();
+            InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath("Metadata/Items/Currency/CurrencyRerollRare", out _, out _).Should().BeTrue();
+            InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath("Metadata/Items/DivinationCards/DivinationCardDeck", out _, out _).Should().BeTrue();
+            InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath("Metadata/Items/Maps/Atlas2Maps/SomeMap", out _, out _).Should().BeTrue();
         }
 
         [TestMethod]
         public void TryResolveFallbackInventoryItemSizeFromPathCore_ReturnsFalse_ForNonFallbackPaths()
         {
-            ((bool)InvokePrivateStatic("TryResolveFallbackInventoryItemSizeFromPathCore", "Metadata/Items/Weapons/OneHandWeapons/OneHandSword", 0, 0)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("TryResolveFallbackInventoryItemSizeFromPathCore", string.Empty, 0, 0)!).Should().BeFalse();
-            ((bool)InvokePrivateStatic("TryResolveFallbackInventoryItemSizeFromPathCore", null, 0, 0)!).Should().BeFalse();
+            InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath("Metadata/Items/Weapons/OneHandWeapons/OneHandSword", out _, out _).Should().BeFalse();
+            InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath(string.Empty, out _, out _).Should().BeFalse();
+            InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath(null, out _, out _).Should().BeFalse();
         }
 
     }

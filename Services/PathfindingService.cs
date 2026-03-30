@@ -1,6 +1,7 @@
 ﻿using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
+using ClickIt.Services.Observability;
 
 namespace ClickIt.Services
 {
@@ -9,7 +10,7 @@ namespace ClickIt.Services
         private const int OffscreenMovementDebugTrailCapacity = 24;
         private readonly ClickItSettings _settings = settings;
         private readonly Utils.ErrorHandler? _errorHandler = errorHandler;
-        private readonly DebugChannel<OffscreenMovementDebugSnapshot, OffscreenMovementDebugEvent> _offscreenMovementDebugChannel = new(
+        private readonly DebugSnapshotChannel<OffscreenMovementDebugSnapshot, OffscreenMovementDebugEvent> _offscreenMovementDebugChannel = new(
             OffscreenMovementDebugSnapshot.Empty,
             OffscreenMovementDebugTrailCapacity,
             static (snapshot, _) => snapshot,

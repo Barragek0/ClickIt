@@ -12,6 +12,6 @@ namespace ClickIt.Services
         string ChestLootSettleReason,
         IReadOnlyList<LabelOnGround>? AllLabels,
         Entity? NextShrine,
-        ClickService.MechanicPriorityContext MechanicPriorityContext,
+        MechanicPriorityContext MechanicPriorityContext,
         bool GroundItemsVisible);
 }

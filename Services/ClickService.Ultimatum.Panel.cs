@@ -1,4 +1,5 @@
 using System.Threading;
+using ClickIt.Utils;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
@@ -459,7 +460,7 @@ namespace ClickIt.Services
         private static bool TryReadUltimatumChoiceSaturation(Element choiceElement, out bool isSaturated)
         {
             isSaturated = false;
-            if (!SharedDynamicAdapter.TryGetValue(choiceElement, s => s.IsSaturated, out object? rawSaturated) || rawSaturated == null)
+            if (!DynamicObjectAdapter.TryGetValue(choiceElement, s => s.IsSaturated, out object? rawSaturated) || rawSaturated == null)
                 return false;
 
             if (rawSaturated is bool boolValue)
@@ -492,9 +493,9 @@ namespace ClickIt.Services
 
             bool isActive = false;
             object? data = gameController?.IngameState?.Data;
-            if (SharedDynamicAdapter.TryGetValue(data, s => s.ServerData, out object? serverData)
+            if (DynamicObjectAdapter.TryGetValue(data, s => s.ServerData, out object? serverData)
                 && serverData != null
-                && SharedDynamicAdapter.TryGetValue(serverData, s => s.AtlasPassiveSkillIds, out object? atlasPassiveIds)
+                && DynamicObjectAdapter.TryGetValue(serverData, s => s.AtlasPassiveSkillIds, out object? atlasPassiveIds)
                 && atlasPassiveIds != null)
             {
                 isActive = ContainsAtlasPassiveSkillId(atlasPassiveIds, GruelingGauntletAtlasPassiveSkillId);

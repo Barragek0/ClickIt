@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using ClickIt.Definitions;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
@@ -196,22 +196,17 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
 
-            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
-            MethodInfo? shouldRenderMethod = typeof(ClickItSettings).GetMethod("ShouldRenderMechanicEntry", BindingFlags.Static | BindingFlags.NonPublic);
-            getEntriesMethod.Should().NotBeNull();
-            shouldRenderMethod.Should().NotBeNull();
-
-            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
-            object ritualCompletedEntry = entries.First(entry =>
-                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "ritual-completed", StringComparison.Ordinal));
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            MechanicToggleTableEntry ritualCompletedEntry = entries.First(entry =>
+                string.Equals(entry.Id, MechanicIds.RitualCompleted, StringComparison.Ordinal));
 
             settings.ClickRitualCompleted.Value = true;
-            ((bool)shouldRenderMethod!.Invoke(null, [ritualCompletedEntry, false, string.Empty])!).Should().BeTrue();
-            ((bool)shouldRenderMethod.Invoke(null, [ritualCompletedEntry, true, string.Empty])!).Should().BeFalse();
+            ClickItSettings.ShouldRenderMechanicEntry(ritualCompletedEntry, false, string.Empty).Should().BeTrue();
+            ClickItSettings.ShouldRenderMechanicEntry(ritualCompletedEntry, true, string.Empty).Should().BeFalse();
 
             settings.ClickRitualCompleted.Value = false;
-            ((bool)shouldRenderMethod.Invoke(null, [ritualCompletedEntry, false, string.Empty])!).Should().BeFalse();
-            ((bool)shouldRenderMethod.Invoke(null, [ritualCompletedEntry, true, string.Empty])!).Should().BeTrue();
+            ClickItSettings.ShouldRenderMechanicEntry(ritualCompletedEntry, false, string.Empty).Should().BeFalse();
+            ClickItSettings.ShouldRenderMechanicEntry(ritualCompletedEntry, true, string.Empty).Should().BeTrue();
         }
 
         [TestMethod]
@@ -221,18 +216,13 @@ namespace ClickIt.Tests.Unit
             settings.ClickRitualInitiate.Value = true;
             settings.ClickRitualCompleted.Value = true;
 
-            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
-            MethodInfo? setGroupStateMethod = typeof(ClickItSettings).GetMethod("SetMechanicGroupState", BindingFlags.Static | BindingFlags.NonPublic);
-            getEntriesMethod.Should().NotBeNull();
-            setGroupStateMethod.Should().NotBeNull();
-
-            object entries = getEntriesMethod!.Invoke(settings, null)!;
-            setGroupStateMethod!.Invoke(null, ["ritual-altars", entries, false]);
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            ClickItSettings.SetMechanicGroupState("ritual-altars", entries, false);
 
             settings.ClickRitualInitiate.Value.Should().BeFalse();
             settings.ClickRitualCompleted.Value.Should().BeFalse();
 
-            setGroupStateMethod.Invoke(null, ["ritual-altars", entries, true]);
+            ClickItSettings.SetMechanicGroupState("ritual-altars", entries, true);
 
             settings.ClickRitualInitiate.Value.Should().BeTrue();
             settings.ClickRitualCompleted.Value.Should().BeTrue();
@@ -243,17 +233,14 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
 
-            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
-            getEntriesMethod.Should().NotBeNull();
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            MechanicToggleTableEntry basicChestEntry = entries.First(entry =>
+                string.Equals(entry.Id, MechanicIds.BasicChests, StringComparison.Ordinal));
+            MechanicToggleTableEntry leagueChestEntry = entries.First(entry =>
+                string.Equals(entry.Id, MechanicIds.LeagueChests, StringComparison.Ordinal));
 
-            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
-            object basicChestEntry = entries.First(entry =>
-                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "basic-chests", StringComparison.Ordinal));
-            object leagueChestEntry = entries.First(entry =>
-                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "league-chests", StringComparison.Ordinal));
-
-            string? basicGroupId = (string?)basicChestEntry.GetType().GetProperty("GroupId")!.GetValue(basicChestEntry);
-            string? leagueGroupId = (string?)leagueChestEntry.GetType().GetProperty("GroupId")!.GetValue(leagueChestEntry);
+            string? basicGroupId = basicChestEntry.GroupId;
+            string? leagueGroupId = leagueChestEntry.GroupId;
 
             basicGroupId.Should().Be("basic-chests");
             leagueGroupId.Should().Be("league-chests");
@@ -279,15 +266,12 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
 
-            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
-            getEntriesMethod.Should().NotBeNull();
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            MechanicToggleTableEntry secureLockerEntry = entries.First(entry =>
+                string.Equals(entry.Id, MechanicIds.HeistSecureLocker, StringComparison.Ordinal));
 
-            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
-            object secureLockerEntry = entries.First(entry =>
-                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "heist-secure-locker", StringComparison.Ordinal));
-
-            string? groupId = (string?)secureLockerEntry.GetType().GetProperty("GroupId")!.GetValue(secureLockerEntry);
-            string? subgroup = (string?)secureLockerEntry.GetType().GetProperty("Subgroup")!.GetValue(secureLockerEntry);
+            string? groupId = secureLockerEntry.GroupId;
+            string? subgroup = secureLockerEntry.Subgroup;
 
             groupId.Should().Be("league-chests");
             subgroup.Should().Be("Heist");
@@ -298,15 +282,12 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
 
-            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
-            getEntriesMethod.Should().NotBeNull();
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            MechanicToggleTableEntry graspingCoffersEntry = entries.First(entry =>
+                string.Equals(entry.Id, MechanicIds.BreachGraspingCoffers, StringComparison.Ordinal));
 
-            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
-            object graspingCoffersEntry = entries.First(entry =>
-                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "breach-grasping-coffers", StringComparison.Ordinal));
-
-            string? groupId = (string?)graspingCoffersEntry.GetType().GetProperty("GroupId")!.GetValue(graspingCoffersEntry);
-            string? subgroup = (string?)graspingCoffersEntry.GetType().GetProperty("Subgroup")!.GetValue(graspingCoffersEntry);
+            string? groupId = graspingCoffersEntry.GroupId;
+            string? subgroup = graspingCoffersEntry.Subgroup;
 
             groupId.Should().Be("league-chests");
             subgroup.Should().Be("Breach");
@@ -317,15 +298,12 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
 
-            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
-            getEntriesMethod.Should().NotBeNull();
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            MechanicToggleTableEntry blightCystEntry = entries.First(entry =>
+                string.Equals(entry.Id, MechanicIds.BlightCyst, StringComparison.Ordinal));
 
-            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
-            object blightCystEntry = entries.First(entry =>
-                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "blight-cyst", StringComparison.Ordinal));
-
-            string? groupId = (string?)blightCystEntry.GetType().GetProperty("GroupId")!.GetValue(blightCystEntry);
-            string? subgroup = (string?)blightCystEntry.GetType().GetProperty("Subgroup")!.GetValue(blightCystEntry);
+            string? groupId = blightCystEntry.GroupId;
+            string? subgroup = blightCystEntry.Subgroup;
 
             groupId.Should().Be("league-chests");
             subgroup.Should().Be("Blight");
@@ -336,15 +314,12 @@ namespace ClickIt.Tests.Unit
         {
             var settings = new ClickItSettings();
 
-            MethodInfo? getEntriesMethod = typeof(ClickItSettings).GetMethod("GetMechanicTableEntries", BindingFlags.Instance | BindingFlags.NonPublic);
-            getEntriesMethod.Should().NotBeNull();
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            MechanicToggleTableEntry synthesisedStashEntry = entries.First(entry =>
+                string.Equals(entry.Id, MechanicIds.SynthesisSynthesisedStash, StringComparison.Ordinal));
 
-            var entries = ((System.Collections.IEnumerable)getEntriesMethod!.Invoke(settings, null)!).Cast<object>().ToList();
-            object synthesisedStashEntry = entries.First(entry =>
-                string.Equals((string)entry.GetType().GetProperty("Id")!.GetValue(entry)!, "synthesis-synthesised-stash", StringComparison.Ordinal));
-
-            string? groupId = (string?)synthesisedStashEntry.GetType().GetProperty("GroupId")!.GetValue(synthesisedStashEntry);
-            string? subgroup = (string?)synthesisedStashEntry.GetType().GetProperty("Subgroup")!.GetValue(synthesisedStashEntry);
+            string? groupId = synthesisedStashEntry.GroupId;
+            string? subgroup = synthesisedStashEntry.Subgroup;
 
             groupId.Should().Be("league-chests");
             subgroup.Should().Be("Synthesis");

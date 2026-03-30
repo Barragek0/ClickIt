@@ -94,6 +94,14 @@ namespace ClickIt.Utils
             return Volatile.Read(ref _pendingCount);
         }
 
+        internal (RectangleF Rectangle, Color Color, int Thickness)[] GetSnapshotForTests()
+        {
+            lock (_queueLock)
+            {
+                return _items.ToArray();
+            }
+        }
+
         public void ClearPending()
         {
             lock (_queueLock)
