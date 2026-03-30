@@ -148,6 +148,134 @@ namespace ClickIt.Services
             return false;
         }
 
+        internal static bool TryResolveBestEffortGoal(
+            bool[][] walkable,
+            GridPoint start,
+            GridPoint desiredGoal,
+            out GridPoint resolvedGoal,
+            out bool usedFallback,
+            out string failureReason)
+        {
+            resolvedGoal = default;
+            usedFallback = false;
+            failureReason = string.Empty;
+
+            if (!TryGetGridDimensions(walkable, out int width, out int height))
+            {
+                failureReason = "Terrain/pathfinding data unavailable.";
+                return false;
+            }
+
+            GridPoint dims = new GridPoint(width, height);
+            if (!IsInside(start, dims))
+            {
+                failureReason = "Player grid position is outside walkable grid bounds.";
+                return false;
+            }
+
+            if (IsInside(desiredGoal, dims)
+                && TryResolveWalkableGoal(walkable, desiredGoal, maxRadius: 18, out GridPoint directGoal))
+            {
+                resolvedGoal = directGoal;
+                return true;
+            }
+
+            GridPoint clampedGoal = ClampToGrid(desiredGoal, width, height);
+            if (TryResolveWalkableGoal(walkable, clampedGoal, maxRadius: 24, out GridPoint clampedResolvedGoal))
+            {
+                resolvedGoal = clampedResolvedGoal;
+                usedFallback = true;
+                return true;
+            }
+
+            if (TryFindFurthestReachableGoalTowardTarget(walkable, start, clampedGoal, out GridPoint steppedGoal))
+            {
+                resolvedGoal = steppedGoal;
+                usedFallback = true;
+                return true;
+            }
+
+            failureReason = "No reachable walkable tile found toward target within current terrain coverage.";
+            return false;
+        }
+
+        private static GridPoint ClampToGrid(GridPoint point, int width, int height)
+            => new(
+                Math.Clamp(point.X, 0, width - 1),
+                Math.Clamp(point.Y, 0, height - 1));
+
+        private static bool TryFindFurthestReachableGoalTowardTarget(
+            bool[][] walkable,
+            GridPoint start,
+            GridPoint clampedGoal,
+            out GridPoint resolvedGoal)
+        {
+            resolvedGoal = start;
+            bool hasBest = false;
+            int bestProgress = 0;
+
+            foreach (GridPoint sample in EnumerateLinePoints(start, clampedGoal))
+            {
+                if (!TryResolveWalkableSample(walkable, sample, out GridPoint candidate))
+                    continue;
+
+                int progress = Math.Abs(candidate.X - start.X) + Math.Abs(candidate.Y - start.Y);
+                if (progress <= bestProgress)
+                    continue;
+
+                bestProgress = progress;
+                resolvedGoal = candidate;
+                hasBest = true;
+            }
+
+            return hasBest;
+        }
+
+        private static bool TryResolveWalkableSample(bool[][] walkable, GridPoint sample, out GridPoint resolved)
+        {
+            resolved = sample;
+
+            if (!TryGetGridDimensions(walkable, out int width, out int height))
+                return false;
+
+            if (sample.X < 0 || sample.Y < 0 || sample.X >= width || sample.Y >= height)
+                return false;
+
+            if (walkable[sample.Y][sample.X])
+                return true;
+
+            return TryResolveWalkableGoal(walkable, sample, maxRadius: 6, out resolved);
+        }
+
+        private static IEnumerable<GridPoint> EnumerateLinePoints(GridPoint start, GridPoint goal)
+        {
+            int dx = goal.X - start.X;
+            int dy = goal.Y - start.Y;
+            int steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+
+            if (steps <= 0)
+            {
+                yield return start;
+                yield break;
+            }
+
+            int previousX = int.MinValue;
+            int previousY = int.MinValue;
+
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                int x = (int)MathF.Round(start.X + (dx * t));
+                int y = (int)MathF.Round(start.Y + (dy * t));
+                if (x == previousX && y == previousY)
+                    continue;
+
+                previousX = x;
+                previousY = y;
+                yield return new GridPoint(x, y);
+            }
+        }
+
         private static bool TryGetGridDimensions(bool[][]? walkable, out int width, out int height)
         {
             width = 0;

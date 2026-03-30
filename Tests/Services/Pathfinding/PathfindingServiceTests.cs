@@ -96,6 +96,62 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void TryResolveBestEffortGoal_UsesDirectGoal_WhenTargetIsInGridAndWalkable()
+        {
+            bool[][] grid =
+            [
+                [true, true, true],
+                [true, true, true],
+                [true, true, true]
+            ];
+
+            bool ok = PathfindingService.TryResolveBestEffortGoal(
+                grid,
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(2, 2),
+                out PathfindingService.GridPoint resolved,
+                out bool usedFallback,
+                out string failureReason);
+
+            ok.Should().BeTrue();
+            usedFallback.Should().BeFalse();
+            failureReason.Should().BeEmpty();
+            resolved.Should().Be(new PathfindingService.GridPoint(2, 2));
+        }
+
+        [TestMethod]
+        public void TryResolveBestEffortGoal_UsesFallbackForFarOffGridTarget_AndProducesReachableGoal()
+        {
+            bool[][] grid =
+            [
+                [true, true, true, true, true],
+                [true, true, true, true, true],
+                [true, true, true, true, true],
+                [true, true, true, true, true],
+                [true, true, true, true, true]
+            ];
+
+            PathfindingService.GridPoint start = new PathfindingService.GridPoint(2, 2);
+            bool ok = PathfindingService.TryResolveBestEffortGoal(
+                grid,
+                start,
+                new PathfindingService.GridPoint(250, 250),
+                out PathfindingService.GridPoint resolved,
+                out bool usedFallback,
+                out string failureReason);
+
+            ok.Should().BeTrue();
+            usedFallback.Should().BeTrue();
+            failureReason.Should().BeEmpty();
+            resolved.Should().NotBe(start);
+
+            var path = PathfindingService.FindPathAStar(grid, start, resolved, 500, out int expandedNodes);
+            path.Should().NotBeNull();
+            path!.Count.Should().BeGreaterThan(1);
+            expandedNodes.Should().BeGreaterThan(0);
+        }
+
+        [TestMethod]
         public void ClearLatestPath_ResetsPathSnapshot()
         {
             var service = new PathfindingService(new ClickItSettings());

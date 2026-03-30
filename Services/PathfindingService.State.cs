@@ -18,6 +18,11 @@ namespace ClickIt.Services
         private IReadOnlyList<GridPoint> _lastGridPath = EmptyGridPath;
         private IReadOnlyList<Vector2> _lastScreenPath = EmptyScreenPath;
         private string _lastTargetPath = string.Empty;
+        private GridPoint _lastStart;
+        private GridPoint _lastRequestedGoal;
+        private GridPoint _lastResolvedGoal;
+        private bool _lastGoalResolutionUsedFallback;
+        private string _lastGoalResolutionNote = string.Empty;
         private OffscreenMovementDebugSnapshot _lastOffscreenMovementDebug = OffscreenMovementDebugSnapshot.Empty;
 
         public PathfindingDebugSnapshot GetDebugSnapshot()
@@ -29,7 +34,12 @@ namespace ClickIt.Services
                 LastPathLength: _lastPathLength,
                 LastComputeMs: _lastComputeMs,
                 LastFailureReason: _lastFailureReason,
-                LastTargetPath: _lastTargetPath));
+                LastTargetPath: _lastTargetPath,
+                LastStart: _lastStart,
+                LastRequestedGoal: _lastRequestedGoal,
+                LastResolvedGoal: _lastResolvedGoal,
+                LastGoalResolutionUsedFallback: _lastGoalResolutionUsedFallback,
+                LastGoalResolutionNote: _lastGoalResolutionNote));
 
         public IReadOnlyList<Vector2> GetLatestScreenPath()
             => ReadState(() => _lastScreenPath);
@@ -108,12 +118,32 @@ namespace ClickIt.Services
             });
         }
 
+        private void SetGoalResolutionDebugSnapshot(
+            GridPoint start,
+            GridPoint requestedGoal,
+            GridPoint resolvedGoal,
+            bool usedFallback,
+            string note)
+        {
+            UpdateState(() =>
+            {
+                _lastStart = start;
+                _lastRequestedGoal = requestedGoal;
+                _lastResolvedGoal = resolvedGoal;
+                _lastGoalResolutionUsedFallback = usedFallback;
+                _lastGoalResolutionNote = note ?? string.Empty;
+            });
+        }
+
         private void ClearPathDataUnsafe(bool clearFailureReason)
         {
             _lastGridPath = EmptyGridPath;
             _lastScreenPath = EmptyScreenPath;
             _lastPathLength = 0;
             _lastTargetPath = string.Empty;
+            _lastResolvedGoal = default;
+            _lastGoalResolutionUsedFallback = false;
+            _lastGoalResolutionNote = string.Empty;
 
             if (clearFailureReason)
                 _lastFailureReason = string.Empty;

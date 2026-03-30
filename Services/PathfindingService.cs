@@ -40,7 +40,12 @@ namespace ClickIt.Services
             int LastPathLength,
             long LastComputeMs,
             string LastFailureReason,
-            string LastTargetPath);
+            string LastTargetPath,
+            GridPoint LastStart,
+            GridPoint LastRequestedGoal,
+            GridPoint LastResolvedGoal,
+            bool LastGoalResolutionUsedFallback,
+            string LastGoalResolutionNote);
 
         public sealed record OffscreenMovementDebugSnapshot(
             bool HasData,
@@ -111,11 +116,27 @@ namespace ClickIt.Services
             if (!TryGetGridPos(target, out GridPoint goal))
                 return Fail("Unable to resolve target grid position.");
 
-            if (!IsInside(start, dims) || !IsInside(goal, dims))
-                return Fail("Grid positions are outside area dimensions.");
+            if (!TryResolveBestEffortGoal(
+                    walkable,
+                    start,
+                    goal,
+                    out GridPoint walkableGoal,
+                    out bool usedGoalFallback,
+                    out string goalResolutionFailureReason))
+            {
+                SetGoalResolutionDebugSnapshot(
+                    start,
+                    goal,
+                    resolvedGoal: default,
+                    usedFallback: false,
+                    note: goalResolutionFailureReason);
+                return Fail(goalResolutionFailureReason);
+            }
 
-            if (!TryResolveWalkableGoal(walkable, goal, maxRadius: 18, out GridPoint walkableGoal))
-                return Fail("No walkable tile found near target grid position.");
+            string goalResolutionNote = usedGoalFallback
+                ? "Using best-effort intermediate goal toward target."
+                : "Using direct walkable goal near target.";
+            SetGoalResolutionDebugSnapshot(start, goal, walkableGoal, usedGoalFallback, goalResolutionNote);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
             List<GridPoint>? gridPath = FindPathAStar(walkable, start, walkableGoal, Math.Max(100, maxExpandedNodes), out int expandedNodes);

@@ -470,6 +470,31 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Compute: {snap.LastComputeMs} ms", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
+            _deferredTextQueue.Enqueue(
+                $"Goal Mode: {(snap.LastGoalResolutionUsedFallback ? "Fallback" : "Direct")}",
+                new Vector2(xPos, yPos),
+                snap.LastGoalResolutionUsedFallback ? Color.Yellow : Color.LightGreen,
+                14);
+            yPos += lineHeight;
+
+            _deferredTextQueue.Enqueue(
+                $"Grid Start=({snap.LastStart.X},{snap.LastStart.Y}) Req=({snap.LastRequestedGoal.X},{snap.LastRequestedGoal.Y}) Res=({snap.LastResolvedGoal.X},{snap.LastResolvedGoal.Y})",
+                new Vector2(xPos, yPos),
+                Color.White,
+                14);
+            yPos += lineHeight;
+
+            if (!string.IsNullOrWhiteSpace(snap.LastGoalResolutionNote))
+            {
+                yPos = RenderWrappedText(
+                    $"Goal Note: {snap.LastGoalResolutionNote}",
+                    new Vector2(xPos, yPos),
+                    Color.Yellow,
+                    14,
+                    lineHeight,
+                    46);
+            }
+
             string targetPath = string.IsNullOrWhiteSpace(snap.LastTargetPath) ? "<none>" : snap.LastTargetPath;
             yPos = RenderWrappedText($"Target Path: {targetPath}", new Vector2(xPos, yPos), Color.LightBlue, 14, lineHeight, 46);
 
@@ -542,6 +567,9 @@ namespace ClickIt.Rendering
                 Color.Gray,
                 14);
             yPos += lineHeight;
+
+            IReadOnlyList<string> trail = clickIt.State.PathfindingService.GetLatestOffscreenMovementDebugTrail();
+            yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 6, wrapWidth: 52);
 
             return yPos;
         }
