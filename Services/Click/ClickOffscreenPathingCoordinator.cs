@@ -575,7 +575,7 @@ namespace ClickIt.Services
             IReadOnlyList<LabelOnGround>? allLabels,
             Vector2 windowTopLeft)
         {
-            if (!ClickService.TryGetLabelRect(label, out RectangleF rect))
+            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
                 return true;
 
             string path = entity.Path ?? string.Empty;

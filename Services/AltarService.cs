@@ -4,6 +4,7 @@ using ExileCore.Shared.Cache;
 using ClickIt.Components;
 using ClickIt.Definitions;
 using ClickIt.Utils;
+using System.Collections.ObjectModel;
 namespace ClickIt.Services
 {
     public class AltarServiceDebugInfo
@@ -29,16 +30,29 @@ namespace ClickIt.Services
         private readonly ClickIt _clickIt = clickIt;
         private readonly ClickItSettings _settings = settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels = cachedLabels;
-        private readonly AltarRepository _altarRepository = new();
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
         private readonly AltarMatcher _altarMatcher = new();
-        public List<PrimaryAltarComponent> GetAltarComponents() => _altarRepository.GetAltarComponents();
-        public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarRepository.GetAltarComponentsReadOnly();
-        public int GetAltarComponentCount() => _altarRepository.GetAltarComponentCount();
+
+        private readonly List<PrimaryAltarComponent> _altarComponents = [];
+        private readonly HashSet<string> _altarKeys = new(StringComparer.Ordinal);
+        private readonly object _altarComponentsLock = new();
+        private volatile PrimaryAltarComponent[] _altarSnapshot = [];
+        private volatile ReadOnlyCollection<PrimaryAltarComponent> _altarReadOnlySnapshot = Array.AsReadOnly(Array.Empty<PrimaryAltarComponent>());
+
+        public List<PrimaryAltarComponent> GetAltarComponents() => [.. _altarSnapshot];
+        public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarReadOnlySnapshot;
+        public int GetAltarComponentCount() => _altarSnapshot.Length;
 
         public void ClearAltarComponents()
         {
-            _altarRepository.ClearAltarComponents();
+            lock (_altarComponentsLock)
+            {
+                foreach (var component in _altarComponents)
+                    component.InvalidateCache();
+                _altarComponents.Clear();
+                _altarKeys.Clear();
+                RefreshAltarSnapshotUnderLock();
+            }
         }
 
         public void ClearRuntimeCaches()
@@ -78,7 +92,7 @@ namespace ClickIt.Services
                 return match;
             }
 
-            _altarRepository.RemoveAltarComponentsByElement(ShouldRemove);
+            RemoveAltarComponents(ShouldRemove);
         }
 
         public List<LabelOnGround> GetAltarLabels(AltarType type)
@@ -100,7 +114,85 @@ namespace ClickIt.Services
             }
             return result;
         }
-        public bool AddAltarComponent(PrimaryAltarComponent component) => _altarRepository.AddAltarComponent(component);
+        public bool AddAltarComponent(PrimaryAltarComponent component)
+        {
+            if (component == null)
+                return false;
+
+            lock (_altarComponentsLock)
+            {
+                string newKey = BuildAltarKey(component);
+                if (!_altarKeys.Add(newKey))
+                    return false;
+
+                _altarComponents.Add(component);
+                RefreshAltarSnapshotUnderLock();
+                return true;
+            }
+        }
+
+        private void RemoveAltarComponents(Func<PrimaryAltarComponent, bool> predicate)
+        {
+            if (predicate == null)
+                return;
+
+            lock (_altarComponentsLock)
+            {
+                int removed = _altarComponents.RemoveAll(component =>
+                {
+                    bool remove = predicate(component);
+                    if (remove)
+                        component.InvalidateCache();
+                    return remove;
+                });
+
+                if (removed <= 0)
+                    return;
+
+                RebuildAltarKeySnapshotUnderLock();
+                RefreshAltarSnapshotUnderLock();
+            }
+        }
+
+        private void RefreshAltarSnapshotUnderLock()
+        {
+            PrimaryAltarComponent[] snapshot = [.. _altarComponents];
+            _altarSnapshot = snapshot;
+            _altarReadOnlySnapshot = Array.AsReadOnly(snapshot);
+        }
+
+        private void RebuildAltarKeySnapshotUnderLock()
+        {
+            _altarKeys.Clear();
+            for (int i = 0; i < _altarComponents.Count; i++)
+                _altarKeys.Add(BuildAltarKey(_altarComponents[i]));
+        }
+
+        private static string BuildAltarKey(PrimaryAltarComponent component)
+        {
+            var topUpside = GetAltarModStrings(component.TopMods, false);
+            var topDownside = GetAltarModStrings(component.TopMods, true);
+            var bottomUpside = GetAltarModStrings(component.BottomMods, false);
+            var bottomDownside = GetAltarModStrings(component.BottomMods, true);
+
+            var allMods = topUpside.Concat(topDownside)
+                .Concat(bottomUpside)
+                .Concat(bottomDownside);
+
+            return string.Join("|", allMods);
+        }
+
+        private static string[] GetAltarModStrings(SecondaryAltarComponent? component, bool isDownside)
+        {
+            if (component == null)
+                return new string[8];
+
+            string[] values = new string[8];
+            for (int i = 0; i < values.Length; i++)
+                values[i] = isDownside ? component.GetDownsideByIndex(i) : component.GetUpsideByIndex(i);
+
+            return values;
+        }
 
         private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {

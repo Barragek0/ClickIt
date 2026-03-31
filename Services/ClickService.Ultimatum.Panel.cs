@@ -385,10 +385,7 @@ namespace ClickIt.Services
             }
 
             string modifierName = GetUltimatumModifierName(choiceEl);
-            if (!string.IsNullOrWhiteSpace(modifierName))
-                return modifierName;
-
-            return NormalizeModifierText(choiceEl.GetText(1024) ?? string.Empty);
+            return modifierName;
         }
 
         private static IReadOnlyList<string> GetUltimatumPanelModifierNames(UltimatumPanel panelObj)

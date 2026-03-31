@@ -10,25 +10,6 @@ namespace ClickIt.Utils
 {
     public partial class InputHandler
     {
-        private static bool TryGetLabelClientRect(LabelOnGround? label, out RectangleF rect)
-        {
-            rect = default;
-
-            Element? element = label?.Label;
-            if (element == null || !element.IsValid)
-                return false;
-
-            object? maybeRect = element.GetClientRect();
-            if (maybeRect is not RectangleF r)
-                return false;
-
-            if (r.Width <= 0 || r.Height <= 0)
-                return false;
-
-            rect = r;
-            return true;
-        }
-
         private static bool TryGetIntersection(RectangleF a, RectangleF b, out RectangleF intersection)
         {
             intersection = default;
@@ -333,7 +314,7 @@ namespace ClickIt.Utils
                 if (other == null || ReferenceEquals(other, targetLabel))
                     continue;
 
-                if (!TryGetLabelClientRect(other, out RectangleF otherRect))
+                if (!LabelUtils.TryGetLabelRect(other, out RectangleF otherRect))
                     continue;
 
                 if (otherRect.Right <= targetRect.Left

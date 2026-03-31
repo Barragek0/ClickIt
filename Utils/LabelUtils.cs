@@ -10,6 +10,25 @@ namespace ClickIt.Utils
 {
     internal static partial class LabelUtils
     {
+        internal static bool TryGetLabelRect(LabelOnGround? label, out RectangleF rect)
+        {
+            rect = default;
+
+            Element? element = label?.Label;
+            if (element == null || !element.IsValid)
+                return false;
+
+            object? maybeRect = element.GetClientRect();
+            if (maybeRect is not RectangleF r)
+                return false;
+
+            if (r.Width <= 0 || r.Height <= 0)
+                return false;
+
+            rect = r;
+            return true;
+        }
+
         internal static void SortByDistanceForTests<T>(List<T> items, Func<T, float> getDistance)
         {
             if (items == null) throw new ArgumentNullException(nameof(items));

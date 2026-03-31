@@ -226,7 +226,7 @@ namespace ClickIt.Services
                     isWorldItem: candidateEntity?.Type == ExileCore.Shared.Enums.EntityType.WorldItem);
                 Vector2 projectedGroundPoint = default;
 
-                bool hasLabelRect = ClickService.TryGetLabelRect(candidate, out RectangleF rect);
+                bool hasLabelRect = LabelUtils.TryGetLabelRect(candidate, out RectangleF rect);
                 bool cursorInsideLabelRect = hasLabelRect && ClickService.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
                 bool cursorNearGroundProjection = shouldUseGroundProjection
                     && TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out projectedGroundPoint)
@@ -384,7 +384,7 @@ namespace ClickIt.Services
 
         private static bool HasOverlappingEssenceLabel(LabelOnGround hoveredEssence, IReadOnlyList<LabelOnGround> allLabels)
         {
-            if (!ClickService.TryGetLabelRect(hoveredEssence, out RectangleF hoveredRect))
+            if (!LabelUtils.TryGetLabelRect(hoveredEssence, out RectangleF hoveredRect))
                 return false;
 
             for (int i = 0; i < allLabels.Count; i++)
@@ -393,7 +393,7 @@ namespace ClickIt.Services
                 if (candidate == null || ReferenceEquals(candidate, hoveredEssence) || !ClickService.IsEssenceLabel(candidate))
                     continue;
 
-                if (!ClickService.TryGetLabelRect(candidate, out RectangleF candidateRect))
+                if (!LabelUtils.TryGetLabelRect(candidate, out RectangleF candidateRect))
                     continue;
 
                 if (hoveredRect.Intersects(candidateRect))

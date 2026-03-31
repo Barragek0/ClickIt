@@ -19,7 +19,7 @@ namespace ClickIt.Services
         VisibleMechanicCoordinator VisibleMechanics,
         LabelSelectionCoordinator LabelSelection,
         ChestLootSettlementTracker ChestLootSettlement,
-        OffscreenTraversalEngine OffscreenPathing,
+        OffscreenPathingCoordinator OffscreenPathing,
         Func<bool> HasClickableAltars,
         Func<IEnumerator> ProcessAltarClicking,
         PublishClickFlowDebugStageDelegate PublishClickFlowDebugStage,

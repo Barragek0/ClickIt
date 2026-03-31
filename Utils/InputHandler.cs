@@ -43,7 +43,7 @@ namespace ClickIt.Utils
             if (!avoidOverlapsEnabled)
                 return false;
 
-            if (!TryGetLabelClientRect(label, out RectangleF rect))
+            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
                 return false;
 
             Vector2 preferredPoint = rect.Center;
@@ -66,7 +66,7 @@ namespace ClickIt.Utils
 
         public Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels = null)
         {
-            if (!TryGetLabelClientRect(label, out RectangleF rect))
+            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
             {
                 throw new InvalidOperationException("Label element is invalid");
             }
@@ -109,7 +109,7 @@ namespace ClickIt.Utils
         {
             clickPosition = default;
 
-            if (!TryGetLabelClientRect(label, out RectangleF rect))
+            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
                 return false;
 
             var item = label.ItemOnGround;

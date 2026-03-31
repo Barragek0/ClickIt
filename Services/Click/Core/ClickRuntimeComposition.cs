@@ -12,7 +12,7 @@ namespace ClickIt.Services
         private LabelSelectionCoordinator? _labelSelectionCoordinator;
         private ChestLootSettlementTracker? _chestLootSettlementTracker;
         private VisibleMechanicCoordinator? _visibleMechanicCoordinator;
-        private OffscreenTraversalEngine? _offscreenPathingCoordinator;
+        private OffscreenPathingCoordinator? _offscreenPathingCoordinator;
         private MovementSkillCoordinator? _movementSkillCoordinator;
         private ClickRuntimeEngine? _clickRuntimeEngine;
 
@@ -22,7 +22,7 @@ namespace ClickIt.Services
 
         private VisibleMechanicCoordinator VisibleMechanics => _visibleMechanicCoordinator ??= new(CreateVisibleMechanicCoordinatorDependencies());
 
-        private OffscreenTraversalEngine OffscreenPathing => _offscreenPathingCoordinator ??= new(CreateOffscreenPathingCoordinatorDependencies());
+        private OffscreenPathingCoordinator OffscreenPathing => _offscreenPathingCoordinator ??= new(CreateOffscreenPathingCoordinatorDependencies());
 
         private MovementSkillCoordinator MovementSkills => _movementSkillCoordinator ??= new(CreateMovementSkillCoordinatorDependencies());
 

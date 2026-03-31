@@ -174,7 +174,7 @@ namespace ClickIt.Services
 
         internal static float? TryGetCursorDistanceSquaredToLabel(LabelOnGround? label, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
-            if (!TryGetLabelRect(label, out RectangleF rect))
+            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
                 return null;
 
             return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, rect.Center, windowTopLeft);
@@ -196,24 +196,6 @@ namespace ClickIt.Services
                 return true;
 
             return nextIsEssence;
-        }
-
-        internal static bool TryGetLabelRect(LabelOnGround? label, out RectangleF rect)
-        {
-            rect = default;
-            Element? element = label?.Label;
-            if (element == null || !element.IsValid)
-                return false;
-
-            object? maybeRect = element.GetClientRect();
-            if (maybeRect is not RectangleF r)
-                return false;
-
-            if (r.Width <= 0 || r.Height <= 0)
-                return false;
-
-            rect = r;
-            return true;
         }
 
         internal static bool ShouldContinuePathingForSpecialAltarLabel(

@@ -89,7 +89,7 @@ namespace ClickIt.Services
 
         private void CleanupInvalidAltars()
         {
-            _altarRepository.RemoveAltarComponentsByElement(altar =>
+            RemoveAltarComponents(altar =>
             {
                 return altar.TopMods?.Element == null
                     || altar.BottomMods?.Element == null

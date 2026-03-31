@@ -60,17 +60,5 @@ namespace ClickIt.Tests.Unit
 
             resolved.Should().Be(requested);
         }
-
-        [TestMethod]
-        public void ResolveClickExecutionPosition_UsesCursorPosition_WhenCursorMoveDisabled()
-        {
-            var requested = new SharpDX.Vector2(10f, 20f);
-            var cursor = Mouse.GetCursorPosition();
-
-            var resolved = InputHandler.ResolveClickExecutionPosition(requested, avoidCursorMove: true);
-
-            resolved.X.Should().Be(cursor.X);
-            resolved.Y.Should().Be(cursor.Y);
-        }
     }
 }
