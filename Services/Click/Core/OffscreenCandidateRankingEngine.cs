@@ -17,7 +17,7 @@ namespace ClickIt.Services
                 return false;
 
             MechanicRank rank = buildRank(candidate.DistancePlayer, mechanicId);
-            if (hasBest && ClickService.CompareMechanicRanks(rank, bestRank) >= 0)
+            if (hasBest && CandidateRankingEngine.CompareRanks(rank, bestRank) >= 0)
                 return false;
 
             best = candidate;

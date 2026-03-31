@@ -36,7 +36,7 @@ namespace ClickIt.Services
         Action InvalidateShrineCache,
         Func<IReadOnlyList<LabelOnGround>?> GetLabelsForOffscreenSelection,
         Action RefreshMechanicPriorityCaches,
-        Func<float, string?, MechanicRank> BuildMechanicRankWithSharedEngine);
+        Func<float, string?, MechanicRank> BuildMechanicRank);
 
     internal sealed class OffscreenPathingCoordinator(OffscreenPathingCoordinatorDependencies dependencies)
     {
@@ -353,10 +353,10 @@ namespace ClickIt.Services
             MechanicRank bestRank = default;
             bool hasBest = false;
 
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, labelBackedTarget, labelMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, ClickService.ShrineMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, labelBackedTarget, labelMechanicId, _dependencies.BuildMechanicRank);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId, _dependencies.BuildMechanicRank);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, ClickService.ShrineMechanicId, _dependencies.BuildMechanicRank);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId, _dependencies.BuildMechanicRank);
 
             return best;
         }
@@ -488,8 +488,8 @@ namespace ClickIt.Services
                 if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft))
                     continue;
 
-                MechanicRank rank = _dependencies.BuildMechanicRankWithSharedEngine(entity.DistancePlayer, mechanicId);
-                if (hasBestRank && ClickService.CompareMechanicRanks(rank, bestRank) >= 0)
+                MechanicRank rank = _dependencies.BuildMechanicRank(entity.DistancePlayer, mechanicId);
+                if (hasBestRank && CandidateRankingEngine.CompareRanks(rank, bestRank) >= 0)
                     continue;
 
                 best = entity;

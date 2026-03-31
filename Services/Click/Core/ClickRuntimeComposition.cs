@@ -98,7 +98,6 @@ namespace ClickIt.Services
                 SetLatestClickDebug,
                 IsInsideWindowInEitherSpace,
                 IsClickableInEitherSpace,
-                BuildMechanicRankWithSharedEngine,
                 mechanicId => SettlersMechanicPolicy.IsEnabled(settings, mechanicId));
 
         private MovementSkillCoordinatorDependencies CreateMovementSkillCoordinatorDependencies()
@@ -174,7 +173,7 @@ namespace ClickIt.Services
                 () => shrineService.InvalidateCache(),
                 GetLabelsForOffscreenSelection,
                 RefreshMechanicPriorityCaches,
-                BuildMechanicRankWithSharedEngine);
+                (distance, mechanicId) => CandidateRankingEngine.BuildRank(distance, mechanicId, CreateMechanicPriorityContext()));
 
         private ClickRuntimeEngineDependencies CreateClickRuntimeEngineDependencies()
             => new(

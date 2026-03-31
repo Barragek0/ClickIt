@@ -755,47 +755,6 @@ namespace ClickIt.Services
                 path));
         }
 
-        private MechanicRank BuildMechanicRankWithSharedEngine(float distance, string? mechanicId)
-        {
-            var snapshot = _mechanicPrioritySnapshotService.Snapshot;
-            var context = new CandidateScoreEngine.CandidateScoreContext(
-                snapshot.PriorityIndexMap,
-                snapshot.IgnoreDistanceSet,
-                snapshot.IgnoreDistanceWithinByMechanicId,
-                settings.MechanicPriorityDistancePenalty.Value);
-
-            CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(distance, mechanicId, float.MaxValue, context);
-            return new MechanicRank(score.Ignored, score.PriorityIndex, score.WeightedDistance, score.RawDistance, score.CursorDistance);
-        }
-
-        internal static bool ShouldPreferSettlersWithSharedRankingEngine(
-            MechanicCandidateSignal settlersSignal,
-            MechanicCandidateSignal labelSignal,
-            MechanicCandidateSignal shrineSignal,
-            MechanicCandidateSignal lostShipmentSignal,
-            in MechanicPriorityContext mechanicPriorityContext)
-        {
-            return ShouldPreferSettlersOreOverVisibleCandidates(
-                settlersSignal,
-                labelSignal,
-                shrineSignal,
-                lostShipmentSignal,
-                mechanicPriorityContext);
-        }
-
-        internal static bool ShouldPreferLostShipmentWithSharedRankingEngine(
-            MechanicCandidateSignal lostShipmentSignal,
-            MechanicCandidateSignal labelSignal,
-            MechanicCandidateSignal shrineSignal,
-            in MechanicPriorityContext mechanicPriorityContext)
-        {
-            return ShouldPreferLostShipmentOverVisibleCandidates(
-                lostShipmentSignal,
-                labelSignal,
-                shrineSignal,
-                mechanicPriorityContext);
-        }
-
         private bool ShouldSuppressPathfindingLabel(LabelOnGround label)
         {
             return ShouldSuppressPathfindingLabelCore(

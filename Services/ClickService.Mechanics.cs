@@ -74,96 +74,6 @@ namespace ClickIt.Services
                 settings.MechanicPriorityDistancePenalty.Value);
         }
 
-        internal static MechanicCandidateSignal CreateMechanicCandidateSignal(
-            string? mechanicId,
-            float? distance,
-            float? cursorDistance = null)
-            => new(mechanicId, distance, cursorDistance);
-
-        internal static bool ShouldPreferLostShipmentOverVisibleCandidates(
-            in MechanicCandidateSignal lostShipment,
-            in MechanicCandidateSignal label,
-            in MechanicCandidateSignal shrine,
-            in MechanicPriorityContext context)
-            => ShouldPreferCandidate(lostShipment, context, label, shrine);
-
-        internal static bool ShouldPreferSettlersOreOverVisibleCandidates(
-            in MechanicCandidateSignal settlers,
-            in MechanicCandidateSignal label,
-            in MechanicCandidateSignal shrine,
-            in MechanicCandidateSignal lostShipment,
-            in MechanicPriorityContext context)
-            => ShouldPreferCandidate(settlers, context, label, shrine, lostShipment);
-
-        internal static bool ShouldPreferShrineOverLabelForOffscreen(
-            in MechanicCandidateSignal shrine,
-            in MechanicCandidateSignal label,
-            in MechanicPriorityContext context)
-            => ShouldPreferCandidate(shrine, context, label);
-
-        private static bool ShouldPreferCandidate(
-            in MechanicCandidateSignal candidate,
-            in MechanicPriorityContext context,
-            params MechanicCandidateSignal[] others)
-        {
-            if (!candidate.Exists)
-                return false;
-
-            MechanicRank candidateRank = BuildMechanicRank(candidate, context);
-            for (int i = 0; i < others.Length; i++)
-            {
-                MechanicCandidateSignal other = others[i];
-                if (!other.Exists)
-                    continue;
-
-                MechanicRank otherRank = BuildMechanicRank(other, context);
-                if (CompareMechanicRanks(candidateRank, otherRank) >= 0)
-                    return false;
-            }
-
-            return true;
-        }
-
-        private MechanicRank BuildMechanicRank(float distance, string? mechanicId)
-            => BuildMechanicRank(
-                CreateMechanicCandidateSignal(mechanicId, distance),
-                CreateMechanicPriorityContext());
-
-        private static MechanicRank BuildMechanicRank(
-            in MechanicCandidateSignal candidate,
-            in MechanicPriorityContext context)
-        {
-            float distance = candidate.Distance ?? float.MaxValue;
-            float cursorDistance = candidate.CursorDistance ?? float.MaxValue;
-
-            CandidateScoreEngine.CandidateScoreContext scoreContext = CreateCandidateScoreContext(context);
-            CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(distance, candidate.MechanicId, cursorDistance, scoreContext);
-            return new MechanicRank(score.Ignored, score.PriorityIndex, score.WeightedDistance, score.RawDistance, score.CursorDistance);
-        }
-
-        private static CandidateScoreEngine.CandidateScoreContext CreateCandidateScoreContext(in MechanicPriorityContext context)
-            => new(
-                context.PriorityIndexMap,
-                context.IgnoreDistanceSet,
-                context.IgnoreDistanceWithinByMechanicId,
-                context.PriorityDistancePenalty);
-
-        private static int ResolvePriorityIndex(string? mechanicId, IReadOnlyDictionary<string, int> priorityIndexMap)
-            => CandidateScoreEngine.ResolvePriorityIndex(mechanicId, priorityIndexMap);
-
-        private static bool IsIgnoreDistanceActiveForMechanic(
-            string? mechanicId,
-            float distance,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
-            => CandidateScoreEngine.IsIgnoreDistanceActive(mechanicId, distance, ignoreDistanceSet, ignoreDistanceWithinByMechanicId);
-
-        internal static int CompareMechanicRanks(MechanicRank left, MechanicRank right)
-            => CandidateScoreEngine.Compare(ToCandidateScore(left), ToCandidateScore(right));
-
-        private static CandidateScoreEngine.CandidateScore ToCandidateScore(MechanicRank rank)
-            => new(rank.Ignored, rank.PriorityIndex, rank.WeightedDistance, rank.RawDistance, rank.CursorDistance);
-
         private static bool ContainsAny(string? value, params string[] markers)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -195,9 +105,6 @@ namespace ClickIt.Services
                 settings.GetMechanicPriorityIgnoreDistanceIds(),
                 settings.GetMechanicPriorityIgnoreDistanceWithinById());
         }
-
-        private int GetMechanicPriorityIndex(string? mechanicId)
-            => ResolvePriorityIndex(mechanicId, _mechanicPrioritySnapshotService.Snapshot.PriorityIndexMap);
 
         private static bool IsSettlersMechanicId(string? mechanicId)
             => !string.IsNullOrWhiteSpace(mechanicId)

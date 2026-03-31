@@ -62,12 +62,12 @@ namespace ClickIt.Services
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
             Vector2 cursorAbsolute = ClickService.GetCursorAbsolutePosition();
-            return ClickService.ShouldPreferShrineOverLabelForOffscreen(
-                ClickService.CreateMechanicCandidateSignal(
+            return CandidateRankingEngine.ShouldPreferShrineOverLabel(
+                new MechanicCandidateSignal(
                     MechanicIds.Shrines,
                     shrineDistance,
                     _dependencies.TryGetCursorDistanceSquaredToEntity(shrine, cursorAbsolute, windowTopLeft)),
-                ClickService.CreateMechanicCandidateSignal(
+                new MechanicCandidateSignal(
                     labelMechanicId,
                     labelDistance,
                     ClickService.TryGetCursorDistanceSquaredToLabel(label, cursorAbsolute, windowTopLeft)),

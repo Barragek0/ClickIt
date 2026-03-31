@@ -23,7 +23,6 @@ namespace ClickIt.Services
         Action<ClickService.ClickDebugSnapshot> SetLatestClickDebug,
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
         Func<Vector2, string, bool> IsClickableInEitherSpace,
-        Func<float, string?, MechanicRank> BuildMechanicRankWithSharedEngine,
         Func<string?, bool> IsSettlersMechanicEnabled);
 
     internal sealed class VisibleMechanicCoordinator(VisibleMechanicCoordinatorDependencies dependencies)
