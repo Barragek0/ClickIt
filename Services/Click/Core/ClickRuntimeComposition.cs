@@ -94,6 +94,7 @@ namespace ClickIt.Services
                 () => shrineService.InvalidateCache(),
                 () => pathfindingService.ClearLatestPath(),
                 message => DebugLog(() => message),
+                reason => HoldDebugTelemetryAfterSuccessfulInteraction(reason),
                 ShouldCaptureClickDebug,
                 SetLatestClickDebug,
                 IsInsideWindowInEitherSpace,
@@ -128,6 +129,7 @@ namespace ClickIt.Services
                 () => _runtimeState.StickyOffscreenTargetAddress,
                 value => _runtimeState.StickyOffscreenTargetAddress = value,
                 message => DebugLog(() => message),
+                reason => HoldDebugTelemetryAfterSuccessfulInteraction(reason),
                 (stage, notes) => PublishClickFlowDebugStage(stage, notes),
                 HasClickableAltars,
                 () => VisibleMechanics.ResolveNextShrineCandidate(),
@@ -207,6 +209,7 @@ namespace ClickIt.Services
                     0,
                     ClickService.ShouldForceUiHoverVerificationForLabel(label)),
                 PublishLabelClickDebug,
+                reason => HoldDebugTelemetryAfterSuccessfulInteraction(reason),
                 message => DebugLog(() => message));
 
         private ClickTickContextFactoryDependencies CreateClickTickContextFactoryDependencies()

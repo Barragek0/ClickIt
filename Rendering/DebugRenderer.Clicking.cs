@@ -67,6 +67,14 @@ namespace ClickIt.Rendering
             }
 
             ClickItSettings settings = clickIt.Settings;
+            if (clickIt.State.TryGetDebugTelemetryFreezeState(out long remainingMs, out string freezeReason))
+            {
+                string freezeSummary = string.IsNullOrWhiteSpace(freezeReason)
+                    ? $"Telemetry Hold Active: {remainingMs}ms remaining"
+                    : $"Telemetry Hold Active: {remainingMs}ms remaining | {freezeReason}";
+                yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, freezeSummary, Color.Orange, 13, 86);
+            }
+
             _deferredTextQueue.Enqueue("Click Settings Snapshot:", new Vector2(xPos, yPos), Color.LightBlue, 14);
             yPos += lineHeight;
 

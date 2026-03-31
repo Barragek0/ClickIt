@@ -467,6 +467,14 @@ namespace ClickIt.Rendering
                 return yPos + lineHeight;
             }
 
+            if (clickIt.State.TryGetDebugTelemetryFreezeState(out long remainingMs, out string freezeReason))
+            {
+                string freezeSummary = string.IsNullOrWhiteSpace(freezeReason)
+                    ? $"Telemetry Hold Active: {remainingMs}ms remaining"
+                    : $"Telemetry Hold Active: {remainingMs}ms remaining | {freezeReason}";
+                yPos = RenderWrappedText(freezeSummary, new Vector2(xPos, yPos), Color.Orange, 14, lineHeight, 46);
+            }
+
             var snap = telemetry.Pathfinding.Pathfinding;
             Color terrainColor = snap.TerrainLoaded ? Color.LightGreen : Color.Red;
             _deferredTextQueue.Enqueue($"Terrain Loaded: {snap.TerrainLoaded}", new Vector2(xPos, yPos), terrainColor, 14);

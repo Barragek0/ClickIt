@@ -101,6 +101,8 @@ namespace ClickIt
         [Menu("Auto Copy Inventory Warning Debug", "Automatically copies inventory warning debug details when the 'Your inventory is full' overlay is triggered. Copy attempts are throttled to once per second.", 4, 900)]
         public ToggleNode AutoCopyInventoryWarningDebug { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
+        public RangeNode<int> DebugFreezeSuccessfulInteractionMs { get; set; } = new RangeNode<int>(10000, 0, 20000);
+        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Log messages", "This will flood your log and screen with debug text.", 5, 900)]
         public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]

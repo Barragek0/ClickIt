@@ -2,6 +2,7 @@ using FluentAssertions;
 using ClickIt.Services.Observability;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace ClickIt.Tests.Unit
 {
@@ -101,6 +102,31 @@ namespace ClickIt.Tests.Unit
             snapshot.Label.LabelTrail.Should().BeEmpty();
             snapshot.Pathfinding.OffscreenMovementTrail.Should().BeEmpty();
             snapshot.Inventory.InventoryTrail.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void FreezeDebugTelemetrySnapshot_ActivatesHoldState_WhenDurationPositive()
+        {
+            var state = new PluginContext();
+
+            state.FreezeDebugTelemetrySnapshot("offscreen-click", 1000);
+
+            state.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeTrue();
+            remainingMs.Should().BeGreaterThan(0);
+            reason.Should().Be("offscreen-click");
+        }
+
+        [TestMethod]
+        public void FreezeDebugTelemetrySnapshot_ExpiresAfterRequestedWindow()
+        {
+            var state = new PluginContext();
+
+            state.FreezeDebugTelemetrySnapshot("short-hold", 20);
+            Thread.Sleep(40);
+
+            state.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeFalse();
+            remainingMs.Should().Be(0);
+            reason.Should().BeEmpty();
         }
     }
 }

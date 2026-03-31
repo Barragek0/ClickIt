@@ -52,6 +52,12 @@ namespace ClickIt
             if (RenderDebug.Value)
             {
                 ImGui.Indent();
+                DrawRangeNodeControl(
+                    "Freeze Successful Interaction Debug (ms)",
+                    DebugFreezeSuccessfulInteractionMs,
+                    0,
+                    20000,
+                    "When greater than 0, ClickIt holds the current Additional Debug Information telemetry snapshot for this many milliseconds after a successful automated click or offscreen traversal.\n\nThis prevents later debug updates from immediately overwriting the evidence you want to inspect,\n\nand also gives you time to copy the Additional Debug Information to clipboard after a successful interaction, before it gets overwritten.");
                 DrawDebugSectionToggles();
                 ImGui.Unindent();
             }

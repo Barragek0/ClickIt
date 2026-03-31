@@ -97,7 +97,8 @@ namespace ClickIt.Composition
                 pathfindingService,
                 new Func<bool>(labelService.GroundItemsVisible),
                 cachedLabels,
-                performanceMonitor);
+                performanceMonitor,
+                owner.State.FreezeDebugTelemetrySnapshot);
 
             var ultimatumRenderer = new Rendering.UltimatumRenderer(settings, clickService, deferredFrameQueue);
             var alertService = owner.GetAlertService();

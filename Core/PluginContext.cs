@@ -14,6 +14,10 @@ namespace ClickIt
     public class PluginContext
     {
         private readonly ServiceDisposalRegistry _serviceRegistry = new();
+        private readonly object _debugTelemetryFreezeLock = new();
+        private DebugTelemetrySnapshot _frozenDebugTelemetrySnapshot = DebugTelemetrySnapshot.Empty;
+        private long _debugTelemetryFreezeUntilTimestampMs;
+        private string _debugTelemetryFreezeReason = string.Empty;
 
         public Utils.PerformanceMonitor? PerformanceMonitor { get; set; }
         public Utils.ErrorHandler? ErrorHandler { get; set; }
@@ -66,6 +70,56 @@ namespace ClickIt
         public IReadOnlyList<string> RecentErrors => ErrorHandler?.RecentErrors ?? [];
 
         internal DebugTelemetrySnapshot GetDebugTelemetrySnapshot()
+        {
+            lock (_debugTelemetryFreezeLock)
+            {
+                long remainingMs = _debugTelemetryFreezeUntilTimestampMs - Environment.TickCount64;
+                if (remainingMs > 0)
+                    return _frozenDebugTelemetrySnapshot;
+
+                ClearDebugTelemetryFreezeUnsafe();
+            }
+
+            return GetLiveDebugTelemetrySnapshot();
+        }
+
+        internal void FreezeDebugTelemetrySnapshot(string reason, int holdDurationMs)
+        {
+            int durationMs = Math.Max(0, holdDurationMs);
+            if (durationMs <= 0)
+                return;
+
+            DebugTelemetrySnapshot snapshot = GetLiveDebugTelemetrySnapshot();
+            long now = Environment.TickCount64;
+
+            lock (_debugTelemetryFreezeLock)
+            {
+                _frozenDebugTelemetrySnapshot = snapshot;
+                _debugTelemetryFreezeUntilTimestampMs = now + durationMs;
+                _debugTelemetryFreezeReason = reason ?? string.Empty;
+            }
+        }
+
+        internal bool TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason)
+        {
+            lock (_debugTelemetryFreezeLock)
+            {
+                remainingMs = _debugTelemetryFreezeUntilTimestampMs - Environment.TickCount64;
+                if (remainingMs > 0)
+                {
+                    reason = _debugTelemetryFreezeReason;
+                    return true;
+                }
+
+                ClearDebugTelemetryFreezeUnsafe();
+            }
+
+            remainingMs = 0;
+            reason = string.Empty;
+            return false;
+        }
+
+        private DebugTelemetrySnapshot GetLiveDebugTelemetrySnapshot()
         {
             ClickTelemetrySnapshot clickTelemetry = ClickTelemetrySnapshot.Empty;
             if (ClickService != null)
@@ -126,6 +180,13 @@ namespace ClickIt
                 Inventory: inventoryTelemetry);
         }
 
+        private void ClearDebugTelemetryFreezeUnsafe()
+        {
+            _frozenDebugTelemetrySnapshot = DebugTelemetrySnapshot.Empty;
+            _debugTelemetryFreezeUntilTimestampMs = 0;
+            _debugTelemetryFreezeReason = string.Empty;
+        }
+
         public void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
         {
             if (owner == null)
@@ -135,6 +196,10 @@ namespace ClickIt
 
             _serviceRegistry.Reset();
             IsShuttingDown = false;
+            lock (_debugTelemetryFreezeLock)
+            {
+                ClearDebugTelemetryFreezeUnsafe();
+            }
 
             ComposedServices services = ServiceCompositionRoot.Compose(owner, settings);
 
@@ -193,6 +258,10 @@ namespace ClickIt
         public void DisposeCompositionRoot()
         {
             _serviceRegistry.DisposeAll();
+            lock (_debugTelemetryFreezeLock)
+            {
+                ClearDebugTelemetryFreezeUnsafe();
+            }
 
             AreaService = null;
             AltarService = null;

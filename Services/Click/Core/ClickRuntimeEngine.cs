@@ -30,6 +30,7 @@ namespace ClickIt.Services
         ResolveLabelClickPositionDelegate TryResolveLabelClickPosition,
         ExecuteVisibleLabelInteractionDelegate ExecuteVisibleLabelInteraction,
         PublishLabelClickDebugDelegate PublishLabelClickDebug,
+        Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog);
 
     internal readonly record struct ClickCandidates(

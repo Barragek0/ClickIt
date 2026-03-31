@@ -30,7 +30,8 @@ namespace ClickIt.Services
         PathfindingService pathfindingService,
         Func<bool> groundItemsVisible,
         TimeCache<List<LabelOnGround>> cachedLabels,
-        PerformanceMonitor performanceMonitor)
+        PerformanceMonitor performanceMonitor,
+        Action<string, int>? freezeDebugTelemetrySnapshot = null)
         : Observability.IClickTelemetryPublisher
     {
         private readonly ClickItSettings settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -47,6 +48,7 @@ namespace ClickIt.Services
         private readonly Func<bool> groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
+        private readonly Action<string, int>? freezeDebugTelemetrySnapshot = freezeDebugTelemetrySnapshot;
         private readonly ChestLootSettlementState chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
         private long _gruelingGauntletPassiveCacheTimestampMs;
@@ -200,6 +202,18 @@ namespace ClickIt.Services
         internal static void ClearThreadLocalStorageForTests()
         {
             ClearThreadLocalStorageForCurrentThread();
+        }
+
+        private void HoldDebugTelemetryAfterSuccessfulInteraction(string reason)
+        {
+            if (settings.DebugMode?.Value != true || settings.RenderDebug?.Value != true)
+                return;
+
+            int holdDurationMs = Math.Max(0, settings.DebugFreezeSuccessfulInteractionMs?.Value ?? 0);
+            if (holdDurationMs <= 0)
+                return;
+
+            freezeDebugTelemetrySnapshot?.Invoke(reason, holdDurationMs);
         }
 
     }

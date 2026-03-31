@@ -19,6 +19,7 @@ namespace ClickIt.Services
         Action InvalidateShrineCache,
         Action ClearLatestPath,
         Action<string> DebugLog,
+        Action<string> HoldDebugTelemetryAfterSuccess,
         Func<bool> ShouldCaptureClickDebug,
         Action<ClickService.ClickDebugSnapshot> SetLatestClickDebug,
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
@@ -161,6 +162,12 @@ namespace ClickIt.Services
         {
             if (entity == null)
                 return;
+
+            string entityPath = entity.Path ?? string.Empty;
+            string reason = string.IsNullOrWhiteSpace(entityPath)
+                ? "Successful mechanic click"
+                : $"Successful mechanic click: {entityPath}";
+            _dependencies.HoldDebugTelemetryAfterSuccess(reason);
 
             if (_dependencies.IsStickyTarget(entity))
                 _dependencies.ClearStickyOffscreenTarget();

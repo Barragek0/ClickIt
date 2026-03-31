@@ -224,6 +224,11 @@ namespace ClickIt.Services
 
             if (clicked)
             {
+                string mechanicDisplay = string.IsNullOrWhiteSpace(candidates.NextLabelMechanicId)
+                    ? "visible-label-click"
+                    : candidates.NextLabelMechanicId;
+                _dependencies.HoldDebugTelemetryAfterSuccess($"Successful automated click: {mechanicDisplay}");
+
                 if (_dependencies.OffscreenPathing.IsStickyTarget(nextLabel.ItemOnGround))
                 {
                     _dependencies.OffscreenPathing.ClearStickyOffscreenTarget();
