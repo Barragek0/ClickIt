@@ -826,6 +826,47 @@ namespace ClickIt.Services
             return 50000;
         }
 
+        internal static (bool ShouldDelay, long NextAddress, string NextPath, long NextFirstSeenTimestampMs, long RemainingDelayMs)
+            EvaluateOffscreenTraversalTargetConfirmation(
+                long targetAddress,
+                string? targetPath,
+                long pendingAddress,
+                string? pendingPath,
+                long pendingFirstSeenTimestampMs,
+                long now,
+                int confirmationWindowMs)
+        {
+            string normalizedPath = targetPath ?? string.Empty;
+
+            if (confirmationWindowMs <= 0)
+            {
+                return (false, targetAddress, normalizedPath, now, 0);
+            }
+
+            bool isSameTarget = IsSameOffscreenTraversalTarget(targetAddress, normalizedPath, pendingAddress, pendingPath);
+            if (!isSameTarget)
+            {
+                return (true, targetAddress, normalizedPath, now, confirmationWindowMs);
+            }
+
+            long firstSeen = pendingFirstSeenTimestampMs > 0 ? pendingFirstSeenTimestampMs : now;
+            long elapsed = Math.Max(0, now - firstSeen);
+            if (elapsed >= confirmationWindowMs)
+            {
+                return (false, targetAddress, normalizedPath, firstSeen, 0);
+            }
+
+            return (true, targetAddress, normalizedPath, firstSeen, confirmationWindowMs - elapsed);
+        }
+
+        internal static bool IsSameOffscreenTraversalTarget(long leftAddress, string? leftPath, long rightAddress, string? rightPath)
+        {
+            if (leftAddress != 0 && rightAddress != 0)
+                return leftAddress == rightAddress;
+
+            return string.Equals(leftPath ?? string.Empty, rightPath ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        }
+
         internal static LabelOnGround? FindVisibleLabelForEntity(Entity entity, IReadOnlyList<LabelOnGround>? labels)
         {
             if (entity == null || labels == null || labels.Count == 0)

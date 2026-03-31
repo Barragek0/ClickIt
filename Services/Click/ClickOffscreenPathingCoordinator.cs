@@ -17,6 +17,7 @@ namespace ClickIt.Services
         Func<long> GetStickyOffscreenTargetAddress,
         Action<long> SetStickyOffscreenTargetAddress,
         Action<string> DebugLog,
+        Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string, string> PublishClickFlowDebugStage,
         Func<bool> HasClickableAltars,
         Func<Entity?> ResolveNextShrineCandidate,
@@ -40,7 +41,11 @@ namespace ClickIt.Services
 
     internal sealed class OffscreenPathingCoordinator(OffscreenPathingCoordinatorDependencies dependencies)
     {
+        private const int OffscreenTargetConfirmationWindowMs = 120;
         private readonly OffscreenPathingCoordinatorDependencies _dependencies = dependencies;
+        private long _pendingTargetAddress;
+        private string _pendingTargetPath = string.Empty;
+        private long _pendingTargetFirstSeenTimestampMs;
 
         public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
         {
@@ -49,6 +54,7 @@ namespace ClickIt.Services
 
             if (ClickService.ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(_dependencies.GameController)))
             {
+                ResetPendingTargetConfirmation();
                 ClearStickyOffscreenTarget();
                 _dependencies.PathfindingService.ClearLatestPath();
                 _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a RitualBlocker is active.");
@@ -58,6 +64,7 @@ namespace ClickIt.Services
 
             if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
             {
+                ResetPendingTargetConfirmation();
                 ClearStickyOffscreenTarget();
                 _dependencies.PathfindingService.ClearLatestPath();
                 _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a clickable on-screen mechanic is available.");
@@ -67,6 +74,7 @@ namespace ClickIt.Services
             Entity? target = preferredTarget ?? ResolveNearestOffscreenWalkTarget();
             if (target == null)
             {
+                ResetPendingTargetConfirmation();
                 if (preferredTarget != null)
                     ClearStickyOffscreenTarget();
 
@@ -76,14 +84,25 @@ namespace ClickIt.Services
 
             if (!target.IsValid || target.IsHidden || ClickService.IsEntityHiddenByMinimapIcon(target))
             {
+                ResetPendingTargetConfirmation();
                 ClearStickyOffscreenTarget();
                 _dependencies.PathfindingService.ClearLatestPath();
                 return false;
             }
 
+            string targetPath = target.Path ?? string.Empty;
+            if (preferredTarget == null && ShouldDelayTraversalForPendingTarget(target, targetPath, out long remainingDelayMs))
+            {
+                _dependencies.PathfindingService.ClearLatestPath();
+                _dependencies.PublishClickFlowDebugStage(
+                    "OffscreenPathingAwaitingConfirmation",
+                    $"target={targetPath} remainingMs={remainingDelayMs}");
+                return false;
+            }
+
+            ResetPendingTargetConfirmation();
             SetStickyOffscreenTarget(target);
 
-            string targetPath = target.Path ?? string.Empty;
             bool builtPath = _dependencies.PathfindingService.TryBuildPathToTarget(
                 _dependencies.GameController,
                 target,
@@ -118,6 +137,7 @@ namespace ClickIt.Services
             if (movementSkillUsed)
             {
                 PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, true, targetScreen, movementSkillCastPoint, "MovementSkillUsed", movementSkillDebug);
+                _dependencies.HoldDebugTelemetryAfterSuccess($"Offscreen traversal movement skill used: {targetPath}");
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Used movement skill toward offscreen target: {targetPath}");
                 return true;
             }
@@ -131,6 +151,7 @@ namespace ClickIt.Services
             if (clicked)
             {
                 PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "Clicked", movementSkillDebug);
+                _dependencies.HoldDebugTelemetryAfterSuccess($"Offscreen traversal click succeeded: {targetPath}");
                 _ = _dependencies.PathfindingService.TryBuildPathToTarget(
                     _dependencies.GameController,
                     target,
@@ -162,6 +183,31 @@ namespace ClickIt.Services
 
         public void ClearStickyOffscreenTarget()
             => _dependencies.SetStickyOffscreenTargetAddress(0);
+
+        private bool ShouldDelayTraversalForPendingTarget(Entity target, string targetPath, out long remainingDelayMs)
+        {
+            var confirmation = ClickService.EvaluateOffscreenTraversalTargetConfirmation(
+                target.Address,
+                targetPath,
+                _pendingTargetAddress,
+                _pendingTargetPath,
+                _pendingTargetFirstSeenTimestampMs,
+                Environment.TickCount64,
+                OffscreenTargetConfirmationWindowMs);
+
+            _pendingTargetAddress = confirmation.NextAddress;
+            _pendingTargetPath = confirmation.NextPath;
+            _pendingTargetFirstSeenTimestampMs = confirmation.NextFirstSeenTimestampMs;
+            remainingDelayMs = confirmation.RemainingDelayMs;
+            return confirmation.ShouldDelay;
+        }
+
+        private void ResetPendingTargetConfirmation()
+        {
+            _pendingTargetAddress = 0;
+            _pendingTargetPath = string.Empty;
+            _pendingTargetFirstSeenTimestampMs = 0;
+        }
 
         public bool TryResolveStickyOffscreenTarget(out Entity? target)
         {
@@ -269,6 +315,10 @@ namespace ClickIt.Services
             bool clickedLabel = _dependencies.ExecuteStickyLabelInteraction(clickPos, stickyLabel, mechanicId);
             if (clickedLabel)
             {
+                string stickyReason = string.IsNullOrWhiteSpace(stickyTarget.Path)
+                    ? "Sticky offscreen target click succeeded"
+                    : $"Sticky offscreen target click succeeded: {stickyTarget.Path}";
+                _dependencies.HoldDebugTelemetryAfterSuccess(stickyReason);
                 _dependencies.MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
                 ClearStickyOffscreenTarget();
             }
