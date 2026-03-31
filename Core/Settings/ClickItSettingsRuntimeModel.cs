@@ -1,19 +1,9 @@
-﻿using ExileCore.Shared.Attributes;
-using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
 using ImGuiNET;
-using Newtonsoft.Json;
-using System.Linq;
-using System.Numerics;
-using ClickIt.Definitions;
 
 namespace ClickIt
 {
-    /**
-            * This file contains ClickItSettings rendering and helper logic that has not yet been moved into the planned panel-specific partials.
-            * Panel declaration order remains driven by ClickItSettings.cs property declarations, so renderer extraction is safe as long as those declarations stay stable.
-            */
-    public partial class ClickItSettings : ISettings
+    public partial class ClickItSettings
     {
         private MechanicToggleTableEntry[]? _mechanicTableEntriesCache;
         private Dictionary<string, ToggleNode>? _mechanicToggleNodeByIdCache;
@@ -23,28 +13,6 @@ namespace ClickIt
         private int _strongboxMetadataSnapshotSignature = int.MinValue;
         private string[] _strongboxClickMetadataSnapshot = [];
         private string[] _strongboxDontClickMetadataSnapshot = [];
-
-        private void DrawPanelSafe(string panelName, Action drawAction)
-        {
-            try
-            {
-                drawAction();
-            }
-            catch (Exception ex)
-            {
-                _lastSettingsUiError = $"{panelName}: {ex.GetType().Name}: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"[ClickItSettings UI Error] {_lastSettingsUiError}{Environment.NewLine}{ex}");
-
-                ImGui.Separator();
-                ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "Settings UI error caught");
-                ImGui.TextWrapped(_lastSettingsUiError);
-
-                if (ImGui.Button($"Throw Last UI Error##{panelName}"))
-                {
-                    throw new InvalidOperationException(_lastSettingsUiError, ex);
-                }
-            }
-        }
 
         public bool IsLazyModeDisableHotkeyToggleModeEnabled()
         {
@@ -110,36 +78,6 @@ namespace ClickIt
             && !DebugShowClicking
             && !DebugShowRuntimeDebugLogOverlay
             && !DebugShowRecentErrors;
-        }
-
-        private static float CalculateItemTypeRowWidth()
-        {
-            float availableWidth = Math.Max(80f, ImGui.GetContentRegionAvail().X);
-            const float arrowWidth = 28f;
-            return Math.Max(40f, availableWidth - arrowWidth - 6f);
-        }
-
-        private static Vector4 GetUltimatumPriorityRowColor(int index, int totalCount)
-        {
-            return UltimatumModifiersConstants.GetPriorityGradientColor(index, totalCount, 0.30f);
-        }
-
-        private static bool DrawUltimatumArrowButton(ImGuiDir direction, string id, bool enabled)
-        {
-            if (!enabled)
-            {
-                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, ImGui.GetStyle().Alpha * 0.5f);
-            }
-
-            bool clicked = ImGui.ArrowButton(id, direction);
-
-            if (!enabled)
-            {
-                ImGui.PopStyleVar();
-                return false;
-            }
-
-            return clicked;
         }
 
         public IReadOnlyList<string> GetMechanicPriorityOrder()
@@ -239,6 +177,5 @@ namespace ClickIt
 
             return true;
         }
-
     }
 }

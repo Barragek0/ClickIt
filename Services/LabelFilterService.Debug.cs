@@ -1,41 +1,21 @@
 using ClickIt.Services.Observability;
+using ClickIt.Services.Label.Diagnostics;
 
 namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
         private const int LabelDebugTrailCapacity = 24;
-        private readonly DebugSnapshotChannel<LabelDebugSnapshot, LabelDebugEvent> _labelDebugChannel = new(
-            LabelDebugSnapshot.Empty,
-            LabelDebugTrailCapacity,
-            static (snapshot, sequence) => snapshot with { Sequence = sequence },
-            static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}",
-            debugEvent => new LabelDebugSnapshot(
-                HasData: true,
-                Stage: debugEvent.Stage,
-                StartIndex: debugEvent.StartIndex,
-                EndExclusive: debugEvent.EndExclusive,
-                TotalLabels: debugEvent.TotalLabels,
-                ConsideredCandidates: debugEvent.ConsideredCandidates,
-                NullOrDistanceRejected: debugEvent.NullOrDistanceRejected,
-                UntargetableRejected: debugEvent.UntargetableRejected,
-                NoMechanicRejected: debugEvent.NoMechanicRejected,
-                IgnoredByDistanceCandidates: debugEvent.IgnoredByDistanceCandidates,
-                SelectedMechanicId: debugEvent.SelectedMechanicId ?? string.Empty,
-                SelectedEntityPath: debugEvent.SelectedEntityPath ?? string.Empty,
-                SelectedDistance: debugEvent.SelectedDistance,
-                Notes: debugEvent.Notes,
-                Sequence: 0,
-                TimestampMs: Environment.TickCount64));
+        private readonly LabelSelectionDiagnostics _labelSelectionDiagnostics = new(LabelDebugTrailCapacity);
 
         public LabelDebugSnapshot GetLatestLabelDebug()
         {
-            return _labelDebugChannel.GetLatest();
+            return _labelSelectionDiagnostics.GetLatest();
         }
 
         public IReadOnlyList<string> GetLatestLabelDebugTrail()
         {
-            return _labelDebugChannel.GetTrail();
+            return _labelSelectionDiagnostics.GetTrail();
         }
 
         private void SetLatestLabelDebug(LabelDebugSnapshot snapshot)
@@ -43,7 +23,7 @@ namespace ClickIt.Services
             if (!ShouldCaptureLabelDebug())
                 return;
 
-            _labelDebugChannel.PublishSnapshot(snapshot);
+            _labelSelectionDiagnostics.PublishSnapshot(snapshot);
         }
 
         private bool ShouldCaptureLabelDebug()
@@ -56,7 +36,7 @@ namespace ClickIt.Services
             if (!ShouldCaptureLabelDebug())
                 return;
 
-            _labelDebugChannel.PublishEvent(debugEvent);
+            _labelSelectionDiagnostics.PublishEvent(debugEvent);
         }
     }
 }

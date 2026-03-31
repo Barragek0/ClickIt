@@ -31,6 +31,7 @@ namespace ClickIt.Services
         Func<bool> groundItemsVisible,
         TimeCache<List<LabelOnGround>> cachedLabels,
         PerformanceMonitor performanceMonitor)
+        : Observability.IClickTelemetryPublisher
     {
         private readonly ClickItSettings settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly GameController gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
@@ -47,13 +48,7 @@ namespace ClickIt.Services
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
         private readonly ChestLootSettlementState chestLootSettlementState = new();
-        private ulong _lastLeverKey;
-        private long _lastLeverClickTimestampMs;
-        private long _stickyOffscreenTargetAddress;
-        private long _lastMovementSkillUseTimestampMs;
-        private long _movementSkillPostCastClickBlockUntilTimestampMs;
-        private long _movementSkillStatusPollUntilTimestampMs;
-        private object? _lastUsedMovementSkillEntry;
+        private readonly ClickRuntimeState _runtimeState = new();
         private long _gruelingGauntletPassiveCacheTimestampMs;
         private bool _gruelingGauntletPassiveCachedValue;
         private bool _gruelingGauntletPassiveCacheHasValue;

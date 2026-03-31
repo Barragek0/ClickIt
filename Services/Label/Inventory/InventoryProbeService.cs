@@ -19,7 +19,7 @@ namespace ClickIt.Services.Label.Inventory
         private readonly InventoryProbeServiceDependencies _dependencies;
         private readonly object _cacheLock = new();
         private readonly ThreadLocal<HashSet<long>> _uniqueEntityAddresses = new(static () => new HashSet<long>());
-        private readonly DebugSnapshotStore<LabelFilterService.InventoryDebugSnapshot> _debugStore;
+        private readonly InventoryDiagnosticsChannel _diagnosticsChannel;
 
         private long _inventoryProbeCacheTimestampMs;
         private GameController? _inventoryProbeCacheController;
@@ -45,19 +45,14 @@ namespace ClickIt.Services.Label.Inventory
         public InventoryProbeService(InventoryProbeServiceDependencies dependencies)
         {
             _dependencies = dependencies;
-            _debugStore = new DebugSnapshotStore<LabelFilterService.InventoryDebugSnapshot>(
-                LabelFilterService.InventoryDebugSnapshot.Empty,
-                dependencies.DebugTrailCapacity,
-                static (snapshot, sequence) => snapshot with { Sequence = sequence },
-                static snapshot =>
-                    $"{snapshot.Sequence:00000} {snapshot.Stage} | f:{snapshot.InventoryFull} a:{snapshot.DecisionAllowPickup} c:{snapshot.CapacityCells} o:{snapshot.OccupiedCells} s:{snapshot.IsGroundStackable} p:{snapshot.HasPartialMatchingStack} n:{snapshot.Notes}");
+            _diagnosticsChannel = new InventoryDiagnosticsChannel(dependencies.DebugTrailCapacity);
         }
 
-        public LabelFilterService.InventoryDebugSnapshot GetLatestDebug() => _debugStore.GetLatest();
+        public LabelFilterService.InventoryDebugSnapshot GetLatestDebug() => _diagnosticsChannel.GetLatest();
 
-        public IReadOnlyList<string> GetLatestDebugTrail() => _debugStore.GetTrail();
+        public IReadOnlyList<string> GetLatestDebugTrail() => _diagnosticsChannel.GetTrail();
 
-        public void PublishDebug(LabelFilterService.InventoryDebugSnapshot snapshot) => _debugStore.SetLatest(snapshot);
+        public void PublishDebug(LabelFilterService.InventoryDebugSnapshot snapshot) => _diagnosticsChannel.Publish(snapshot);
 
         public bool IsInventoryFull(GameController? gameController, out InventoryFullProbe probe)
         {

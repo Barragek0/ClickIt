@@ -3,6 +3,7 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
+using ClickIt.Services.Label.Classification.Policies;
 
 #nullable enable
 
@@ -113,16 +114,7 @@ namespace ClickIt.Services.Label.Classification
         }
 
         internal static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
-        {
-            bool isAreaTransition = type == EntityType.AreaTransition || path.Contains("AreaTransition", StringComparison.OrdinalIgnoreCase);
-            if (!isAreaTransition)
-                return null;
-
-            if (IsLabyrinthTrialTransitionPath(path))
-                return clickLabyrinthTrials ? MechanicIds.LabyrinthTrials : null;
-
-            return clickAreaTransitions ? MechanicIds.AreaTransitions : null;
-        }
+            => TransitionMechanicClassifier.GetAreaTransitionMechanicId(clickAreaTransitions, clickLabyrinthTrials, type, path);
 
         internal static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)
         {
@@ -350,16 +342,6 @@ namespace ClickIt.Services.Label.Classification
                 || name.Equals($"{tier} djinns cache", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static bool IsLabyrinthTrialTransitionPath(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-                return false;
-
-            return path.Contains("LabyrinthTrial", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("Labyrinth/Trial", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("TrialPortal", StringComparison.OrdinalIgnoreCase);
-        }
-
         private static string? GetNamedInteractableMechanicId(bool clickDoors, bool clickLevers, string? renderName, string? metadataPath)
         {
             string path = metadataPath?.Trim() ?? string.Empty;
@@ -375,20 +357,6 @@ namespace ClickIt.Services.Label.Classification
                 return MechanicIds.Levers;
 
             return null;
-        }
-
-        private static bool IsSettlersMechanicEnabled(ClickSettings settings, string mechanicId)
-        {
-            return mechanicId switch
-            {
-                var id when string.Equals(id, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCrimsonIron,
-                var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCopper,
-                var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersPetrifiedWood,
-                var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersBismuth,
-                var id when string.Equals(id, MechanicIds.SettlersHourglass, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersOre,
-                var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersVerisium,
-                _ => false
-            };
         }
 
         internal static bool IsSettlersPetrifiedWoodPath(string path)
@@ -430,7 +398,7 @@ namespace ClickIt.Services.Label.Classification
 
             if (TryGetSettlersOreMechanicId(path, out string? settlersMechanicId) && !string.IsNullOrWhiteSpace(settlersMechanicId))
             {
-                return IsSettlersMechanicEnabled(settings, settlersMechanicId)
+                return SettlersMechanicPolicy.IsEnabled(settings, settlersMechanicId)
                     ? settlersMechanicId
                     : null;
             }

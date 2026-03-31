@@ -1,4 +1,5 @@
 using ClickIt.Utils;
+using ClickIt.Services.Area;
 using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.Shared.Helpers;
@@ -16,41 +17,6 @@ namespace ClickIt.Services
         private const float SideCompanionWidthRatio = 0.555f;
         private const float SideTertiaryCompanionHeightRatio = 0.85f;
         private const float SideTertiaryCompanionWidthRatio = 0.79f;
-
-        private readonly record struct BlockedAreaEvaluationContext(AreaService Service, Vector2 Point);
-
-        private interface IBlockedAreaEvaluator
-        {
-            bool IsBlocked(in BlockedAreaEvaluationContext context);
-        }
-
-        private sealed class BlockedAreaEvaluator(Func<AreaService, Vector2, bool> isBlocked) : IBlockedAreaEvaluator
-        {
-            private readonly Func<AreaService, Vector2, bool> _isBlocked = isBlocked;
-
-            public bool IsBlocked(in BlockedAreaEvaluationContext context)
-                => _isBlocked(context.Service, context.Point);
-        }
-
-        private static readonly IBlockedAreaEvaluator[] BlockedAreaEvaluators =
-        [
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._healthSquareRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._flaskRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._flaskTertiaryRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._skillsRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._skillsTertiaryRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._manaSquareRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._buffsAndDebuffsRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInAnyBlockedUiRectangle(point, service._buffsAndDebuffsRectangles)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInAnyBlockedUiRectangle(point, service._questTrackerBlockedRectangles)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._chatPanelBlockedRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._mapPanelBlockedRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._xpBarBlockedRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._mirageBlockedRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._altarBlockedRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._ritualBlockedRectangle)),
-            new BlockedAreaEvaluator(static (service, point) => service.PointInBlockedUiRectangle(point, service._sentinelBlockedRectangle))
-        ];
 
         private RectangleF _fullScreenRectangle;
         private RectangleF _healthAndFlaskRectangle;
@@ -77,6 +43,30 @@ namespace ClickIt.Services
         private long _lastKnownAreaHash = long.MinValue;
 
         private readonly object _screenAreasLock = new();
+        private readonly BlockedAreaEvaluatorPipeline _blockedAreaEvaluatorPipeline;
+
+        public AreaService()
+        {
+            _blockedAreaEvaluatorPipeline = new BlockedAreaEvaluatorPipeline(
+            [
+                point => PointInBlockedUiRectangle(point, _healthSquareRectangle),
+                point => PointInBlockedUiRectangle(point, _flaskRectangle),
+                point => PointInBlockedUiRectangle(point, _flaskTertiaryRectangle),
+                point => PointInBlockedUiRectangle(point, _skillsRectangle),
+                point => PointInBlockedUiRectangle(point, _skillsTertiaryRectangle),
+                point => PointInBlockedUiRectangle(point, _manaSquareRectangle),
+                point => PointInBlockedUiRectangle(point, _buffsAndDebuffsRectangle),
+                point => PointInAnyBlockedUiRectangle(point, _buffsAndDebuffsRectangles),
+                point => PointInAnyBlockedUiRectangle(point, _questTrackerBlockedRectangles),
+                point => PointInBlockedUiRectangle(point, _chatPanelBlockedRectangle),
+                point => PointInBlockedUiRectangle(point, _mapPanelBlockedRectangle),
+                point => PointInBlockedUiRectangle(point, _xpBarBlockedRectangle),
+                point => PointInBlockedUiRectangle(point, _mirageBlockedRectangle),
+                point => PointInBlockedUiRectangle(point, _altarBlockedRectangle),
+                point => PointInBlockedUiRectangle(point, _ritualBlockedRectangle),
+                point => PointInBlockedUiRectangle(point, _sentinelBlockedRectangle)
+            ]);
+        }
 
         public RectangleF FullScreenRectangle => _fullScreenRectangle;
         public RectangleF HealthAndFlaskRectangle => _healthAndFlaskRectangle;
@@ -214,10 +204,7 @@ namespace ClickIt.Services
 
         internal static bool RectsDiffer(RectangleF a, RectangleF b, float eps)
         {
-            return Math.Abs(a.Width - b.Width) > eps
-                || Math.Abs(a.Height - b.Height) > eps
-                || Math.Abs(a.X - b.X) > eps
-                || Math.Abs(a.Y - b.Y) > eps;
+            return BlockedAreaGeometryEngine.RectsDiffer(a, b, eps);
         }
 
         internal static bool ShouldRefreshBlockedUiRectangles(
@@ -226,11 +213,7 @@ namespace ClickIt.Services
             int refreshIntervalMs,
             bool forceRefresh = false)
         {
-            if (forceRefresh || refreshIntervalMs <= 0 || lastRefreshTimestampMs <= 0)
-                return true;
-
-            long elapsed = now - lastRefreshTimestampMs;
-            return elapsed < 0 || elapsed >= refreshIntervalMs;
+            return BlockedAreaRefreshScheduler.ShouldRefresh(now, lastRefreshTimestampMs, refreshIntervalMs, forceRefresh);
         }
 
         internal static bool HasAreaHashChanged(long currentAreaHash, long lastKnownAreaHash)
@@ -248,11 +231,11 @@ namespace ClickIt.Services
             long lastSuccessTimestampMs,
             int holdLastGoodMs)
         {
-            if (currentRectangleCount <= 0 || lastSuccessTimestampMs <= 0 || holdLastGoodMs <= 0)
-                return false;
-
-            long elapsed = now - lastSuccessTimestampMs;
-            return elapsed >= 0 && elapsed <= holdLastGoodMs;
+            return BlockedAreaRefreshScheduler.ShouldRetainQuestTrackerRectanglesOnEmptyRead(
+                currentRectangleCount,
+                now,
+                lastSuccessTimestampMs,
+                holdLastGoodMs);
         }
 
         internal static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangleFromLeft(
@@ -296,59 +279,13 @@ namespace ClickIt.Services
             float heightRatio,
             float widthRatio,
             bool anchorLeft)
-        {
-            float left = source.X;
-            float top = source.Y;
-            float right = source.Width;
-            float bottom = source.Height;
-
-            float sourceWidth = right - left;
-            float sourceHeight = bottom - top;
-            if (sourceWidth <= 0f || sourceHeight <= 0f)
-                return RectangleF.Empty;
-
-            float linkedWidth = sourceWidth * Math.Max(0f, widthRatio);
-            float linkedHeight = sourceHeight * Math.Clamp(heightRatio, 0f, 1f);
-            if (linkedWidth <= 0f || linkedHeight <= 0f)
-                return RectangleF.Empty;
-
-            return anchorLeft
-                ? new RectangleF(right, bottom - linkedHeight, right + linkedWidth, bottom)
-                : new RectangleF(left - linkedWidth, bottom - linkedHeight, left, bottom);
-        }
+            => BlockedAreaGeometryEngine.BuildLinkedBottomRectangle(source, heightRatio, widthRatio, anchorLeft);
 
         private static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangle(
             RectangleF source,
             float secondaryHeightRatio,
             bool anchorLeft)
-        {
-            float left = source.X;
-            float top = source.Y;
-            float right = source.Width;
-            float bottom = source.Height;
-
-            float totalWidth = right - left;
-            float totalHeight = bottom - top;
-            if (totalWidth <= 0f || totalHeight <= 0f)
-                return (RectangleF.Empty, RectangleF.Empty);
-
-            float squareSize = Math.Min(totalHeight, totalWidth);
-            float companionWidth = Math.Max(0f, totalWidth - squareSize) * SideCompanionWidthRatio;
-            float companionHeight = totalHeight * Math.Clamp(secondaryHeightRatio, 0f, 1f);
-
-            RectangleF primarySquare = anchorLeft
-                ? new RectangleF(left, bottom - squareSize, left + squareSize, bottom)
-                : new RectangleF(right - squareSize, bottom - squareSize, right, bottom);
-
-            if (companionWidth <= 0f || companionHeight <= 0f)
-                return (primarySquare, RectangleF.Empty);
-
-            RectangleF secondary = anchorLeft
-                ? new RectangleF(primarySquare.Width, bottom - companionHeight, primarySquare.Width + companionWidth, bottom)
-                : new RectangleF(primarySquare.X - companionWidth, bottom - companionHeight, primarySquare.X, bottom);
-
-            return (primarySquare, secondary);
-        }
+            => BlockedAreaGeometryEngine.SplitBottomAnchoredRectangle(source, secondaryHeightRatio, anchorLeft, SideCompanionWidthRatio);
 
         public bool PointIsInClickableArea(Vector2 point)
         {
@@ -362,16 +299,7 @@ namespace ClickIt.Services
         }
 
         private bool IsBlockedByAreaEvaluatorPipeline(Vector2 point)
-        {
-            BlockedAreaEvaluationContext context = new(this, point);
-            for (int i = 0; i < BlockedAreaEvaluators.Length; i++)
-            {
-                if (BlockedAreaEvaluators[i].IsBlocked(context))
-                    return true;
-            }
-
-            return false;
-        }
+            => _blockedAreaEvaluatorPipeline.IsBlocked(point);
 
         public bool PointIsInClickableArea(GameController? gameController, Vector2 point)
         {
@@ -405,22 +333,10 @@ namespace ClickIt.Services
         }
 
         private static bool PointInUiRectangleAnyRepresentation(Vector2 point, RectangleF rect)
-        {
-            return PointInUiRectangle(point, rect) || point.PointInRectangle(rect);
-        }
+            => BlockedAreaGeometryEngine.PointInUiRectangleAnyRepresentation(point, rect);
 
         private static bool PointInUiRectangle(Vector2 point, RectangleF rect)
-        {
-            if (rect.Width <= 0f || rect.Height <= 0f)
-                return false;
-
-            float right = rect.X + rect.Width;
-            float bottom = rect.Y + rect.Height;
-            return point.X >= rect.X
-                && point.X <= right
-                && point.Y >= rect.Y
-                && point.Y <= bottom;
-        }
+            => BlockedAreaGeometryEngine.PointInUiRectangle(point, rect);
 
         private static bool IsInTownOrHideout(GameController? gameController)
         {
@@ -431,7 +347,7 @@ namespace ClickIt.Services
         private static List<RectangleF> ResolveBuffsAndDebuffsBlockedRectangles(GameController gameController)
         {
             var blocked = new List<RectangleF>(2);
-            object? root = TryGetIngameUiProperty(gameController, "Root");
+            object? root = AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "Root");
             if (!TryGetChildNode(root, 1, out object? child1) || child1 == null)
                 return blocked;
 
@@ -451,10 +367,7 @@ namespace ClickIt.Services
 
         private static long ResolveCurrentAreaHash(GameController? gameController)
         {
-            if (gameController == null)
-                return long.MinValue;
-
-            return TryReadCurrentAreaHash(gameController.Game, out long areaHash)
+            return AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long areaHash)
                 ? areaHash
                 : long.MinValue;
         }
@@ -462,7 +375,7 @@ namespace ClickIt.Services
         private static List<RectangleF> ResolveQuestTrackerBlockedRectangles(GameController gameController)
         {
             var blocked = new List<RectangleF>();
-            object? root = TryGetIngameUiProperty(gameController, "QuestTracker");
+            object? root = AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "QuestTracker");
             if (!TryGetChildNode(root, 0, out object? child0) || child0 == null)
                 return blocked;
             if (!TryGetChildNode(child0, 0, out object? rowsRoot) || rowsRoot == null)
@@ -485,25 +398,25 @@ namespace ClickIt.Services
         }
 
         private static RectangleF ResolveChatPanelBlockedRectangle(GameController gameController)
-            => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "ChatPanel"), 1, 2, 2);
+            => ResolveRectangleFromNodePath(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "ChatPanel"), 1, 2, 2);
 
         private static RectangleF ResolveMapPanelBlockedRectangle(GameController gameController)
-            => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "Map"), 2, 1);
+            => ResolveRectangleFromNodePath(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "Map"), 2, 1);
 
         private static RectangleF ResolveXpBarBlockedRectangle(GameController gameController)
-         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 0);
+         => ResolveRectangleFromNodePath(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"), 0);
 
         private static RectangleF ResolveMirageBlockedRectangle(GameController gameController)
-         => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 17);
+         => ResolveVisibleRectangleFromNodePath(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"), 7, 17);
 
         private static RectangleF ResolveAltarBlockedRectangle(GameController gameController)
-         => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 16);
+         => ResolveVisibleRectangleFromNodePath(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"), 7, 16);
 
         private static RectangleF ResolveRitualBlockedRectangle(GameController gameController)
-         => ResolveVisibleRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 0);
+         => ResolveVisibleRectangleFromNodePath(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 0);
 
         private static RectangleF ResolveSentinelBlockedRectangle(GameController gameController)
-         => ResolveRectangleFromNodePath(TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 2, 0);
+         => ResolveRectangleFromNodePath(AreaUiSnapshotReader.TryGetIngameUiProperty(gameController, "GameUI"), 7, 18, 2, 0);
 
         private static RectangleF ResolveVisibleRectangleFromNodePath(object? root, params int[] childPath)
         {
@@ -589,47 +502,5 @@ namespace ClickIt.Services
             return child != null;
         }
 
-        private static object? TryGetIngameUiProperty(GameController? gameController, string propertyName)
-        {
-            if (gameController?.IngameState?.IngameUi == null || string.IsNullOrWhiteSpace(propertyName))
-                return null;
-
-            return propertyName switch
-            {
-                "QuestTracker" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.QuestTracker),
-                "ChatPanel" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.ChatPanel),
-                "Map" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.Map),
-                "GameUI" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.GameUI),
-                "Root" => TryGetIngameUiMember(gameController.IngameState.IngameUi, static ui => ui.Root),
-                _ => null,
-            };
-        }
-
-        private static bool TryReadCurrentAreaHash(object? game, out long areaHash)
-        {
-            areaHash = long.MinValue;
-            if (!DynamicAccess.TryGetDynamicValue(game, static source => source.CurrentAreaHash, out object? rawAreaHash)
-                || rawAreaHash == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                areaHash = Convert.ToInt64(rawAreaHash);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static object? TryGetIngameUiMember(object? ingameUi, Func<dynamic, object?> accessor)
-        {
-            return DynamicAccess.TryGetDynamicValue(ingameUi, accessor, out object? value)
-                ? value
-                : null;
-        }
     }
 }

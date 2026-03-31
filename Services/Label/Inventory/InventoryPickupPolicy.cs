@@ -69,12 +69,12 @@ namespace ClickIt.Services.Label.Inventory
         }
     }
 
-    internal sealed class InventoryPickupPolicy
+    internal sealed class InventoryPickupPolicyEngine
     {
         private readonly InventoryPickupPolicyDependencies _dependencies;
         private readonly InventoryPickupSnapshotBuilder _snapshotBuilder;
 
-        public InventoryPickupPolicy(InventoryPickupPolicyDependencies dependencies)
+        public InventoryPickupPolicyEngine(InventoryPickupPolicyDependencies dependencies)
         {
             _dependencies = dependencies;
             _snapshotBuilder = new InventoryPickupSnapshotBuilder(dependencies);

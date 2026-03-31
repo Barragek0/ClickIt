@@ -1,5 +1,6 @@
 using SharpDX;
 using Color = SharpDX.Color;
+using ClickIt.Services.Observability;
 
 namespace ClickIt.Rendering
 {
@@ -15,13 +16,20 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue("--- Debug Log Overlay ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            if (_plugin is not ClickIt clickIt || clickIt.State.ClickService == null)
+            if (_plugin is not ClickIt clickIt)
             {
                 _deferredTextQueue.Enqueue("Click service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
                 return yPos + lineHeight;
             }
 
-            var latest = clickIt.State.ClickService.GetLatestRuntimeDebugLog();
+            DebugTelemetrySnapshot telemetry = clickIt.State.GetDebugTelemetrySnapshot();
+            if (!telemetry.Click.ServiceAvailable)
+            {
+                _deferredTextQueue.Enqueue("Click service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            var latest = telemetry.Click.RuntimeLog;
             if (!latest.HasData)
             {
                 _deferredTextQueue.Enqueue("No debug log messages yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -30,7 +38,7 @@ namespace ClickIt.Rendering
 
             yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Latest: {latest.Message}", Color.LightGray, 13, 80);
 
-            var trail = clickIt.State.ClickService.GetLatestRuntimeDebugLogTrail();
+            var trail = telemetry.Click.RuntimeLogTrail;
             yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 10, wrapWidth: 80);
             return yPos;
         }
@@ -45,7 +53,14 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue("--- Clicking ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            if (_plugin is not ClickIt clickIt || clickIt.State.ClickService == null)
+            if (_plugin is not ClickIt clickIt)
+            {
+                _deferredTextQueue.Enqueue("Click service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            DebugTelemetrySnapshot telemetry = clickIt.State.GetDebugTelemetrySnapshot();
+            if (!telemetry.Click.ServiceAvailable)
             {
                 _deferredTextQueue.Enqueue("Click service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
                 return yPos + lineHeight;
@@ -61,7 +76,7 @@ namespace ClickIt.Rendering
                 yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, clickSettingsLines[i], Color.LightGray, 13, 86);
             }
 
-            var snap = clickIt.State.ClickService.GetLatestClickDebug();
+            var snap = telemetry.Click.Click;
             if (!snap.HasData)
             {
                 _deferredTextQueue.Enqueue("No click data yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -97,7 +112,7 @@ namespace ClickIt.Rendering
 
             yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Resolved: {snap.Resolved}  Note: {snap.Notes}", Color.LightGray, 13, 72);
 
-            var trail = clickIt.State.ClickService.GetLatestClickDebugTrail();
+            var trail = telemetry.Click.ClickTrail;
             yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 78);
 
             return yPos;

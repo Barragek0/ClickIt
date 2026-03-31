@@ -79,6 +79,11 @@ namespace ClickIt.Utils
             }
         }
 
+        public static bool TryGetDynamicValue(object? source, IDynamicMemberReaderProfile profile, out object? value)
+        {
+            return TryGetDynamicValue(source, profile.Read, out value);
+        }
+
         public static bool TryReadBool(object? source, Func<dynamic, object?> accessor, out bool value)
         {
             value = false;

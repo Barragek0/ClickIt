@@ -1,4 +1,5 @@
 using ClickIt.Utils;
+using ClickIt.Services.Label.Classification;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -312,50 +313,13 @@ namespace ClickIt.Services
 
         private bool TryResolveDirectionalWalkClickPosition(Vector2 targetScreen, string targetPath, out Vector2 clickPos)
         {
-            clickPos = default;
-
             RectangleF win = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
-            if (win.Width <= 0 || win.Height <= 0)
-                return false;
-
-            float insetX = Math.Max(28f, win.Width * 0.10f);
-            float insetY = Math.Max(28f, win.Height * 0.10f);
-            float safeLeft = win.Left + insetX;
-            float safeRight = win.Right - insetX;
-            float safeTop = win.Top + insetY;
-            float safeBottom = win.Bottom - insetY;
-
-            Vector2 center = new(win.X + (win.Width * 0.5f), win.Y + (win.Height * 0.5f));
-            Vector2 direction = targetScreen - center;
-            float lenSq = (direction.X * direction.X) + (direction.Y * direction.Y);
-            if (lenSq < 1f)
-                return false;
-
-            for (float t = 1.05f; t >= 0.30f; t -= 0.1f)
-            {
-                Vector2 candidate = center + (direction * t);
-                if (!ClickService.IsInsideWindow(win, candidate))
-                    continue;
-                if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
-                    continue;
-                if (!_dependencies.PointIsInClickableArea(candidate, targetPath))
-                    continue;
-
-                clickPos = candidate;
-                return true;
-            }
-
-            Vector2 clamped = new(
-                Math.Clamp(targetScreen.X, safeLeft, safeRight),
-                Math.Clamp(targetScreen.Y, safeTop, safeBottom));
-
-            if (_dependencies.PointIsInClickableArea(clamped, targetPath))
-            {
-                clickPos = clamped;
-                return true;
-            }
-
-            return false;
+            return OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+                win,
+                targetScreen,
+                targetPath,
+                _dependencies.PointIsInClickableArea,
+                out clickPos);
         }
 
         private Entity? ResolveNearestOffscreenWalkTarget()
@@ -389,10 +353,10 @@ namespace ClickIt.Services
             MechanicRank bestRank = default;
             bool hasBest = false;
 
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, labelBackedTarget, labelMechanicId);
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId);
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, ClickService.ShrineMechanicId);
-            PromoteOffscreenTargetCandidate(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, labelBackedTarget, labelMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, ClickService.ShrineMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
+            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId, _dependencies.BuildMechanicRankWithSharedEngine);
 
             return best;
         }
@@ -466,7 +430,7 @@ namespace ClickIt.Services
             return ResolveNearestOffscreenEntityTarget(
                 maxDistance,
                 includeEntity: (_, _) => true,
-                resolveMechanicId: (entity, path) => ClickService.GetAreaTransitionMechanicIdForPath(
+                resolveMechanicId: (entity, path) => TransitionMechanicClassifier.GetAreaTransitionMechanicId(
                     _dependencies.Settings.ClickAreaTransitions.Value,
                     _dependencies.Settings.ClickLabyrinthTrials.Value,
                     entity.Type,
@@ -625,25 +589,5 @@ namespace ClickIt.Services
             return ClickService.ShouldContinuePathfindingWhenLabelActionable(labelInWindow, labelClickable, clickResolvable);
         }
 
-        private void PromoteOffscreenTargetCandidate(
-            ref Entity? best,
-            ref string? bestMechanicId,
-            ref MechanicRank bestRank,
-            ref bool hasBest,
-            Entity? candidate,
-            string? mechanicId)
-        {
-            if (candidate == null || !candidate.IsValid || candidate.IsHidden || ClickService.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
-                return;
-
-            MechanicRank rank = _dependencies.BuildMechanicRankWithSharedEngine(candidate.DistancePlayer, mechanicId);
-            if (!hasBest || ClickService.CompareMechanicRanks(rank, bestRank) < 0)
-            {
-                best = candidate;
-                bestMechanicId = mechanicId;
-                bestRank = rank;
-                hasBest = true;
-            }
-        }
     }
 }

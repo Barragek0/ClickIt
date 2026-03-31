@@ -39,7 +39,7 @@ namespace ClickIt.Services
                 TimestampMs: 0);
         }
 
-        private sealed record LabelDebugEvent(
+        internal sealed record LabelDebugEvent(
             string Stage,
             int StartIndex,
             int EndExclusive,

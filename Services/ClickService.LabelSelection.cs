@@ -138,24 +138,12 @@ namespace ClickIt.Services
         }
 
         internal static float GetManualCursorDistanceSquaredInEitherSpace(Vector2 cursorAbsolute, Vector2 candidatePoint, Vector2 windowTopLeft)
-        {
-            float absoluteDistanceSq = GetDistanceSquared(cursorAbsolute, candidatePoint);
-            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
-            float clientDistanceSq = GetDistanceSquared(cursorClient, candidatePoint);
-            return Math.Min(absoluteDistanceSq, clientDistanceSq);
-        }
+            => CoordinateSpace.DistanceSquaredInEitherSpace(cursorAbsolute, candidatePoint, windowTopLeft);
 
         internal static float GetManualCursorLabelHitScore(RectangleF rect, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
             Vector2 center = rect.Center;
             return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, center, windowTopLeft);
-        }
-
-        private static float GetDistanceSquared(Vector2 a, Vector2 b)
-        {
-            float dx = a.X - b.X;
-            float dy = a.Y - b.Y;
-            return (dx * dx) + (dy * dy);
         }
 
         internal static Vector2 GetCursorAbsolutePosition()
@@ -373,7 +361,7 @@ namespace ClickIt.Services
                 return false;
 
             float maxDistanceSq = maxDistance * maxDistance;
-            float distanceSq = GetDistanceSquared(sourceGridPos, entityGridPos);
+            float distanceSq = CoordinateSpace.DistanceSquared(sourceGridPos, entityGridPos);
             return distanceSq <= maxDistanceSq;
         }
 
@@ -763,44 +751,6 @@ namespace ClickIt.Services
             return inClientSpace || inScreenSpace;
         }
 
-        private void PromoteOffscreenTargetCandidate(
-            ref Entity? best,
-            ref string? bestMechanicId,
-            ref MechanicRank bestRank,
-            ref bool hasBest,
-            Entity? candidate,
-            string? mechanicId)
-        {
-            if (candidate == null || !candidate.IsValid || candidate.IsHidden || IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
-                return;
-
-            MechanicRank rank = BuildMechanicRankWithSharedEngine(candidate.DistancePlayer, mechanicId);
-            if (!hasBest || CompareMechanicRanks(rank, bestRank) < 0)
-            {
-                best = candidate;
-                bestMechanicId = mechanicId;
-                bestRank = rank;
-                hasBest = true;
-            }
-        }
-
-        internal static string? GetAreaTransitionMechanicIdForPath(
-            bool clickAreaTransitions,
-            bool clickLabyrinthTrials,
-            ExileCore.Shared.Enums.EntityType type,
-            string path)
-        {
-            bool isAreaTransition = type == ExileCore.Shared.Enums.EntityType.AreaTransition
-                || path.Contains("AreaTransition", StringComparison.OrdinalIgnoreCase);
-            if (!isAreaTransition)
-                return null;
-
-            if (IsLabyrinthTrialTransitionPath(path))
-                return clickLabyrinthTrials ? LabyrinthTrialsMechanicId : null;
-
-            return clickAreaTransitions ? AreaTransitionsMechanicId : null;
-        }
-
         internal static string? GetEldritchAltarMechanicIdForPath(bool clickExarchAltars, bool clickEaterAltars, string path)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -823,22 +773,13 @@ namespace ClickIt.Services
                 path));
         }
 
-        private static bool IsLabyrinthTrialTransitionPath(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-                return false;
-
-            return path.Contains("LabyrinthTrial", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("Labyrinth/Trial", StringComparison.OrdinalIgnoreCase)
-                || path.Contains("TrialPortal", StringComparison.OrdinalIgnoreCase);
-        }
-
         private MechanicRank BuildMechanicRankWithSharedEngine(float distance, string? mechanicId)
         {
+            var snapshot = _mechanicPrioritySnapshotService.Snapshot;
             var context = new CandidateScoreEngine.CandidateScoreContext(
-                _cachedMechanicPriorityIndexMap,
-                _cachedMechanicIgnoreDistanceSet,
-                _cachedMechanicIgnoreDistanceWithinMap,
+                snapshot.PriorityIndexMap,
+                snapshot.IgnoreDistanceSet,
+                snapshot.IgnoreDistanceWithinByMechanicId,
                 settings.MechanicPriorityDistancePenalty.Value);
 
             CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(distance, mechanicId, float.MaxValue, context);

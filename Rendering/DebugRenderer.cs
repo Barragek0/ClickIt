@@ -454,13 +454,20 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue("--- Pathfinding ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            if (_plugin is not ClickIt clickIt || clickIt.State.PathfindingService == null)
+            if (_plugin is not ClickIt clickIt)
             {
                 _deferredTextQueue.Enqueue("Pathfinding service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
                 return yPos + lineHeight;
             }
 
-            var snap = clickIt.State.PathfindingService.GetDebugSnapshot();
+            DebugTelemetrySnapshot telemetry = clickIt.State.GetDebugTelemetrySnapshot();
+            if (!telemetry.Pathfinding.ServiceAvailable)
+            {
+                _deferredTextQueue.Enqueue("Pathfinding service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            var snap = telemetry.Pathfinding.Pathfinding;
             Color terrainColor = snap.TerrainLoaded ? Color.LightGreen : Color.Red;
             _deferredTextQueue.Enqueue($"Terrain Loaded: {snap.TerrainLoaded}", new Vector2(xPos, yPos), terrainColor, 14);
             yPos += lineHeight;
@@ -506,7 +513,7 @@ namespace ClickIt.Rendering
                 yPos = RenderWrappedText($"Failure: {snap.LastFailureReason}", new Vector2(xPos, yPos), Color.OrangeRed, 14, lineHeight, 46);
             }
 
-            var movement = clickIt.State.PathfindingService.GetLatestOffscreenMovementDebug();
+            var movement = telemetry.Pathfinding.OffscreenMovement;
             if (!movement.HasData)
             {
                 _deferredTextQueue.Enqueue("Offscreen Movement: <no data>", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -571,7 +578,7 @@ namespace ClickIt.Rendering
                 14);
             yPos += lineHeight;
 
-            IReadOnlyList<string> trail = clickIt.State.PathfindingService.GetLatestOffscreenMovementDebugTrail();
+            IReadOnlyList<string> trail = telemetry.Pathfinding.OffscreenMovementTrail;
             yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 6, wrapWidth: 52);
 
             return yPos;

@@ -105,7 +105,7 @@ namespace ClickIt
         {
             try
             {
-                var coroutines = Core.ParallelRunner.Coroutines
+                var coroutines = global::ExileCore.Core.ParallelRunner.Coroutines
                     .Where(c => c != null && c.Name != null && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
@@ -127,7 +127,7 @@ namespace ClickIt
                 var stopwatch = Stopwatch.StartNew();
                 while (stopwatch.ElapsedMilliseconds < timeoutMs)
                 {
-                    bool anyActive = Core.ParallelRunner.Coroutines
+                    bool anyActive = global::ExileCore.Core.ParallelRunner.Coroutines
                         .Any(c => c != null
                             && c.Name != null
                             && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase)

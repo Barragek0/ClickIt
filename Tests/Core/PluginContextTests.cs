@@ -1,4 +1,5 @@
 using FluentAssertions;
+using ClickIt.Services.Observability;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.CompilerServices;
 
@@ -66,6 +67,40 @@ namespace ClickIt.Tests.Unit
             state.ClickService.Should().BeNull();
             state.PathfindingService.Should().BeNull();
             state.AlertService.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void GetDebugTelemetrySnapshot_WhenServicesUnavailable_ReturnsEmptyServiceSnapshots()
+        {
+            var state = new PluginContext();
+
+            DebugTelemetrySnapshot snapshot = state.GetDebugTelemetrySnapshot();
+
+            snapshot.Click.ServiceAvailable.Should().BeFalse();
+            snapshot.Label.ServiceAvailable.Should().BeFalse();
+            snapshot.Pathfinding.ServiceAvailable.Should().BeFalse();
+            snapshot.Click.Click.HasData.Should().BeFalse();
+            snapshot.Click.RuntimeLog.HasData.Should().BeFalse();
+            snapshot.Click.Ultimatum.HasData.Should().BeFalse();
+            snapshot.Label.Label.HasData.Should().BeFalse();
+            snapshot.Pathfinding.OffscreenMovement.HasData.Should().BeFalse();
+            snapshot.Inventory.Inventory.HasData.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void GetDebugTelemetrySnapshot_WhenServicesUnavailable_ReturnsEmptyTrails()
+        {
+            var state = new PluginContext();
+
+            DebugTelemetrySnapshot snapshot = state.GetDebugTelemetrySnapshot();
+
+            snapshot.Click.ClickTrail.Should().BeEmpty();
+            snapshot.Click.RuntimeLogTrail.Should().BeEmpty();
+            snapshot.Click.UltimatumTrail.Should().BeEmpty();
+            snapshot.Click.UltimatumOptionPreview.Should().BeEmpty();
+            snapshot.Label.LabelTrail.Should().BeEmpty();
+            snapshot.Pathfinding.OffscreenMovementTrail.Should().BeEmpty();
+            snapshot.Inventory.InventoryTrail.Should().BeEmpty();
         }
     }
 }

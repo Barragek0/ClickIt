@@ -1,6 +1,7 @@
 using ClickIt.Definitions;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
+using ClickIt.Services.Mechanics;
 
 namespace ClickIt.Services
 {
@@ -14,18 +15,11 @@ namespace ClickIt.Services
         private const string LostShipmentRenderNameMarker = "Lost Shipment";
         private const string VerisiumMechanicId = MechanicIds.SettlersVerisium;
         private const string VerisiumBossSubAreaTransitionPathMarker = MechanicIds.VerisiumBossSubAreaTransitionPathMarker;
-        private const string AreaTransitionsMechanicId = MechanicIds.AreaTransitions;
-        private const string LabyrinthTrialsMechanicId = MechanicIds.LabyrinthTrials;
         internal const int HiddenFallbackCandidateCacheWindowMs = 150;
         internal const int VisibleMechanicCandidateCacheWindowMs = 80;
         internal const int GroundLabelEntityAddressCacheWindowMs = 150;
 
-        private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
-        private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
-        private IReadOnlyDictionary<string, int>? _cachedMechanicIgnoreDistanceWithinById;
-        private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
 
         internal static readonly Vector2[] NearbyClickProbeOffsets =
         [
@@ -71,11 +65,14 @@ namespace ClickIt.Services
         }
 
         private MechanicPriorityContext CreateMechanicPriorityContext()
-            => new(
-                _cachedMechanicPriorityIndexMap,
-                _cachedMechanicIgnoreDistanceSet,
-                _cachedMechanicIgnoreDistanceWithinMap,
+        {
+            MechanicPrioritySnapshot snapshot = _mechanicPrioritySnapshotService.Snapshot;
+            return new(
+                snapshot.PriorityIndexMap,
+                snapshot.IgnoreDistanceSet,
+                snapshot.IgnoreDistanceWithinByMechanicId,
                 settings.MechanicPriorityDistancePenalty.Value);
+        }
 
         internal static MechanicCandidateSignal CreateMechanicCandidateSignal(
             string? mechanicId,
@@ -193,73 +190,17 @@ namespace ClickIt.Services
 
         private void RefreshMechanicPriorityCaches()
         {
-            RefreshPriorityOrderCache();
-            RefreshIgnoreDistanceIdsCache();
-            RefreshIgnoreDistanceWithinCache();
-        }
-
-        private void RefreshPriorityOrderCache()
-        {
-            IReadOnlyList<string> priorityOrder = settings.GetMechanicPriorityOrder();
-            if (ReferenceEquals(_cachedMechanicPriorityOrder, priorityOrder))
-                return;
-
-            _cachedMechanicPriorityOrder = priorityOrder;
-            var priorityMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < priorityOrder.Count; i++)
-            {
-                string id = priorityOrder[i] ?? string.Empty;
-                if (id.Length == 0 || priorityMap.ContainsKey(id))
-                    continue;
-
-                priorityMap[id] = i;
-            }
-
-            _cachedMechanicPriorityIndexMap = priorityMap;
-        }
-
-        private void RefreshIgnoreDistanceIdsCache()
-        {
-            IReadOnlyCollection<string> ignoreDistanceIds = settings.GetMechanicPriorityIgnoreDistanceIds();
-            if (ReferenceEquals(_cachedMechanicIgnoreDistanceIds, ignoreDistanceIds))
-                return;
-
-            _cachedMechanicIgnoreDistanceIds = ignoreDistanceIds;
-            _cachedMechanicIgnoreDistanceSet = new HashSet<string>(ignoreDistanceIds, StringComparer.OrdinalIgnoreCase);
-        }
-
-        private void RefreshIgnoreDistanceWithinCache()
-        {
-            IReadOnlyDictionary<string, int> ignoreDistanceWithin = settings.GetMechanicPriorityIgnoreDistanceWithinById();
-            if (ReferenceEquals(_cachedMechanicIgnoreDistanceWithinById, ignoreDistanceWithin))
-                return;
-
-            _cachedMechanicIgnoreDistanceWithinById = ignoreDistanceWithin;
-            _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(ignoreDistanceWithin, StringComparer.OrdinalIgnoreCase);
+            _ = _mechanicPrioritySnapshotService.Refresh(
+                settings.GetMechanicPriorityOrder(),
+                settings.GetMechanicPriorityIgnoreDistanceIds(),
+                settings.GetMechanicPriorityIgnoreDistanceWithinById());
         }
 
         private int GetMechanicPriorityIndex(string? mechanicId)
-            => ResolvePriorityIndex(mechanicId, _cachedMechanicPriorityIndexMap);
+            => ResolvePriorityIndex(mechanicId, _mechanicPrioritySnapshotService.Snapshot.PriorityIndexMap);
 
         private static bool IsSettlersMechanicId(string? mechanicId)
             => !string.IsNullOrWhiteSpace(mechanicId)
                && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
-
-        private bool IsSettlersMechanicEnabled(string? mechanicId)
-        {
-            if (!settings.ClickSettlersOre.Value || string.IsNullOrWhiteSpace(mechanicId))
-                return false;
-
-            return mechanicId switch
-            {
-                var id when string.Equals(id, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCrimsonIron.Value,
-                var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCopper.Value,
-                var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersPetrifiedWood.Value,
-                var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersBismuth.Value,
-                var id when string.Equals(id, MechanicIds.SettlersHourglass, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersOre.Value,
-                var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersVerisium.Value,
-                _ => false
-            };
-        }
     }
 }

@@ -1,5 +1,6 @@
 using ClickIt.Utils;
 using ClickIt.Services.Label.Inventory;
+using ClickIt.Services.Label.Inventory.Composition;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -61,11 +62,18 @@ namespace ClickIt.Services
         private const int InventoryDebugTrailCapacity = 32;
         private const string StoneOfPassageMetadataIdentifier = "Incursion/IncursionKey";
 
-        private static readonly InventoryDynamicAdapter InventoryDynamicAccessAdapter = new(CreateInventoryDynamicAdapterDependencies());
-        private static readonly InventoryProbeService InventoryProbeServiceInstance = new(CreateInventoryProbeServiceDependencies());
-        private static readonly InventorySnapshotProvider InventorySnapshotProviderService = new(CreateInventorySnapshotProviderDependencies());
-        private static readonly InventoryLayoutParser InventoryLayoutParserService = new(CreateInventoryLayoutParserDependencies());
-        private static readonly InventoryPickupPolicy InventoryPickupPolicyService = new(CreateInventoryPickupPolicyDependencies());
+        private static readonly InventoryDomainServices InventoryDomainServices = InventoryCompositionRoot.Compose(
+            CreateInventoryDynamicAdapterDependencies(),
+            CreateInventoryProbeServiceDependencies(),
+            CreateInventorySnapshotProviderDependencies(),
+            CreateInventoryLayoutParserDependencies(),
+            CreateInventoryPickupPolicyDependencies());
+
+        private static readonly InventoryDynamicAdapter InventoryDynamicAccessAdapter = InventoryDomainServices.DynamicAdapter;
+        private static readonly InventoryProbeService InventoryProbeServiceInstance = InventoryDomainServices.ProbeService;
+        private static readonly IInventorySnapshotProvider InventorySnapshotProviderService = InventoryDomainServices.SnapshotProvider;
+        private static readonly InventoryLayoutParser InventoryLayoutParserService = InventoryDomainServices.LayoutParser;
+        private static readonly InventoryPickupPolicyEngine InventoryPickupPolicyService = InventoryDomainServices.PickupPolicy;
 
         internal static InventoryDebugSnapshot GetLatestInventoryDebug() => InventoryProbeServiceInstance.GetLatestDebug();
 
@@ -314,13 +322,13 @@ namespace ClickIt.Services
             => InventoryCoreLogic.ShouldPickupWhenInventoryFull(inventoryFull, isStackable, hasPartialMatchingStack);
 
         internal static bool IsPartialStackCore(int currentStackSize, int maxStackSize)
-            => InventoryCoreLogic.IsPartialStack(currentStackSize, maxStackSize);
+            => InventoryStackingEngine.IsPartialStack(currentStackSize, maxStackSize);
 
         internal static bool IsPartialServerStackCore(bool fullStack, int size)
-            => InventoryCoreLogic.IsPartialServerStack(fullStack, size);
+            => InventoryStackingEngine.IsPartialServerStack(fullStack, size);
 
         internal static bool IsInventoryCellUsageFullCore(int occupiedCellCount, int totalCellCapacity)
-            => InventoryCoreLogic.IsInventoryCellUsageFull(occupiedCellCount, totalCellCapacity);
+            => InventoryCapacityEngine.IsInventoryCellUsageFull(occupiedCellCount, totalCellCapacity);
 
         internal static bool ShouldAllowPickupWhenPrimaryInventoryMissingCore(bool hasPrimaryInventory, string notes)
             => InventoryCoreLogic.ShouldAllowPickupWhenPrimaryInventoryMissing(hasPrimaryInventory, notes);
@@ -421,7 +429,7 @@ namespace ClickIt.Services
             int inventoryWidth,
             int inventoryHeight,
             out int occupiedCellCount)
-            => InventoryFitEvaluator.TryResolveOccupiedInventoryCellsFromLayout(
+            => InventoryCapacityEngine.TryResolveOccupiedInventoryCellsFromLayout(
                 layoutEntries,
                 inventoryWidth,
                 inventoryHeight,
@@ -453,7 +461,7 @@ namespace ClickIt.Services
             IReadOnlyList<InventoryLayoutEntry> occupiedEntries,
             int requiredWidth,
             int requiredHeight)
-            => InventoryFitEvaluator.HasSpaceForItemFootprint(
+            => InventoryCapacityEngine.HasSpaceForItemFootprint(
                 inventoryWidth,
                 inventoryHeight,
                 occupiedEntries,
@@ -580,15 +588,12 @@ namespace ClickIt.Services
             int groundIncubatorLevel,
             bool hasInventoryIncubatorLevel,
             int inventoryIncubatorLevel)
-        {
-            if (!requiresIncubatorLevelMatch)
-                return true;
-
-            if (!hasGroundIncubatorLevel || !hasInventoryIncubatorLevel)
-                return false;
-
-            return groundIncubatorLevel == inventoryIncubatorLevel;
-        }
+            => InventoryStackingEngine.ShouldAllowIncubatorStackMatch(
+                requiresIncubatorLevelMatch,
+                hasGroundIncubatorLevel,
+                groundIncubatorLevel,
+                hasInventoryIncubatorLevel,
+                inventoryIncubatorLevel);
 
         private static bool TryResolveCurrencyItemLevel(Entity? itemEntity, out int currencyItemLevel)
         {

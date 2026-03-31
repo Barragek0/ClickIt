@@ -5,43 +5,6 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
-        private static Dictionary<string, int> BuildMechanicPriorityIndexMap(IReadOnlyList<string> priorities)
-        {
-            var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < priorities.Count; i++)
-            {
-                string id = priorities[i] ?? string.Empty;
-                if (id.Length > 0)
-                    map.TryAdd(id, i);
-            }
-
-            return map;
-        }
-
-        private void RefreshMechanicPriorityCaches(
-            IReadOnlyList<string> mechanicPriorities,
-            IReadOnlyCollection<string> ignoreDistance,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId)
-        {
-            if (!ReferenceEquals(_cachedMechanicPriorityOrder, mechanicPriorities))
-            {
-                _cachedMechanicPriorityOrder = mechanicPriorities;
-                _cachedMechanicPriorityIndexMap = BuildMechanicPriorityIndexMap(mechanicPriorities);
-            }
-
-            if (!ReferenceEquals(_cachedMechanicIgnoreDistanceIds, ignoreDistance))
-            {
-                _cachedMechanicIgnoreDistanceIds = ignoreDistance;
-                _cachedMechanicIgnoreDistanceSet = new HashSet<string>(ignoreDistance, StringComparer.OrdinalIgnoreCase);
-            }
-
-            if (!ReferenceEquals(_cachedMechanicIgnoreDistanceWithinById, ignoreDistanceWithinByMechanicId))
-            {
-                _cachedMechanicIgnoreDistanceWithinById = ignoreDistanceWithinByMechanicId;
-                _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(ignoreDistanceWithinByMechanicId, StringComparer.OrdinalIgnoreCase);
-            }
-        }
-
         internal ClickSettings CreateClickSettings(IReadOnlyList<LabelOnGround>? allLabels)
         {
             ClickItSettings s = _settings;
@@ -56,7 +19,10 @@ namespace ClickIt.Services
             IReadOnlyList<string> mechanicPriorities = s.GetMechanicPriorityOrder();
             IReadOnlyCollection<string> ignoreDistance = s.GetMechanicPriorityIgnoreDistanceIds();
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId = s.GetMechanicPriorityIgnoreDistanceWithinById();
-            RefreshMechanicPriorityCaches(mechanicPriorities, ignoreDistance, ignoreDistanceWithinByMechanicId);
+            var mechanicPrioritySnapshot = _mechanicPrioritySnapshotService.Refresh(
+                mechanicPriorities,
+                ignoreDistance,
+                ignoreDistanceWithinByMechanicId);
 
             return new ClickSettings
             {
@@ -100,9 +66,9 @@ namespace ClickIt.Services
                 ClickRitualCompleted = s.ClickRitualCompleted.Value,
                 ClickInitialUltimatum = s.IsInitialUltimatumClickEnabled(),
                 ClickOtherUltimatum = s.IsOtherUltimatumClickEnabled(),
-                MechanicPriorityIndexMap = _cachedMechanicPriorityIndexMap,
-                IgnoreDistanceMechanicIds = _cachedMechanicIgnoreDistanceSet,
-                IgnoreDistanceWithinByMechanicId = _cachedMechanicIgnoreDistanceWithinMap,
+                MechanicPriorityIndexMap = mechanicPrioritySnapshot.PriorityIndexMap,
+                IgnoreDistanceMechanicIds = mechanicPrioritySnapshot.IgnoreDistanceSet,
+                IgnoreDistanceWithinByMechanicId = mechanicPrioritySnapshot.IgnoreDistanceWithinByMechanicId,
                 MechanicPriorityDistancePenalty = s.MechanicPriorityDistancePenalty.Value
             };
         }

@@ -192,7 +192,7 @@ namespace ClickIt
                     Priority = CoroutinePriority.Normal
                 };
 
-                _ = Core.ParallelRunner.Run(State.DeepMemoryDumpCoroutine);
+                _ = global::ExileCore.Core.ParallelRunner.Run(State.DeepMemoryDumpCoroutine);
                 State.DeepMemoryDumpCoroutine.Resume();
             }
         }

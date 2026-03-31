@@ -27,10 +27,10 @@ namespace ClickIt.Services.Label.Inventory
             if (data == null)
                 return false;
 
-            if (!TryGetDynamicValue(data, static s => s.ServerData, out object? serverData) || serverData == null)
+            if (!TryGetDynamicValue(data, DynamicAccessProfiles.ServerDataAccessor, out object? serverData) || serverData == null)
                 return false;
 
-            if (!TryGetDynamicValue(serverData, static s => s.PlayerInventories, out object? playerInventories) || playerInventories == null)
+            if (!TryGetDynamicValue(serverData, DynamicAccessProfiles.PlayerInventoriesAccessor, out object? playerInventories) || playerInventories == null)
                 return false;
 
             (bool foundFirstInventory, object? firstInventory) = _dependencies.TryGetFirstCollectionObject(playerInventories);
@@ -45,10 +45,10 @@ namespace ClickIt.Services.Label.Inventory
         {
             slotItemsCollection = null;
 
-            if (!TryGetDynamicValue(primaryInventory, static s => s.Inventory, out object? inventoryObj) || inventoryObj == null)
+            if (!TryGetDynamicValue(primaryInventory, DynamicAccessProfiles.InventoryAccessor, out object? inventoryObj) || inventoryObj == null)
                 return false;
 
-            if (!TryGetDynamicValue(inventoryObj, static s => s.InventorySlotItems, out slotItemsCollection))
+            if (!TryGetDynamicValue(inventoryObj, DynamicAccessProfiles.InventorySlotItemsAccessor, out slotItemsCollection))
                 return false;
 
             return slotItemsCollection != null;

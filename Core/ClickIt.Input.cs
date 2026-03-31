@@ -89,7 +89,7 @@ namespace ClickIt
 
         private static Coroutine? FindExistingClickLogicCoroutine()
         {
-            foreach (Coroutine coroutine in Core.ParallelRunner.Coroutines)
+            foreach (Coroutine coroutine in global::ExileCore.Core.ParallelRunner.Coroutines)
             {
                 if (coroutine != null
                     && string.Equals(coroutine.Name, "ClickIt.ClickLogic", StringComparison.Ordinal)
@@ -104,7 +104,7 @@ namespace ClickIt
 
         private static Coroutine? FindExistingManualUiHoverCoroutine()
         {
-            foreach (Coroutine coroutine in Core.ParallelRunner.Coroutines)
+            foreach (Coroutine coroutine in global::ExileCore.Core.ParallelRunner.Coroutines)
             {
                 if (coroutine != null
                     && string.Equals(coroutine.Name, "ClickIt.ManualUiHoverLogic", StringComparison.Ordinal)

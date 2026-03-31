@@ -19,9 +19,10 @@ namespace ClickIt.Services
             static (clickEssences, label) => ShouldClickEssence(clickEssences, label),
             static (clickRitualInitiate, clickRitualCompleted, path, label) => GetRitualMechanicId(clickRitualInitiate, clickRitualCompleted, path, label),
             ShouldAllowClosedDoorPastMechanic);
+        private static readonly LabelClassificationEngine ClassificationEngine = new(ClassifierDependencies);
 
         private static string? GetClickableMechanicId(LabelOnGround label, Entity item, ClickSettings settings, ExileCore.GameController? gameController)
-            => MechanicClassifier.GetClickableMechanicId(label, item, settings, gameController, ClassifierDependencies);
+            => ClassificationEngine.GetClickableMechanicId(label, item, settings, gameController);
 
         internal static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
             => MechanicClassifier.GetAreaTransitionMechanicId(clickAreaTransitions, clickLabyrinthTrials, type, path);
@@ -47,7 +48,7 @@ namespace ClickIt.Services
                 renderName);
 
         internal static bool TryGetSettlersOreMechanicId(string? path, out string? mechanicId)
-            => MechanicClassifier.TryGetSettlersOreMechanicId(path, out mechanicId);
+            => ClassificationEngine.TryGetSettlersOreMechanicId(path, out mechanicId);
 
         internal static bool IsHarvestPath(string path)
             => MechanicClassifier.IsHarvestPath(path);

@@ -224,5 +224,20 @@ namespace ClickIt.Services
 
             _runtimeDebugLogChannel.PublishEvent(message);
         }
+
+        void IClickTelemetryPublisher.PublishClickSnapshot(ClickDebugSnapshot snapshot)
+        {
+            SetLatestClickDebug(snapshot);
+        }
+
+        void IClickTelemetryPublisher.PublishUltimatumSnapshot(UltimatumDebugSnapshot snapshot)
+        {
+            SetLatestUltimatumDebug(snapshot);
+        }
+
+        void IClickTelemetryPublisher.PublishRuntimeLog(string message)
+        {
+            SetLatestRuntimeDebugLog(message);
+        }
     }
 }

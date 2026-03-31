@@ -10,6 +10,7 @@ using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows.Forms;
 using ClickIt.Services.Label.Selection;
+using ClickIt.Services.Mechanics;
 
 namespace ClickIt.Services
 {
@@ -20,12 +21,7 @@ namespace ClickIt.Services
         private readonly ErrorHandler _errorHandler = errorHandler;
         private readonly ExileCore.GameController? _gameController = gameController;
 
-        private IReadOnlyList<string>? _cachedMechanicPriorityOrder;
-        private IReadOnlyCollection<string>? _cachedMechanicIgnoreDistanceIds;
-        private IReadOnlyDictionary<string, int>? _cachedMechanicIgnoreDistanceWithinById;
-        private IReadOnlyDictionary<string, int> _cachedMechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        private IReadOnlySet<string> _cachedMechanicIgnoreDistanceSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private IReadOnlyDictionary<string, int> _cachedMechanicIgnoreDistanceWithinMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
         public static List<LabelOnGround> FilterHarvestLabels(IReadOnlyList<LabelOnGround>? allLabels, Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = [];
@@ -337,30 +333,14 @@ namespace ClickIt.Services
             [NotNullWhen(true)] out string? mechanicId,
             out LabelCandidateRejectReason rejectReason)
         {
-            item = label.ItemOnGround;
-            mechanicId = null;
-            rejectReason = LabelCandidateRejectReason.None;
-
-            if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
-            {
-                rejectReason = LabelCandidateRejectReason.NullItemOrOutOfDistance;
-                return false;
-            }
-
-            if (!IsEntityTargetableForClick(label, item))
-            {
-                rejectReason = LabelCandidateRejectReason.Untargetable;
-                return false;
-            }
-
-            mechanicId = GetClickableMechanicId(label, item, clickSettings, _gameController);
-            if (string.IsNullOrWhiteSpace(mechanicId))
-            {
-                rejectReason = LabelCandidateRejectReason.NoMechanic;
-                return false;
-            }
-
-            return true;
+            return LabelEligibilityEngine.TryBuildCandidate(
+                label,
+                clickSettings,
+                IsEntityTargetableForClick,
+                (candidateLabel, candidateItem, settings) => GetClickableMechanicId(candidateLabel, candidateItem, settings, _gameController),
+                out item,
+                out mechanicId,
+                out rejectReason);
         }
 
         private static bool IsEntityTargetableForClick(LabelOnGround label, Entity item)

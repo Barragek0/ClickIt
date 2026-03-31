@@ -83,19 +83,19 @@ namespace ClickIt.Utils
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
         {
             _state.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, "ClickIt.ScanForAltarsLogic", false);
-            _ = Core.ParallelRunner.Run(_state.AltarCoroutine);
+            _ = global::ExileCore.Core.ParallelRunner.Run(_state.AltarCoroutine);
             _state.AltarCoroutine.Priority = CoroutinePriority.Normal;
 
             _state.ClickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), plugin, "ClickIt.ClickLogic", false);
-            _ = Core.ParallelRunner.Run(_state.ClickLabelCoroutine);
+            _ = global::ExileCore.Core.ParallelRunner.Run(_state.ClickLabelCoroutine);
             _state.ClickLabelCoroutine.Priority = CoroutinePriority.High;
 
             _state.ManualUiHoverCoroutine = new Coroutine(MainManualUiHoverClickCoroutine(), plugin, "ClickIt.ManualUiHoverLogic", false);
-            _ = Core.ParallelRunner.Run(_state.ManualUiHoverCoroutine);
+            _ = global::ExileCore.Core.ParallelRunner.Run(_state.ManualUiHoverCoroutine);
             _state.ManualUiHoverCoroutine.Priority = CoroutinePriority.High;
 
             _state.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
-            _ = Core.ParallelRunner.Run(_state.DelveFlareCoroutine);
+            _ = global::ExileCore.Core.ParallelRunner.Run(_state.DelveFlareCoroutine);
             _state.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
         }
 
@@ -128,7 +128,10 @@ namespace ClickIt.Utils
 
         private IEnumerator ClickLabel()
         {
-            if (_state.IsShuttingDown || _state.PerformanceMonitor == null || _state.ClickService == null) yield break;
+            var runtimeHost = _state.ClickRuntimeHost
+                ?? (_state.ClickService != null ? new global::ClickIt.Core.Runtime.ClickRuntimeHost(() => _state.ClickService) : null);
+
+            if (_state.IsShuttingDown || _state.PerformanceMonitor == null || runtimeHost == null) yield break;
 
             bool hotkeyActive = _state.InputHandler?.IsClickHotkeyPressed(_state.CachedLabels, _state.LabelFilterService) == true;
             if (ShouldSuppressRegularClickForManualUiHoverMode(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
@@ -160,7 +163,7 @@ namespace ClickIt.Utils
                 bool hotkeyHeld = _state.InputHandler == null || hotkeyActive;
                 if (ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled, hotkeyHeld))
                 {
-                    _state.ClickService?.CancelOffscreenPathingState();
+                    runtimeHost.CancelOffscreenPathingState();
                 }
 
                 if (_settings.DebugMode?.Value == true)
@@ -183,7 +186,7 @@ namespace ClickIt.Utils
 
             long clickSequenceBefore = _state.InputHandler?.GetSuccessfulClickSequence() ?? 0;
             _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
-            yield return _state.ClickService.ProcessRegularClick();
+            yield return runtimeHost.ProcessRegularClick();
             _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             long clickSequenceAfter = _state.InputHandler?.GetSuccessfulClickSequence() ?? 0;
@@ -206,7 +209,10 @@ namespace ClickIt.Utils
 
         private IEnumerator ProcessManualUiHoverClick()
         {
-            if (_state.IsShuttingDown || _state.PerformanceMonitor == null || _state.ClickService == null || _state.InputHandler == null)
+            var runtimeHost = _state.ClickRuntimeHost
+                ?? (_state.ClickService != null ? new global::ClickIt.Core.Runtime.ClickRuntimeHost(() => _state.ClickService) : null);
+
+            if (_state.IsShuttingDown || _state.PerformanceMonitor == null || runtimeHost == null || _state.InputHandler == null)
                 yield break;
 
             bool hotkeyActive = _state.InputHandler.IsClickHotkeyPressed(_state.CachedLabels, _state.LabelFilterService);
@@ -229,7 +235,7 @@ namespace ClickIt.Utils
             long clickSequenceBefore = _state.InputHandler.GetSuccessfulClickSequence();
 
             _state.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
-            bool clicked = _state.ClickService.TryClickManualUiHoverLabel(labels);
+            bool clicked = runtimeHost.TryClickManualUiHoverLabel(labels);
             _state.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             long clickSequenceAfter = _state.InputHandler.GetSuccessfulClickSequence();

@@ -1,5 +1,6 @@
 using ClickIt.Components;
 using ClickIt.Services;
+using ClickIt.Services.Observability;
 using ClickIt.Utils;
 using ExileCore.PoEMemory.Elements;
 using SharpDX;
@@ -175,7 +176,14 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue("--- Labels ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            if (_plugin is not ClickIt clickIt || clickIt.State.LabelFilterService == null)
+            if (_plugin is not ClickIt clickIt)
+            {
+                _deferredTextQueue.Enqueue("Label filter service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            DebugTelemetrySnapshot telemetry = clickIt.State.GetDebugTelemetrySnapshot();
+            if (!telemetry.Label.ServiceAvailable)
             {
                 _deferredTextQueue.Enqueue("Label filter service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
                 return yPos + lineHeight;
@@ -203,7 +211,7 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue($"Valid Labels: {validLabels}", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
-            var snap = clickIt.State.LabelFilterService.GetLatestLabelDebug();
+            var snap = telemetry.Label.Label;
             if (!snap.HasData)
             {
                 _deferredTextQueue.Enqueue("No label debug data yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -239,7 +247,7 @@ namespace ClickIt.Rendering
 
             yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Note: {snap.Notes}", Color.LightGray, 13, 72);
 
-            var trail = clickIt.State.LabelFilterService.GetLatestLabelDebugTrail();
+            var trail = telemetry.Label.LabelTrail;
             yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 80);
 
             return yPos;
@@ -255,7 +263,10 @@ namespace ClickIt.Rendering
             _deferredTextQueue.Enqueue("--- Inventory Pickup ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            var snap = LabelFilterService.GetLatestInventoryDebug();
+            DebugTelemetrySnapshot telemetry = _plugin is ClickIt clickIt
+                ? clickIt.State.GetDebugTelemetrySnapshot()
+                : DebugTelemetrySnapshot.Empty;
+            var snap = telemetry.Inventory.Inventory;
             if (!snap.HasData)
             {
                 _deferredTextQueue.Enqueue("No inventory pickup debug data yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -304,7 +315,7 @@ namespace ClickIt.Rendering
 
             yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Note: {snap.Notes}", Color.LightGray, 13, 72);
 
-            var trail = LabelFilterService.GetLatestInventoryDebugTrail();
+            var trail = telemetry.Inventory.InventoryTrail;
             yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 4, wrapWidth: 80);
 
             return yPos;

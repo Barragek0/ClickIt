@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SharpDX;
 using Color = SharpDX.Color;
+using ClickIt.Services.Observability;
 
 namespace ClickIt.Rendering
 {
@@ -16,7 +17,14 @@ namespace ClickIt.Rendering
         {
             EnqueueUltimatumLine(xPos, ref yPos, lineHeight, "--- Ultimatum ---", Color.Orange, 16);
 
-            if (_plugin is not ClickIt clickIt || clickIt.State.ClickService == null)
+            if (_plugin is not ClickIt clickIt)
+            {
+                EnqueueUltimatumLine(xPos, ref yPos, lineHeight, "Click service unavailable", Color.Gray, 14);
+                return yPos + lineHeight;
+            }
+
+            DebugTelemetrySnapshot telemetry = clickIt.State.GetDebugTelemetrySnapshot();
+            if (!telemetry.Click.ServiceAvailable)
             {
                 EnqueueUltimatumLine(xPos, ref yPos, lineHeight, "Click service unavailable", Color.Gray, 14);
                 return yPos + lineHeight;
@@ -31,10 +39,10 @@ namespace ClickIt.Rendering
                 Color.White,
                 13);
 
-            bool hasPreview = clickIt.State.ClickService.TryGetUltimatumOptionPreview(out List<Services.ClickService.UltimatumPanelOptionPreview> previews)
-                && previews.Count > 0;
+            IReadOnlyList<UltimatumOptionPreviewSnapshot> previews = telemetry.Click.UltimatumOptionPreview;
+            bool hasPreview = previews.Count > 0;
 
-            var snap = clickIt.State.ClickService.GetLatestUltimatumDebug();
+            var snap = telemetry.Click.Ultimatum;
             if (!snap.HasData)
             {
                 EnqueueUltimatumLine(
@@ -134,7 +142,7 @@ namespace ClickIt.Rendering
                 }
             }
 
-            var trail = clickIt.State.ClickService.GetLatestUltimatumDebugTrail();
+            var trail = telemetry.Click.UltimatumTrail;
             yPos = RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 10, wrapWidth: 80);
 
             return yPos;
