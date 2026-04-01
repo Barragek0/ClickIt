@@ -120,14 +120,14 @@ namespace ClickIt.Rendering
             return (SharpDX.Color.LawnGreen, BlockingOverriddenByHotkeyText, string.Empty, string.Empty);
         }
 
-        private static string GetLazyModeRestrictionDisplayReason(string? rawReason)
+        internal static string GetLazyModeRestrictionDisplayReason(string? rawReason)
         {
             return string.IsNullOrWhiteSpace(rawReason)
                 ? GenericRestrictionDetectedText
                 : rawReason.Trim();
         }
 
-        private static List<string> WrapOverlayText(string? text, int maxLength)
+        internal static List<string> WrapOverlayText(string? text, int maxLength)
         {
             List<string> lines = [];
             if (string.IsNullOrWhiteSpace(text))
@@ -198,7 +198,7 @@ namespace ClickIt.Rendering
             return _cachedToggleDisableHint;
         }
 
-        private static string GetBlockingMouseButtonName(bool leftClickBlocks, bool rightClickBlocks)
+        internal static string GetBlockingMouseButtonName(bool leftClickBlocks, bool rightClickBlocks)
         {
             if (leftClickBlocks && rightClickBlocks)
                 return "both mouse buttons";

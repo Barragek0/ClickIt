@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
-using ClickIt.Tests.TestUtils;
 using SharpDX;
 using ExileCore.Shared.Enums;
 
@@ -59,13 +58,11 @@ namespace ClickIt.Tests.Utils
         {
             var q = new DeferredTextQueue();
 
-            var initial = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(q, "_items");
-            initial.Count.Should().Be(0);
+            q.GetPendingTextSnapshot().Should().BeEmpty();
 
             q.Enqueue("hello", new Vector2(1, 2), Color.White, 12, FontAlign.Left);
 
-            var after = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(q, "_items");
-            after.Count.Should().Be(1);
+            q.GetPendingTextSnapshot().Should().ContainSingle().Which.Should().Be("hello");
         }
 
         [TestMethod]
@@ -168,11 +165,8 @@ namespace ClickIt.Tests.Utils
             tf.Flush(gfx, (s, f) => { });
             tt.Flush(gfx, (s, f) => { });
 
-            var items = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(tf, "_items");
-            items.Count.Should().Be(0);
-
-            var items2 = (System.Collections.ICollection)PrivateFieldAccessor.Get<object>(tt, "_items");
-            items2.Count.Should().Be(0);
+            tf.GetSnapshotForTests().Should().BeEmpty();
+            tt.GetPendingTextSnapshot().Should().BeEmpty();
         }
 
         [TestMethod]

@@ -13,12 +13,6 @@ namespace ClickIt.Rendering
             double SchedulerDeltaMs,
             double TargetDeviationRatio);
 
-        private int RenderPerformanceDebug(int xPos, int yPos, int lineHeight, PerformanceMetricsSnapshot performanceSnapshot)
-            => _performanceDebugOverlaySection.RenderPerformanceDebug(xPos, yPos, lineHeight, performanceSnapshot);
-
-        private int RenderClickFrequencyTargetDebug(int xPos, int yPos, int lineHeight, PerformanceMetricsSnapshot performanceSnapshot)
-            => _performanceDebugOverlaySection.RenderClickFrequencyTargetDebug(xPos, yPos, lineHeight, performanceSnapshot);
-
         internal static ClickFrequencyTargetDebugMetrics BuildClickFrequencyTargetDebugMetrics(
             double clickTargetMs,
             double processingMs,

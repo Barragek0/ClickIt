@@ -1,4 +1,5 @@
 using ExileCore.PoEMemory.Elements;
+using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services
 {
@@ -30,7 +31,7 @@ namespace ClickIt.Services
             out SettlersOreCandidate? settlersOreCandidate)
         {
             if (visibleMechanicCandidateCacheHasValue
-                && ClickService.ShouldReuseTimedLabelCountCache(
+                && VisibleMechanicCachePolicy.ShouldReuseTimedLabelCountCache(
                     now,
                     visibleMechanicCandidateCacheTimestampMs,
                     visibleMechanicCandidateLabelCount,
@@ -66,7 +67,7 @@ namespace ClickIt.Services
             out SettlersOreCandidate? settlersOreCandidate)
         {
             if (hiddenFallbackCandidateCacheHasValue
-                && ClickService.ShouldReuseTimedLabelCountCache(
+                && VisibleMechanicCachePolicy.ShouldReuseTimedLabelCountCache(
                     now,
                     hiddenFallbackCandidateCacheTimestampMs,
                     hiddenFallbackCandidateLabelCount,
@@ -106,7 +107,7 @@ namespace ClickIt.Services
                 }
 
                 long now = Environment.TickCount64;
-                if (ClickService.ShouldReuseTimedLabelCountCache(
+                if (VisibleMechanicCachePolicy.ShouldReuseTimedLabelCountCache(
                         now,
                         cachedGroundLabelEntityAddressesTimestampMs,
                         cachedGroundLabelEntityLabelCount,

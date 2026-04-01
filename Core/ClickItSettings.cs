@@ -3,22 +3,18 @@ using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
 using ImGuiNET;
 using Newtonsoft.Json;
-using System.Numerics;
 using ClickIt.Definitions;
 
 namespace ClickIt
 {
     public partial class ClickItSettings : ISettings
     {
-        private const string AltarTypeMinion = "Minion";
-        private const string AltarTypeBoss = "Boss";
-        private const string AltarTypePlayer = "Player";
         private const int MechanicIgnoreDistanceWithinDefault = 100;
         private const int MechanicIgnoreDistanceWithinMin = 10;
         private const int MechanicIgnoreDistanceWithinMax = 500;
         private static readonly StringComparer PriorityComparer = StringComparer.OrdinalIgnoreCase;
-        private static readonly Vector4 WhitelistTextColor = new(0.4f, 0.8f, 0.4f, 1.0f);
-        private static readonly Vector4 BlacklistTextColor = new(0.8f, 0.4f, 0.4f, 1.0f);
+        [JsonIgnore]
+        internal ClickItSettingsUiState UiState { get; } = new();
 
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
         public int SettingsVersion { get; set; } = ClickItSettingsMigrationService.CurrentVersion;
@@ -234,9 +230,6 @@ namespace ClickIt
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public Dictionary<string, int> MechanicPriorityIgnoreDistanceWithinById { get; set; } = new(PriorityComparer);
 
-        private string _expandedMechanicPriorityRowId = string.Empty;
-        private string _expandedMechanicsTableRowId = string.Empty;
-
         [Menu("Mechanics", 1400)]
         public EmptyNode WorldInteractionsCategory { get; set; } = new EmptyNode();
         [Menu("", 101, 1400)]
@@ -418,8 +411,6 @@ namespace ClickIt
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public Dictionary<string, HashSet<string>> ItemTypeBlacklistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
-        private string _expandedItemTypeRowKey = string.Empty;
-
         [Menu("Essences", 118, 1400)]
         public EmptyNode Essences { get; set; } = new EmptyNode();
         [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 118)]
@@ -555,71 +546,31 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode DelveSliderWidthEnd { get; }
 
-        private string upsideSearchFilter = "";
-        private string downsideSearchFilter = "";
-        private string itemTypeSearchFilter = "";
-        private string essenceSearchFilter = "";
-        private string strongboxSearchFilter = "";
-        private string mechanicsSearchFilter = "";
-        private string ultimatumSearchFilter = "";
-        private string ultimatumTakeRewardSearchFilter = "";
-        private string _expandedUltimatumTakeRewardRowKey = string.Empty;
-        private string _lastSettingsUiError = string.Empty;
-        private string[] _ultimatumPrioritySnapshot = [];
-        private string[] _mechanicPrioritySnapshot = [];
-        private string[] _mechanicIgnoreDistanceSnapshot = [];
-        private KeyValuePair<string, int>[] _mechanicIgnoreDistanceWithinSnapshot = [];
-        private IReadOnlyDictionary<string, int> _mechanicIgnoreDistanceWithinMapSnapshot = new Dictionary<string, int>(PriorityComparer);
-
-        private static CustomNode CreateSliderWidthStartNode()
-        {
-            return new CustomNode
-            {
-                DrawDelegate = PushStandardSliderWidth
-            };
-        }
-
-        private static CustomNode CreateSliderWidthEndNode()
-        {
-            return new CustomNode
-            {
-                DrawDelegate = PopStandardSliderWidth
-            };
-        }
-
-        private CustomNode CreateSafePanelNode(string panelName, Action drawPanel)
-        {
-            return new CustomNode
-            {
-                DrawDelegate = () => DrawPanelSafe(panelName, drawPanel)
-            };
-        }
-
         public ClickItSettings()
         {
             InitializeDefaultWeights();
             ClickItSettingsMigrationService.Apply(this);
-            DebugTestingPanel = CreateSafePanelNode("DebugTestingPanel", DrawDebugTestingPanel);
-            ControlsSliderWidthStart = CreateSliderWidthStartNode();
-            ControlsSliderWidthEnd = CreateSliderWidthEndNode();
-            PathfindingSliderWidthStart = CreateSliderWidthStartNode();
-            PathfindingSliderWidthEnd = CreateSliderWidthEndNode();
-            LazyModeSliderWidthStart = CreateSliderWidthStartNode();
-            LazyModeSliderWidthEnd = CreateSliderWidthEndNode();
-            LazyModeNearbyMonsterRulesPanel = CreateSafePanelNode("LazyModeNearbyMonsterRulesPanel", DrawLazyModeNearbyMonsterRulesPanel);
-            PrioritiesSliderWidthStart = CreateSliderWidthStartNode();
-            PrioritiesSliderWidthEnd = CreateSliderWidthEndNode();
-            DelveSliderWidthStart = CreateSliderWidthStartNode();
-            DelveSliderWidthEnd = CreateSliderWidthEndNode();
-            AltarsPanel = CreateSafePanelNode("AltarsPanel", DrawAltarsPanel);
-            AltarModWeights = CreateSafePanelNode("AltarModWeights", DrawAltarModWeights);
-            ItemTypeFiltersPanel = CreateSafePanelNode("ItemTypeFiltersPanel", DrawItemTypeFiltersPanel);
-            MechanicPriorityTablePanel = CreateSafePanelNode("MechanicPriorityTablePanel", DrawMechanicPriorityTablePanel);
-            EssenceCorruptionTablePanel = CreateSafePanelNode("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel);
-            StrongboxFilterTablePanel = CreateSafePanelNode("StrongboxFilterTablePanel", DrawStrongboxFilterTablePanel);
-            MechanicsTablePanel = CreateSafePanelNode("MechanicsTablePanel", DrawMechanicsTablePanel);
-            UltimatumModifierTablePanel = CreateSafePanelNode("UltimatumModifierTablePanel", DrawUltimatumModifierTablePanel);
-            UltimatumTakeRewardModifierTablePanel = CreateSafePanelNode("UltimatumTakeRewardModifierTablePanel", DrawUltimatumTakeRewardModifierTablePanel);
+            DebugTestingPanel = SettingsScreenComposer.CreateSafePanelNode("DebugTestingPanel", DrawDebugTestingPanel, DrawPanelSafe);
+            ControlsSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
+            ControlsSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
+            PathfindingSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
+            PathfindingSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
+            LazyModeSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
+            LazyModeSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
+            LazyModeNearbyMonsterRulesPanel = SettingsScreenComposer.CreateSafePanelNode("LazyModeNearbyMonsterRulesPanel", DrawLazyModeNearbyMonsterRulesPanel, DrawPanelSafe);
+            PrioritiesSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
+            PrioritiesSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
+            DelveSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
+            DelveSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
+            AltarsPanel = SettingsScreenComposer.CreateSafePanelNode("AltarsPanel", DrawAltarsPanel, DrawPanelSafe);
+            AltarModWeights = SettingsScreenComposer.CreateSafePanelNode("AltarModWeights", DrawAltarModWeights, DrawPanelSafe);
+            ItemTypeFiltersPanel = SettingsScreenComposer.CreateSafePanelNode("ItemTypeFiltersPanel", DrawItemTypeFiltersPanel, DrawPanelSafe);
+            MechanicPriorityTablePanel = SettingsScreenComposer.CreateSafePanelNode("MechanicPriorityTablePanel", DrawMechanicPriorityTablePanel, DrawPanelSafe);
+            EssenceCorruptionTablePanel = SettingsScreenComposer.CreateSafePanelNode("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel, DrawPanelSafe);
+            StrongboxFilterTablePanel = SettingsScreenComposer.CreateSafePanelNode("StrongboxFilterTablePanel", DrawStrongboxFilterTablePanel, DrawPanelSafe);
+            MechanicsTablePanel = SettingsScreenComposer.CreateSafePanelNode("MechanicsTablePanel", DrawMechanicsTablePanel, DrawPanelSafe);
+            UltimatumModifierTablePanel = SettingsScreenComposer.CreateSafePanelNode("UltimatumModifierTablePanel", DrawUltimatumModifierTablePanel, DrawPanelSafe);
+            UltimatumTakeRewardModifierTablePanel = SettingsScreenComposer.CreateSafePanelNode("UltimatumTakeRewardModifierTablePanel", DrawUltimatumTakeRewardModifierTablePanel, DrawPanelSafe);
         }
 
     }

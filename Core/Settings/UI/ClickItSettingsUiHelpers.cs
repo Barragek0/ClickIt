@@ -1,4 +1,4 @@
-using ImGuiNET;
+﻿using ImGuiNET;
 using System.Numerics;
 using ClickIt.Definitions;
 
@@ -14,16 +14,16 @@ namespace ClickIt
             }
             catch (Exception ex)
             {
-                _lastSettingsUiError = $"{panelName}: {ex.GetType().Name}: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"[ClickItSettings UI Error] {_lastSettingsUiError}{Environment.NewLine}{ex}");
+                UiState.LastSettingsUiError = $"{panelName}: {ex.GetType().Name}: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[ClickItSettings UI Error] {UiState.LastSettingsUiError}{Environment.NewLine}{ex}");
 
                 ImGui.Separator();
                 ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "Settings UI error caught");
-                ImGui.TextWrapped(_lastSettingsUiError);
+                ImGui.TextWrapped(UiState.LastSettingsUiError);
 
                 if (ImGui.Button($"Throw Last UI Error##{panelName}"))
                 {
-                    throw new InvalidOperationException(_lastSettingsUiError, ex);
+                    throw new InvalidOperationException(UiState.LastSettingsUiError, ex);
                 }
             }
         }

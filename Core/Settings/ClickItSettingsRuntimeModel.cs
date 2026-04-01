@@ -5,15 +5,6 @@ namespace ClickIt
 {
     public partial class ClickItSettings
     {
-        private MechanicToggleTableEntry[]? _mechanicTableEntriesCache;
-        private Dictionary<string, ToggleNode>? _mechanicToggleNodeByIdCache;
-        private int _itemTypeMetadataSnapshotSignature = int.MinValue;
-        private string[] _itemTypeWhitelistMetadataSnapshot = [];
-        private string[] _itemTypeBlacklistMetadataSnapshot = [];
-        private int _strongboxMetadataSnapshotSignature = int.MinValue;
-        private string[] _strongboxClickMetadataSnapshot = [];
-        private string[] _strongboxDontClickMetadataSnapshot = [];
-
         public bool IsLazyModeDisableHotkeyToggleModeEnabled()
         {
             return LazyModeDisableKeyToggleMode?.Value == true;

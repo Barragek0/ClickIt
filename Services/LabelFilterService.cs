@@ -11,6 +11,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Windows.Forms;
 using ClickIt.Services.Label.Selection;
 using ClickIt.Services.Mechanics;
+using ClickIt.Services.Click.Ranking;
+using ClickIt.Services.Label.Classification;
+using ClickIt.Services.Label.Classification.Policies;
 
 namespace ClickIt.Services
 {
@@ -91,7 +94,7 @@ namespace ClickIt.Services
                 {
                     Entity? selectedItem = selected.ItemOnGround;
                     string? selectedMechanic = selectedItem != null
-                        ? GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController)
+                        ? MechanicClassifier.GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController, ClassificationDependencies)
                         : null;
 
                     PublishLabelDebugStage(new LabelDebugEvent("SelectionReturned", start, end, allLabels.Count)
@@ -191,7 +194,7 @@ namespace ClickIt.Services
                 }
 
                 string path = item.Path ?? string.Empty;
-                bool isSettlersPath = TryGetSettlersOreMechanicId(path, out _);
+                bool isSettlersPath = MechanicClassifier.TryGetSettlersOreMechanicId(path, out _);
                 if (isSettlersPath)
                     settlersPathSeen++;
 
@@ -214,7 +217,7 @@ namespace ClickIt.Services
                     continue;
                 }
 
-                string? mechanicId = GetClickableMechanicId(label, item, clickSettings, _gameController);
+                string? mechanicId = MechanicClassifier.GetClickableMechanicId(label, item, clickSettings, _gameController, ClassificationDependencies);
                 if (string.IsNullOrWhiteSpace(mechanicId))
                 {
                     noMechanic++;
@@ -223,7 +226,7 @@ namespace ClickIt.Services
                     continue;
                 }
 
-                if (mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase))
+                if (SettlersMechanicPolicy.IsSettlersMechanicId(mechanicId))
                     settlersMechanicMatched++;
             }
 
@@ -280,7 +283,7 @@ namespace ClickIt.Services
                 return null;
 
             ClickSettings clickSettings = CreateClickSettings(null);
-            return GetClickableMechanicId(label!, item, clickSettings, _gameController);
+            return MechanicClassifier.GetClickableMechanicId(label!, item, clickSettings, _gameController, ClassificationDependencies);
         }
 
         private LabelOnGround? SelectNextLabelByPriority(IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
@@ -337,7 +340,7 @@ namespace ClickIt.Services
                 label,
                 clickSettings,
                 IsEntityTargetableForClick,
-                (candidateLabel, candidateItem, settings) => GetClickableMechanicId(candidateLabel, candidateItem, settings, _gameController),
+                (candidateLabel, candidateItem, settings) => MechanicClassifier.GetClickableMechanicId(candidateLabel, candidateItem, settings, _gameController, ClassificationDependencies),
                 out item,
                 out mechanicId,
                 out rejectReason);
@@ -364,17 +367,17 @@ namespace ClickIt.Services
 
         internal static bool ShouldAllowHarvestRootElementVisibility(string? path, bool harvestRootElementVisible)
         {
-            if (string.IsNullOrWhiteSpace(path) || !IsHarvestPath(path))
+            if (string.IsNullOrWhiteSpace(path) || !MechanicClassifier.IsHarvestPath(path))
                 return true;
 
             return harvestRootElementVisible;
         }
 
         internal static bool RequiresTargetabilityGate(string path)
-            => !string.IsNullOrEmpty(path) && IsSettlersOrePath(path);
+            => !string.IsNullOrEmpty(path) && MechanicClassifier.IsSettlersOrePath(path);
 
         internal static bool ShouldApplyPetrifiedWoodEntityTargetabilityGate(string? path)
-            => !string.IsNullOrWhiteSpace(path) && IsSettlersPetrifiedWoodPath(path);
+            => !string.IsNullOrWhiteSpace(path) && MechanicClassifier.IsSettlersPetrifiedWoodPath(path);
 
         internal static bool ShouldAllowPetrifiedWoodTargetability(bool hasLabelEntityTargetable, bool labelEntityTargetable)
             => !hasLabelEntityTargetable || labelEntityTargetable;
@@ -433,13 +436,6 @@ namespace ClickIt.Services
             if (rawLabelEntity == null)
                 return false;
 
-            if (rawLabelEntity is Entity labelEntity)
-            {
-                hasLabelEntityTargetable = true;
-                labelEntityTargetable = labelEntity.IsTargetable;
-                return true;
-            }
-
             if (TryReadBool(rawLabelEntity, out bool dynamicTargetable, e => e.IsTargetable))
             {
                 hasLabelEntityTargetable = true;
@@ -488,7 +484,7 @@ namespace ClickIt.Services
         }
 
         private static int GetMechanicPriorityIndex(IReadOnlyDictionary<string, int> priorityMap, string? mechanicId)
-            => CandidateScoreEngine.ResolvePriorityIndex(mechanicId, priorityMap);
+            => MechanicCandidateRanker.ResolvePriorityIndex(mechanicId, priorityMap);
 
         public bool ShouldCorruptEssence(LabelOnGround label)
             => _essenceService.ShouldCorruptEssence(label.Label);

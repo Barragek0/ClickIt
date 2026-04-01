@@ -1,7 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Services;
-using ClickIt.Tests.TestUtils;
+using ClickIt.Services.Area;
 using SharpDX;
 using System.Collections.Generic;
 
@@ -21,7 +21,7 @@ namespace ClickIt.Tests.Unit
             var mana = new RectangleF(140, 160, 200, 200);
             var buffs = new RectangleF(0, 0, 100, 50);
 
-            SetRectangles(svc, full, health, mana, buffs);
+            ApplySnapshot(svc, full, health, mana, buffs);
 
             var pHealth = new Vector2(10, 170);
             svc.PointIsInClickableArea(pHealth).Should().BeFalse();
@@ -40,7 +40,7 @@ namespace ClickIt.Tests.Unit
             var mana = new RectangleF(180, 180, 20, 20); // bottom-right zone
             var buffs = new RectangleF(0, 0, 30, 30); // top-left zone
 
-            SetRectangles(svc, full, health, mana, buffs);
+            ApplySnapshot(svc, full, health, mana, buffs);
 
             var p = new Vector2(100, 100);
             svc.PointIsInClickableArea(p).Should().BeTrue();
@@ -55,7 +55,7 @@ namespace ClickIt.Tests.Unit
             var mana = new RectangleF(0, 0, 0, 0);
             var buffs = new RectangleF(0, 0, 0, 0);
 
-            SetRectangles(svc, full, health, mana, buffs);
+            ApplySnapshot(svc, full, health, mana, buffs);
 
             var insideHealth = new Vector2(1, 181);
             svc.PointIsInClickableArea(insideHealth).Should().BeFalse();
@@ -73,7 +73,7 @@ namespace ClickIt.Tests.Unit
             var mana = new RectangleF(180, 100, 20, 20);
             var buffs = new RectangleF(0, 0, 30, 30);
 
-            SetRectangles(svc, full, health, mana, buffs);
+            ApplySnapshot(svc, full, health, mana, buffs);
 
             var edge = new Vector2(200, 100);
             System.Action act = () => svc.PointIsInClickableArea(edge);
@@ -97,8 +97,7 @@ namespace ClickIt.Tests.Unit
                 new RectangleF(330, 50, 20, 60)
             };
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_questTrackerBlockedRectangles", questTrackerBlocks);
+            ApplySnapshot(svc, full, health, mana, buffs, questTrackerBlockedRectangles: questTrackerBlocks);
 
             svc.PointIsInClickableArea(new Vector2(310, 80)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(340, 80)).Should().BeFalse();
@@ -108,7 +107,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRetainQuestTrackerRectanglesOnEmptyRead_ReturnsTrue_WithinHoldWindow()
         {
-            bool retain = AreaService.ShouldRetainQuestTrackerRectanglesOnEmptyRead(
+            bool retain = BlockedAreaRefreshScheduler.ShouldRetainQuestTrackerRectanglesOnEmptyRead(
                 currentRectangleCount: 2,
                 now: 1_100,
                 lastSuccessTimestampMs: 1_000,
@@ -120,7 +119,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRetainQuestTrackerRectanglesOnEmptyRead_ReturnsFalse_AfterHoldWindow()
         {
-            bool retain = AreaService.ShouldRetainQuestTrackerRectanglesOnEmptyRead(
+            bool retain = BlockedAreaRefreshScheduler.ShouldRetainQuestTrackerRectanglesOnEmptyRead(
                 currentRectangleCount: 2,
                 now: 1_250,
                 lastSuccessTimestampMs: 1_000,
@@ -132,7 +131,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRefreshBlockedUiRectangles_ReturnsFalse_InsideRefreshWindow()
         {
-            bool shouldRefresh = AreaService.ShouldRefreshBlockedUiRectangles(
+            bool shouldRefresh = BlockedAreaRefreshScheduler.ShouldRefresh(
                 now: 10_500,
                 lastRefreshTimestampMs: 10_000,
                 refreshIntervalMs: 10_000);
@@ -143,7 +142,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRefreshBlockedUiRectangles_ReturnsTrue_WhenIntervalElapsed()
         {
-            bool shouldRefresh = AreaService.ShouldRefreshBlockedUiRectangles(
+            bool shouldRefresh = BlockedAreaRefreshScheduler.ShouldRefresh(
                 now: 20_000,
                 lastRefreshTimestampMs: 10_000,
                 refreshIntervalMs: 10_000);
@@ -154,7 +153,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRefreshBlockedUiRectangles_ReturnsTrue_OnFirstRefresh()
         {
-            bool shouldRefresh = AreaService.ShouldRefreshBlockedUiRectangles(
+            bool shouldRefresh = BlockedAreaRefreshScheduler.ShouldRefresh(
                 now: 10_500,
                 lastRefreshTimestampMs: 0,
                 refreshIntervalMs: 10_000);
@@ -165,7 +164,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRefreshBlockedUiRectangles_ReturnsTrue_WhenForceRefreshRequested()
         {
-            bool shouldRefresh = AreaService.ShouldRefreshBlockedUiRectangles(
+            bool shouldRefresh = BlockedAreaRefreshScheduler.ShouldRefresh(
                 now: 10_500,
                 lastRefreshTimestampMs: 10_000,
                 refreshIntervalMs: 10_000,
@@ -177,12 +176,12 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldRefreshBlockedUiRectangles_Supports500MsWindow_ForBuffsAndDebuffsRefresh()
         {
-            bool shouldRefreshTooSoon = AreaService.ShouldRefreshBlockedUiRectangles(
+            bool shouldRefreshTooSoon = BlockedAreaRefreshScheduler.ShouldRefresh(
                 now: 10_300,
                 lastRefreshTimestampMs: 10_000,
                 refreshIntervalMs: 500);
 
-            bool shouldRefreshOnTime = AreaService.ShouldRefreshBlockedUiRectangles(
+            bool shouldRefreshOnTime = BlockedAreaRefreshScheduler.ShouldRefresh(
                 now: 10_500,
                 lastRefreshTimestampMs: 10_000,
                 refreshIntervalMs: 500);
@@ -194,7 +193,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void HasAreaHashChanged_ReturnsTrue_OnFirstKnownArea()
         {
-            bool changed = AreaService.HasAreaHashChanged(
+            bool changed = AreaChangeRules.HasAreaHashChanged(
                 currentAreaHash: 123,
                 lastKnownAreaHash: long.MinValue);
 
@@ -204,7 +203,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void HasAreaHashChanged_ReturnsTrue_WhenAreaChanges()
         {
-            bool changed = AreaService.HasAreaHashChanged(
+            bool changed = AreaChangeRules.HasAreaHashChanged(
                 currentAreaHash: 124,
                 lastKnownAreaHash: 123);
 
@@ -214,7 +213,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void HasAreaHashChanged_ReturnsFalse_WhenAreaStaysSame()
         {
-            bool changed = AreaService.HasAreaHashChanged(
+            bool changed = AreaChangeRules.HasAreaHashChanged(
                 currentAreaHash: 123,
                 lastKnownAreaHash: 123);
 
@@ -224,7 +223,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void HasAreaHashChanged_ReturnsFalse_WhenCurrentHashUnknown()
         {
-            bool changed = AreaService.HasAreaHashChanged(
+            bool changed = AreaChangeRules.HasAreaHashChanged(
                 currentAreaHash: long.MinValue,
                 lastKnownAreaHash: 123);
 
@@ -250,31 +249,31 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldUseVisibleUiBlockedRectangle_ReturnsTrue_OnlyWhenValidAndVisible()
         {
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: true).Should().BeFalse();
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: false).Should().BeFalse();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: true).Should().BeFalse();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: false).Should().BeFalse();
         }
 
         [TestMethod]
         public void AltarBlockedRectangle_VisibilityRule_RequiresVisibleElement()
         {
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
         }
 
         [TestMethod]
         public void MirageBlockedRectangle_VisibilityRule_RequiresVisibleElement()
         {
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
         }
 
         [TestMethod]
         public void RitualBlockedRectangle_VisibilityRule_RequiresVisibleElement()
         {
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
-            AreaService.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
+            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
         }
 
         [TestMethod]
@@ -288,8 +287,7 @@ namespace ClickIt.Tests.Unit
             var buffs = new RectangleF(0, 0, 30, 30);
             var chatBlocked = new RectangleF(40, 220, 100, 40);
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_chatPanelBlockedRectangle", chatBlocked);
+            ApplySnapshot(svc, full, health, mana, buffs, chatPanelBlockedRectangle: chatBlocked);
 
             svc.PointIsInClickableArea(new Vector2(80, 240)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(200, 240)).Should().BeTrue();
@@ -306,8 +304,7 @@ namespace ClickIt.Tests.Unit
             var buffs = new RectangleF(0, 0, 30, 30);
             var mapBlocked = new RectangleF(300, 0, 90, 120);
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_mapPanelBlockedRectangle", mapBlocked);
+            ApplySnapshot(svc, full, health, mana, buffs, mapPanelBlockedRectangle: mapBlocked);
 
             svc.PointIsInClickableArea(new Vector2(340, 60)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(250, 60)).Should().BeTrue();
@@ -324,8 +321,7 @@ namespace ClickIt.Tests.Unit
             var buffs = new RectangleF(0, 0, 30, 30);
             var xpBarBlocked = new RectangleF(120, 120, 70, 80);
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_xpBarBlockedRectangle", xpBarBlocked);
+            ApplySnapshot(svc, full, health, mana, buffs, xpBarBlockedRectangle: xpBarBlocked);
 
             svc.PointIsInClickableArea(new Vector2(180, 150)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeTrue();
@@ -342,8 +338,7 @@ namespace ClickIt.Tests.Unit
             var buffs = new RectangleF(0, 0, 30, 30);
             var altarBlocked = new RectangleF(250, 120, 60, 70);
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_altarBlockedRectangle", altarBlocked);
+            ApplySnapshot(svc, full, health, mana, buffs, altarBlockedRectangle: altarBlocked);
 
             svc.PointIsInClickableArea(new Vector2(280, 150)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeTrue();
@@ -360,8 +355,7 @@ namespace ClickIt.Tests.Unit
             var buffs = new RectangleF(0, 0, 30, 30);
             var ritualBlocked = new RectangleF(260, 130, 60, 80);
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_ritualBlockedRectangle", ritualBlocked);
+            ApplySnapshot(svc, full, health, mana, buffs, ritualBlockedRectangle: ritualBlocked);
 
             svc.PointIsInClickableArea(new Vector2(300, 170)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(230, 170)).Should().BeTrue();
@@ -378,8 +372,7 @@ namespace ClickIt.Tests.Unit
             var buffs = new RectangleF(0, 0, 30, 30);
             var sentinelBlocked = new RectangleF(200, 120, 70, 80);
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_sentinelBlockedRectangle", sentinelBlocked);
+            ApplySnapshot(svc, full, health, mana, buffs, sentinelBlockedRectangle: sentinelBlocked);
 
             svc.PointIsInClickableArea(new Vector2(230, 150)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(300, 150)).Should().BeTrue();
@@ -395,9 +388,14 @@ namespace ClickIt.Tests.Unit
             var mana = new RectangleF(490, 290, 500, 300);
             var buffs = new RectangleF(0, 0, 30, 30);
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_flaskTertiaryRectangle", new RectangleF(120, 220, 170, 300));
-            PrivateFieldAccessor.Set(svc, "_skillsTertiaryRectangle", new RectangleF(330, 220, 380, 300));
+            ApplySnapshot(
+                svc,
+                full,
+                health,
+                mana,
+                buffs,
+                flaskTertiaryRectangle: new RectangleF(120, 220, 170, 300),
+                skillsTertiaryRectangle: new RectangleF(330, 220, 380, 300));
 
             svc.PointIsInClickableArea(new Vector2(140, 250)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(350, 250)).Should().BeFalse();
@@ -419,8 +417,7 @@ namespace ClickIt.Tests.Unit
                 new RectangleF(90, 20, 60, 60)
             };
 
-            SetRectangles(svc, full, health, mana, buffs);
-            PrivateFieldAccessor.Set(svc, "_buffsAndDebuffsRectangles", buffRects);
+            ApplySnapshot(svc, full, health, mana, buffs, buffsAndDebuffsRectangles: buffRects);
 
             svc.PointIsInClickableArea(new Vector2(50, 50)).Should().BeFalse();
             svc.PointIsInClickableArea(new Vector2(120, 50)).Should().BeFalse();
@@ -438,10 +435,13 @@ namespace ClickIt.Tests.Unit
             var mana = new RectangleF(800, 600, 900, 650);
             var buffs = RectangleF.Empty;
 
-            SetRectangles(svc, full, health, mana, buffs);
-
-            // UI rectangle represented in client-space coordinates (XYWH).
-            PrivateFieldAccessor.Set(svc, "_altarBlockedRectangle", new RectangleF(200, 100, 120, 60));
+            ApplySnapshot(
+                svc,
+                full,
+                health,
+                mana,
+                buffs,
+                altarBlockedRectangle: new RectangleF(200, 100, 120, 60));
 
             // Absolute point maps to client (220,120) and should be blocked.
             svc.PointIsInClickableArea(new Vector2(320, 170)).Should().BeFalse();
@@ -450,18 +450,44 @@ namespace ClickIt.Tests.Unit
             svc.PointIsInClickableArea(new Vector2(600, 450)).Should().BeTrue();
         }
 
-        private static void SetRectangles(AreaService svc, RectangleF full, RectangleF health, RectangleF mana, RectangleF buffs)
+        private static void ApplySnapshot(
+            AreaService svc,
+            RectangleF full,
+            RectangleF health,
+            RectangleF mana,
+            RectangleF buffs,
+            RectangleF? flaskTertiaryRectangle = null,
+            RectangleF? skillsTertiaryRectangle = null,
+            RectangleF? chatPanelBlockedRectangle = null,
+            RectangleF? mapPanelBlockedRectangle = null,
+            RectangleF? xpBarBlockedRectangle = null,
+            RectangleF? altarBlockedRectangle = null,
+            RectangleF? ritualBlockedRectangle = null,
+            RectangleF? sentinelBlockedRectangle = null,
+            IReadOnlyList<RectangleF>? buffsAndDebuffsRectangles = null,
+            IReadOnlyList<RectangleF>? questTrackerBlockedRectangles = null)
         {
-            PrivateFieldAccessor.Set(svc, "_fullScreenRectangle", full);
-            PrivateFieldAccessor.Set(svc, "_healthAndFlaskRectangle", health);
-            PrivateFieldAccessor.Set(svc, "_manaAndSkillsRectangle", mana);
-            PrivateFieldAccessor.Set(svc, "_healthSquareRectangle", health);
-            PrivateFieldAccessor.Set(svc, "_flaskRectangle", RectangleF.Empty);
-            PrivateFieldAccessor.Set(svc, "_flaskTertiaryRectangle", RectangleF.Empty);
-            PrivateFieldAccessor.Set(svc, "_skillsRectangle", RectangleF.Empty);
-            PrivateFieldAccessor.Set(svc, "_skillsTertiaryRectangle", RectangleF.Empty);
-            PrivateFieldAccessor.Set(svc, "_manaSquareRectangle", mana);
-            PrivateFieldAccessor.Set(svc, "_buffsAndDebuffsRectangle", buffs);
+            svc.ApplyBlockedSnapshot(new AreaBlockedSnapshot
+            {
+                FullScreenRectangle = full,
+                HealthAndFlaskRectangle = health,
+                ManaAndSkillsRectangle = mana,
+                HealthSquareRectangle = health,
+                FlaskRectangle = RectangleF.Empty,
+                FlaskTertiaryRectangle = flaskTertiaryRectangle ?? RectangleF.Empty,
+                SkillsRectangle = RectangleF.Empty,
+                SkillsTertiaryRectangle = skillsTertiaryRectangle ?? RectangleF.Empty,
+                ManaSquareRectangle = mana,
+                BuffsAndDebuffsRectangle = buffs,
+                ChatPanelBlockedRectangle = chatPanelBlockedRectangle ?? RectangleF.Empty,
+                MapPanelBlockedRectangle = mapPanelBlockedRectangle ?? RectangleF.Empty,
+                XpBarBlockedRectangle = xpBarBlockedRectangle ?? RectangleF.Empty,
+                AltarBlockedRectangle = altarBlockedRectangle ?? RectangleF.Empty,
+                RitualBlockedRectangle = ritualBlockedRectangle ?? RectangleF.Empty,
+                SentinelBlockedRectangle = sentinelBlockedRectangle ?? RectangleF.Empty,
+                BuffsAndDebuffsRectangles = buffsAndDebuffsRectangles ?? [],
+                QuestTrackerBlockedRectangles = questTrackerBlockedRectangles ?? []
+            });
         }
     }
 }

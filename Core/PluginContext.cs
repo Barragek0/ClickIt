@@ -15,10 +15,7 @@ namespace ClickIt
     public class PluginContext
     {
         private readonly ServiceDisposalRegistry _serviceRegistry = new();
-        private readonly object _debugTelemetryFreezeLock = new();
-        private DebugTelemetrySnapshot _frozenDebugTelemetrySnapshot = DebugTelemetrySnapshot.Empty;
-        private long _debugTelemetryFreezeUntilTimestampMs;
-        private string _debugTelemetryFreezeReason = string.Empty;
+        private readonly DebugTelemetryFreezeState _debugTelemetryFreezeState = new();
 
         public Utils.PerformanceMonitor? PerformanceMonitor { get; set; }
         public Utils.ErrorHandler? ErrorHandler { get; set; }
@@ -72,63 +69,24 @@ namespace ClickIt
 
         internal DebugTelemetrySnapshot GetDebugTelemetrySnapshot()
         {
-            lock (_debugTelemetryFreezeLock)
-            {
-                long remainingMs = _debugTelemetryFreezeUntilTimestampMs - Environment.TickCount64;
-                if (remainingMs > 0)
-                    return _frozenDebugTelemetrySnapshot;
-
-                ClearDebugTelemetryFreezeUnsafe();
-            }
+            if (_debugTelemetryFreezeState.TryGetFrozenSnapshot(Environment.TickCount64, out DebugTelemetrySnapshot frozenSnapshot))
+                return frozenSnapshot;
 
             return GetLiveDebugTelemetrySnapshot();
         }
 
         internal void FreezeDebugTelemetrySnapshot(string reason, int holdDurationMs)
         {
-            int durationMs = Math.Max(0, holdDurationMs);
-            if (durationMs <= 0)
-                return;
-
             DebugTelemetrySnapshot snapshot = GetLiveDebugTelemetrySnapshot();
             long now = Environment.TickCount64;
-
-            lock (_debugTelemetryFreezeLock)
-            {
-                _frozenDebugTelemetrySnapshot = snapshot;
-                _debugTelemetryFreezeUntilTimestampMs = now + durationMs;
-                _debugTelemetryFreezeReason = reason ?? string.Empty;
-            }
+            _debugTelemetryFreezeState.Freeze(snapshot, reason, holdDurationMs, now);
         }
 
         internal bool TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason)
-        {
-            lock (_debugTelemetryFreezeLock)
-            {
-                remainingMs = _debugTelemetryFreezeUntilTimestampMs - Environment.TickCount64;
-                if (remainingMs > 0)
-                {
-                    reason = _debugTelemetryFreezeReason;
-                    return true;
-                }
-
-                ClearDebugTelemetryFreezeUnsafe();
-            }
-
-            remainingMs = 0;
-            reason = string.Empty;
-            return false;
-        }
+            => _debugTelemetryFreezeState.TryGetFreezeState(Environment.TickCount64, out remainingMs, out reason);
 
         private DebugTelemetrySnapshot GetLiveDebugTelemetrySnapshot()
             => DebugTelemetryProjection.Build(ClickService, LabelFilterService, PathfindingService);
-
-        private void ClearDebugTelemetryFreezeUnsafe()
-        {
-            _frozenDebugTelemetrySnapshot = DebugTelemetrySnapshot.Empty;
-            _debugTelemetryFreezeUntilTimestampMs = 0;
-            _debugTelemetryFreezeReason = string.Empty;
-        }
 
         public void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
         {
@@ -139,45 +97,16 @@ namespace ClickIt
 
             _serviceRegistry.Reset();
             IsShuttingDown = false;
-            lock (_debugTelemetryFreezeLock)
-            {
-                ClearDebugTelemetryFreezeUnsafe();
-            }
+            _debugTelemetryFreezeState.Clear();
 
             ComposedServices services = ServiceCompositionRoot.Compose(owner, settings);
 
-            PerformanceMonitor = services.PerformanceMonitor;
-            ErrorHandler = services.ErrorHandler;
-            AreaService = services.AreaService;
-            LabelService = services.LabelService;
-            CachedLabels = services.CachedLabels;
-            Camera = services.Camera;
-            AltarService = services.AltarService;
-            LabelFilterService = services.LabelFilterService;
-            ShrineService = services.ShrineService;
-            InputHandler = services.InputHandler;
-            PathfindingService = services.PathfindingService;
-            DeferredTextQueue = services.DeferredTextQueue;
-            DeferredFrameQueue = services.DeferredFrameQueue;
-            DebugRenderer = services.DebugRenderer;
-            StrongboxRenderer = services.StrongboxRenderer;
-            LazyModeRenderer = services.LazyModeRenderer;
-            ClickHotkeyToggleRenderer = services.ClickHotkeyToggleRenderer;
-            InventoryFullWarningRenderer = services.InventoryFullWarningRenderer;
-            PathfindingRenderer = services.PathfindingRenderer;
-            AltarDisplayRenderer = services.AltarDisplayRenderer;
-            ClickService = services.ClickService;
-            ClickRuntimeHost = new ClickRuntimeHost(() => ClickService);
-            UltimatumRenderer = services.UltimatumRenderer;
-            AlertService = services.AlertService;
+            PluginContextServiceStateInitializer.InitializeFromComposedServices(this, services);
 
             ServiceCompositionRoot.WireSettingsActions(settings, services.EffectiveSettings, services.AlertService, _serviceRegistry);
             _serviceRegistry.Register(() => ErrorHandler?.UnregisterGlobalExceptionHandlers());
             _serviceRegistry.Register(() => PerformanceMonitor?.ShutdownForHotReload());
-            _serviceRegistry.Register(() => LastRenderTimer.Stop());
-            _serviceRegistry.Register(() => LastTickTimer.Stop());
-            _serviceRegistry.Register(() => Timer.Stop());
-            _serviceRegistry.Register(() => SecondTimer.Stop());
+            _serviceRegistry.Register(() => PluginRuntimeTimerCoordinator.StopAll(LastRenderTimer, LastTickTimer, Timer, SecondTimer));
         }
 
         public void FinalizeCompositionRootForStartup(ClickIt owner, ClickItSettings settings)
@@ -192,44 +121,15 @@ namespace ClickIt
             AlertService?.ReloadAlertSound();
             PerformanceMonitor?.Start();
 
-            LastRenderTimer.Start();
-            LastTickTimer.Start();
-            Timer.Start();
-            SecondTimer.Start();
+            PluginRuntimeTimerCoordinator.StartAll(LastRenderTimer, LastTickTimer, Timer, SecondTimer);
         }
 
         public void DisposeCompositionRoot()
         {
             _serviceRegistry.DisposeAll();
-            lock (_debugTelemetryFreezeLock)
-            {
-                ClearDebugTelemetryFreezeUnsafe();
-            }
+            _debugTelemetryFreezeState.Clear();
 
-            AreaService = null;
-            AltarService = null;
-            ShrineService = null;
-            InputHandler = null;
-            DebugRenderer = null;
-            StrongboxRenderer = null;
-            UltimatumRenderer = null;
-            LazyModeRenderer = null;
-            ClickHotkeyToggleRenderer = null;
-            InventoryFullWarningRenderer = null;
-            PathfindingRenderer = null;
-            DeferredTextQueue = null;
-            DeferredFrameQueue = null;
-            AltarDisplayRenderer = null;
-            PathfindingService = null;
-            AlertService = null;
-            LabelService = null;
-            LabelFilterService = null;
-            ClickService = null;
-            ClickRuntimeHost = null;
-            Camera = null;
-            PerformanceMonitor = null;
-            ErrorHandler = null;
-            CachedLabels = null;
+            PluginContextServiceStateResetter.Reset(this);
         }
     }
 }

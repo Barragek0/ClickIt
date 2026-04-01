@@ -1,4 +1,5 @@
 using ClickIt.Definitions;
+using ClickIt.Services.Click.Runtime;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
@@ -251,7 +252,7 @@ namespace ClickIt.Services
             _dependencies.PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", candidates.NextLabelMechanicId);
 
             if (candidates.SettlersOre.HasValue
-                && ClickService.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(candidates.NextLabelMechanicId, candidates.SettlersOre.Value.MechanicId))
+                && OffscreenPathingMath.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(candidates.NextLabelMechanicId, candidates.SettlersOre.Value.MechanicId))
             {
                 _dependencies.PublishClickFlowDebugStage("SettlersEntityFallbackAttempt", "Label unresolved; attempting settlers entity click", candidates.SettlersOre.Value.MechanicId);
                 if (!IsBlockedByPostChestLootSettlement(context, candidates.SettlersOre.Value.MechanicId, candidates.SettlersOre.Value.Entity)
@@ -262,7 +263,7 @@ namespace ClickIt.Services
                 }
             }
 
-            bool shouldContinueEntityPathing = ClickService.ShouldPathfindToEntityAfterClickPointResolveFailure(
+            bool shouldContinueEntityPathing = OffscreenPathingMath.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 _dependencies.Settings.WalkTowardOffscreenLabels.Value,
                 nextLabel.ItemOnGround != null,
                 nextLabel.ItemOnGround?.IsHidden == true,

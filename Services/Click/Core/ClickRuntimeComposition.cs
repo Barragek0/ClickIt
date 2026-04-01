@@ -1,5 +1,6 @@
 using System.Collections;
 using ClickIt.Services.Label.Classification.Policies;
+using ClickIt.Services.Click.Runtime;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
@@ -15,6 +16,7 @@ namespace ClickIt.Services
         private OffscreenPathingCoordinator? _offscreenPathingCoordinator;
         private MovementSkillCoordinator? _movementSkillCoordinator;
         private ClickRuntimeEngine? _clickRuntimeEngine;
+        private OffscreenTargetResolver? _offscreenTargetResolver;
 
         private LabelSelectionCoordinator LabelSelection => _labelSelectionCoordinator ??= new(CreateLabelSelectionCoordinatorDependencies());
 
@@ -27,6 +29,8 @@ namespace ClickIt.Services
         private MovementSkillCoordinator MovementSkills => _movementSkillCoordinator ??= new(CreateMovementSkillCoordinatorDependencies());
 
         private ClickRuntimeEngine RegularClick => _clickRuntimeEngine ??= new(CreateClickRuntimeEngineDependencies());
+
+        private OffscreenTargetResolver OffscreenTargetResolver => _offscreenTargetResolver ??= new(gameController, pathfindingService);
 
         private ClickTickContextFactory TickContextFactory => _tickContextFactory ??= new(CreateClickTickContextFactoryDependencies());
 
@@ -106,7 +110,7 @@ namespace ClickIt.Services
                 settings,
                 gameController,
                 performanceMonitor,
-                GetRemainingOffscreenPathNodeCount,
+                OffscreenTargetResolver.GetRemainingOffscreenPathNodeCount,
                 EnsureCursorInsideGameWindowForClick,
                 pointIsInClickableArea,
                 message => DebugLog(() => message),
@@ -140,12 +144,12 @@ namespace ClickIt.Services
                 },
                 () =>
                 {
-                    bool success = TryResolveOffscreenTargetScreenPointFromPath(out Vector2 targetScreen);
+                    bool success = OffscreenTargetResolver.TryResolveOffscreenTargetScreenPointFromPath(out Vector2 targetScreen);
                     return (success, targetScreen);
                 },
                 target =>
                 {
-                    bool success = TryResolveOffscreenTargetScreenPoint(target, out Vector2 targetScreen);
+                    bool success = OffscreenTargetResolver.TryResolveOffscreenTargetScreenPoint(target, out Vector2 targetScreen);
                     return (success, targetScreen);
                 },
                 (targetPath, targetScreen, builtPath) =>
@@ -168,9 +172,9 @@ namespace ClickIt.Services
                     clickPos,
                     label.Label,
                     gameController,
-                    ClickService.ShouldUseHoldClickForSettlersMechanic(mechanicId),
+                    SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
                     0,
-                    ClickService.ShouldForceUiHoverVerificationForLabel(label)),
+                    OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label)),
                 (mechanicId, label) => ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, label),
                 () => shrineService.InvalidateCache(),
                 GetLabelsForOffscreenSelection,
@@ -205,9 +209,9 @@ namespace ClickIt.Services
                     clickPos,
                     label.Label,
                     gameController,
-                    ClickService.ShouldUseHoldClickForSettlersMechanic(mechanicId),
+                    SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
                     0,
-                    ClickService.ShouldForceUiHoverVerificationForLabel(label)),
+                    OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label)),
                 PublishLabelClickDebug,
                 reason => HoldDebugTelemetryAfterSuccessfulInteraction(reason),
                 message => DebugLog(() => message));
@@ -215,7 +219,7 @@ namespace ClickIt.Services
         private ClickTickContextFactoryDependencies CreateClickTickContextFactoryDependencies()
             => new(
                 getWindowRectangle: () => gameController.Window.GetWindowRectangleTimeCache,
-                getCursorAbsolutePosition: GetCursorAbsolutePosition,
+                getCursorAbsolutePosition: ManualCursorSelectionMath.GetCursorAbsolutePosition,
                 tryHandleUltimatumPanelUi: TryHandleUltimatumPanelUi,
                 debugLog: message => DebugLog(() => message),
                 getMovementSkillPostCastBlockState: GetMovementSkillPostCastBlockStateForTickContext,

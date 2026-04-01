@@ -1,4 +1,5 @@
 using ExileCore.PoEMemory.MemoryObjects;
+using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services
 {
@@ -13,7 +14,7 @@ namespace ClickIt.Services
             string? mechanicId,
             Func<float, string?, MechanicRank> buildRank)
         {
-            if (candidate == null || !candidate.IsValid || candidate.IsHidden || ClickService.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
+            if (candidate == null || !candidate.IsValid || candidate.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
                 return false;
 
             MechanicRank rank = buildRank(candidate.DistancePlayer, mechanicId);

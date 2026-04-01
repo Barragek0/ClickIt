@@ -1,4 +1,6 @@
 using ClickIt.Definitions;
+using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Label.Classification.Policies;
 using ExileCore;
 using ClickIt.Utils;
 using ExileCore.PoEMemory.Components;
@@ -61,7 +63,7 @@ namespace ClickIt.Services
             float shrineDistance = shrine.DistancePlayer;
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            Vector2 cursorAbsolute = ClickService.GetCursorAbsolutePosition();
+            Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
             return CandidateRankingEngine.ShouldPreferShrineOverLabel(
                 new MechanicCandidateSignal(
                     MechanicIds.Shrines,
@@ -70,7 +72,7 @@ namespace ClickIt.Services
                 new MechanicCandidateSignal(
                     labelMechanicId,
                     labelDistance,
-                    ClickService.TryGetCursorDistanceSquaredToLabel(label, cursorAbsolute, windowTopLeft)),
+                    ManualCursorSelectionMath.TryGetCursorDistanceSquaredToLabel(label, cursorAbsolute, windowTopLeft)),
                 mechanicPriorityContext);
         }
 
@@ -95,20 +97,20 @@ namespace ClickIt.Services
 
             if (TryResolveManualCursorLabelCandidate(allLabels, cursorAbsolute, windowTopLeft, out LabelOnGround? hoveredLabel, out string? mechanicId))
             {
-                if (ClickService.ShouldAttemptManualCursorAltarClick(ClickService.IsAltarLabel(hoveredLabel), _dependencies.HasClickableAltars()))
+                if (ManualCursorSelectionMath.ShouldAttemptManualCursorAltarClick(ClickLabelSelectionMath.IsAltarLabel(hoveredLabel), _dependencies.HasClickableAltars()))
                     return _dependencies.TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
 
                 if (_dependencies.TryCorruptEssence(hoveredLabel, windowTopLeft))
                     return true;
 
-                if (_dependencies.Settings.IsInitialUltimatumClickEnabled() && ClickService.IsUltimatumLabel(hoveredLabel))
+                if (_dependencies.Settings.IsInitialUltimatumClickEnabled() && UltimatumLabelMath.IsUltimatumLabel(hoveredLabel))
                     return _dependencies.TryClickPreferredUltimatumModifier(hoveredLabel, windowTopLeft);
 
                 (bool resolved, Vector2 clickPos) = _dependencies.TryResolveLabelClickPosition(hoveredLabel, mechanicId, windowTopLeft, allLabels);
                 if (!resolved)
                     return false;
 
-                bool clicked = _dependencies.PerformManualCursorInteraction(clickPos, ClickService.ShouldUseHoldClickForSettlersMechanic(mechanicId));
+                bool clicked = _dependencies.PerformManualCursorInteraction(clickPos, SettlersMechanicPolicy.RequiresHoldClick(mechanicId));
                 if (!clicked)
                     return false;
 
@@ -125,9 +127,9 @@ namespace ClickIt.Services
 
         public bool ShouldSkipOrHandleSpecialLabel(LabelOnGround nextLabel, Vector2 windowTopLeft)
         {
-            if (ClickService.IsAltarLabel(nextLabel))
+            if (ClickLabelSelectionMath.IsAltarLabel(nextLabel))
             {
-                bool shouldContinuePathing = ClickService.ShouldContinuePathingForSpecialAltarLabel(
+                bool shouldContinuePathing = ClickLabelSelectionMath.ShouldContinuePathingForSpecialAltarLabel(
                     _dependencies.Settings.WalkTowardOffscreenLabels.Value,
                     nextLabel.ItemOnGround != null,
                     nextLabel.ItemOnGround?.IsHidden == true,
@@ -145,7 +147,7 @@ namespace ClickIt.Services
             if (_dependencies.TryCorruptEssence(nextLabel, windowTopLeft))
                 return true;
 
-            if (!_dependencies.Settings.IsInitialUltimatumClickEnabled() || !ClickService.IsUltimatumLabel(nextLabel))
+            if (!_dependencies.Settings.IsInitialUltimatumClickEnabled() || !UltimatumLabelMath.IsUltimatumLabel(nextLabel))
                 return false;
 
             if (_dependencies.TryClickPreferredUltimatumModifier(nextLabel, windowTopLeft))
@@ -159,14 +161,14 @@ namespace ClickIt.Services
         {
             if (!_dependencies.Settings.LazyMode.Value)
                 return false;
-            if (!ClickService.IsLeverLabel(label))
+            if (!ClickLabelSelectionMath.IsLeverLabel(label))
                 return false;
 
             int cooldownMs = _dependencies.Settings.LazyModeLeverReclickDelay?.Value ?? 1200;
-            ulong currentLeverKey = ClickService.GetLeverIdentityKey(label);
+            ulong currentLeverKey = ClickLabelSelectionMath.GetLeverIdentityKey(label);
             long now = Environment.TickCount64;
 
-            return ClickService.IsLeverClickSuppressedByCooldown(
+            return ClickLabelSelectionMath.IsLeverClickSuppressedByCooldown(
                 _dependencies.GetLastLeverKey(),
                 _dependencies.GetLastLeverClickTimestampMs(),
                 currentLeverKey,
@@ -178,10 +180,10 @@ namespace ClickIt.Services
         {
             if (!_dependencies.Settings.LazyMode.Value)
                 return;
-            if (!ClickService.IsLeverLabel(label))
+            if (!ClickLabelSelectionMath.IsLeverLabel(label))
                 return;
 
-            ulong key = ClickService.GetLeverIdentityKey(label);
+            ulong key = ClickLabelSelectionMath.GetLeverIdentityKey(label);
             if (key == 0)
                 return;
 
@@ -210,7 +212,7 @@ namespace ClickIt.Services
                     continue;
 
                 if (ShouldSuppressLeverClick(candidate)
-                    || ClickService.ShouldSuppressInactiveUltimatumLabel(candidate)
+                    || UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(candidate)
                     || _dependencies.InputHandler.IsLabelFullyOverlapped(candidate, allLabels))
                 {
                     continue;
@@ -221,29 +223,29 @@ namespace ClickIt.Services
                     continue;
 
                 Entity? candidateEntity = candidate.ItemOnGround;
-                bool shouldUseGroundProjection = ClickService.ShouldUseManualGroundProjectionForCandidate(
+                bool shouldUseGroundProjection = ManualCursorSelectionMath.ShouldUseManualGroundProjectionForCandidate(
                     hasBackingEntity: candidateEntity != null,
                     isWorldItem: candidateEntity?.Type == ExileCore.Shared.Enums.EntityType.WorldItem);
                 Vector2 projectedGroundPoint = default;
 
                 bool hasLabelRect = LabelUtils.TryGetLabelRect(candidate, out RectangleF rect);
-                bool cursorInsideLabelRect = hasLabelRect && ClickService.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
+                bool cursorInsideLabelRect = hasLabelRect && ManualCursorSelectionMath.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
                 bool cursorNearGroundProjection = shouldUseGroundProjection
                     && TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out projectedGroundPoint)
-                    && ClickService.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft, ClickService.ManualCursorGroundProjectionSnapDistancePx);
+                    && ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft, ManualCursorSelectionMath.GroundProjectionSnapDistancePx);
 
-                if (!ClickService.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect, cursorNearGroundProjection))
+                if (!ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect, cursorNearGroundProjection))
                     continue;
 
                 float score = float.MaxValue;
                 if (cursorInsideLabelRect)
                 {
-                    score = ClickService.GetManualCursorLabelHitScore(rect, cursorAbsolute, windowTopLeft);
+                    score = ManualCursorSelectionMath.GetManualCursorLabelHitScore(rect, cursorAbsolute, windowTopLeft);
                 }
 
                 if (cursorNearGroundProjection)
                 {
-                    float objectScore = ClickService.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft);
+                    float objectScore = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft);
                     score = Math.Min(score, objectScore);
                 }
 
@@ -271,9 +273,9 @@ namespace ClickIt.Services
             {
                 var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
                 Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-                if (ClickService.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft, ClickService.ManualCursorTargetSnapDistancePx))
+                if (ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft, ManualCursorSelectionMath.TargetSnapDistancePx))
                 {
-                    float d2 = ClickService.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft);
+                    float d2 = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft);
                     if (d2 < bestDistanceSq)
                     {
                         selectedType = 1;
@@ -289,9 +291,9 @@ namespace ClickIt.Services
             if (lostShipment.HasValue)
             {
                 LostShipmentCandidate candidate = lostShipment.Value;
-                if (ClickService.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ClickService.ManualCursorTargetSnapDistancePx))
+                if (ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorSelectionMath.TargetSnapDistancePx))
                 {
-                    float d2 = ClickService.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
+                    float d2 = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
                     if (d2 < bestDistanceSq)
                     {
                         selectedType = 2;
@@ -306,9 +308,9 @@ namespace ClickIt.Services
             if (settlers.HasValue)
             {
                 SettlersOreCandidate candidate = settlers.Value;
-                if (ClickService.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ClickService.ManualCursorTargetSnapDistancePx))
+                if (ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorSelectionMath.TargetSnapDistancePx))
                 {
-                    float d2 = ClickService.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
+                    float d2 = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
                     if (d2 < bestDistanceSq)
                     {
                         selectedType = 3;
@@ -325,7 +327,7 @@ namespace ClickIt.Services
 
             bool clicked = _dependencies.PerformManualCursorInteraction(
                 selectedClickPos,
-                selectedType == 3 && ClickService.ShouldUseHoldClickForSettlersMechanic(selectedSettlersMechanicId));
+                selectedType == 3 && SettlersMechanicPolicy.RequiresHoldClick(selectedSettlersMechanicId));
 
             if (!clicked)
                 return false;
@@ -364,16 +366,16 @@ namespace ClickIt.Services
             if (uiHover == null)
                 return nextLabel;
 
-            LabelOnGround? hovered = ClickService.FindLabelByAddress(allLabels, uiHover.Address);
+            LabelOnGround? hovered = ClickLabelSelectionMath.FindLabelByAddress(allLabels, uiHover.Address);
             if (hovered == null)
                 return nextLabel;
 
-            bool hoveredIsEssence = ClickService.IsEssenceLabel(hovered);
-            bool nextIsEssence = nextLabel != null && ClickService.IsEssenceLabel(nextLabel);
+            bool hoveredIsEssence = ClickLabelSelectionMath.IsEssenceLabel(hovered);
+            bool nextIsEssence = nextLabel != null && ClickLabelSelectionMath.IsEssenceLabel(nextLabel);
             bool hoveredHasOverlappingEssence = hoveredIsEssence && HasOverlappingEssenceLabel(hovered, allLabels);
             bool hoveredDiffersFromNext = !ReferenceEquals(hovered, nextLabel);
 
-            if (ClickService.ShouldPreferHoveredEssenceLabel(hoveredIsEssence, hoveredHasOverlappingEssence, nextIsEssence, hoveredDiffersFromNext))
+            if (ManualCursorSelectionMath.ShouldPreferHoveredEssenceLabel(hoveredIsEssence, hoveredHasOverlappingEssence, nextIsEssence, hoveredDiffersFromNext))
             {
                 _dependencies.DebugLog("[ProcessRegularClick] UIHover-first: switching target to UIHover label");
                 return hovered;
@@ -390,7 +392,7 @@ namespace ClickIt.Services
             for (int i = 0; i < allLabels.Count; i++)
             {
                 LabelOnGround? candidate = allLabels[i];
-                if (candidate == null || ReferenceEquals(candidate, hoveredEssence) || !ClickService.IsEssenceLabel(candidate))
+                if (candidate == null || ReferenceEquals(candidate, hoveredEssence) || !ClickLabelSelectionMath.IsEssenceLabel(candidate))
                     continue;
 
                 if (!LabelUtils.TryGetLabelRect(candidate, out RectangleF candidateRect))
@@ -408,7 +410,7 @@ namespace ClickIt.Services
             if (allLabels == null || allLabels.Count == 0)
                 return null;
 
-            int searchLimit = ClickService.GetGroundLabelSearchLimit(allLabels.Count);
+            int searchLimit = ClickLabelSelectionMath.GetGroundLabelSearchLimit(allLabels.Count);
             return FindLabelInRange(allLabels, 0, searchLimit);
         }
 
@@ -441,7 +443,7 @@ namespace ClickIt.Services
                 examined++;
 
                 bool suppressLever = ShouldSuppressLeverClick(label);
-                bool suppressUltimatum = ClickService.ShouldSuppressInactiveUltimatumLabel(label);
+                bool suppressUltimatum = UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(label);
                 bool fullyOverlapped = _dependencies.InputHandler.IsLabelFullyOverlapped(label, allLabels);
 
                 if (suppressLever)
@@ -463,7 +465,7 @@ namespace ClickIt.Services
                 if (fullyOverlapped)
                     _dependencies.DebugLog("[ProcessRegularClick] Skipping fully-overlapped label");
 
-                int idx = ClickService.IndexOfLabelReference(allLabels, label, currentStart, endExclusive);
+                int idx = ClickLabelSelectionMath.IndexOfLabelReference(allLabels, label, currentStart, endExclusive);
                 if (idx < 0)
                 {
                     indexMisses++;

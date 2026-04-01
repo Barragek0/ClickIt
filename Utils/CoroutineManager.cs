@@ -198,6 +198,9 @@ namespace ClickIt.Utils
             _state.WorkFinished = true;
         }
 
+        internal IEnumerator RunClickLabelStepForTests()
+            => ClickLabel();
+
         private IEnumerator MainManualUiHoverClickCoroutine()
         {
             while (_settings.Enable && !_state.IsShuttingDown)
@@ -326,10 +329,22 @@ namespace ClickIt.Utils
         internal float GetPlayerHealthPercent()
         {
 #if RUNTIME_EXILECORE
-            if (_gameController?.Player == null) return 100f;
-            var life = _gameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
-            if (life == null || life.Health.Max == 0) return 100f;
-            return (float)life.Health.Current / life.Health.Max * 100f;
+            try
+            {
+                var player = _gameController?.Player;
+                if (player == null)
+                    return 100f;
+
+                var life = player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+                if (life == null || life.Health.Max == 0)
+                    return 100f;
+
+                return (float)life.Health.Current / life.Health.Max * 100f;
+            }
+            catch
+            {
+                return 100f;
+            }
 #else
             return 100f;
 #endif
@@ -338,10 +353,22 @@ namespace ClickIt.Utils
         internal float GetPlayerEnergyShieldPercent()
         {
 #if RUNTIME_EXILECORE
-            if (_gameController?.Player == null) return 100f;
-            var life = _gameController.Player.GetComponent<ExileCore.PoEMemory.Components.Life>();
-            if (life == null || life.EnergyShield.Max == 0) return 100f;
-            return (float)life.EnergyShield.Current / life.EnergyShield.Max * 100f;
+            try
+            {
+                var player = _gameController?.Player;
+                if (player == null)
+                    return 100f;
+
+                var life = player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+                if (life == null || life.EnergyShield.Max == 0)
+                    return 100f;
+
+                return (float)life.EnergyShield.Current / life.EnergyShield.Max * 100f;
+            }
+            catch
+            {
+                return 100f;
+            }
 #else
             return 100f;
 #endif

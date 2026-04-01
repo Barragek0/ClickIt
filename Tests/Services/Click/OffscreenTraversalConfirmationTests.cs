@@ -1,4 +1,4 @@
-using ClickIt.Services;
+using ClickIt.Services.Click.Runtime;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -10,7 +10,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void EvaluateOffscreenTraversalTargetConfirmation_Delays_FirstSighting()
         {
-            var result = ClickService.EvaluateOffscreenTraversalTargetConfirmation(
+            var result = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
                 targetAddress: 42,
                 targetPath: "Metadata/Chests/Chest9",
                 pendingAddress: 0,
@@ -29,7 +29,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void EvaluateOffscreenTraversalTargetConfirmation_Allows_AfterWindowElapsed()
         {
-            var result = ClickService.EvaluateOffscreenTraversalTargetConfirmation(
+            var result = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
                 targetAddress: 42,
                 targetPath: "Metadata/Chests/Chest9",
                 pendingAddress: 42,
@@ -45,7 +45,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void EvaluateOffscreenTraversalTargetConfirmation_ResetsDelay_WhenTargetChanges()
         {
-            var result = ClickService.EvaluateOffscreenTraversalTargetConfirmation(
+            var result = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
                 targetAddress: 77,
                 targetPath: "Metadata/Chests/Chest12",
                 pendingAddress: 42,
@@ -59,6 +59,46 @@ namespace ClickIt.Tests.Unit
             result.NextPath.Should().Be("Metadata/Chests/Chest12");
             result.NextFirstSeenTimestampMs.Should().Be(1060);
             result.RemainingDelayMs.Should().Be(120);
+        }
+
+        [TestMethod]
+        public void ShouldEvaluateOnscreenMechanicChecks_RequiresPriorityToggle()
+        {
+            OffscreenPathingMath.ShouldEvaluateOnscreenMechanicChecks(
+                prioritizeOnscreenClickableMechanics: false,
+                clickShrinesEnabled: true,
+                clickLostShipmentEnabled: true,
+                clickSettlersOreEnabled: true,
+                clickEaterAltarsEnabled: true,
+                clickExarchAltarsEnabled: true)
+                .Should()
+                .BeFalse();
+
+            OffscreenPathingMath.ShouldEvaluateOnscreenMechanicChecks(
+                prioritizeOnscreenClickableMechanics: true,
+                clickShrinesEnabled: false,
+                clickLostShipmentEnabled: false,
+                clickSettlersOreEnabled: false,
+                clickEaterAltarsEnabled: true,
+                clickExarchAltarsEnabled: false)
+                .Should()
+                .BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure_RequiresMatchingSettlersMechanics()
+        {
+            OffscreenPathingMath.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure("settlers-verisium", "settlers-verisium")
+                .Should()
+                .BeTrue();
+
+            OffscreenPathingMath.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure("settlers-verisium", "settlers-copper")
+                .Should()
+                .BeFalse();
+
+            OffscreenPathingMath.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure("items", "settlers-verisium")
+                .Should()
+                .BeFalse();
         }
     }
 }

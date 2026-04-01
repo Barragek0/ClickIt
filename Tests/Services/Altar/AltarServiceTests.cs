@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System;
-using System.Reflection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -40,22 +39,13 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void DetermineAltarType_PrivateMethod_ReturnsExpected()
         {
-            var mi = typeof(AltarService).GetMethod("DetermineAltarType", BindingFlags.NonPublic | BindingFlags.Static);
-            mi.Should().NotBeNull();
-
-            var searingObj = mi!.Invoke(null, ["SomePath/CleansingFireAltar/Other"]);
-            searingObj.Should().NotBeNull();
-            var searing = (AltarType)searingObj!;
+            AltarType searing = AltarService.DetermineAltarType("SomePath/CleansingFireAltar/Other");
             searing.Should().Be(AltarType.SearingExarch);
 
-            var eaterObj = mi.Invoke(null, ["prefix/TangleAltar/suffix"]);
-            eaterObj.Should().NotBeNull();
-            var eater = (AltarType)eaterObj!;
+            AltarType eater = AltarService.DetermineAltarType("prefix/TangleAltar/suffix");
             eater.Should().Be(AltarType.EaterOfWorlds);
 
-            var unknownObj = mi.Invoke(null, [string.Empty]);
-            unknownObj.Should().NotBeNull();
-            var unknown = (AltarType)unknownObj!;
+            AltarType unknown = AltarService.DetermineAltarType(string.Empty);
             unknown.Should().Be(AltarType.Unknown);
         }
 
@@ -122,17 +112,13 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void WarmAddedAltarData_DoesNotPrecache_WhenComponentNotAdded()
         {
-            var mi = typeof(AltarService).GetMethod("WarmAddedAltarData", BindingFlags.NonPublic | BindingFlags.Static);
-            mi.Should().NotBeNull();
-
             var primary = TestUtils.TestBuilders.BuildPrimary();
 
-            Action noWarmup = () => mi!.Invoke(null, [primary, false]);
+            Action noWarmup = () => AltarService.WarmAddedAltarData(primary, false);
             noWarmup.Should().NotThrow();
 
-            Action warmup = () => mi!.Invoke(null, [primary, true]);
-            warmup.Should().Throw<TargetInvocationException>()
-                .WithInnerException<InvalidOperationException>();
+            Action warmup = () => AltarService.WarmAddedAltarData(primary, true);
+            warmup.Should().Throw<InvalidOperationException>();
         }
     }
 }

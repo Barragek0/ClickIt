@@ -1,12 +1,11 @@
+using ClickIt.Services.Label.Classification.Policies;
+
 namespace ClickIt.Services.Click.Label
 {
     internal static class LabelClickPointResolutionPolicy
     {
         public static bool ShouldRetryWithoutClickableArea(string? mechanicId)
-        {
-            return !string.IsNullOrWhiteSpace(mechanicId)
-                && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
-        }
+            => SettlersMechanicPolicy.IsSettlersMechanicId(mechanicId);
 
         public static bool ShouldAllowSettlersRelaxedFallback(bool hasBackingEntity, bool worldProjectionInWindow)
         {

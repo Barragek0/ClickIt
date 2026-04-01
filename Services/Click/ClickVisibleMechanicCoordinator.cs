@@ -1,4 +1,8 @@
 using ClickIt.Definitions;
+using ClickIt.Services.Observability;
+using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Label.Classification;
+using ClickIt.Services.Label.Classification.Policies;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -21,7 +25,7 @@ namespace ClickIt.Services
         Action<string> DebugLog,
         Action<string> HoldDebugTelemetryAfterSuccess,
         Func<bool> ShouldCaptureClickDebug,
-        Action<ClickService.ClickDebugSnapshot> SetLatestClickDebug,
+        Action<ClickDebugSnapshot> SetLatestClickDebug,
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
         Func<Vector2, string, bool> IsClickableInEitherSpace,
         Func<string?, bool> IsSettlersMechanicEnabled);
@@ -38,7 +42,7 @@ namespace ClickIt.Services
 
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            Vector2 cursorAbsolute = ClickService.GetCursorAbsolutePosition();
+            Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
             return _dependencies.ShrineService.GetNearestShrineInRange(
                 _dependencies.Settings.ClickDistance.Value,
                 isInClickableArea: pos => _dependencies.PointIsInClickableArea(pos, MechanicIds.Shrines),
@@ -46,7 +50,7 @@ namespace ClickIt.Services
                 {
                     var screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
                     Vector2 shrineScreenAbsolute = new(screenRaw.X + windowTopLeft.X, screenRaw.Y + windowTopLeft.Y);
-                    return ClickService.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineScreenAbsolute, windowTopLeft);
+                    return ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineScreenAbsolute, windowTopLeft);
                 });
         }
 
@@ -145,7 +149,7 @@ namespace ClickIt.Services
 
             bool clicked = _dependencies.PerformMechanicInteraction(
                 candidate.ClickPosition,
-                ClickService.ShouldUseHoldClickForSettlersMechanic(candidate.MechanicId));
+                SettlersMechanicPolicy.RequiresHoldClick(candidate.MechanicId));
 
             if (!clicked)
                 return false;
@@ -186,7 +190,7 @@ namespace ClickIt.Services
                 LostShipmentCandidate? best = null;
                 RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
                 Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-                Vector2 cursorAbsolute = ClickService.GetCursorAbsolutePosition();
+                Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
 
                 if (labelsOverride != null)
                 {
@@ -222,8 +226,8 @@ namespace ClickIt.Services
 
                 if (!best.HasValue
                     || candidate.Distance < best.Value.Distance
-                    || (ClickService.ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
-                        && ClickService.IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
+                    || (VisibleMechanicSelectionPolicy.ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
+                        && VisibleMechanicSelectionPolicy.IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
                 {
                     best = candidate;
                 }
@@ -238,11 +242,11 @@ namespace ClickIt.Services
             if (label == null || entity == null)
                 return false;
 
-            if (ClickService.ShouldSkipLostShipmentEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value, entity.IsOpened))
+            if (VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value, entity.IsOpened))
                 return false;
 
             string path = entity.Path ?? string.Empty;
-            if (!ClickService.IsLostShipmentEntity(path, entity.RenderName))
+            if (!VisibleMechanicSelectionPolicy.IsLostShipmentEntity(path, entity.RenderName))
                 return false;
 
             if (!TryResolveLostShipmentClickPosition(entity, path, out Vector2 clickPos))
@@ -285,7 +289,7 @@ namespace ClickIt.Services
 
         private SettlersOreCandidate? ResolveNextSettlersOreCandidate()
         {
-            if (!_dependencies.Settings.ClickSettlersOre.Value || _dependencies.GameController?.EntityListWrapper?.ValidEntitiesByType == null)
+            if (!_dependencies.Settings.ClickSettlersOre.Value)
                 return null;
 
             bool captureClickDebug = _dependencies.ShouldCaptureClickDebug();
@@ -296,7 +300,7 @@ namespace ClickIt.Services
                 SettlersOreCandidate? best = null;
                 RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
                 Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-                Vector2 cursorAbsolute = ClickService.GetCursorAbsolutePosition();
+                Vector2 cursorAbsolute = ManualCursorSelectionMath.GetCursorAbsolutePosition();
                 int scanned = 0;
                 int prefiltered = 0;
                 int mechanicMatched = 0;
@@ -312,67 +316,58 @@ namespace ClickIt.Services
                     diagnosticsStartMs = Environment.TickCount64;
                 }
 
-                foreach (var kv in _dependencies.GameController.EntityListWrapper.ValidEntitiesByType)
+                EntityQueryService.VisitValidEntities(_dependencies.GameController, entity =>
                 {
-                    var entities = kv.Value;
-                    if (entities == null)
-                        continue;
+                    if (collectDiagnostics)
+                        scanned++;
 
-                    for (int i = 0; i < entities.Count; i++)
+                    if (VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value))
                     {
-                        Entity entity = entities[i];
-                        if (entity == null)
-                            continue;
-
                         if (collectDiagnostics)
-                            scanned++;
+                            prefiltered++;
+                        return false;
+                    }
 
-                        if (ClickService.ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value))
-                        {
-                            if (collectDiagnostics)
-                                prefiltered++;
-                            continue;
-                        }
-
-                        if (!TryBuildSettlersCandidate(
-                                entity,
-                                windowArea,
-                                labelEntityAddresses,
-                                captureClickDebug,
-                                out SettlersOreCandidate candidate,
-                                out bool hadLabel,
-                                out bool matchedMechanic,
-                                out bool attemptedProbe))
-                        {
-                            if (collectDiagnostics && matchedMechanic)
-                                mechanicMatched++;
-                            if (collectDiagnostics && attemptedProbe)
-                                probeAttempts++;
-
-                            continue;
-                        }
-
+                    if (!TryBuildSettlersCandidate(
+                            entity,
+                            windowArea,
+                            labelEntityAddresses,
+                            captureClickDebug,
+                            out SettlersOreCandidate candidate,
+                            out bool hadLabel,
+                            out bool matchedMechanic,
+                            out bool attemptedProbe))
+                    {
                         if (collectDiagnostics && matchedMechanic)
                             mechanicMatched++;
                         if (collectDiagnostics && attemptedProbe)
                             probeAttempts++;
-                        if (collectDiagnostics)
-                            probeResolved++;
 
-                        if (collectDiagnostics && hadLabel)
-                            labelBacked++;
-
-                        if (!best.HasValue
-                            || candidate.Distance < best.Value.Distance
-                            || (ClickService.ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
-                                && ClickService.IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
-                        {
-                            best = candidate;
-                            if (captureClickDebug)
-                                PublishSettlersCandidateDebug("CandidateSelected", candidate, "Nearest settlers candidate selected");
-                        }
+                        return false;
                     }
-                }
+
+                    if (collectDiagnostics && matchedMechanic)
+                        mechanicMatched++;
+                    if (collectDiagnostics && attemptedProbe)
+                        probeAttempts++;
+                    if (collectDiagnostics)
+                        probeResolved++;
+
+                    if (collectDiagnostics && hadLabel)
+                        labelBacked++;
+
+                    if (!best.HasValue
+                        || candidate.Distance < best.Value.Distance
+                        || (VisibleMechanicSelectionPolicy.ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
+                            && VisibleMechanicSelectionPolicy.IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
+                    {
+                        best = candidate;
+                        if (captureClickDebug)
+                            PublishSettlersCandidateDebug("CandidateSelected", candidate, "Nearest settlers candidate selected");
+                    }
+
+                    return false;
+                });
 
                 long entityScanMs = collectDiagnostics
                     ? Math.Max(0, Environment.TickCount64 - diagnosticsStartMs)
@@ -404,7 +399,7 @@ namespace ClickIt.Services
             long labelScanMs,
             long entityScanMs)
         {
-            _dependencies.SetLatestClickDebug(new ClickService.ClickDebugSnapshot(
+            _dependencies.SetLatestClickDebug(new ClickDebugSnapshot(
                 HasData: true,
                 Stage: "NoCandidate",
                 MechanicId: string.Empty,
@@ -444,7 +439,7 @@ namespace ClickIt.Services
             matchedMechanic = true;
 
             hasGroundLabel = labelEntityAddresses != null
-                && ClickService.IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
+                && OffscreenPathingMath.IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
 
             if (!hasGroundLabel)
                 return false;
@@ -473,14 +468,14 @@ namespace ClickIt.Services
             mechanicId = string.Empty;
             path = entity.Path ?? string.Empty;
 
-            if (!LabelFilterService.TryGetSettlersOreMechanicId(path, out string? resolvedMechanic)
+            if (!MechanicClassifier.TryGetSettlersOreMechanicId(path, out string? resolvedMechanic)
                 || string.IsNullOrWhiteSpace(resolvedMechanic))
             {
                 return false;
             }
 
             if (!_dependencies.IsSettlersMechanicEnabled(resolvedMechanic)
-                || ClickService.ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value))
+                || VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value))
             {
                 return false;
             }
@@ -531,7 +526,7 @@ namespace ClickIt.Services
                 notes: notes));
         }
 
-        private ClickService.ClickDebugSnapshot CreateSettlersClickDebugSnapshot(
+        private ClickDebugSnapshot CreateSettlersClickDebugSnapshot(
             string stage,
             string mechanicId,
             string entityPath,
@@ -542,7 +537,7 @@ namespace ClickIt.Services
             bool resolved,
             string notes)
         {
-            return new ClickService.ClickDebugSnapshot(
+            return new ClickDebugSnapshot(
                 HasData: true,
                 Stage: stage,
                 MechanicId: mechanicId,
@@ -562,21 +557,11 @@ namespace ClickIt.Services
         }
 
         private bool TryResolveNearbyClickablePoint(Vector2 center, string path, out Vector2 clickPos)
-        {
-            for (int i = 0; i < ClickService.NearbyClickProbeOffsets.Length; i++)
-            {
-                Vector2 probe = center + ClickService.NearbyClickProbeOffsets[i];
-                if (!_dependencies.IsInsideWindowInEitherSpace(probe))
-                    continue;
-                if (!_dependencies.IsClickableInEitherSpace(probe, path))
-                    continue;
-
-                clickPos = probe;
-                return true;
-            }
-
-            clickPos = default;
-            return false;
-        }
+            => ClickableProbeResolver.TryResolveNearbyClickablePoint(
+                center,
+                path,
+                _dependencies.IsInsideWindowInEitherSpace,
+                _dependencies.IsClickableInEitherSpace,
+                out clickPos);
     }
 }

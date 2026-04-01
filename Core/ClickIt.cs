@@ -8,7 +8,9 @@ namespace ClickIt
     {
         public PluginContext State { get; } = new PluginContext();
 
-        private ClickItSettings EffectiveSettings => Settings ?? new ClickItSettings();
+        private ClickItSettings? _settingsOverrideForTests;
+
+        private ClickItSettings EffectiveSettings => Settings ?? _settingsOverrideForTests ?? new ClickItSettings();
 
         public override void OnLoad()
         {
@@ -92,7 +94,7 @@ namespace ClickIt
         {
             // Skip logging during render loop to prevent crashes
             if (State.IsRendering) return;
-            if (!localDebug || Settings.DebugMode)
+            if (!localDebug || EffectiveSettings.DebugMode)
             {
                 base.LogMessage(message, frame);
             }
@@ -112,6 +114,11 @@ namespace ClickIt
         internal ClickItSettings GetEffectiveSettingsForLifecycle()
         {
             return EffectiveSettings;
+        }
+
+        internal void SetSettingsForTests(ClickItSettings settings)
+        {
+            _settingsOverrideForTests = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
         private Services.AlertService GetOrCreateAlertService()

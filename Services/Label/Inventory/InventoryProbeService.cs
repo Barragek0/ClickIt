@@ -1,6 +1,7 @@
 using ClickIt.Utils;
 using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
+using System.Runtime.CompilerServices;
 
 namespace ClickIt.Services.Label.Inventory
 {
@@ -19,7 +20,7 @@ namespace ClickIt.Services.Label.Inventory
         private readonly InventoryProbeServiceDependencies _dependencies;
         private readonly object _cacheLock = new();
         private readonly ThreadLocal<HashSet<long>> _uniqueEntityAddresses = new(static () => new HashSet<long>());
-        private readonly InventoryDiagnosticsChannel _diagnosticsChannel;
+        private InventoryDiagnosticsChannel _diagnosticsChannel;
 
         private long _inventoryProbeCacheTimestampMs;
         private GameController? _inventoryProbeCacheController;
@@ -46,6 +47,13 @@ namespace ClickIt.Services.Label.Inventory
         {
             _dependencies = dependencies;
             _diagnosticsChannel = new InventoryDiagnosticsChannel(dependencies.DebugTrailCapacity);
+        }
+
+        internal static InventoryProbeService CreateDiagnosticsOnlyForTests(int debugTrailCapacity)
+        {
+            var service = (InventoryProbeService)RuntimeHelpers.GetUninitializedObject(typeof(InventoryProbeService));
+            service._diagnosticsChannel = new InventoryDiagnosticsChannel(debugTrailCapacity);
+            return service;
         }
 
         public LabelFilterService.InventoryDebugSnapshot GetLatestDebug() => _diagnosticsChannel.GetLatest();

@@ -12,58 +12,16 @@ namespace ClickIt.Services
 {
     public partial class LabelFilterService
     {
-        private static readonly MechanicClassifierDependencies ClassifierDependencies = new(
-            GetWorldItemMetadataPath,
-            ShouldAllowWorldItemByMetadata,
-            ShouldClickStrongbox,
-            static (clickEssences, label) => ShouldClickEssence(clickEssences, label),
-            static (clickRitualInitiate, clickRitualCompleted, path, label) => GetRitualMechanicId(clickRitualInitiate, clickRitualCompleted, path, label),
-            ShouldAllowClosedDoorPastMechanic);
-        private static readonly LabelClassificationEngine ClassificationEngine = new(ClassifierDependencies);
+        private MechanicClassifierDependencies? _classificationDependencies;
 
-        private static string? GetClickableMechanicId(LabelOnGround label, Entity item, ClickSettings settings, ExileCore.GameController? gameController)
-            => ClassificationEngine.GetClickableMechanicId(label, item, settings, gameController);
-
-        internal static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
-            => MechanicClassifier.GetAreaTransitionMechanicId(clickAreaTransitions, clickLabyrinthTrials, type, path);
-
-        internal static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)
-            => MechanicClassifier.ShouldClickWorldItemCore(clickItems, type, item);
-
-        internal static string? GetChestMechanicIdFromConfiguredRules(
-            bool clickBasicChests,
-            bool clickLeagueChests,
-            bool clickLeagueChestsOther,
-            IReadOnlySet<string>? enabledSpecificLeagueChestIds,
-            EntityType type,
-            string? path,
-            string renderName)
-            => MechanicClassifier.GetChestMechanicIdFromConfiguredRules(
-                clickBasicChests,
-                clickLeagueChests,
-                clickLeagueChestsOther,
-                enabledSpecificLeagueChestIds,
-                type,
-                path,
-                renderName);
-
-        internal static bool TryGetSettlersOreMechanicId(string? path, out string? mechanicId)
-            => ClassificationEngine.TryGetSettlersOreMechanicId(path, out mechanicId);
-
-        internal static bool IsHarvestPath(string path)
-            => MechanicClassifier.IsHarvestPath(path);
-
-        internal static bool IsSettlersPetrifiedWoodPath(string path)
-            => MechanicClassifier.IsSettlersPetrifiedWoodPath(path);
-
-        internal static bool IsSettlersOrePath(string path)
-            => MechanicClassifier.IsSettlersOrePath(path);
-
-        internal static bool IsSettlersVerisiumPath(string path)
-            => MechanicClassifier.IsSettlersVerisiumPath(path);
-
-        internal static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
-            => MechanicClassifier.ShouldClickAltar(highlightEater, highlightExarch, clickEater, clickExarch, path);
+        private MechanicClassifierDependencies ClassificationDependencies
+            => _classificationDependencies ??= new MechanicClassifierDependencies(
+                GetWorldItemMetadataPath,
+                ShouldAllowWorldItemByMetadata,
+                ShouldClickStrongbox,
+                static (clickEssences, label) => ShouldClickEssence(clickEssences, label),
+                static (clickRitualInitiate, clickRitualCompleted, path, label) => GetRitualMechanicId(clickRitualInitiate, clickRitualCompleted, path, label),
+                ShouldAllowClosedDoorPastMechanic);
 
         private static bool ShouldClickEssence(bool clickEssences, LabelOnGround label)
         {
@@ -134,7 +92,5 @@ namespace ClickIt.Services
         private static bool IsUniqueStrongbox(LabelOnGround? label)
             => label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
 
-        internal static bool IsBasicChestName(string? name)
-            => MechanicClassifier.IsBasicChestName(name);
     }
 }

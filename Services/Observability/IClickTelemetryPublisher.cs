@@ -2,9 +2,9 @@ namespace ClickIt.Services.Observability
 {
     internal interface IClickTelemetryPublisher
     {
-        void PublishClickSnapshot(ClickService.ClickDebugSnapshot snapshot);
+        void PublishClickSnapshot(ClickDebugSnapshot snapshot);
 
-        void PublishUltimatumSnapshot(ClickService.UltimatumDebugSnapshot snapshot);
+        void PublishUltimatumSnapshot(UltimatumDebugSnapshot snapshot);
 
         void PublishRuntimeLog(string message);
     }

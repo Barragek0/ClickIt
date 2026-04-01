@@ -11,6 +11,8 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using System.Diagnostics.CodeAnalysis;
 using ClickIt.Services.Click.Safety;
+using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Observability;
 
 #nullable enable
 
@@ -50,12 +52,11 @@ namespace ClickIt.Services
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
         private readonly Action<string, int>? freezeDebugTelemetrySnapshot = freezeDebugTelemetrySnapshot;
+        private readonly ClickTelemetryStore _clickTelemetryStore = new(settings);
         private readonly IClickSafetyPolicy _clickSafetyPolicy = new ClickSafetyPolicy();
         private readonly ChestLootSettlementState chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
-        private long _gruelingGauntletPassiveCacheTimestampMs;
-        private bool _gruelingGauntletPassiveCachedValue;
-        private bool _gruelingGauntletPassiveCacheHasValue;
+        private readonly UltimatumGruelingGauntletDetector _gruelingGauntletDetector = new();
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
@@ -83,7 +84,7 @@ namespace ClickIt.Services
         {
             RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            return IsClickableInEitherSpace(clientPoint, windowTopLeft, pointIsInClickableArea, path);
+            return _clickSafetyPolicy.IsPointClickableInEitherSpace(clientPoint, windowTopLeft, pointIsInClickableArea, path);
         }
 
         internal void CancelOffscreenPathingState()
@@ -96,15 +97,6 @@ namespace ClickIt.Services
         {
             ChestLootSettlement.ClearPendingChestOpenConfirmation();
             ChestLootSettlement.ClearPostChestLootSettlementWatch();
-        }
-
-        internal static bool IsClickableInEitherSpace(
-            Vector2 clientPoint,
-            Vector2 windowTopLeft,
-            Func<Vector2, string, bool> clickabilityCheck,
-            string path)
-        {
-            return ClickSafetyPolicy.Instance.IsPointClickableInEitherSpace(clientPoint, windowTopLeft, clickabilityCheck, path);
         }
 
         private bool EnsureCursorInsideGameWindowForClick(string outsideWindowLogMessage)
@@ -195,9 +187,7 @@ namespace ClickIt.Services
         {
             _threadGroundLabelEntityAddresses?.Clear();
             _threadGroundLabelEntityAddresses = null;
-
-            _threadSkillBarEntriesBuffer?.Clear();
-            _threadSkillBarEntriesBuffer = null;
+            MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
         }
 
         internal static void ClearThreadLocalStorageForTests()

@@ -27,5 +27,21 @@ namespace ClickIt.Tests.Unit
             restored.GetUltimatumModifierPriority()[0].Should().Be("Ruin");
             restored.GetUltimatumModifierPriority()[1].Should().Be("Choking Miasma");
         }
+
+        [TestMethod]
+        public void UiState_IsTransient_AndNotSerialized()
+        {
+            var settings = new ClickItSettings();
+            const string searchToken = "__ui_search_token_sentinel__";
+            const string errorToken = "__ui_error_token_sentinel__";
+            settings.UiState.ItemTypeSearchFilter = searchToken;
+            settings.UiState.LastSettingsUiError = errorToken;
+
+            string json = JsonConvert.SerializeObject(settings);
+
+            json.Should().NotContain("\"UiState\"");
+            json.Should().NotContain(searchToken);
+            json.Should().NotContain(errorToken);
+        }
     }
 }

@@ -2,6 +2,7 @@ using ExileCore;
 using System.Collections;
 using System.Windows.Forms;
 using ClickIt.Utils;
+using ClickIt.Services.Click.Runtime;
 using SharpDX;
 using System.Threading;
 using RectangleF = SharpDX.RectangleF;
@@ -58,24 +59,24 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (lastSkillUseTimestampMs > 0 && ClickService.MovementSkillRecastDelayMs > 0)
+            if (lastSkillUseTimestampMs > 0 && MovementSkillMath.RecastDelayMs > 0)
             {
                 long elapsed = now - lastSkillUseTimestampMs;
-                if (elapsed < ClickService.MovementSkillRecastDelayMs)
+                if (elapsed < MovementSkillMath.RecastDelayMs)
                 {
-                    debugReason = $"Skipped: local recast delay active ({elapsed}ms elapsed, need {ClickService.MovementSkillRecastDelayMs}ms).";
+                    debugReason = $"Skipped: local recast delay active ({elapsed}ms elapsed, need {MovementSkillMath.RecastDelayMs}ms).";
                     return false;
                 }
             }
 
-            if (!ClickService.ShouldAttemptMovementSkill(
+            if (!MovementSkillMath.ShouldAttemptMovementSkill(
                 movementSkillsEnabled,
                 builtPath,
                 remainingNodes,
                 minimumNodes,
                 now,
                 lastSkillUseTimestampMs,
-                ClickService.MovementSkillRecastDelayMs))
+                MovementSkillMath.RecastDelayMs))
             {
                 debugReason = "Skipped: movement skill gate returned false.";
                 return false;
@@ -105,11 +106,11 @@ namespace ClickIt.Services
                 Thread.Sleep(10);
             }
 
-            Keyboard.KeyPress(boundKey, ClickService.MovementSkillKeyTapDelayMs);
+            Keyboard.KeyPress(boundKey, MovementSkillMath.KeyTapDelayMs);
             _dependencies.SetLastMovementSkillUseTimestampMs(now);
             int postCastClickBlockMs = ResolveMovementSkillPostCastClickBlockMsForCast(movementSkillName);
             _dependencies.SetMovementSkillPostCastClickBlockUntilTimestampMs(postCastClickBlockMs > 0 ? now + postCastClickBlockMs : 0);
-            int statusPollWindowMs = ClickService.ResolveMovementSkillStatusPollWindowMs(postCastClickBlockMs, movementSkillName);
+            int statusPollWindowMs = MovementSkillMath.ResolveMovementSkillStatusPollWindowMs(postCastClickBlockMs, movementSkillName);
             _dependencies.SetMovementSkillStatusPollUntilTimestampMs(statusPollWindowMs > 0 ? now + statusPollWindowMs : 0);
             _dependencies.SetLastUsedMovementSkillEntry(statusPollWindowMs > 0 ? movementSkillEntry : null);
             _dependencies.PerformanceMonitor.RecordClickInterval();
@@ -122,7 +123,7 @@ namespace ClickIt.Services
         {
             reason = string.Empty;
 
-            if (ClickService.IsMovementSkillPostCastClickBlocked(now, _dependencies.GetMovementSkillPostCastClickBlockUntilTimestampMs(), out long remainingMs))
+            if (MovementSkillMath.IsMovementSkillPostCastClickBlocked(now, _dependencies.GetMovementSkillPostCastClickBlockUntilTimestampMs(), out long remainingMs))
             {
                 reason = $"timing window active ({remainingMs}ms remaining)";
                 return true;
@@ -164,11 +165,11 @@ namespace ClickIt.Services
 
         public int ResolveMovementSkillPostCastClickBlockMsForCast(string? movementSkillInternalName)
         {
-            int resolved = ClickService.ResolveMovementSkillPostCastClickBlockMs(movementSkillInternalName);
-            if (!ClickService.IsShieldChargeMovementSkill(movementSkillInternalName))
+            int resolved = MovementSkillMath.ResolveMovementSkillPostCastClickBlockMs(movementSkillInternalName);
+            if (!MovementSkillMath.IsShieldChargeMovementSkill(movementSkillInternalName))
                 return resolved;
 
-            return Math.Max(0, _dependencies.Settings.OffscreenShieldChargePostCastClickDelayMs?.Value ?? ClickService.MovementSkillShieldChargePostCastClickBlockMs);
+            return Math.Max(0, _dependencies.Settings.OffscreenShieldChargePostCastClickDelayMs?.Value ?? MovementSkillMath.ShieldChargePostCastClickBlockMs);
         }
 
         private static bool TryResolveMovementSkillRuntimeState(object? entry, out bool isUsing, out bool? allowedToCast, out bool? canBeUsed)
@@ -245,7 +246,7 @@ namespace ClickIt.Services
             for (float t = 1.65f; t >= 0.70f; t -= 0.1f)
             {
                 Vector2 candidate = center + (direction * t);
-                if (!ClickService.IsInsideWindow(win, candidate))
+                if (!OffscreenTargetResolver.IsInsideWindow(win, candidate))
                     continue;
                 if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
                     continue;
@@ -321,7 +322,7 @@ namespace ClickIt.Services
                     continue;
                 }
 
-                if (!ClickService.TryMapKeyTextToKeys(keyText, out Keys parsedKey))
+                if (!MovementSkillMath.TryMapKeyTextToKeys(keyText, out Keys parsedKey))
                 {
                     unsupportedKeyEntries++;
                     continue;
@@ -352,7 +353,7 @@ namespace ClickIt.Services
             if (skillsCollection is not IEnumerable enumerable)
                 return false;
 
-            List<object?> list = ClickService._threadSkillBarEntriesBuffer ??= new List<object?>(16);
+            List<object?> list = MovementSkillMath.GetThreadSkillBarEntriesBuffer(16);
             list.Clear();
             foreach (object? entry in enumerable)
             {
@@ -391,7 +392,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (!ClickService.IsMovementSkillInternalName(candidate))
+            if (!MovementSkillMath.IsMovementSkillInternalName(candidate))
                 return false;
 
             internalName = candidate;

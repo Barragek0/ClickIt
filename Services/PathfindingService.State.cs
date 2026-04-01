@@ -62,6 +62,23 @@ namespace ClickIt.Services
             });
         }
 
+        internal void SetLatestPathStateForTests(
+            IReadOnlyList<GridPoint>? gridPath,
+            IReadOnlyList<Vector2>? screenPath,
+            string? targetPath,
+            long? lastPathBuildAttemptTickMs = null)
+        {
+            UpdateState(() =>
+            {
+                _lastGridPath = gridPath ?? EmptyGridPath;
+                _lastScreenPath = screenPath ?? EmptyScreenPath;
+                _lastPathLength = _lastGridPath.Count;
+                _lastTargetPath = targetPath ?? string.Empty;
+                if (lastPathBuildAttemptTickMs.HasValue)
+                    _lastPathBuildAttemptTickMs = lastPathBuildAttemptTickMs.Value;
+            });
+        }
+
         internal bool ClearPathIfStale(int staleTimeoutMs)
         {
             int timeoutMs = Math.Max(250, staleTimeoutMs);

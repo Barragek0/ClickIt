@@ -2,7 +2,6 @@ using ClickIt.Services;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Reflection;
 
 namespace ClickIt.Tests.Unit
 {
@@ -12,10 +11,8 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void TryConvertPathfindingData_ReturnsFalse_ForNullAndEmpty()
         {
-            bool okNull = InvokeStatic<bool>("TryConvertPathfindingData", (object?)null, (object?)null);
-
-            object?[] outArgs = [Array.Empty<object>(), null];
-            bool okEmpty = InvokeStatic<bool>("TryConvertPathfindingData", outArgs);
+            bool okNull = PathfindingService.TryConvertPathfindingData(null, out _);
+            bool okEmpty = PathfindingService.TryConvertPathfindingData(Array.Empty<object>(), out _);
 
             okNull.Should().BeFalse();
             okEmpty.Should().BeFalse();
@@ -30,12 +27,11 @@ namespace ClickIt.Tests.Unit
                 [0, 1]
             ];
 
-            object?[] args = [raw, null];
-            bool ok = InvokeStatic<bool>("TryConvertPathfindingData", args);
+            bool ok = PathfindingService.TryConvertPathfindingData(raw, out int[][]? converted);
 
             ok.Should().BeTrue();
-            args[1].Should().NotBeNull();
-            ((int[][])args[1]!).Length.Should().Be(2);
+            converted.Should().NotBeNull();
+            converted!.Length.Should().Be(2);
         }
 
         [TestMethod]
@@ -53,15 +49,12 @@ namespace ClickIt.Tests.Unit
                 new object[] { 4, 5 }
             };
 
-            object?[] goodArgs = [good, null];
-            object?[] badArgs = [bad, null];
-
-            bool okGood = InvokeStatic<bool>("TryConvertPathfindingData", goodArgs);
-            bool okBad = InvokeStatic<bool>("TryConvertPathfindingData", badArgs);
+            bool okGood = PathfindingService.TryConvertPathfindingData(good, out int[][]? goodGrid);
+            bool okBad = PathfindingService.TryConvertPathfindingData(bad, out _);
 
             okGood.Should().BeTrue();
             okBad.Should().BeFalse();
-            ((int[][])goodArgs[1]!).Should().BeEquivalentTo(new[]
+            goodGrid.Should().BeEquivalentTo(new[]
             {
                 new[] { 1, 0, 2 },
                 new[] { 3, 4, 5 }
@@ -71,21 +64,17 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void TryConvertRow_ParsesNumericArrays_AndRejectsInvalidValues()
         {
-            object?[] intRowArgs = [new[] { 1, 2, 3 }, null];
-            object?[] objRowArgs = [new object[] { 4, 5, 6 }, null];
-            object?[] badRowArgs = [new object[] { 1, "x" }, null];
-            object?[] nullValueArgs = [new object?[] { 1, (object?)null }, null];
-
-            bool intRowOk = InvokeStatic<bool>("TryConvertRow", intRowArgs);
-            bool objRowOk = InvokeStatic<bool>("TryConvertRow", objRowArgs);
-            bool badRowOk = InvokeStatic<bool>("TryConvertRow", badRowArgs);
-            bool nullValueOk = InvokeStatic<bool>("TryConvertRow", nullValueArgs);
+            bool intRowOk = PathfindingService.TryConvertRow(new[] { 1, 2, 3 }, out int[]? intRow);
+            bool objRowOk = PathfindingService.TryConvertRow(new object[] { 4, 5, 6 }, out int[]? objRow);
+            bool badRowOk = PathfindingService.TryConvertRow(new object[] { 1, "x" }, out _);
+            bool nullValueOk = PathfindingService.TryConvertRow(new object?[] { 1, (object?)null }, out _);
 
             intRowOk.Should().BeTrue();
             objRowOk.Should().BeTrue();
             badRowOk.Should().BeFalse();
             nullValueOk.Should().BeFalse();
-            ((int[])objRowArgs[1]!).Should().Equal(4, 5, 6);
+            intRow.Should().Equal(1, 2, 3);
+            objRow.Should().Equal(4, 5, 6);
         }
 
         [TestMethod]
@@ -97,7 +86,7 @@ namespace ClickIt.Tests.Unit
                 [2, 3, 0]
             ];
 
-            bool[][] walkable = InvokeStatic<bool[][]>("ConvertRawGridToWalkable", (object)raw);
+            bool[][] walkable = PathfindingService.ConvertRawGridToWalkable(raw);
 
             walkable.Should().BeEquivalentTo(new[]
             {
@@ -109,9 +98,9 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolveScale_UsesFallbackWhenGridDeltaIsNearZero_AndMinimumWhenTooSmall()
         {
-            float nearZeroGrid = InvokeStatic<float>("ResolveScale", 10f, 0f);
-            float tooSmallScale = InvokeStatic<float>("ResolveScale", 0.0001f, 1f);
-            float regularScale = InvokeStatic<float>("ResolveScale", 20f, 4f);
+            float nearZeroGrid = PathfindingService.ResolveScale(10f, 0f);
+            float tooSmallScale = PathfindingService.ResolveScale(0.0001f, 1f);
+            float regularScale = PathfindingService.ResolveScale(20f, 4f);
 
             nearZeroGrid.Should().Be(2.5f);
             tooSmallScale.Should().Be(2.5f);
@@ -121,21 +110,10 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void IsFinitePoint_ReturnsExpectedForFiniteAndNonFiniteValues()
         {
-            InvokeStatic<bool>("IsFinitePoint", 1f, 2f).Should().BeTrue();
-            InvokeStatic<bool>("IsFinitePoint", float.NaN, 2f).Should().BeFalse();
-            InvokeStatic<bool>("IsFinitePoint", 1f, float.PositiveInfinity).Should().BeFalse();
-            InvokeStatic<bool>("IsFinitePoint", float.NegativeInfinity, float.NaN).Should().BeFalse();
-        }
-
-        private static T InvokeStatic<T>(string methodName, params object?[] args)
-        {
-            MethodInfo method = typeof(PathfindingService).GetMethod(
-                methodName,
-                BindingFlags.NonPublic | BindingFlags.Static)!
-                ?? throw new InvalidOperationException("Method not found: " + methodName);
-
-            object? result = method.Invoke(null, args);
-            return (T)result!;
+            PathfindingService.IsFinitePoint(1f, 2f).Should().BeTrue();
+            PathfindingService.IsFinitePoint(float.NaN, 2f).Should().BeFalse();
+            PathfindingService.IsFinitePoint(1f, float.PositiveInfinity).Should().BeFalse();
+            PathfindingService.IsFinitePoint(float.NegativeInfinity, float.NaN).Should().BeFalse();
         }
     }
 }

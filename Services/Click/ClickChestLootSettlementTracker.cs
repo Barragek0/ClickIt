@@ -1,4 +1,5 @@
 using ClickIt.Definitions;
+using ClickIt.Services.Click.Runtime;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
@@ -48,7 +49,7 @@ namespace ClickIt.Services
             ClickItSettings settings = _dependencies.Settings;
             ChestLootSettlementState state = _dependencies.State;
 
-            if (!ClickService.ShouldWaitForChestLootSettlement(
+            if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
                 mechanicId,
                 settings.PauseAfterOpeningBasicChests?.Value == true,
                 settings.PauseAfterOpeningLeagueChests?.Value == true))
@@ -56,7 +57,7 @@ namespace ClickIt.Services
                 return;
             }
 
-            ChestLootSettlementTiming timing = ClickService.ResolvePostChestLootSettlementTimingSettings(
+            ChestLootSettlementTiming timing = ChestLootSettlementMath.ResolvePostChestLootSettlementTimingSettings(
                 mechanicId,
                 ResolvePostChestLootSettlementTimingOptions());
 
@@ -73,7 +74,7 @@ namespace ClickIt.Services
             state.QuietWindowMs = timing.QuietWindowMs;
             state.SourceGridValid = hadSourceGrid;
             state.SourceGrid = sourceGrid;
-            ClickService.SeedKnownGroundItemAddresses(state.KnownGroundItemAddresses, _dependencies.CollectGroundLabelEntityAddresses());
+            ChestLootSettlementMath.SeedKnownGroundItemAddresses(state.KnownGroundItemAddresses, _dependencies.CollectGroundLabelEntityAddresses());
         }
 
         public bool TryHandlePendingChestOpenConfirmation(Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
@@ -83,16 +84,16 @@ namespace ClickIt.Services
             if (!state.PendingOpenConfirmationActive)
                 return false;
 
-            LabelOnGround? pendingChestLabel = ClickService.FindPendingChestLabel(allLabels, state.PendingOpenItemAddress, state.PendingOpenLabelAddress);
+            LabelOnGround? pendingChestLabel = ChestLootSettlementMath.FindPendingChestLabel(allLabels, state.PendingOpenItemAddress, state.PendingOpenLabelAddress);
             bool chestLabelVisible = pendingChestLabel != null;
-            if (ClickService.ShouldStartChestLootSettlementAfterClick(state.PendingOpenConfirmationActive, chestLabelVisible))
+            if (ChestLootSettlementMath.ShouldStartChestLootSettlementAfterClick(state.PendingOpenConfirmationActive, chestLabelVisible))
             {
                 _dependencies.PublishClickFlowDebugStage("PostChestOpenDetected", "Chest label disappeared; starting loot settle watch", state.PendingOpenMechanicId);
                 StartPostChestLootSettlementWatch(state.PendingOpenMechanicId);
                 return true;
             }
 
-            if (!ClickService.ShouldContinueChestOpenRetries(state.PendingOpenConfirmationActive, chestLabelVisible) || pendingChestLabel == null)
+            if (!ChestLootSettlementMath.ShouldContinueChestOpenRetries(state.PendingOpenConfirmationActive, chestLabelVisible) || pendingChestLabel == null)
                 return false;
 
             (bool resolvedClickPos, Vector2 clickPos) = _dependencies.TryResolveLabelClickPosition(
@@ -109,7 +110,7 @@ namespace ClickIt.Services
             bool clicked = _dependencies.PerformLabelClick(
                 clickPos,
                 pendingChestLabel,
-                ClickService.ShouldForceUiHoverVerificationForLabel(pendingChestLabel));
+                OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(pendingChestLabel));
             _dependencies.PublishClickFlowDebugStage(
                 clicked ? "PostChestReclick" : "PostChestReclickRejected",
                 clicked ? "Chest label still visible; reattempted chest click" : "Chest label still visible; chest reclick was rejected",
@@ -122,7 +123,7 @@ namespace ClickIt.Services
             ClickItSettings settings = _dependencies.Settings;
             ChestLootSettlementState state = _dependencies.State;
 
-            if (!ClickService.ShouldWaitForChestLootSettlement(
+            if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
                 mechanicId,
                 settings.PauseAfterOpeningBasicChests?.Value == true,
                 settings.PauseAfterOpeningLeagueChests?.Value == true))
@@ -135,7 +136,7 @@ namespace ClickIt.Services
             state.PendingOpenMechanicId = mechanicId;
             state.PendingOpenItemAddress = chestLabel?.ItemOnGround?.Address ?? 0;
             state.PendingOpenLabelAddress = chestLabel?.Label?.Address ?? 0;
-            state.SourceGridValid = ClickService.TryGetEntityGridPosition(chestLabel?.ItemOnGround, out state.SourceGrid);
+            state.SourceGridValid = ChestLootSettlementMath.TryGetEntityGridPosition(chestLabel?.ItemOnGround, out state.SourceGrid);
         }
 
         public void ClearPendingChestOpenConfirmation()
@@ -164,7 +165,7 @@ namespace ClickIt.Services
 
             if (now >= state.NextPollTimestampMs)
             {
-                bool hasNewGroundItems = ClickService.MergeNewGroundItemAddresses(
+                bool hasNewGroundItems = ChestLootSettlementMath.MergeNewGroundItemAddresses(
                     state.KnownGroundItemAddresses,
                     _dependencies.CollectGroundLabelEntityAddresses());
                 if (hasNewGroundItems)
@@ -175,7 +176,7 @@ namespace ClickIt.Services
                 state.NextPollTimestampMs = now + Math.Max(1, state.PollIntervalMs);
             }
 
-            if (ClickService.IsChestLootSettlementQuietPeriodElapsed(
+            if (ChestLootSettlementMath.IsChestLootSettlementQuietPeriodElapsed(
                 now,
                 state.LastNewItemTimestampMs,
                 state.QuietWindowMs,
@@ -227,12 +228,12 @@ namespace ClickIt.Services
                 decision = "source-grid-unavailable";
                 return false;
             }
-            if (!ClickService.IsMechanicEligibleForNearbyChestLootSettlementBypass(mechanicId))
+            if (!ChestLootSettlementMath.IsMechanicEligibleForNearbyChestLootSettlementBypass(mechanicId))
             {
                 decision = "mechanic-not-eligible";
                 return false;
             }
-            if (!ClickService.TryGetEntityGridPosition(entity, out Vector2 entityGridPos))
+            if (!ChestLootSettlementMath.TryGetEntityGridPosition(entity, out Vector2 entityGridPos))
             {
                 decision = "candidate-grid-unavailable";
                 return false;
@@ -241,7 +242,7 @@ namespace ClickIt.Services
             int maxDistance = Math.Max(0, settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance?.Value ?? 10);
             float distanceSq = CalculateDistanceSquared(state.SourceGrid, entityGridPos);
             float distance = MathF.Sqrt(distanceSq);
-            bool allowed = ClickService.IsWithinNearbyChestLootSettlementBypassDistance(state.SourceGrid, entityGridPos, maxDistance);
+            bool allowed = ChestLootSettlementMath.IsWithinNearbyChestLootSettlementBypassDistance(state.SourceGrid, entityGridPos, maxDistance);
             decision = $"{(allowed ? "allowed" : "blocked")}; mechanic:{mechanicId ?? "unknown"}; dist:{distance:0.0}; max:{maxDistance}; source:({state.SourceGrid.X:0.0},{state.SourceGrid.Y:0.0}); candidate:({entityGridPos.X:0.0},{entityGridPos.Y:0.0})";
             return allowed;
         }
@@ -249,13 +250,13 @@ namespace ClickIt.Services
         private ChestLootSettlementTimingOptions ResolvePostChestLootSettlementTimingOptions()
             => new(
                 new ChestLootSettlementTiming(
-                    _dependencies.Settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? ClickService.PostChestLootSettleDefaultInitialDelayMs,
-                    _dependencies.Settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? ClickService.PostChestLootSettleDefaultPollIntervalMs,
-                    _dependencies.Settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? ClickService.PostChestLootSettleDefaultQuietWindowMs),
+                    _dependencies.Settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? ChestLootSettlementMath.DefaultInitialDelayMs,
+                    _dependencies.Settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? ChestLootSettlementMath.DefaultPollIntervalMs,
+                    _dependencies.Settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? ChestLootSettlementMath.DefaultQuietWindowMs),
                 new ChestLootSettlementTiming(
-                    _dependencies.Settings.PauseAfterOpeningLeagueChestsInitialDelayMs?.Value ?? ClickService.PostChestLootSettleDefaultInitialDelayMs,
-                    _dependencies.Settings.PauseAfterOpeningLeagueChestsPollIntervalMs?.Value ?? ClickService.PostChestLootSettleDefaultPollIntervalMs,
-                    _dependencies.Settings.PauseAfterOpeningLeagueChestsQuietWindowMs?.Value ?? ClickService.PostChestLootSettleDefaultQuietWindowMs));
+                    _dependencies.Settings.PauseAfterOpeningLeagueChestsInitialDelayMs?.Value ?? ChestLootSettlementMath.DefaultInitialDelayMs,
+                    _dependencies.Settings.PauseAfterOpeningLeagueChestsPollIntervalMs?.Value ?? ChestLootSettlementMath.DefaultPollIntervalMs,
+                    _dependencies.Settings.PauseAfterOpeningLeagueChestsQuietWindowMs?.Value ?? ChestLootSettlementMath.DefaultQuietWindowMs));
 
         private static float CalculateDistanceSquared(Vector2 left, Vector2 right)
         {

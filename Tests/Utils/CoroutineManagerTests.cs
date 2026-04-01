@@ -1,8 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Tests.TestUtils;
 using System;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace ClickIt.Tests.Unit
@@ -42,17 +40,8 @@ namespace ClickIt.Tests.Unit
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh);
 
-            // Depending on build flags / available ExileCore runtime, these methods may either return 100f
-            // (when runtime is not present) or attempt to access GameController.Player and throw.
-            try
-            {
-                PrivateMethodAccessor.Invoke<float>(cm, "GetPlayerHealthPercent").Should().BeApproximately(100f, 0.001f);
-                PrivateMethodAccessor.Invoke<float>(cm, "GetPlayerEnergyShieldPercent").Should().BeApproximately(100f, 0.001f);
-            }
-            catch (TargetInvocationException tie) when (tie.InnerException is NullReferenceException)
-            {
-                tie.InnerException.Should().BeOfType<NullReferenceException>();
-            }
+            cm.GetPlayerHealthPercent().Should().BeApproximately(100f, 0.001f);
+            cm.GetPlayerEnergyShieldPercent().Should().BeApproximately(100f, 0.001f);
         }
 
         [TestMethod]
@@ -71,11 +60,11 @@ namespace ClickIt.Tests.Unit
 
             try
             {
-                cm.GetType().GetMethod("StartCoroutines", BindingFlags.Public | BindingFlags.Instance)!.Invoke(cm, [plugin]);
+                cm.StartCoroutines(plugin);
             }
-            catch (TargetInvocationException)
+            catch (Exception ex) when (ex is InvalidOperationException or NullReferenceException)
             {
-                // The StartCoroutines implementation may call into runtime-specific threads; ignore reflection errors but assert that at least the altar coroutine was created.
+                // The StartCoroutines implementation may call into runtime-specific threads; ignore runtime-specific failures but assert that at least the altar coroutine was created.
             }
 
             var altarCoroutine = ctx.AltarCoroutine;
@@ -104,7 +93,7 @@ namespace ClickIt.Tests.Unit
             ctx.Timer.Stop();
             ctx.Timer.Reset();
 
-            var enumerator = PrivateMethodAccessor.Invoke<System.Collections.IEnumerator>(cm, "ClickLabel");
+            var enumerator = cm.RunClickLabelStepForTests();
             enumerator.Should().NotBeNull();
 
             enumerator!.MoveNext();

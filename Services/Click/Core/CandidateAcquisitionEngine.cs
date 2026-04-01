@@ -1,5 +1,6 @@
 using ExileCore.Shared.Enums;
 using ExileCore.PoEMemory.Elements;
+using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services
 {
@@ -30,7 +31,7 @@ namespace ClickIt.Services
                 ? _dependencies.LabelFilterService.GetMechanicIdForLabel(nextLabel)
                 : null;
 
-            nextLabelMechanicId = ClickService.ResolveLabelMechanicIdForVisibleCandidateComparison(
+            nextLabelMechanicId = OffscreenPathingMath.ResolveLabelMechanicIdForVisibleCandidateComparison(
                 nextLabelMechanicId,
                 hasLabel: nextLabel != null,
                 isWorldItemLabel: nextLabel?.ItemOnGround?.Type == EntityType.WorldItem,

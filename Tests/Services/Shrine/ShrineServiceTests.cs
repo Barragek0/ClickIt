@@ -1,12 +1,9 @@
 using ClickIt.Services;
-using ClickIt.Tests.TestUtils;
 using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -26,9 +23,9 @@ namespace ClickIt.Tests.Unit
         {
             var service = CreateService();
 
-            PrivateFieldAccessor.Set(service, "_cachedShrines", new List<ExileCore.PoEMemory.MemoryObjects.Entity> { null! });
-            StartCacheTimer(service);
-            PrivateFieldAccessor.Set(service, "_lastShrineCacheTime", GetCacheElapsed(service));
+            service.SeedCacheWithSingleNullEntryForTests(0);
+            service.StartCacheTimerForTests();
+            service.SeedCacheWithSingleNullEntryForTests(service.GetCacheElapsedMillisecondsForTests());
 
             service.AreShrinesPresent().Should().BeTrue();
         }
@@ -38,9 +35,9 @@ namespace ClickIt.Tests.Unit
         {
             var service = CreateService();
 
-            PrivateFieldAccessor.Set(service, "_cachedShrines", new List<ExileCore.PoEMemory.MemoryObjects.Entity> { null! });
-            StartCacheTimer(service);
-            PrivateFieldAccessor.Set(service, "_lastShrineCacheTime", -1000L);
+            service.SeedCacheWithSingleNullEntryForTests(0);
+            service.StartCacheTimerForTests();
+            service.SeedCacheWithSingleNullEntryForTests(-1000L);
 
             service.AreShrinesPresent().Should().BeFalse();
         }
@@ -69,13 +66,12 @@ namespace ClickIt.Tests.Unit
         public void InvalidateCache_ClearsCachedShrines()
         {
             var service = CreateService();
-            PrivateFieldAccessor.Set(service, "_cachedShrines", new List<ExileCore.PoEMemory.MemoryObjects.Entity> { null! });
-            PrivateFieldAccessor.Set(service, "_lastShrineCacheTime", 123L);
+            service.SeedCacheWithSingleNullEntryForTests(123L);
 
             service.InvalidateCache();
 
-            PrivateFieldAccessor.Get<List<ExileCore.PoEMemory.MemoryObjects.Entity>?>(service, "_cachedShrines").Should().BeNull();
-            PrivateFieldAccessor.Get<long>(service, "_lastShrineCacheTime").Should().Be(0);
+            service.HasCachedShrinesForTests().Should().BeFalse();
+            service.GetLastShrineCacheTimeForTests().Should().Be(0);
         }
 
         [TestMethod]
@@ -115,9 +111,9 @@ namespace ClickIt.Tests.Unit
         {
             var service = CreateService();
 
-            PrivateFieldAccessor.Set(service, "_cachedShrines", new List<ExileCore.PoEMemory.MemoryObjects.Entity> { null! });
-            StartCacheTimer(service);
-            PrivateFieldAccessor.Set(service, "_lastShrineCacheTime", GetCacheElapsed(service));
+            service.SeedCacheWithSingleNullEntryForTests(0);
+            service.StartCacheTimerForTests();
+            service.SeedCacheWithSingleNullEntryForTests(service.GetCacheElapsedMillisecondsForTests());
 
             bool result = service.AreShrinesPresentInClickableArea(_ => true);
 
@@ -129,9 +125,9 @@ namespace ClickIt.Tests.Unit
         {
             var service = CreateService();
 
-            PrivateFieldAccessor.Set(service, "_cachedShrines", new List<ExileCore.PoEMemory.MemoryObjects.Entity> { null! });
-            StartCacheTimer(service);
-            PrivateFieldAccessor.Set(service, "_lastShrineCacheTime", GetCacheElapsed(service));
+            service.SeedCacheWithSingleNullEntryForTests(0);
+            service.StartCacheTimerForTests();
+            service.SeedCacheWithSingleNullEntryForTests(service.GetCacheElapsedMillisecondsForTests());
 
             var nearest = service.GetNearestShrineInRange(100);
 
@@ -145,18 +141,5 @@ namespace ClickIt.Tests.Unit
             return new ShrineService(gc, camera);
         }
 
-        private static void StartCacheTimer(ShrineService service)
-        {
-            var timer = PrivateFieldAccessor.Get<Stopwatch>(service, "_shrineCacheTimer");
-            if (!timer.IsRunning)
-            {
-                timer.Start();
-            }
-        }
-
-        private static long GetCacheElapsed(ShrineService service)
-        {
-            return PrivateFieldAccessor.Get<Stopwatch>(service, "_shrineCacheTimer").ElapsedMilliseconds;
-        }
     }
 }

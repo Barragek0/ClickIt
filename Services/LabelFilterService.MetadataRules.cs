@@ -30,7 +30,7 @@ namespace ClickIt.Services
             return !blacklistMatch;
         }
 
-        private static bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label)
+        private bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label)
         {
             string metadata = GetWorldItemMetadataPath(item);
             string itemName = GetWorldItemBaseName(item);

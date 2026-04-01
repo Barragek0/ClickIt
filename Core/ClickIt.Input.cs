@@ -33,6 +33,9 @@ namespace ClickIt
             return State.InputHandler?.IsClickHotkeyPressed(State.CachedLabels, State.LabelFilterService) ?? false;
         }
 
+        internal bool IsClickHotkeyPressedForTests()
+            => IsClickHotkeyPressed();
+
         private void HandleHotkeyPressed()
         {
             if (State.IsShuttingDown)
@@ -50,6 +53,9 @@ namespace ClickIt
             State.ClickLabelCoroutine?.Resume();
             State.WorkFinished = false;
         }
+
+        internal void HandleHotkeyPressedForTests()
+            => HandleHotkeyPressed();
 
         private void HandleHotkeyReleased()
         {
@@ -102,6 +108,9 @@ namespace ClickIt
             return null;
         }
 
+        internal static Coroutine? FindExistingClickLogicCoroutineForTests()
+            => FindExistingClickLogicCoroutine();
+
         private static Coroutine? FindExistingManualUiHoverCoroutine()
         {
             foreach (Coroutine coroutine in global::ExileCore.Core.ParallelRunner.Coroutines)
@@ -126,5 +135,8 @@ namespace ClickIt
                 State.SecondTimer.Restart();
             }
         }
+
+        internal void ResumeAltarScanningIfDueForTests(bool clickHotkeyPressed)
+            => ResumeAltarScanningIfDue(clickHotkeyPressed);
     }
 }

@@ -1,5 +1,5 @@
 ﻿using System.Threading;
-using ClickIt.Definitions;
+using ClickIt.Services.Click.Runtime;
 using ClickIt.Utils;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Elements;
@@ -16,63 +16,6 @@ namespace ClickIt.Services
         private const int UltimatumPostBeginDelayMs = 60;
         private const int UltimatumPostBeginAdditionalClickDelayMs = 200;
 
-        private sealed record UltimatumDebugEvent(
-            string Stage,
-            string Source,
-            bool IsPanelVisible,
-            bool IsGruelingGauntletActive)
-        {
-            public bool HasSaturatedChoice { get; init; }
-            public string? SaturatedModifier { get; init; }
-            public bool ShouldTakeReward { get; init; }
-            public string? Action { get; init; }
-            public int CandidateCount { get; init; }
-            public int SaturatedCandidateCount { get; init; }
-            public string? BestModifier { get; init; }
-            public int BestPriority { get; init; } = int.MaxValue;
-            public bool ClickedChoice { get; init; }
-            public bool ClickedConfirm { get; init; }
-            public bool ClickedTakeRewards { get; init; }
-            public string? Notes { get; init; }
-        }
-
-        public readonly struct UltimatumPanelOptionPreview(RectangleF rect, string modifierName, int priorityIndex, bool isSelected)
-        {
-            public RectangleF Rect { get; } = rect;
-            public string ModifierName { get; } = modifierName;
-            public int PriorityIndex { get; } = priorityIndex;
-            public bool IsSelected { get; } = isSelected;
-        }
-
-        private readonly struct UltimatumPanelChoiceCandidate(
-            Element choiceElement,
-            string modifierName,
-            int priorityIndex,
-            bool isSaturated)
-        {
-            public Element ChoiceElement { get; } = choiceElement;
-            public string ModifierName { get; } = modifierName;
-            public int PriorityIndex { get; } = priorityIndex;
-            public bool IsSaturated { get; } = isSaturated;
-        }
-
-        private static bool IsUltimatumPath(string? path) => Constants.IsUltimatumInteractablePath(path);
-
-        internal static bool IsUltimatumLabel(LabelOnGround? label)
-        {
-            if (!IsUltimatumPath(label?.ItemOnGround?.Path))
-                return false;
-
-            Element? child0 = label?.Label?.GetChildAtIndex(0);
-            return child0?.IsVisible == true;
-        }
-
-        internal static bool ShouldSuppressInactiveUltimatumLabel(LabelOnGround? label)
-        {
-            return IsUltimatumPath(label?.ItemOnGround?.Path) && !IsUltimatumLabel(label);
-        }
-
-
         public bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
         {
             previews = [];
@@ -88,26 +31,38 @@ namespace ClickIt.Services
             if (!TryGetActiveUltimatumGroundLabel(out LabelOnGround? ultimatumLabel) || ultimatumLabel == null)
                 return false;
 
-            List<(Element OptionElement, string ModifierName)> options = GetUltimatumOptions(ultimatumLabel);
+            List<(Element OptionElement, string ModifierName)> options = UltimatumUiTreeResolver.GetUltimatumOptions(ultimatumLabel);
             if (options.Count == 0)
                 return false;
 
             var priorities = settings.GetUltimatumModifierPriority();
-            Element? bestOption = GetBestUltimatumGroundOptionElement(options, priorities);
-
-            for (int i = 0; i < options.Count; i++)
+            if (!UltimatumGroundOptionCollector.TryCollectCandidates(
+                    options,
+                    priorities,
+                    includeSaturation: false,
+                    logFailures: false,
+                    _ => { },
+                    out List<UltimatumGroundOptionCandidate> candidates))
             {
-                Element optionElement = options[i].OptionElement;
-                if (!optionElement.IsValid)
-                    continue;
+                return false;
+            }
 
-                RectangleF rect = optionElement.GetClientRect();
+            UltimatumGruelingGroundDecision decision = UltimatumGruelingGroundDecisionEngine.Resolve(
+                candidates,
+                isGruelingGauntletActive: false,
+                static _ => false,
+                canClickTakeReward: false);
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                UltimatumGroundOptionCandidate candidate = candidates[i];
+
+                RectangleF rect = candidate.OptionElement.GetClientRect();
                 if (rect.Width <= 0 || rect.Height <= 0)
                     continue;
 
-                int priorityIndex = GetModifierPriorityIndex(options[i].ModifierName, priorities);
-                bool isSelected = bestOption != null && ReferenceEquals(optionElement, bestOption);
-                previews.Add(new UltimatumPanelOptionPreview(rect, options[i].ModifierName, priorityIndex, isSelected));
+                bool isSelected = decision.HasBestChoice && ReferenceEquals(candidate.OptionElement, decision.BestChoiceElement);
+                previews.Add(new UltimatumPanelOptionPreview(rect, candidate.ModifierName, candidate.PriorityIndex, isSelected));
             }
 
             return previews.Count > 0;
@@ -126,7 +81,7 @@ namespace ClickIt.Services
                 LabelOnGround? label = labels[i];
                 if (label == null)
                     continue;
-                if (!IsUltimatumLabel(label))
+                if (!UltimatumLabelMath.IsUltimatumLabel(label))
                     continue;
                 if (label.Label == null || !label.Label.IsValid)
                     continue;
@@ -138,31 +93,6 @@ namespace ClickIt.Services
             return false;
         }
 
-        private static Element? GetBestUltimatumGroundOptionElement(
-            List<(Element OptionElement, string ModifierName)> options,
-            IReadOnlyList<string> priorities)
-        {
-            int bestIndex = int.MaxValue;
-            Element? bestOption = null;
-
-            for (int i = 0; i < options.Count; i++)
-            {
-                Element optionElement = options[i].OptionElement;
-                if (!optionElement.IsValid)
-                    continue;
-
-                int priorityIndex = GetModifierPriorityIndex(options[i].ModifierName, priorities);
-                if (priorityIndex < bestIndex)
-                {
-                    bestIndex = priorityIndex;
-                    bestOption = optionElement;
-                }
-            }
-
-            return bestOption;
-        }
-
-
         private bool TryClickUltimatumElement(
             Element element,
             Vector2 windowTopLeft,
@@ -170,24 +100,20 @@ namespace ClickIt.Services
             string rejectedClickableAreaLogPrefix,
             string clickLog)
         {
-            if (!EnsureCursorInsideGameWindowForClick(outsideWindowLog))
-            {
-                return false;
-            }
-
             RectangleF rect = element.GetClientRect();
-            if (!IsClickableInEitherSpace(rect.Center, "Ultimatum"))
-            {
-                DebugLog(() => $"{rejectedClickableAreaLogPrefix} center={rect.Center}");
-                return false;
-            }
 
-            Vector2 clickPos = rect.Center + windowTopLeft;
-            DebugLog(() => $"{clickLog} {clickPos}");
-
-            PerformLockedClick(clickPos, element, gameController);
-            performanceMonitor.RecordClickInterval();
-            return true;
+            return UltimatumElementClickExecutor.TryClickElement(
+                rect,
+                element,
+                windowTopLeft,
+                outsideWindowLog,
+                rejectedClickableAreaLogPrefix,
+                clickLog,
+                EnsureCursorInsideGameWindowForClick,
+                IsClickableInEitherSpace,
+                message => DebugLog(() => message),
+                (clickPos, clickElement) => PerformLockedClick(clickPos, clickElement, gameController),
+                performanceMonitor.RecordClickInterval);
         }
 
         private bool TryClickPreferredUltimatumModifier(LabelOnGround label, Vector2 windowTopLeft)
@@ -210,14 +136,14 @@ namespace ClickIt.Services
                 return PublishInitialUltimatumFailure("InitialDisabled", "Initial ultimatum click setting disabled");
             }
 
-            if (!IsUltimatumLabel(label))
+            if (!UltimatumLabelMath.IsUltimatumLabel(label))
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] Label is not Ultimatum interactable path.");
                 return PublishInitialUltimatumFailure("InitialNotUltimatum", "Label path is not ultimatum interactable");
             }
 
             List<string> diagnostics = new(16);
-            List<(Element OptionElement, string ModifierName)> options = GetUltimatumOptions(label, diagnostics);
+            List<(Element OptionElement, string ModifierName)> options = UltimatumUiTreeResolver.GetUltimatumOptions(label, diagnostics);
             LogDiagnostics("[TryClickPreferredUltimatumModifier]", diagnostics);
 
             if (options.Count == 0)
@@ -226,28 +152,34 @@ namespace ClickIt.Services
                 return PublishInitialUltimatumFailure("InitialNoOptions", "No options discovered from ultimatum label tree");
             }
 
+            var priorities = settings.GetUltimatumModifierPriority();
+
             if (IsGruelingGauntletPassiveActive())
             {
-                bool hasSaturatedChoice = TryGetSaturatedUltimatumGroundOption(options, out (Element OptionElement, string ModifierName) saturatedChoice);
-                bool shouldTakeReward = hasSaturatedChoice
-                    && settings.ShouldTakeRewardForGruelingGauntletModifier(saturatedChoice.ModifierName);
+                UltimatumGroundOptionCollector.TryCollectCandidates(
+                    options,
+                    priorities,
+                    includeSaturation: true,
+                    logFailures: true,
+                    message => DebugLog(() => message),
+                    out List<UltimatumGroundOptionCandidate> candidates);
 
-                GruelingGauntletAction action = DetermineGruelingGauntletActionCore(
-                    hasSaturatedChoice,
-                    shouldTakeReward,
+                UltimatumGruelingGroundDecision decision = UltimatumGruelingGroundDecisionEngine.Resolve(
+                    candidates,
+                    isGruelingGauntletActive: true,
+                    settings.ShouldTakeRewardForGruelingGauntletModifier,
                     settings.IsUltimatumTakeRewardButtonClickEnabled());
-                string saturatedModifierName = hasSaturatedChoice ? saturatedChoice.ModifierName : string.Empty;
-                DebugLog(() => $"[TryClickPreferredUltimatumModifier] Grueling Gauntlet action={action}, saturatedModifier='{saturatedModifierName}', shouldTakeReward={shouldTakeReward}");
+                DebugLog(() => $"[TryClickPreferredUltimatumModifier] Grueling Gauntlet action={decision.Saturation.Action}, saturatedModifier='{decision.Saturation.SaturatedModifier}', shouldTakeReward={decision.Saturation.ShouldTakeReward}");
 
                 bool clickedBegin = TryClickUltimatumBeginButton(label, windowTopLeft);
                 PublishUltimatumDebug(new UltimatumDebugEvent("InitialGruelingHandled", "InitialLabel", false, true)
                 {
-                    HasSaturatedChoice = hasSaturatedChoice,
-                    SaturatedModifier = saturatedModifierName,
-                    ShouldTakeReward = shouldTakeReward,
-                    Action = action.ToString(),
+                    HasSaturatedChoice = decision.Saturation.HasSaturatedChoice,
+                    SaturatedModifier = decision.Saturation.SaturatedModifier,
+                    ShouldTakeReward = decision.Saturation.ShouldTakeReward,
+                    Action = decision.Saturation.Action.ToString(),
                     CandidateCount = options.Count,
-                    SaturatedCandidateCount = hasSaturatedChoice ? 1 : 0,
+                    SaturatedCandidateCount = decision.Saturation.SaturatedCandidateCount,
                     ClickedChoice = false,
                     ClickedConfirm = clickedBegin,
                     ClickedTakeRewards = false,
@@ -256,30 +188,32 @@ namespace ClickIt.Services
                 return clickedBegin;
             }
 
-            var priorities = settings.GetUltimatumModifierPriority();
-
-            DebugLog(() => $"[TryClickPreferredUltimatumModifier] Found {options.Count} Ultimatum option(s).");
-            int bestIndex = int.MaxValue;
-            Element? bestOption = null;
-            string bestModifier = string.Empty;
-
-            foreach ((Element optionElement, string modifierName) in options)
+            if (!UltimatumGroundOptionCollector.TryCollectCandidates(
+                    options,
+                    priorities,
+                    includeSaturation: false,
+                    logFailures: true,
+                    message => DebugLog(() => message),
+                    out List<UltimatumGroundOptionCandidate> rankedCandidates))
             {
-                if (optionElement == null || !optionElement.IsValid)
-                    continue;
-
-                int priorityIndex = GetModifierPriorityIndex(modifierName, priorities);
-                RectangleF candidateRect = optionElement.GetClientRect();
-                DebugLog(() => $"[TryClickPreferredUltimatumModifier] Candidate '{modifierName}' priority={priorityIndex}, center={candidateRect.Center}, visible={optionElement.IsVisible}, valid={optionElement.IsValid}");
-                if (priorityIndex < bestIndex)
+                DebugLog(() => "[TryClickPreferredUltimatumModifier] No valid Ultimatum options were eligible.");
+                PublishUltimatumDebug(new UltimatumDebugEvent("InitialNoPriorityCandidate", "InitialLabel", false, false)
                 {
-                    bestIndex = priorityIndex;
-                    bestOption = optionElement;
-                    bestModifier = modifierName;
-                }
+                    CandidateCount = options.Count,
+                    Notes = "No candidate matched ultimatum priority table"
+                });
+                return false;
             }
 
-            if (bestOption == null || bestIndex == int.MaxValue)
+            DebugLog(() => $"[TryClickPreferredUltimatumModifier] Found {rankedCandidates.Count} ranked Ultimatum option(s).");
+
+            UltimatumGruelingGroundDecision bestDecision = UltimatumGruelingGroundDecisionEngine.Resolve(
+                rankedCandidates,
+                isGruelingGauntletActive: false,
+                static _ => false,
+                canClickTakeReward: false);
+
+            if (!bestDecision.HasBestChoice || bestDecision.BestChoiceElement == null)
             {
                 DebugLog(() => "[TryClickPreferredUltimatumModifier] No candidate matched configured priorities.");
                 PublishUltimatumDebug(new UltimatumDebugEvent("InitialNoPriorityCandidate", "InitialLabel", false, false)
@@ -289,6 +223,10 @@ namespace ClickIt.Services
                 });
                 return false;
             }
+
+            Element bestOption = bestDecision.BestChoiceElement;
+            string bestModifier = bestDecision.BestModifier;
+            int bestIndex = bestDecision.BestPriority;
 
             bool clicked = TryClickUltimatumElement(
                 bestOption,
@@ -338,34 +276,10 @@ namespace ClickIt.Services
             return false;
         }
 
-        private static bool TryGetSaturatedUltimatumGroundOption(
-            IReadOnlyList<(Element OptionElement, string ModifierName)> options,
-            out (Element OptionElement, string ModifierName) saturatedChoice)
-        {
-            saturatedChoice = default;
-
-            for (int i = 0; i < options.Count; i++)
-            {
-                (Element optionElement, string modifierName) = options[i];
-                if (optionElement == null || !optionElement.IsValid)
-                    continue;
-
-                bool hasSaturationState = TryReadUltimatumChoiceSaturation(optionElement, out bool isSaturated);
-                bool saturatedForSelection = ShouldTreatUltimatumChoiceAsSaturatedCore(hasSaturationState, isSaturated, optionElement.IsVisible);
-                if (!saturatedForSelection)
-                    continue;
-
-                saturatedChoice = (optionElement, modifierName);
-                return true;
-            }
-
-            return false;
-        }
-
         private bool TryClickUltimatumBeginButton(LabelOnGround label, Vector2 windowTopLeft)
         {
             List<string> diagnostics = new(8);
-            Element? beginButton = GetUltimatumBeginButton(label, diagnostics);
+            Element? beginButton = UltimatumUiTreeResolver.GetUltimatumBeginButton(label, diagnostics);
             LogDiagnostics("[TryClickUltimatumBeginButton]", diagnostics);
 
             if (beginButton == null)
@@ -386,6 +300,15 @@ namespace ClickIt.Services
 
             Thread.Sleep(UltimatumPostBeginDelayMs + UltimatumPostBeginAdditionalClickDelayMs);
             return true;
+        }
+
+        private void LogDiagnostics(string prefix, List<string> diagnostics)
+        {
+            for (int i = 0; i < diagnostics.Count; i++)
+            {
+                string msg = diagnostics[i];
+                DebugLog(() => $"{prefix} {msg}");
+            }
         }
 
     }

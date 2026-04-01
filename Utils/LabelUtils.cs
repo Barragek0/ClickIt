@@ -231,9 +231,16 @@ namespace ClickIt.Utils
 
         public static bool IsValidEntityPath(Entity item)
         {
-            string path = item.Path ?? "";
-            if (string.IsNullOrEmpty(path)) return false;
-            return IsPathForClickableObject(path);
+            return IsValidEntityPathCore(item.Path);
+        }
+
+        internal static bool IsValidEntityPathCore(string? path)
+        {
+            string value = path ?? string.Empty;
+            if (string.IsNullOrEmpty(value))
+                return false;
+
+            return IsPathForClickableObject(value);
         }
 
         public static bool IsPathForClickableObject(string path)

@@ -1,6 +1,6 @@
 ﻿using FluentAssertions;
 using ClickIt.Services;
-using ClickIt.Tests.TestUtils;
+using ClickIt.Services.Area;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 
@@ -36,10 +36,15 @@ namespace ClickIt.Tests.Unit
 
         private static void SetAreaRectangles(AreaService svc, RectangleF full, RectangleF health, RectangleF mana, RectangleF buffs)
         {
-            PrivateFieldAccessor.Set(svc, "_fullScreenRectangle", full);
-            PrivateFieldAccessor.Set(svc, "_healthAndFlaskRectangle", health);
-            PrivateFieldAccessor.Set(svc, "_manaAndSkillsRectangle", mana);
-            PrivateFieldAccessor.Set(svc, "_buffsAndDebuffsRectangle", buffs);
+            svc.ApplyBlockedSnapshot(new AreaBlockedSnapshot
+            {
+                FullScreenRectangle = full,
+                HealthAndFlaskRectangle = health,
+                ManaAndSkillsRectangle = mana,
+                HealthSquareRectangle = health,
+                ManaSquareRectangle = mana,
+                BuffsAndDebuffsRectangle = buffs
+            });
         }
     }
 }

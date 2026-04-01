@@ -192,5 +192,34 @@ namespace ClickIt.Services
         {
             return RuntimeHelpers.GetHashCode(GetThreadLocalShrineList());
         }
+
+        internal void SeedCacheWithSingleNullEntryForTests(long lastShrineCacheTime)
+        {
+            _cachedShrines = [null!];
+            _lastShrineCacheTime = lastShrineCacheTime;
+        }
+
+        internal void StartCacheTimerForTests()
+        {
+            if (!_shrineCacheTimer.IsRunning)
+            {
+                _shrineCacheTimer.Start();
+            }
+        }
+
+        internal long GetCacheElapsedMillisecondsForTests()
+        {
+            return _shrineCacheTimer.ElapsedMilliseconds;
+        }
+
+        internal bool HasCachedShrinesForTests()
+        {
+            return _cachedShrines != null;
+        }
+
+        internal long GetLastShrineCacheTimeForTests()
+        {
+            return _lastShrineCacheTime;
+        }
     }
 }

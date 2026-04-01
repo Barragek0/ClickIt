@@ -1,5 +1,6 @@
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
+using ClickIt.Services.Click.Ranking;
 
 namespace ClickIt.Services.Label.Selection
 {
@@ -63,7 +64,7 @@ namespace ClickIt.Services.Label.Selection
             if (start >= end)
                 return default;
 
-            var scoreContext = new CandidateScoreEngine.CandidateScoreContext(
+            var scoreContext = new MechanicCandidateRanker.RankContext(
                 clickSettings.MechanicPriorityIndexMap,
                 clickSettings.IgnoreDistanceMechanicIds,
                 clickSettings.IgnoreDistanceWithinByMechanicId,
@@ -71,7 +72,7 @@ namespace ClickIt.Services.Label.Selection
 
             LabelSelectionStats stats = default;
             LabelOnGround? bestCandidate = null;
-            CandidateScoreEngine.CandidateScore bestScore = default;
+            MechanicCandidateRanker.CandidateRank bestScore = default;
             bool hasBestScore = false;
             string? bestMechanicId = null;
 
@@ -88,7 +89,7 @@ namespace ClickIt.Services.Label.Selection
                 }
 
                 float cursorDistance = cursorDistanceResolver(label);
-                CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(
+                MechanicCandidateRanker.CandidateRank score = MechanicCandidateRanker.Build(
                     candidate.Item!.DistancePlayer,
                     candidate.MechanicId!,
                     cursorDistance,
@@ -97,7 +98,7 @@ namespace ClickIt.Services.Label.Selection
                 if (score.Ignored)
                     stats = stats.IncrementIgnoredByDistance();
 
-                if (!hasBestScore || CandidateScoreEngine.Compare(score, bestScore) < 0)
+                if (!hasBestScore || MechanicCandidateRanker.Compare(score, bestScore) < 0)
                 {
                     bestCandidate = label;
                     bestScore = score;

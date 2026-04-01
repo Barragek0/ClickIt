@@ -1,4 +1,4 @@
-using ClickIt.Definitions;
+﻿using ClickIt.Definitions;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -16,16 +16,14 @@ namespace ClickIt
             public bool IsHovered { get; } = isHovered;
         }
 
-        private sealed record UltimatumModifierGroupEntry(string Id, string DisplayName, string[] Members);
-
-        private static readonly UltimatumModifierGroupEntry[] UltimatumModifierGroups = BuildUltimatumModifierGroups();
-        private static readonly HashSet<string> UltimatumTieredModifierNames = BuildUltimatumTieredModifierNames();
+        private static UltimatumModifierGroupEntry[] UltimatumModifierGroups => UltimatumModifierGroupCatalog.Groups;
+        private static HashSet<string> UltimatumTieredModifierNames => UltimatumModifierGroupCatalog.TieredModifierNames;
 
         private void DrawUltimatumModifierTablePanel()
         {
             EnsureUltimatumModifiersInitialized();
 
-            DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref ultimatumSearchFilter);
+            DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref UiState.UltimatumSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##UltimatumResetDefaults"))
             {
                 ResetUltimatumModifierPriorityDefaults();
@@ -48,7 +46,7 @@ namespace ClickIt
                 for (int i = 0; i < UltimatumModifierPriority.Count; i++)
                 {
                     string modifier = UltimatumModifierPriority[i];
-                    if (!MatchesUltimatumSearch(modifier, ultimatumSearchFilter))
+                    if (!MatchesUltimatumSearch(modifier, UiState.UltimatumSearchFilter))
                         continue;
 
                     ImGui.TableNextRow();
@@ -100,13 +98,13 @@ namespace ClickIt
         {
             EnsureUltimatumTakeRewardModifiersInitialized();
 
-            bool hasDetection = Services.ClickService.TryGetGruelingGauntletDetectionForSettings(out bool isGruelingGauntletActive);
+            bool hasDetection = Services.Click.Runtime.UltimatumGruelingGauntletDetectionStore.TryGet(out bool isGruelingGauntletActive);
             ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "This table only does anything when Gruelling Gauntlet is allocated.");
 
             ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Rows with [v] can be clicked to open stage-specific submenu options.");
             ImGui.Spacing();
 
-            DrawSearchBar("##UltimatumTakeRewardSearch", "Clear##UltimatumTakeRewardSearchClear", ref ultimatumTakeRewardSearchFilter);
+            DrawSearchBar("##UltimatumTakeRewardSearch", "Clear##UltimatumTakeRewardSearchClear", ref UiState.UltimatumTakeRewardSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##UltimatumTakeRewardResetDefaults"))
             {
                 ResetUltimatumTakeRewardModifierDefaults();
@@ -135,7 +133,7 @@ namespace ClickIt
                     continue;
                 if (!sourceSet.Contains(modifier))
                     continue;
-                if (!MatchesUltimatumSearch(modifier, ultimatumTakeRewardSearchFilter))
+                if (!MatchesUltimatumSearch(modifier, UiState.UltimatumTakeRewardSearchFilter))
                     continue;
 
                 hasEntries = true;
@@ -157,7 +155,7 @@ namespace ClickIt
                 if (arrowClicked)
                 {
                     MoveUltimatumTakeRewardModifier(modifier, moveToTakeReward);
-                    _expandedUltimatumTakeRewardRowKey = string.Empty;
+                    UiState.ExpandedUltimatumTakeRewardRowKey = string.Empty;
                     ImGui.PopID();
                     return;
                 }
@@ -165,7 +163,7 @@ namespace ClickIt
 
             foreach (UltimatumModifierGroupEntry group in UltimatumModifierGroups)
             {
-                if (!ShouldRenderUltimatumModifierGroup(group, sourceSet, ultimatumTakeRewardSearchFilter))
+                if (!ShouldRenderUltimatumModifierGroup(group, sourceSet, UiState.UltimatumTakeRewardSearchFilter))
                     continue;
 
                 hasEntries = true;
@@ -173,7 +171,7 @@ namespace ClickIt
                 if (rowState.ArrowClicked)
                 {
                     SetUltimatumModifierGroupState(group, moveToTakeReward);
-                    _expandedUltimatumTakeRewardRowKey = string.Empty;
+                    UiState.ExpandedUltimatumTakeRewardRowKey = string.Empty;
                     ImGui.PopID();
                     return;
                 }
@@ -242,7 +240,7 @@ namespace ClickIt
             {
                 if (!group.Members.Contains(modifier, StringComparer.OrdinalIgnoreCase))
                     continue;
-                if (!MatchesUltimatumSearch(modifier, ultimatumTakeRewardSearchFilter))
+                if (!MatchesUltimatumSearch(modifier, UiState.UltimatumTakeRewardSearchFilter))
                     continue;
 
                 bool isTakeReward = UltimatumTakeRewardModifierNames.Contains(modifier);
@@ -275,58 +273,6 @@ namespace ClickIt
             return false;
         }
 
-        private static UltimatumModifierGroupEntry[] BuildUltimatumModifierGroups()
-        {
-            Dictionary<string, List<string>> membersByBase = new(StringComparer.OrdinalIgnoreCase);
-            List<string> groupOrder = [];
-
-            for (int i = 0; i < UltimatumModifiersConstants.AllModifierNamesWithStages.Length; i++)
-            {
-                string modifier = UltimatumModifiersConstants.AllModifierNamesWithStages[i];
-                if (!TryGetUltimatumModifierBaseName(modifier, out string baseName))
-                    continue;
-
-                if (!membersByBase.TryGetValue(baseName, out List<string>? members))
-                {
-                    members = [];
-                    membersByBase[baseName] = members;
-                    groupOrder.Add(baseName);
-                }
-
-                members.Add(modifier);
-            }
-
-            List<UltimatumModifierGroupEntry> groups = new(groupOrder.Count);
-            for (int i = 0; i < groupOrder.Count; i++)
-            {
-                string baseName = groupOrder[i];
-                List<string> members = membersByBase[baseName];
-                if (members.Count == 0)
-                    continue;
-
-                groups.Add(new UltimatumModifierGroupEntry(baseName, baseName, [.. members.Distinct(StringComparer.OrdinalIgnoreCase)]));
-            }
-
-            return [.. groups];
-        }
-
-        private static HashSet<string> BuildUltimatumTieredModifierNames()
-        {
-            HashSet<string> result = new(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < UltimatumModifierGroups.Length; i++)
-            {
-                result.Add(UltimatumModifierGroups[i].Id);
-
-                string[] members = UltimatumModifierGroups[i].Members;
-                for (int j = 0; j < members.Length; j++)
-                {
-                    result.Add(members[j]);
-                }
-            }
-
-            return result;
-        }
-
         private void SetUltimatumModifierGroupState(UltimatumModifierGroupEntry group, bool moveToTakeReward)
         {
             for (int i = 0; i < group.Members.Length; i++)
@@ -351,16 +297,16 @@ namespace ClickIt
 
         private bool IsExpandedUltimatumTakeRewardRow(string listId, string rowId)
         {
-            return string.Equals(_expandedUltimatumTakeRewardRowKey, BuildExpandedUltimatumTakeRewardRowKey(listId, rowId), StringComparison.Ordinal);
+            return string.Equals(UiState.ExpandedUltimatumTakeRewardRowKey, BuildExpandedUltimatumTakeRewardRowKey(listId, rowId), StringComparison.Ordinal);
         }
 
         private void ToggleExpandedUltimatumTakeRewardRow(string listId, string rowId)
         {
             string rowKey = BuildExpandedUltimatumTakeRewardRowKey(listId, rowId);
-            if (string.Equals(_expandedUltimatumTakeRewardRowKey, rowKey, StringComparison.Ordinal))
-                _expandedUltimatumTakeRewardRowKey = string.Empty;
+            if (string.Equals(UiState.ExpandedUltimatumTakeRewardRowKey, rowKey, StringComparison.Ordinal))
+                UiState.ExpandedUltimatumTakeRewardRowKey = string.Empty;
             else
-                _expandedUltimatumTakeRewardRowKey = rowKey;
+                UiState.ExpandedUltimatumTakeRewardRowKey = rowKey;
         }
 
         private static bool MatchesUltimatumSearch(string modifier, string filter)

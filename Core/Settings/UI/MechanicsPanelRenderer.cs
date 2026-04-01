@@ -1,4 +1,4 @@
-using ClickIt.Definitions;
+﻿using ClickIt.Definitions;
 using ExileCore.Shared.Nodes;
 using ImGuiNET;
 using System.Linq;
@@ -53,11 +53,11 @@ namespace ClickIt
 
             ImGui.Spacing();
 
-            DrawSearchBar("##MechanicsSearch", "Clear##MechanicsSearchClear", ref mechanicsSearchFilter);
+            DrawSearchBar("##MechanicsSearch", "Clear##MechanicsSearchClear", ref UiState.MechanicsSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##MechanicsResetDefaults"))
             {
                 ResetMechanicsTableDefaults();
-                _expandedMechanicsTableRowId = string.Empty;
+                UiState.ExpandedMechanicsTableRowId = string.Empty;
             }
 
             ImGui.Spacing();
@@ -83,7 +83,7 @@ namespace ClickIt
             {
                 if (!string.IsNullOrEmpty(entry.GroupId))
                     continue;
-                if (!ShouldRenderMechanicEntry(entry, moveToClick, mechanicsSearchFilter))
+                if (!ShouldRenderMechanicEntry(entry, moveToClick, UiState.MechanicsSearchFilter))
                     continue;
 
                 hasEntries = true;
@@ -91,14 +91,14 @@ namespace ClickIt
                 if (arrowClicked)
                 {
                     entry.Node.Value = moveToClick;
-                    _expandedMechanicsTableRowId = string.Empty;
+                    UiState.ExpandedMechanicsTableRowId = string.Empty;
                     break;
                 }
             }
 
             foreach (MechanicToggleGroupEntry group in MechanicToggleGroups)
             {
-                if (!ShouldRenderMechanicGroup(group, entries, moveToClick, mechanicsSearchFilter))
+                if (!ShouldRenderMechanicGroup(group, entries, moveToClick, UiState.MechanicsSearchFilter))
                     continue;
 
                 hasEntries = true;
@@ -106,7 +106,7 @@ namespace ClickIt
                 if (rowState.ArrowClicked)
                 {
                     SetMechanicGroupState(group.Id, entries, moveToClick);
-                    _expandedMechanicsTableRowId = string.Empty;
+                    UiState.ExpandedMechanicsTableRowId = string.Empty;
                     break;
                 }
 
@@ -170,7 +170,7 @@ namespace ClickIt
             {
                 if (!string.Equals(entry.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (!MatchesMechanicsSearch(entry.DisplayName, mechanicsSearchFilter) && !MatchesMechanicsSearch(group.DisplayName, mechanicsSearchFilter))
+                if (!MatchesMechanicsSearch(entry.DisplayName, UiState.MechanicsSearchFilter) && !MatchesMechanicsSearch(group.DisplayName, UiState.MechanicsSearchFilter))
                     continue;
 
                 bool enabled = entry.Node.Value;
@@ -206,7 +206,7 @@ namespace ClickIt
                 .OrderBy(static x => x, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-            bool searchIsEmpty = string.IsNullOrWhiteSpace(mechanicsSearchFilter);
+            bool searchIsEmpty = string.IsNullOrWhiteSpace(UiState.MechanicsSearchFilter);
 
             foreach (string subgroupName in subgroupNames)
             {
@@ -214,8 +214,8 @@ namespace ClickIt
                     .Where(e => string.Equals(e.Subgroup, subgroupName, StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
-                bool subgroupMatchesSearch = MatchesMechanicsSearch(subgroupName, mechanicsSearchFilter);
-                bool hasEntryMatch = subgroupEntries.Any(e => MatchesMechanicsSearch(e.DisplayName, mechanicsSearchFilter));
+                bool subgroupMatchesSearch = MatchesMechanicsSearch(subgroupName, UiState.MechanicsSearchFilter);
+                bool hasEntryMatch = subgroupEntries.Any(e => MatchesMechanicsSearch(e.DisplayName, UiState.MechanicsSearchFilter));
                 if (!searchIsEmpty && !subgroupMatchesSearch && !hasEntryMatch)
                     continue;
 
@@ -226,7 +226,7 @@ namespace ClickIt
                 for (int i = 0; i < subgroupEntries.Length; i++)
                 {
                     MechanicToggleTableEntry entry = subgroupEntries[i];
-                    if (!searchIsEmpty && !subgroupMatchesSearch && !MatchesMechanicsSearch(entry.DisplayName, mechanicsSearchFilter))
+                    if (!searchIsEmpty && !subgroupMatchesSearch && !MatchesMechanicsSearch(entry.DisplayName, UiState.MechanicsSearchFilter))
                         continue;
 
                     DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
@@ -243,8 +243,8 @@ namespace ClickIt
             {
                 MechanicToggleTableEntry entry = ungroupedEntries[i];
                 if (!searchIsEmpty
-                    && !MatchesMechanicsSearch(entry.DisplayName, mechanicsSearchFilter)
-                    && !MatchesMechanicsSearch(group.DisplayName, mechanicsSearchFilter))
+                    && !MatchesMechanicsSearch(entry.DisplayName, UiState.MechanicsSearchFilter)
+                    && !MatchesMechanicsSearch(group.DisplayName, UiState.MechanicsSearchFilter))
                 {
                     continue;
                 }
@@ -373,19 +373,19 @@ namespace ClickIt
 
         private bool IsExpandedMechanicTableRow(string listId, string rowId)
         {
-            return string.Equals(_expandedMechanicsTableRowId, BuildExpandedMechanicTableRowKey(listId, rowId), StringComparison.Ordinal);
+            return string.Equals(UiState.ExpandedMechanicsTableRowId, BuildExpandedMechanicTableRowKey(listId, rowId), StringComparison.Ordinal);
         }
 
         private void ToggleExpandedMechanicTableRow(string listId, string rowId)
         {
             string rowKey = BuildExpandedMechanicTableRowKey(listId, rowId);
-            if (string.Equals(_expandedMechanicsTableRowId, rowKey, StringComparison.Ordinal))
+            if (string.Equals(UiState.ExpandedMechanicsTableRowId, rowKey, StringComparison.Ordinal))
             {
-                _expandedMechanicsTableRowId = string.Empty;
+                UiState.ExpandedMechanicsTableRowId = string.Empty;
             }
             else
             {
-                _expandedMechanicsTableRowId = rowKey;
+                UiState.ExpandedMechanicsTableRowId = rowKey;
             }
         }
 

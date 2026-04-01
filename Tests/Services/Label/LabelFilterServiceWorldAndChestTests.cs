@@ -1,62 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
-using System.Runtime.CompilerServices;
 using ClickIt.Definitions;
+using ClickIt.Services.Label.Classification;
 
 namespace ClickIt.Tests.Unit
 {
     [TestClass]
     public class LabelFilterServiceWorldAndChestTests
     {
-        private static void SetMemberValue(object obj, string memberName, object? value)
-        {
-            if (obj == null) return;
-            var type = obj.GetType();
-
-            var prop = type.GetProperty(memberName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            if (prop != null && prop.CanWrite)
-            {
-                prop.SetValue(obj, value);
-                return;
-            }
-
-            var backingField = type.GetField($"<{memberName}>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (backingField != null)
-            {
-                backingField.SetValue(obj, value);
-                return;
-            }
-
-            var fuzzy = type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
-            foreach (var f in fuzzy)
-            {
-                if (f.Name.IndexOf(memberName, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    f.SetValue(obj, value);
-                    return;
-                }
-            }
-
-            if (value != null)
-            {
-                foreach (var f in fuzzy)
-                {
-                    if (f.FieldType.IsInstanceOfType(value))
-                    {
-                        f.SetValue(obj, value);
-                        return;
-                    }
-                }
-            }
-
-            // Last resort: cannot set this member via reflection - fail with clearer message
-            throw new InvalidOperationException($"Unable to set member '{memberName}' on type '{type.FullName}' in test.");
-        }
         private static string? InvokeChestMechanicFromConfiguredRules(
             bool clickBasicChests,
             bool clickLeagueChests,
@@ -81,7 +35,7 @@ namespace ClickIt.Tests.Unit
             if (clickBreachGraspingCoffers) enabledSpecificLeagueChestIds.Add(MechanicIds.BreachGraspingCoffers);
             if (clickSynthesisSynthesisedStash) enabledSpecificLeagueChestIds.Add(MechanicIds.SynthesisSynthesisedStash);
 
-            return Services.LabelFilterService.GetChestMechanicIdFromConfiguredRules(
+            return MechanicClassifier.GetChestMechanicIdFromConfiguredRules(
                 clickBasicChests,
                 clickLeagueChests,
                 clickLeagueChestsOther,
@@ -94,29 +48,21 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldClickWorldItemCore_ReturnsFalse_WhenClickItemsDisabled()
         {
-            var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-
-            var res = Services.LabelFilterService.ShouldClickWorldItemCore(false, EntityType.WorldItem, ent);
+            var res = MechanicClassifier.ShouldClickWorldItemCore(false, EntityType.WorldItem, itemPath: null);
             res.Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldClickWorldItemCore_ReturnsFalse_WhenPathContainsStrongbox()
         {
-            var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            SetMemberValue(ent, "Path", "some/StrongBoxes/Strongbox/x");
-
-            var res = Services.LabelFilterService.ShouldClickWorldItemCore(true, EntityType.WorldItem, ent);
+            var res = MechanicClassifier.ShouldClickWorldItemCore(true, EntityType.WorldItem, "some/StrongBoxes/Strongbox/x");
             res.Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldClickWorldItemCore_ReturnsTrue_WhenEnabledAndNotStrongbox()
         {
-            var ent = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            SetMemberValue(ent, "Path", "some/Item/Name");
-
-            var res = Services.LabelFilterService.ShouldClickWorldItemCore(true, EntityType.WorldItem, ent);
+            var res = MechanicClassifier.ShouldClickWorldItemCore(true, EntityType.WorldItem, "some/Item/Name");
             res.Should().BeTrue();
         }
 
@@ -125,7 +71,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void IsBasicChest_DetectsSimpleNames_CaseInsensitive()
         {
-            var res = Services.LabelFilterService.IsBasicChestName("chest");
+            var res = MechanicClassifier.IsBasicChestName("chest");
             res.Should().BeTrue();
         }
 
@@ -217,10 +163,10 @@ namespace ClickIt.Tests.Unit
             var settlersNodePath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/CrimsonIron";
             var monsterPath = "Metadata/Monsters/LeagueKalguur/CrimsonIron/SmallGrowthMaps@83";
 
-            var settlersMatch = Services.LabelFilterService.IsSettlersOrePath(settlersNodePath);
+            var settlersMatch = MechanicClassifier.IsSettlersOrePath(settlersNodePath);
             settlersMatch.Should().BeTrue();
 
-            var monsterMatch = Services.LabelFilterService.IsSettlersOrePath(monsterPath);
+            var monsterMatch = MechanicClassifier.IsSettlersOrePath(monsterPath);
             monsterMatch.Should().BeFalse();
         }
 
@@ -229,13 +175,13 @@ namespace ClickIt.Tests.Unit
         {
             string path = "Metadata/Terrain/Labyrinth/Objects/LabyrinthTrialPortalAreaTransition";
 
-            var disabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
+            var disabled = MechanicClassifier.GetAreaTransitionMechanicId(
                 true,
                 false,
                 EntityType.AreaTransition,
                 path);
 
-            var enabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
+            var enabled = MechanicClassifier.GetAreaTransitionMechanicId(
                 false,
                 true,
                 EntityType.AreaTransition,
@@ -250,13 +196,13 @@ namespace ClickIt.Tests.Unit
         {
             string path = "Metadata/Terrain/Leagues/Delve/Objects/SomeAreaTransition";
 
-            var disabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
+            var disabled = MechanicClassifier.GetAreaTransitionMechanicId(
                 false,
                 true,
                 EntityType.AreaTransition,
                 path);
 
-            var enabled = Services.LabelFilterService.GetAreaTransitionMechanicId(
+            var enabled = MechanicClassifier.GetAreaTransitionMechanicId(
                 true,
                 false,
                 EntityType.AreaTransition,

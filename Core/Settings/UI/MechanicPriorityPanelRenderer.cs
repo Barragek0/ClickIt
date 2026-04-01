@@ -1,4 +1,4 @@
-using ExileCore.Shared.Nodes;
+﻿using ExileCore.Shared.Nodes;
 using ImGuiNET;
 using System.Numerics;
 
@@ -124,17 +124,17 @@ namespace ClickIt
             }
 
             ImGui.SameLine();
-            bool isExpanded = string.Equals(_expandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase);
+            bool isExpanded = string.Equals(UiState.ExpandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase);
             bool rowClicked = ImGui.Selectable($"{entry.DisplayName}##MechanicPriority_{mechanicId}", isExpanded, ImGuiSelectableFlags.AllowDoubleClick, new Vector2(0, 0));
             if (rowClicked)
-                _expandedMechanicPriorityRowId = isExpanded ? string.Empty : mechanicId;
+                UiState.ExpandedMechanicPriorityRowId = isExpanded ? string.Empty : mechanicId;
 
             return false;
         }
 
         private void DrawMechanicPriorityExpandedOptions(string mechanicId)
         {
-            if (!string.Equals(_expandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(UiState.ExpandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase))
                 return;
 
             ImGui.TableNextRow();

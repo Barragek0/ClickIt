@@ -42,7 +42,7 @@ namespace ClickIt
             if (takeRewardSet.Contains($"{normalized} I"))
                 return true;
 
-            if (TryGetUltimatumModifierBaseName(normalized, out string baseName)
+            if (UltimatumModifierGroupCatalog.TryGetUltimatumModifierBaseName(normalized, out string baseName)
                 && takeRewardSet.Contains(baseName))
             {
                 return true;
@@ -65,27 +65,6 @@ namespace ClickIt
             }
 
             return true;
-        }
-
-        private static bool TryGetUltimatumModifierBaseName(string modifierName, out string baseModifierName)
-        {
-            baseModifierName = string.Empty;
-            if (string.IsNullOrWhiteSpace(modifierName))
-                return false;
-
-            string[] suffixes = [" I", " II", " III", " IV"];
-            string trimmed = modifierName.Trim();
-            for (int i = 0; i < suffixes.Length; i++)
-            {
-                string suffix = suffixes[i];
-                if (!trimmed.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                baseModifierName = trimmed[..^suffix.Length].Trim();
-                return baseModifierName.Length > 0;
-            }
-
-            return false;
         }
 
         private static string NormalizeUltimatumModifierForMatching(string modifierName)

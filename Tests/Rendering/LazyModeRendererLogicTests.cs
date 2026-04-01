@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace ClickIt.Tests.Rendering
 {
@@ -11,7 +10,7 @@ namespace ClickIt.Tests.Rendering
         [TestMethod]
         public void GetLazyModeRestrictionDisplayReason_UsesGenericFallback_WhenInputIsBlank()
         {
-            string result = InvokePrivateStatic<string>("GetLazyModeRestrictionDisplayReason", "   ");
+            string result = global::ClickIt.Rendering.LazyModeRenderer.GetLazyModeRestrictionDisplayReason("   ");
 
             result.Should().Be("Lazy mode blocking condition detected.");
         }
@@ -19,7 +18,7 @@ namespace ClickIt.Tests.Rendering
         [TestMethod]
         public void GetLazyModeRestrictionDisplayReason_TrimsAndReturnsReason_WhenProvided()
         {
-            string result = InvokePrivateStatic<string>("GetLazyModeRestrictionDisplayReason", "  Something blocked  ");
+            string result = global::ClickIt.Rendering.LazyModeRenderer.GetLazyModeRestrictionDisplayReason("  Something blocked  ");
 
             result.Should().Be("Something blocked");
         }
@@ -27,7 +26,7 @@ namespace ClickIt.Tests.Rendering
         [TestMethod]
         public void WrapOverlayText_WrapsLongTextAndSkipsBlankLines()
         {
-            var lines = InvokePrivateStatic<List<string>>("WrapOverlayText", "first line\n\nthis line should wrap into chunks", 12);
+            var lines = global::ClickIt.Rendering.LazyModeRenderer.WrapOverlayText("first line\n\nthis line should wrap into chunks", 12);
 
             lines.Should().NotBeEmpty();
             lines[0].Should().Be("first line");
@@ -40,18 +39,9 @@ namespace ClickIt.Tests.Rendering
         [DataRow(true, true, "both mouse buttons")]
         public void GetBlockingMouseButtonName_ReturnsExpectedText(bool leftBlocks, bool rightBlocks, string expected)
         {
-            string result = InvokePrivateStatic<string>("GetBlockingMouseButtonName", leftBlocks, rightBlocks);
+            string result = global::ClickIt.Rendering.LazyModeRenderer.GetBlockingMouseButtonName(leftBlocks, rightBlocks);
 
             result.Should().Be(expected);
-        }
-
-        private static T InvokePrivateStatic<T>(string methodName, params object?[] args)
-        {
-            var method = typeof(global::ClickIt.Rendering.LazyModeRenderer)
-                .GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static);
-
-            method.Should().NotBeNull();
-            return (T)method!.Invoke(null, args)!;
         }
     }
 }

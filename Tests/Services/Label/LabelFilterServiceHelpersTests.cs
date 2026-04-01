@@ -2,9 +2,9 @@
 using FluentAssertions;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ClickIt.Services;
 using ClickIt.Definitions;
+using ClickIt.Services.Label.Classification;
 using ExileCore;
 using ExileCore.Shared.Enums;
 
@@ -66,7 +66,7 @@ namespace ClickIt.Tests.Unit
                     clickBreachGraspingCoffers,
                     clickSynthesisSynthesisedStash);
 
-                return LabelFilterService.GetChestMechanicIdFromConfiguredRules(
+                return MechanicClassifier.GetChestMechanicIdFromConfiguredRules(
                     clickBasicChests,
                     clickLeagueChests,
                     clickLeagueChestsOther,
@@ -125,21 +125,21 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void PathHelpers_DetectHarvestAndSettlersOrePaths()
         {
-            var rh1 = LabelFilterService.IsHarvestPath("Some/Harvest/Irrigator/Path");
+            var rh1 = MechanicClassifier.IsHarvestPath("Some/Harvest/Irrigator/Path");
             rh1.Should().BeTrue();
-            var rh2 = LabelFilterService.IsHarvestPath("Nothing/Here");
+            var rh2 = MechanicClassifier.IsHarvestPath("Nothing/Here");
             rh2.Should().BeFalse();
 
-            var rs1 = LabelFilterService.IsSettlersOrePath("Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/PetrifiedWood");
+            var rs1 = MechanicClassifier.IsSettlersOrePath("Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/PetrifiedWood");
             rs1.Should().BeTrue();
-            var rs2 = LabelFilterService.IsSettlersOrePath("Random/Path");
+            var rs2 = MechanicClassifier.IsSettlersOrePath("Random/Path");
             rs2.Should().BeFalse();
 
             var verisiumPath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium";
-            var rs3 = LabelFilterService.IsSettlersVerisiumPath(verisiumPath);
+            var rs3 = MechanicClassifier.IsSettlersVerisiumPath(verisiumPath);
             rs3.Should().BeTrue();
 
-            var rs4 = LabelFilterService.IsSettlersVerisiumPath(verisiumPath.ToLowerInvariant());
+            var rs4 = MechanicClassifier.IsSettlersVerisiumPath(verisiumPath.ToLowerInvariant());
             rs4.Should().BeTrue();
         }
 
@@ -166,30 +166,30 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldClickAltar_RequiresFlagAndPathPatterns()
         {
-            var ra1 = LabelFilterService.ShouldClickAltar(false, false, false, false, string.Empty);
+            var ra1 = MechanicClassifier.ShouldClickAltar(false, false, false, false, string.Empty);
             ra1.Should().BeFalse();
 
-            var ra2 = LabelFilterService.ShouldClickAltar(false, false, false, false, "CleansingFireAltar");
+            var ra2 = MechanicClassifier.ShouldClickAltar(false, false, false, false, "CleansingFireAltar");
             ra2.Should().BeFalse();
 
-            var ra3 = LabelFilterService.ShouldClickAltar(true, false, false, false, "Some/CleansingFireAltar/Here");
+            var ra3 = MechanicClassifier.ShouldClickAltar(true, false, false, false, "Some/CleansingFireAltar/Here");
             ra3.Should().BeTrue();
-            var ra4 = LabelFilterService.ShouldClickAltar(false, true, false, false, "This/TangleAltar");
+            var ra4 = MechanicClassifier.ShouldClickAltar(false, true, false, false, "This/TangleAltar");
             ra4.Should().BeTrue();
         }
 
         [TestMethod]
         public void IsBasicChestName_AcceptsExpectedNames_IgnoresCase()
         {
-            var cb1 = LabelFilterService.IsBasicChestName("chest");
+            var cb1 = MechanicClassifier.IsBasicChestName("chest");
             cb1.Should().BeTrue();
-            var cb2 = LabelFilterService.IsBasicChestName("Golden Chest");
+            var cb2 = MechanicClassifier.IsBasicChestName("Golden Chest");
             cb2.Should().BeTrue();
-            var cb3 = LabelFilterService.IsBasicChestName("weapon rack");
+            var cb3 = MechanicClassifier.IsBasicChestName("weapon rack");
             cb3.Should().BeTrue();
-            var cb4 = LabelFilterService.IsBasicChestName("mystery");
+            var cb4 = MechanicClassifier.IsBasicChestName("mystery");
             cb4.Should().BeFalse();
-            var cb5 = LabelFilterService.IsBasicChestName(null);
+            var cb5 = MechanicClassifier.IsBasicChestName(null);
             cb5.Should().BeFalse();
         }
 

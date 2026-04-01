@@ -11,11 +11,11 @@ namespace ClickIt.Services.Observability
 
     internal sealed record ClickTelemetrySnapshot(
         bool ServiceAvailable,
-        ClickService.ClickDebugSnapshot Click,
+        ClickDebugSnapshot Click,
         IReadOnlyList<string> ClickTrail,
-        ClickService.RuntimeDebugLogSnapshot RuntimeLog,
+        RuntimeDebugLogSnapshot RuntimeLog,
         IReadOnlyList<string> RuntimeLogTrail,
-        ClickService.UltimatumDebugSnapshot Ultimatum,
+        UltimatumDebugSnapshot Ultimatum,
         IReadOnlyList<string> UltimatumTrail,
         IReadOnlyList<UltimatumOptionPreviewSnapshot> UltimatumOptionPreview)
     {
@@ -24,11 +24,11 @@ namespace ClickIt.Services.Observability
 
         public static readonly ClickTelemetrySnapshot Empty = new(
             ServiceAvailable: false,
-            Click: ClickService.ClickDebugSnapshot.Empty,
+            Click: ClickDebugSnapshot.Empty,
             ClickTrail: EmptyTrail,
-            RuntimeLog: ClickService.RuntimeDebugLogSnapshot.Empty,
+            RuntimeLog: RuntimeDebugLogSnapshot.Empty,
             RuntimeLogTrail: EmptyTrail,
-            Ultimatum: ClickService.UltimatumDebugSnapshot.Empty,
+            Ultimatum: UltimatumDebugSnapshot.Empty,
             UltimatumTrail: EmptyTrail,
             UltimatumOptionPreview: EmptyPreview);
     }

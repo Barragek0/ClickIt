@@ -1,4 +1,3 @@
-using System.Reflection;
 using ClickIt.Services;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -12,74 +11,49 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsTrue_WhenFullDecisionDisallowsPickup()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldShowInventoryPickupBlockedWarning",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var snapshot = CreateInventorySnapshot(stage: "InventoryFullDecision", inventoryFull: true, allowPickup: false);
 
-            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            bool blocked = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeTrue();
         }
 
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsTrue_WhenNotFullNoFitDisallowsPickup()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldShowInventoryPickupBlockedWarning",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false);
 
-            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            bool blocked = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeTrue();
         }
 
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitHasMissingIdentity()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldShowInventoryPickupBlockedWarning",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false) with
             {
                 GroundItemPath = string.Empty,
                 GroundItemName = string.Empty
             };
 
-            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            bool blocked = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitLayoutIsUnreliable()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldShowInventoryPickupBlockedWarning",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false) with
             {
                 Notes = "Inventory layout unreliable from PlayerInventories[0].InventorySlotItems (raw:1 parsed:0)"
             };
 
-            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            bool blocked = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsFalse_WhenNotFullNoFitHasLargeFreeCellCount()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldShowInventoryPickupBlockedWarning",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false) with
             {
                 CapacityCells = 60,
@@ -91,48 +65,33 @@ namespace ClickIt.Tests.Unit
                 IsGroundStackable = false
             };
 
-            bool blocked = (bool)method!.Invoke(null, [snapshot])!;
+            bool blocked = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsFalse_ForSameSnapshotSequence()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldRefreshInventoryFullWarningTimestamp",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false, sequence: 42);
 
-            bool refresh = (bool)method!.Invoke(null, [42L, 42L, snapshot])!;
+            bool refresh = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldRefreshInventoryFullWarningTimestamp(42L, 42L, snapshot);
             refresh.Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldRefreshInventoryFullWarningTimestamp_ReturnsTrue_ForNewSnapshotSequence()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldRefreshInventoryFullWarningTimestamp",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false, sequence: 43);
 
-            bool refresh = (bool)method!.Invoke(null, [42L, 43L, snapshot])!;
+            bool refresh = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldRefreshInventoryFullWarningTimestamp(42L, 43L, snapshot);
             refresh.Should().BeTrue();
         }
 
         [TestMethod]
         public void ShouldShowInventoryFullWarning_HidesAfterTenSeconds()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldShowInventoryFullWarning",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
-            bool withinWindow = (bool)method!.Invoke(null, [10_000L, 1_000L])!;
-            bool expired = (bool)method!.Invoke(null, [11_001L, 1_000L])!;
+            bool withinWindow = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldShowInventoryFullWarning(10_000L, 1_000L);
+            bool expired = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldShowInventoryFullWarning(11_001L, 1_000L);
 
             withinWindow.Should().BeTrue();
             expired.Should().BeFalse();
@@ -141,14 +100,9 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ShouldAutoCopyInventoryWarning_ThrottlesToOneSecond()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ShouldAutoCopyInventoryWarning",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
-            bool first = (bool)method!.Invoke(null, [1_000L, 0L])!;
-            bool throttled = (bool)method!.Invoke(null, [1_500L, 1_000L])!;
-            bool allowedAfterWindow = (bool)method!.Invoke(null, [2_000L, 1_000L])!;
+            bool first = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldAutoCopyInventoryWarning(1_000L, 0L);
+            bool throttled = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldAutoCopyInventoryWarning(1_500L, 1_000L);
+            bool allowedAfterWindow = global::ClickIt.Rendering.InventoryFullWarningRenderer.ShouldAutoCopyInventoryWarning(2_000L, 1_000L);
 
             first.Should().BeTrue();
             throttled.Should().BeFalse();
@@ -158,16 +112,11 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_UsesBetweenTertiaryRectangles()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ResolveInventoryFullWarningPosition",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             RectangleF window = new RectangleF(0, 0, 1920, 1080);
             RectangleF left = new RectangleF(400, 900, 520, 1040);
             RectangleF right = new RectangleF(1400, 900, 1520, 1040);
 
-            var pos = (Vector2)method!.Invoke(null, [window, left, right, null])!;
+            var pos = global::ClickIt.Rendering.InventoryFullWarningRenderer.ResolveInventoryFullWarningPosition(window, left, right, null);
 
             pos.X.Should().BeApproximately(960f, 0.01f);
             pos.Y.Should().BeApproximately(970f, 0.01f);
@@ -176,17 +125,12 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_PrefersPlayerFeetPosition()
         {
-            var method = typeof(global::ClickIt.Rendering.InventoryFullWarningRenderer).GetMethod(
-                "ResolveInventoryFullWarningPosition",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
-
             RectangleF window = new RectangleF(0, 0, 1920, 1080);
             RectangleF left = new RectangleF(400, 900, 520, 1040);
             RectangleF right = new RectangleF(1400, 900, 1520, 1040);
             Vector2 feet = new Vector2(777f, 888f);
 
-            var pos = (Vector2)method!.Invoke(null, [window, left, right, (Vector2?)feet])!;
+            var pos = global::ClickIt.Rendering.InventoryFullWarningRenderer.ResolveInventoryFullWarningPosition(window, left, right, (Vector2?)feet);
 
             pos.Should().Be(feet);
         }

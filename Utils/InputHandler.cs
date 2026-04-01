@@ -179,5 +179,11 @@ namespace ClickIt.Utils
             long elapsed = Environment.TickCount64 - _lastToggleItemsTimestampMs;
             return elapsed >= 0 && elapsed < blockMs;
         }
+
+        internal bool IsInToggleItemsPostClickBlockWindowForTests()
+            => IsInToggleItemsPostClickBlockWindow();
+
+        internal void SetLastToggleItemsTimestampForTests(long timestampMs)
+            => _lastToggleItemsTimestampMs = timestampMs;
     }
 }

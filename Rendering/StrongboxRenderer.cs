@@ -91,7 +91,7 @@ namespace ClickIt.Rendering
             return true;
         }
 
-        private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)
+        internal static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string>? metadataIdentifiers)
         {
             if (metadataIdentifiers == null || metadataIdentifiers.Count == 0)
                 return false;
@@ -110,7 +110,7 @@ namespace ClickIt.Rendering
             return label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
         }
 
-        private static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata, bool isUniqueStrongbox)
+        internal static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata, bool isUniqueStrongbox)
         {
             if (string.IsNullOrEmpty(path) || clickMetadata == null || clickMetadata.Count == 0)
                 return false;

@@ -9,6 +9,7 @@ using ExileCore.Shared;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics.CodeAnalysis;
+using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services
 {
@@ -37,7 +38,7 @@ namespace ClickIt.Services
         {
             bool clickEater = settings.ClickEaterAltars;
             bool clickExarch = settings.ClickExarchAltars;
-            if (!ShouldEvaluateAltarScan(clickEater, clickExarch))
+            if (!AltarClickPolicy.ShouldEvaluateAltarScan(clickEater, clickExarch))
                 return false;
 
             if (altarService == null)
@@ -58,11 +59,6 @@ namespace ClickIt.Services
             return false;
         }
 
-        internal static bool ShouldEvaluateAltarScan(bool clickEaterEnabled, bool clickExarchEnabled)
-        {
-            return clickEaterEnabled || clickExarchEnabled;
-        }
-
         private bool TryClickManualCursorPreferredAltarOption(Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
             var altarSnapshot = altarService.GetAltarComponentsReadOnly();
@@ -81,7 +77,7 @@ namespace ClickIt.Services
                     continue;
 
                 RectangleF optionRect = boxToClick.GetClientRect();
-                if (!IsPointInsideRectInEitherSpace(optionRect, cursorAbsolute, windowTopLeft))
+                if (!ManualCursorSelectionMath.IsPointInsideRectInEitherSpace(optionRect, cursorAbsolute, windowTopLeft))
                     continue;
 
                 if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
@@ -224,11 +220,8 @@ namespace ClickIt.Services
             string altarPath = altar.AltarType.ToString();
             bool topVisibleAndClickable = IsAltarOptionVisibleAndClickable(altar.TopMods?.Element, altarPath);
             bool bottomVisibleAndClickable = IsAltarOptionVisibleAndClickable(altar.BottomMods?.Element, altarPath);
-            return AreBothAltarOptionsActionable(topVisibleAndClickable, bottomVisibleAndClickable);
+            return AltarClickPolicy.AreBothAltarOptionsActionable(topVisibleAndClickable, bottomVisibleAndClickable);
         }
-
-        internal static bool AreBothAltarOptionsActionable(bool topVisibleAndClickable, bool bottomVisibleAndClickable)
-            => topVisibleAndClickable && bottomVisibleAndClickable;
 
         private bool IsAltarOptionVisibleAndClickable(Element? optionElement, string altarPath)
         {

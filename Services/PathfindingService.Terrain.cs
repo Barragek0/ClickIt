@@ -41,7 +41,7 @@ namespace ClickIt.Services
             return true;
         }
 
-        private static bool TryConvertPathfindingData(object? rawPathData, out int[][]? grid)
+        internal static bool TryConvertPathfindingData(object? rawPathData, out int[][]? grid)
         {
             grid = null;
             if (rawPathData == null)
@@ -79,7 +79,7 @@ namespace ClickIt.Services
             return true;
         }
 
-        private static bool TryConvertRow(object? row, out int[]? parsed)
+        internal static bool TryConvertRow(object? row, out int[]? parsed)
         {
             parsed = null;
             if (row == null)
@@ -115,7 +115,7 @@ namespace ClickIt.Services
             return true;
         }
 
-        private static bool[][] ConvertRawGridToWalkable(int[][] rawGrid)
+        internal static bool[][] ConvertRawGridToWalkable(int[][] rawGrid)
         {
             bool[][] walkable = new bool[rawGrid.Length][];
             for (int y = 0; y < rawGrid.Length; y++)
@@ -165,7 +165,7 @@ namespace ClickIt.Services
             return points;
         }
 
-        private static float ResolveScale(float deltaScreen, float deltaGrid)
+        internal static float ResolveScale(float deltaScreen, float deltaGrid)
         {
             float scale;
             if (Math.Abs(deltaGrid) >= 0.001f)
@@ -197,7 +197,7 @@ namespace ClickIt.Services
             return true;
         }
 
-        private static bool IsFinitePoint(float x, float y)
+        internal static bool IsFinitePoint(float x, float y)
             => !float.IsNaN(x) && !float.IsInfinity(x) && !float.IsNaN(y) && !float.IsInfinity(y);
     }
 }

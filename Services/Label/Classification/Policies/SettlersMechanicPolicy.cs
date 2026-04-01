@@ -4,6 +4,13 @@ namespace ClickIt.Services.Label.Classification.Policies
 {
     internal static class SettlersMechanicPolicy
     {
+        internal static bool IsSettlersMechanicId(string? mechanicId)
+            => !string.IsNullOrWhiteSpace(mechanicId)
+               && mechanicId.StartsWith("settlers-", StringComparison.OrdinalIgnoreCase);
+
+        internal static bool RequiresHoldClick(string? mechanicId)
+            => string.Equals(mechanicId, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase);
+
         internal static bool IsEnabled(ClickSettings settings, string? mechanicId)
         {
             if (!settings.ClickSettlersOre || string.IsNullOrWhiteSpace(mechanicId))

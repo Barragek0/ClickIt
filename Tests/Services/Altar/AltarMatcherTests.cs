@@ -3,7 +3,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Services;
 using ClickIt.Utils;
 using ClickIt.Definitions;
-using ClickIt.Tests.TestUtils;
 
 namespace ClickIt.Tests.Unit
 {
@@ -86,9 +85,7 @@ namespace ClickIt.Tests.Unit
             string modText = "SomeModId";
             string negativeModType = "Player gains:";
 
-            var cache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_modMatchCache");
-            string cacheKey = $"{modText}|{negativeModType}";
-            cache[cacheKey] = (true, "SomeModId");
+            matcher.SeedModMatchCacheForTests(modText, negativeModType, true, "SomeModId");
 
             bool result = matcher.TryMatchModCached(modText, negativeModType, out bool isUpside, out string matchedId);
 
@@ -107,10 +104,7 @@ namespace ClickIt.Tests.Unit
             string second = matcher.CleanAltarModsText(input);
 
             first.Should().Be(second);
-
-            var textCache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_textCleanCache");
-            textCache.Should().NotBeNull();
-            textCache.Contains(input).Should().BeTrue();
+            matcher.HasCleanedTextCacheEntryForTests(input).Should().BeTrue();
         }
 
         [TestMethod]
@@ -131,10 +125,8 @@ namespace ClickIt.Tests.Unit
 
             matcher.ClearCaches();
 
-            var modCache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_modMatchCache");
-            var textCache = PrivateFieldAccessor.Get<System.Collections.IDictionary>(matcher, "_textCleanCache");
-            modCache.Count.Should().Be(0);
-            textCache.Count.Should().Be(0);
+            matcher.GetModMatchCacheCountForTests().Should().Be(0);
+            matcher.GetTextCleanCacheCountForTests().Should().Be(0);
         }
     }
 }

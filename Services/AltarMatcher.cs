@@ -81,6 +81,39 @@ namespace ClickIt.Services
                 _textCleanCache.Clear();
             }
         }
+
+        internal void SeedModMatchCacheForTests(string mod, string negativeModType, bool isUpside, string matchedId)
+        {
+            string cacheKey = $"{mod}|{negativeModType}";
+            lock (_modMatchCacheLock)
+            {
+                _modMatchCache[cacheKey] = (isUpside, matchedId);
+            }
+        }
+
+        internal bool HasCleanedTextCacheEntryForTests(string text)
+        {
+            lock (_textCleanCacheLock)
+            {
+                return _textCleanCache.ContainsKey(text);
+            }
+        }
+
+        internal int GetModMatchCacheCountForTests()
+        {
+            lock (_modMatchCacheLock)
+            {
+                return _modMatchCache.Count;
+            }
+        }
+
+        internal int GetTextCleanCacheCountForTests()
+        {
+            lock (_textCleanCacheLock)
+            {
+                return _textCleanCache.Count;
+            }
+        }
     }
 }
 

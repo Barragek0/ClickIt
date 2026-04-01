@@ -1,4 +1,5 @@
 using SharpDX;
+using ClickIt.Services.Click.Runtime;
 using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Services
@@ -32,7 +33,7 @@ namespace ClickIt.Services
             for (float t = 1.05f; t >= 0.30f; t -= 0.1f)
             {
                 Vector2 candidate = center + (direction * t);
-                if (!ClickService.IsInsideWindow(windowRect, candidate))
+                if (!OffscreenTargetResolver.IsInsideWindow(windowRect, candidate))
                     continue;
                 if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
                     continue;

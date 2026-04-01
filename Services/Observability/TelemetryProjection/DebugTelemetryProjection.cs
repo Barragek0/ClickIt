@@ -1,4 +1,5 @@
 using ClickIt.Services;
+using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services.Observability.TelemetryProjection
 {
@@ -27,12 +28,12 @@ namespace ClickIt.Services.Observability.TelemetryProjection
                 return ClickTelemetrySnapshot.Empty;
 
             List<UltimatumOptionPreviewSnapshot> ultimatumPreview = [];
-            if (clickService.TryGetUltimatumOptionPreview(out List<ClickService.UltimatumPanelOptionPreview> previews)
+            if (clickService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
                 && previews.Count > 0)
             {
                 for (int i = 0; i < previews.Count; i++)
                 {
-                    ClickService.UltimatumPanelOptionPreview preview = previews[i];
+                    UltimatumPanelOptionPreview preview = previews[i];
                     ultimatumPreview.Add(new UltimatumOptionPreviewSnapshot(
                         Rect: preview.Rect,
                         ModifierName: preview.ModifierName,

@@ -1,5 +1,6 @@
 using ClickIt.Definitions;
 using ClickIt.Services;
+using ClickIt.Services.Click.Runtime;
 using ClickIt.Utils;
 using SharpDX;
 using Color = SharpDX.Color;
@@ -20,13 +21,13 @@ namespace ClickIt.Rendering
             if (_clickService == null || _deferredFrameQueue == null)
                 return;
 
-            if (!_clickService.TryGetUltimatumOptionPreview(out List<ClickService.UltimatumPanelOptionPreview> previews) || previews.Count == 0)
+            if (!_clickService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) || previews.Count == 0)
                 return;
 
             int totalPriorities = Math.Max(1, _settings.GetUltimatumModifierPriority().Count);
             for (int i = 0; i < previews.Count; i++)
             {
-                ClickService.UltimatumPanelOptionPreview preview = previews[i];
+                UltimatumPanelOptionPreview preview = previews[i];
                 Color color = preview.IsSelected
                     ? Color.LawnGreen
                     : preview.PriorityIndex == int.MaxValue

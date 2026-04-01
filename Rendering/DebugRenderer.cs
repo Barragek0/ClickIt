@@ -129,20 +129,20 @@ namespace ClickIt.Rendering
 
             RenderSectionIfEnabled(settings.DebugShowStatus, (x, y, h) => RenderPluginStatusDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowGameState, (x, y, h) => RenderGameStateDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowPerformance, (x, y, h) => RenderPerformanceDebug(x, y, h, performanceSnapshot));
-            RenderSectionIfEnabled(settings.DebugShowClickFrequencyTarget, (x, y, h) => RenderClickFrequencyTargetDebug(x, y, h, performanceSnapshot));
+            RenderSectionIfEnabled(settings.DebugShowPerformance, (x, y, h) => _performanceDebugOverlaySection.RenderPerformanceDebug(x, y, h, performanceSnapshot));
+            RenderSectionIfEnabled(settings.DebugShowClickFrequencyTarget, (x, y, h) => _performanceDebugOverlaySection.RenderClickFrequencyTargetDebug(x, y, h, performanceSnapshot));
             RenderSectionIfEnabled(settings.DebugShowAltarDetection, (x, y, h) => RenderAltarDebug(x, y, h));
             RenderSectionIfEnabled(settings.DebugShowAltarService, (x, y, h) => RenderAltarServiceDebug(x, y, h));
             RenderSectionIfEnabledWithPosition(settings.DebugShowLabels, (x, y, h) =>
             {
                 int localX = x;
-                int nextY = RenderLabelsDebug(ref localX, y, h);
+                int nextY = _labelDebugOverlaySection.RenderLabelsDebug(ref localX, y, h);
                 return (localX, nextY);
             });
             RenderSectionIfEnabledWithPosition(settings.DebugShowInventoryPickup, (x, y, h) =>
             {
                 int localX = x;
-                int nextY = RenderInventoryPickupDebug(ref localX, y, h);
+                int nextY = _labelDebugOverlaySection.RenderInventoryPickupDebug(ref localX, y, h);
                 return (localX, nextY);
             });
             RenderSectionIfEnabled(settings.DebugShowHoveredItemMetadata, (x, y, h) => RenderHoveredItemMetadataDebug(x, y, h));
@@ -150,19 +150,19 @@ namespace ClickIt.Rendering
             RenderSectionIfEnabledWithPosition(settings.DebugShowUltimatum, (x, y, h) =>
             {
                 int localX = x;
-                int nextY = RenderUltimatumDebug(ref localX, y, h);
+                int nextY = _ultimatumDebugOverlaySection.RenderUltimatumDebug(ref localX, y, h);
                 return (localX, nextY);
             });
             RenderSectionIfEnabledWithPosition(settings.DebugShowClicking, (x, y, h) =>
             {
                 int localX = x;
-                int nextY = RenderClickingDebug(ref localX, y, h);
+                int nextY = _clickingDebugOverlaySection.RenderClickingDebug(ref localX, y, h);
                 return (localX, nextY);
             });
             RenderSectionIfEnabledWithPosition(settings.DebugShowRuntimeDebugLogOverlay, (x, y, h) =>
             {
                 int localX = x;
-                int nextY = RenderRuntimeDebugLogOverlay(ref localX, y, h);
+                int nextY = _clickingDebugOverlaySection.RenderRuntimeDebugLogOverlay(ref localX, y, h);
                 return (localX, nextY);
             });
             RenderSectionIfEnabled(settings.DebugShowRecentErrors, (x, y, h) => RenderErrorsDebug(x, y, h));

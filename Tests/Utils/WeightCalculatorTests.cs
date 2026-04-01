@@ -99,23 +99,20 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
-        public void Private_GetModString_HandlesBoundsAndNullViaReflection()
+        public void GetModString_HandlesBoundsAndNull()
         {
             var sec = new SecondaryAltarComponent(null, ["up0", "up1"], ["down0", "down1"], false);
 
-            var m = typeof(WeightCalculator).GetMethod("GetModString", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            m.Should().NotBeNull();
-
-            var valUp = (string)(m!.Invoke(null, [sec, 1, false])!);
+            string valUp = WeightCalculator.GetModString(sec, 1, false);
             valUp.Should().Be("up1");
 
-            var valDown = (string)(m.Invoke(null, [sec, 0, true])!);
+            string valDown = WeightCalculator.GetModString(sec, 0, true);
             valDown.Should().Be("down0");
 
-            var outVal = (string)(m.Invoke(null, [sec, 10, false])!);
+            string outVal = WeightCalculator.GetModString(sec, 10, false);
             outVal.Should().Be("");
 
-            var nullVal = (string)(m.Invoke(null, [null!, 0, true])!);
+            string nullVal = WeightCalculator.GetModString(null!, 0, true);
             nullVal.Should().Be("");
         }
 

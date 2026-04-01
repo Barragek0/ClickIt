@@ -340,6 +340,12 @@ namespace ClickIt.Utils
             _clickCount = 0;
         }
 
+        internal int GetClickCountForTests()
+            => _clickCount;
+
+        internal void SetClickCountForTests(int clickCount)
+            => _clickCount = clickCount;
+
         public void ShutdownForHotReload()
         {
             _mainTimer.Stop();

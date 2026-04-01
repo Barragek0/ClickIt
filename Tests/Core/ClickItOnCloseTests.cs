@@ -24,12 +24,6 @@ namespace ClickIt.Tests.Unit
 
             global::ClickIt.Utils.LockManager.Instance = new global::ClickIt.Utils.LockManager(settings);
 
-            var settingsProp = plugin.GetType().GetProperty("Settings", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-            if (settingsProp != null && settingsProp.CanWrite)
-            {
-                settingsProp.SetValue(plugin, settings);
-            }
-
             plugin.OnClose();
 
             plugin.State.PerformanceMonitor.Should().BeNull();

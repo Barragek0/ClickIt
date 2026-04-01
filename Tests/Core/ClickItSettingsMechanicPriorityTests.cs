@@ -262,6 +262,43 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void SettingsScreenCustomNodes_AreComposedWithDrawDelegates()
+        {
+            var settings = new ClickItSettings();
+
+            var nodes = new[]
+            {
+                settings.DebugTestingPanel,
+                settings.ControlsSliderWidthStart,
+                settings.ControlsSliderWidthEnd,
+                settings.PathfindingSliderWidthStart,
+                settings.PathfindingSliderWidthEnd,
+                settings.LazyModeSliderWidthStart,
+                settings.LazyModeSliderWidthEnd,
+                settings.LazyModeNearbyMonsterRulesPanel,
+                settings.PrioritiesSliderWidthStart,
+                settings.PrioritiesSliderWidthEnd,
+                settings.DelveSliderWidthStart,
+                settings.DelveSliderWidthEnd,
+                settings.AltarsPanel,
+                settings.AltarModWeights,
+                settings.ItemTypeFiltersPanel,
+                settings.MechanicPriorityTablePanel,
+                settings.EssenceCorruptionTablePanel,
+                settings.StrongboxFilterTablePanel,
+                settings.MechanicsTablePanel,
+                settings.UltimatumModifierTablePanel,
+                settings.UltimatumTakeRewardModifierTablePanel
+            };
+
+            nodes.Should().OnlyContain(node => node != null);
+            foreach (var node in nodes)
+            {
+                node.DrawDelegate.Should().NotBeNull();
+            }
+        }
+
+        [TestMethod]
         public void MechanicsSubmenuLogic_LeagueChestSubmenuContainsSecureLockerHeistEntry()
         {
             var settings = new ClickItSettings();

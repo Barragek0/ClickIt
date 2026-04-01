@@ -1,4 +1,4 @@
-using ImGuiNET;
+﻿using ImGuiNET;
 using System;
 using System.Numerics;
 using ClickIt.Definitions;
@@ -149,7 +149,7 @@ namespace ClickIt
             DrawWeightScale(bestAtHigh: true);
             ImGui.Spacing();
             ImGui.Spacing();
-            DrawSearchBar("##UpsideSearch", "Clear##UpsideClear", ref upsideSearchFilter);
+            DrawSearchBar("##UpsideSearch", "Clear##UpsideClear", ref UiState.UpsideSearchFilter);
             ImGui.Spacing();
             DrawUpsideModsTable();
             ImGui.TreePop();
@@ -168,7 +168,7 @@ namespace ClickIt
             DrawWeightScale(bestAtHigh: false);
             ImGui.Spacing();
             ImGui.Spacing();
-            DrawSearchBar("##DownsideSearch", "Clear##DownsideClear", ref downsideSearchFilter);
+            DrawSearchBar("##DownsideSearch", "Clear##DownsideClear", ref UiState.DownsideSearchFilter);
             ImGui.Spacing();
             DrawDownsideModsTable();
             ImGui.TreePop();
@@ -183,7 +183,7 @@ namespace ClickIt
             string currentSection = string.Empty;
             foreach ((string id, string name, string type, int _) in AltarModsConstants.UpsideMods)
             {
-                if (!MatchesSearchFilter(name, type, upsideSearchFilter))
+                if (!MatchesSearchFilter(name, type, UiState.UpsideSearchFilter))
                     continue;
 
                 string sectionHeader = GetUpsideSectionHeader(type);
@@ -203,7 +203,7 @@ namespace ClickIt
             string lastProcessedSection = string.Empty;
             foreach ((string id, string name, string type, int defaultWeight) in AltarModsConstants.DownsideMods)
             {
-                if (!MatchesSearchFilter(name, type, downsideSearchFilter))
+                if (!MatchesSearchFilter(name, type, UiState.DownsideSearchFilter))
                     continue;
 
                 string sectionHeader = GetDownsideSectionHeader(defaultWeight);

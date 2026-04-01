@@ -1,9 +1,7 @@
-using ClickIt.Tests.TestUtils;
 using ClickIt.Utils;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Reflection;
 
 namespace ClickIt.Tests.Unit
 {
@@ -30,9 +28,9 @@ namespace ClickIt.Tests.Unit
             var handler = new InputHandler(settings, perf);
 
             long now = Environment.TickCount64;
-            PrivateFieldAccessor.Set(handler, "_lastToggleItemsTimestampMs", now - 50L);
+            handler.SetLastToggleItemsTimestampForTests(now - 50L);
 
-            bool inWindow = InvokeIsInToggleItemsPostClickBlockWindow(handler);
+            bool inWindow = handler.IsInToggleItemsPostClickBlockWindowForTests();
 
             inWindow.Should().BeTrue();
         }
@@ -46,9 +44,9 @@ namespace ClickIt.Tests.Unit
             var handler = new InputHandler(settings, perf);
 
             long now = Environment.TickCount64;
-            PrivateFieldAccessor.Set(handler, "_lastToggleItemsTimestampMs", now + 100L);
+            handler.SetLastToggleItemsTimestampForTests(now + 100L);
 
-            bool inWindow = InvokeIsInToggleItemsPostClickBlockWindow(handler);
+            bool inWindow = handler.IsInToggleItemsPostClickBlockWindowForTests();
 
             inWindow.Should().BeFalse();
         }
@@ -75,21 +73,11 @@ namespace ClickIt.Tests.Unit
             var perf = new PerformanceMonitor(settings);
             var handler = new InputHandler(settings, perf);
 
-            PrivateFieldAccessor.Set(handler, "_lastToggleItemsTimestampMs", Environment.TickCount64);
+            handler.SetLastToggleItemsTimestampForTests(Environment.TickCount64);
 
             bool triggered = handler.TriggerToggleItems();
 
             triggered.Should().BeFalse();
-        }
-
-        private static bool InvokeIsInToggleItemsPostClickBlockWindow(InputHandler handler)
-        {
-            var method = typeof(InputHandler).GetMethod(
-                "IsInToggleItemsPostClickBlockWindow",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-
-            method.Should().NotBeNull();
-            return (bool)method!.Invoke(handler, null)!;
         }
     }
 }

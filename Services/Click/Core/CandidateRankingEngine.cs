@@ -1,3 +1,6 @@
+using ClickIt.Services.Click.Ranking;
+using ClickIt.Services.Click.Runtime;
+
 namespace ClickIt.Services
 {
     internal sealed class CandidateRankingEngine(ClickRuntimeEngine owner)
@@ -29,7 +32,7 @@ namespace ClickIt.Services
             => BuildRank(new MechanicCandidateSignal(mechanicId, distance, null), context);
 
         internal static int CompareRanks(MechanicRank left, MechanicRank right)
-            => CandidateScoreEngine.Compare(ToCandidateScore(left), ToCandidateScore(right));
+            => MechanicCandidateRanker.Compare(ToCandidateRank(left), ToCandidateRank(right));
 
         public RankingResult Rank(ClickTickContext context, ClickCandidates candidates)
         {
@@ -58,7 +61,7 @@ namespace ClickIt.Services
                 new MechanicCandidateSignal(
                     candidates.SettlersOre.Value.MechanicId,
                     candidates.SettlersOre.Value.Distance,
-                    ClickService.GetCursorDistanceSquaredToPoint(candidates.SettlersOre.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
+                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.SettlersOre.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
                 MechanicCandidateSignal.None,
                 new MechanicCandidateSignal(
                     ClickService.ShrineMechanicId,
@@ -67,7 +70,7 @@ namespace ClickIt.Services
                 new MechanicCandidateSignal(
                     ClickService.LostShipmentMechanicId,
                     candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
-                    candidates.LostShipment.HasValue ? ClickService.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
+                    candidates.LostShipment.HasValue ? ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
                 context.MechanicPriorityContext);
         }
 
@@ -80,7 +83,7 @@ namespace ClickIt.Services
                 new MechanicCandidateSignal(
                     ClickService.LostShipmentMechanicId,
                     candidates.LostShipment.Value.Distance,
-                    ClickService.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
+                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
                 MechanicCandidateSignal.None,
                 new MechanicCandidateSignal(
                     ClickService.ShrineMechanicId,
@@ -91,7 +94,7 @@ namespace ClickIt.Services
 
         private static bool ShouldTryHiddenShrine(ClickTickContext context)
         {
-            return context.NextShrine != null && ClickService.ShouldClickShrineWhenGroundItemsHidden(context.NextShrine);
+            return context.NextShrine != null;
         }
 
         private bool ShouldTryVisibleSettlers(ClickTickContext context, ClickCandidates candidates)
@@ -103,11 +106,11 @@ namespace ClickIt.Services
                 new MechanicCandidateSignal(
                     candidates.SettlersOre.Value.MechanicId,
                     candidates.SettlersOre.Value.Distance,
-                    ClickService.GetCursorDistanceSquaredToPoint(candidates.SettlersOre.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
+                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.SettlersOre.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
                 new MechanicCandidateSignal(
                     candidates.NextLabelMechanicId,
                     candidates.NextLabel?.ItemOnGround?.DistancePlayer,
-                    ClickService.TryGetCursorDistanceSquaredToLabel(candidates.NextLabel, context.CursorAbsolute, context.WindowTopLeft)),
+                    ManualCursorSelectionMath.TryGetCursorDistanceSquaredToLabel(candidates.NextLabel, context.CursorAbsolute, context.WindowTopLeft)),
                 new MechanicCandidateSignal(
                     ClickService.ShrineMechanicId,
                     context.NextShrine?.DistancePlayer,
@@ -115,7 +118,7 @@ namespace ClickIt.Services
                 new MechanicCandidateSignal(
                     ClickService.LostShipmentMechanicId,
                     candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
-                    candidates.LostShipment.HasValue ? ClickService.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
+                    candidates.LostShipment.HasValue ? ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft) : null),
                 context.MechanicPriorityContext);
         }
 
@@ -128,11 +131,11 @@ namespace ClickIt.Services
                 new MechanicCandidateSignal(
                     ClickService.LostShipmentMechanicId,
                     candidates.LostShipment.Value.Distance,
-                    ClickService.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
+                    ManualCursorSelectionMath.GetCursorDistanceSquaredToPoint(candidates.LostShipment.Value.ClickPosition, context.CursorAbsolute, context.WindowTopLeft)),
                 new MechanicCandidateSignal(
                     candidates.NextLabelMechanicId,
                     candidates.NextLabel?.ItemOnGround?.DistancePlayer,
-                    ClickService.TryGetCursorDistanceSquaredToLabel(candidates.NextLabel, context.CursorAbsolute, context.WindowTopLeft)),
+                    ManualCursorSelectionMath.TryGetCursorDistanceSquaredToLabel(candidates.NextLabel, context.CursorAbsolute, context.WindowTopLeft)),
                 new MechanicCandidateSignal(
                     ClickService.ShrineMechanicId,
                     context.NextShrine?.DistancePlayer,
@@ -168,17 +171,17 @@ namespace ClickIt.Services
             float distance = candidate.Distance ?? float.MaxValue;
             float cursorDistance = candidate.CursorDistance ?? float.MaxValue;
 
-            var scoreContext = new CandidateScoreEngine.CandidateScoreContext(
+            var scoreContext = new MechanicCandidateRanker.RankContext(
                 context.PriorityIndexMap,
                 context.IgnoreDistanceSet,
                 context.IgnoreDistanceWithinByMechanicId,
                 context.PriorityDistancePenalty);
 
-            CandidateScoreEngine.CandidateScore score = CandidateScoreEngine.Build(distance, candidate.MechanicId, cursorDistance, scoreContext);
+            MechanicCandidateRanker.CandidateRank score = MechanicCandidateRanker.Build(distance, candidate.MechanicId, cursorDistance, scoreContext);
             return new MechanicRank(score.Ignored, score.PriorityIndex, score.WeightedDistance, score.RawDistance, score.CursorDistance);
         }
 
-        private static CandidateScoreEngine.CandidateScore ToCandidateScore(MechanicRank rank)
+        private static MechanicCandidateRanker.CandidateRank ToCandidateRank(MechanicRank rank)
             => new(rank.Ignored, rank.PriorityIndex, rank.WeightedDistance, rank.RawDistance, rank.CursorDistance);
     }
 }

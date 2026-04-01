@@ -1,4 +1,4 @@
-using ClickIt.Definitions;
+﻿using ClickIt.Definitions;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace ClickIt
             ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open subtype filter options.");
             ImGui.Spacing();
 
-            DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref itemTypeSearchFilter);
+            DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref UiState.ItemTypeSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
             {
                 ResetItemTypeFilterDefaults();
@@ -57,7 +57,7 @@ namespace ClickIt
                 if (rowState.ArrowClicked)
                 {
                     MoveItemTypeCategory(category.Id, moveToWhitelist);
-                    _expandedItemTypeRowKey = string.Empty;
+                    UiState.ExpandedItemTypeRowKey = string.Empty;
                     break;
                 }
 
@@ -81,7 +81,7 @@ namespace ClickIt
 
         private bool ShouldRenderItemTypeCategory(HashSet<string> sourceSet, ItemCategoryDefinition category)
         {
-            return sourceSet.Contains(category.Id) && MatchesItemTypeSearch(category, itemTypeSearchFilter);
+            return sourceSet.Contains(category.Id) && MatchesItemTypeSearch(category, UiState.ItemTypeSearchFilter);
         }
 
         private ItemTypeRowRenderState DrawItemTypeRow(string id, ItemCategoryDefinition category, bool moveToWhitelist, Vector4 textColor)
@@ -140,7 +140,7 @@ namespace ClickIt
         {
             EnsureEssenceCorruptionFiltersInitialized();
 
-            DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref essenceSearchFilter);
+            DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref UiState.EssenceSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
             {
                 ResetEssenceCorruptionDefaults();
@@ -167,7 +167,7 @@ namespace ClickIt
             {
                 if (!sourceSet.Contains(essenceName))
                     continue;
-                if (!MatchesEssenceSearch(essenceName, essenceSearchFilter))
+                if (!MatchesEssenceSearch(essenceName, UiState.EssenceSearchFilter))
                     continue;
 
                 hasEntries = true;
@@ -189,7 +189,7 @@ namespace ClickIt
         {
             EnsureStrongboxFiltersInitialized();
 
-            DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref strongboxSearchFilter);
+            DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref UiState.StrongboxSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
             {
                 ResetStrongboxFilterDefaults();
@@ -216,7 +216,7 @@ namespace ClickIt
             {
                 if (!sourceSet.Contains(entry.Id))
                     continue;
-                if (!MatchesStrongboxSearch(entry, strongboxSearchFilter))
+                if (!MatchesStrongboxSearch(entry, UiState.StrongboxSearchFilter))
                     continue;
 
                 hasEntries = true;
@@ -441,19 +441,19 @@ namespace ClickIt
 
         private bool IsExpandedRow(string listId, string categoryId)
         {
-            return string.Equals(_expandedItemTypeRowKey, BuildExpandedRowKey(listId, categoryId), StringComparison.Ordinal);
+            return string.Equals(UiState.ExpandedItemTypeRowKey, BuildExpandedRowKey(listId, categoryId), StringComparison.Ordinal);
         }
 
         private void ToggleExpandedRow(string listId, string categoryId)
         {
             string rowKey = BuildExpandedRowKey(listId, categoryId);
-            if (string.Equals(_expandedItemTypeRowKey, rowKey, StringComparison.Ordinal))
+            if (string.Equals(UiState.ExpandedItemTypeRowKey, rowKey, StringComparison.Ordinal))
             {
-                _expandedItemTypeRowKey = string.Empty;
+                UiState.ExpandedItemTypeRowKey = string.Empty;
             }
             else
             {
-                _expandedItemTypeRowKey = rowKey;
+                UiState.ExpandedItemTypeRowKey = rowKey;
             }
         }
 

@@ -156,25 +156,18 @@ namespace ClickIt.Tests.Unit
         {
             var service = new PathfindingService(new ClickItSettings());
 
-            var gridField = typeof(PathfindingService).GetField("_lastGridPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var screenField = typeof(PathfindingService).GetField("_lastScreenPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var targetField = typeof(PathfindingService).GetField("_lastTargetPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            gridField.Should().NotBeNull();
-            screenField.Should().NotBeNull();
-            targetField.Should().NotBeNull();
-
-            gridField!.SetValue(service, new System.Collections.Generic.List<PathfindingService.GridPoint>
+            service.SetLatestPathStateForTests(
+                new System.Collections.Generic.List<PathfindingService.GridPoint>
             {
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(1, 1)
-            });
-            screenField!.SetValue(service, new System.Collections.Generic.List<SharpDX.Vector2>
+            },
+                new System.Collections.Generic.List<SharpDX.Vector2>
             {
                 new SharpDX.Vector2(10, 10),
                 new SharpDX.Vector2(20, 20)
-            });
-            targetField!.SetValue(service, "Metadata/SomeTarget");
+            },
+                "Metadata/SomeTarget");
 
             service.ClearLatestPath();
 
@@ -188,18 +181,15 @@ namespace ClickIt.Tests.Unit
         {
             var service = new PathfindingService(new ClickItSettings());
 
-            var gridField = typeof(PathfindingService).GetField("_lastGridPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var tickField = typeof(PathfindingService).GetField("_lastPathBuildAttemptTickMs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            gridField.Should().NotBeNull();
-            tickField.Should().NotBeNull();
-
-            gridField!.SetValue(service, new System.Collections.Generic.List<PathfindingService.GridPoint>
+            service.SetLatestPathStateForTests(
+                new System.Collections.Generic.List<PathfindingService.GridPoint>
             {
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(1, 0)
-            });
-            tickField!.SetValue(service, Environment.TickCount64 - 5000);
+            },
+                screenPath: null,
+                targetPath: "Metadata/SomeTarget",
+                lastPathBuildAttemptTickMs: Environment.TickCount64 - 5000);
 
             bool cleared = service.ClearPathIfStale(1000);
 
@@ -212,18 +202,15 @@ namespace ClickIt.Tests.Unit
         {
             var service = new PathfindingService(new ClickItSettings());
 
-            var gridField = typeof(PathfindingService).GetField("_lastGridPath", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var tickField = typeof(PathfindingService).GetField("_lastPathBuildAttemptTickMs", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            gridField.Should().NotBeNull();
-            tickField.Should().NotBeNull();
-
-            gridField!.SetValue(service, new System.Collections.Generic.List<PathfindingService.GridPoint>
+            service.SetLatestPathStateForTests(
+                new System.Collections.Generic.List<PathfindingService.GridPoint>
             {
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(1, 0)
-            });
-            tickField!.SetValue(service, Environment.TickCount64);
+            },
+                screenPath: null,
+                targetPath: "Metadata/SomeTarget",
+                lastPathBuildAttemptTickMs: Environment.TickCount64);
 
             bool cleared = service.ClearPathIfStale(1000);
 
