@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ExileCore.PoEMemory.Components;
+using ClickIt.Services.Click.Label;
 
 namespace ClickIt.Services
 {
@@ -510,10 +511,10 @@ namespace ClickIt.Services
 
             // Settlers labels can remain clickable while the backing world entity projection is off-screen.
             // In that case, relax area validation and let UIHover verification guard the final click.
-            if (!ShouldRetryLabelClickPointWithoutClickableArea(mechanicId))
+            if (!LabelClickPointResolutionPolicy.ShouldRetryWithoutClickableArea(mechanicId))
                 return false;
 
-            if (!ShouldAllowSettlersRelaxedClickPointFallback(label.ItemOnGround != null, IsItemWorldProjectionInWindow(label.ItemOnGround, windowTopLeft)))
+            if (!LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(label.ItemOnGround != null, IsItemWorldProjectionInWindow(label.ItemOnGround, windowTopLeft)))
                 return false;
 
             return inputHandler.TryCalculateClickPosition(
@@ -526,15 +527,12 @@ namespace ClickIt.Services
 
         internal static bool ShouldRetryLabelClickPointWithoutClickableArea(string? mechanicId)
         {
-            return IsSettlersMechanicId(mechanicId);
+            return LabelClickPointResolutionPolicy.ShouldRetryWithoutClickableArea(mechanicId);
         }
 
         internal static bool ShouldAllowSettlersRelaxedClickPointFallback(bool hasBackingEntity, bool worldProjectionInWindow)
         {
-            if (!hasBackingEntity)
-                return false;
-
-            return !worldProjectionInWindow;
+            return LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(hasBackingEntity, worldProjectionInWindow);
         }
 
         private bool IsItemWorldProjectionInWindow(Entity? item, Vector2 windowTopLeft)

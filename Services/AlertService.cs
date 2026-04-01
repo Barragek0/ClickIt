@@ -7,8 +7,6 @@ namespace ClickIt.Services
         Func<ClickItSettings?> settingsProvider,
         Func<ClickItSettings> effectiveSettingsProvider,
         Func<string> configDirectoryProvider,
-        Func<string?> testConfigDirectoryOverrideProvider,
-        Func<bool> disableAutoDownloadProvider,
         Func<GameController?> gameControllerProvider,
         Action<string, int> logMessage,
         Action<string, int> logError)
@@ -16,8 +14,6 @@ namespace ClickIt.Services
         private readonly Func<ClickItSettings?> _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         private readonly Func<ClickItSettings> _effectiveSettingsProvider = effectiveSettingsProvider ?? throw new ArgumentNullException(nameof(effectiveSettingsProvider));
         private readonly Func<string> _configDirectoryProvider = configDirectoryProvider ?? throw new ArgumentNullException(nameof(configDirectoryProvider));
-        private readonly Func<string?> _testConfigDirectoryOverrideProvider = testConfigDirectoryOverrideProvider ?? throw new ArgumentNullException(nameof(testConfigDirectoryOverrideProvider));
-        private readonly Func<bool> _disableAutoDownloadProvider = disableAutoDownloadProvider ?? throw new ArgumentNullException(nameof(disableAutoDownloadProvider));
         private readonly Func<GameController?> _gameControllerProvider = gameControllerProvider ?? throw new ArgumentNullException(nameof(gameControllerProvider));
         private readonly Action<string, int> _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
         private readonly Action<string, int> _logError = logError ?? throw new ArgumentNullException(nameof(logError));
@@ -36,14 +32,13 @@ namespace ClickIt.Services
         {
             try
             {
-                var configDir = _testConfigDirectoryOverrideProvider() ?? _configDirectoryProvider();
+                var configDir = _configDirectoryProvider();
                 var file = Path.Join(configDir, AlertFileName);
                 if (!File.Exists(file))
                 {
                     _logMessage("Alert sound not found in config directory.", 5);
 
                     bool tryDownload = _settingsProvider()?.AutoDownloadAlertSound?.Value == true;
-                    tryDownload = tryDownload && !_disableAutoDownloadProvider();
 
                     if (tryDownload)
                     {

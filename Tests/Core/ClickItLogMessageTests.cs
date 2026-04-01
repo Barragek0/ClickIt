@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
+using ClickIt.Tests.Harness;
 
 namespace ClickIt.Tests.Unit
 {
@@ -10,11 +11,11 @@ namespace ClickIt.Tests.Unit
         public void LogMessageBool_DoesNotRecurse_WhenNotRendering()
         {
             var clickIt = new ClickIt();
-            clickIt.__Test_SetSettings(new ClickItSettings());
+            ClickItHostHarness.SetSettings(clickIt, new ClickItSettings());
 
             clickIt.State.IsRendering = false;
 
-            var alertService = clickIt.__Test_GetAlertService();
+            var alertService = clickIt.GetAlertService();
             var countBefore = alertService.LastAlertTimes.Count;
 
             // Use localDebug=false to avoid reading Settings which may be null in some test harness scenarios
@@ -27,11 +28,11 @@ namespace ClickIt.Tests.Unit
         public void LogMessageBool_Skips_WhenRendering()
         {
             var clickIt = new ClickIt();
-            clickIt.__Test_SetSettings(new ClickItSettings());
+            ClickItHostHarness.SetSettings(clickIt, new ClickItSettings());
 
             clickIt.State.IsRendering = true;
 
-            var alertService = clickIt.__Test_GetAlertService();
+            var alertService = clickIt.GetAlertService();
             var countBefore = alertService.LastAlertTimes.Count;
 
             clickIt.LogMessage(false, "should-not-log", 0);

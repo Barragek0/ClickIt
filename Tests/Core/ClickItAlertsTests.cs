@@ -1,8 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
-using System.Reflection;
-using System.Runtime.CompilerServices;
+using ClickIt.Services;
 
 namespace ClickIt.Tests.Unit
 {
@@ -12,35 +11,42 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void ResolveCompositeKey_FindsCompositeKeyFromSettings()
         {
-            var plugin = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
             var settings = new ClickItSettings();
             settings.ModAlerts.Clear();
             settings.ModAlerts["downside|xmod"] = true;
 
-            var setMethod = typeof(ClickIt).GetMethod("__Test_SetSettings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-            setMethod.Invoke(plugin, [settings]);
+            var alertService = new AlertService(
+                () => settings,
+                () => settings,
+                Path.GetTempPath,
+                () => null,
+                (_, _) => { },
+                (_, _) => { });
 
-            var res = plugin.__Test_GetAlertService().ResolveCompositeKey("xmod");
+            var res = alertService.ResolveCompositeKey("xmod");
             Assert.AreEqual("downside|xmod", res);
         }
 
         [TestMethod]
         public void TryTriggerAlertForMatchedMod_SetsLastAlertTime_WhenFileExistsAndEnabled()
         {
-            var plugin = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
             var settings = new ClickItSettings();
             settings.ModAlerts.Clear();
             settings.ModAlerts["mymod"] = true;
-
-            var setMethod = typeof(ClickIt).GetMethod("__Test_SetSettings", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-            setMethod.Invoke(plugin, [settings]);
 
             string tmp = Path.Combine(Path.GetTempPath(), "ClickItTestTemp");
             Directory.CreateDirectory(tmp);
             string soundPath = Path.Combine(tmp, "alert.wav");
             File.WriteAllText(soundPath, "");
 
-            var alertService = plugin.__Test_GetAlertService();
+            var alertService = new AlertService(
+                () => settings,
+                () => settings,
+                Path.GetTempPath,
+                () => null,
+                (_, _) => { },
+                (_, _) => { });
+
             alertService.SetAlertSoundPathForTests(soundPath);
 
             var dict = alertService.LastAlertTimes;

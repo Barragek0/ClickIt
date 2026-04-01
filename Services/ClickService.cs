@@ -10,6 +10,7 @@ using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using System.Diagnostics.CodeAnalysis;
+using ClickIt.Services.Click.Safety;
 
 #nullable enable
 
@@ -49,6 +50,7 @@ namespace ClickIt.Services
         private readonly TimeCache<List<LabelOnGround>> cachedLabels = cachedLabels;
         private readonly PerformanceMonitor performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
         private readonly Action<string, int>? freezeDebugTelemetrySnapshot = freezeDebugTelemetrySnapshot;
+        private readonly IClickSafetyPolicy _clickSafetyPolicy = new ClickSafetyPolicy();
         private readonly ChestLootSettlementState chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
         private long _gruelingGauntletPassiveCacheTimestampMs;
@@ -102,8 +104,7 @@ namespace ClickIt.Services
             Func<Vector2, string, bool> clickabilityCheck,
             string path)
         {
-            return clickabilityCheck(clientPoint, path)
-                || clickabilityCheck(clientPoint + windowTopLeft, path);
+            return ClickSafetyPolicy.Instance.IsPointClickableInEitherSpace(clientPoint, windowTopLeft, clickabilityCheck, path);
         }
 
         private bool EnsureCursorInsideGameWindowForClick(string outsideWindowLogMessage)
@@ -181,7 +182,7 @@ namespace ClickIt.Services
                 var winRect = gameController?.Window.GetWindowRectangleTimeCache;
                 if (winRect == null) return true;
                 var cursor = Mouse.GetCursorPosition();
-                return cursor.X >= winRect.Value.X && cursor.Y >= winRect.Value.Y && cursor.X <= winRect.Value.X + winRect.Value.Width && cursor.Y <= winRect.Value.Y + winRect.Value.Height;
+                return _clickSafetyPolicy.IsCursorInsideWindow(winRect.Value, new Vector2(cursor.X, cursor.Y));
             }
             catch
             {

@@ -26,6 +26,12 @@ namespace ClickIt.Rendering
         private readonly WeightCalculator? _weightCalculator;
         private readonly DeferredTextQueue _deferredTextQueue;
         private readonly DeferredFrameQueue _deferredFrameQueue;
+        private readonly IDebugTelemetrySource _debugTelemetrySource;
+        private readonly Debug.DebugOverlayRenderContext _overlayContext;
+        private readonly Debug.Sections.ClickingDebugOverlaySection _clickingDebugOverlaySection;
+        private readonly Debug.Sections.LabelDebugOverlaySection _labelDebugOverlaySection;
+        private readonly Debug.Sections.UltimatumDebugOverlaySection _ultimatumDebugOverlaySection;
+        private readonly Debug.Sections.PerformanceDebugOverlaySection _performanceDebugOverlaySection;
 
         public DebugRenderer(BaseSettingsPlugin<ClickItSettings> plugin,
                              AltarService? altarService = null,
@@ -40,6 +46,19 @@ namespace ClickIt.Rendering
             _weightCalculator = weightCalculator;
             _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
             _deferredFrameQueue = deferredFrameQueue ?? new DeferredFrameQueue();
+            _debugTelemetrySource = new PluginDebugTelemetrySource(_plugin);
+            _overlayContext = new Debug.DebugOverlayRenderContext(
+                _plugin,
+                _altarService,
+                _areaService,
+                _weightCalculator,
+                _deferredTextQueue,
+                _deferredFrameQueue,
+                _debugTelemetrySource);
+            _clickingDebugOverlaySection = new Debug.Sections.ClickingDebugOverlaySection(_overlayContext);
+            _labelDebugOverlaySection = new Debug.Sections.LabelDebugOverlaySection(_overlayContext);
+            _ultimatumDebugOverlaySection = new Debug.Sections.UltimatumDebugOverlaySection(_overlayContext);
+            _performanceDebugOverlaySection = new Debug.Sections.PerformanceDebugOverlaySection(_overlayContext);
         }
 
         public void RenderDetailedDebugInfo(ClickItSettings settings, PerformanceMonitor performanceMonitor)

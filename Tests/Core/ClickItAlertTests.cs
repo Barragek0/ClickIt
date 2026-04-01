@@ -1,6 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.IO;
+using System;
+using ClickIt.Services;
 
 namespace ClickIt.Tests.Unit
 {
@@ -10,28 +12,37 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void TryTriggerAlertForMatchedMod_NoSound_DoesNotAddTimestamp()
         {
-            var clickIt = new ClickIt();
-            clickIt.__Test_SetSettings(new ClickItSettings());
-            var settings = clickIt.__Test_GetSettings();
+            var settings = new ClickItSettings();
+            settings.AutoDownloadAlertSound.Value = false;
 
             settings.ModAlerts.Clear();
             settings.ModAlerts["alpha"] = true;
 
-            var alertService = clickIt.__Test_GetAlertService();
+            string configDir = Path.Combine(Path.GetTempPath(), "clickit_alert_test_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(configDir);
+
+            var alertService = new AlertService(
+                () => settings,
+                () => settings,
+                () => configDir,
+                () => null,
+                (_, _) => { },
+                (_, _) => { });
+
             alertService.SetAlertSoundPathForTests(null);
 
             alertService.TryTriggerAlertForMatchedMod("alpha");
 
             var dict = alertService.LastAlertTimes;
             dict.ContainsKey("alpha").Should().BeFalse();
+
+            try { Directory.Delete(configDir, true); } catch { }
         }
 
         [TestMethod]
         public void TryTriggerAlertForMatchedMod_WithSound_SetsTimestamp_AndRespectsCooldown()
         {
-            var clickIt = new ClickIt();
-            clickIt.__Test_SetSettings(new ClickItSettings());
-            var settings = clickIt.__Test_GetSettings();
+            var settings = new ClickItSettings();
 
             settings.ModAlerts.Clear();
             settings.ModAlerts["alpha"] = true;
@@ -39,7 +50,14 @@ namespace ClickIt.Tests.Unit
             string tmp = Path.GetTempFileName();
             try
             {
-                var alertService = clickIt.__Test_GetAlertService();
+                var alertService = new AlertService(
+                    () => settings,
+                    () => settings,
+                    Path.GetTempPath,
+                    () => null,
+                    (_, _) => { },
+                    (_, _) => { });
+
                 alertService.SetAlertSoundPathForTests(tmp);
 
                 alertService.TryTriggerAlertForMatchedMod("alpha");

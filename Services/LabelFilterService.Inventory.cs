@@ -75,9 +75,9 @@ namespace ClickIt.Services
         private static readonly InventoryLayoutParser InventoryLayoutParserService = InventoryDomainServices.LayoutParser;
         private static readonly InventoryPickupPolicyEngine InventoryPickupPolicyService = InventoryDomainServices.PickupPolicy;
 
-        internal static InventoryDebugSnapshot GetLatestInventoryDebug() => InventoryProbeServiceInstance.GetLatestDebug();
+        internal InventoryDebugSnapshot GetLatestInventoryDebug() => InventoryProbeServiceInstance.GetLatestDebug();
 
-        internal static IReadOnlyList<string> GetLatestInventoryDebugTrail() => InventoryProbeServiceInstance.GetLatestDebugTrail();
+        internal IReadOnlyList<string> GetLatestInventoryDebugTrail() => InventoryProbeServiceInstance.GetLatestDebugTrail();
 
         private static void PublishInventoryDebug(InventoryDebugSnapshot snapshot) => InventoryProbeServiceInstance.PublishDebug(snapshot);
 
@@ -716,7 +716,7 @@ namespace ClickIt.Services
         private static IEnumerable<object?> EnumerateObjects(object? source)
             => DynamicObjectAdapter.EnumerateObjects(source);
 
-        internal static void ClearInventoryProbeCacheForShutdown()
+        internal void ClearInventoryProbeCacheForShutdown()
             => InventoryProbeServiceInstance.ClearForShutdown();
 
         private static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)

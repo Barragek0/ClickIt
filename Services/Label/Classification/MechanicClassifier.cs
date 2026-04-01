@@ -4,6 +4,7 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using ClickIt.Services.Label.Classification.Policies;
+using ClickIt.Services.Mechanics;
 
 #nullable enable
 
@@ -56,16 +57,6 @@ namespace ClickIt.Services.Label.Classification
             new(MechanicIds.BlightCyst, static (_, path) => IsBlightCystPath(path)),
             new(MechanicIds.BreachGraspingCoffers, static (_, path) => IsBreachGraspingCoffersPath(path)),
             new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path))
-        ];
-
-        private static readonly (string MechanicId, Func<string, bool> MatchesPath)[] SettlersOreResolvers =
-        [
-            (MechanicIds.SettlersCrimsonIron, IsSettlersCrimsonIronPath),
-            (MechanicIds.SettlersCopper, IsSettlersCopperPath),
-            (MechanicIds.SettlersPetrifiedWood, IsSettlersPetrifiedWoodPath),
-            (MechanicIds.SettlersBismuth, IsSettlersBismuthPath),
-            (MechanicIds.SettlersHourglass, IsSettlersHourglassPath),
-            (MechanicIds.SettlersVerisium, IsSettlersVerisiumPath)
         ];
 
         private static readonly IInteractionRule[] OrderedInteractionRules =
@@ -162,21 +153,7 @@ namespace ClickIt.Services.Label.Classification
 
         internal static bool TryGetSettlersOreMechanicId(string? path, out string? mechanicId)
         {
-            mechanicId = null;
-            if (string.IsNullOrWhiteSpace(path))
-                return false;
-
-            for (int i = 0; i < SettlersOreResolvers.Length; i++)
-            {
-                (string resolvedMechanicId, Func<string, bool> matchesPath) = SettlersOreResolvers[i];
-                if (!matchesPath(path))
-                    continue;
-
-                mechanicId = resolvedMechanicId;
-                return true;
-            }
-
-            return false;
+            return MechanicRuleCatalog.TryResolveSettlersOreMechanicId(path, out mechanicId);
         }
 
         internal static bool IsHarvestPath(string path)
@@ -185,17 +162,11 @@ namespace ClickIt.Services.Label.Classification
 
         internal static bool IsSettlersOrePath(string path)
         {
-            return IsSettlersCrimsonIronPath(path)
-                || IsSettlersCopperPath(path)
-                || IsSettlersPetrifiedWoodPath(path)
-                || IsSettlersBismuthPath(path)
-                || IsSettlersHourglassPath(path)
-                || IsSettlersVerisiumPath(path);
+            return MechanicRuleCatalog.IsSettlersOrePath(path);
         }
 
         internal static bool IsSettlersVerisiumPath(string path)
-            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersVerisiumMarker)
-               && !path.Contains(MechanicIds.VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase);
+            => MechanicRuleCatalog.IsSettlersVerisiumPath(path);
 
         internal static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
         {
@@ -360,31 +331,7 @@ namespace ClickIt.Services.Label.Classification
         }
 
         internal static bool IsSettlersPetrifiedWoodPath(string path)
-            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersPetrifiedWoodMarker);
-
-        private static bool IsSettlersCrimsonIronPath(string path)
-            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCrimsonIronMarker);
-
-        private static bool IsSettlersCopperPath(string path)
-            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersCopperMarker);
-
-        private static bool IsSettlersBismuthPath(string path)
-            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersBismuthMarker);
-
-        private static bool IsSettlersHourglassPath(string path)
-            => MatchesSettlersOrePathMarker(path, MechanicIds.SettlersHourglassMarker);
-
-        private static bool MatchesSettlersOrePathMarker(string path, string fullMarker)
-        {
-            if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(fullMarker))
-                return false;
-
-            if (string.Equals(path, fullMarker, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            string markerWithSlash = fullMarker + "/";
-            return path.StartsWith(markerWithSlash, StringComparison.OrdinalIgnoreCase);
-        }
+            => MechanicRuleCatalog.IsSettlersPetrifiedWoodPath(path);
 
         private static string? GetSpecialPathMechanicId(
             ClickSettings settings,

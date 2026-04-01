@@ -335,9 +335,6 @@ namespace ClickIt.Services
         private static bool PointInUiRectangleAnyRepresentation(Vector2 point, RectangleF rect)
             => BlockedAreaGeometryEngine.PointInUiRectangleAnyRepresentation(point, rect);
 
-        private static bool PointInUiRectangle(Vector2 point, RectangleF rect)
-            => BlockedAreaGeometryEngine.PointInUiRectangle(point, rect);
-
         private static bool IsInTownOrHideout(GameController? gameController)
         {
             var area = gameController?.Area?.CurrentArea;

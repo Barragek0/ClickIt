@@ -5,6 +5,7 @@ using ExileCore.Shared.Cache;
 using System.Diagnostics;
 using ClickIt.Services;
 using ClickIt.Services.Observability;
+using ClickIt.Services.Observability.TelemetryProjection;
 using ClickIt.Composition;
 using ClickIt.Core.Runtime;
 using ClickIt.Utils;
@@ -120,65 +121,7 @@ namespace ClickIt
         }
 
         private DebugTelemetrySnapshot GetLiveDebugTelemetrySnapshot()
-        {
-            ClickTelemetrySnapshot clickTelemetry = ClickTelemetrySnapshot.Empty;
-            if (ClickService != null)
-            {
-                List<UltimatumOptionPreviewSnapshot> ultimatumPreview = [];
-                if (ClickService.TryGetUltimatumOptionPreview(out List<Services.ClickService.UltimatumPanelOptionPreview> previews)
-                    && previews.Count > 0)
-                {
-                    for (int i = 0; i < previews.Count; i++)
-                    {
-                        Services.ClickService.UltimatumPanelOptionPreview preview = previews[i];
-                        ultimatumPreview.Add(new UltimatumOptionPreviewSnapshot(
-                            Rect: preview.Rect,
-                            ModifierName: preview.ModifierName,
-                            PriorityIndex: preview.PriorityIndex,
-                            IsSelected: preview.IsSelected));
-                    }
-                }
-
-                clickTelemetry = new ClickTelemetrySnapshot(
-                    ServiceAvailable: true,
-                    Click: ClickService.GetLatestClickDebug(),
-                    ClickTrail: ClickService.GetLatestClickDebugTrail(),
-                    RuntimeLog: ClickService.GetLatestRuntimeDebugLog(),
-                    RuntimeLogTrail: ClickService.GetLatestRuntimeDebugLogTrail(),
-                    Ultimatum: ClickService.GetLatestUltimatumDebug(),
-                    UltimatumTrail: ClickService.GetLatestUltimatumDebugTrail(),
-                    UltimatumOptionPreview: ultimatumPreview);
-            }
-
-            LabelTelemetrySnapshot labelTelemetry = LabelTelemetrySnapshot.Empty;
-            if (LabelFilterService != null)
-            {
-                labelTelemetry = new LabelTelemetrySnapshot(
-                    ServiceAvailable: true,
-                    Label: LabelFilterService.GetLatestLabelDebug(),
-                    LabelTrail: LabelFilterService.GetLatestLabelDebugTrail());
-            }
-
-            PathfindingTelemetrySnapshot pathfindingTelemetry = PathfindingTelemetrySnapshot.Empty;
-            if (PathfindingService != null)
-            {
-                pathfindingTelemetry = new PathfindingTelemetrySnapshot(
-                    ServiceAvailable: true,
-                    Pathfinding: PathfindingService.GetDebugSnapshot(),
-                    OffscreenMovement: PathfindingService.GetLatestOffscreenMovementDebug(),
-                    OffscreenMovementTrail: PathfindingService.GetLatestOffscreenMovementDebugTrail());
-            }
-
-            InventoryTelemetrySnapshot inventoryTelemetry = new(
-                Inventory: LabelFilterService.GetLatestInventoryDebug(),
-                InventoryTrail: LabelFilterService.GetLatestInventoryDebugTrail());
-
-            return new DebugTelemetrySnapshot(
-                Click: clickTelemetry,
-                Label: labelTelemetry,
-                Pathfinding: pathfindingTelemetry,
-                Inventory: inventoryTelemetry);
-        }
+            => DebugTelemetryProjection.Build(ClickService, LabelFilterService, PathfindingService);
 
         private void ClearDebugTelemetryFreezeUnsafe()
         {

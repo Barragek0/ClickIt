@@ -69,6 +69,7 @@ namespace ClickIt.Composition
             var inventoryFullWarningRenderer = new Rendering.InventoryFullWarningRenderer(
                 deferredTextQueue,
                 areaService,
+                labelFilterService.GetLatestInventoryDebug,
                 owner.TryAutoCopyInventoryWarningDebugSnapshotForLifecycle);
             var pathfindingRenderer = new Rendering.PathfindingRenderer(pathfindingService);
             var altarDisplayRenderer = new Rendering.AltarDisplayRenderer(

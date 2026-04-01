@@ -13,7 +13,6 @@ namespace ClickIt.Tests.Unit
             var plugin = new ClickIt();
 
             var settings = new ClickItSettings();
-            plugin.__Test_SetSettings(settings);
 
             plugin.State.PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(settings);
             plugin.State.ErrorHandler = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });

@@ -1,58 +1,18 @@
 ﻿using ExileCore;
 using System.IO;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace ClickIt
 {
     public partial class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
         public PluginContext State { get; } = new PluginContext();
-        private ClickItSettings? _testSettingsForTests;
-        private bool _testDisableAutoDownload;
-        private string? _testConfigDirectory;
-        private Services.AlertService? _seamAlertService;
 
-        private ClickItSettings EffectiveSettings => _testSettingsForTests ?? Settings;
+        private ClickItSettings EffectiveSettings => Settings ?? new ClickItSettings();
 
         public override void OnLoad()
         {
             CanUseMultiThreading = true;
-        }
-
-        internal ClickItSettings __Test_GetSettings()
-        {
-            return _testSettingsForTests ?? Settings ?? new ClickItSettings();
-        }
-
-        internal void __Test_SetSettings(ClickItSettings settings)
-        {
-            _testSettingsForTests = settings;
-
-            if (TrySetViaSettingsProperty(settings))
-                return;
-
-            TrySetViaLikelyFields(settings);
-        }
-
-        internal void __Test_SetDisableAutoDownload(bool value)
-        {
-            _testDisableAutoDownload = value;
-        }
-
-        internal bool __Test_GetDisableAutoDownload()
-        {
-            return _testDisableAutoDownload;
-        }
-
-        internal void __Test_SetConfigDirectory(string? path)
-        {
-            _testConfigDirectory = path;
-        }
-
-        internal string? __Test_GetConfigDirectory()
-        {
-            return _testConfigDirectory;
         }
 
         public override void OnClose()
@@ -144,11 +104,6 @@ namespace ClickIt
             base.LogError(message, frame);
         }
 
-        internal Services.AlertService __Test_GetAlertService()
-        {
-            return GetOrCreateAlertService();
-        }
-
         internal Services.AlertService GetAlertService()
         {
             return GetOrCreateAlertService();
@@ -159,91 +114,12 @@ namespace ClickIt
             return EffectiveSettings;
         }
 
-        private bool TrySetViaSettingsProperty(ClickItSettings settings)
-        {
-            var prop = GetType().GetProperty("Settings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
-            if (prop == null)
-                return false;
-
-            var setMethod = prop.GetSetMethod(true);
-            if (setMethod != null)
-            {
-                setMethod.Invoke(this, [settings]);
-                return true;
-            }
-
-            if (!prop.CanWrite)
-                return false;
-
-            prop.SetValue(this, settings);
-            return true;
-        }
-
-        private void TrySetViaLikelyFields(ClickItSettings settings)
-        {
-            for (Type? current = GetType(); current != null; current = current.BaseType)
-            {
-                if (TrySetBackingField(settings, current))
-                    return;
-                if (TrySetCandidateField(settings, current))
-                    return;
-            }
-        }
-
-        private bool TrySetBackingField(ClickItSettings settings, Type current)
-        {
-            var backingField = current.GetField("<Settings>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (backingField == null)
-                return false;
-
-            backingField.SetValue(this, settings);
-            return true;
-        }
-
-        private bool TrySetCandidateField(ClickItSettings settings, Type current)
-        {
-            var fields = current.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-            foreach (var field in fields)
-            {
-                if (field.FieldType != null && field.FieldType.IsInstanceOfType(settings))
-                {
-                    field.SetValue(this, settings);
-                    return true;
-                }
-
-                if (!string.IsNullOrEmpty(field.Name) && field.Name.IndexOf("setting", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    field.SetValue(this, settings);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         private Services.AlertService GetOrCreateAlertService()
         {
-            if (State == null)
-            {
-                _seamAlertService ??= new Services.AlertService(
-                    () => Settings,
-                    () => EffectiveSettings,
-                    SafeGetConfigDirectory,
-                    __Test_GetConfigDirectory,
-                    __Test_GetDisableAutoDownload,
-                    () => GameController,
-                    LogMessage,
-                    LogError);
-
-                return _seamAlertService;
-            }
-
             State.AlertService ??= new Services.AlertService(
                 () => Settings,
                 () => EffectiveSettings,
                 SafeGetConfigDirectory,
-                __Test_GetConfigDirectory,
-                __Test_GetDisableAutoDownload,
                 () => GameController,
                 LogMessage,
                 LogError);

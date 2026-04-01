@@ -5,6 +5,7 @@ using ClickIt.Utils;
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using ClickIt.Tests.Harness;
 
 namespace ClickIt.Tests.Unit
 {
@@ -33,7 +34,7 @@ namespace ClickIt.Tests.Unit
         public void HandleHotkeyPressed_SetsWorkFinishedFalse()
         {
             var plugin = new ClickIt();
-            plugin.__Test_SetSettings(new ClickItSettings());
+            ClickItHostHarness.SetSettings(plugin, new ClickItSettings());
 
             // inject a fresh runtime State (PluginContext) so we can manipulate WorkFinished
             var state = new PluginContext();
@@ -65,7 +66,8 @@ namespace ClickIt.Tests.Unit
         public void Tick_WhenInputHandlerMissing_ResetsClickCount()
         {
             var plugin = new ClickIt();
-            plugin.__Test_SetSettings(new ClickItSettings());
+            var settings = new ClickItSettings();
+            ClickItHostHarness.SetSettings(plugin, settings);
 
             // Inject runtime State so we can attach a PerformanceMonitor
             var state = new PluginContext();
@@ -73,7 +75,7 @@ namespace ClickIt.Tests.Unit
             backing.Should().NotBeNull();
             backing.SetValue(plugin, state);
 
-            var pm = new PerformanceMonitor(plugin.__Test_GetSettings());
+            var pm = new PerformanceMonitor(settings);
             var counterField = typeof(PerformanceMonitor).GetField("_clickCount", BindingFlags.NonPublic | BindingFlags.Instance)!;
             counterField.Should().NotBeNull();
             counterField.SetValue(pm, 5);
@@ -93,7 +95,7 @@ namespace ClickIt.Tests.Unit
         public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenDueAndNotDeferred()
         {
             var plugin = new ClickIt();
-            plugin.__Test_SetSettings(new ClickItSettings());
+            ClickItHostHarness.SetSettings(plugin, new ClickItSettings());
 
             var state = new PluginContext();
             var backing = plugin.GetType().GetField("<State>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -125,7 +127,7 @@ namespace ClickIt.Tests.Unit
         public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenHotkeyHeld()
         {
             var plugin = new ClickIt();
-            plugin.__Test_SetSettings(new ClickItSettings());
+            ClickItHostHarness.SetSettings(plugin, new ClickItSettings());
 
             var state = new PluginContext();
             var backing = plugin.GetType().GetField("<State>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!;

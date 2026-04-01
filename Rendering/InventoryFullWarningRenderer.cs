@@ -9,6 +9,7 @@ namespace ClickIt.Rendering
     internal class InventoryFullWarningRenderer(
         DeferredTextQueue deferredTextQueue,
         AreaService? areaService = null,
+        Func<LabelFilterService.InventoryDebugSnapshot>? getLatestInventoryDebug = null,
         Func<LabelFilterService.InventoryDebugSnapshot, long, bool>? tryAutoCopyOnWarningTrigger = null)
     {
         private const string InventoryFullWarningText = "Your inventory is full";
@@ -28,6 +29,7 @@ namespace ClickIt.Rendering
 
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
         private readonly AreaService? _areaService = areaService;
+        private readonly Func<LabelFilterService.InventoryDebugSnapshot>? _getLatestInventoryDebug = getLatestInventoryDebug;
         private readonly Func<LabelFilterService.InventoryDebugSnapshot, long, bool>? _tryAutoCopyOnWarningTrigger = tryAutoCopyOnWarningTrigger;
         private long _lastInventoryFullBlockedTimestampMs;
         private long _lastProcessedInventoryDebugSequence = long.MinValue;
@@ -37,7 +39,8 @@ namespace ClickIt.Rendering
         {
 
             long now = Environment.TickCount64;
-            LabelFilterService.InventoryDebugSnapshot snapshot = LabelFilterService.GetLatestInventoryDebug();
+            LabelFilterService.InventoryDebugSnapshot snapshot = _getLatestInventoryDebug?.Invoke()
+                ?? LabelFilterService.InventoryDebugSnapshot.Empty;
             if (ShouldRefreshInventoryFullWarningTimestamp(_lastProcessedInventoryDebugSequence, snapshot.Sequence, snapshot)
                 && ShouldShowInventoryPickupBlockedWarning(snapshot))
             {
