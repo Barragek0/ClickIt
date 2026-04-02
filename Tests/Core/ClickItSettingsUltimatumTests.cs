@@ -6,7 +6,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class UltimatumSettingsTests

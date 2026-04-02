@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using ClickIt.Services.Label.Classification;
 using ExileCore;
 using ExileCore.Shared.Enums;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Label
 {
     [TestClass]
     public class LabelFilterServiceHelpersTests

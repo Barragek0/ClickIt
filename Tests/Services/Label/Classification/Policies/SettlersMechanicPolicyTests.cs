@@ -3,7 +3,7 @@ using ClickIt.Services.Label.Classification.Policies;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Label.Classification.Policies
 {
     [TestClass]
     public class SettlersMechanicPolicyTests

@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Tests.Harness;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class ClickItLogMessageTests

@@ -58,7 +58,7 @@ namespace ClickIt.Services
         private readonly IClickSafetyPolicy _clickSafetyPolicy = new ClickSafetyPolicy();
         private readonly ChestLootSettlementState chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
-        private readonly UltimatumGruelingGauntletDetector _gruelingGauntletDetector = new();
+        private ClickLabelInteractionService? _labelInteractionService;
         private IInteractionExecutionRuntime? _interactionExecutionRuntime;
         private UltimatumAutomationService? _ultimatumAutomationService;
 
@@ -150,30 +150,6 @@ namespace ClickIt.Services
             }
         }
 
-        internal bool ExecuteLabelInteraction(
-            Vector2 clickPos,
-            Element? expectedElement,
-            GameController? controller,
-            bool useHoldClick,
-            int holdDurationMs = 0,
-            bool forceUiHoverVerification = false,
-            bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
-        {
-            return InteractionExecutionRuntime.Execute(new InteractionExecutionRequest(
-                clickPos,
-                expectedElement,
-                controller,
-                useHoldClick,
-                holdDurationMs,
-                forceUiHoverVerification,
-                allowWhenHotkeyInactive,
-                avoidCursorMove,
-                useHoldClick
-                    ? "[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"
-                    : "[PerformLabelClick] Skipping label click - cursor outside PoE window"));
-        }
-
         private bool IsCursorInsideGameWindow()
         {
             try
@@ -216,8 +192,30 @@ namespace ClickIt.Services
 
         private UltimatumAutomationService UltimatumAutomation
             => _ultimatumAutomationService ??= new UltimatumAutomationService(
-                TryGetUltimatumPanelOptionPreviewCore,
-                TryGetUltimatumGroundLabelOptionPreview);
+                new UltimatumAutomationServiceDependencies(
+                    settings,
+                    gameController,
+                    cachedLabels,
+                    EnsureCursorInsideGameWindowForClick,
+                    IsClickableInEitherSpace,
+                    DebugLog,
+                    (clickPos, clickElement) => PerformLockedClick(clickPos, clickElement, gameController),
+                    performanceMonitor.RecordClickInterval,
+                    ShouldCaptureUltimatumDebug,
+                    PublishUltimatumDebug));
+
+        private ClickLabelInteractionService LabelInteraction
+            => _labelInteractionService ??= new ClickLabelInteractionService(
+                new ClickLabelInteractionServiceDependencies(
+                    settings,
+                    gameController,
+                    inputHandler,
+                    labelFilterService,
+                    IsClickableInEitherSpace,
+                    IsInsideWindowInEitherSpace,
+                    InteractionExecutionRuntime.Execute,
+                    groundItemsVisible,
+                    DebugLog));
 
         IEnumerator IClickAutomationService.ProcessRegularClick()
             => ProcessRegularClick();

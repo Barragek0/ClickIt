@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Utils;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Utils.Input
 {
     [TestClass]
     public class InputHandlerHoverVerificationTests

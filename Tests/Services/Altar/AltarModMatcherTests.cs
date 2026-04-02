@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Utils;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Altar
 {
     [TestClass]
     public class AltarModMatcherTests

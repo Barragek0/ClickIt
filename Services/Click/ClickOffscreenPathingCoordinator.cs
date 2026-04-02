@@ -1,7 +1,9 @@
 using ClickIt.Utils;
+using ClickIt.Services.Click.Application;
 using ClickIt.Services.Label.Classification;
 using ClickIt.Services.Click.Runtime;
 using ClickIt.Services.Click.Ranking;
+using ClickIt.Services.Click.Selection;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -13,17 +15,13 @@ namespace ClickIt.Services
     internal readonly record struct OffscreenPathingCoordinatorDependencies(
         ClickItSettings Settings,
         GameController GameController,
-        LabelFilterService LabelFilterService,
-        ShrineService ShrineService,
         PathfindingService PathfindingService,
+        OffscreenMechanicTargetSelector TargetSelector,
+        OffscreenStickyTargetHandler StickyTargetHandler,
         Func<long> GetStickyOffscreenTargetAddress,
-        Action<long> SetStickyOffscreenTargetAddress,
         Action<string> DebugLog,
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string, string> PublishClickFlowDebugStage,
-        Func<bool> HasClickableAltars,
-        Func<Entity?> ResolveNextShrineCandidate,
-        Func<(LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers)> ResolveVisibleMechanicCandidates,
         Func<(bool Success, Vector2 TargetScreen)> ResolveOffscreenTargetScreenPointFromPath,
         Func<Entity, (bool Success, Vector2 TargetScreen)> ResolveOffscreenTargetScreenPoint,
         Func<string, Vector2, bool, (bool Success, Vector2 CastPoint, string DebugReason)> TryUseMovementSkillForOffscreenPathing,
@@ -36,10 +34,7 @@ namespace ClickIt.Services
         Func<LabelOnGround, string?, Vector2, IReadOnlyList<LabelOnGround>?, string?, (bool Success, Vector2 ClickPos)> TryResolveLabelClickPosition,
         Func<Vector2, LabelOnGround, string, bool> ExecuteStickyLabelInteraction,
         Action<string?, LabelOnGround> MarkPendingChestOpenConfirmation,
-        Action InvalidateShrineCache,
-        Func<IReadOnlyList<LabelOnGround>?> GetLabelsForOffscreenSelection,
-        Action RefreshMechanicPriorityCaches,
-        Func<float, string?, MechanicRank> BuildMechanicRank);
+        Action InvalidateShrineCache);
 
     internal sealed class OffscreenPathingCoordinator(OffscreenPathingCoordinatorDependencies dependencies)
     {
@@ -64,7 +59,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
+            if (_dependencies.TargetSelector.ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
             {
                 ResetPendingTargetConfirmation();
                 ClearStickyOffscreenTarget();
@@ -73,7 +68,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            Entity? target = preferredTarget ?? ResolveNearestOffscreenWalkTarget();
+            Entity? target = preferredTarget ?? _dependencies.TargetSelector.ResolveNearestOffscreenWalkTarget();
             if (target == null)
             {
                 ResetPendingTargetConfirmation();
@@ -173,7 +168,7 @@ namespace ClickIt.Services
             if (!TryResolveStickyOffscreenTarget(out Entity? stickyTarget) || stickyTarget == null)
                 return false;
 
-            if (TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels))
+            if (_dependencies.StickyTargetHandler.TryClickStickyTargetIfPossible(stickyTarget, windowTopLeft, allLabels))
                 return true;
 
             _ = TryWalkTowardOffscreenTarget(stickyTarget);
@@ -181,10 +176,10 @@ namespace ClickIt.Services
         }
 
         public void SetStickyOffscreenTarget(Entity target)
-            => _dependencies.SetStickyOffscreenTargetAddress(target.Address);
+            => _dependencies.StickyTargetHandler.SetStickyOffscreenTarget(target);
 
         public void ClearStickyOffscreenTarget()
-            => _dependencies.SetStickyOffscreenTargetAddress(0);
+            => _dependencies.StickyTargetHandler.ClearStickyOffscreenTarget();
 
         private bool ShouldDelayTraversalForPendingTarget(Entity target, string targetPath, out long remainingDelayMs)
         {
@@ -212,36 +207,7 @@ namespace ClickIt.Services
         }
 
         public bool TryResolveStickyOffscreenTarget(out Entity? target)
-        {
-            target = null;
-
-            long stickyAddress = _dependencies.GetStickyOffscreenTargetAddress();
-            if (stickyAddress == 0)
-                return false;
-
-            target = FindEntityByAddress(stickyAddress);
-            if (target == null || !target.IsValid || target.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            if (ShrineService.IsShrine(target) && !ShrineService.IsClickableShrineCandidate(target))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            string stickyPath = target.Path ?? string.Empty;
-            bool isEldritchAltar = OffscreenPathingMath.IsEldritchAltarPath(stickyPath);
-            if (OffscreenPathingMath.ShouldDropStickyTargetForUntargetableEldritchAltar(isEldritchAltar, target.IsTargetable))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            return true;
-        }
+            => _dependencies.StickyTargetHandler.TryResolveStickyOffscreenTarget(out target);
 
         public Entity? FindEntityByAddress(long address)
         {
@@ -249,67 +215,7 @@ namespace ClickIt.Services
         }
 
         public bool IsStickyTarget(Entity? entity)
-            => entity != null && OffscreenPathingMath.IsSameEntityAddress(_dependencies.GetStickyOffscreenTargetAddress(), entity.Address);
-
-        private bool TryClickStickyTargetIfPossible(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            if (ShrineService.IsShrine(stickyTarget))
-            {
-                var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(stickyTarget.PosNum);
-                Vector2 shrinePos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-                string path = stickyTarget.Path ?? string.Empty;
-                if (!_dependencies.IsClickableInEitherSpace(shrinePos, path))
-                    return false;
-
-                bool clickedShrine = _dependencies.PerformPathingClick(shrinePos);
-                if (clickedShrine)
-                {
-                    ClearStickyOffscreenTarget();
-                    _dependencies.InvalidateShrineCache();
-                }
-
-                return clickedShrine;
-            }
-
-            LabelOnGround? stickyLabel = OffscreenPathingMath.FindVisibleLabelForEntity(stickyTarget, allLabels);
-            if (stickyLabel == null)
-                return false;
-
-            if (_dependencies.ShouldSuppressPathfindingLabel(stickyLabel))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            string? mechanicId = _dependencies.GetMechanicIdForLabel(stickyLabel);
-            if (string.IsNullOrWhiteSpace(mechanicId))
-            {
-                ClearStickyOffscreenTarget();
-                return false;
-            }
-
-            (bool resolved, Vector2 clickPos) = _dependencies.TryResolveLabelClickPosition(
-                stickyLabel,
-                mechanicId,
-                windowTopLeft,
-                allLabels,
-                stickyTarget.Path);
-            if (!resolved)
-                return false;
-
-            bool clickedLabel = _dependencies.ExecuteStickyLabelInteraction(clickPos, stickyLabel, mechanicId);
-            if (clickedLabel)
-            {
-                string stickyReason = string.IsNullOrWhiteSpace(stickyTarget.Path)
-                    ? "Sticky offscreen target click succeeded"
-                    : $"Sticky offscreen target click succeeded: {stickyTarget.Path}";
-                _dependencies.HoldDebugTelemetryAfterSuccess(stickyReason);
-                _dependencies.MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
-                ClearStickyOffscreenTarget();
-            }
-
-            return clickedLabel;
-        }
+            => _dependencies.StickyTargetHandler.IsStickyTarget(entity);
 
         private void PublishOffscreenMovementDebug(
             Entity target,
@@ -355,259 +261,6 @@ namespace ClickIt.Services
                 targetPath,
                 _dependencies.PointIsInClickableArea,
                 out clickPos);
-        }
-
-        private Entity? ResolveNearestOffscreenWalkTarget()
-        {
-            if (ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
-            {
-                ClearStickyOffscreenTarget();
-                return null;
-            }
-
-            if (TryResolveStickyOffscreenTarget(out Entity? stickyTarget) && stickyTarget != null)
-                return stickyTarget;
-
-            int maxDistance = OffscreenPathingMath.OffscreenPathfindingTargetSearchDistance;
-
-            Entity? labelBackedTarget = ResolveNearestOffscreenLabelBackedTarget(maxDistance, out string? labelMechanicId);
-            Entity? eldritchAltarTarget = ResolveNearestOffscreenEldritchAltarTarget(maxDistance, out string? eldritchAltarMechanicId);
-            Entity? shrineTarget = ResolveNearestOffscreenShrineTarget(maxDistance);
-            Entity? areaTransitionTarget = ResolveNearestOffscreenAreaTransitionTarget(maxDistance, out string? areaTransitionMechanicId);
-
-            if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null)
-                return null;
-
-            _dependencies.RefreshMechanicPriorityCaches();
-
-            Entity? best = null;
-            string? bestMechanicId = null;
-            MechanicRank bestRank = default;
-            bool hasBest = false;
-
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, labelBackedTarget, labelMechanicId, _dependencies.BuildMechanicRank);
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, eldritchAltarTarget, eldritchAltarMechanicId, _dependencies.BuildMechanicRank);
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, shrineTarget, ClickService.ShrineMechanicId, _dependencies.BuildMechanicRank);
-            _ = OffscreenCandidateRankingEngine.TryPromote(ref best, ref bestMechanicId, ref bestRank, ref hasBest, areaTransitionTarget, areaTransitionMechanicId, _dependencies.BuildMechanicRank);
-
-            return best;
-        }
-
-        private Entity? ResolveNearestOffscreenEldritchAltarTarget(int maxDistance, out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            if (!_dependencies.Settings.ClickExarchAltars.Value && !_dependencies.Settings.ClickEaterAltars.Value)
-            {
-                return null;
-            }
-
-            return ResolveNearestOffscreenEntityTarget(
-                maxDistance,
-                includeEntity: (entity, _) => entity.IsTargetable,
-                resolveMechanicId: (_, path) => OffscreenPathingMath.GetEldritchAltarMechanicIdForPath(
-                    _dependencies.Settings.ClickExarchAltars.Value,
-                    _dependencies.Settings.ClickEaterAltars.Value,
-                    path),
-                out selectedMechanicId);
-        }
-
-        private bool ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable()
-        {
-            bool prioritizeOnscreen = _dependencies.Settings.PrioritizeOnscreenClickableMechanicsOverPathfinding?.Value == true;
-            bool shouldEvaluateOnscreenMechanicChecks = OffscreenPathingMath.ShouldEvaluateOnscreenMechanicChecks(
-                prioritizeOnscreen,
-                _dependencies.Settings.ClickShrines.Value,
-                _dependencies.Settings.ClickLostShipmentCrates.Value,
-                _dependencies.Settings.ClickSettlersOre.Value,
-                _dependencies.Settings.ClickEaterAltars.Value,
-                _dependencies.Settings.ClickExarchAltars.Value);
-            if (!shouldEvaluateOnscreenMechanicChecks)
-                return false;
-
-            bool hasClickableAltars = _dependencies.HasClickableAltars();
-            bool hasClickableShrine = _dependencies.ResolveNextShrineCandidate() != null;
-            (LostShipmentCandidate? lostShipmentCandidate, SettlersOreCandidate? settlersOreCandidate) = _dependencies.ResolveVisibleMechanicCandidates();
-            bool hasClickableLostShipment = lostShipmentCandidate.HasValue;
-            bool hasClickableSettlers = settlersOreCandidate.HasValue;
-
-            bool shouldAvoid = OffscreenPathingMath.ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
-                prioritizeOnscreen,
-                hasClickableAltars,
-                hasClickableShrine,
-                hasClickableLostShipment,
-                hasClickableSettlers);
-
-            if (shouldAvoid)
-            {
-                _dependencies.PublishClickFlowDebugStage(
-                    "OffscreenPathingBlocked",
-                    $"onscreen clickable mechanic detected (altar={hasClickableAltars}, shrine={hasClickableShrine}, lost={hasClickableLostShipment}, settlers={hasClickableSettlers})");
-            }
-
-            return shouldAvoid;
-        }
-
-        private Entity? ResolveNearestOffscreenAreaTransitionTarget(int maxDistance, out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            if (!_dependencies.Settings.ClickAreaTransitions.Value && !_dependencies.Settings.ClickLabyrinthTrials.Value)
-            {
-                return null;
-            }
-
-            return ResolveNearestOffscreenEntityTarget(
-                maxDistance,
-                includeEntity: (_, _) => true,
-                resolveMechanicId: (entity, path) => TransitionMechanicClassifier.GetAreaTransitionMechanicId(
-                    _dependencies.Settings.ClickAreaTransitions.Value,
-                    _dependencies.Settings.ClickLabyrinthTrials.Value,
-                    entity.Type,
-                    path),
-                out selectedMechanicId);
-        }
-
-        private Entity? ResolveNearestOffscreenShrineTarget(int maxDistance)
-        {
-            if (!_dependencies.Settings.ClickShrines.Value)
-                return null;
-
-            return ResolveNearestOffscreenEntityTarget(
-                maxDistance,
-                includeEntity: (entity, _) => ShrineService.IsClickableShrineCandidate(entity),
-                resolveMechanicId: (_, _) => ClickService.ShrineMechanicId,
-                out _);
-        }
-
-        private Entity? ResolveNearestOffscreenLabelBackedTarget(int maxDistance, out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            IReadOnlyList<LabelOnGround>? labels = _dependencies.GetLabelsForOffscreenSelection();
-            if (labels == null || labels.Count == 0)
-                return null;
-
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-
-            _dependencies.RefreshMechanicPriorityCaches();
-
-            Entity? best = null;
-            string? bestMechanicId = null;
-            MechanicRank bestRank = default;
-            bool hasBestRank = false;
-
-            for (int i = 0; i < labels.Count; i++)
-            {
-                LabelOnGround? label = labels[i];
-                Entity? entity = label?.ItemOnGround;
-                if (label == null || entity == null)
-                    continue;
-                if (!entity.IsValid || entity.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(entity))
-                    continue;
-                if (entity.DistancePlayer > maxDistance)
-                    continue;
-                if (_dependencies.ShouldSuppressPathfindingLabel(label))
-                    continue;
-
-                string? mechanicId = _dependencies.GetMechanicIdForLabel(label);
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                    continue;
-
-                if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft))
-                    continue;
-
-                MechanicRank rank = _dependencies.BuildMechanicRank(entity.DistancePlayer, mechanicId);
-                _ = OffscreenTargetRanker.TryPromoteRankedCandidate(
-                    ref best,
-                    ref bestMechanicId,
-                    ref bestRank,
-                    ref hasBestRank,
-                    entity,
-                    mechanicId,
-                    rank);
-            }
-
-            selectedMechanicId = bestMechanicId;
-            return best;
-        }
-
-        private Entity? ResolveNearestOffscreenEntityTarget(
-            int maxDistance,
-            Func<Entity, string, bool> includeEntity,
-            Func<Entity, string, string?> resolveMechanicId,
-            out string? selectedMechanicId)
-        {
-            selectedMechanicId = null;
-
-            Entity? best = null;
-            float bestDistance = float.MaxValue;
-            string? bestMechanicId = null;
-
-            EntityQueryService.VisitValidEntities(_dependencies.GameController, entity =>
-            {
-                if (!TryPrepareOffscreenEntityTargetCandidate(entity, maxDistance, out string path))
-                    return false;
-
-                if (!includeEntity(entity, path))
-                    return false;
-
-                string? mechanicId = resolveMechanicId(entity, path);
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                    return false;
-
-                float distance = entity.DistancePlayer;
-                if (distance >= bestDistance)
-                    return false;
-
-                bestDistance = distance;
-                best = entity;
-                bestMechanicId = mechanicId;
-                return false;
-            });
-
-            selectedMechanicId = bestMechanicId;
-            return best;
-        }
-
-        private bool TryPrepareOffscreenEntityTargetCandidate(Entity? entity, int maxDistance, out string path)
-        {
-            path = string.Empty;
-
-            if (entity == null || !entity.IsValid || entity.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(entity))
-                return false;
-            if (entity.DistancePlayer > maxDistance)
-                return false;
-
-            path = entity.Path ?? string.Empty;
-
-            var screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-            Vector2 screen = new(screenRaw.X, screenRaw.Y);
-            if (_dependencies.IsClickableInEitherSpace(screen, path))
-                return false;
-
-            return true;
-        }
-
-        private bool ShouldContinuePathfindingToLabel(
-            LabelOnGround label,
-            Entity entity,
-            IReadOnlyList<LabelOnGround>? allLabels,
-            Vector2 windowTopLeft)
-        {
-            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
-                return true;
-
-            string path = entity.Path ?? string.Empty;
-            bool labelInWindow = _dependencies.IsInsideWindowInEitherSpace(rect.Center);
-            bool labelClickable = _dependencies.IsClickableInEitherSpace(rect.Center, path);
-
-            if (!labelInWindow || !labelClickable)
-                return true;
-
-            (bool clickResolvable, _) = _dependencies.TryResolveLabelClickPosition(label, null, windowTopLeft, allLabels, path);
-            return OffscreenPathingMath.ShouldContinuePathfindingWhenLabelActionable(labelInWindow, labelClickable, clickResolvable);
         }
 
     }

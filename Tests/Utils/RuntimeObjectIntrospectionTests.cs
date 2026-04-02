@@ -6,7 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Utils
 {
     [TestClass]
     public class RuntimeObjectIntrospectionTests

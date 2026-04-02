@@ -9,12 +9,14 @@ namespace ClickIt
 {
     public partial class ClickItSettings : ISettings
     {
-        private const int MechanicIgnoreDistanceWithinDefault = 100;
-        private const int MechanicIgnoreDistanceWithinMin = 10;
-        private const int MechanicIgnoreDistanceWithinMax = 500;
-        private static readonly StringComparer PriorityComparer = StringComparer.OrdinalIgnoreCase;
+        internal const int MechanicIgnoreDistanceWithinDefault = 100;
+        internal const int MechanicIgnoreDistanceWithinMin = 10;
+        internal const int MechanicIgnoreDistanceWithinMax = 500;
+        internal static readonly StringComparer PriorityComparer = StringComparer.OrdinalIgnoreCase;
         [JsonIgnore]
-        internal ClickItSettingsUiState UiState { get; } = new();
+        internal ClickItSettingsTransientState TransientState { get; } = new();
+        [JsonIgnore]
+        internal ClickItSettingsUiState UiState => TransientState.UiState;
 
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
         public int SettingsVersion { get; set; } = ClickItSettingsMigrationService.CurrentVersion;
@@ -24,7 +26,7 @@ namespace ClickIt
 
         [Menu(" ", 1, 900)]
         [JsonIgnore]
-        public CustomNode DebugTestingPanel { get; }
+        public CustomNode DebugTestingPanel { get; private set; } = new();
 
         [JsonIgnore]
         public bool ShowRawDebugNodesInSettings => false;
@@ -39,15 +41,15 @@ namespace ClickIt
         [Menu("Copy Additional Debug Information", "Copies the current Additional Debug Information text to clipboard.", 5, 900)]
         public ButtonNode CopyAdditionalDebugInfoButton { get; set; } = new ButtonNode();
         [JsonIgnore]
-        public bool MemoryDumpInProgress { get; set; } = false;
+        public bool MemoryDumpInProgress { get => TransientState.MemoryDumpInProgress; set => TransientState.MemoryDumpInProgress = value; }
         [JsonIgnore]
-        public int MemoryDumpProgressPercent { get; set; } = 0;
+        public int MemoryDumpProgressPercent { get => TransientState.MemoryDumpProgressPercent; set => TransientState.MemoryDumpProgressPercent = value; }
         [JsonIgnore]
-        public bool MemoryDumpLastRunSucceeded { get; set; } = false;
+        public bool MemoryDumpLastRunSucceeded { get => TransientState.MemoryDumpLastRunSucceeded; set => TransientState.MemoryDumpLastRunSucceeded = value; }
         [JsonIgnore]
-        public string MemoryDumpStatusText { get; set; } = string.Empty;
+        public string MemoryDumpStatusText { get => TransientState.MemoryDumpStatusText; set => TransientState.MemoryDumpStatusText = value; }
         [JsonIgnore]
-        public string MemoryDumpOutputPath { get; set; } = string.Empty;
+        public string MemoryDumpOutputPath { get => TransientState.MemoryDumpOutputPath; set => TransientState.MemoryDumpOutputPath = value; }
         [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
         [Menu("Status", "Show/hide the status debug section", 1, 2)]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
@@ -123,7 +125,7 @@ namespace ClickIt
 
         [Menu("", 10001, 1100)]
         [JsonIgnore]
-        public CustomNode ControlsSliderWidthStart { get; }
+        public CustomNode ControlsSliderWidthStart { get; private set; } = new();
         [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 2, 1100)]
 
         public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
@@ -152,7 +154,7 @@ namespace ClickIt
         public RangeNode<int> ToggleItemsPostToggleClickBlockMs { get; set; } = new RangeNode<int>(20, 0, 250);
         [Menu("", 10002, 1100)]
         [JsonIgnore]
-        public CustomNode ControlsSliderWidthEnd { get; }
+        public CustomNode ControlsSliderWidthEnd { get; private set; } = new();
         [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while not in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 13, 1100)]
         public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
 
@@ -167,7 +169,7 @@ namespace ClickIt
         public ToggleNode PrioritizeOnscreenClickableMechanicsOverPathfinding { get; set; } = new ToggleNode(true);
         [Menu("", 10003, 1114)]
         [JsonIgnore]
-        public CustomNode PathfindingSliderWidthStart { get; }
+        public CustomNode PathfindingSliderWidthStart { get; private set; } = new();
         [Menu("Offscreen Pathfinding Search Budget", "Controls pathfinding search complexity for offscreen walking. Higher values search deeper but increase CPU usage.", 3, 1114)]
         public RangeNode<int> OffscreenPathfindingSearchBudget { get; set; } = new RangeNode<int>(6000, 1000, 50000);
         [Menu("Offscreen Path Line Timeout (ms)", "Maximum age of the red pathfinding line. If pathfinding has not run within this timeout, the line is automatically cleared.", 4, 1114)]
@@ -180,7 +182,7 @@ namespace ClickIt
         public RangeNode<int> OffscreenShieldChargePostCastClickDelayMs { get; set; } = new RangeNode<int>(100, 0, 1000);
         [Menu("", 10004, 1114)]
         [JsonIgnore]
-        public CustomNode PathfindingSliderWidthEnd { get; }
+        public CustomNode PathfindingSliderWidthEnd { get; private set; } = new();
 
         [Menu("Lazy Mode", 1115, 1100)]
         public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();
@@ -188,7 +190,7 @@ namespace ClickIt
         public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
         [Menu("", 10005, 1115)]
         [JsonIgnore]
-        public CustomNode LazyModeSliderWidthStart { get; }
+        public CustomNode LazyModeSliderWidthStart { get; private set; } = new();
         [Menu("Click Limiting (ms)", "When lazy mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while lazy mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 1115)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
         [Menu("Disable Hotkey", "When lazy mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1115)]
@@ -209,7 +211,7 @@ namespace ClickIt
         public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
         [Menu("Nearby Monster Blockers", "Prevents lazy mode clicking when nearby monster density reaches your configured thresholds.", 11, 1115)]
         [JsonIgnore]
-        public CustomNode LazyModeNearbyMonsterRulesPanel { get; }
+        public CustomNode LazyModeNearbyMonsterRulesPanel { get; private set; } = new();
         public int LazyModeNormalMonsterBlockCount { get; set; } = 0;
         public int LazyModeNormalMonsterBlockDistance { get; set; } = 10;
         public int LazyModeMagicMonsterBlockCount { get; set; } = 3;
@@ -220,7 +222,7 @@ namespace ClickIt
         public int LazyModeUniqueMonsterBlockDistance { get; set; } = 10;
         [Menu("", 10006, 1115)]
         [JsonIgnore]
-        public CustomNode LazyModeSliderWidthEnd { get; }
+        public CustomNode LazyModeSliderWidthEnd { get; private set; } = new();
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> MechanicPriorityOrder { get; set; } = new();
 
@@ -234,7 +236,7 @@ namespace ClickIt
         public EmptyNode WorldInteractionsCategory { get; set; } = new EmptyNode();
         [Menu("", 101, 1400)]
         [JsonIgnore]
-        public CustomNode MechanicsTablePanel { get; }
+        public CustomNode MechanicsTablePanel { get; private set; } = new();
         [JsonIgnore]
         public bool ShowRawMechanicNodesInSettings => false;
         [Menu("Basic Chests", "Click normal (non-league related) chests.", 1, 1400)]
@@ -381,23 +383,23 @@ namespace ClickIt
 
         [Menu("", 10007, 124)]
         [JsonIgnore]
-        public CustomNode PrioritiesSliderWidthStart { get; }
+        public CustomNode PrioritiesSliderWidthStart { get; private set; } = new();
         [Menu("Priority Distance Penalty", "Applies an extra distance cost per lower-priority row when comparing non-ignored mechanics.\n\nHigher values make table order matter more while still considering distance.\n\nSetting this to 0 will effectively disable the priorities feature, however, ignore distance values will still be respected.\n\nWhen priorities are disabled, distance will be the only factor considered in what to click.", 1, 124)]
         public RangeNode<int> MechanicPriorityDistancePenalty { get; set; } = new RangeNode<int>(25, 0, 100);
 
         [Menu("", 2, 124)]
         [JsonIgnore]
-        public CustomNode MechanicPriorityTablePanel { get; }
+        public CustomNode MechanicPriorityTablePanel { get; private set; } = new();
         [Menu("", 10008, 124)]
         [JsonIgnore]
-        public CustomNode PrioritiesSliderWidthEnd { get; }
+        public CustomNode PrioritiesSliderWidthEnd { get; private set; } = new();
 
         [Menu("Items", 117, 1400)]
         public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
 
         [Menu("", 2, 117)]
         [JsonIgnore]
-        public CustomNode ItemTypeFiltersPanel { get; }
+        public CustomNode ItemTypeFiltersPanel { get; private set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> ItemTypeWhitelistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -420,7 +422,7 @@ namespace ClickIt
         [Menu("", 2, 118)]
         [ConditionalDisplay(nameof(ShowEssenceCorruptionTablePanel))]
         [JsonIgnore]
-        public CustomNode EssenceCorruptionTablePanel { get; }
+        public CustomNode EssenceCorruptionTablePanel { get; private set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> EssenceCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -434,7 +436,7 @@ namespace ClickIt
         public ToggleNode ShowUltimatumOptionOverlay { get; set; } = new ToggleNode(true);
         [Menu("", 4, 119)]
         [JsonIgnore]
-        public CustomNode UltimatumModifierTablePanel { get; }
+        public CustomNode UltimatumModifierTablePanel { get; private set; } = new();
 
         [Menu("Take Reward when Modifier Is Chosen (Grueling Gauntlet)", 1195, 119)]
         public EmptyNode UltimatumTakeRewardWhenChosenCategory { get; set; } = new EmptyNode();
@@ -445,7 +447,7 @@ namespace ClickIt
         public bool ShowUltimatumTakeRewardModifierTablePanel => true;
         [Menu("", 2, 1195)]
         [JsonIgnore]
-        public CustomNode UltimatumTakeRewardModifierTablePanel { get; }
+        public CustomNode UltimatumTakeRewardModifierTablePanel { get; private set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> UltimatumModifierPriority { get; set; } = new();
@@ -462,7 +464,7 @@ namespace ClickIt
         public ToggleNode ShowStrongboxFrames { get; set; } = new ToggleNode(true);
         [Menu("", 2, 120)]
         [JsonIgnore]
-        public CustomNode StrongboxFilterTablePanel { get; }
+        public CustomNode StrongboxFilterTablePanel { get; private set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> StrongboxClickIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -475,7 +477,7 @@ namespace ClickIt
 
         [Menu("Settings", 1, 121)]
         [JsonIgnore]
-        public CustomNode AltarsPanel { get; }
+        public CustomNode AltarsPanel { get; private set; } = new();
 
         [JsonIgnore]
         public bool ShowRawAltarNodesInSettings => false;
@@ -494,7 +496,7 @@ namespace ClickIt
         public EmptyNode WeightOverrides { get; set; } = new EmptyNode();
         [JsonIgnore]
         [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
-        public CustomNode AltarModWeights { get; }
+        public CustomNode AltarModWeights { get; private set; } = new();
 
         [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
         public ToggleNode ValuableUpside { get; set; } = new ToggleNode(true);
@@ -535,7 +537,7 @@ namespace ClickIt
         public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
         [Menu("", 10009, 123)]
         [JsonIgnore]
-        public CustomNode DelveSliderWidthStart { get; }
+        public CustomNode DelveSliderWidthStart { get; private set; } = new();
         [Menu("Darkness Debuff Stacks", 6, 123)]
         public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
         [Menu("Flare Health %", 7, 123)]
@@ -544,33 +546,13 @@ namespace ClickIt
         public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
         [Menu("", 10010, 123)]
         [JsonIgnore]
-        public CustomNode DelveSliderWidthEnd { get; }
+        public CustomNode DelveSliderWidthEnd { get; private set; } = new();
 
         public ClickItSettings()
         {
             InitializeDefaultWeights();
             ClickItSettingsMigrationService.Apply(this);
-            DebugTestingPanel = SettingsScreenComposer.CreateSafePanelNode("DebugTestingPanel", DrawDebugTestingPanel, DrawPanelSafe);
-            ControlsSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
-            ControlsSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
-            PathfindingSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
-            PathfindingSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
-            LazyModeSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
-            LazyModeSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
-            LazyModeNearbyMonsterRulesPanel = SettingsScreenComposer.CreateSafePanelNode("LazyModeNearbyMonsterRulesPanel", DrawLazyModeNearbyMonsterRulesPanel, DrawPanelSafe);
-            PrioritiesSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
-            PrioritiesSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
-            DelveSliderWidthStart = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PushStandardSliderWidth);
-            DelveSliderWidthEnd = SettingsScreenComposer.CreateSliderWidthBoundaryNode(PopStandardSliderWidth);
-            AltarsPanel = SettingsScreenComposer.CreateSafePanelNode("AltarsPanel", DrawAltarsPanel, DrawPanelSafe);
-            AltarModWeights = SettingsScreenComposer.CreateSafePanelNode("AltarModWeights", DrawAltarModWeights, DrawPanelSafe);
-            ItemTypeFiltersPanel = SettingsScreenComposer.CreateSafePanelNode("ItemTypeFiltersPanel", DrawItemTypeFiltersPanel, DrawPanelSafe);
-            MechanicPriorityTablePanel = SettingsScreenComposer.CreateSafePanelNode("MechanicPriorityTablePanel", DrawMechanicPriorityTablePanel, DrawPanelSafe);
-            EssenceCorruptionTablePanel = SettingsScreenComposer.CreateSafePanelNode("EssenceCorruptionTablePanel", DrawEssenceCorruptionTablePanel, DrawPanelSafe);
-            StrongboxFilterTablePanel = SettingsScreenComposer.CreateSafePanelNode("StrongboxFilterTablePanel", DrawStrongboxFilterTablePanel, DrawPanelSafe);
-            MechanicsTablePanel = SettingsScreenComposer.CreateSafePanelNode("MechanicsTablePanel", DrawMechanicsTablePanel, DrawPanelSafe);
-            UltimatumModifierTablePanel = SettingsScreenComposer.CreateSafePanelNode("UltimatumModifierTablePanel", DrawUltimatumModifierTablePanel, DrawPanelSafe);
-            UltimatumTakeRewardModifierTablePanel = SettingsScreenComposer.CreateSafePanelNode("UltimatumTakeRewardModifierTablePanel", DrawUltimatumTakeRewardModifierTablePanel, DrawPanelSafe);
+            ComposeScreenNodes();
         }
 
     }

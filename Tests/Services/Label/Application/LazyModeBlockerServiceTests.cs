@@ -1,8 +1,11 @@
 using ClickIt.Services.Label.Application;
+using ClickIt;
+using ClickIt.Definitions;
 using ExileCore.PoEMemory.Elements;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace ClickIt.Tests.Label.Application
 {
@@ -10,20 +13,38 @@ namespace ClickIt.Tests.Label.Application
     public class LazyModeBlockerServiceTests
     {
         [TestMethod]
-        public void HasRestrictedItemsOnScreen_DelegatesToCoreCheck()
+        public void HasRestrictedItemsOnScreen_ReturnsFalseAndClearsReason_WhenNoRestrictionsMatch()
         {
-            IReadOnlyList<LabelOnGround>? capturedLabels = null;
+            var settings = new ClickItSettings();
+            settings.LazyModeNormalMonsterBlockCount = 0;
+            settings.LazyModeMagicMonsterBlockCount = 0;
+            settings.LazyModeRareMonsterBlockCount = 0;
+            settings.LazyModeUniqueMonsterBlockCount = 0;
+
+            var service = new LazyModeBlockerService(settings, null, _ => { });
             IReadOnlyList<LabelOnGround> labels = [];
-            var service = new LazyModeBlockerService(allLabels =>
-            {
-                capturedLabels = allLabels;
-                return true;
-            });
 
             bool result = service.HasRestrictedItemsOnScreen(labels);
 
-            result.Should().BeTrue();
-            capturedLabels.Should().BeSameAs(labels);
+            result.Should().BeFalse();
+            service.LastRestrictionReason.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void HasRestrictedItemsOnScreen_ReturnsFalse_WhenLabelsAreNull()
+        {
+            var settings = new ClickItSettings();
+            settings.LazyModeNormalMonsterBlockCount = 0;
+            settings.LazyModeMagicMonsterBlockCount = 0;
+            settings.LazyModeRareMonsterBlockCount = 0;
+            settings.LazyModeUniqueMonsterBlockCount = 0;
+
+            var service = new LazyModeBlockerService(settings, null, _ => { });
+
+            bool result = service.HasRestrictedItemsOnScreen(null);
+
+            result.Should().BeFalse();
+            service.LastRestrictionReason.Should().BeNull();
         }
     }
 }

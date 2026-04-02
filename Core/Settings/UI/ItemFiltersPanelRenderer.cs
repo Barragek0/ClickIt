@@ -19,7 +19,7 @@ namespace ClickIt
 
         private void DrawItemTypeFiltersPanel()
         {
-            EnsureItemTypeFiltersInitialized();
+            SettingsDefaultsService.EnsureItemTypeFiltersInitialized(this);
 
             ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open subtype filter options.");
             ImGui.Spacing();
@@ -27,7 +27,7 @@ namespace ClickIt
             DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref UiState.ItemTypeSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
             {
-                ResetItemTypeFilterDefaults();
+                SettingsDefaultsService.ResetItemTypeFilterDefaults(this);
             }
 
             ImGui.Spacing();
@@ -139,12 +139,12 @@ namespace ClickIt
 
         private void DrawEssenceCorruptionTablePanel()
         {
-            EnsureEssenceCorruptionFiltersInitialized();
+            SettingsDefaultsService.EnsureEssenceCorruptionFiltersInitialized(this);
 
             DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref UiState.EssenceSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
             {
-                ResetEssenceCorruptionDefaults();
+                SettingsDefaultsService.ResetEssenceCorruptionDefaults(this);
             }
 
             ImGui.Spacing();
@@ -188,12 +188,12 @@ namespace ClickIt
 
         private void DrawStrongboxFilterTablePanel()
         {
-            EnsureStrongboxFiltersInitialized();
+            SettingsDefaultsService.EnsureStrongboxFiltersInitialized(this);
 
             DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref UiState.StrongboxSearchFilter);
             if (DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
             {
-                ResetStrongboxFilterDefaults();
+                SettingsDefaultsService.ResetStrongboxFilterDefaults(this);
             }
 
             ImGui.Spacing();
@@ -281,7 +281,7 @@ namespace ClickIt
 
         public IReadOnlyList<string> GetCorruptEssenceNames()
         {
-            EnsureEssenceCorruptionFiltersInitialized();
+            SettingsDefaultsService.EnsureEssenceCorruptionFiltersInitialized(this);
 
             HashSet<string> uniqueNames = new(StringComparer.OrdinalIgnoreCase);
             foreach (string essenceName in EssenceCorruptNames)
@@ -297,14 +297,14 @@ namespace ClickIt
 
         public IReadOnlyList<string> GetStrongboxClickMetadataIdentifiers()
         {
-            EnsureStrongboxFiltersInitialized();
+            SettingsDefaultsService.EnsureStrongboxFiltersInitialized(this);
             RefreshStrongboxMetadataSnapshotsIfNeeded();
             return _strongboxClickMetadataSnapshot;
         }
 
         public IReadOnlyList<string> GetStrongboxDontClickMetadataIdentifiers()
         {
-            EnsureStrongboxFiltersInitialized();
+            SettingsDefaultsService.EnsureStrongboxFiltersInitialized(this);
             RefreshStrongboxMetadataSnapshotsIfNeeded();
             return _strongboxDontClickMetadataSnapshot;
         }
@@ -351,7 +351,7 @@ namespace ClickIt
 
             foreach (string id in strongboxIds)
             {
-                StrongboxFilterEntry? entry = TryGetStrongboxFilterById(id);
+                StrongboxFilterEntry? entry = SettingsDefaultsService.TryGetStrongboxFilterById(id);
                 if (entry?.MetadataIdentifiers == null)
                     continue;
 
@@ -499,14 +499,14 @@ namespace ClickIt
 
         public IReadOnlyList<string> GetItemTypeWhitelistMetadataIdentifiers()
         {
-            EnsureItemTypeFiltersInitialized();
+            SettingsDefaultsService.EnsureItemTypeFiltersInitialized(this);
             RefreshItemTypeMetadataSnapshotsIfNeeded();
             return _itemTypeWhitelistMetadataSnapshot;
         }
 
         public IReadOnlyList<string> GetItemTypeBlacklistMetadataIdentifiers()
         {
-            EnsureItemTypeFiltersInitialized();
+            SettingsDefaultsService.EnsureItemTypeFiltersInitialized(this);
             RefreshItemTypeMetadataSnapshotsIfNeeded();
             return _itemTypeBlacklistMetadataSnapshot;
         }

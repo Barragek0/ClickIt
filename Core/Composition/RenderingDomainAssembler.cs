@@ -19,7 +19,7 @@ namespace ClickIt.Composition
         {
             var debugRenderer = new Rendering.DebugRenderer(owner, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
             var strongboxRenderer = new Rendering.StrongboxRenderer(settings, core.DeferredFrameQueue);
-            var lazyModeRenderer = new Rendering.LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LabelFilterService);
+            var lazyModeRenderer = new Rendering.LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LabelFilterService.GetLazyModeBlockerService());
             var clickHotkeyToggleRenderer = new Rendering.ClickHotkeyToggleRenderer(settings, core.DeferredTextQueue, core.InputHandler);
             var inventoryFullWarningRenderer = new Rendering.InventoryFullWarningRenderer(
                 core.DeferredTextQueue,

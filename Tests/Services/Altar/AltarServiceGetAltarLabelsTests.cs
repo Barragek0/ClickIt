@@ -1,7 +1,7 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Collections.Generic;
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Altar
 {
     [TestClass]
     public class AltarServiceGetAltarLabelsTests
@@ -11,7 +11,7 @@ namespace ClickIt.Tests.Unit
         {
             var clickIt = new ClickIt();
             var settings = new ClickItSettings();
-            var svc = new Services.AltarService(clickIt, settings, null);
+            var svc = new global::ClickIt.Services.AltarService(clickIt, settings, null);
 
             svc.GetAltarComponents().Should().BeEmpty();
 

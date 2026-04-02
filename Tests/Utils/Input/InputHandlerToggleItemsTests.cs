@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Utils.Input
 {
     [TestClass]
     public class InputHandlerToggleItemsTests

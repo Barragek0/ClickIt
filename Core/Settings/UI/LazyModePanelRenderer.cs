@@ -21,7 +21,7 @@ namespace ClickIt
 
         private void DrawLazyModeNearbyMonsterRulesPanel()
         {
-            EnsureLazyModeNearbyMonsterFiltersInitialized();
+            SettingsNormalizationService.EnsureLazyModeNearbyMonsterFiltersInitialized(this);
 
             DrawLazyModeNearbyMonsterRuleRows([
                 new LazyModeNearbyMonsterRuleDescriptor(
@@ -94,7 +94,7 @@ namespace ClickIt
 
             ImGui.SetNextItemWidth(70f);
             bool changed = ImGui.InputInt($"##LazyModeNearbyMonsterCount{rowId}", ref count, 1, 10);
-            count = SanitizeLazyModeNearbyMonsterCount(count);
+            count = SettingsNormalizationService.SanitizeLazyModeNearbyMonsterCount(count);
 
             ImGui.SameLine();
             ImGui.AlignTextToFramePadding();
@@ -103,7 +103,7 @@ namespace ClickIt
 
             ImGui.SetNextItemWidth(80f);
             changed |= ImGui.InputInt($"##LazyModeNearbyMonsterDistance{rowId}", ref distance, 1, 10);
-            distance = SanitizeLazyModeNearbyMonsterDistance(distance);
+            distance = SettingsNormalizationService.SanitizeLazyModeNearbyMonsterDistance(distance);
 
             ImGui.SameLine();
             ImGui.AlignTextToFramePadding();

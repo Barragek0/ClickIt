@@ -4,7 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class PluginContextTests
@@ -46,14 +46,14 @@ namespace ClickIt.Tests.Unit
             {
                 PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(new ClickItSettings()),
                 ErrorHandler = new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
-                AreaService = new Services.AreaService(),
+                AreaService = new global::ClickIt.Services.AreaService(),
                 DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue(),
                 DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue(),
-                LabelFilterService = (Services.LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(Services.LabelFilterService)),
-                LabelService = (Services.LabelService)RuntimeHelpers.GetUninitializedObject(typeof(Services.LabelService)),
-                ClickService = (Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(Services.ClickService)),
-                PathfindingService = (Services.PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(Services.PathfindingService)),
-                AlertService = (Services.AlertService)RuntimeHelpers.GetUninitializedObject(typeof(Services.AlertService))
+                LabelFilterService = (global::ClickIt.Services.LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelFilterService)),
+                LabelService = (global::ClickIt.Services.LabelService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelService)),
+                ClickService = (global::ClickIt.Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.ClickService)),
+                PathfindingService = (global::ClickIt.Services.PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.PathfindingService)),
+                AlertService = (global::ClickIt.Services.AlertService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.AlertService))
             };
 
             state.DisposeCompositionRoot();

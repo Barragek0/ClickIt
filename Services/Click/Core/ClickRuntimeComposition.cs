@@ -1,4 +1,7 @@
 using System.Collections;
+using ClickIt.Services.Click.Application;
+using ClickIt.Services.Click.Label;
+using ClickIt.Services.Click.Selection;
 using ClickIt.Services.Label.Classification.Policies;
 using ClickIt.Services.Click.Runtime;
 using ExileCore.PoEMemory.Elements;
@@ -10,21 +13,43 @@ namespace ClickIt.Services
     public partial class ClickService
     {
         private ClickTickContextFactory? _tickContextFactory;
+        private AltarAutomationService? _altarAutomationService;
+        private ClickDebugPublicationService? _clickDebugPublicationService;
+        private VisibleLabelSnapshotProvider? _visibleLabelSnapshotProvider;
         private LabelSelectionCoordinator? _labelSelectionCoordinator;
         private ChestLootSettlementTracker? _chestLootSettlementTracker;
+        private VisibleMechanicTargetSelector? _visibleMechanicTargetSelector;
         private VisibleMechanicCoordinator? _visibleMechanicCoordinator;
+        private OffscreenStickyTargetHandler? _offscreenStickyTargetHandler;
         private OffscreenPathingCoordinator? _offscreenPathingCoordinator;
         private MovementSkillCoordinator? _movementSkillCoordinator;
         private ClickRuntimeEngine? _clickRuntimeEngine;
         private OffscreenTargetResolver? _offscreenTargetResolver;
+        private OffscreenMechanicTargetSelector? _offscreenMechanicTargetSelector;
+
+        private AltarAutomationService AltarAutomation => _altarAutomationService ??= new(CreateAltarAutomationServiceDependencies());
+        private ClickDebugPublicationService ClickDebugPublisher => _clickDebugPublicationService ??= new(new ClickDebugPublicationServiceDependencies(
+            gameController,
+            ShouldCaptureClickDebug,
+            SetLatestClickDebug,
+            IsClickableInEitherSpace,
+            IsInsideWindowInEitherSpace));
+
+        private VisibleLabelSnapshotProvider VisibleLabelSnapshots => _visibleLabelSnapshotProvider ??= new(gameController, cachedLabels);
 
         private LabelSelectionCoordinator LabelSelection => _labelSelectionCoordinator ??= new(CreateLabelSelectionCoordinatorDependencies());
 
         private ChestLootSettlementTracker ChestLootSettlement => _chestLootSettlementTracker ??= new(CreateChestLootSettlementTrackerDependencies());
 
+        private VisibleMechanicTargetSelector VisibleMechanicSelection => _visibleMechanicTargetSelector ??= new(CreateVisibleMechanicTargetSelectorDependencies());
+
         private VisibleMechanicCoordinator VisibleMechanics => _visibleMechanicCoordinator ??= new(CreateVisibleMechanicCoordinatorDependencies());
 
+        private OffscreenStickyTargetHandler OffscreenStickyTargets => _offscreenStickyTargetHandler ??= new(CreateOffscreenStickyTargetHandlerDependencies());
+
         private OffscreenPathingCoordinator OffscreenPathing => _offscreenPathingCoordinator ??= new(CreateOffscreenPathingCoordinatorDependencies());
+
+        private OffscreenMechanicTargetSelector OffscreenTargetSelection => _offscreenMechanicTargetSelector ??= new(CreateOffscreenMechanicTargetSelectorDependencies());
 
         private MovementSkillCoordinator MovementSkills => _movementSkillCoordinator ??= new(CreateMovementSkillCoordinatorDependencies());
 
@@ -34,18 +59,29 @@ namespace ClickIt.Services
 
         private ClickTickContextFactory TickContextFactory => _tickContextFactory ??= new(CreateClickTickContextFactoryDependencies());
 
+        private AltarAutomationServiceDependencies CreateAltarAutomationServiceDependencies()
+            => new(
+                settings,
+                gameController,
+                altarService.GetAltarComponentsReadOnly,
+                altarService.RemoveAltarComponentsByElement,
+                pc => weightCalculator.CalculateAltarWeights(pc),
+                (altar, weights, topModsRect, bottomModsRect, topModsTopLeft) => altarDisplayRenderer.DetermineAltarChoice(altar, weights, topModsRect, bottomModsRect, topModsTopLeft),
+                IsClickableInEitherSpace,
+                EnsureCursorInsideGameWindowForClick,
+                InteractionExecutionRuntime.Execute,
+                message => DebugLog(() => message),
+                errorHandler.LogError,
+                _elementAccessLock);
+
         private ChestLootSettlementTrackerDependencies CreateChestLootSettlementTrackerDependencies()
             => new(
                 settings,
                 chestLootSettlementState,
                 () => VisibleMechanics.CollectGroundLabelEntityAddresses(),
-                PublishClickFlowDebugStage,
-                (label, mechanicId, windowTopLeft, allLabels) =>
-                {
-                    bool success = TryResolveLabelClickPosition(label, mechanicId, windowTopLeft, allLabels, out Vector2 clickPos);
-                    return (success, clickPos);
-                },
-                (clickPos, label, forceUiHoverVerification) => PerformLabelClick(clickPos, label?.Label, gameController, forceUiHoverVerification));
+                ClickDebugPublisher.PublishClickFlowDebugStage,
+                LabelInteraction.TryResolveLabelClickPositionResult,
+                LabelInteraction.PerformTrackedLabelClick);
 
         private LabelSelectionCoordinatorDependencies CreateLabelSelectionCoordinatorDependencies()
             => new(
@@ -53,16 +89,12 @@ namespace ClickIt.Services
                 gameController,
                 labelFilterService,
                 inputHandler,
-                HasClickableAltars,
-                TryClickManualCursorPreferredAltarOption,
+                AltarAutomation.HasClickableAltars,
+                AltarAutomation.TryClickManualCursorPreferredAltarOption,
                 TryCorruptEssence,
                 TryClickPreferredUltimatumModifier,
-                (label, mechanicId, windowTopLeft, allLabels) =>
-                {
-                    bool success = TryResolveLabelClickPosition(label, mechanicId, windowTopLeft, allLabels, out Vector2 clickPos);
-                    return (success, clickPos);
-                },
-                (clickPos, useHoldClick) => ExecuteLabelInteraction(clickPos, null, gameController, useHoldClick, 0, false, true, true),
+                LabelInteraction.TryResolveLabelClickPositionResult,
+                LabelInteraction.PerformManualCursorInteraction,
                 (mechanicId, label) => ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, label),
                 () => pathfindingService.ClearLatestPath(),
                 message => DebugLog(() => message),
@@ -79,20 +111,33 @@ namespace ClickIt.Services
                 CreateMechanicPriorityContext,
                 ShouldCaptureClickDebug,
                 BuildLabelRangeRejectionDebugSummary,
-                (stage, notes) => PublishClickFlowDebugStage(stage, notes),
+                (stage, notes) => ClickDebugPublisher.PublishClickFlowDebugStage(stage, notes),
                 () => _runtimeState.LastLeverKey,
                 value => _runtimeState.LastLeverKey = value,
                 () => _runtimeState.LastLeverClickTimestampMs,
                 value => _runtimeState.LastLeverClickTimestampMs = value);
+
+        private VisibleMechanicTargetSelectorDependencies CreateVisibleMechanicTargetSelectorDependencies()
+            => new(
+                settings,
+                gameController,
+                ShouldCaptureClickDebug,
+                SetLatestClickDebug,
+                message => DebugLog(() => message),
+                IsInsideWindowInEitherSpace,
+                IsClickableInEitherSpace,
+                mechanicId => SettlersMechanicPolicy.IsEnabled(settings, mechanicId),
+                () => VisibleMechanics.CollectGroundLabelEntityAddresses());
 
         private VisibleMechanicCoordinatorDependencies CreateVisibleMechanicCoordinatorDependencies()
             => new(
                 settings,
                 gameController,
                 shrineService,
+                VisibleMechanicSelection,
                 pointIsInClickableArea,
-                clickPos => PerformLabelClick(clickPos, null, gameController),
-                (clickPos, useHoldClick) => ExecuteLabelInteraction(clickPos, null, gameController, useHoldClick, 0),
+                LabelInteraction.PerformMechanicClick,
+                LabelInteraction.PerformMechanicInteraction,
                 entity => OffscreenPathing.IsStickyTarget(entity),
                 () => OffscreenPathing.ClearStickyOffscreenTarget(),
                 () => shrineService.InvalidateCache(),
@@ -102,8 +147,7 @@ namespace ClickIt.Services
                 ShouldCaptureClickDebug,
                 SetLatestClickDebug,
                 IsInsideWindowInEitherSpace,
-                IsClickableInEitherSpace,
-                mechanicId => SettlersMechanicPolicy.IsEnabled(settings, mechanicId));
+                IsClickableInEitherSpace);
 
         private MovementSkillCoordinatorDependencies CreateMovementSkillCoordinatorDependencies()
             => new(
@@ -123,25 +167,56 @@ namespace ClickIt.Services
                 () => _runtimeState.LastUsedMovementSkillEntry,
                 value => _runtimeState.LastUsedMovementSkillEntry = value);
 
+        private OffscreenMechanicTargetSelectorDependencies CreateOffscreenMechanicTargetSelectorDependencies()
+            => new(
+                settings,
+                gameController,
+                shrineService,
+                AltarAutomation.HasClickableAltars,
+                () => VisibleMechanics.ResolveNextShrineCandidate() != null,
+                () =>
+                {
+                    VisibleMechanics.ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
+                    return (lostShipment.HasValue, settlers.HasValue);
+                },
+                (stage, notes) => ClickDebugPublisher.PublishClickFlowDebugStage(stage, notes),
+                IsClickableInEitherSpace,
+                IsInsideWindowInEitherSpace,
+                ShouldSuppressPathfindingLabel,
+                label => labelFilterService.GetMechanicIdForLabel(label),
+                LabelInteraction.TryResolveLabelClickPositionResult,
+                GetLabelsForOffscreenSelection,
+                RefreshMechanicPriorityCaches,
+                (distance, mechanicId) => CandidateRankingEngine.BuildRank(distance, mechanicId, CreateMechanicPriorityContext()));
+
+        private OffscreenStickyTargetHandlerDependencies CreateOffscreenStickyTargetHandlerDependencies()
+            => new(
+                gameController,
+                shrineService,
+                () => _runtimeState.StickyOffscreenTargetAddress,
+                value => _runtimeState.StickyOffscreenTargetAddress = value,
+                address => EntityQueryService.FindEntityByAddress(gameController, address),
+                LabelInteraction.PerformMechanicClick,
+                IsClickableInEitherSpace,
+                ShouldSuppressPathfindingLabel,
+                label => labelFilterService.GetMechanicIdForLabel(label),
+                LabelInteraction.TryResolveLabelClickPositionResult,
+                LabelInteraction.PerformResolvedLabelInteraction,
+                reason => HoldDebugTelemetryAfterSuccessfulInteraction(reason),
+                (mechanicId, label) => ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, label),
+                () => shrineService.InvalidateCache());
+
         private OffscreenPathingCoordinatorDependencies CreateOffscreenPathingCoordinatorDependencies()
             => new(
                 settings,
                 gameController,
-                labelFilterService,
-                shrineService,
                 pathfindingService,
+                OffscreenTargetSelection,
+                OffscreenStickyTargets,
                 () => _runtimeState.StickyOffscreenTargetAddress,
-                value => _runtimeState.StickyOffscreenTargetAddress = value,
                 message => DebugLog(() => message),
                 reason => HoldDebugTelemetryAfterSuccessfulInteraction(reason),
-                (stage, notes) => PublishClickFlowDebugStage(stage, notes),
-                HasClickableAltars,
-                () => VisibleMechanics.ResolveNextShrineCandidate(),
-                () =>
-                {
-                    VisibleMechanics.ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
-                    return (lostShipment, settlers);
-                },
+                (stage, notes) => ClickDebugPublisher.PublishClickFlowDebugStage(stage, notes),
                 () =>
                 {
                     bool success = OffscreenTargetResolver.TryResolveOffscreenTargetScreenPointFromPath(out Vector2 targetScreen);
@@ -157,29 +232,16 @@ namespace ClickIt.Services
                     bool success = MovementSkills.TryUseMovementSkillForOffscreenPathing(targetPath, targetScreen, builtPath, out Vector2 castPoint, out string debugReason);
                     return (success, castPoint, debugReason);
                 },
-                clickPos => PerformLabelClick(clickPos, null, gameController),
+                LabelInteraction.PerformMechanicClick,
                 pointIsInClickableArea,
                 IsClickableInEitherSpace,
                 IsInsideWindowInEitherSpace,
                 ShouldSuppressPathfindingLabel,
                 label => labelFilterService.GetMechanicIdForLabel(label),
-                (label, mechanicId, windowTopLeft, allLabels, explicitPath) =>
-                {
-                    bool success = TryResolveLabelClickPosition(label, mechanicId, windowTopLeft, allLabels, out Vector2 clickPos, explicitPath);
-                    return (success, clickPos);
-                },
-                (clickPos, label, mechanicId) => ExecuteLabelInteraction(
-                    clickPos,
-                    label.Label,
-                    gameController,
-                    SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
-                    0,
-                    OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label)),
+                LabelInteraction.TryResolveLabelClickPositionResult,
+                LabelInteraction.PerformResolvedLabelInteraction,
                 (mechanicId, label) => ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, label),
-                () => shrineService.InvalidateCache(),
-                GetLabelsForOffscreenSelection,
-                RefreshMechanicPriorityCaches,
-                (distance, mechanicId) => CandidateRankingEngine.BuildRank(distance, mechanicId, CreateMechanicPriorityContext()));
+                () => shrineService.InvalidateCache());
 
         private ClickRuntimeEngineDependencies CreateClickRuntimeEngineDependencies()
             => new(
@@ -193,26 +255,16 @@ namespace ClickIt.Services
                 LabelSelection,
                 ChestLootSettlement,
                 OffscreenPathing,
-                HasClickableAltars,
-                ProcessAltarClicking,
-                PublishClickFlowDebugStage,
+                AltarAutomation.HasClickableAltars,
+                AltarAutomation.ProcessAltarClicking,
+                ClickDebugPublisher.PublishClickFlowDebugStage,
                 ShouldCaptureClickDebug,
                 BuildLabelSourceDebugSummary,
                 BuildNoLabelDebugSummary,
                 (entity, cursorAbsolute, windowTopLeft) => entity == null ? null : TryGetCursorDistanceSquaredToEntity(entity, cursorAbsolute, windowTopLeft),
-                (label, mechanicId, windowTopLeft, allLabels) =>
-                {
-                    bool success = TryResolveLabelClickPosition(label, mechanicId, windowTopLeft, allLabels, out Vector2 clickPos);
-                    return (success, clickPos);
-                },
-                (clickPos, label, mechanicId) => ExecuteLabelInteraction(
-                    clickPos,
-                    label.Label,
-                    gameController,
-                    SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
-                    0,
-                    OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label)),
-                PublishLabelClickDebug,
+                LabelInteraction.TryResolveLabelClickPositionResult,
+                LabelInteraction.PerformResolvedLabelInteraction,
+                ClickDebugPublisher.PublishLabelClickDebug,
                 reason => HoldDebugTelemetryAfterSuccessfulInteraction(reason),
                 message => DebugLog(() => message));
 
@@ -230,7 +282,7 @@ namespace ClickIt.Services
                 refreshMechanicPriorityCaches: RefreshMechanicPriorityCaches,
                 createMechanicPriorityContext: CreateMechanicPriorityContext,
                 groundItemsVisible: groundItemsVisible,
-                publishClickFlowDebugStage: PublishClickFlowDebugStage);
+                publishClickFlowDebugStage: ClickDebugPublisher.PublishClickFlowDebugStage);
 
         private MovementSkillPostCastBlockState GetMovementSkillPostCastBlockStateForTickContext(long now)
         {

@@ -12,9 +12,9 @@ namespace ClickIt
             return entries.ToDictionary(idSelector, static x => x, StringComparer.OrdinalIgnoreCase);
         }
 
-        private sealed record ItemSubtypeDefinition(string Id, string DisplayName, IReadOnlyList<string> MetadataIdentifiers);
+        internal sealed record ItemSubtypeDefinition(string Id, string DisplayName, IReadOnlyList<string> MetadataIdentifiers);
 
-        private static readonly Dictionary<string, ItemSubtypeDefinition[]> ItemSubtypeCatalog = new(StringComparer.OrdinalIgnoreCase)
+        internal static readonly Dictionary<string, ItemSubtypeDefinition[]> ItemSubtypeCatalog = new(StringComparer.OrdinalIgnoreCase)
         {
             ["jewels"] =
             [
@@ -72,12 +72,12 @@ namespace ClickIt
             "Scorn", "Envy", "Misery", "Dread"
         ];
 
-        private static readonly HashSet<string> EssenceMedsSuffixes = new(StringComparer.OrdinalIgnoreCase)
+        internal static readonly HashSet<string> EssenceMedsSuffixes = new(StringComparer.OrdinalIgnoreCase)
         {
             "Misery", "Envy", "Dread", "Scorn"
         };
 
-        private static readonly string[] EssenceAllTableNames =
+        internal static readonly string[] EssenceAllTableNames =
             EssenceSuffixes.SelectMany(suffix => new[]
             {
                 $"Screaming Essence of {suffix}",
@@ -85,9 +85,9 @@ namespace ClickIt
                 $"Deafening Essence of {suffix}"
             }).ToArray();
 
-        private sealed record StrongboxFilterEntry(string Id, string DisplayName, string[] MetadataIdentifiers);
+        internal sealed record StrongboxFilterEntry(string Id, string DisplayName, string[] MetadataIdentifiers);
 
-        private static readonly StrongboxFilterEntry[] StrongboxTableEntries =
+        internal static readonly StrongboxFilterEntry[] StrongboxTableEntries =
         [
             new("regular", "Regular Strongbox (mixed loot)", ["StrongBoxes/Strongbox"]),
             new("arcanist", "Arcanist Strongbox (currency)", ["StrongBoxes/Arcanist"]),
@@ -105,10 +105,10 @@ namespace ClickIt
             new("unique-strongbox", "Unique Strongboxes", ["special:strongbox-unique"])
         ];
 
-        private static readonly Dictionary<string, StrongboxFilterEntry> StrongboxTableEntriesById =
+        internal static readonly Dictionary<string, StrongboxFilterEntry> StrongboxTableEntriesById =
             BuildIdLookup(StrongboxTableEntries, static x => x.Id);
 
-        private static readonly string[] StrongboxDefaultClickIds =
+        internal static readonly string[] StrongboxDefaultClickIds =
         [
             "regular",
             "arcanist",

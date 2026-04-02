@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System;
 using System.Runtime.CompilerServices;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Utils
 {
     [TestClass]
     public class CoroutineManagerTests
@@ -82,7 +82,7 @@ namespace ClickIt.Tests.Unit
             var ctx = new PluginContext();
             var perf = new global::ClickIt.Utils.PerformanceMonitor(settings);
             ctx.PerformanceMonitor = perf;
-            ctx.ClickService = (Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(Services.ClickService));
+            ctx.ClickService = (global::ClickIt.Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.ClickService));
 
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });

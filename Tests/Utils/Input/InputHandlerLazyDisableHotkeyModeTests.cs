@@ -2,7 +2,7 @@ using ClickIt.Utils;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Utils.Input
 {
     [TestClass]
     public class InputHandlerLazyDisableHotkeyModeTests

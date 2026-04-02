@@ -7,7 +7,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Shrine
 {
     [TestClass]
     public class ShrineServiceTests

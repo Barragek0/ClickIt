@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Runtime.CompilerServices;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class ClickItOnCloseTests
@@ -16,7 +16,7 @@ namespace ClickIt.Tests.Unit
 
             plugin.State.PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(settings);
             plugin.State.ErrorHandler = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
-            plugin.State.AreaService = new Services.AreaService();
+            plugin.State.AreaService = new global::ClickIt.Services.AreaService();
             plugin.State.DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue();
             plugin.State.DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue();
 

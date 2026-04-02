@@ -5,7 +5,7 @@ using ClickIt.Services;
 using ExileCore.PoEMemory;
 using Moq;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Altar
 {
     [TestClass]
     public class AltarServiceBehaviorTests

@@ -1,4 +1,5 @@
 using ClickIt.Services;
+using ClickIt.Services.Label.Selection;
 using ClickIt.Utils;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
@@ -11,6 +12,7 @@ namespace ClickIt.Composition
         PerformanceMonitor PerformanceMonitor,
         ErrorHandler ErrorHandler,
         AreaService AreaService,
+        LabelReadModelService LabelReadModelService,
         LabelService LabelService,
         TimeCache<List<LabelOnGround>> CachedLabels,
         Camera Camera,
@@ -33,9 +35,10 @@ namespace ClickIt.Composition
             var areaService = new AreaService();
             areaService.UpdateScreenAreas(gameController);
 
-            var labelService = new LabelService(
+            var labelReadModelService = new LabelReadModelService(
                 gameController,
                 point => areaService.PointIsInClickableArea(gameController, point));
+            var labelService = new LabelService(labelReadModelService);
             var cachedLabels = labelService.CachedLabels;
 
             var camera = gameController.Game?.IngameState?.Camera
@@ -55,6 +58,7 @@ namespace ClickIt.Composition
                 performanceMonitor,
                 errorHandler,
                 areaService,
+                labelReadModelService,
                 labelService,
                 cachedLabels,
                 camera,

@@ -15,11 +15,11 @@ namespace ClickIt
 
         private void DrawMechanicPriorityTablePanel()
         {
-            EnsureMechanicPrioritiesInitialized();
+            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(this);
 
             if (DrawResetDefaultsButton("Reset Defaults##MechanicPriorityResetDefaults"))
             {
-                ResetMechanicPriorityDefaults();
+                SettingsDefaultsService.ResetMechanicPriorityDefaults(this);
             }
 
             DrawMechanicPrioritySectionDescription();

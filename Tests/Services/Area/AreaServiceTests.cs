@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Services;
 using ClickIt.Services.Area;
 using SharpDX;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Area
 {
     [TestClass]
     public class AreaServiceTests

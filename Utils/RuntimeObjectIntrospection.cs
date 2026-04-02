@@ -69,27 +69,7 @@ namespace ClickIt.Utils
         }
 
         public static string BuildReport(object? root, RuntimeObjectIntrospectionOptions options)
-        {
-            RuntimeObjectTraversalOptions normalized = NormalizeOptions(options);
-
-            var sb = new StringBuilder(1024);
-            sb.AppendLine($"--- {normalized.Title} ---");
-
-            if (root == null)
-            {
-                sb.AppendLine("Root: unavailable");
-                return sb.ToString().TrimEnd();
-            }
-
-            var engine = new RuntimeObjectTraversalEngine(root, normalized, enforceElapsedBudget: false);
-            while (!engine.IsFinished)
-            {
-                IReadOnlyList<RuntimeObjectTraversalEvent> events = engine.ProcessNext();
-                RuntimeObjectIntrospectionEventFormatter.AppendTraversalEvents(sb, events, normalized.MaxValueChars);
-            }
-
-            return sb.ToString().TrimEnd();
-        }
+            => RuntimeObjectIntrospectionReportBuilder.BuildReport(root, options);
 
         public static string WriteVeryDeepMemorySnapshotToFile(object? root, string filePath)
             => WriteReportToFile(root, filePath, RuntimeObjectIntrospectionOptions.VeryDeepAllData);
@@ -129,16 +109,7 @@ namespace ClickIt.Utils
             => WriteReportToFileCoroutine(root, filePath, GetOptionsForProfile(profile), onCompleted, onProgress, nodeBudgetPerYield);
 
         public static string WriteReportToFile(object? root, string filePath, RuntimeObjectIntrospectionOptions options)
-        {
-            string fullPath = Path.GetFullPath(filePath);
-            string? directory = Path.GetDirectoryName(fullPath);
-            if (!string.IsNullOrWhiteSpace(directory))
-                Directory.CreateDirectory(directory);
-
-            string content = BuildReport(root, options);
-            File.WriteAllText(fullPath, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            return fullPath;
-        }
+            => RuntimeObjectIntrospectionReportBuilder.WriteReportToFile(root, filePath, options);
 
         public static IEnumerator WriteReportToFileCoroutine(
             object? root,
@@ -147,140 +118,7 @@ namespace ClickIt.Utils
             Action<string?, string?>? onCompleted = null,
             Action<int>? onProgress = null,
             int nodeBudgetPerYield = 250)
-        {
-            RuntimeObjectTraversalOptions normalized = NormalizeOptions(options);
-            int budget = Math.Max(1, nodeBudgetPerYield);
-
-            string fullPath = Path.GetFullPath(filePath);
-            string? directory = Path.GetDirectoryName(fullPath);
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(directory))
-                    Directory.CreateDirectory(directory);
-            }
-            catch (Exception ex)
-            {
-                SafeInvokeCompleted(onCompleted, null, $"Failed to create dump directory: {ex.Message}");
-                yield break;
-            }
-
-            StreamWriter? writer = null;
-            try
-            {
-                writer = new StreamWriter(fullPath, false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            }
-            catch (Exception ex)
-            {
-                SafeInvokeCompleted(onCompleted, null, $"Failed to open dump file: {ex.Message}");
-                yield break;
-            }
-
-            using (writer)
-            {
-                if (!RuntimeObjectIntrospectionStreamWriter.TryWriteLine(writer, $"--- {normalized.Title} ---", out string? headerWriteError))
-                {
-                    SafeInvokeCompleted(onCompleted, null, headerWriteError);
-                    yield break;
-                }
-
-                SafeInvokeProgress(onProgress, 0);
-
-                if (root == null)
-                {
-                    _ = RuntimeObjectIntrospectionStreamWriter.TryWriteLine(writer, "Root: unavailable", out _);
-                    SafeInvokeProgress(onProgress, 100);
-                    SafeInvokeCompleted(onCompleted, fullPath, null);
-                    yield break;
-                }
-
-                var engine = new RuntimeObjectTraversalEngine(root, normalized, enforceElapsedBudget: true);
-                const int maxSliceMs = 1;
-                var sliceStopwatch = Stopwatch.StartNew();
-
-                int processedSinceYield = 0;
-                int previousProcessedNodes = 0;
-                while (!engine.IsFinished)
-                {
-                    IReadOnlyList<RuntimeObjectTraversalEvent> events = engine.ProcessNext();
-                    if (!RuntimeObjectIntrospectionStreamWriter.TryWriteTraversalEvents(writer, events, normalized.MaxValueChars, out string? traversalWriteError))
-                    {
-                        SafeInvokeCompleted(onCompleted, null, traversalWriteError);
-                        yield break;
-                    }
-
-                    if (engine.TotalProcessedNodes > previousProcessedNodes)
-                        processedSinceYield += engine.TotalProcessedNodes - previousProcessedNodes;
-                    previousProcessedNodes = engine.TotalProcessedNodes;
-
-                    if (processedSinceYield >= budget || sliceStopwatch.ElapsedMilliseconds >= maxSliceMs)
-                    {
-                        processedSinceYield = 0;
-                        sliceStopwatch.Restart();
-                        int pct = Math.Min(99, (int)((long)engine.TotalProcessedNodes * 100L / Math.Max(1, normalized.MaxTotalNodes)));
-                        SafeInvokeProgress(onProgress, pct);
-
-                        if (!RuntimeObjectIntrospectionStreamWriter.TryFlush(writer, out string? flushError))
-                        {
-                            SafeInvokeCompleted(onCompleted, null, flushError);
-                            yield break;
-                        }
-
-                        yield return null;
-                    }
-                }
-
-                if (!RuntimeObjectIntrospectionStreamWriter.TryFlush(writer, out string? finalFlushError))
-                {
-                    SafeInvokeCompleted(onCompleted, null, finalFlushError);
-                    yield break;
-                }
-
-                SafeInvokeProgress(onProgress, 100);
-                SafeInvokeCompleted(onCompleted, fullPath, null);
-            }
-        }
-
-        private static RuntimeObjectTraversalOptions NormalizeOptions(RuntimeObjectIntrospectionOptions options)
-        {
-            string title = string.IsNullOrWhiteSpace(options.Title)
-                ? RuntimeObjectIntrospectionOptions.Default.Title
-                : options.Title;
-
-            return new RuntimeObjectTraversalOptions(
-                Title: title,
-                MaxDepth: Math.Max(0, options.MaxDepth),
-                MaxCollectionItems: Math.Max(1, options.MaxCollectionItems),
-                PriorityMembers: options.PriorityMembers ?? [],
-                MaxMembersPerObject: Math.Max(1, options.MaxMembersPerObject),
-                IncludeNonPublicMembers: options.IncludeNonPublicMembers,
-                MaxValueChars: Math.Max(1, options.MaxValueChars),
-                MaxTotalNodes: Math.Max(1, options.MaxTotalNodes),
-                MaxElapsedMs: Math.Max(500, options.MaxElapsedMs));
-        }
-
-        private static void SafeInvokeProgress(Action<int>? onProgress, int value)
-        {
-            try
-            {
-                onProgress?.Invoke(value);
-            }
-            catch
-            {
-                // Never allow UI callback failures to kill the dump coroutine.
-            }
-        }
-
-        private static void SafeInvokeCompleted(Action<string?, string?>? onCompleted, string? path, string? error)
-        {
-            try
-            {
-                onCompleted?.Invoke(path, error);
-            }
-            catch
-            {
-                // Never throw from completion callback.
-            }
-        }
+            => RuntimeObjectIntrospectionCoroutineWriter.WriteReportToFileCoroutine(root, filePath, options, onCompleted, onProgress, nodeBudgetPerYield);
 
         internal static string FormatValue(object? value, int maxLen = 120)
         {

@@ -4,7 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Click
 {
     [TestClass]
     public class ManualCursorSelectionMathTests

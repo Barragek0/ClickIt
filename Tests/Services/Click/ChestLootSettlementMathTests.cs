@@ -5,7 +5,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Click
 {
     [TestClass]
     public class ChestLootSettlementMathTests

@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core.Settings
 {
     [TestClass]
     public class ClickItSettingsMigrationTests

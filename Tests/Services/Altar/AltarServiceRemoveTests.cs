@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Services;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Altar
 {
     [TestClass]
     public class AltarServiceRemoveTests

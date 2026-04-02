@@ -2,7 +2,7 @@ using ExileCore.Shared.Attributes;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class ClickItSettingsInputSafetyTests

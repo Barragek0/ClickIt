@@ -1,10 +1,10 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using ClickIt.Services;
 using ClickIt.Services.Area;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class ClickItPointIsInClickableAreaTests

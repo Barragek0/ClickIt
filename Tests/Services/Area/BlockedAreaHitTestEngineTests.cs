@@ -4,7 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Area
 {
     [TestClass]
     public class BlockedAreaHitTestEngineTests

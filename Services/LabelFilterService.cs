@@ -29,20 +29,41 @@ namespace ClickIt.Services
         private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
         private ILabelSelectionService? _labelSelectionService;
         private LabelDebugService? _labelDebugService;
+        private LabelMechanicResolutionService? _labelMechanicResolutionService;
         private LazyModeBlockerService? _lazyModeBlockerService;
-        private InventoryPickupService? _inventoryPickupService;
 
         private ILabelSelectionService LabelSelectionService
-            => _labelSelectionService ??= new LabelSelectionService(GetNextLabelToClickCore, GetMechanicIdForLabelCore);
+            => _labelSelectionService ??= new LabelSelectionService(new LabelSelectionServiceDependencies(
+                _gameController,
+                CreateClickSettings,
+                ShouldCaptureLabelDebug,
+                debugEvent => PublishLabelDebugStage(debugEvent),
+                TryBuildLabelCandidate,
+                LabelMechanicResolutionService.GetMechanicIdForLabel));
 
         private LabelDebugService LabelDebugService
-            => _labelDebugService ??= new LabelDebugService(GetSelectionDebugSummaryCore, LogSelectionDiagnosticsCore);
+            => _labelDebugService ??= new LabelDebugService(
+                _settings,
+                _errorHandler,
+                _gameController,
+                CreateClickSettings,
+                ShouldAllowWorldItemByMetadata,
+                LabelMechanicResolutionService);
+
+        private LabelMechanicResolutionService LabelMechanicResolutionService
+            => _labelMechanicResolutionService ??= new LabelMechanicResolutionService(
+                _gameController,
+                CreateClickSettings,
+                () => ClassificationDependencies);
 
         private LazyModeBlockerService LazyModeBlockerService
-            => _lazyModeBlockerService ??= new LazyModeBlockerService(HasLazyModeRestrictedItemsOnScreenImpl);
+            => _lazyModeBlockerService ??= new LazyModeBlockerService(
+                _settings,
+                _gameController,
+                reason => _errorHandler.LogMessage(true, true, reason, 5));
 
-        private InventoryPickupService InventoryPickupService
-            => _inventoryPickupService ??= new InventoryPickupService(ShouldAllowWorldItemWhenInventoryFullCore, ShouldAllowClosedDoorPastMechanicCore);
+        internal LazyModeBlockerService GetLazyModeBlockerService()
+            => LazyModeBlockerService;
 
         public static List<LabelOnGround> FilterHarvestLabels(IReadOnlyList<LabelOnGround>? allLabels, Func<Vector2, bool> isInClickableArea)
         {
@@ -87,72 +108,6 @@ namespace ClickIt.Services
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
             => LabelSelectionService.GetNextLabelToClick(allLabels, startIndex, maxCount);
 
-        private LabelOnGround? GetNextLabelToClickCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
-        {
-            bool captureDebug = ShouldCaptureLabelDebug();
-
-            if (allLabels == null || allLabels.Count == 0)
-            {
-                if (captureDebug)
-                    PublishSelectionLifecycleDebug("NoLabels", allLabels, 0, 0, "GetNextLabelToClick received an empty label collection");
-                return null;
-            }
-
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, startIndex + Math.Max(0, maxCount));
-            ClickSettings clickSettings = CreateClickSettings(allLabels);
-
-            if (captureDebug)
-                PublishSelectionLifecycleDebug("SelectionRequested", allLabels, start, end, $"start={startIndex} maxCount={maxCount}");
-
-            LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings);
-            if (captureDebug)
-            {
-                if (selected == null)
-                {
-                    PublishSelectionLifecycleDebug("SelectionReturnedNone", allLabels, start, end, "No label selected");
-                }
-                else
-                {
-                    Entity? selectedItem = selected.ItemOnGround;
-                    string? selectedMechanic = selectedItem != null
-                        ? MechanicClassifier.GetClickableMechanicId(selected, selectedItem, clickSettings, _gameController, ClassificationDependencies)
-                        : null;
-
-                    PublishLabelDebugStage(new LabelDebugEvent("SelectionReturned", start, end, allLabels.Count)
-                    {
-                        ConsideredCandidates = 0,
-                        NullOrDistanceRejected = 0,
-                        UntargetableRejected = 0,
-                        NoMechanicRejected = 0,
-                        IgnoredByDistanceCandidates = 0,
-                        SelectedMechanicId = selectedMechanic,
-                        SelectedEntityPath = selectedItem?.Path,
-                        SelectedDistance = selectedItem?.DistancePlayer ?? 0f,
-                        Notes = "Selected label returned to click service"
-                    });
-                }
-            }
-
-            return selected;
-        }
-
-        private void PublishSelectionLifecycleDebug(string stage, IReadOnlyList<LabelOnGround>? allLabels, int start, int end, string notes)
-        {
-            PublishLabelDebugStage(new LabelDebugEvent(stage, start, end, allLabels?.Count ?? 0)
-            {
-                ConsideredCandidates = 0,
-                NullOrDistanceRejected = 0,
-                UntargetableRejected = 0,
-                NoMechanicRejected = 0,
-                IgnoredByDistanceCandidates = 0,
-                SelectedMechanicId = string.Empty,
-                SelectedEntityPath = string.Empty,
-                SelectedDistance = 0f,
-                Notes = notes
-            });
-        }
-
         public readonly struct SelectionDebugSummary(
             int Start,
             int End,
@@ -177,188 +132,11 @@ namespace ClickIt.Services
         public SelectionDebugSummary GetSelectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
             => LabelDebugService.GetSelectionDebugSummary(allLabels, startIndex, maxCount);
 
-        private SelectionDebugSummary GetSelectionDebugSummaryCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
-        {
-            if (allLabels == null || allLabels.Count == 0)
-                return default;
-
-            ClickSettings clickSettings = CreateClickSettings(allLabels);
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, start + Math.Max(0, maxCount));
-            if (start >= end)
-                return default;
-
-            int total = 0;
-            int nullLabel = 0;
-            int nullEntity = 0;
-            int outOfDistance = 0;
-            int untargetable = 0;
-            int noMechanic = 0;
-            int worldItem = 0;
-            int worldItemMetadataRejected = 0;
-            int settlersPathSeen = 0;
-            int settlersMechanicMatched = 0;
-            int settlersMechanicDisabled = 0;
-
-            for (int i = start; i < end; i++)
-            {
-                total++;
-
-                LabelOnGround? label = allLabels[i];
-                if (label == null)
-                {
-                    nullLabel++;
-                    continue;
-                }
-
-                Entity? item = label.ItemOnGround;
-                if (item == null)
-                {
-                    nullEntity++;
-                    continue;
-                }
-
-                string path = item.Path ?? string.Empty;
-                bool isSettlersPath = MechanicClassifier.TryGetSettlersOreMechanicId(path, out _);
-                if (isSettlersPath)
-                    settlersPathSeen++;
-
-                if (item.Type == ExileCore.Shared.Enums.EntityType.WorldItem)
-                {
-                    worldItem++;
-                    if (!ShouldAllowWorldItemByMetadata(clickSettings, item, _gameController, label))
-                        worldItemMetadataRejected++;
-                }
-
-                if (item.DistancePlayer > clickSettings.ClickDistance)
-                {
-                    outOfDistance++;
-                    continue;
-                }
-
-                if (!IsEntityTargetableForClick(label, item))
-                {
-                    untargetable++;
-                    continue;
-                }
-
-                string? mechanicId = MechanicClassifier.GetClickableMechanicId(label, item, clickSettings, _gameController, ClassificationDependencies);
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                {
-                    noMechanic++;
-                    if (isSettlersPath)
-                        settlersMechanicDisabled++;
-                    continue;
-                }
-
-                if (SettlersMechanicPolicy.IsSettlersMechanicId(mechanicId))
-                    settlersMechanicMatched++;
-            }
-
-            return new SelectionDebugSummary(
-                start,
-                end,
-                total,
-                nullLabel,
-                nullEntity,
-                outOfDistance,
-                untargetable,
-                noMechanic,
-                worldItem,
-                worldItemMetadataRejected,
-                settlersPathSeen,
-                settlersMechanicMatched,
-                settlersMechanicDisabled);
-        }
-
         public void LogSelectionDiagnostics(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
             => LabelDebugService.LogSelectionDiagnostics(allLabels, startIndex, maxCount);
 
-        private void LogSelectionDiagnosticsCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
-        {
-            if (_settings?.DebugMode?.Value != true || _settings?.LogMessages?.Value != true)
-                return;
-
-            if (allLabels == null || allLabels.Count == 0)
-            {
-                _errorHandler.LogMessage(true, true, "[LabelFilterDiag] none", 5);
-                return;
-            }
-
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, start + Math.Max(0, maxCount));
-            if (start >= end)
-            {
-                _errorHandler.LogMessage(true, true, $"[LabelFilterDiag] bad-range s:{start} e:{end} c:{allLabels.Count}", 5);
-                return;
-            }
-
-            ClickSettings clickSettings = CreateClickSettings(allLabels);
-            SelectionDebugSummary summary = GetSelectionDebugSummary(allLabels, start, end - start);
-            string msg =
-                $"[LabelFilterDiag] {summary.ToCompactString()} " +
-                $"sv:{(clickSettings.ClickSettlersVerisium ? 1 : 0)} sp:{(clickSettings.ClickSettlersPetrifiedWood ? 1 : 0)}";
-
-            _errorHandler.LogMessage(true, true, msg, 5);
-        }
-
         public string? GetMechanicIdForLabel(LabelOnGround? label)
             => LabelSelectionService.GetMechanicIdForLabel(label);
-
-        private string? GetMechanicIdForLabelCore(LabelOnGround? label)
-        {
-            Entity? item = label?.ItemOnGround;
-            if (item == null)
-                return null;
-            if (!IsEntityTargetableForClick(label!, item))
-                return null;
-
-            ClickSettings clickSettings = CreateClickSettings(null);
-            return MechanicClassifier.GetClickableMechanicId(label!, item, clickSettings, _gameController, ClassificationDependencies);
-        }
-
-        private LabelOnGround? SelectNextLabelByPriority(IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
-        {
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, endExclusive);
-            LabelSelectionResult selection = LabelSelectionEngine.SelectNextLabelByPriority(
-                allLabels,
-                start,
-                end,
-                clickSettings,
-                label => TryBuildLabelCandidate(label, clickSettings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
-                    ? new LabelCandidateBuildResult(true, item, mechanicId, LabelCandidateRejectReason.None)
-                    : new LabelCandidateBuildResult(false, item, mechanicId, rejectReason),
-                GetCursorDistanceSquaredToLabel);
-
-            LabelOnGround? selected = selection.SelectedCandidate;
-            if (ShouldCaptureLabelDebug())
-            {
-                Entity? selectedEntity = selected?.ItemOnGround;
-                string? selectedMechanicId = selectedEntity != null
-                    ? selection.SelectedMechanicId
-                    : string.Empty;
-
-                PublishLabelDebugStage(new LabelDebugEvent(
-                    selected == null ? "SelectionScanNone" : "SelectionScanSelected",
-                    start,
-                    end,
-                    allLabels.Count)
-                {
-                    ConsideredCandidates = selection.Stats.ConsideredCandidates,
-                    NullOrDistanceRejected = selection.Stats.NullOrDistanceRejected,
-                    UntargetableRejected = selection.Stats.UntargetableRejected,
-                    NoMechanicRejected = selection.Stats.NoMechanicRejected,
-                    IgnoredByDistanceCandidates = selection.Stats.IgnoredByDistanceCandidates,
-                    SelectedMechanicId = selectedMechanicId,
-                    SelectedEntityPath = selectedEntity?.Path,
-                    SelectedDistance = selectedEntity?.DistancePlayer ?? 0f,
-                    Notes = $"c:{selection.Stats.ConsideredCandidates} nd:{selection.Stats.NullOrDistanceRejected} u:{selection.Stats.UntargetableRejected} nm:{selection.Stats.NoMechanicRejected} ig:{selection.Stats.IgnoredByDistanceCandidates}"
-                });
-            }
-
-            return selected;
-        }
 
         private bool TryBuildLabelCandidate(
             LabelOnGround label,
@@ -370,149 +148,37 @@ namespace ClickIt.Services
             return LabelEligibilityEngine.TryBuildCandidate(
                 label,
                 clickSettings,
-                IsEntityTargetableForClick,
-                (candidateLabel, candidateItem, settings) => MechanicClassifier.GetClickableMechanicId(candidateLabel, candidateItem, settings, _gameController, ClassificationDependencies),
+                LabelTargetabilityPolicy.IsEntityTargetableForClick,
+                LabelMechanicResolutionService.ResolveMechanicId,
                 out item,
                 out mechanicId,
                 out rejectReason);
         }
 
         private static bool IsEntityTargetableForClick(LabelOnGround label, Entity item)
-        {
-            string path = item.Path ?? string.Empty;
-
-            if (!ShouldAllowHarvestRootElementVisibility(path, IsHarvestRootElementVisibleForClick(label)))
-                return false;
-
-            if (!RequiresTargetabilityGate(path))
-                return true;
-            if (!ShouldApplyPetrifiedWoodEntityTargetabilityGate(path))
-                return true;
-
-            ResolveLabelEntityTargetableForClick(label, out bool hasLabelEntityTargetable, out bool labelEntityTargetable);
-            return ShouldAllowPetrifiedWoodTargetability(hasLabelEntityTargetable, labelEntityTargetable);
-        }
-
-        private static bool IsHarvestRootElementVisibleForClick(LabelOnGround label)
-            => label?.Label?.GetChildAtIndex(0)?.IsVisible == true;
+            => LabelTargetabilityPolicy.IsEntityTargetableForClick(label, item);
 
         internal static bool ShouldAllowHarvestRootElementVisibility(string? path, bool harvestRootElementVisible)
-        {
-            if (string.IsNullOrWhiteSpace(path) || !MechanicClassifier.IsHarvestPath(path))
-                return true;
-
-            return harvestRootElementVisible;
-        }
+            => LabelTargetabilityPolicy.ShouldAllowHarvestRootElementVisibility(path, harvestRootElementVisible);
 
         internal static bool RequiresTargetabilityGate(string path)
-            => !string.IsNullOrEmpty(path) && MechanicClassifier.IsSettlersOrePath(path);
+            => LabelTargetabilityPolicy.RequiresTargetabilityGate(path);
 
         internal static bool ShouldApplyPetrifiedWoodEntityTargetabilityGate(string? path)
-            => !string.IsNullOrWhiteSpace(path) && MechanicClassifier.IsSettlersPetrifiedWoodPath(path);
+            => LabelTargetabilityPolicy.ShouldApplyPetrifiedWoodEntityTargetabilityGate(path);
 
         internal static bool ShouldAllowPetrifiedWoodTargetability(bool hasLabelEntityTargetable, bool labelEntityTargetable)
-            => !hasLabelEntityTargetable || labelEntityTargetable;
+            => LabelTargetabilityPolicy.ShouldAllowPetrifiedWoodTargetability(hasLabelEntityTargetable, labelEntityTargetable);
 
         internal static void ResolveLabelEntityTargetableForClick(LabelOnGround label, out bool hasLabelEntityTargetable, out bool labelEntityTargetable)
-        {
-            hasLabelEntityTargetable = false;
-            labelEntityTargetable = true;
-
-            Entity? item = label.ItemOnGround;
-            if (item != null)
-            {
-                Targetable? targetable = item.GetComponent<Targetable>();
-                if (targetable != null)
-                {
-                    hasLabelEntityTargetable = true;
-                    labelEntityTargetable = targetable.isTargetable;
-                    return;
-                }
-            }
-
-            if (TryGetDynamicValue(label, l => l.Entity, out object? rawLabelEntity)
-                && TryResolveLabelEntityTargetableFromRaw(rawLabelEntity, out bool directTargetable, out bool directHasTargetable)
-                && directHasTargetable)
-            {
-                hasLabelEntityTargetable = true;
-                labelEntityTargetable = directTargetable;
-                return;
-            }
-
-            if (TryGetDynamicValue(label, l => l.Label, out object? rawLabelElement)
-                && TryGetDynamicValue(rawLabelElement, l => l.Entity, out object? rawElementEntity)
-                && TryResolveLabelEntityTargetableFromRaw(rawElementEntity, out bool elementTargetable, out bool elementHasTargetable)
-                && elementHasTargetable)
-            {
-                hasLabelEntityTargetable = true;
-                labelEntityTargetable = elementTargetable;
-            }
-        }
+            => LabelTargetabilityPolicy.ResolveLabelEntityTargetableForClick(label, out hasLabelEntityTargetable, out labelEntityTargetable);
 
         internal static void ResolveLabelEntityTargetableFromRaw(object? rawLabelEntity, out bool hasLabelEntityTargetable, out bool labelEntityTargetable)
-        {
-            bool resolved = TryResolveLabelEntityTargetableFromRaw(rawLabelEntity, out labelEntityTargetable, out hasLabelEntityTargetable);
-            if (!resolved)
-            {
-                hasLabelEntityTargetable = false;
-                labelEntityTargetable = true;
-            }
-        }
-
-        private static bool TryResolveLabelEntityTargetableFromRaw(object? rawLabelEntity, out bool labelEntityTargetable, out bool hasLabelEntityTargetable)
-        {
-            hasLabelEntityTargetable = false;
-            labelEntityTargetable = true;
-
-            if (rawLabelEntity == null)
-                return false;
-
-            if (TryReadBool(rawLabelEntity, out bool dynamicTargetable, e => e.IsTargetable))
-            {
-                hasLabelEntityTargetable = true;
-                labelEntityTargetable = dynamicTargetable;
-                return true;
-            }
-
-            return false;
-        }
+            => LabelTargetabilityPolicy.ResolveLabelEntityTargetableFromRaw(rawLabelEntity, out hasLabelEntityTargetable, out labelEntityTargetable);
 
         internal static bool ShouldSkipUntargetableEntity(bool hasLabelEntityTargetable, bool labelEntityTargetable, bool itemIsTargetable, bool allowNullEntityFallback = false)
-        {
-            if (hasLabelEntityTargetable && !labelEntityTargetable)
-                return true;
+            => LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(hasLabelEntityTargetable, labelEntityTargetable, itemIsTargetable, allowNullEntityFallback);
 
-            if (!hasLabelEntityTargetable)
-                return !allowNullEntityFallback && !itemIsTargetable;
-
-            return !itemIsTargetable;
-        }
-
-
-        private float GetCursorDistanceSquaredToLabel(LabelOnGround? label)
-        {
-            if (label == null || _gameController?.Window == null)
-                return float.MaxValue;
-
-            if (!TryGetClickableLabelRectCenter(label, out Vector2 center))
-                return float.MaxValue;
-
-            RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            var cursor = Mouse.GetCursorPosition();
-            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
-            Vector2 cursorClient = cursorAbsolute - windowTopLeft;
-
-            float absDx = cursorAbsolute.X - center.X;
-            float absDy = cursorAbsolute.Y - center.Y;
-            float absoluteDistanceSq = (absDx * absDx) + (absDy * absDy);
-
-            float clientDx = cursorClient.X - center.X;
-            float clientDy = cursorClient.Y - center.Y;
-            float clientDistanceSq = (clientDx * clientDx) + (clientDy * clientDy);
-
-            return Math.Min(absoluteDistanceSq, clientDistanceSq);
-        }
 
         private static int GetMechanicPriorityIndex(IReadOnlyDictionary<string, int> priorityMap, string? mechanicId)
             => MechanicCandidateRanker.ResolvePriorityIndex(mechanicId, priorityMap);

@@ -73,7 +73,7 @@ namespace ClickIt
 
         public IReadOnlyList<string> GetMechanicPriorityOrder()
         {
-            EnsureMechanicPrioritiesInitialized();
+            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(this);
 
             if (HasMatchingMechanicPrioritySnapshot())
             {
@@ -86,7 +86,7 @@ namespace ClickIt
 
         public IReadOnlyCollection<string> GetMechanicPriorityIgnoreDistanceIds()
         {
-            EnsureMechanicPrioritiesInitialized();
+            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(this);
 
             if (HasMatchingMechanicIgnoreDistanceSnapshot())
             {
@@ -99,7 +99,7 @@ namespace ClickIt
 
         public IReadOnlyDictionary<string, int> GetMechanicPriorityIgnoreDistanceWithinById()
         {
-            EnsureMechanicPrioritiesInitialized();
+            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(this);
 
             if (HasMatchingMechanicIgnoreDistanceWithinSnapshot())
             {

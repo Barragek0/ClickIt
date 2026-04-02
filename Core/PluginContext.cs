@@ -20,6 +20,9 @@ namespace ClickIt
         private readonly PluginRuntimeState _runtime = new();
         private readonly PluginRenderingState _rendering = new();
 
+        internal ServiceDisposalRegistry ServiceRegistry => _serviceRegistry;
+        internal DebugTelemetryFreezeState DebugTelemetryFreezeState => _debugTelemetryFreezeState;
+
         internal PluginServices Services => _services;
         internal PluginRuntimeState Runtime => _runtime;
         internal PluginRenderingState Rendering => _rendering;
@@ -96,47 +99,12 @@ namespace ClickIt
             => DebugTelemetryProjection.Build(ClickService, LabelFilterService, PathfindingService);
 
         public void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
-        {
-            if (owner == null)
-                throw new ArgumentNullException(nameof(owner));
-            if (settings == null)
-                throw new ArgumentNullException(nameof(settings));
-
-            _serviceRegistry.Reset();
-            IsShuttingDown = false;
-            _debugTelemetryFreezeState.Clear();
-
-            ComposedServices services = ServiceCompositionRoot.Compose(owner, settings);
-
-            PluginContextServiceStateInitializer.InitializeFromComposedServices(this, services);
-
-            SettingsDomainAssembler.WireActions(settings, services.EffectiveSettings, services.AlertService, _serviceRegistry);
-            _serviceRegistry.Register(() => ErrorHandler?.UnregisterGlobalExceptionHandlers());
-            _serviceRegistry.Register(() => PerformanceMonitor?.ShutdownForHotReload());
-            _serviceRegistry.Register(() => PluginRuntimeTimerCoordinator.StopAll(LastRenderTimer, LastTickTimer, Timer, SecondTimer));
-        }
+            => PluginLifecycleHost.InitializeCompositionRoot(this, owner, settings);
 
         public void FinalizeCompositionRootForStartup(ClickIt owner, ClickItSettings settings)
-        {
-            if (owner == null)
-                throw new ArgumentNullException(nameof(owner));
-            if (settings == null)
-                throw new ArgumentNullException(nameof(settings));
-
-            settings.EnsureAllModsHaveWeights();
-
-            AlertService?.ReloadAlertSound();
-            PerformanceMonitor?.Start();
-
-            PluginRuntimeTimerCoordinator.StartAll(LastRenderTimer, LastTickTimer, Timer, SecondTimer);
-        }
+            => PluginLifecycleHost.FinalizeCompositionRootForStartup(this, owner, settings);
 
         public void DisposeCompositionRoot()
-        {
-            _serviceRegistry.DisposeAll();
-            _debugTelemetryFreezeState.Clear();
-
-            PluginContextServiceStateResetter.Reset(this);
-        }
+            => PluginLifecycleHost.DisposeCompositionRoot(this);
     }
 }

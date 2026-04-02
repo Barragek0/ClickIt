@@ -3,7 +3,7 @@ using ClickIt.Services.Click.Ranking;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Click
 {
     [TestClass]
     public class OffscreenTargetRankerTests

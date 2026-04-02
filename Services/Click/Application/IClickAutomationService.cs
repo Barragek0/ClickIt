@@ -4,7 +4,7 @@ using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services.Click.Application
 {
-    internal interface IClickAutomationService
+    public interface IClickAutomationService
     {
         IEnumerator ProcessRegularClick();
         bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? labels);

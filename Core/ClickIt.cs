@@ -1,6 +1,7 @@
 ﻿using ExileCore;
 using System.IO;
 using System.Diagnostics;
+using ClickIt.Core.Runtime;
 
 namespace ClickIt
 {
@@ -9,8 +10,16 @@ namespace ClickIt
         public PluginContext State { get; } = new PluginContext();
 
         private ClickItSettings? _settingsOverrideForTests;
+        private DebugClipboardService? _debugClipboardService;
 
         private ClickItSettings EffectiveSettings => Settings ?? _settingsOverrideForTests ?? new ClickItSettings();
+
+        private DebugClipboardService DebugClipboardService
+            => _debugClipboardService ??= new DebugClipboardService(new DebugClipboardServiceDependencies(
+                State,
+                this,
+                GetEffectiveSettingsForLifecycle,
+                () => GameController));
 
         public override void OnLoad()
         {
@@ -62,9 +71,9 @@ namespace ClickIt
 
         private void CopyAdditionalDebugInfoButtonPressed()
         {
-            _copyAdditionalDebugInfoRequested = true;
+            DebugClipboardService.RequestAdditionalDebugInfoCopy();
             if (GameController != null)
-                QueueDeepMemoryDumpCoroutine();
+                DebugClipboardService.QueueDeepMemoryDumpCoroutine();
         }
 
         public override void Render()
@@ -119,6 +128,12 @@ namespace ClickIt
         internal void SetSettingsForTests(ClickItSettings settings)
         {
             _settingsOverrideForTests = settings ?? throw new ArgumentNullException(nameof(settings));
+        }
+
+        internal bool TryAutoCopyInventoryWarningDebugSnapshotForLifecycle(Services.Label.Inventory.InventoryDebugSnapshot snapshot, long now)
+        {
+            string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(0) ?? [];
+            return DebugClipboardService.TryAutoCopyInventoryWarningDebugSnapshot(snapshot, now, debugLines);
         }
 
         private Services.AlertService GetOrCreateAlertService()

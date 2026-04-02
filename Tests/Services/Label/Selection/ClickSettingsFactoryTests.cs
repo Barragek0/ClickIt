@@ -7,7 +7,7 @@ using ExileCore.PoEMemory.Elements;
 using ClickIt.Definitions;
 using ClickIt.Services.Mechanics;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Label.Selection
 {
     [TestClass]
     public class ClickSettingsFactoryTests

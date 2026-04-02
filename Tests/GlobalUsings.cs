@@ -1,0 +1,1 @@
+global using Services = global::ClickIt.Services;

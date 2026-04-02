@@ -1,61 +1,28 @@
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.Shared.Cache;
-using SharpDX;
-using ClickIt.Utils;
+using ClickIt.Services.Label.Selection;
 
 namespace ClickIt.Services
 {
     public class LabelService
     {
-        private readonly GameController _gameController;
-        private readonly Func<Vector2, bool> _pointIsInClickableArea;
+        private readonly LabelReadModelService _readModelService;
 
         public TimeCache<List<LabelOnGround>> CachedLabels { get; }
 
-        public LabelService(GameController gameController, Func<Vector2, bool> pointIsInClickableArea)
+        public LabelService(LabelReadModelService readModelService)
         {
-            _gameController = gameController;
-            _pointIsInClickableArea = pointIsInClickableArea;
-
-            CachedLabels = new TimeCache<List<LabelOnGround>>(UpdateLabelComponent, 50);
+            _readModelService = readModelService ?? throw new ArgumentNullException(nameof(readModelService));
+            CachedLabels = _readModelService.CachedLabels;
         }
 
         public bool GroundItemsVisible()
         {
-            return CachedLabels?.Value?.Count > 0;
+            return _readModelService.GroundItemsVisible();
         }
 
         public List<LabelOnGround> UpdateLabelComponent()
-        {
-            IList<LabelOnGround>? groundLabels = _gameController.Game.IngameState.IngameUi.ItemsOnGroundLabelsVisible;
-
-            if (groundLabels == null || groundLabels.Count == 0)
-            {
-                return [];
-            }
-
-            List<LabelOnGround> validLabels = new(Math.Min(groundLabels.Count, 1000));
-            var win = _gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(win.X, win.Y);
-
-            bool IsClickableInEitherSpace(Vector2 point)
-            {
-                return _pointIsInClickableArea(point) || _pointIsInClickableArea(point + windowTopLeft);
-            }
-
-            for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
-            {
-                LabelOnGround label = groundLabels[i];
-                if (LabelUtils.IsValidClickableLabel(label, IsClickableInEitherSpace))
-                {
-                    validLabels.Add(label);
-                }
-            }
-
-            LabelUtils.SortLabelsByDistance(validLabels);
-
-            return validLabels;
-        }
+            => _readModelService.UpdateLabelComponent();
     }
 }

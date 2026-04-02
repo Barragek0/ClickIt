@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Behavior.Click
 {
     [TestClass]
     public class ClickSafetyPolicyTests

@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Click
 {
     [TestClass]
     public class ClickLabelSelectionMathTests

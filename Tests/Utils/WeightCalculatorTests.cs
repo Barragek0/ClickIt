@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Components;
 using ClickIt.Utils;
@@ -7,7 +7,7 @@ using System;
 using ExileCore.PoEMemory;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Utils
 {
     [TestClass]
     public class WeightCalculatorTests

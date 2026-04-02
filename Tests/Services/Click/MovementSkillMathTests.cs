@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Windows.Forms;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Click
 {
     [TestClass]
     public class MovementSkillMathTests

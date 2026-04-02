@@ -2,7 +2,7 @@ using ClickIt.Services.Click.Label;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Behavior.Click
 {
     [TestClass]
     public class LabelClickPointResolutionPolicyTests

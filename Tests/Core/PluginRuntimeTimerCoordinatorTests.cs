@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Diagnostics;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core.Runtime
 {
     [TestClass]
     public class PluginRuntimeTimerCoordinatorTests

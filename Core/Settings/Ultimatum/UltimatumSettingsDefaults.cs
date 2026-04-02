@@ -17,7 +17,7 @@ namespace ClickIt
             UltimatumContinueModifierNames = new HashSet<string>(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
         }
 
-        private void EnsureUltimatumModifiersInitialized()
+        internal void EnsureUltimatumModifiersInitialized()
         {
             UltimatumModifierPriority ??= new List<string>();
 
@@ -52,7 +52,7 @@ namespace ClickIt
             UltimatumModifierPriority = sanitized;
         }
 
-        private void EnsureUltimatumTakeRewardModifiersInitialized()
+        internal void EnsureUltimatumTakeRewardModifiersInitialized()
         {
             UltimatumTakeRewardModifierNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             UltimatumContinueModifierNames ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -64,7 +64,7 @@ namespace ClickIt
             }
 
             HashSet<string> allowed = new(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);
-            SanitizeMutuallyExclusiveSets(
+            SettingsDefaultsService.SanitizeMutuallyExclusiveSets(
                 UltimatumTakeRewardModifierNames,
                 UltimatumContinueModifierNames,
                 allowed,

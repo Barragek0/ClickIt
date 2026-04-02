@@ -3,7 +3,7 @@ using FluentAssertions;
 using ClickIt.Services.Area;
 using SharpDX;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Area
 {
     [TestClass]
     public class AreaServiceRectsDifferTests

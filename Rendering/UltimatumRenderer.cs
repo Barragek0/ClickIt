@@ -1,5 +1,5 @@
 using ClickIt.Definitions;
-using ClickIt.Services;
+using ClickIt.Services.Click.Application;
 using ClickIt.Services.Click.Runtime;
 using ClickIt.Utils;
 using SharpDX;
@@ -7,10 +7,10 @@ using Color = SharpDX.Color;
 
 namespace ClickIt.Rendering
 {
-    public class UltimatumRenderer(ClickItSettings settings, ClickService? clickService, DeferredFrameQueue? deferredFrameQueue)
+    public class UltimatumRenderer(ClickItSettings settings, IClickAutomationService? clickAutomationService, DeferredFrameQueue? deferredFrameQueue)
     {
         private readonly ClickItSettings _settings = settings;
-        private readonly ClickService? _clickService = clickService;
+        private readonly IClickAutomationService? _clickAutomationService = clickAutomationService;
         private readonly DeferredFrameQueue? _deferredFrameQueue = deferredFrameQueue;
 
         public void Render()
@@ -18,10 +18,10 @@ namespace ClickIt.Rendering
             if (_settings.ShowUltimatumOptionOverlay?.Value != true)
                 return;
 
-            if (_clickService == null || _deferredFrameQueue == null)
+            if (_clickAutomationService == null || _deferredFrameQueue == null)
                 return;
 
-            if (!_clickService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) || previews.Count == 0)
+            if (!_clickAutomationService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) || previews.Count == 0)
                 return;
 
             int totalPriorities = Math.Max(1, _settings.GetUltimatumModifierPriority().Count);

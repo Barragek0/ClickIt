@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using ClickIt.Services.Label.Classification;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Label
 {
     [TestClass]
     public class LabelFilterServiceAltarTests

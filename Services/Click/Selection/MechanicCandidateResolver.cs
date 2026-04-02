@@ -1,5 +1,7 @@
 using SharpDX;
 using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Click.Ranking;
+using ExileCore.PoEMemory.MemoryObjects;
 
 namespace ClickIt.Services.Click.Selection
 {
@@ -46,6 +48,29 @@ namespace ClickIt.Services.Click.Selection
             }
 
             return false;
+        }
+
+        internal static bool TryPromoteOffscreenCandidate(
+            ref Entity? best,
+            ref string? bestMechanicId,
+            ref MechanicRank bestRank,
+            ref bool hasBest,
+            Entity? candidate,
+            string? mechanicId,
+            Func<float, string?, MechanicRank> buildRank)
+        {
+            if (candidate == null || !candidate.IsValid || candidate.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
+                return false;
+
+            MechanicRank rank = buildRank(candidate.DistancePlayer, mechanicId);
+            return OffscreenTargetRanker.TryPromoteRankedCandidate(
+                ref best,
+                ref bestMechanicId,
+                ref bestRank,
+                ref hasBest,
+                candidate,
+                mechanicId,
+                rank);
         }
     }
 }

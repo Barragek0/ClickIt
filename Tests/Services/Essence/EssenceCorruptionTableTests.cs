@@ -4,7 +4,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Services.Essence
 {
     [TestClass]
     public class EssenceCorruptionTableTests
