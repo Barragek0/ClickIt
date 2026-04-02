@@ -17,12 +17,12 @@ namespace ClickIt
         internal static bool ShouldRenderEntry(MechanicToggleTableEntry entry, bool moveToClick, string filter)
         {
             bool inSourceSet = moveToClick ? !entry.Node.Value : entry.Node.Value;
-            return inSourceSet && MatchesSearch(entry.DisplayName, filter);
+            return inSourceSet && SettingsUiRenderHelpers.MatchesSearch(filter, entry.DisplayName);
         }
 
         internal static bool ShouldRenderGroup(MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries, bool moveToClick, string filter)
         {
-            bool matchesFilter = MatchesSearch(group.DisplayName, filter);
+            bool matchesFilter = SettingsUiRenderHelpers.MatchesSearch(filter, group.DisplayName);
 
             foreach (MechanicToggleTableEntry entry in entries)
             {
@@ -30,7 +30,7 @@ namespace ClickIt
                     continue;
 
                 bool inSourceSet = moveToClick ? !entry.Node.Value : entry.Node.Value;
-                bool childMatchesFilter = MatchesSearch(entry.DisplayName, filter);
+                bool childMatchesFilter = SettingsUiRenderHelpers.MatchesSearch(filter, entry.DisplayName);
                 if (inSourceSet && (matchesFilter || childMatchesFilter))
                     return true;
             }
@@ -60,9 +60,6 @@ namespace ClickIt
 
             return runtimeCache.MechanicTableEntriesCache;
         }
-
-        private static bool MatchesSearch(string name, string filter)
-            => string.IsNullOrWhiteSpace(filter) || name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
 
         private static Dictionary<string, ToggleNode> BuildToggleNodeById(IEnumerable<MechanicToggleTableEntry> entries)
         {

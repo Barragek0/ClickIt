@@ -1,6 +1,7 @@
 using ClickIt.Definitions;
 using ExileCore.Shared.Nodes;
 using ImGuiNET;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace ClickIt
@@ -167,6 +168,35 @@ namespace ClickIt
         {
             ImGui.SameLine();
             return ImGui.Button(buttonId);
+        }
+
+        internal static bool MatchesSearch(string filter, params string?[] values)
+            => MatchesSearch(filter, (IEnumerable<string?>)values);
+
+        internal static bool MatchesSearch(string filter, IEnumerable<string?> values)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+                return true;
+
+            string term = filter.Trim();
+            foreach (string? value in values)
+            {
+                if (!string.IsNullOrEmpty(value) && value.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        internal static string BuildExpandedRowKey(string listId, string rowId)
+            => $"{listId}:{rowId}";
+
+        internal static string ToggleExpandedRowKey(string currentKey, string listId, string rowId)
+        {
+            string rowKey = BuildExpandedRowKey(listId, rowId);
+            return string.Equals(currentKey, rowKey, StringComparison.Ordinal)
+                ? string.Empty
+                : rowKey;
         }
 
         internal static void DrawNoEntriesPlaceholder(bool hasEntries)

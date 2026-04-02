@@ -3,10 +3,10 @@ using ClickIt.Services.Label.Inventory;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Label
+namespace ClickIt.Tests.Label.Inventory
 {
     [TestClass]
-    public class LabelFilterServiceInventoryTests
+    public class InventoryCoreLogicTests
     {
         public sealed class FakeBaseInfo
         {
@@ -178,6 +178,5 @@ namespace ClickIt.Tests.Label
             InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath(string.Empty, out _, out _).Should().BeFalse();
             InventoryCoreLogic.TryResolveFallbackInventoryItemSizeFromPath(null, out _, out _).Should().BeFalse();
         }
-
     }
 }

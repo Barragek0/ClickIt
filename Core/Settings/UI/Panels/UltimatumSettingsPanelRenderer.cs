@@ -45,7 +45,7 @@ namespace ClickIt
                 for (int i = 0; i < _settings.UltimatumModifierPriority.Count; i++)
                 {
                     string modifier = _settings.UltimatumModifierPriority[i];
-                    if (!MatchesUltimatumSearch(modifier, _settings.UiState.UltimatumSearchFilter))
+                    if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.UltimatumSearchFilter, modifier))
                         continue;
 
                     ImGui.TableNextRow();
@@ -131,7 +131,7 @@ namespace ClickIt
                     continue;
                 if (!sourceSet.Contains(modifier))
                     continue;
-                if (!MatchesUltimatumSearch(modifier, _settings.UiState.UltimatumTakeRewardSearchFilter))
+                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.UltimatumTakeRewardSearchFilter, modifier))
                     continue;
 
                 hasEntries = true;
@@ -238,7 +238,7 @@ namespace ClickIt
             {
                 if (!group.Members.Contains(modifier, StringComparer.OrdinalIgnoreCase))
                     continue;
-                if (!MatchesUltimatumSearch(modifier, _settings.UiState.UltimatumTakeRewardSearchFilter))
+                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.UltimatumTakeRewardSearchFilter, modifier))
                     continue;
 
                 bool isTakeReward = _settings.UltimatumTakeRewardModifierNames.Contains(modifier);
@@ -258,13 +258,13 @@ namespace ClickIt
 
         private static bool ShouldRenderUltimatumModifierGroup(UltimatumModifierGroupEntry group, HashSet<string> sourceSet, string filter)
         {
-            bool matchesGroup = MatchesUltimatumSearch(group.DisplayName, filter);
+            bool matchesGroup = SettingsUiRenderHelpers.MatchesSearch(filter, group.DisplayName);
             for (int i = 0; i < group.Members.Length; i++)
             {
                 string member = group.Members[i];
                 if (!sourceSet.Contains(member))
                     continue;
-                if (matchesGroup || MatchesUltimatumSearch(member, filter))
+                if (matchesGroup || SettingsUiRenderHelpers.MatchesSearch(filter, member))
                     return true;
             }
 
@@ -289,21 +289,12 @@ namespace ClickIt
         }
 
         private bool IsExpandedUltimatumTakeRewardRow(string listId, string rowId)
-            => string.Equals(_settings.UiState.ExpandedUltimatumTakeRewardRowKey, BuildExpandedRowKey(listId, rowId), StringComparison.Ordinal);
+            => string.Equals(_settings.UiState.ExpandedUltimatumTakeRewardRowKey, SettingsUiRenderHelpers.BuildExpandedRowKey(listId, rowId), StringComparison.Ordinal);
 
         private void ToggleExpandedUltimatumTakeRewardRow(string listId, string rowId)
         {
-            string rowKey = BuildExpandedRowKey(listId, rowId);
-            _settings.UiState.ExpandedUltimatumTakeRewardRowKey = string.Equals(_settings.UiState.ExpandedUltimatumTakeRewardRowKey, rowKey, StringComparison.Ordinal)
-                ? string.Empty
-                : rowKey;
+            _settings.UiState.ExpandedUltimatumTakeRewardRowKey = SettingsUiRenderHelpers.ToggleExpandedRowKey(_settings.UiState.ExpandedUltimatumTakeRewardRowKey, listId, rowId);
         }
-
-        private static bool MatchesUltimatumSearch(string modifier, string filter)
-            => string.IsNullOrWhiteSpace(filter) || modifier.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
-
-        private static string BuildExpandedRowKey(string listId, string rowId)
-            => $"{listId}:{rowId}";
 
     }
 }

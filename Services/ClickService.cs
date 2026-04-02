@@ -18,6 +18,7 @@ using ClickIt.Services.Click.Application;
 using ClickIt.Services.Click.Label;
 using ClickIt.Services.Click;
 using ClickIt.Services.Click.Ranking;
+using ClickIt.Services.Click.Runtime.Composition;
 using ClickIt.Services.Mechanics;
 using ClickIt.Services.Observability;
 
@@ -65,20 +66,43 @@ namespace ClickIt.Services
         private readonly ChestLootSettlementState chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
         private readonly MechanicPriorityContextProvider _mechanicPriorityContextProvider = new(settings, new MechanicPrioritySnapshotService());
-        private ClickLabelInteractionService? _labelInteractionService;
-        private UltimatumAutomationService? _ultimatumAutomationService;
-        private ClickFacadeSupport? _facadeSupport;
+        private ClickServiceDomainFacade? _domainFacade;
 
-        private ClickFacadeSupport FacadeSupport => _facadeSupport ??= new(
+        private ClickServiceDomainFacade DomainFacade => _domainFacade ??= new(new ClickServiceDomainFacadeDependencies(
             settings,
             gameController,
             errorHandler,
+            altarService,
+            weightCalculator,
+            altarDisplayRenderer,
             pointIsInClickableArea,
+            inputHandler,
+            labelFilterService,
+            shrineService,
+            pathfindingService,
+            groundItemsVisible,
+            cachedLabels,
+            performanceMonitor,
             _clickSafetyPolicy,
             _lockedInteractionDispatcher,
-            performanceMonitor,
+            chestLootSettlementState,
+            _runtimeState,
+            _mechanicPriorityContextProvider,
             SetLatestRuntimeDebugLog,
-            freezeDebugTelemetrySnapshot);
+            ShouldCaptureClickDebug,
+            SetLatestClickDebug,
+            ShouldCaptureUltimatumDebug,
+            PublishUltimatumDebug,
+            TryHandleUltimatumPanelUi,
+            GetLabelsForRegularSelection,
+            GetLabelsForOffscreenSelection,
+            label => ClickLabelSelectionMath.ShouldSuppressPathfindingLabel(
+                LabelSelection.ShouldSuppressLeverClick(label),
+                UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(label)),
+            TryClickPreferredUltimatumModifier,
+            freezeDebugTelemetrySnapshot));
+
+        private ClickFacadeSupport FacadeSupport => DomainFacade.FacadeSupport;
 
         [ThreadStatic]
         private static HashSet<long>? _threadGroundLabelEntityAddresses;
@@ -89,52 +113,7 @@ namespace ClickIt.Services
         internal const int VisibleMechanicCandidateCacheWindowMs = 80;
         internal const int GroundLabelEntityAddressCacheWindowMs = 150;
 
-        private ClickRuntimeCompositionHost? _runtimeComposition;
-
-        private ClickRuntimeCompositionHost RuntimeComposition
-            => _runtimeComposition ??= new(new ClickRuntimeCompositionHostDependencies(
-                settings,
-                gameController,
-                errorHandler,
-                altarService,
-                weightCalculator,
-                altarDisplayRenderer,
-                pointIsInClickableArea,
-                inputHandler,
-                labelFilterService,
-                shrineService,
-                pathfindingService,
-                groundItemsVisible,
-                cachedLabels,
-                performanceMonitor,
-                _lockedInteractionDispatcher,
-                chestLootSettlementState,
-                _runtimeState,
-                () => LabelInteraction,
-                () => FacadeSupport.InteractionExecutionRuntime,
-                FacadeSupport.EnsureCursorInsideGameWindowForClick,
-                FacadeSupport.DebugLog,
-                ShouldCaptureClickDebug,
-                SetLatestClickDebug,
-                ShouldCaptureUltimatumDebug,
-                PublishUltimatumDebug,
-                FacadeSupport.IsClickableInEitherSpace,
-                FacadeSupport.IsInsideWindowInEitherSpace,
-                LabelInteraction.TryCorruptEssence,
-                LabelInteraction.TryGetCursorDistanceSquaredToEntity,
-                LabelInteraction.BuildLabelRangeRejectionDebugSummary,
-                LabelInteraction.BuildLabelSourceDebugSummary,
-                LabelInteraction.BuildNoLabelDebugSummary,
-                _mechanicPriorityContextProvider.Refresh,
-                _mechanicPriorityContextProvider.CreateContext,
-                TryHandleUltimatumPanelUi,
-                GetLabelsForRegularSelection,
-                GetLabelsForOffscreenSelection,
-                label => ClickLabelSelectionMath.ShouldSuppressPathfindingLabel(
-                    LabelSelection.ShouldSuppressLeverClick(label),
-                    UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(label)),
-                TryClickPreferredUltimatumModifier,
-                FacadeSupport.HoldDebugTelemetryAfterSuccessfulInteraction));
+        private ClickRuntimeCompositionHost RuntimeComposition => DomainFacade.RuntimeComposition;
 
         private AltarAutomationService AltarAutomation => RuntimeComposition.AltarAutomation;
 
@@ -277,32 +256,9 @@ namespace ClickIt.Services
             _clickTelemetryStore.PublishRuntimeLog(message);
         }
 
-        private UltimatumAutomationService UltimatumAutomation
-            => _ultimatumAutomationService ??= new UltimatumAutomationService(
-                new UltimatumAutomationServiceDependencies(
-                    settings,
-                    gameController,
-                    cachedLabels,
-                    FacadeSupport.EnsureCursorInsideGameWindowForClick,
-                    FacadeSupport.IsClickableInEitherSpace,
-                    messageFactory => FacadeSupport.DebugLog(messageFactory()),
-                    (clickPos, clickElement) => _lockedInteractionDispatcher.PerformClick(clickPos, clickElement, gameController),
-                    performanceMonitor.RecordClickInterval,
-                    ShouldCaptureUltimatumDebug,
-                    PublishUltimatumDebug));
+        private UltimatumAutomationService UltimatumAutomation => DomainFacade.UltimatumAutomation;
 
-        private ClickLabelInteractionService LabelInteraction
-            => _labelInteractionService ??= new ClickLabelInteractionService(
-                new ClickLabelInteractionServiceDependencies(
-                    settings,
-                    gameController,
-                    inputHandler,
-                    labelFilterService,
-                    FacadeSupport.IsClickableInEitherSpace,
-                    FacadeSupport.IsInsideWindowInEitherSpace,
-                    FacadeSupport.InteractionExecutionRuntime.Execute,
-                    groundItemsVisible,
-                    messageFactory => FacadeSupport.DebugLog(messageFactory())));
+        private ClickLabelInteractionService LabelInteraction => DomainFacade.LabelInteraction;
 
         IEnumerator IClickAutomationService.ProcessRegularClick()
             => ProcessRegularClick();

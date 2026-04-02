@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ExileCore.Shared.Enums;
 using ClickIt.Definitions;
 using ClickIt.Services.Label.Classification;
+using ExileCore.Shared.Enums;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Label
+namespace ClickIt.Tests.Label.Classification
 {
     [TestClass]
-    public class LabelFilterServiceWorldAndChestTests
+    public class MechanicClassifierWorldAndChestTests
     {
         private static string? InvokeChestMechanicFromConfiguredRules(
             bool clickBasicChests,
@@ -66,8 +66,6 @@ namespace ClickIt.Tests.Label
             res.Should().BeTrue();
         }
 
-
-
         [TestMethod]
         public void IsBasicChest_DetectsSimpleNames_CaseInsensitive()
         {
@@ -78,7 +76,6 @@ namespace ClickIt.Tests.Label
         [TestMethod]
         public void ShouldClickChest_RecognizesBasicChest_WhenSettingsAllow()
         {
-            // Call internal helper directly - pass primitive path and renderName to avoid mutating ExileCore objects
             var res = InvokeChestMechanicFromConfiguredRules(true, false, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest");
             res.Should().Be("basic-chests");
         }
@@ -87,7 +84,6 @@ namespace ClickIt.Tests.Label
         public void ShouldClickChest_UsesOtherLeagueToggle_ForNonMirageLeagueChests()
         {
             var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
-
             var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
 
             disabled.Should().BeNull();
@@ -98,7 +94,6 @@ namespace ClickIt.Tests.Label
         public void ShouldClickChest_UsesHeistToggle_ForSecureLockerRenderName()
         {
             var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, false, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
-
             var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
 
             disabled.Should().BeNull();
@@ -111,7 +106,6 @@ namespace ClickIt.Tests.Label
             const string heistPath = "Metadata/Chests/LeagueHeist/MilitaryChests/HeistChestPathMilitary";
 
             var disabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
-
             var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
 
             disabled.Should().BeNull();
@@ -124,7 +118,6 @@ namespace ClickIt.Tests.Label
             const string blightPath = "Metadata/Chests/Blight/BlightChestObject";
 
             var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, false, true, true, EntityType.Chest, blightPath, "Blight Cyst");
-
             var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, blightPath, "Blight Cyst");
 
             disabled.Should().BeNull();
@@ -137,7 +130,6 @@ namespace ClickIt.Tests.Label
             const string breachPath = "Metadata/Chests/Breach/BreachBoxChest02";
 
             var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, EntityType.Chest, breachPath, "Grasping Coffers");
-
             var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, breachPath, "Grasping Coffers");
 
             disabled.Should().BeNull();
@@ -150,7 +142,6 @@ namespace ClickIt.Tests.Label
             const string synthesisPath = "Metadata/Chests/SynthesisChests/SynthesisChest";
 
             var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, false, EntityType.Chest, synthesisPath, "Synthesised Stash");
-
             var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, synthesisPath, "Synthesised Stash");
 
             disabled.Should().BeNull();
@@ -163,11 +154,8 @@ namespace ClickIt.Tests.Label
             var settlersNodePath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/CrimsonIron";
             var monsterPath = "Metadata/Monsters/LeagueKalguur/CrimsonIron/SmallGrowthMaps@83";
 
-            var settlersMatch = MechanicClassifier.IsSettlersOrePath(settlersNodePath);
-            settlersMatch.Should().BeTrue();
-
-            var monsterMatch = MechanicClassifier.IsSettlersOrePath(monsterPath);
-            monsterMatch.Should().BeFalse();
+            MechanicClassifier.IsSettlersOrePath(settlersNodePath).Should().BeTrue();
+            MechanicClassifier.IsSettlersOrePath(monsterPath).Should().BeFalse();
         }
 
         [TestMethod]
@@ -175,17 +163,8 @@ namespace ClickIt.Tests.Label
         {
             string path = "Metadata/Terrain/Labyrinth/Objects/LabyrinthTrialPortalAreaTransition";
 
-            var disabled = MechanicClassifier.GetAreaTransitionMechanicId(
-                true,
-                false,
-                EntityType.AreaTransition,
-                path);
-
-            var enabled = MechanicClassifier.GetAreaTransitionMechanicId(
-                false,
-                true,
-                EntityType.AreaTransition,
-                path);
+            var disabled = MechanicClassifier.GetAreaTransitionMechanicId(true, false, EntityType.AreaTransition, path);
+            var enabled = MechanicClassifier.GetAreaTransitionMechanicId(false, true, EntityType.AreaTransition, path);
 
             disabled.Should().BeNull();
             enabled.Should().Be("labyrinth-trials");
@@ -196,17 +175,8 @@ namespace ClickIt.Tests.Label
         {
             string path = "Metadata/Terrain/Leagues/Delve/Objects/SomeAreaTransition";
 
-            var disabled = MechanicClassifier.GetAreaTransitionMechanicId(
-                false,
-                true,
-                EntityType.AreaTransition,
-                path);
-
-            var enabled = MechanicClassifier.GetAreaTransitionMechanicId(
-                true,
-                false,
-                EntityType.AreaTransition,
-                path);
+            var disabled = MechanicClassifier.GetAreaTransitionMechanicId(false, true, EntityType.AreaTransition, path);
+            var enabled = MechanicClassifier.GetAreaTransitionMechanicId(true, false, EntityType.AreaTransition, path);
 
             disabled.Should().BeNull();
             enabled.Should().Be("area-transitions");

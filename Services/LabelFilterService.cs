@@ -15,7 +15,6 @@ using ClickIt.Services.Label.Selection;
 using ClickIt.Services.Mechanics;
 using ClickIt.Services.Click.Ranking;
 using ClickIt.Services.Label.Classification;
-using ClickIt.Services.Label.Classification.Policies;
 using ClickIt.Services.Label.Diagnostics;
 using ClickIt.Services.Label.Inventory;
 
@@ -33,55 +32,29 @@ namespace ClickIt.Services
 
         private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
         private readonly LabelSelectionDiagnostics _labelSelectionDiagnostics = new(LabelDebugTrailCapacity);
-        private ILabelSelectionService? _labelSelectionService;
-        private LabelDebugService? _labelDebugService;
-        private LabelMechanicResolutionService? _labelMechanicResolutionService;
-        private LazyModeBlockerService? _lazyModeBlockerService;
-        private MechanicClassifierDependencies? _classificationDependencies;
-        private InventoryDomainFacade? _inventoryDomain;
+        private LabelDomainFacade? _labelDomain;
 
-        private ILabelSelectionService LabelSelectionService
-            => _labelSelectionService ??= new LabelSelectionService(new LabelSelectionServiceDependencies(
-                _gameController,
-                CreateClickSettings,
-                ShouldCaptureLabelDebug,
-                debugEvent => PublishLabelDebugStage(debugEvent),
-                TryBuildLabelCandidate,
-                LabelMechanicResolutionService.GetMechanicIdForLabel));
-
-        private LabelDebugService LabelDebugService
-            => _labelDebugService ??= new LabelDebugService(
+        private LabelDomainFacade LabelDomain
+            => _labelDomain ??= new LabelDomainFacade(new LabelDomainFacadeDependencies(
                 _settings,
                 _errorHandler,
                 _gameController,
-                CreateClickSettings,
-                ShouldAllowWorldItemByMetadata,
-                LabelMechanicResolutionService);
+                _worldItemMetadataPolicy,
+                _mechanicPrioritySnapshotService,
+                _labelSelectionDiagnostics,
+                Keyboard.IsKeyDown,
+                ShouldCaptureLabelDebug,
+                StoneOfPassageMetadataIdentifier));
 
-        private LabelMechanicResolutionService LabelMechanicResolutionService
-            => _labelMechanicResolutionService ??= new LabelMechanicResolutionService(
-                _gameController,
-                CreateClickSettings,
-                () => ClassificationDependencies);
+        private ILabelSelectionService LabelSelectionService => LabelDomain.SelectionService;
 
-        private LazyModeBlockerService LazyModeBlockerService
-            => _lazyModeBlockerService ??= new LazyModeBlockerService(
-                _settings,
-                _gameController,
-                reason => _errorHandler.LogMessage(true, true, reason, 5));
+        private LabelDebugService LabelDebugService => LabelDomain.DebugService;
 
-        private MechanicClassifierDependencies ClassificationDependencies
-            => _classificationDependencies ??= new MechanicClassifierDependencies(
-                _worldItemMetadataPolicy.GetWorldItemMetadataPath,
-                ShouldAllowWorldItemByMetadata,
-                ShouldClickStrongbox,
-                static (clickEssences, label) => ShouldClickEssence(clickEssences, label),
-                static (clickRitualInitiate, clickRitualCompleted, path, label) => GetRitualMechanicId(clickRitualInitiate, clickRitualCompleted, path, label),
-                ShouldAllowClosedDoorPastMechanic);
+        private LabelMechanicResolutionService LabelMechanicResolutionService => LabelDomain.MechanicResolutionService;
 
-        private InventoryDomainFacade InventoryDomain
-            => _inventoryDomain ??= InventoryDomainComposition.Create(
-                new InventoryDomainCompositionDependencies(_worldItemMetadataPolicy.GetWorldItemBaseName));
+        private LazyModeBlockerService LazyModeBlockerService => LabelDomain.LazyModeBlockerService;
+
+        private InventoryDomainFacade InventoryDomain => LabelDomain.InventoryDomain;
 
         internal LazyModeBlockerService GetLazyModeBlockerService()
             => LazyModeBlockerService;
@@ -139,64 +112,10 @@ namespace ClickIt.Services
         internal void ClearInventoryProbeCacheForShutdown()
             => InventoryDomain.ClearForShutdown();
 
-        private bool TryBuildLabelCandidate(
-            LabelOnGround label,
-            ClickSettings clickSettings,
-            [NotNullWhen(true)] out Entity? item,
-            [NotNullWhen(true)] out string? mechanicId,
-            out LabelCandidateRejectReason rejectReason)
-        {
-            return LabelEligibilityEngine.TryBuildCandidate(
-                label,
-                clickSettings,
-                LabelTargetabilityPolicy.IsEntityTargetableForClick,
-                LabelMechanicResolutionService.ResolveMechanicId,
-                out item,
-                out mechanicId,
-                out rejectReason);
-        }
-
-        private static bool IsEntityTargetableForClick(LabelOnGround label, Entity item)
-            => LabelTargetabilityPolicy.IsEntityTargetableForClick(label, item);
-
-
-        private static int GetMechanicPriorityIndex(IReadOnlyDictionary<string, int> priorityMap, string? mechanicId)
-            => MechanicCandidateRanker.ResolvePriorityIndex(mechanicId, priorityMap);
-
         private bool ShouldCaptureLabelDebug()
         {
             return _settings.DebugMode.Value && _settings.DebugShowLabels.Value;
         }
-
-        private void PublishLabelDebugStage(in LabelDebugEvent debugEvent)
-        {
-            if (!ShouldCaptureLabelDebug())
-                return;
-
-            _labelSelectionDiagnostics.PublishEvent(debugEvent);
-        }
-
-        internal ClickSettings CreateClickSettings(IReadOnlyList<LabelOnGround>? allLabels)
-        {
-            var factory = new ClickSettingsFactory(
-                _settings,
-                _mechanicPrioritySnapshotService,
-                HasLazyModeRestrictedItemsOnScreen,
-                Keyboard.IsKeyDown);
-
-            return factory.Create(allLabels);
-        }
-
-        private bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label)
-        {
-            return _worldItemMetadataPolicy.ShouldAllowWorldItemByMetadata(settings, item, gameController, label, ShouldAllowWorldItemWhenInventoryFull);
-        }
-
-        private bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
-            => InventoryDomain.ShouldAllowWorldItemWhenInventoryFull(groundItem, gameController);
-
-        private bool ShouldAllowClosedDoorPastMechanic(GameController? gameController)
-            => InventoryDomain.ShouldAllowClosedDoorPastMechanic(gameController, StoneOfPassageMetadataIdentifier);
 
         internal static bool ShouldBlockLazyModeForNearbyMonsters(
             int nearbyNormalCount,
@@ -251,75 +170,6 @@ namespace ClickIt.Services
                 uniqueThreshold,
                 uniqueDistance,
                 uniqueTriggered);
-
-        private static bool ShouldClickEssence(bool clickEssences, LabelOnGround label)
-        {
-            if (!clickEssences)
-                return false;
-
-            return LabelUtils.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
-        }
-
-        private static string? GetRitualMechanicId(bool clickRitualInitiate, bool clickRitualCompleted, string path, LabelOnGround label)
-        {
-            if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual", StringComparison.OrdinalIgnoreCase))
-                return null;
-
-            bool hasFavoursText = LabelUtils.GetElementByString(label.Label, "Interact to view Favours") != null;
-            if (clickRitualInitiate && !hasFavoursText)
-                return MechanicIds.RitualInitiate;
-            if (clickRitualCompleted && hasFavoursText)
-                return MechanicIds.RitualCompleted;
-
-            return null;
-        }
-
-        private static bool ShouldClickStrongbox(ClickSettings settings, string path, LabelOnGround label)
-        {
-            if (string.IsNullOrEmpty(path) || label?.ItemOnGround == null)
-                return false;
-
-            Chest? chest = label.ItemOnGround.GetComponent<Chest>();
-            if (chest?.IsLocked != false)
-                return false;
-
-            IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? [];
-            IReadOnlyList<string> dontClickMetadata = settings.StrongboxDontClickMetadata ?? [];
-            if (clickMetadata.Count == 0)
-                return false;
-
-            if (IsUniqueStrongbox(label))
-            {
-                if (ContainsStrongboxUniqueIdentifier(dontClickMetadata))
-                    return false;
-
-                return ContainsStrongboxUniqueIdentifier(clickMetadata);
-            }
-
-            string renderName = label.ItemOnGround.RenderName ?? string.Empty;
-            bool dontClickMatch = MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata);
-            if (dontClickMatch)
-                return false;
-
-            return MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(path, renderName, clickMetadata);
-        }
-
-        private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)
-        {
-            if (metadataIdentifiers == null || metadataIdentifiers.Count == 0)
-                return false;
-
-            for (int i = 0; i < metadataIdentifiers.Count; i++)
-            {
-                if (string.Equals(metadataIdentifiers[i], "special:strongbox-unique", StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private static bool IsUniqueStrongbox(LabelOnGround? label)
-            => label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
 
         public bool ShouldCorruptEssence(LabelOnGround label)
             => _essenceService.ShouldCorruptEssence(label.Label);

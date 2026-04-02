@@ -137,7 +137,7 @@ namespace ClickIt
             string currentSection = string.Empty;
             foreach ((string id, string name, string type, int _) in AltarModsConstants.UpsideMods)
             {
-                if (!MatchesSearchFilter(name, type, _settings.UiState.UpsideSearchFilter))
+                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.UpsideSearchFilter, name, type))
                     continue;
 
                 string sectionHeader = GetUpsideSectionHeader(type);
@@ -157,7 +157,7 @@ namespace ClickIt
             string lastProcessedSection = string.Empty;
             foreach ((string id, string name, string type, int defaultWeight) in AltarModsConstants.DownsideMods)
             {
-                if (!MatchesSearchFilter(name, type, _settings.UiState.DownsideSearchFilter))
+                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.DownsideSearchFilter, name, type))
                     continue;
 
                 string sectionHeader = GetDownsideSectionHeader(defaultWeight);
@@ -230,11 +230,6 @@ namespace ClickIt
 
             ImGui.TableHeadersRow();
         }
-
-        private static bool MatchesSearchFilter(string name, string type, string filter)
-            => string.IsNullOrWhiteSpace(filter)
-                || name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase)
-                || type.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
 
         private static string GetUpsideSectionHeader(string type)
             => type switch

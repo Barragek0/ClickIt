@@ -1,11 +1,11 @@
+using ClickIt.Services;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ClickIt.Services;
 
 namespace ClickIt.Tests.Label
 {
     [TestClass]
-    public class LabelFilterServiceDebugTests
+    public class LabelFilterServiceCompatibilityTests
     {
         [TestMethod]
         public void GetNextLabelToClick_PublishesNoLabelsDebugSnapshot_WhenInputIsNull()

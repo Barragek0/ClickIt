@@ -171,7 +171,7 @@ namespace ClickIt
             {
                 if (!string.Equals(entry.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (!MatchesMechanicsSearch(entry.DisplayName, _settings.UiState.MechanicsSearchFilter) && !MatchesMechanicsSearch(group.DisplayName, _settings.UiState.MechanicsSearchFilter))
+                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName, group.DisplayName))
                     continue;
 
                 bool enabled = entry.Node.Value;
@@ -215,8 +215,8 @@ namespace ClickIt
                     .Where(e => string.Equals(e.Subgroup, subgroupName, StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
-                bool subgroupMatchesSearch = MatchesMechanicsSearch(subgroupName, _settings.UiState.MechanicsSearchFilter);
-                bool hasEntryMatch = subgroupEntries.Any(e => MatchesMechanicsSearch(e.DisplayName, _settings.UiState.MechanicsSearchFilter));
+                bool subgroupMatchesSearch = SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, subgroupName);
+                bool hasEntryMatch = subgroupEntries.Any(e => SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, e.DisplayName));
                 if (!searchIsEmpty && !subgroupMatchesSearch && !hasEntryMatch)
                     continue;
 
@@ -227,7 +227,7 @@ namespace ClickIt
                 for (int i = 0; i < subgroupEntries.Length; i++)
                 {
                     MechanicToggleTableEntry entry = subgroupEntries[i];
-                    if (!searchIsEmpty && !subgroupMatchesSearch && !MatchesMechanicsSearch(entry.DisplayName, _settings.UiState.MechanicsSearchFilter))
+                    if (!searchIsEmpty && !subgroupMatchesSearch && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName))
                         continue;
 
                     DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
@@ -241,8 +241,8 @@ namespace ClickIt
             {
                 MechanicToggleTableEntry entry = ungroupedEntries[i];
                 if (!searchIsEmpty
-                    && !MatchesMechanicsSearch(entry.DisplayName, _settings.UiState.MechanicsSearchFilter)
-                    && !MatchesMechanicsSearch(group.DisplayName, _settings.UiState.MechanicsSearchFilter))
+                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName)
+                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, group.DisplayName))
                 {
                     continue;
                 }
@@ -297,21 +297,12 @@ namespace ClickIt
         }
 
         private bool IsExpandedMechanicTableRow(string listId, string rowId)
-            => string.Equals(_settings.UiState.ExpandedMechanicsTableRowId, BuildExpandedMechanicTableRowKey(listId, rowId), StringComparison.Ordinal);
+            => string.Equals(_settings.UiState.ExpandedMechanicsTableRowId, SettingsUiRenderHelpers.BuildExpandedRowKey(listId, rowId), StringComparison.Ordinal);
 
         private void ToggleExpandedMechanicTableRow(string listId, string rowId)
         {
-            string rowKey = BuildExpandedMechanicTableRowKey(listId, rowId);
-            _settings.UiState.ExpandedMechanicsTableRowId = string.Equals(_settings.UiState.ExpandedMechanicsTableRowId, rowKey, StringComparison.Ordinal)
-                ? string.Empty
-                : rowKey;
+            _settings.UiState.ExpandedMechanicsTableRowId = SettingsUiRenderHelpers.ToggleExpandedRowKey(_settings.UiState.ExpandedMechanicsTableRowId, listId, rowId);
         }
-
-        private static string BuildExpandedMechanicTableRowKey(string listId, string rowId)
-            => $"{listId}:{rowId}";
-
-        private static bool MatchesMechanicsSearch(string name, string filter)
-            => string.IsNullOrWhiteSpace(filter) || name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
 
     }
 }

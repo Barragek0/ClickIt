@@ -1,12 +1,12 @@
+using ClickIt.Services.Label.Selection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ClickIt.Services.Label.Selection;
 using System.Runtime.CompilerServices;
 
-namespace ClickIt.Tests.Label
+namespace ClickIt.Tests.Label.Selection
 {
     [TestClass]
-    public class LabelServiceCachingTests
+    public class LabelServiceCompatibilityTests
     {
         [TestMethod]
         public void Constructor_InitializesCachedLabels()

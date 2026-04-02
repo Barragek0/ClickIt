@@ -191,7 +191,7 @@ namespace ClickIt
             {
                 if (!sourceSet.Contains(essenceName))
                     continue;
-                if (!MatchesEssenceSearch(essenceName, _settings.UiState.EssenceSearchFilter))
+                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.EssenceSearchFilter, essenceName))
                     continue;
 
                 hasEntries = true;
@@ -247,20 +247,9 @@ namespace ClickIt
 
         private static bool MatchesStrongboxSearch(ClickItSettings.StrongboxFilterEntry entry, string filter)
         {
-            if (string.IsNullOrWhiteSpace(filter))
-                return true;
-
-            string term = filter.Trim();
-            if (entry.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            foreach (string metadataIdentifier in entry.MetadataIdentifiers)
-            {
-                if (metadataIdentifier.Contains(term, StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
+            return SettingsUiRenderHelpers.MatchesSearch(
+                filter,
+                entry.MetadataIdentifiers.Prepend(entry.DisplayName));
         }
 
         private void MoveEssenceName(string essenceName, bool moveToCorrupt)
@@ -270,14 +259,6 @@ namespace ClickIt
 
             source.Remove(essenceName);
             target.Add(essenceName);
-        }
-
-        private static bool MatchesEssenceSearch(string essenceName, string filter)
-        {
-            if (string.IsNullOrWhiteSpace(filter))
-                return true;
-
-            return essenceName.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)
@@ -352,20 +333,12 @@ namespace ClickIt
 
         private bool IsExpandedRow(string listId, string categoryId)
         {
-            return string.Equals(_settings.UiState.ExpandedItemTypeRowKey, BuildExpandedRowKey(listId, categoryId), StringComparison.Ordinal);
+            return string.Equals(_settings.UiState.ExpandedItemTypeRowKey, SettingsUiRenderHelpers.BuildExpandedRowKey(listId, categoryId), StringComparison.Ordinal);
         }
 
         private void ToggleExpandedRow(string listId, string categoryId)
         {
-            string rowKey = BuildExpandedRowKey(listId, categoryId);
-            if (string.Equals(_settings.UiState.ExpandedItemTypeRowKey, rowKey, StringComparison.Ordinal))
-            {
-                _settings.UiState.ExpandedItemTypeRowKey = string.Empty;
-            }
-            else
-            {
-                _settings.UiState.ExpandedItemTypeRowKey = rowKey;
-            }
+            _settings.UiState.ExpandedItemTypeRowKey = SettingsUiRenderHelpers.ToggleExpandedRowKey(_settings.UiState.ExpandedItemTypeRowKey, listId, categoryId);
         }
 
         private void MoveItemTypeCategory(string categoryId, bool moveToWhitelist)
@@ -391,18 +364,9 @@ namespace ClickIt
 
         private static bool MatchesItemTypeSearch(ItemCategoryDefinition category, string filter)
         {
-            if (string.IsNullOrWhiteSpace(filter))
-                return true;
-
-            string term = filter.Trim();
-            return category.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase)
-                || category.MetadataIdentifiers.Any(x => x.Contains(term, StringComparison.OrdinalIgnoreCase))
-                || category.Id.Contains(term, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static string BuildExpandedRowKey(string listId, string categoryId)
-        {
-            return $"{listId}:{categoryId}";
+            return SettingsUiRenderHelpers.MatchesSearch(
+                filter,
+                category.MetadataIdentifiers.Prepend(category.DisplayName).Append(category.Id));
         }
 
     }
