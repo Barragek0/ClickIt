@@ -1,4 +1,5 @@
 using ClickIt.Composition;
+using ClickIt.Services.Click.Application;
 
 namespace ClickIt.Core.Runtime
 {
@@ -27,7 +28,7 @@ namespace ClickIt.Core.Runtime
             context.PathfindingRenderer = services.PathfindingRenderer;
             context.AltarDisplayRenderer = services.AltarDisplayRenderer;
             context.ClickService = services.ClickService;
-            context.ClickRuntimeHost = new ClickRuntimeHost(() => context.ClickService);
+            context.ClickRuntimeHost = new ClickRuntimeHost(() => context.ClickService as IClickAutomationService);
             context.UltimatumRenderer = services.UltimatumRenderer;
             context.AlertService = services.AlertService;
         }

@@ -21,7 +21,7 @@ namespace ClickIt.Services
                 ShouldClickStrongbox,
                 static (clickEssences, label) => ShouldClickEssence(clickEssences, label),
                 static (clickRitualInitiate, clickRitualCompleted, path, label) => GetRitualMechanicId(clickRitualInitiate, clickRitualCompleted, path, label),
-                ShouldAllowClosedDoorPastMechanic);
+                gameController => InventoryPickupService.ShouldAllowClosedDoorPastMechanic(gameController));
 
         private static bool ShouldClickEssence(bool clickEssences, LabelOnGround label)
         {

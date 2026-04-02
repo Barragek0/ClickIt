@@ -57,10 +57,5 @@ namespace ClickIt.Services
 
             return validLabels;
         }
-
-        public static List<ExileCore.PoEMemory.Element> GetElementsByStringContains(ExileCore.PoEMemory.Element? label, string str)
-        {
-            return LabelUtils.GetElementsByStringContains(label, str);
-        }
     }
 }

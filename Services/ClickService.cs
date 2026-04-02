@@ -13,6 +13,7 @@ using System.Diagnostics.CodeAnalysis;
 using ClickIt.Services.Click.Safety;
 using ClickIt.Services.Click.Interaction;
 using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Click.Application;
 using ClickIt.Services.Observability;
 
 #nullable enable
@@ -36,7 +37,7 @@ namespace ClickIt.Services
         TimeCache<List<LabelOnGround>> cachedLabels,
         PerformanceMonitor performanceMonitor,
         Action<string, int>? freezeDebugTelemetrySnapshot = null)
-        : Observability.IClickTelemetryPublisher
+        : Observability.IClickTelemetryPublisher, IClickAutomationService
     {
         private readonly ClickItSettings settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly GameController gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
@@ -59,6 +60,7 @@ namespace ClickIt.Services
         private readonly ClickRuntimeState _runtimeState = new();
         private readonly UltimatumGruelingGauntletDetector _gruelingGauntletDetector = new();
         private IInteractionExecutionRuntime? _interactionExecutionRuntime;
+        private UltimatumAutomationService? _ultimatumAutomationService;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
@@ -211,6 +213,26 @@ namespace ClickIt.Services
 
             freezeDebugTelemetrySnapshot?.Invoke(reason, holdDurationMs);
         }
+
+        private UltimatumAutomationService UltimatumAutomation
+            => _ultimatumAutomationService ??= new UltimatumAutomationService(
+                TryGetUltimatumPanelOptionPreviewCore,
+                TryGetUltimatumGroundLabelOptionPreview);
+
+        IEnumerator IClickAutomationService.ProcessRegularClick()
+            => ProcessRegularClick();
+
+        bool IClickAutomationService.TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? labels)
+            => TryClickManualUiHoverLabel(labels);
+
+        void IClickAutomationService.CancelOffscreenPathingState()
+            => CancelOffscreenPathingState();
+
+        void IClickAutomationService.CancelPostChestLootSettlementState()
+            => CancelPostChestLootSettlementState();
+
+        bool IClickAutomationService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+            => TryGetUltimatumOptionPreview(out previews);
 
     }
 }

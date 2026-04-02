@@ -26,7 +26,7 @@ namespace ClickIt.Services
         public string? LastLazyModeRestrictionReason => _lastLazyModeRestrictionReason;
 
         public bool HasLazyModeRestrictedItemsOnScreen(IReadOnlyList<global::ExileCore.PoEMemory.Elements.LabelOnGround>? allLabels)
-            => LazyModeRestrictedChecker(this, allLabels);
+            => LazyModeBlockerService.HasRestrictedItemsOnScreen(allLabels);
 
         private bool HasLazyModeRestrictedItemsOnScreenImpl(IReadOnlyList<global::ExileCore.PoEMemory.Elements.LabelOnGround>? allLabels)
         {

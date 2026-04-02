@@ -16,50 +16,57 @@ namespace ClickIt
     {
         private readonly ServiceDisposalRegistry _serviceRegistry = new();
         private readonly DebugTelemetryFreezeState _debugTelemetryFreezeState = new();
+        private readonly PluginServices _services = new();
+        private readonly PluginRuntimeState _runtime = new();
+        private readonly PluginRenderingState _rendering = new();
 
-        public Utils.PerformanceMonitor? PerformanceMonitor { get; set; }
-        public Utils.ErrorHandler? ErrorHandler { get; set; }
+        internal PluginServices Services => _services;
+        internal PluginRuntimeState Runtime => _runtime;
+        internal PluginRenderingState Rendering => _rendering;
+
+        public Utils.PerformanceMonitor? PerformanceMonitor { get => _services.PerformanceMonitor; set => _services.PerformanceMonitor = value; }
+        public Utils.ErrorHandler? ErrorHandler { get => _services.ErrorHandler; set => _services.ErrorHandler = value; }
         public Random Random { get; } = new Random();
-        public TimeCache<List<LabelOnGround>>? CachedLabels { get; set; }
-        public Coroutine? AltarCoroutine { get; set; }
-        public Coroutine? ClickLabelCoroutine { get; set; }
-        public Coroutine? ManualUiHoverCoroutine { get; set; }
-        public Coroutine? DelveFlareCoroutine { get; set; }
-        public Coroutine? DeepMemoryDumpCoroutine { get; set; }
-        public Stopwatch LastRenderTimer { get; } = new Stopwatch();
-        public Stopwatch LastTickTimer { get; } = new Stopwatch();
-        public Stopwatch Timer { get; } = new Stopwatch();
-        public Stopwatch SecondTimer { get; } = new Stopwatch();
-        public bool LastHotkeyState { get; set; } = false;
-        public Services.AreaService? AreaService { get; set; }
-        public Services.AltarService? AltarService { get; set; }
-        public Services.ShrineService? ShrineService { get; set; }
-        public Utils.InputHandler? InputHandler { get; set; }
-        public Rendering.DebugRenderer? DebugRenderer { get; set; }
-        public Rendering.StrongboxRenderer? StrongboxRenderer { get; set; }
-        public Rendering.UltimatumRenderer? UltimatumRenderer { get; set; }
-        public Rendering.LazyModeRenderer? LazyModeRenderer { get; set; }
-        public Rendering.ClickHotkeyToggleRenderer? ClickHotkeyToggleRenderer { get; set; }
-        internal Rendering.InventoryFullWarningRenderer? InventoryFullWarningRenderer { get; set; }
-        public Rendering.PathfindingRenderer? PathfindingRenderer { get; set; }
-        public Rendering.AltarDisplayRenderer? AltarDisplayRenderer { get; set; }
-        public Utils.DeferredTextQueue? DeferredTextQueue { get; set; }
-        public Utils.DeferredFrameQueue? DeferredFrameQueue { get; set; }
-        public Services.LabelFilterService? LabelFilterService { get; set; }
-        public Services.LabelService? LabelService { get; set; }
-        public Services.ClickService? ClickService { get; set; }
-        internal ClickRuntimeHost? ClickRuntimeHost { get; set; }
-        public Services.PathfindingService? PathfindingService { get; set; }
-        public Services.AlertService? AlertService { get; set; }
-        public Camera? Camera { get; set; }
-        public bool WorkFinished { get; set; } = false;
-        public bool IsShuttingDown { get; set; } = false;
+        public TimeCache<List<LabelOnGround>>? CachedLabels { get => _services.CachedLabels; set => _services.CachedLabels = value; }
+        public Coroutine? AltarCoroutine { get => _runtime.AltarCoroutine; set => _runtime.AltarCoroutine = value; }
+        public Coroutine? ClickLabelCoroutine { get => _runtime.ClickLabelCoroutine; set => _runtime.ClickLabelCoroutine = value; }
+        public Coroutine? ManualUiHoverCoroutine { get => _runtime.ManualUiHoverCoroutine; set => _runtime.ManualUiHoverCoroutine = value; }
+        public Coroutine? DelveFlareCoroutine { get => _runtime.DelveFlareCoroutine; set => _runtime.DelveFlareCoroutine = value; }
+        public Coroutine? DeepMemoryDumpCoroutine { get => _runtime.DeepMemoryDumpCoroutine; set => _runtime.DeepMemoryDumpCoroutine = value; }
+        public Stopwatch LastRenderTimer => _runtime.LastRenderTimer;
+        public Stopwatch LastTickTimer => _runtime.LastTickTimer;
+        public Stopwatch Timer => _runtime.Timer;
+        public Stopwatch SecondTimer => _runtime.SecondTimer;
+        public bool LastHotkeyState { get => _runtime.LastHotkeyState; set => _runtime.LastHotkeyState = value; }
+        public Services.AreaService? AreaService { get => _services.AreaService; set => _services.AreaService = value; }
+        public Services.AltarService? AltarService { get => _services.AltarService; set => _services.AltarService = value; }
+        public Services.ShrineService? ShrineService { get => _services.ShrineService; set => _services.ShrineService = value; }
+        public Utils.InputHandler? InputHandler { get => _services.InputHandler; set => _services.InputHandler = value; }
+        public Rendering.DebugRenderer? DebugRenderer { get => _rendering.DebugRenderer; set => _rendering.DebugRenderer = value; }
+        public Rendering.StrongboxRenderer? StrongboxRenderer { get => _rendering.StrongboxRenderer; set => _rendering.StrongboxRenderer = value; }
+        public Rendering.UltimatumRenderer? UltimatumRenderer { get => _rendering.UltimatumRenderer; set => _rendering.UltimatumRenderer = value; }
+        public Rendering.LazyModeRenderer? LazyModeRenderer { get => _rendering.LazyModeRenderer; set => _rendering.LazyModeRenderer = value; }
+        public Rendering.ClickHotkeyToggleRenderer? ClickHotkeyToggleRenderer { get => _rendering.ClickHotkeyToggleRenderer; set => _rendering.ClickHotkeyToggleRenderer = value; }
+        internal Rendering.InventoryFullWarningRenderer? InventoryFullWarningRenderer { get => _rendering.InventoryFullWarningRenderer; set => _rendering.InventoryFullWarningRenderer = value; }
+        public Rendering.PathfindingRenderer? PathfindingRenderer { get => _rendering.PathfindingRenderer; set => _rendering.PathfindingRenderer = value; }
+        public Rendering.AltarDisplayRenderer? AltarDisplayRenderer { get => _rendering.AltarDisplayRenderer; set => _rendering.AltarDisplayRenderer = value; }
+        public Utils.DeferredTextQueue? DeferredTextQueue { get => _rendering.DeferredTextQueue; set => _rendering.DeferredTextQueue = value; }
+        public Utils.DeferredFrameQueue? DeferredFrameQueue { get => _rendering.DeferredFrameQueue; set => _rendering.DeferredFrameQueue = value; }
+        public Services.LabelFilterService? LabelFilterService { get => _services.LabelFilterService; set => _services.LabelFilterService = value; }
+        public Services.LabelService? LabelService { get => _services.LabelService; set => _services.LabelService = value; }
+        public Services.ClickService? ClickService { get => _services.ClickService; set => _services.ClickService = value; }
+        internal ClickRuntimeHost? ClickRuntimeHost { get => _rendering.ClickRuntimeHost; set => _rendering.ClickRuntimeHost = value; }
+        public Services.PathfindingService? PathfindingService { get => _services.PathfindingService; set => _services.PathfindingService = value; }
+        public Services.AlertService? AlertService { get => _services.AlertService; set => _services.AlertService = value; }
+        public Camera? Camera { get => _services.Camera; set => _services.Camera = value; }
+        public bool WorkFinished { get => _runtime.WorkFinished; set => _runtime.WorkFinished = value; }
+        public bool IsShuttingDown { get => _runtime.IsShuttingDown; set => _runtime.IsShuttingDown = value; }
 
         /// <summary>
         /// Indicates whether we're currently in the Render() method.
         /// Used to prevent logging that could cause recursive rendering issues.
         /// </summary>
-        public bool IsRendering { get; set; } = false;
+        public bool IsRendering { get => _rendering.IsRendering; set => _rendering.IsRendering = value; }
 
         public double CurrentFPS => PerformanceMonitor?.CurrentFPS ?? 0;
 

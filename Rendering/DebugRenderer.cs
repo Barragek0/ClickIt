@@ -6,6 +6,7 @@ using Color = SharpDX.Color;
 using RectangleF = SharpDX.RectangleF;
 using ClickIt.Services;
 using ClickIt.Services.Observability;
+using ClickIt.Rendering.Debug;
 using ClickIt.Rendering.Debug.Layout;
 
 #nullable enable
@@ -34,6 +35,7 @@ namespace ClickIt.Rendering
         private readonly Debug.Sections.UltimatumDebugOverlaySection _ultimatumDebugOverlaySection;
         private readonly Debug.Sections.PerformanceDebugOverlaySection _performanceDebugOverlaySection;
         private readonly IDebugLayoutEngine _layoutEngine = new DebugLayoutEngine();
+        private readonly DebugOverlayComposer _overlayComposer;
         private static readonly DebugLayoutSettings LayoutSettings = new(
             StartY: DetailedDebugStartY,
             LineHeight: DetailedDebugLineHeight,
@@ -68,6 +70,7 @@ namespace ClickIt.Rendering
             _labelDebugOverlaySection = new Debug.Sections.LabelDebugOverlaySection(_overlayContext);
             _ultimatumDebugOverlaySection = new Debug.Sections.UltimatumDebugOverlaySection(_overlayContext);
             _performanceDebugOverlaySection = new Debug.Sections.PerformanceDebugOverlaySection(_overlayContext);
+            _overlayComposer = new DebugOverlayComposer(_layoutEngine, LayoutSettings);
         }
 
         public void RenderDetailedDebugInfo(ClickItSettings settings, PerformanceMonitor performanceMonitor)
@@ -80,116 +83,51 @@ namespace ClickIt.Rendering
                 return;
             }
 
-            const int startY = DetailedDebugStartY;
-            const int lineHeight = DetailedDebugLineHeight;
-            const int baseX = DetailedDebugBaseX;
-            const int linesPerColumn = DetailedDebugLinesPerColumn;
-            const int columnShiftPx = DetailedDebugColumnShiftPx;
-            const int maxColumns = DetailedDebugMaxColumns;
-
             PerformanceMetricsSnapshot performanceSnapshot = performanceMonitor.GetDebugSnapshot();
-
-            int currentColumn = 0;
-            int xPos = baseX;
-            int yPos = startY;
-
-            void RenderSectionIfEnabled(bool enabled, Func<int, int, int, int> renderSection)
-            {
-                if (!enabled)
+            DebugOverlaySection[] sections =
+            [
+                new(settings.DebugShowStatus, (x, y, h) => (x, RenderPluginStatusDebug(x, y, h))),
+                new(settings.DebugShowGameState, (x, y, h) => (x, RenderGameStateDebug(x, y, h))),
+                new(settings.DebugShowPerformance, (x, y, h) => (x, _performanceDebugOverlaySection.RenderPerformanceDebug(x, y, h, performanceSnapshot))),
+                new(settings.DebugShowClickFrequencyTarget, (x, y, h) => (x, _performanceDebugOverlaySection.RenderClickFrequencyTargetDebug(x, y, h, performanceSnapshot))),
+                new(settings.DebugShowAltarDetection, (x, y, h) => (x, RenderAltarDebug(x, y, h))),
+                new(settings.DebugShowAltarService, (x, y, h) => (x, RenderAltarServiceDebug(x, y, h))),
+                new(settings.DebugShowLabels, (x, y, h) =>
                 {
-                    return;
-                }
-
-                (currentColumn, xPos, yPos) = ResolveDebugColumnForNextSection(
-                    currentColumn,
-                    xPos,
-                    yPos,
-                    startY,
-                    lineHeight,
-                    linesPerColumn,
-                    maxColumns,
-                    baseX,
-                    columnShiftPx);
-
-                yPos = renderSection(xPos, yPos, lineHeight);
-            }
-
-            void RenderSectionIfEnabledWithPosition(bool enabled, Func<int, int, int, (int NextX, int NextY)> renderSection)
-            {
-                if (!enabled)
+                    int localX = x;
+                    int nextY = _labelDebugOverlaySection.RenderLabelsDebug(ref localX, y, h);
+                    return (localX, nextY);
+                }),
+                new(settings.DebugShowInventoryPickup, (x, y, h) =>
                 {
-                    return;
-                }
+                    int localX = x;
+                    int nextY = _labelDebugOverlaySection.RenderInventoryPickupDebug(ref localX, y, h);
+                    return (localX, nextY);
+                }),
+                new(settings.DebugShowHoveredItemMetadata, (x, y, h) => (x, RenderHoveredItemMetadataDebug(x, y, h))),
+                new(settings.DebugShowPathfinding, (x, y, h) => (x, RenderPathfindingDebug(x, y, h))),
+                new(settings.DebugShowUltimatum, (x, y, h) =>
+                {
+                    int localX = x;
+                    int nextY = _ultimatumDebugOverlaySection.RenderUltimatumDebug(ref localX, y, h);
+                    return (localX, nextY);
+                }),
+                new(settings.DebugShowClicking, (x, y, h) =>
+                {
+                    int localX = x;
+                    int nextY = _clickingDebugOverlaySection.RenderClickingDebug(ref localX, y, h);
+                    return (localX, nextY);
+                }),
+                new(settings.DebugShowRuntimeDebugLogOverlay, (x, y, h) =>
+                {
+                    int localX = x;
+                    int nextY = _clickingDebugOverlaySection.RenderRuntimeDebugLogOverlay(ref localX, y, h);
+                    return (localX, nextY);
+                }),
+                new(settings.DebugShowRecentErrors, (x, y, h) => (x, RenderErrorsDebug(x, y, h)))
+            ];
 
-                (currentColumn, xPos, yPos) = ResolveDebugColumnForNextSection(
-                    currentColumn,
-                    xPos,
-                    yPos,
-                    startY,
-                    lineHeight,
-                    linesPerColumn,
-                    maxColumns,
-                    baseX,
-                    columnShiftPx);
-
-                (xPos, yPos) = renderSection(xPos, yPos, lineHeight);
-                currentColumn = _layoutEngine.ResolveColumnFromX(xPos, LayoutSettings);
-            }
-
-            RenderSectionIfEnabled(settings.DebugShowStatus, (x, y, h) => RenderPluginStatusDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowGameState, (x, y, h) => RenderGameStateDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowPerformance, (x, y, h) => _performanceDebugOverlaySection.RenderPerformanceDebug(x, y, h, performanceSnapshot));
-            RenderSectionIfEnabled(settings.DebugShowClickFrequencyTarget, (x, y, h) => _performanceDebugOverlaySection.RenderClickFrequencyTargetDebug(x, y, h, performanceSnapshot));
-            RenderSectionIfEnabled(settings.DebugShowAltarDetection, (x, y, h) => RenderAltarDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowAltarService, (x, y, h) => RenderAltarServiceDebug(x, y, h));
-            RenderSectionIfEnabledWithPosition(settings.DebugShowLabels, (x, y, h) =>
-            {
-                int localX = x;
-                int nextY = _labelDebugOverlaySection.RenderLabelsDebug(ref localX, y, h);
-                return (localX, nextY);
-            });
-            RenderSectionIfEnabledWithPosition(settings.DebugShowInventoryPickup, (x, y, h) =>
-            {
-                int localX = x;
-                int nextY = _labelDebugOverlaySection.RenderInventoryPickupDebug(ref localX, y, h);
-                return (localX, nextY);
-            });
-            RenderSectionIfEnabled(settings.DebugShowHoveredItemMetadata, (x, y, h) => RenderHoveredItemMetadataDebug(x, y, h));
-            RenderSectionIfEnabled(settings.DebugShowPathfinding, (x, y, h) => RenderPathfindingDebug(x, y, h));
-            RenderSectionIfEnabledWithPosition(settings.DebugShowUltimatum, (x, y, h) =>
-            {
-                int localX = x;
-                int nextY = _ultimatumDebugOverlaySection.RenderUltimatumDebug(ref localX, y, h);
-                return (localX, nextY);
-            });
-            RenderSectionIfEnabledWithPosition(settings.DebugShowClicking, (x, y, h) =>
-            {
-                int localX = x;
-                int nextY = _clickingDebugOverlaySection.RenderClickingDebug(ref localX, y, h);
-                return (localX, nextY);
-            });
-            RenderSectionIfEnabledWithPosition(settings.DebugShowRuntimeDebugLogOverlay, (x, y, h) =>
-            {
-                int localX = x;
-                int nextY = _clickingDebugOverlaySection.RenderRuntimeDebugLogOverlay(ref localX, y, h);
-                return (localX, nextY);
-            });
-            RenderSectionIfEnabled(settings.DebugShowRecentErrors, (x, y, h) => RenderErrorsDebug(x, y, h));
-        }
-
-        private (int NextColumn, int NextX, int NextY) ResolveDebugColumnForNextSection(
-            int currentColumn,
-            int currentX,
-            int currentY,
-            int startY,
-            int lineHeight,
-            int linesPerColumn,
-            int maxColumns,
-            int baseX,
-            int columnShiftPx)
-        {
-            _ = (startY, lineHeight, linesPerColumn, maxColumns, baseX, columnShiftPx);
-            return _layoutEngine.ResolveNextSectionPlacement(currentColumn, currentX, currentY, LayoutSettings);
+            _overlayComposer.RenderSections(sections);
         }
 
         private int RenderDebugTrailBlock(ref int xPos, int yPos, int lineHeight, IReadOnlyList<string> trail, int maxRows, int wrapWidth)

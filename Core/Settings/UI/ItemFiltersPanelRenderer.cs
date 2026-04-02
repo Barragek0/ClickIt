@@ -1,4 +1,5 @@
 ﻿using ClickIt.Definitions;
+using ClickIt.Core.Settings.Runtime;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -311,12 +312,19 @@ namespace ClickIt
         private void RefreshStrongboxMetadataSnapshotsIfNeeded()
         {
             int signature = ComputeStrongboxMetadataSignature();
-            if (signature == _strongboxMetadataSnapshotSignature)
-                return;
+            MetadataSnapshotCache.RefreshPair(
+                ref _strongboxMetadataSnapshotSignature,
+                signature,
+                () => BuildStrongboxMetadataIdentifiers(StrongboxClickIds),
+                () => BuildStrongboxMetadataIdentifiers(StrongboxDontClickIds),
+                out string[] clickSnapshot,
+                out string[] dontClickSnapshot);
 
-            _strongboxClickMetadataSnapshot = BuildStrongboxMetadataIdentifiers(StrongboxClickIds);
-            _strongboxDontClickMetadataSnapshot = BuildStrongboxMetadataIdentifiers(StrongboxDontClickIds);
-            _strongboxMetadataSnapshotSignature = signature;
+            if (clickSnapshot.Length > 0 || dontClickSnapshot.Length > 0)
+            {
+                _strongboxClickMetadataSnapshot = clickSnapshot;
+                _strongboxDontClickMetadataSnapshot = dontClickSnapshot;
+            }
         }
 
         private int ComputeStrongboxMetadataSignature()
@@ -506,22 +514,27 @@ namespace ClickIt
         private void RefreshItemTypeMetadataSnapshotsIfNeeded()
         {
             int signature = ComputeItemTypeMetadataSignature();
-            if (signature == _itemTypeMetadataSnapshotSignature)
-                return;
+            MetadataSnapshotCache.RefreshPair(
+                ref _itemTypeMetadataSnapshotSignature,
+                signature,
+                () => BuildItemTypeMetadataIdentifiers(
+                    primaryIds: ItemTypeWhitelistIds,
+                    primaryIsWhitelist: true,
+                    oppositeIds: ItemTypeBlacklistIds,
+                    oppositeIsWhitelist: false),
+                () => BuildItemTypeMetadataIdentifiers(
+                    primaryIds: ItemTypeBlacklistIds,
+                    primaryIsWhitelist: false,
+                    oppositeIds: ItemTypeWhitelistIds,
+                    oppositeIsWhitelist: true),
+                out string[] whitelistSnapshot,
+                out string[] blacklistSnapshot);
 
-            _itemTypeWhitelistMetadataSnapshot = BuildItemTypeMetadataIdentifiers(
-                primaryIds: ItemTypeWhitelistIds,
-                primaryIsWhitelist: true,
-                oppositeIds: ItemTypeBlacklistIds,
-                oppositeIsWhitelist: false);
-
-            _itemTypeBlacklistMetadataSnapshot = BuildItemTypeMetadataIdentifiers(
-                primaryIds: ItemTypeBlacklistIds,
-                primaryIsWhitelist: false,
-                oppositeIds: ItemTypeWhitelistIds,
-                oppositeIsWhitelist: true);
-
-            _itemTypeMetadataSnapshotSignature = signature;
+            if (whitelistSnapshot.Length > 0 || blacklistSnapshot.Length > 0)
+            {
+                _itemTypeWhitelistMetadataSnapshot = whitelistSnapshot;
+                _itemTypeBlacklistMetadataSnapshot = blacklistSnapshot;
+            }
         }
 
         private int ComputeItemTypeMetadataSignature()

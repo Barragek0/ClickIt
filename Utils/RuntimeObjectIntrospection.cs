@@ -1,8 +1,5 @@
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace ClickIt.Utils
@@ -61,20 +58,6 @@ namespace ClickIt.Utils
 
     internal static class RuntimeObjectIntrospection
     {
-        private readonly record struct PendingNode(string Path, object? Value, int Depth);
-        private readonly record struct NormalizedTraversalOptions(
-            string Title,
-            int MaxDepth,
-            int MaxCollectionItems,
-            IReadOnlyList<string> PriorityMembers,
-            int MaxMembersPerObject,
-            bool IncludeNonPublicMembers,
-            int MaxValueChars,
-            int MaxTotalNodes,
-            int MaxElapsedMs);
-        private readonly record struct MemberCacheKey(Type Type, bool IncludeNonPublicMembers, string PriorityKey);
-        private static readonly ConcurrentDictionary<MemberCacheKey, MemberInfo[]> ReadableMembersCache = new();
-
         public static string GetFileNameForProfile(IntrospectionProfile profile)
         {
             return RuntimeObjectIntrospectionProfileMapper.GetFileName(profile);
@@ -87,7 +70,7 @@ namespace ClickIt.Utils
 
         public static string BuildReport(object? root, RuntimeObjectIntrospectionOptions options)
         {
-            NormalizedTraversalOptions normalized = NormalizeOptions(options);
+            RuntimeObjectTraversalOptions normalized = NormalizeOptions(options);
 
             var sb = new StringBuilder(1024);
             sb.AppendLine($"--- {normalized.Title} ---");
@@ -98,7 +81,7 @@ namespace ClickIt.Utils
                 return sb.ToString().TrimEnd();
             }
 
-            var engine = new TraversalEngine(root, normalized, enforceElapsedBudget: false);
+            var engine = new RuntimeObjectTraversalEngine(root, normalized, enforceElapsedBudget: false);
             while (!engine.IsFinished)
             {
                 IReadOnlyList<RuntimeObjectTraversalEvent> events = engine.ProcessNext();
@@ -165,7 +148,7 @@ namespace ClickIt.Utils
             Action<int>? onProgress = null,
             int nodeBudgetPerYield = 250)
         {
-            NormalizedTraversalOptions normalized = NormalizeOptions(options);
+            RuntimeObjectTraversalOptions normalized = NormalizeOptions(options);
             int budget = Math.Max(1, nodeBudgetPerYield);
 
             string fullPath = Path.GetFullPath(filePath);
@@ -210,7 +193,7 @@ namespace ClickIt.Utils
                     yield break;
                 }
 
-                var engine = new TraversalEngine(root, normalized, enforceElapsedBudget: true);
+                var engine = new RuntimeObjectTraversalEngine(root, normalized, enforceElapsedBudget: true);
                 const int maxSliceMs = 1;
                 var sliceStopwatch = Stopwatch.StartNew();
 
@@ -257,13 +240,13 @@ namespace ClickIt.Utils
             }
         }
 
-        private static NormalizedTraversalOptions NormalizeOptions(RuntimeObjectIntrospectionOptions options)
+        private static RuntimeObjectTraversalOptions NormalizeOptions(RuntimeObjectIntrospectionOptions options)
         {
             string title = string.IsNullOrWhiteSpace(options.Title)
                 ? RuntimeObjectIntrospectionOptions.Default.Title
                 : options.Title;
 
-            return new NormalizedTraversalOptions(
+            return new RuntimeObjectTraversalOptions(
                 Title: title,
                 MaxDepth: Math.Max(0, options.MaxDepth),
                 MaxCollectionItems: Math.Max(1, options.MaxCollectionItems),
@@ -299,258 +282,6 @@ namespace ClickIt.Utils
             }
         }
 
-        private sealed class TraversalEngine
-        {
-            private readonly Stack<PendingNode> _stack;
-            private readonly HashSet<object> _visited;
-            private readonly Stopwatch _elapsedStopwatch;
-
-            public TraversalEngine(object root, NormalizedTraversalOptions options, bool enforceElapsedBudget)
-            {
-                Options = options;
-                EnforceElapsedBudget = enforceElapsedBudget;
-                _stack = new Stack<PendingNode>();
-                _visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-                _elapsedStopwatch = Stopwatch.StartNew();
-                _stack.Push(new PendingNode("Root", root, 0));
-            }
-
-            public NormalizedTraversalOptions Options { get; }
-            public bool EnforceElapsedBudget { get; }
-            public int TotalProcessedNodes { get; private set; }
-            public bool IsFinished { get; private set; }
-
-            public IReadOnlyList<RuntimeObjectTraversalEvent> ProcessNext()
-            {
-                if (IsFinished)
-                    return [];
-
-                if (EnforceElapsedBudget && _elapsedStopwatch.ElapsedMilliseconds >= Options.MaxElapsedMs)
-                {
-                    IsFinished = true;
-                    return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalStoppedTimeBudget, string.Empty, Count: Options.MaxElapsedMs)];
-                }
-
-                if (TotalProcessedNodes >= Options.MaxTotalNodes)
-                {
-                    IsFinished = true;
-                    return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalStoppedNodeBudget, string.Empty, Count: Options.MaxTotalNodes)];
-                }
-
-                if (_stack.Count == 0)
-                {
-                    IsFinished = true;
-                    return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalCompleted, string.Empty, Count: TotalProcessedNodes)];
-                }
-
-                PendingNode pending = _stack.Pop();
-                TotalProcessedNodes++;
-
-                var events = new List<RuntimeObjectTraversalEvent>();
-                try
-                {
-                    object? value = pending.Value;
-                    if (value == null)
-                    {
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeNull, pending.Path));
-                        return events;
-                    }
-
-                    Type type = value.GetType();
-                    if (IsSimpleType(type))
-                    {
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeSimple, pending.Path, RuntimeType: type, Value: value));
-                        return events;
-                    }
-
-                    if (!type.IsValueType && !_visited.Add(value))
-                    {
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeCycle, pending.Path, RuntimeType: type));
-                        return events;
-                    }
-
-                    if (value is IEnumerable enumerable && value is not string)
-                    {
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.EnumerableType, pending.Path, RuntimeType: type));
-
-                        var stagedEntries = new List<PendingNode>();
-                        int previewCount = 0;
-                        bool hasMore = false;
-                        foreach (object? entry in enumerable)
-                        {
-                            if (previewCount < Options.MaxCollectionItems)
-                            {
-                                stagedEntries.Add(new PendingNode($"{pending.Path}[{previewCount}]", entry, pending.Depth + 1));
-                                previewCount++;
-                                continue;
-                            }
-
-                            hasMore = true;
-                            break;
-                        }
-
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.EnumerablePreviewCount, pending.Path, Count: previewCount));
-                        if (hasMore)
-                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.EnumerableTruncated, pending.Path));
-
-                        for (int i = stagedEntries.Count - 1; i >= 0; i--)
-                            _stack.Push(stagedEntries[i]);
-
-                        return events;
-                    }
-
-                    events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeType, pending.Path, RuntimeType: type));
-                    if (pending.Depth >= Options.MaxDepth)
-                    {
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeMaxDepth, pending.Path));
-                        return events;
-                    }
-
-                    IReadOnlyList<MemberInfo> members = GetReadableMembers(type, Options.PriorityMembers, Options.IncludeNonPublicMembers);
-                    if (members.Count == 0)
-                    {
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeNoReadableMembers, pending.Path));
-                        return events;
-                    }
-
-                    int memberCount = Math.Min(members.Count, Options.MaxMembersPerObject);
-                    if (members.Count > Options.MaxMembersPerObject)
-                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberOutputTruncated, pending.Path, Count: members.Count - Options.MaxMembersPerObject));
-
-                    var stagedMembers = new List<PendingNode>();
-                    for (int i = 0; i < memberCount; i++)
-                    {
-                        MemberInfo member = members[i];
-                        string memberPath = $"{pending.Path}.{member.Name}";
-
-                        if (!TryGetMemberValue(value, member, out object? memberValue))
-                        {
-                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberUnavailable, memberPath));
-                            continue;
-                        }
-
-                        if (memberValue == null)
-                        {
-                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberNull, memberPath));
-                            continue;
-                        }
-
-                        if (IsSimpleType(memberValue.GetType()))
-                        {
-                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberSimple, memberPath, Value: memberValue));
-                            continue;
-                        }
-
-                        if (TotalProcessedNodes + _stack.Count + stagedMembers.Count >= Options.MaxTotalNodes)
-                        {
-                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeBudgetReachedWhileSchedulingMembers, pending.Path));
-                            break;
-                        }
-
-                        stagedMembers.Add(new PendingNode(memberPath, memberValue, pending.Depth + 1));
-                    }
-
-                    for (int i = stagedMembers.Count - 1; i >= 0; i--)
-                        _stack.Push(stagedMembers[i]);
-                }
-                catch (Exception ex)
-                {
-                    events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeProcessingError, pending.Path, Message: $"{ex.GetType().Name}: {ex.Message}"));
-                }
-
-                return events;
-            }
-        }
-
-        private static IReadOnlyList<MemberInfo> GetReadableMembers(Type type, IReadOnlyList<string> priorityMembers, bool includeNonPublicMembers)
-        {
-            string priorityKey = priorityMembers.Count == 0
-                ? string.Empty
-                : string.Join("|", priorityMembers);
-            var cacheKey = new MemberCacheKey(type, includeNonPublicMembers, priorityKey);
-            if (ReadableMembersCache.TryGetValue(cacheKey, out MemberInfo[]? cachedMembers))
-                return cachedMembers;
-
-            var members = new List<MemberInfo>();
-            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public;
-            if (includeNonPublicMembers)
-                flags |= BindingFlags.NonPublic;
-
-            PropertyInfo[] properties = type.GetProperties(flags);
-            for (int i = 0; i < properties.Length; i++)
-            {
-                PropertyInfo property = properties[i];
-                if (!property.CanRead || property.GetIndexParameters().Length > 0)
-                    continue;
-
-                MethodInfo? getter = property.GetGetMethod(nonPublic: includeNonPublicMembers);
-                if (getter == null)
-                    continue;
-
-                members.Add(property);
-            }
-
-            FieldInfo[] fields = type.GetFields(flags);
-            for (int i = 0; i < fields.Length; i++)
-                members.Add(fields[i]);
-
-            if (members.Count <= 1)
-            {
-                MemberInfo[] simpleMembers = [.. members];
-                ReadableMembersCache.TryAdd(cacheKey, simpleMembers);
-                return simpleMembers;
-            }
-
-            var priorityIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < priorityMembers.Count; i++)
-            {
-                if (!priorityIndex.ContainsKey(priorityMembers[i]))
-                    priorityIndex[priorityMembers[i]] = i;
-            }
-
-            members.Sort((a, b) =>
-            {
-                int aPriority = priorityIndex.TryGetValue(a.Name, out int ai) ? ai : int.MaxValue;
-                int bPriority = priorityIndex.TryGetValue(b.Name, out int bi) ? bi : int.MaxValue;
-
-                int byPriority = aPriority.CompareTo(bPriority);
-                if (byPriority != 0)
-                    return byPriority;
-
-                return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-            });
-
-            MemberInfo[] sortedMembers = [.. members];
-            ReadableMembersCache.TryAdd(cacheKey, sortedMembers);
-            return sortedMembers;
-        }
-
-        private static bool TryGetMemberValue(object source, MemberInfo member, out object? value)
-        {
-            value = null;
-            if (source == null || member == null)
-                return false;
-
-            try
-            {
-                switch (member)
-                {
-                    case PropertyInfo property:
-                        value = property.GetValue(source);
-                        return true;
-                    case FieldInfo field:
-                        value = field.GetValue(source);
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         internal static string FormatValue(object? value, int maxLen = 120)
         {
             if (value == null)
@@ -566,29 +297,6 @@ namespace ClickIt.Utils
                 text = text[..maxLen] + "...";
 
             return text;
-        }
-
-        private static bool IsSimpleType(Type type)
-        {
-            Type underlying = Nullable.GetUnderlyingType(type) ?? type;
-            if (underlying.IsPrimitive || underlying.IsEnum)
-                return true;
-
-            return underlying == typeof(string)
-                || underlying == typeof(decimal)
-                || underlying == typeof(DateTime)
-                || underlying == typeof(DateTimeOffset)
-                || underlying == typeof(TimeSpan)
-                || underlying == typeof(Guid);
-        }
-
-        private sealed class ReferenceEqualityComparer : IEqualityComparer<object>
-        {
-            public static readonly ReferenceEqualityComparer Instance = new();
-
-            public new bool Equals(object? x, object? y) => ReferenceEquals(x, y);
-
-            public int GetHashCode(object obj) => RuntimeHelpers.GetHashCode(obj);
         }
     }
 }

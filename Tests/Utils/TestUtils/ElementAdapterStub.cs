@@ -3,9 +3,9 @@ using SharpDX;
 
 namespace ClickIt.Tests.TestUtils
 {
-    internal class ElementAdapterStub : Services.IElementAdapter
+    internal class ElementAdapterStub : global::ClickIt.Services.IElementAdapter
     {
-        private readonly List<Services.IElementAdapter> _children = [];
+        private readonly List<global::ClickIt.Services.IElementAdapter> _children = [];
         public ElementAdapterStub(string text)
         {
             Text = text;
@@ -13,7 +13,7 @@ namespace ClickIt.Tests.TestUtils
 
         public string Text { get; }
         public ExileCore.PoEMemory.Element? Underlying => null;
-        public Services.IElementAdapter? Parent { get; private set; }
+        public global::ClickIt.Services.IElementAdapter? Parent { get; private set; }
         public bool IsValid => true;
 
         public void AddChild(ElementAdapterStub c)
@@ -22,7 +22,7 @@ namespace ClickIt.Tests.TestUtils
             _children.Add(c);
         }
 
-        public Services.IElementAdapter? GetChildFromIndices(int a, int b)
+        public global::ClickIt.Services.IElementAdapter? GetChildFromIndices(int a, int b)
         {
             if (b < 0 || b >= _children.Count) return null;
             return _children[b];

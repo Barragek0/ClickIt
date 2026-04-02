@@ -150,7 +150,7 @@ namespace ClickIt.Services
             return clickedAny;
         }
 
-        public bool TryGetUltimatumPanelOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+        private bool TryGetUltimatumPanelOptionPreviewCore(out List<UltimatumPanelOptionPreview> previews)
         {
             previews = [];
 

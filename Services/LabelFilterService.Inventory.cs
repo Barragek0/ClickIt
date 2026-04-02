@@ -229,6 +229,9 @@ namespace ClickIt.Services
         }
 
         private bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
+            => InventoryPickupService.ShouldAllowWorldItemWhenInventoryFull(groundItem, gameController);
+
+        private bool ShouldAllowWorldItemWhenInventoryFullCore(Entity groundItem, GameController? gameController)
             => InventoryDomain.PickupPolicy.ShouldAllowWorldItemWhenInventoryFull(groundItem, gameController);
 
         private static InventoryDebugSnapshot CreateInventoryDebugSnapshot(
@@ -268,6 +271,9 @@ namespace ClickIt.Services
         }
 
         private bool ShouldAllowClosedDoorPastMechanic(GameController? gameController)
+            => InventoryPickupService.ShouldAllowClosedDoorPastMechanic(gameController);
+
+        private bool ShouldAllowClosedDoorPastMechanicCore(GameController? gameController)
         {
             bool hasStoneOfPassageInInventory = HasStoneOfPassageInInventoryCore(gameController);
             if (hasStoneOfPassageInInventory)

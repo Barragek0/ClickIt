@@ -1,4 +1,5 @@
 ﻿using System.Threading;
+using ClickIt.Services.Click.Application;
 using ClickIt.Services.Click.Runtime;
 using ClickIt.Utils;
 using ExileCore.PoEMemory;
@@ -17,12 +18,7 @@ namespace ClickIt.Services
         private const int UltimatumPostBeginAdditionalClickDelayMs = 200;
 
         public bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
-        {
-            previews = [];
-
-            return (TryGetUltimatumPanelOptionPreview(out previews) && previews.Count > 0)
-                || TryGetUltimatumGroundLabelOptionPreview(out previews);
-        }
+            => UltimatumAutomation.TryGetOptionPreview(out previews);
 
         private bool TryGetUltimatumGroundLabelOptionPreview(out List<UltimatumPanelOptionPreview> previews)
         {

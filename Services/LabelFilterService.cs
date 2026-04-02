@@ -9,6 +9,7 @@ using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows.Forms;
+using ClickIt.Services.Label.Application;
 using ClickIt.Services.Label.Selection;
 using ClickIt.Services.Mechanics;
 using ClickIt.Services.Click.Ranking;
@@ -26,6 +27,23 @@ namespace ClickIt.Services
         private readonly IWorldItemMetadataPolicy _worldItemMetadataPolicy = new WorldItemMetadataPolicy();
 
         private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
+        private ILabelSelectionService? _labelSelectionService;
+        private LabelDebugService? _labelDebugService;
+        private LazyModeBlockerService? _lazyModeBlockerService;
+        private InventoryPickupService? _inventoryPickupService;
+
+        private ILabelSelectionService LabelSelectionService
+            => _labelSelectionService ??= new LabelSelectionService(GetNextLabelToClickCore, GetMechanicIdForLabelCore);
+
+        private LabelDebugService LabelDebugService
+            => _labelDebugService ??= new LabelDebugService(GetSelectionDebugSummaryCore, LogSelectionDiagnosticsCore);
+
+        private LazyModeBlockerService LazyModeBlockerService
+            => _lazyModeBlockerService ??= new LazyModeBlockerService(HasLazyModeRestrictedItemsOnScreenImpl);
+
+        private InventoryPickupService InventoryPickupService
+            => _inventoryPickupService ??= new InventoryPickupService(ShouldAllowWorldItemWhenInventoryFullCore, ShouldAllowClosedDoorPastMechanicCore);
+
         public static List<LabelOnGround> FilterHarvestLabels(IReadOnlyList<LabelOnGround>? allLabels, Func<Vector2, bool> isInClickableArea)
         {
             List<LabelOnGround> result = [];
@@ -67,6 +85,9 @@ namespace ClickIt.Services
         }
 
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+            => LabelSelectionService.GetNextLabelToClick(allLabels, startIndex, maxCount);
+
+        private LabelOnGround? GetNextLabelToClickCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
             bool captureDebug = ShouldCaptureLabelDebug();
 
@@ -154,6 +175,9 @@ namespace ClickIt.Services
         }
 
         public SelectionDebugSummary GetSelectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+            => LabelDebugService.GetSelectionDebugSummary(allLabels, startIndex, maxCount);
+
+        private SelectionDebugSummary GetSelectionDebugSummaryCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
             if (allLabels == null || allLabels.Count == 0)
                 return default;
@@ -248,6 +272,9 @@ namespace ClickIt.Services
         }
 
         public void LogSelectionDiagnostics(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+            => LabelDebugService.LogSelectionDiagnostics(allLabels, startIndex, maxCount);
+
+        private void LogSelectionDiagnosticsCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
             if (_settings?.DebugMode?.Value != true || _settings?.LogMessages?.Value != true)
                 return;
@@ -276,6 +303,9 @@ namespace ClickIt.Services
         }
 
         public string? GetMechanicIdForLabel(LabelOnGround? label)
+            => LabelSelectionService.GetMechanicIdForLabel(label);
+
+        private string? GetMechanicIdForLabelCore(LabelOnGround? label)
         {
             Entity? item = label?.ItemOnGround;
             if (item == null)
