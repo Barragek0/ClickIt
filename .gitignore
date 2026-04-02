@@ -137,6 +137,15 @@ GlobalSuppressions.cs
 # Local assistant / continuation state
 .continue/
 
+# Local prompts
+.github/prompts/
+
+# Planning and review artifacts
+new_structure_plan.md
+phase1_plan.md
+phase2_changes.md
+phase3_review.md
+
 # Allow checking in explicit third-party runtime libs used by the tests
 !ThirdParty/
 !ThirdParty/*.dll
