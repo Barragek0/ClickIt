@@ -16,7 +16,7 @@ namespace ClickIt.Services
 
         private MechanicClassifierDependencies ClassificationDependencies
             => _classificationDependencies ??= new MechanicClassifierDependencies(
-                GetWorldItemMetadataPath,
+                _worldItemMetadataPolicy.GetWorldItemMetadataPath,
                 ShouldAllowWorldItemByMetadata,
                 ShouldClickStrongbox,
                 static (clickEssences, label) => ShouldClickEssence(clickEssences, label),
@@ -68,11 +68,11 @@ namespace ClickIt.Services
             }
 
             string renderName = label.ItemOnGround.RenderName ?? string.Empty;
-            bool dontClickMatch = ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata);
+            bool dontClickMatch = MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata);
             if (dontClickMatch)
                 return false;
 
-            return ContainsAnyMetadataIdentifier(path, renderName, clickMetadata);
+            return MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(path, renderName, clickMetadata);
         }
 
         private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)

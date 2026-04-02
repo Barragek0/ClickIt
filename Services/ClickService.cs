@@ -11,6 +11,7 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
 using System.Diagnostics.CodeAnalysis;
 using ClickIt.Services.Click.Safety;
+using ClickIt.Services.Click.Interaction;
 using ClickIt.Services.Click.Runtime;
 using ClickIt.Services.Observability;
 
@@ -57,6 +58,7 @@ namespace ClickIt.Services
         private readonly ChestLootSettlementState chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
         private readonly UltimatumGruelingGauntletDetector _gruelingGauntletDetector = new();
+        private IInteractionExecutionRuntime? _interactionExecutionRuntime;
 
         // Thread safety lock to prevent race conditions during element access
         private readonly object _elementAccessLock = new();
@@ -110,6 +112,13 @@ namespace ClickIt.Services
             return true;
         }
 
+        private IInteractionExecutionRuntime InteractionExecutionRuntime => _interactionExecutionRuntime ??= new InteractionExecutionRuntime(
+            new InteractionExecutionRuntimeDependencies(
+                EnsureCursorInsideGameWindowForClick,
+                PerformLockedClick,
+                PerformLockedHoldClick,
+                performanceMonitor.RecordClickInterval));
+
         private void PerformLockedClick(
             Vector2 clickPos,
             Element? expectedElement,
@@ -149,22 +158,18 @@ namespace ClickIt.Services
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
         {
-            return useHoldClick
-                ? PerformLabelHoldClick(
-                    clickPos,
-                    expectedElement,
-                    controller,
-                    holdDurationMs,
-                    forceUiHoverVerification,
-                    allowWhenHotkeyInactive,
-                    avoidCursorMove)
-                : PerformLabelClick(
-                    clickPos,
-                    expectedElement,
-                    controller,
-                    forceUiHoverVerification,
-                    allowWhenHotkeyInactive,
-                    avoidCursorMove);
+            return InteractionExecutionRuntime.Execute(new InteractionExecutionRequest(
+                clickPos,
+                expectedElement,
+                controller,
+                useHoldClick,
+                holdDurationMs,
+                forceUiHoverVerification,
+                allowWhenHotkeyInactive,
+                avoidCursorMove,
+                useHoldClick
+                    ? "[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"
+                    : "[PerformLabelClick] Skipping label click - cursor outside PoE window"));
         }
 
         private bool IsCursorInsideGameWindow()

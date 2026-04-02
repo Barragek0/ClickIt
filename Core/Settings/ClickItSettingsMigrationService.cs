@@ -6,29 +6,21 @@ namespace ClickIt
     internal static class ClickItSettingsMigrationService
     {
         internal const int CurrentVersion = 1;
+        private static readonly ISettingsDefaultsService DefaultsService = new SettingsDefaultsService();
+        private static readonly ISettingsNormalizationService NormalizationService = new SettingsNormalizationService();
 
         internal static void Apply(ClickItSettings settings)
         {
             ArgumentNullException.ThrowIfNull(settings);
 
-            settings.ApplySettingsMigrationCore();
+            DefaultsService.Apply(settings);
+            NormalizationService.Apply(settings);
             settings.SettingsVersion = CurrentVersion;
         }
     }
 
     public partial class ClickItSettings
     {
-        internal void ApplySettingsMigrationCore()
-        {
-            EnsureItemTypeFiltersInitialized();
-            EnsureMechanicPrioritiesInitialized();
-            EnsureEssenceCorruptionFiltersInitialized();
-            EnsureStrongboxFiltersInitialized();
-            EnsureUltimatumModifiersInitialized();
-            EnsureUltimatumTakeRewardModifiersInitialized();
-            EnsureLazyModeNearbyMonsterFiltersInitialized();
-        }
-
         [OnDeserialized]
         internal void OnDeserializedApplySettingsMigration(StreamingContext context)
         {

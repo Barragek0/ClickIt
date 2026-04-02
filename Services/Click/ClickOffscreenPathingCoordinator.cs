@@ -1,6 +1,7 @@
 using ClickIt.Utils;
 using ClickIt.Services.Label.Classification;
 using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Click.Ranking;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -518,13 +519,14 @@ namespace ClickIt.Services
                     continue;
 
                 MechanicRank rank = _dependencies.BuildMechanicRank(entity.DistancePlayer, mechanicId);
-                if (hasBestRank && CandidateRankingEngine.CompareRanks(rank, bestRank) >= 0)
-                    continue;
-
-                best = entity;
-                bestMechanicId = mechanicId;
-                bestRank = rank;
-                hasBestRank = true;
+                _ = OffscreenTargetRanker.TryPromoteRankedCandidate(
+                    ref best,
+                    ref bestMechanicId,
+                    ref bestRank,
+                    ref hasBestRank,
+                    entity,
+                    mechanicId,
+                    rank);
             }
 
             selectedMechanicId = bestMechanicId;

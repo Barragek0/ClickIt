@@ -1,4 +1,5 @@
 using ClickIt.Services;
+using ClickIt.Services.Label.Inventory;
 using ClickIt.Utils;
 using ExileCore;
 using SharpDX;
@@ -9,8 +10,8 @@ namespace ClickIt.Rendering
     internal class InventoryFullWarningRenderer(
         DeferredTextQueue deferredTextQueue,
         AreaService? areaService = null,
-        Func<LabelFilterService.InventoryDebugSnapshot>? getLatestInventoryDebug = null,
-        Func<LabelFilterService.InventoryDebugSnapshot, long, bool>? tryAutoCopyOnWarningTrigger = null)
+        Func<InventoryDebugSnapshot>? getLatestInventoryDebug = null,
+        Func<InventoryDebugSnapshot, long, bool>? tryAutoCopyOnWarningTrigger = null)
     {
         private const string InventoryFullWarningText = "Your inventory is full";
         private const string InventoryLayoutUnreliableNotesPrefix = "Inventory layout unreliable";
@@ -29,8 +30,8 @@ namespace ClickIt.Rendering
 
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
         private readonly AreaService? _areaService = areaService;
-        private readonly Func<LabelFilterService.InventoryDebugSnapshot>? _getLatestInventoryDebug = getLatestInventoryDebug;
-        private readonly Func<LabelFilterService.InventoryDebugSnapshot, long, bool>? _tryAutoCopyOnWarningTrigger = tryAutoCopyOnWarningTrigger;
+        private readonly Func<InventoryDebugSnapshot>? _getLatestInventoryDebug = getLatestInventoryDebug;
+        private readonly Func<InventoryDebugSnapshot, long, bool>? _tryAutoCopyOnWarningTrigger = tryAutoCopyOnWarningTrigger;
         private long _lastInventoryFullBlockedTimestampMs;
         private long _lastProcessedInventoryDebugSequence = long.MinValue;
         private long _lastInventoryWarningAutoCopyAttemptTimestampMs;
@@ -39,8 +40,8 @@ namespace ClickIt.Rendering
         {
 
             long now = Environment.TickCount64;
-            LabelFilterService.InventoryDebugSnapshot snapshot = _getLatestInventoryDebug?.Invoke()
-                ?? LabelFilterService.InventoryDebugSnapshot.Empty;
+            InventoryDebugSnapshot snapshot = _getLatestInventoryDebug?.Invoke()
+                ?? InventoryDebugSnapshot.Empty;
             if (ShouldRefreshInventoryFullWarningTimestamp(_lastProcessedInventoryDebugSequence, snapshot.Sequence, snapshot)
                 && ShouldShowInventoryPickupBlockedWarning(snapshot))
             {
@@ -62,7 +63,7 @@ namespace ClickIt.Rendering
             EnqueueBoldWarningText(pos);
         }
 
-        private void TryAutoCopyDebugSnapshot(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
+        private void TryAutoCopyDebugSnapshot(InventoryDebugSnapshot snapshot, long now)
         {
             if (_tryAutoCopyOnWarningTrigger == null)
                 return;
@@ -102,7 +103,7 @@ namespace ClickIt.Rendering
                 ExileCore.Shared.Enums.FontAlign.Center);
         }
 
-        internal static bool ShouldShowInventoryPickupBlockedWarning(LabelFilterService.InventoryDebugSnapshot snapshot)
+        internal static bool ShouldShowInventoryPickupBlockedWarning(InventoryDebugSnapshot snapshot)
         {
             if (!snapshot.HasData || snapshot.DecisionAllowPickup)
                 return false;
@@ -125,7 +126,7 @@ namespace ClickIt.Rendering
             return false;
         }
 
-        private static bool ShouldSuppressNotFullNoFitWarning(LabelFilterService.InventoryDebugSnapshot snapshot)
+        private static bool ShouldSuppressNotFullNoFitWarning(InventoryDebugSnapshot snapshot)
         {
             if (snapshot.InventoryFull || !snapshot.UsedCellOccupancy || snapshot.CapacityCells <= 0)
                 return false;
@@ -134,7 +135,7 @@ namespace ClickIt.Rendering
             return freeCells >= NotFullNoFitMinFreeCellsToSuppressWarning;
         }
 
-        internal static bool ShouldRefreshInventoryFullWarningTimestamp(long lastProcessedSequence, long currentSequence, LabelFilterService.InventoryDebugSnapshot snapshot)
+        internal static bool ShouldRefreshInventoryFullWarningTimestamp(long lastProcessedSequence, long currentSequence, InventoryDebugSnapshot snapshot)
             => snapshot.HasData && currentSequence != lastProcessedSequence;
 
         internal static bool ShouldShowInventoryFullWarning(long now, long lastTriggeredTimestampMs)

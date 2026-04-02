@@ -9,6 +9,7 @@ using ExileCore.Shared;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using System.Diagnostics.CodeAnalysis;
+using ClickIt.Services.Click.Interaction;
 using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services
@@ -268,8 +269,20 @@ namespace ClickIt.Services
 
                 RectangleF r = el.GetClientRect();
                 Vector2 clickPos = r.Center + windowTopLeft;
-                PerformLockedClick(clickPos, el, gameController, forceUiHoverVerification: false, allowWhenHotkeyInactive: allowWhenHotkeyInactive, avoidCursorMove: avoidCursorMove);
-                performanceMonitor.RecordClickInterval();
+                bool executed = InteractionExecutionRuntime.Execute(new InteractionExecutionRequest(
+                    ClickPosition: clickPos,
+                    ExpectedElement: el,
+                    Controller: gameController,
+                    UseHoldClick: false,
+                    HoldDurationMs: 0,
+                    ForceUiHoverVerification: false,
+                    AllowWhenHotkeyInactive: allowWhenHotkeyInactive,
+                    AvoidCursorMove: avoidCursorMove,
+                    OutsideWindowLogMessage: "[ClickAltarElement] Skipping altar click - cursor outside PoE window"));
+
+                if (!executed)
+                    return false;
+
                 DebugLog(() => "[ClickAltarElement] Click performed");
                 return true;
             }

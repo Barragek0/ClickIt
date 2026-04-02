@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Collections.Generic;
 using ClickIt.Services;
@@ -8,7 +8,7 @@ using Moq;
 namespace ClickIt.Tests.Unit
 {
     [TestClass]
-    public class AltarServiceSeamsTests
+    public class AltarServiceBehaviorTests
     {
         [TestMethod]
         public void UpdateAltarComponentFromAdapter_Throws_WhenElementNull()

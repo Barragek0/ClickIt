@@ -137,7 +137,8 @@ namespace ClickIt.Services
                 if (shouldContinuePathing)
                 {
                     _dependencies.DebugLog("[ProcessRegularClick] Item is an altar and altar choices are not fully clickable yet; continuing pathing");
-                    return true;
+                    // Let regular label resolution/pathing fallback run instead of consuming this tick.
+                    return false;
                 }
 
                 _dependencies.DebugLog("[ProcessRegularClick] Item is an altar, breaking");

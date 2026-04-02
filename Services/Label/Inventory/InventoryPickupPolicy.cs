@@ -26,8 +26,8 @@ namespace ClickIt.Services.Label.Inventory
         Func<bool, Entity?, bool> ShouldAllowPickupWhenGroundItemEntityMissing,
         Func<bool, string, string, bool> ShouldAllowPickupWhenGroundItemIdentityMissing,
         Func<bool, bool, bool, bool> ShouldPickupWhenInventoryFull,
-        Func<string, InventoryFullProbe, string, string, bool, int, int, bool, bool, LabelFilterService.InventoryDebugSnapshot> CreateInventoryDebugSnapshot,
-        Action<LabelFilterService.InventoryDebugSnapshot> PublishInventoryDebug);
+        Func<string, InventoryFullProbe, string, string, bool, int, int, bool, bool, InventoryDebugSnapshot> CreateInventoryDebugSnapshot,
+        Action<InventoryDebugSnapshot> PublishInventoryDebug);
 
     internal sealed class InventoryPickupSnapshotBuilder(InventoryPickupPolicyDependencies dependencies)
     {
@@ -188,3 +188,4 @@ namespace ClickIt.Services.Label.Inventory
         }
     }
 }
+

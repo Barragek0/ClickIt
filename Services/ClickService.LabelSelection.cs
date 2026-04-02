@@ -11,6 +11,7 @@ using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 using ExileCore.PoEMemory.Components;
 using ClickIt.Services.Click.Label;
+using ClickIt.Services.Click.Interaction;
 using ClickIt.Services.Click.Runtime;
 
 namespace ClickIt.Services
@@ -56,13 +57,26 @@ namespace ClickIt.Services
                 Vector2? corruptionPos = LabelFilterService.GetCorruptionClickPosition(label, windowTopLeft);
                 if (corruptionPos.HasValue)
                 {
-                    if (!EnsureCursorInsideGameWindowForClick("[TryCorruptEssence] Skipping corruption click - cursor outside PoE window"))
+                    string labelPath = label.ItemOnGround?.Path ?? string.Empty;
+                    bool corruptionPointInWindow = IsInsideWindowInEitherSpace(corruptionPos.Value);
+                    bool corruptionPointClickable = IsClickableInEitherSpace(corruptionPos.Value, labelPath);
+                    if (!ClickLabelSelectionMath.ShouldAttemptSpecialEssenceCorruption(corruptionPointInWindow, corruptionPointClickable))
+                    {
+                        DebugLog(() => "[ProcessRegularClick] Essence corruption point not actionable yet; allowing regular click/pathing flow");
                         return false;
+                    }
 
                     DebugLog(() => $"[ProcessRegularClick] Corruption click at {corruptionPos.Value}");
-                    PerformLockedClick(corruptionPos.Value, null, gameController);
-                    performanceMonitor.RecordClickInterval();
-                    return true;
+                    return InteractionExecutionRuntime.Execute(new InteractionExecutionRequest(
+                        ClickPosition: corruptionPos.Value,
+                        ExpectedElement: null,
+                        Controller: gameController,
+                        UseHoldClick: false,
+                        HoldDurationMs: 0,
+                        ForceUiHoverVerification: false,
+                        AllowWhenHotkeyInactive: false,
+                        AvoidCursorMove: false,
+                        OutsideWindowLogMessage: "[TryCorruptEssence] Skipping corruption click - cursor outside PoE window"));
                 }
             }
 
@@ -77,13 +91,16 @@ namespace ClickIt.Services
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
         {
-            if (!EnsureCursorInsideGameWindowForClick("[PerformLabelClick] Skipping label click - cursor outside PoE window"))
-                return false;
-
-            PerformLockedClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
-
-            performanceMonitor.RecordClickInterval();
-            return true;
+            return InteractionExecutionRuntime.Execute(new InteractionExecutionRequest(
+                ClickPosition: clickPos,
+                ExpectedElement: expectedElement,
+                Controller: controller,
+                UseHoldClick: false,
+                HoldDurationMs: 0,
+                ForceUiHoverVerification: forceUiHoverVerification,
+                AllowWhenHotkeyInactive: allowWhenHotkeyInactive,
+                AvoidCursorMove: avoidCursorMove,
+                OutsideWindowLogMessage: "[PerformLabelClick] Skipping label click - cursor outside PoE window"));
         }
 
         private bool PerformLabelHoldClick(
@@ -95,13 +112,16 @@ namespace ClickIt.Services
             bool allowWhenHotkeyInactive = false,
             bool avoidCursorMove = false)
         {
-            if (!EnsureCursorInsideGameWindowForClick("[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"))
-                return false;
-
-            PerformLockedHoldClick(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
-
-            performanceMonitor.RecordClickInterval();
-            return true;
+            return InteractionExecutionRuntime.Execute(new InteractionExecutionRequest(
+                ClickPosition: clickPos,
+                ExpectedElement: expectedElement,
+                Controller: controller,
+                UseHoldClick: true,
+                HoldDurationMs: holdDurationMs,
+                ForceUiHoverVerification: forceUiHoverVerification,
+                AllowWhenHotkeyInactive: allowWhenHotkeyInactive,
+                AvoidCursorMove: avoidCursorMove,
+                OutsideWindowLogMessage: "[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window"));
         }
 
         private bool TryResolveLabelClickPosition(

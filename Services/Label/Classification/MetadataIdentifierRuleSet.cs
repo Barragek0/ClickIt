@@ -4,17 +4,14 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 
-namespace ClickIt.Services
+namespace ClickIt.Services.Label.Classification
 {
-    public partial class LabelFilterService
+    internal static class MetadataIdentifierRuleSet
     {
-        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
-            => ContainsAnyMetadataIdentifier(metadataPath, itemName, item: null, identifiers);
+        internal static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
+            => ContainsAnyMetadataIdentifier(metadataPath, itemName, item: null, labelText: string.Empty, identifiers);
 
-        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, IReadOnlyList<string> identifiers)
-            => ContainsAnyMetadataIdentifier(metadataPath, itemName, item, labelText: string.Empty, identifiers);
-
-        private static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, string labelText, IReadOnlyList<string> identifiers)
+        internal static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, string labelText, IReadOnlyList<string> identifiers)
         {
             if (identifiers == null || identifiers.Count == 0)
                 return false;
@@ -62,10 +59,7 @@ namespace ClickIt.Services
             if (specialRule.Equals("heist-non-quest-contract", StringComparison.OrdinalIgnoreCase))
                 return IsHeistNonQuestContract(itemName);
             if (specialRule.Equals("inscribed-ultimatum", StringComparison.OrdinalIgnoreCase))
-            {
-                return (item != null && IsInscribedUltimatum(item))
-                    || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0;
-            }
+                return (item != null && IsInscribedUltimatum(item)) || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0;
             if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase))
                 return IsRegularJewelsMetadataPath(metadataPath);
             if (specialRule.Equals("mysterious-wombgift-label", StringComparison.OrdinalIgnoreCase))

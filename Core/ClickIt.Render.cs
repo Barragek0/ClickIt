@@ -4,6 +4,7 @@ using System.Collections;
 using System.Text;
 using System.Threading;
 using ClickIt.Services;
+using ClickIt.Services.Label.Inventory;
 using ClickIt.Utils;
 using ExileCore;
 using ExileCore.Shared;
@@ -283,7 +284,7 @@ namespace ClickIt
             return sb.ToString().TrimEnd();
         }
 
-        private bool TryAutoCopyInventoryWarningDebugSnapshot(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
+        private bool TryAutoCopyInventoryWarningDebugSnapshot(InventoryDebugSnapshot snapshot, long now)
         {
             ClickItSettings? settings = EffectiveSettings;
             if (settings?.AutoCopyInventoryWarningDebug?.Value != true)
@@ -300,12 +301,12 @@ namespace ClickIt
             return copied;
         }
 
-        internal bool TryAutoCopyInventoryWarningDebugSnapshotForLifecycle(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
+        internal bool TryAutoCopyInventoryWarningDebugSnapshotForLifecycle(InventoryDebugSnapshot snapshot, long now)
         {
             return TryAutoCopyInventoryWarningDebugSnapshot(snapshot, now);
         }
 
-        private string BuildInventoryWarningClipboardPayload(LabelFilterService.InventoryDebugSnapshot snapshot, long now)
+        private string BuildInventoryWarningClipboardPayload(InventoryDebugSnapshot snapshot, long now)
         {
             string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(0) ?? [];
             string payload = BuildDebugClipboardPayload(debugLines);

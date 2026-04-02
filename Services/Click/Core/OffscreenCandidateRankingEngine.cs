@@ -1,5 +1,6 @@
 using ExileCore.PoEMemory.MemoryObjects;
 using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Click.Ranking;
 
 namespace ClickIt.Services
 {
@@ -18,14 +19,14 @@ namespace ClickIt.Services
                 return false;
 
             MechanicRank rank = buildRank(candidate.DistancePlayer, mechanicId);
-            if (hasBest && CandidateRankingEngine.CompareRanks(rank, bestRank) >= 0)
-                return false;
-
-            best = candidate;
-            bestMechanicId = mechanicId;
-            bestRank = rank;
-            hasBest = true;
-            return true;
+            return OffscreenTargetRanker.TryPromoteRankedCandidate(
+                ref best,
+                ref bestMechanicId,
+                ref bestRank,
+                ref hasBest,
+                candidate,
+                mechanicId,
+                rank);
         }
     }
 }

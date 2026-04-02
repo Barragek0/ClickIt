@@ -29,6 +29,18 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void LegacyJson_NormalizesLazyModeNearbyMonsterBounds()
+        {
+            const string legacyJson = "{\"LazyModeNormalMonsterBlockCount\":999,\"LazyModeNormalMonsterBlockDistance\":-15}";
+
+            var restored = JsonConvert.DeserializeObject<ClickItSettings>(legacyJson);
+
+            restored.Should().NotBeNull();
+            restored!.LazyModeNormalMonsterBlockCount.Should().Be(200);
+            restored.LazyModeNormalMonsterBlockDistance.Should().Be(1);
+        }
+
+        [TestMethod]
         public void UiState_IsTransient_AndNotSerialized()
         {
             var settings = new ClickItSettings();

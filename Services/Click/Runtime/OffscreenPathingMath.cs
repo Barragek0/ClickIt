@@ -88,10 +88,9 @@ namespace ClickIt.Services.Click.Runtime
         internal static bool ShouldPathfindToEntityAfterClickPointResolveFailure(
             bool walkTowardOffscreenLabelsEnabled,
             bool hasEntity,
-            bool isEntityHidden,
             string? mechanicId)
         {
-            if (!walkTowardOffscreenLabelsEnabled || !hasEntity || isEntityHidden || string.IsNullOrWhiteSpace(mechanicId))
+            if (!walkTowardOffscreenLabelsEnabled || !hasEntity || string.IsNullOrWhiteSpace(mechanicId))
                 return false;
 
             return true;

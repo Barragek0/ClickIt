@@ -38,11 +38,11 @@ namespace ClickIt.Tests.Unit
             var pickupPolicy = (InventoryPickupPolicyEngine)RuntimeHelpers.GetUninitializedObject(typeof(InventoryPickupPolicyEngine));
 
             var facade = new InventoryDomainFacade(dynamicAdapter, probeService, snapshotProvider, layoutParser, pickupPolicy);
-            LabelFilterService.InventoryDebugSnapshot snapshot = CreateDebugSnapshot("InventoryFullDecision", sequence: 42);
+            InventoryDebugSnapshot snapshot = CreateDebugSnapshot("InventoryFullDecision", sequence: 42);
 
             facade.PublishDebug(snapshot);
 
-            LabelFilterService.InventoryDebugSnapshot latest = facade.GetLatestDebug();
+            InventoryDebugSnapshot latest = facade.GetLatestDebug();
             latest.Stage.Should().Be(snapshot.Stage);
             latest.GroundItemPath.Should().Be(snapshot.GroundItemPath);
             latest.DecisionAllowPickup.Should().Be(snapshot.DecisionAllowPickup);
@@ -73,9 +73,9 @@ namespace ClickIt.Tests.Unit
             return InventoryProbeService.CreateDiagnosticsOnlyForTests(debugTrailCapacity: 8);
         }
 
-        private static LabelFilterService.InventoryDebugSnapshot CreateDebugSnapshot(string stage, long sequence)
+        private static InventoryDebugSnapshot CreateDebugSnapshot(string stage, long sequence)
         {
-            return new LabelFilterService.InventoryDebugSnapshot(
+            return new InventoryDebugSnapshot(
                 HasData: true,
                 Stage: stage,
                 InventoryFull: false,
@@ -101,3 +101,4 @@ namespace ClickIt.Tests.Unit
         }
     }
 }
+

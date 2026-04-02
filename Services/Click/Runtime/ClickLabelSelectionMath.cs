@@ -27,6 +27,9 @@ namespace ClickIt.Services.Click.Runtime
             return LabelUtils.HasEssenceImprisonmentText(lbl);
         }
 
+        internal static bool ShouldAttemptSpecialEssenceCorruption(bool corruptionPointInWindow, bool corruptionPointClickable)
+            => corruptionPointInWindow && corruptionPointClickable;
+
         internal static int GetGroundLabelSearchLimit(int totalVisibleLabels)
             => Math.Max(0, totalVisibleLabels);
 

@@ -1,4 +1,5 @@
 using ClickIt.Definitions;
+using ClickIt.Services.Label.Classification;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -22,44 +23,18 @@ namespace ClickIt.Services
             whitelist ??= [];
             blacklist ??= [];
 
-            bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, item: null, labelText ?? string.Empty, whitelist);
+            bool whitelistPass = whitelist.Count == 0 || MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, item: null, labelText ?? string.Empty, whitelist);
             if (!whitelistPass)
                 return false;
 
-            bool blacklistMatch = blacklist.Count > 0 && ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, item: null, labelText ?? string.Empty, blacklist);
+            bool blacklistMatch = blacklist.Count > 0 && MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(metadataPath ?? string.Empty, itemName ?? string.Empty, item: null, labelText ?? string.Empty, blacklist);
             return !blacklistMatch;
         }
 
         private bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label)
         {
-            string metadata = GetWorldItemMetadataPath(item);
-            string itemName = GetWorldItemBaseName(item);
-            string labelText = GetWorldItemLabelText(label);
-
-            IReadOnlyList<string> whitelist = settings.ItemTypeWhitelistMetadata ?? [];
-            IReadOnlyList<string> blacklist = settings.ItemTypeBlacklistMetadata ?? [];
-
-            bool whitelistPass = whitelist.Count == 0 || ContainsAnyMetadataIdentifier(metadata, itemName, item, labelText, whitelist);
-            if (!whitelistPass)
-                return false;
-
-            bool blacklistMatch = blacklist.Count > 0 && ContainsAnyMetadataIdentifier(metadata, itemName, item, labelText, blacklist);
-            if (blacklistMatch)
-                return false;
-
-            return ShouldAllowWorldItemWhenInventoryFull(item, gameController);
+            return _worldItemMetadataPolicy.ShouldAllowWorldItemByMetadata(settings, item, gameController, label, ShouldAllowWorldItemWhenInventoryFull);
         }
 
-        private static string GetWorldItemLabelText(LabelOnGround? label)
-        {
-            try
-            {
-                return label?.Label?.GetText(512) ?? string.Empty;
-            }
-            catch
-            {
-                return string.Empty;
-            }
-        }
     }
 }

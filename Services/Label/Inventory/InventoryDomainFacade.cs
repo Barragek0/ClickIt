@@ -17,12 +17,13 @@ namespace ClickIt.Services.Label.Inventory
 
         public InventoryPickupPolicyEngine PickupPolicy { get; } = pickupPolicy;
 
-        public LabelFilterService.InventoryDebugSnapshot GetLatestDebug() => ProbeService.GetLatestDebug();
+        public InventoryDebugSnapshot GetLatestDebug() => ProbeService.GetLatestDebug();
 
         public IReadOnlyList<string> GetLatestDebugTrail() => ProbeService.GetLatestDebugTrail();
 
-        public void PublishDebug(LabelFilterService.InventoryDebugSnapshot snapshot) => ProbeService.PublishDebug(snapshot);
+        public void PublishDebug(InventoryDebugSnapshot snapshot) => ProbeService.PublishDebug(snapshot);
 
         public void ClearForShutdown() => ProbeService.ClearForShutdown();
     }
 }
+

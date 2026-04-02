@@ -266,7 +266,6 @@ namespace ClickIt.Services
             bool shouldContinueEntityPathing = OffscreenPathingMath.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 _dependencies.Settings.WalkTowardOffscreenLabels.Value,
                 nextLabel.ItemOnGround != null,
-                nextLabel.ItemOnGround?.IsHidden == true,
                 candidates.NextLabelMechanicId);
             if (shouldContinueEntityPathing)
             {

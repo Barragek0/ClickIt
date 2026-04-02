@@ -1,4 +1,5 @@
 using ClickIt.Services;
+using ClickIt.Services.Label.Inventory;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
@@ -135,9 +136,9 @@ namespace ClickIt.Tests.Unit
             pos.Should().Be(feet);
         }
 
-        private static LabelFilterService.InventoryDebugSnapshot CreateInventorySnapshot(string stage, bool inventoryFull, bool allowPickup, long sequence = 0)
+        private static InventoryDebugSnapshot CreateInventorySnapshot(string stage, bool inventoryFull, bool allowPickup, long sequence = 0)
         {
-            return new LabelFilterService.InventoryDebugSnapshot(
+            return new InventoryDebugSnapshot(
                 HasData: true,
                 Stage: stage,
                 InventoryFull: inventoryFull,

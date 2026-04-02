@@ -100,5 +100,37 @@ namespace ClickIt.Tests.Unit
                 .Should()
                 .BeFalse();
         }
+
+        [TestMethod]
+        public void ShouldPathfindToEntityAfterClickPointResolveFailure_RequiresEnabledEntityAndMechanicId()
+        {
+            OffscreenPathingMath.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                    walkTowardOffscreenLabelsEnabled: true,
+                    hasEntity: true,
+                    mechanicId: "strongboxes")
+                .Should()
+                .BeTrue();
+
+            OffscreenPathingMath.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                    walkTowardOffscreenLabelsEnabled: false,
+                    hasEntity: true,
+                    mechanicId: "strongboxes")
+                .Should()
+                .BeFalse();
+
+            OffscreenPathingMath.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                    walkTowardOffscreenLabelsEnabled: true,
+                    hasEntity: false,
+                    mechanicId: "strongboxes")
+                .Should()
+                .BeFalse();
+
+            OffscreenPathingMath.ShouldPathfindToEntityAfterClickPointResolveFailure(
+                    walkTowardOffscreenLabelsEnabled: true,
+                    hasEntity: true,
+                    mechanicId: null)
+                .Should()
+                .BeFalse();
+        }
     }
 }

@@ -56,11 +56,11 @@ namespace ClickIt.Services.Label.Inventory
             return service;
         }
 
-        public LabelFilterService.InventoryDebugSnapshot GetLatestDebug() => _diagnosticsChannel.GetLatest();
+        public InventoryDebugSnapshot GetLatestDebug() => _diagnosticsChannel.GetLatest();
 
         public IReadOnlyList<string> GetLatestDebugTrail() => _diagnosticsChannel.GetTrail();
 
-        public void PublishDebug(LabelFilterService.InventoryDebugSnapshot snapshot) => _diagnosticsChannel.Publish(snapshot);
+        public void PublishDebug(InventoryDebugSnapshot snapshot) => _diagnosticsChannel.Publish(snapshot);
 
         public bool IsInventoryFull(GameController? gameController, out InventoryFullProbe probe)
         {
@@ -294,3 +294,4 @@ namespace ClickIt.Services.Label.Inventory
         }
     }
 }
+

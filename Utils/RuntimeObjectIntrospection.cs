@@ -72,55 +72,17 @@ namespace ClickIt.Utils
             int MaxValueChars,
             int MaxTotalNodes,
             int MaxElapsedMs);
-        private readonly record struct TraversalEvent(
-            TraversalEventKind Kind,
-            string Path,
-            Type? RuntimeType = null,
-            object? Value = null,
-            int Count = 0,
-            string? Message = null);
-        private enum TraversalEventKind
-        {
-            NodeNull,
-            NodeSimple,
-            NodeType,
-            NodeCycle,
-            NodeMaxDepth,
-            NodeNoReadableMembers,
-            EnumerableType,
-            EnumerablePreviewCount,
-            EnumerableTruncated,
-            MemberUnavailable,
-            MemberNull,
-            MemberSimple,
-            MemberOutputTruncated,
-            NodeBudgetReachedWhileSchedulingMembers,
-            TraversalStoppedTimeBudget,
-            TraversalStoppedNodeBudget,
-            TraversalCompleted,
-            NodeProcessingError
-        }
         private readonly record struct MemberCacheKey(Type Type, bool IncludeNonPublicMembers, string PriorityKey);
         private static readonly ConcurrentDictionary<MemberCacheKey, MemberInfo[]> ReadableMembersCache = new();
 
         public static string GetFileNameForProfile(IntrospectionProfile profile)
         {
-            return profile switch
-            {
-                IntrospectionProfile.StructureFirst => "structure.dat",
-                IntrospectionProfile.Full => "full.dat",
-                _ => "memory.dat"
-            };
+            return RuntimeObjectIntrospectionProfileMapper.GetFileName(profile);
         }
 
         public static RuntimeObjectIntrospectionOptions GetOptionsForProfile(IntrospectionProfile profile)
         {
-            return profile switch
-            {
-                IntrospectionProfile.StructureFirst => RuntimeObjectIntrospectionOptions.StructureFirst,
-                IntrospectionProfile.Full => RuntimeObjectIntrospectionOptions.VeryDeepAllData,
-                _ => RuntimeObjectIntrospectionOptions.Default
-            };
+            return RuntimeObjectIntrospectionProfileMapper.GetOptions(profile);
         }
 
         public static string BuildReport(object? root, RuntimeObjectIntrospectionOptions options)
@@ -139,8 +101,8 @@ namespace ClickIt.Utils
             var engine = new TraversalEngine(root, normalized, enforceElapsedBudget: false);
             while (!engine.IsFinished)
             {
-                IReadOnlyList<TraversalEvent> events = engine.ProcessNext();
-                AppendTraversalEvents(sb, events, normalized.MaxValueChars);
+                IReadOnlyList<RuntimeObjectTraversalEvent> events = engine.ProcessNext();
+                RuntimeObjectIntrospectionEventFormatter.AppendTraversalEvents(sb, events, normalized.MaxValueChars);
             }
 
             return sb.ToString().TrimEnd();
@@ -232,7 +194,7 @@ namespace ClickIt.Utils
 
             using (writer)
             {
-                if (!TryWriteLine(writer, $"--- {normalized.Title} ---", out string? headerWriteError))
+                if (!RuntimeObjectIntrospectionStreamWriter.TryWriteLine(writer, $"--- {normalized.Title} ---", out string? headerWriteError))
                 {
                     SafeInvokeCompleted(onCompleted, null, headerWriteError);
                     yield break;
@@ -242,7 +204,7 @@ namespace ClickIt.Utils
 
                 if (root == null)
                 {
-                    _ = TryWriteLine(writer, "Root: unavailable", out _);
+                    _ = RuntimeObjectIntrospectionStreamWriter.TryWriteLine(writer, "Root: unavailable", out _);
                     SafeInvokeProgress(onProgress, 100);
                     SafeInvokeCompleted(onCompleted, fullPath, null);
                     yield break;
@@ -256,8 +218,8 @@ namespace ClickIt.Utils
                 int previousProcessedNodes = 0;
                 while (!engine.IsFinished)
                 {
-                    IReadOnlyList<TraversalEvent> events = engine.ProcessNext();
-                    if (!TryWriteTraversalEvents(writer, events, normalized.MaxValueChars, out string? traversalWriteError))
+                    IReadOnlyList<RuntimeObjectTraversalEvent> events = engine.ProcessNext();
+                    if (!RuntimeObjectIntrospectionStreamWriter.TryWriteTraversalEvents(writer, events, normalized.MaxValueChars, out string? traversalWriteError))
                     {
                         SafeInvokeCompleted(onCompleted, null, traversalWriteError);
                         yield break;
@@ -274,7 +236,7 @@ namespace ClickIt.Utils
                         int pct = Math.Min(99, (int)((long)engine.TotalProcessedNodes * 100L / Math.Max(1, normalized.MaxTotalNodes)));
                         SafeInvokeProgress(onProgress, pct);
 
-                        if (!TryFlush(writer, out string? flushError))
+                        if (!RuntimeObjectIntrospectionStreamWriter.TryFlush(writer, out string? flushError))
                         {
                             SafeInvokeCompleted(onCompleted, null, flushError);
                             yield break;
@@ -284,7 +246,7 @@ namespace ClickIt.Utils
                     }
                 }
 
-                if (!TryFlush(writer, out string? finalFlushError))
+                if (!RuntimeObjectIntrospectionStreamWriter.TryFlush(writer, out string? finalFlushError))
                 {
                     SafeInvokeCompleted(onCompleted, null, finalFlushError);
                     yield break;
@@ -311,80 +273,6 @@ namespace ClickIt.Utils
                 MaxValueChars: Math.Max(1, options.MaxValueChars),
                 MaxTotalNodes: Math.Max(1, options.MaxTotalNodes),
                 MaxElapsedMs: Math.Max(500, options.MaxElapsedMs));
-        }
-
-        private static void AppendTraversalEvents(StringBuilder sb, IReadOnlyList<TraversalEvent> events, int maxValueChars)
-        {
-            for (int i = 0; i < events.Count; i++)
-                sb.AppendLine(FormatTraversalEvent(events[i], maxValueChars));
-        }
-
-        private static bool TryWriteTraversalEvents(StreamWriter writer, IReadOnlyList<TraversalEvent> events, int maxValueChars, out string? error)
-        {
-            for (int i = 0; i < events.Count; i++)
-            {
-                if (!TryWriteLine(writer, FormatTraversalEvent(events[i], maxValueChars), out error))
-                    return false;
-            }
-
-            error = null;
-            return true;
-        }
-
-        private static string FormatTraversalEvent(TraversalEvent evt, int maxValueChars)
-        {
-            return evt.Kind switch
-            {
-                TraversalEventKind.NodeNull => $"{evt.Path}: null",
-                TraversalEventKind.NodeSimple => $"{evt.Path}: {evt.RuntimeType?.Name} = {FormatValue(evt.Value, maxValueChars)}",
-                TraversalEventKind.NodeType => $"{evt.Path}: {evt.RuntimeType?.FullName}",
-                TraversalEventKind.NodeCycle => $"{evt.Path}: {evt.RuntimeType?.FullName} (cycle)",
-                TraversalEventKind.NodeMaxDepth => $"{evt.Path}: max depth reached",
-                TraversalEventKind.NodeNoReadableMembers => $"{evt.Path}: no readable public members",
-                TraversalEventKind.EnumerableType => $"{evt.Path}: {evt.RuntimeType?.FullName} (enumerable)",
-                TraversalEventKind.EnumerablePreviewCount => $"{evt.Path}: previewCount={evt.Count}",
-                TraversalEventKind.EnumerableTruncated => $"{evt.Path}: collection output truncated (more entries omitted)",
-                TraversalEventKind.MemberUnavailable => $"{evt.Path}: <unavailable>",
-                TraversalEventKind.MemberNull => $"{evt.Path}: null",
-                TraversalEventKind.MemberSimple => $"{evt.Path}: {FormatValue(evt.Value, maxValueChars)}",
-                TraversalEventKind.MemberOutputTruncated => $"{evt.Path}: member output truncated ({evt.Count} omitted)",
-                TraversalEventKind.NodeBudgetReachedWhileSchedulingMembers => $"{evt.Path}: node budget reached while scheduling members",
-                TraversalEventKind.TraversalStoppedTimeBudget => $"Traversal stopped: elapsed-time budget reached ({evt.Count}ms).",
-                TraversalEventKind.TraversalStoppedNodeBudget => $"Traversal stopped: node budget reached ({evt.Count}).",
-                TraversalEventKind.TraversalCompleted => $"Traversal completed: processed {evt.Count} nodes.",
-                TraversalEventKind.NodeProcessingError => $"{evt.Path}: <node processing error> {evt.Message}",
-                _ => $"{evt.Path}: <unknown traversal event>"
-            };
-        }
-
-        private static bool TryWriteLine(StreamWriter writer, string line, out string? error)
-        {
-            try
-            {
-                writer.WriteLine(line);
-                error = null;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                error = $"Failed while writing dump file: {ex.Message}";
-                return false;
-            }
-        }
-
-        private static bool TryFlush(StreamWriter writer, out string? error)
-        {
-            try
-            {
-                writer.Flush();
-                error = null;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                error = $"Failed while flushing dump file: {ex.Message}";
-                return false;
-            }
         }
 
         private static void SafeInvokeProgress(Action<int>? onProgress, int value)
@@ -432,7 +320,7 @@ namespace ClickIt.Utils
             public int TotalProcessedNodes { get; private set; }
             public bool IsFinished { get; private set; }
 
-            public IReadOnlyList<TraversalEvent> ProcessNext()
+            public IReadOnlyList<RuntimeObjectTraversalEvent> ProcessNext()
             {
                 if (IsFinished)
                     return [];
@@ -440,50 +328,50 @@ namespace ClickIt.Utils
                 if (EnforceElapsedBudget && _elapsedStopwatch.ElapsedMilliseconds >= Options.MaxElapsedMs)
                 {
                     IsFinished = true;
-                    return [new TraversalEvent(TraversalEventKind.TraversalStoppedTimeBudget, string.Empty, Count: Options.MaxElapsedMs)];
+                    return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalStoppedTimeBudget, string.Empty, Count: Options.MaxElapsedMs)];
                 }
 
                 if (TotalProcessedNodes >= Options.MaxTotalNodes)
                 {
                     IsFinished = true;
-                    return [new TraversalEvent(TraversalEventKind.TraversalStoppedNodeBudget, string.Empty, Count: Options.MaxTotalNodes)];
+                    return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalStoppedNodeBudget, string.Empty, Count: Options.MaxTotalNodes)];
                 }
 
                 if (_stack.Count == 0)
                 {
                     IsFinished = true;
-                    return [new TraversalEvent(TraversalEventKind.TraversalCompleted, string.Empty, Count: TotalProcessedNodes)];
+                    return [new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.TraversalCompleted, string.Empty, Count: TotalProcessedNodes)];
                 }
 
                 PendingNode pending = _stack.Pop();
                 TotalProcessedNodes++;
 
-                var events = new List<TraversalEvent>();
+                var events = new List<RuntimeObjectTraversalEvent>();
                 try
                 {
                     object? value = pending.Value;
                     if (value == null)
                     {
-                        events.Add(new TraversalEvent(TraversalEventKind.NodeNull, pending.Path));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeNull, pending.Path));
                         return events;
                     }
 
                     Type type = value.GetType();
                     if (IsSimpleType(type))
                     {
-                        events.Add(new TraversalEvent(TraversalEventKind.NodeSimple, pending.Path, RuntimeType: type, Value: value));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeSimple, pending.Path, RuntimeType: type, Value: value));
                         return events;
                     }
 
                     if (!type.IsValueType && !_visited.Add(value))
                     {
-                        events.Add(new TraversalEvent(TraversalEventKind.NodeCycle, pending.Path, RuntimeType: type));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeCycle, pending.Path, RuntimeType: type));
                         return events;
                     }
 
                     if (value is IEnumerable enumerable && value is not string)
                     {
-                        events.Add(new TraversalEvent(TraversalEventKind.EnumerableType, pending.Path, RuntimeType: type));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.EnumerableType, pending.Path, RuntimeType: type));
 
                         var stagedEntries = new List<PendingNode>();
                         int previewCount = 0;
@@ -501,9 +389,9 @@ namespace ClickIt.Utils
                             break;
                         }
 
-                        events.Add(new TraversalEvent(TraversalEventKind.EnumerablePreviewCount, pending.Path, Count: previewCount));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.EnumerablePreviewCount, pending.Path, Count: previewCount));
                         if (hasMore)
-                            events.Add(new TraversalEvent(TraversalEventKind.EnumerableTruncated, pending.Path));
+                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.EnumerableTruncated, pending.Path));
 
                         for (int i = stagedEntries.Count - 1; i >= 0; i--)
                             _stack.Push(stagedEntries[i]);
@@ -511,23 +399,23 @@ namespace ClickIt.Utils
                         return events;
                     }
 
-                    events.Add(new TraversalEvent(TraversalEventKind.NodeType, pending.Path, RuntimeType: type));
+                    events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeType, pending.Path, RuntimeType: type));
                     if (pending.Depth >= Options.MaxDepth)
                     {
-                        events.Add(new TraversalEvent(TraversalEventKind.NodeMaxDepth, pending.Path));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeMaxDepth, pending.Path));
                         return events;
                     }
 
                     IReadOnlyList<MemberInfo> members = GetReadableMembers(type, Options.PriorityMembers, Options.IncludeNonPublicMembers);
                     if (members.Count == 0)
                     {
-                        events.Add(new TraversalEvent(TraversalEventKind.NodeNoReadableMembers, pending.Path));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeNoReadableMembers, pending.Path));
                         return events;
                     }
 
                     int memberCount = Math.Min(members.Count, Options.MaxMembersPerObject);
                     if (members.Count > Options.MaxMembersPerObject)
-                        events.Add(new TraversalEvent(TraversalEventKind.MemberOutputTruncated, pending.Path, Count: members.Count - Options.MaxMembersPerObject));
+                        events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberOutputTruncated, pending.Path, Count: members.Count - Options.MaxMembersPerObject));
 
                     var stagedMembers = new List<PendingNode>();
                     for (int i = 0; i < memberCount; i++)
@@ -537,25 +425,25 @@ namespace ClickIt.Utils
 
                         if (!TryGetMemberValue(value, member, out object? memberValue))
                         {
-                            events.Add(new TraversalEvent(TraversalEventKind.MemberUnavailable, memberPath));
+                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberUnavailable, memberPath));
                             continue;
                         }
 
                         if (memberValue == null)
                         {
-                            events.Add(new TraversalEvent(TraversalEventKind.MemberNull, memberPath));
+                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberNull, memberPath));
                             continue;
                         }
 
                         if (IsSimpleType(memberValue.GetType()))
                         {
-                            events.Add(new TraversalEvent(TraversalEventKind.MemberSimple, memberPath, Value: memberValue));
+                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberSimple, memberPath, Value: memberValue));
                             continue;
                         }
 
                         if (TotalProcessedNodes + _stack.Count + stagedMembers.Count >= Options.MaxTotalNodes)
                         {
-                            events.Add(new TraversalEvent(TraversalEventKind.NodeBudgetReachedWhileSchedulingMembers, pending.Path));
+                            events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeBudgetReachedWhileSchedulingMembers, pending.Path));
                             break;
                         }
 
@@ -567,7 +455,7 @@ namespace ClickIt.Utils
                 }
                 catch (Exception ex)
                 {
-                    events.Add(new TraversalEvent(TraversalEventKind.NodeProcessingError, pending.Path, Message: $"{ex.GetType().Name}: {ex.Message}"));
+                    events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.NodeProcessingError, pending.Path, Message: $"{ex.GetType().Name}: {ex.Message}"));
                 }
 
                 return events;
@@ -663,7 +551,7 @@ namespace ClickIt.Utils
             }
         }
 
-        private static string FormatValue(object? value, int maxLen = 120)
+        internal static string FormatValue(object? value, int maxLen = 120)
         {
             if (value == null)
                 return "null";

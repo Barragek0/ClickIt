@@ -98,6 +98,28 @@ namespace ClickIt.Tests.Unit
         }
 
         [TestMethod]
+        public void ShouldAttemptSpecialEssenceCorruption_RequiresWindowAndClickable()
+        {
+            ClickLabelSelectionMath.ShouldAttemptSpecialEssenceCorruption(
+                    corruptionPointInWindow: true,
+                    corruptionPointClickable: true)
+                .Should()
+                .BeTrue();
+
+            ClickLabelSelectionMath.ShouldAttemptSpecialEssenceCorruption(
+                    corruptionPointInWindow: false,
+                    corruptionPointClickable: true)
+                .Should()
+                .BeFalse();
+
+            ClickLabelSelectionMath.ShouldAttemptSpecialEssenceCorruption(
+                    corruptionPointInWindow: true,
+                    corruptionPointClickable: false)
+                .Should()
+                .BeFalse();
+        }
+
+        [TestMethod]
         public void IsInsideWindowInEitherSpace_AcceptsClientOrScreenCoordinates()
         {
             RectangleF window = new RectangleF(100, 200, 300, 200);

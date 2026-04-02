@@ -1,5 +1,6 @@
 using ClickIt.Services;
 using ClickIt.Services.Click.Runtime;
+using ClickIt.Services.Label.Inventory;
 
 namespace ClickIt.Services.Observability.TelemetryProjection
 {
@@ -80,7 +81,7 @@ namespace ClickIt.Services.Observability.TelemetryProjection
         {
             if (labelFilterService == null)
                 return new InventoryTelemetrySnapshot(
-                    Inventory: LabelFilterService.InventoryDebugSnapshot.Empty,
+                    Inventory: InventoryDebugSnapshot.Empty,
                     InventoryTrail: []);
 
             return new InventoryTelemetrySnapshot(
@@ -89,3 +90,4 @@ namespace ClickIt.Services.Observability.TelemetryProjection
         }
     }
 }
+

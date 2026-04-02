@@ -103,7 +103,7 @@ namespace ClickIt
 
             PluginContextServiceStateInitializer.InitializeFromComposedServices(this, services);
 
-            ServiceCompositionRoot.WireSettingsActions(settings, services.EffectiveSettings, services.AlertService, _serviceRegistry);
+            SettingsDomainAssembler.WireActions(settings, services.EffectiveSettings, services.AlertService, _serviceRegistry);
             _serviceRegistry.Register(() => ErrorHandler?.UnregisterGlobalExceptionHandlers());
             _serviceRegistry.Register(() => PerformanceMonitor?.ShutdownForHotReload());
             _serviceRegistry.Register(() => PluginRuntimeTimerCoordinator.StopAll(LastRenderTimer, LastTickTimer, Timer, SecondTimer));

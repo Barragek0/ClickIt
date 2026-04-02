@@ -1,5 +1,6 @@
 using ClickIt.Definitions;
 using ClickIt.Services.Observability;
+using ClickIt.Services.Click.Selection;
 using ClickIt.Services.Click.Runtime;
 using ClickIt.Services.Label.Classification;
 using ClickIt.Services.Label.Classification.Policies;
@@ -224,13 +225,7 @@ namespace ClickIt.Services
                 if (!TryCreateLostShipmentCandidate(label, out LostShipmentCandidate candidate))
                     continue;
 
-                if (!best.HasValue
-                    || candidate.Distance < best.Value.Distance
-                    || (VisibleMechanicSelectionPolicy.ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
-                        && VisibleMechanicSelectionPolicy.IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
-                {
-                    best = candidate;
-                }
+                _ = MechanicCandidateResolver.TryPromoteLostShipmentCandidate(ref best, candidate, cursorAbsolute, windowTopLeft);
             }
         }
 
@@ -356,12 +351,8 @@ namespace ClickIt.Services
                     if (collectDiagnostics && hadLabel)
                         labelBacked++;
 
-                    if (!best.HasValue
-                        || candidate.Distance < best.Value.Distance
-                        || (VisibleMechanicSelectionPolicy.ArePlayerDistancesEquivalent(candidate.Distance, best.Value.Distance)
-                            && VisibleMechanicSelectionPolicy.IsFirstCandidateCloserToCursor(candidate.ClickPosition, best.Value.ClickPosition, cursorAbsolute, windowTopLeft)))
+                    if (MechanicCandidateResolver.TryPromoteSettlersCandidate(ref best, candidate, cursorAbsolute, windowTopLeft))
                     {
-                        best = candidate;
                         if (captureClickDebug)
                             PublishSettlersCandidateDebug("CandidateSelected", candidate, "Nearest settlers candidate selected");
                     }

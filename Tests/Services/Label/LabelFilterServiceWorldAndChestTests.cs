@@ -236,7 +236,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void SelectBestWorldItemMetadataPath_PrefersComponentMetadata_ForMiscObjectsFallback()
         {
-            string selected = Services.LabelFilterService.SelectBestWorldItemMetadataPath(
+            string selected = WorldItemMetadataPolicy.SelectBestWorldItemMetadataPath(
                 "Metadata/MiscellaneousObjects/Monolith",
                 "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
 
@@ -246,7 +246,7 @@ namespace ClickIt.Tests.Unit
         [TestMethod]
         public void SelectBestWorldItemMetadataPath_KeepsResolvedMetadata_WhenAlreadySpecific()
         {
-            string selected = Services.LabelFilterService.SelectBestWorldItemMetadataPath(
+            string selected = WorldItemMetadataPolicy.SelectBestWorldItemMetadataPath(
                 "Metadata/Items/Currency/StackableCurrency/ChaosOrb",
                 "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
 
