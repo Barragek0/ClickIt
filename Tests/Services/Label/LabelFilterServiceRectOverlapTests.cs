@@ -3,7 +3,7 @@ using FluentAssertions;
 using SharpDX;
 using ClickIt.Utils;
 
-namespace ClickIt.Tests.Services.Label
+namespace ClickIt.Tests.Label
 {
     [TestClass]
     public class LabelFilterServiceRectOverlapTests

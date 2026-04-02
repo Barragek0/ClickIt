@@ -38,12 +38,12 @@ namespace ClickIt.Utils
             return elementsList;
         }
 
-        internal static int GetThreadLocalElementsCountForTests()
+        internal static int GetThreadLocalElementsCount()
         {
             return _threadLocalElementsList.Value?.Count ?? 0;
         }
 
-        internal static void AddNullElementToThreadLocalForTests()
+        internal static void AddNullElementToThreadLocal()
         {
             _threadLocalElementsList.Value?.Add(null!);
         }

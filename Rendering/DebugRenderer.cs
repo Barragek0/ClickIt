@@ -11,7 +11,7 @@ using ClickIt.Rendering.Debug.Layout;
 
 namespace ClickIt.Rendering
 {
-    public partial class DebugRenderer
+    public class DebugRenderer
     {
         private const int DetailedDebugStartY = 120;
         private const int DetailedDebugLineHeight = 18;
@@ -34,6 +34,7 @@ namespace ClickIt.Rendering
         private readonly Debug.Sections.PathfindingDebugOverlaySection _pathfindingDebugOverlaySection;
         private readonly Debug.Sections.UltimatumDebugOverlaySection _ultimatumDebugOverlaySection;
         private readonly Debug.Sections.PerformanceDebugOverlaySection _performanceDebugOverlaySection;
+        private readonly Debug.Sections.FrameDebugOverlaySection _frameDebugOverlaySection;
         private readonly IDebugLayoutEngine _layoutEngine = new DebugLayoutEngine();
         private readonly DebugOverlayComposer _overlayComposer;
         private readonly DebugOverlaySectionFactory _sectionFactory;
@@ -74,6 +75,7 @@ namespace ClickIt.Rendering
             _pathfindingDebugOverlaySection = new Debug.Sections.PathfindingDebugOverlaySection(_overlayContext);
             _ultimatumDebugOverlaySection = new Debug.Sections.UltimatumDebugOverlaySection(_overlayContext);
             _performanceDebugOverlaySection = new Debug.Sections.PerformanceDebugOverlaySection(_overlayContext);
+            _frameDebugOverlaySection = new Debug.Sections.FrameDebugOverlaySection(_overlayContext);
             _overlayComposer = new DebugOverlayComposer(_layoutEngine, LayoutSettings);
             _sectionFactory = new DebugOverlaySectionFactory(new DebugOverlaySectionFactoryDependencies(
                 _clickingDebugOverlaySection,
@@ -104,6 +106,76 @@ namespace ClickIt.Rendering
 
             _overlayComposer.RenderSections(sections);
         }
+
+        public void RenderDebugFrames(ClickItSettings settings)
+            => _frameDebugOverlaySection.RenderDebugFrames(settings);
+
+        public int RenderRuntimeDebugLogOverlay(int xPos, int yPos, int lineHeight)
+        {
+            int localX = xPos;
+            return _clickingDebugOverlaySection.RenderRuntimeDebugLogOverlay(ref localX, yPos, lineHeight);
+        }
+
+        public int RenderClickingDebug(int xPos, int yPos, int lineHeight)
+        {
+            int localX = xPos;
+            return _clickingDebugOverlaySection.RenderClickingDebug(ref localX, yPos, lineHeight);
+        }
+
+        internal static IReadOnlyList<string> BuildClickSettingsDebugSnapshotLines(ClickItSettings settings)
+            => Debug.Sections.ClickingDebugOverlaySection.BuildClickSettingsDebugSnapshotLines(settings);
+
+        public int RenderAltarDebug(int xPos, int yPos, int lineHeight)
+            => _labelDebugOverlaySection.RenderAltarDebug(xPos, yPos, lineHeight);
+
+        public int RenderAltarServiceDebug(int xPos, int yPos, int lineHeight)
+            => _labelDebugOverlaySection.RenderAltarServiceDebug(xPos, yPos, lineHeight);
+
+        public int RenderLabelsDebug(int xPos, int yPos, int lineHeight)
+        {
+            int localX = xPos;
+            return _labelDebugOverlaySection.RenderLabelsDebug(ref localX, yPos, lineHeight);
+        }
+
+        public int RenderInventoryPickupDebug(int xPos, int yPos, int lineHeight)
+        {
+            int localX = xPos;
+            return _labelDebugOverlaySection.RenderInventoryPickupDebug(ref localX, yPos, lineHeight);
+        }
+
+        public int RenderHoveredItemMetadataDebug(int xPos, int yPos, int lineHeight)
+            => _labelDebugOverlaySection.RenderHoveredItemMetadataDebug(xPos, yPos, lineHeight);
+
+        internal readonly record struct ClickFrequencyTargetDebugMetrics(
+            double ClickTargetMs,
+            double ProcessingMs,
+            double ClickDelayMs,
+            double ModeledTotalMs,
+            double ObservedTotalMs,
+            double SchedulerDeltaMs,
+            double TargetDeviationRatio);
+
+        internal static ClickFrequencyTargetDebugMetrics BuildClickFrequencyTargetDebugMetrics(
+            double clickTargetMs,
+            double processingMs,
+            double observedIntervalMs)
+        {
+            var metrics = Debug.Sections.PerformanceDebugOverlaySection.BuildClickFrequencyTargetDebugMetrics(
+                clickTargetMs,
+                processingMs,
+                observedIntervalMs);
+            return new ClickFrequencyTargetDebugMetrics(
+                ClickTargetMs: metrics.ClickTargetMs,
+                ProcessingMs: metrics.ProcessingMs,
+                ClickDelayMs: metrics.ClickDelayMs,
+                ModeledTotalMs: metrics.ModeledTotalMs,
+                ObservedTotalMs: metrics.ObservedTotalMs,
+                SchedulerDeltaMs: metrics.SchedulerDeltaMs,
+                TargetDeviationRatio: metrics.TargetDeviationRatio);
+        }
+
+        public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)
+            => _performanceDebugOverlaySection.RenderErrorsDebug(xPos, yPos, lineHeight);
 
         private int RenderDebugTrailBlock(ref int xPos, int yPos, int lineHeight, IReadOnlyList<string> trail, int maxRows, int wrapWidth)
             => _textBlockRenderer.RenderTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows, wrapWidth);

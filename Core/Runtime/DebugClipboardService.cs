@@ -57,10 +57,11 @@ namespace ClickIt.Core.Runtime
 
             lock (DeepMemoryDumpStateLock)
             {
-                if (_dependencies.State.IsShuttingDown)
+                PluginRuntimeState runtime = _dependencies.State.Runtime;
+                if (runtime.IsShuttingDown)
                     return;
 
-                if (_dependencies.State.DeepMemoryDumpCoroutine != null && !_dependencies.State.DeepMemoryDumpCoroutine.IsDone)
+                if (runtime.DeepMemoryDumpCoroutine != null && !runtime.DeepMemoryDumpCoroutine.IsDone)
                     return;
 
                 _deepMemoryDumpInProgress = true;
@@ -83,7 +84,7 @@ namespace ClickIt.Core.Runtime
                     OnDeepMemoryDumpProgress,
                     DeepMemoryDumpNodeBudgetPerYield);
 
-                _dependencies.State.DeepMemoryDumpCoroutine = new Coroutine(
+                runtime.DeepMemoryDumpCoroutine = new Coroutine(
                     dumpEnumerator,
                     _dependencies.Owner,
                     "ClickIt.DeepMemoryDump",
@@ -92,7 +93,7 @@ namespace ClickIt.Core.Runtime
                     Priority = CoroutinePriority.Normal
                 };
 
-                _ = global::ExileCore.Core.ParallelRunner.Run(_dependencies.State.DeepMemoryDumpCoroutine);
+                _ = global::ExileCore.Core.ParallelRunner.Run(runtime.DeepMemoryDumpCoroutine);
             }
         }
 
@@ -188,7 +189,7 @@ namespace ClickIt.Core.Runtime
             lock (DeepMemoryDumpStateLock)
             {
                 bool isRunning = _deepMemoryDumpInProgress
-                    || (_dependencies.State.DeepMemoryDumpCoroutine != null && !_dependencies.State.DeepMemoryDumpCoroutine.IsDone);
+                    || (_dependencies.State.Runtime.DeepMemoryDumpCoroutine != null && !_dependencies.State.Runtime.DeepMemoryDumpCoroutine.IsDone);
                 if (isRunning)
                     return $"Runtime memory dump: in progress (coroutine, node budget {DeepMemoryDumpNodeBudgetPerYield}/slice).";
 

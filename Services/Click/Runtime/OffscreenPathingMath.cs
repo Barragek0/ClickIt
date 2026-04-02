@@ -1,3 +1,4 @@
+using ClickIt.Services.Click.Interaction;
 using ClickIt.Definitions;
 using ClickIt.Services.Label.Classification.Policies;
 using ClickIt.Utils;
@@ -133,7 +134,7 @@ namespace ClickIt.Services.Click.Runtime
             if (item == null || item.Type != ExileCore.Shared.Enums.EntityType.WorldItem)
                 return false;
 
-            return InputHandler.ShouldForceUiHoverVerificationForWorldItem(item.Path, item.RenderName);
+            return LabelClickPointResolver.ShouldForceUiHoverVerificationForWorldItem(item.Path, item.RenderName);
         }
 
         internal static (bool ShouldDelay, long NextAddress, string NextPath, long NextFirstSeenTimestampMs, long RemainingDelayMs)

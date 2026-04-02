@@ -49,13 +49,6 @@ namespace ClickIt.Services.Label.Inventory
             _diagnosticsChannel = new InventoryDiagnosticsChannel(dependencies.DebugTrailCapacity);
         }
 
-        internal static InventoryProbeService CreateDiagnosticsOnlyForTests(int debugTrailCapacity)
-        {
-            var service = (InventoryProbeService)RuntimeHelpers.GetUninitializedObject(typeof(InventoryProbeService));
-            service._diagnosticsChannel = new InventoryDiagnosticsChannel(debugTrailCapacity);
-            return service;
-        }
-
         public InventoryDebugSnapshot GetLatestDebug() => _diagnosticsChannel.GetLatest();
 
         public IReadOnlyList<string> GetLatestDebugTrail() => _diagnosticsChannel.GetTrail();

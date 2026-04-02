@@ -5,7 +5,7 @@ using ClickIt.Services;
 
 namespace ClickIt.Core.Runtime
 {
-    internal sealed class PluginServices
+    public sealed class PluginServices
     {
         public Utils.PerformanceMonitor? PerformanceMonitor { get; set; }
         public Utils.ErrorHandler? ErrorHandler { get; set; }

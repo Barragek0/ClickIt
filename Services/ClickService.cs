@@ -2,6 +2,7 @@
 using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Cache;
+using ClickIt.Definitions;
 using ClickIt.Components;
 using ClickIt.Utils;
 using SharpDX;
@@ -14,6 +15,10 @@ using ClickIt.Services.Click.Safety;
 using ClickIt.Services.Click.Interaction;
 using ClickIt.Services.Click.Runtime;
 using ClickIt.Services.Click.Application;
+using ClickIt.Services.Click.Label;
+using ClickIt.Services.Click;
+using ClickIt.Services.Click.Ranking;
+using ClickIt.Services.Mechanics;
 using ClickIt.Services.Observability;
 
 #nullable enable
@@ -21,7 +26,7 @@ using ClickIt.Services.Observability;
 namespace ClickIt.Services
 {
 
-    public partial class ClickService(
+    public class ClickService(
         ClickItSettings settings,
         GameController gameController,
         ErrorHandler errorHandler,
@@ -56,40 +61,96 @@ namespace ClickIt.Services
         private readonly Action<string, int>? freezeDebugTelemetrySnapshot = freezeDebugTelemetrySnapshot;
         private readonly ClickTelemetryStore _clickTelemetryStore = new(settings);
         private readonly IClickSafetyPolicy _clickSafetyPolicy = new ClickSafetyPolicy();
+        private readonly LockedInteractionDispatcher _lockedInteractionDispatcher = new(inputHandler);
         private readonly ChestLootSettlementState chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
+        private readonly MechanicPriorityContextProvider _mechanicPriorityContextProvider = new(settings, new MechanicPrioritySnapshotService());
         private ClickLabelInteractionService? _labelInteractionService;
-        private IInteractionExecutionRuntime? _interactionExecutionRuntime;
         private UltimatumAutomationService? _ultimatumAutomationService;
+        private ClickFacadeSupport? _facadeSupport;
 
-        // Thread safety lock to prevent race conditions during element access
-        private readonly object _elementAccessLock = new();
-        internal object GetElementAccessLock()
-        {
-            return _elementAccessLock;
-        }
+        private ClickFacadeSupport FacadeSupport => _facadeSupport ??= new(
+            settings,
+            gameController,
+            errorHandler,
+            pointIsInClickableArea,
+            _clickSafetyPolicy,
+            _lockedInteractionDispatcher,
+            performanceMonitor,
+            SetLatestRuntimeDebugLog,
+            freezeDebugTelemetrySnapshot);
 
-        // Helper to avoid allocating debug message strings when debug logging is disabled
-        private void DebugLog(Func<string> messageFactory)
-        {
-            if (settings.DebugMode?.Value != true)
-                return;
+        [ThreadStatic]
+        private static HashSet<long>? _threadGroundLabelEntityAddresses;
 
-            string message = messageFactory();
-            SetLatestRuntimeDebugLog(message);
+        internal const string ShrineMechanicId = MechanicIds.Shrines;
+        internal const string LostShipmentMechanicId = MechanicIds.LostShipment;
+        internal const int HiddenFallbackCandidateCacheWindowMs = 150;
+        internal const int VisibleMechanicCandidateCacheWindowMs = 80;
+        internal const int GroundLabelEntityAddressCacheWindowMs = 150;
 
-            if (settings.LogMessages?.Value == true)
-            {
-                errorHandler.LogMessage(message);
-            }
-        }
+        private ClickRuntimeCompositionHost? _runtimeComposition;
 
-        private bool IsClickableInEitherSpace(Vector2 clientPoint, string path)
-        {
-            RectangleF windowArea = gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            return _clickSafetyPolicy.IsPointClickableInEitherSpace(clientPoint, windowTopLeft, pointIsInClickableArea, path);
-        }
+        private ClickRuntimeCompositionHost RuntimeComposition
+            => _runtimeComposition ??= new(new ClickRuntimeCompositionHostDependencies(
+                settings,
+                gameController,
+                errorHandler,
+                altarService,
+                weightCalculator,
+                altarDisplayRenderer,
+                pointIsInClickableArea,
+                inputHandler,
+                labelFilterService,
+                shrineService,
+                pathfindingService,
+                groundItemsVisible,
+                cachedLabels,
+                performanceMonitor,
+                _lockedInteractionDispatcher,
+                chestLootSettlementState,
+                _runtimeState,
+                () => LabelInteraction,
+                () => FacadeSupport.InteractionExecutionRuntime,
+                FacadeSupport.EnsureCursorInsideGameWindowForClick,
+                FacadeSupport.DebugLog,
+                ShouldCaptureClickDebug,
+                SetLatestClickDebug,
+                ShouldCaptureUltimatumDebug,
+                PublishUltimatumDebug,
+                FacadeSupport.IsClickableInEitherSpace,
+                FacadeSupport.IsInsideWindowInEitherSpace,
+                LabelInteraction.TryCorruptEssence,
+                LabelInteraction.TryGetCursorDistanceSquaredToEntity,
+                LabelInteraction.BuildLabelRangeRejectionDebugSummary,
+                LabelInteraction.BuildLabelSourceDebugSummary,
+                LabelInteraction.BuildNoLabelDebugSummary,
+                _mechanicPriorityContextProvider.Refresh,
+                _mechanicPriorityContextProvider.CreateContext,
+                TryHandleUltimatumPanelUi,
+                GetLabelsForRegularSelection,
+                GetLabelsForOffscreenSelection,
+                label => ClickLabelSelectionMath.ShouldSuppressPathfindingLabel(
+                    LabelSelection.ShouldSuppressLeverClick(label),
+                    UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(label)),
+                TryClickPreferredUltimatumModifier,
+                FacadeSupport.HoldDebugTelemetryAfterSuccessfulInteraction));
+
+        private AltarAutomationService AltarAutomation => RuntimeComposition.AltarAutomation;
+
+        private ClickDebugPublicationService ClickDebugPublisher => RuntimeComposition.ClickDebugPublisher;
+
+        private VisibleLabelSnapshotProvider VisibleLabelSnapshots => RuntimeComposition.VisibleLabelSnapshots;
+
+        private LabelSelectionCoordinator LabelSelection => RuntimeComposition.LabelSelection;
+
+        private ChestLootSettlementTracker ChestLootSettlement => RuntimeComposition.ChestLootSettlement;
+
+        private VisibleMechanicCoordinator VisibleMechanics => RuntimeComposition.VisibleMechanics;
+
+        private OffscreenPathingCoordinator OffscreenPathing => RuntimeComposition.OffscreenPathing;
+
+        private ClickRuntimeEngine RegularClick => RuntimeComposition.RegularClick;
 
         internal void CancelOffscreenPathingState()
         {
@@ -103,69 +164,6 @@ namespace ClickIt.Services
             ChestLootSettlement.ClearPostChestLootSettlementWatch();
         }
 
-        private bool EnsureCursorInsideGameWindowForClick(string outsideWindowLogMessage)
-        {
-            if (settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
-            {
-                DebugLog(() => outsideWindowLogMessage);
-                return false;
-            }
-
-            return true;
-        }
-
-        private IInteractionExecutionRuntime InteractionExecutionRuntime => _interactionExecutionRuntime ??= new InteractionExecutionRuntime(
-            new InteractionExecutionRuntimeDependencies(
-                EnsureCursorInsideGameWindowForClick,
-                PerformLockedClick,
-                PerformLockedHoldClick,
-                performanceMonitor.RecordClickInterval));
-
-        private void PerformLockedClick(
-            Vector2 clickPos,
-            Element? expectedElement,
-            GameController? controller,
-            bool forceUiHoverVerification = false,
-            bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
-        {
-            using (LockManager.AcquireStatic(_elementAccessLock))
-            {
-                inputHandler.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
-            }
-        }
-
-        private void PerformLockedHoldClick(
-            Vector2 clickPos,
-            int holdDurationMs,
-            Element? expectedElement,
-            GameController? controller,
-            bool forceUiHoverVerification = false,
-            bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
-        {
-            using (LockManager.AcquireStatic(_elementAccessLock))
-            {
-                inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
-            }
-        }
-
-        private bool IsCursorInsideGameWindow()
-        {
-            try
-            {
-                var winRect = gameController?.Window.GetWindowRectangleTimeCache;
-                if (winRect == null) return true;
-                var cursor = Mouse.GetCursorPosition();
-                return _clickSafetyPolicy.IsCursorInsideWindow(winRect.Value, new Vector2(cursor.X, cursor.Y));
-            }
-            catch
-            {
-                // If we cannot determine the cursor/window bounds assume it's fine so we don't block clicks unexpectedly
-                return true;
-            }
-        }
-
         internal static void ClearThreadLocalStorageForCurrentThread()
         {
             _threadGroundLabelEntityAddresses?.Clear();
@@ -173,21 +171,110 @@ namespace ClickIt.Services
             MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
         }
 
-        internal static void ClearThreadLocalStorageForTests()
+        internal bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? allLabels)
         {
-            ClearThreadLocalStorageForCurrentThread();
+            return LabelSelection.TryClickManualUiHoverLabel(allLabels);
         }
 
-        private void HoldDebugTelemetryAfterSuccessfulInteraction(string reason)
+        internal IEnumerator ProcessRegularClick()
         {
-            if (settings.DebugMode?.Value != true || settings.RenderDebug?.Value != true)
+            return RegularClick.Run();
+        }
+
+        internal IEnumerator ProcessAltarClicking()
+            => AltarAutomation.ProcessAltarClicking();
+
+        internal bool HasClickableAltars()
+            => AltarAutomation.HasClickableAltars();
+
+        private bool TryClickManualCursorPreferredAltarOption(Vector2 cursorAbsolute, Vector2 windowTopLeft)
+            => AltarAutomation.TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
+
+        internal bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
+            => AltarAutomation.ShouldClickAltar(altar, clickEater, clickExarch);
+
+        public bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+            => UltimatumAutomation.TryGetOptionPreview(out previews);
+
+        private bool TryClickPreferredUltimatumModifier(LabelOnGround label, Vector2 windowTopLeft)
+            => UltimatumAutomation.TryClickPreferredModifier(label, windowTopLeft);
+
+        private bool TryHandleUltimatumPanelUi(Vector2 windowTopLeft)
+            => UltimatumAutomation.TryHandlePanelUi(windowTopLeft);
+
+        private IReadOnlyList<LabelOnGround>? GetLabelsForOffscreenSelection()
+            => VisibleLabelSnapshots.GetVisibleOrCachedLabels();
+
+        private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
+            => VisibleLabelSnapshots.GetVisibleOrCachedLabels();
+
+        public ClickDebugSnapshot GetLatestClickDebug()
+        {
+            return _clickTelemetryStore.GetLatestClickDebug();
+        }
+
+        public IReadOnlyList<string> GetLatestClickDebugTrail()
+        {
+            return _clickTelemetryStore.GetLatestClickDebugTrail();
+        }
+
+        public RuntimeDebugLogSnapshot GetLatestRuntimeDebugLog()
+        {
+            return _clickTelemetryStore.GetLatestRuntimeDebugLog();
+        }
+
+        public IReadOnlyList<string> GetLatestRuntimeDebugLogTrail()
+        {
+            return _clickTelemetryStore.GetLatestRuntimeDebugLogTrail();
+        }
+
+        public UltimatumDebugSnapshot GetLatestUltimatumDebug()
+        {
+            return _clickTelemetryStore.GetLatestUltimatumDebug();
+        }
+
+        public IReadOnlyList<string> GetLatestUltimatumDebugTrail()
+        {
+            return _clickTelemetryStore.GetLatestUltimatumDebugTrail();
+        }
+
+        private void SetLatestClickDebug(ClickDebugSnapshot snapshot)
+        {
+            if (!ShouldCaptureClickDebug())
                 return;
 
-            int holdDurationMs = Math.Max(0, settings.DebugFreezeSuccessfulInteractionMs?.Value ?? 0);
-            if (holdDurationMs <= 0)
+            _clickTelemetryStore.PublishClickSnapshot(snapshot);
+        }
+
+        private bool ShouldCaptureClickDebug()
+        {
+            return settings.DebugMode.Value && settings.DebugShowClicking.Value;
+        }
+
+        private bool ShouldCaptureUltimatumDebug()
+        {
+            return settings.DebugMode.Value && settings.DebugShowUltimatum.Value;
+        }
+
+        private void SetLatestUltimatumDebug(UltimatumDebugSnapshot snapshot)
+        {
+            if (!ShouldCaptureUltimatumDebug())
                 return;
 
-            freezeDebugTelemetrySnapshot?.Invoke(reason, holdDurationMs);
+            _clickTelemetryStore.PublishUltimatumSnapshot(snapshot);
+        }
+
+        private void PublishUltimatumDebug(UltimatumDebugEvent debugEvent)
+        {
+            if (!ShouldCaptureUltimatumDebug())
+                return;
+
+            _clickTelemetryStore.PublishUltimatumEvent(debugEvent);
+        }
+
+        private void SetLatestRuntimeDebugLog(string message)
+        {
+            _clickTelemetryStore.PublishRuntimeLog(message);
         }
 
         private UltimatumAutomationService UltimatumAutomation
@@ -196,10 +283,10 @@ namespace ClickIt.Services
                     settings,
                     gameController,
                     cachedLabels,
-                    EnsureCursorInsideGameWindowForClick,
-                    IsClickableInEitherSpace,
-                    DebugLog,
-                    (clickPos, clickElement) => PerformLockedClick(clickPos, clickElement, gameController),
+                    FacadeSupport.EnsureCursorInsideGameWindowForClick,
+                    FacadeSupport.IsClickableInEitherSpace,
+                    messageFactory => FacadeSupport.DebugLog(messageFactory()),
+                    (clickPos, clickElement) => _lockedInteractionDispatcher.PerformClick(clickPos, clickElement, gameController),
                     performanceMonitor.RecordClickInterval,
                     ShouldCaptureUltimatumDebug,
                     PublishUltimatumDebug));
@@ -211,11 +298,11 @@ namespace ClickIt.Services
                     gameController,
                     inputHandler,
                     labelFilterService,
-                    IsClickableInEitherSpace,
-                    IsInsideWindowInEitherSpace,
-                    InteractionExecutionRuntime.Execute,
+                    FacadeSupport.IsClickableInEitherSpace,
+                    FacadeSupport.IsInsideWindowInEitherSpace,
+                    FacadeSupport.InteractionExecutionRuntime.Execute,
                     groundItemsVisible,
-                    DebugLog));
+                    messageFactory => FacadeSupport.DebugLog(messageFactory())));
 
         IEnumerator IClickAutomationService.ProcessRegularClick()
             => ProcessRegularClick();
@@ -231,6 +318,21 @@ namespace ClickIt.Services
 
         bool IClickAutomationService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => TryGetUltimatumOptionPreview(out previews);
+
+        void IClickTelemetryPublisher.PublishClickSnapshot(ClickDebugSnapshot snapshot)
+        {
+            SetLatestClickDebug(snapshot);
+        }
+
+        void IClickTelemetryPublisher.PublishUltimatumSnapshot(UltimatumDebugSnapshot snapshot)
+        {
+            SetLatestUltimatumDebug(snapshot);
+        }
+
+        void IClickTelemetryPublisher.PublishRuntimeLog(string message)
+        {
+            SetLatestRuntimeDebugLog(message);
+        }
 
     }
 }

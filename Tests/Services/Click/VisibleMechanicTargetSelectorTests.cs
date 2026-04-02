@@ -3,7 +3,7 @@ using ClickIt.Services.Click.Selection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Services.Click
+namespace ClickIt.Tests.Click
 {
     [TestClass]
     public class VisibleMechanicTargetSelectorTests

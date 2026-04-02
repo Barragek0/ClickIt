@@ -15,15 +15,18 @@ namespace ClickIt.Tests.Core
             var state = new PluginContext();
 
             state.Random.Should().NotBeNull();
-            state.LastRenderTimer.Should().NotBeNull();
-            state.LastTickTimer.Should().NotBeNull();
-            state.Timer.Should().NotBeNull();
-            state.SecondTimer.Should().NotBeNull();
-            state.LastHotkeyState.Should().BeFalse();
-            state.WorkFinished.Should().BeFalse();
-            state.PerformanceMonitor.Should().BeNull();
-            state.AreaService.Should().BeNull();
-            state.Camera.Should().BeNull();
+            state.Services.Should().NotBeNull();
+            state.Runtime.Should().NotBeNull();
+            state.Rendering.Should().NotBeNull();
+            state.Runtime.LastRenderTimer.Should().NotBeNull();
+            state.Runtime.LastTickTimer.Should().NotBeNull();
+            state.Runtime.Timer.Should().NotBeNull();
+            state.Runtime.SecondTimer.Should().NotBeNull();
+            state.Runtime.LastHotkeyState.Should().BeFalse();
+            state.Runtime.WorkFinished.Should().BeFalse();
+            state.Services.PerformanceMonitor.Should().BeNull();
+            state.Services.AreaService.Should().BeNull();
+            state.Services.Camera.Should().BeNull();
         }
 
         [TestMethod]
@@ -31,12 +34,11 @@ namespace ClickIt.Tests.Core
         {
             var state = new PluginContext
             {
-                LastHotkeyState = true,
-                WorkFinished = true
+                Runtime = { LastHotkeyState = true, WorkFinished = true }
             };
 
-            state.LastHotkeyState.Should().BeTrue();
-            state.WorkFinished.Should().BeTrue();
+            state.Runtime.LastHotkeyState.Should().BeTrue();
+            state.Runtime.WorkFinished.Should().BeTrue();
         }
 
         [TestMethod]
@@ -44,30 +46,40 @@ namespace ClickIt.Tests.Core
         {
             var state = new PluginContext
             {
-                PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(new ClickItSettings()),
-                ErrorHandler = new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
-                AreaService = new global::ClickIt.Services.AreaService(),
-                DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue(),
-                DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue(),
-                LabelFilterService = (global::ClickIt.Services.LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelFilterService)),
-                LabelService = (global::ClickIt.Services.LabelService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelService)),
-                ClickService = (global::ClickIt.Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.ClickService)),
-                PathfindingService = (global::ClickIt.Services.PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.PathfindingService)),
-                AlertService = (global::ClickIt.Services.AlertService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.AlertService))
+                Services =
+                {
+                    PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(new ClickItSettings()),
+                    ErrorHandler = new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
+                    AreaService = new global::ClickIt.Services.AreaService(),
+                    LabelFilterService = (global::ClickIt.Services.LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelFilterService)),
+                    LabelService = (global::ClickIt.Services.LabelService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelService)),
+                    ClickService = (global::ClickIt.Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.ClickService)),
+                    PathfindingService = (global::ClickIt.Services.PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.PathfindingService)),
+                    AlertService = (global::ClickIt.Services.AlertService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.AlertService))
+                },
+                Rendering =
+                {
+                    DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue(),
+                    DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue()
+                }
             };
 
             state.DisposeCompositionRoot();
 
-            state.PerformanceMonitor.Should().BeNull();
-            state.ErrorHandler.Should().BeNull();
-            state.AreaService.Should().BeNull();
-            state.DeferredTextQueue.Should().BeNull();
-            state.DeferredFrameQueue.Should().BeNull();
-            state.LabelFilterService.Should().BeNull();
-            state.LabelService.Should().BeNull();
-            state.ClickService.Should().BeNull();
-            state.PathfindingService.Should().BeNull();
-            state.AlertService.Should().BeNull();
+            state.Services.PerformanceMonitor.Should().BeNull();
+            state.Services.AreaService.Should().BeNull();
+            state.Rendering.DeferredTextQueue.Should().BeNull();
+            state.Rendering.DeferredFrameQueue.Should().BeNull();
+            state.Services.ClickService.Should().BeNull();
+            state.Services.ErrorHandler.Should().BeNull();
+            state.Services.AreaService.Should().BeNull();
+            state.Rendering.DeferredTextQueue.Should().BeNull();
+            state.Rendering.DeferredFrameQueue.Should().BeNull();
+            state.Services.LabelFilterService.Should().BeNull();
+            state.Services.LabelService.Should().BeNull();
+            state.Services.ClickService.Should().BeNull();
+            state.Services.PathfindingService.Should().BeNull();
+            state.Services.AlertService.Should().BeNull();
         }
 
         [TestMethod]

@@ -3,7 +3,7 @@ using FluentAssertions;
 using ClickIt.Utils;
 using ClickIt.Definitions;
 
-namespace ClickIt.Tests.Services.Altar
+namespace ClickIt.Tests.Altar
 {
     [TestClass]
     public class AltarModMatcherIntegrationTests

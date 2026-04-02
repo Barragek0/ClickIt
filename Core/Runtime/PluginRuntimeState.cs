@@ -3,7 +3,7 @@ using ExileCore.Shared;
 
 namespace ClickIt.Core.Runtime
 {
-    internal sealed class PluginRuntimeState
+    public sealed class PluginRuntimeState
     {
         public Coroutine? AltarCoroutine { get; set; }
         public Coroutine? ClickLabelCoroutine { get; set; }

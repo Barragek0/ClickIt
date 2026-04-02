@@ -1,9 +1,11 @@
 using ClickIt.Services;
+using ClickIt.Services.Pathfinding.Diagnostics;
+using ClickIt.Services.Pathfinding.Grid;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace ClickIt.Tests.Services.Pathfinding
+namespace ClickIt.Tests.Pathfinding
 {
     [TestClass]
     public class PathfindingServiceTests
@@ -18,7 +20,7 @@ namespace ClickIt.Tests.Services.Pathfinding
                 [true, true, true]
             ];
 
-            var path = PathfindingService.FindPathAStar(
+            var path = PathGridSearch.FindPathAStar(
                 grid,
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(2, 2),
@@ -44,7 +46,7 @@ namespace ClickIt.Tests.Services.Pathfinding
                 [true, true, true, true, true]
             ];
 
-            var path = PathfindingService.FindPathAStar(
+            var path = PathGridSearch.FindPathAStar(
                 grid,
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(4, 4),
@@ -65,7 +67,7 @@ namespace ClickIt.Tests.Services.Pathfinding
                 [true, true, true]
             ];
 
-            bool ok = PathfindingService.TryResolveWalkableGoal(
+            bool ok = PathGridSearch.TryResolveWalkableGoal(
                 grid,
                 new PathfindingService.GridPoint(1, 1),
                 maxRadius: 2,
@@ -86,7 +88,7 @@ namespace ClickIt.Tests.Services.Pathfinding
                 [false, false, false]
             ];
 
-            bool ok = PathfindingService.TryResolveWalkableGoal(
+            bool ok = PathGridSearch.TryResolveWalkableGoal(
                 grid,
                 new PathfindingService.GridPoint(1, 1),
                 maxRadius: 2,
@@ -105,7 +107,7 @@ namespace ClickIt.Tests.Services.Pathfinding
                 [true, true, true]
             ];
 
-            bool ok = PathfindingService.TryResolveBestEffortGoal(
+            bool ok = PathGridSearch.TryResolveBestEffortGoal(
                 grid,
                 new PathfindingService.GridPoint(0, 0),
                 new PathfindingService.GridPoint(2, 2),
@@ -132,7 +134,7 @@ namespace ClickIt.Tests.Services.Pathfinding
             ];
 
             PathfindingService.GridPoint start = new PathfindingService.GridPoint(2, 2);
-            bool ok = PathfindingService.TryResolveBestEffortGoal(
+            bool ok = PathGridSearch.TryResolveBestEffortGoal(
                 grid,
                 start,
                 new PathfindingService.GridPoint(250, 250),
@@ -145,7 +147,7 @@ namespace ClickIt.Tests.Services.Pathfinding
             failureReason.Should().BeEmpty();
             resolved.Should().NotBe(start);
 
-            var path = PathfindingService.FindPathAStar(grid, start, resolved, 500, out int expandedNodes);
+            var path = PathGridSearch.FindPathAStar(grid, start, resolved, 500, out int expandedNodes);
             path.Should().NotBeNull();
             path!.Count.Should().BeGreaterThan(1);
             expandedNodes.Should().BeGreaterThan(0);
@@ -156,7 +158,7 @@ namespace ClickIt.Tests.Services.Pathfinding
         {
             var service = new PathfindingService(new ClickItSettings());
 
-            service.SetLatestPathStateForTests(
+            service.RuntimeState.SetLatestPathState(
                 new System.Collections.Generic.List<PathfindingService.GridPoint>
             {
                 new PathfindingService.GridPoint(0, 0),
@@ -181,7 +183,7 @@ namespace ClickIt.Tests.Services.Pathfinding
         {
             var service = new PathfindingService(new ClickItSettings());
 
-            service.SetLatestPathStateForTests(
+            service.RuntimeState.SetLatestPathState(
                 new System.Collections.Generic.List<PathfindingService.GridPoint>
             {
                 new PathfindingService.GridPoint(0, 0),
@@ -202,7 +204,7 @@ namespace ClickIt.Tests.Services.Pathfinding
         {
             var service = new PathfindingService(new ClickItSettings());
 
-            service.SetLatestPathStateForTests(
+            service.RuntimeState.SetLatestPathState(
                 new System.Collections.Generic.List<PathfindingService.GridPoint>
             {
                 new PathfindingService.GridPoint(0, 0),
@@ -216,6 +218,33 @@ namespace ClickIt.Tests.Services.Pathfinding
 
             cleared.Should().BeFalse();
             service.GetLatestGridPath().Count.Should().Be(2);
+        }
+
+        [TestMethod]
+        public void PublishOffscreenMovementDebugEvent_UpdatesLatestSnapshotAndTrail()
+        {
+            var service = new PathfindingService(new ClickItSettings());
+
+            service.PublishOffscreenMovementDebugEvent(new OffscreenMovementDebugEvent(
+                Stage: "Traverse",
+                TargetPath: "Metadata/OffscreenTarget",
+                BuiltPath: true,
+                ResolvedFromPath: true,
+                ResolvedClickPoint: true,
+                WindowCenter: new SharpDX.Vector2(100, 100),
+                TargetScreen: new SharpDX.Vector2(150, 140),
+                ClickScreen: new SharpDX.Vector2(120, 118),
+                PlayerGrid: new SharpDX.Vector2(10, 20),
+                TargetGrid: new SharpDX.Vector2(30, 40),
+                MovementSkillDebug: "ShieldCharge"));
+
+            OffscreenMovementDebugSnapshot snapshot = service.GetLatestOffscreenMovementDebug();
+
+            snapshot.HasData.Should().BeTrue();
+            snapshot.Stage.Should().Be("Traverse");
+            snapshot.TargetPath.Should().Be("Metadata/OffscreenTarget");
+            snapshot.MovementSkillDebug.Should().Be("ShieldCharge");
+            service.GetLatestOffscreenMovementDebugTrail().Should().ContainSingle();
         }
     }
 }

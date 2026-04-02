@@ -6,167 +6,36 @@ namespace ClickIt
     public partial class ClickItSettings
     {
         public bool IsLazyModeDisableHotkeyToggleModeEnabled()
-        {
-            return LazyModeDisableKeyToggleMode?.Value == true;
-        }
+            => ClickItSettingsRuntimeService.IsLazyModeDisableHotkeyToggleModeEnabled(this);
 
         public bool IsClickHotkeyToggleModeEnabled()
-        {
-            return ClickHotkeyToggleMode?.Value == true;
-        }
+            => ClickItSettingsRuntimeService.IsClickHotkeyToggleModeEnabled(this);
 
         public bool IsInitialUltimatumClickEnabled()
-        {
-            return ClickInitialUltimatum?.Value == true;
-        }
+            => ClickItSettingsRuntimeService.IsInitialUltimatumClickEnabled(this);
 
         public bool IsOtherUltimatumClickEnabled()
-        {
-            return ClickUltimatumChoices?.Value == true;
-        }
+            => ClickItSettingsRuntimeService.IsOtherUltimatumClickEnabled(this);
 
         public bool IsAnyUltimatumClickEnabled()
-        {
-            return IsInitialUltimatumClickEnabled() || IsOtherUltimatumClickEnabled();
-        }
+            => ClickItSettingsRuntimeService.IsAnyUltimatumClickEnabled(this);
 
         public bool IsUltimatumTakeRewardButtonClickEnabled()
-        {
-            return ClickUltimatumTakeRewardButton?.Value != false;
-        }
+            => ClickItSettingsRuntimeService.IsUltimatumTakeRewardButtonClickEnabled(this);
 
         public bool IsAnyDetailedDebugSectionEnabled()
-        {
-            return DebugShowStatus
-                || DebugShowGameState
-                || DebugShowPerformance
-                || DebugShowClickFrequencyTarget
-                || DebugShowAltarDetection
-                || DebugShowAltarService
-                || DebugShowLabels
-                || DebugShowInventoryPickup
-                || DebugShowHoveredItemMetadata
-                || DebugShowPathfinding
-                || DebugShowUltimatum
-                || DebugShowClicking
-                || DebugShowRuntimeDebugLogOverlay
-                || DebugShowRecentErrors;
-        }
+            => ClickItSettingsRuntimeService.IsAnyDetailedDebugSectionEnabled(this);
 
         public bool IsOnlyPathfindingDetailedDebugSectionEnabled()
-        {
-            return DebugShowPathfinding
-            && !DebugShowStatus
-            && !DebugShowGameState
-            && !DebugShowPerformance
-            && !DebugShowClickFrequencyTarget
-            && !DebugShowAltarDetection
-            && !DebugShowAltarService
-            && !DebugShowLabels
-            && !DebugShowInventoryPickup
-            && !DebugShowHoveredItemMetadata
-            && !DebugShowUltimatum
-            && !DebugShowClicking
-            && !DebugShowRuntimeDebugLogOverlay
-            && !DebugShowRecentErrors;
-        }
+            => ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(this);
 
         public IReadOnlyList<string> GetMechanicPriorityOrder()
-        {
-            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(this);
-
-            if (HasMatchingMechanicPrioritySnapshot())
-            {
-                return _mechanicPrioritySnapshot;
-            }
-
-            _mechanicPrioritySnapshot = MechanicPriorityOrder.ToArray();
-            return _mechanicPrioritySnapshot;
-        }
+            => ClickItSettingsRuntimeService.GetMechanicPriorityOrder(this);
 
         public IReadOnlyCollection<string> GetMechanicPriorityIgnoreDistanceIds()
-        {
-            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(this);
-
-            if (HasMatchingMechanicIgnoreDistanceSnapshot())
-            {
-                return _mechanicIgnoreDistanceSnapshot;
-            }
-
-            _mechanicIgnoreDistanceSnapshot = MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, PriorityComparer).ToArray();
-            return _mechanicIgnoreDistanceSnapshot;
-        }
+            => ClickItSettingsRuntimeService.GetMechanicPriorityIgnoreDistanceIds(this);
 
         public IReadOnlyDictionary<string, int> GetMechanicPriorityIgnoreDistanceWithinById()
-        {
-            SettingsDefaultsService.EnsureMechanicPrioritiesInitialized(this);
-
-            if (HasMatchingMechanicIgnoreDistanceWithinSnapshot())
-            {
-                return _mechanicIgnoreDistanceWithinMapSnapshot;
-            }
-
-            _mechanicIgnoreDistanceWithinSnapshot = MechanicPriorityIgnoreDistanceWithinById
-                .OrderBy(static x => x.Key, PriorityComparer)
-                .ToArray();
-            _mechanicIgnoreDistanceWithinMapSnapshot = new Dictionary<string, int>(
-                _mechanicIgnoreDistanceWithinSnapshot.ToDictionary(static x => x.Key, static x => x.Value, PriorityComparer),
-                PriorityComparer);
-            return _mechanicIgnoreDistanceWithinMapSnapshot;
-        }
-
-        private bool HasMatchingMechanicPrioritySnapshot()
-        {
-            if (_mechanicPrioritySnapshot == null)
-                return false;
-            if (_mechanicPrioritySnapshot.Length != MechanicPriorityOrder.Count)
-                return false;
-
-            for (int i = 0; i < MechanicPriorityOrder.Count; i++)
-            {
-                if (!string.Equals(_mechanicPrioritySnapshot[i], MechanicPriorityOrder[i], StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
-
-            return true;
-        }
-
-        private bool HasMatchingMechanicIgnoreDistanceSnapshot()
-        {
-            if (_mechanicIgnoreDistanceSnapshot == null)
-                return false;
-            if (_mechanicIgnoreDistanceSnapshot.Length != MechanicPriorityIgnoreDistanceIds.Count)
-                return false;
-
-            var current = MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, PriorityComparer).ToArray();
-            for (int i = 0; i < current.Length; i++)
-            {
-                if (!string.Equals(current[i], _mechanicIgnoreDistanceSnapshot[i], StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
-
-            return true;
-        }
-
-        private bool HasMatchingMechanicIgnoreDistanceWithinSnapshot()
-        {
-            if (_mechanicIgnoreDistanceWithinSnapshot == null)
-                return false;
-            if (_mechanicIgnoreDistanceWithinSnapshot.Length != MechanicPriorityIgnoreDistanceWithinById.Count)
-                return false;
-
-            var current = MechanicPriorityIgnoreDistanceWithinById
-                .OrderBy(static x => x.Key, PriorityComparer)
-                .ToArray();
-            for (int i = 0; i < current.Length; i++)
-            {
-                if (!string.Equals(current[i].Key, _mechanicIgnoreDistanceWithinSnapshot[i].Key, StringComparison.OrdinalIgnoreCase))
-                    return false;
-                if (current[i].Value != _mechanicIgnoreDistanceWithinSnapshot[i].Value)
-                    return false;
-            }
-
-            return true;
-        }
+            => ClickItSettingsRuntimeService.GetMechanicPriorityIgnoreDistanceWithinById(this);
     }
 }

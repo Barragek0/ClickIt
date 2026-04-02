@@ -5,7 +5,7 @@ using ClickIt.Services.Click.Application;
 
 namespace ClickIt.Core.Runtime
 {
-    internal sealed class ClickRuntimeHost
+    public sealed class ClickRuntimeHost
     {
         private readonly Func<IClickAutomationService?> _resolveClickService;
 

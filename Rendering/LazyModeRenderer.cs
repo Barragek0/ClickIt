@@ -35,7 +35,7 @@ namespace ClickIt.Rendering
             float centerX = windowRect.Width / 2f;
             float topY = LazyModeTitleY;
 
-            var allLabels = state.CachedLabels?.Value;
+            var allLabels = state.Services.CachedLabels?.Value;
             bool hasRestrictedItems = _lazyModeBlockerService?.HasRestrictedItemsOnScreen(allLabels) ?? false;
             string restrictionReason = GetLazyModeRestrictionDisplayReason(_lazyModeBlockerService?.LastRestrictionReason);
 

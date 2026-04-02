@@ -1,4 +1,5 @@
 using ClickIt.Utils;
+using ClickIt.Services.Click.Interaction;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -42,15 +43,15 @@ namespace ClickIt.Tests.Utils.Input
         [TestMethod]
         public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsExpectedValues()
         {
-            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
                 lazyModeEnabled: false,
                 clickHotkeyActive: false).Should().BeTrue();
 
-            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
                 lazyModeEnabled: false,
                 clickHotkeyActive: true).Should().BeFalse();
 
-            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
                 lazyModeEnabled: true,
                 clickHotkeyActive: false).Should().BeFalse();
         }
@@ -58,12 +59,12 @@ namespace ClickIt.Tests.Utils.Input
         [TestMethod]
         public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsFalse_WhenExplicitOverrideEnabled()
         {
-            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
                 lazyModeEnabled: false,
                 clickHotkeyActive: false,
                 allowWhenHotkeyInactive: true).Should().BeFalse();
 
-            InputHandler.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
                 lazyModeEnabled: true,
                 clickHotkeyActive: false,
                 allowWhenHotkeyInactive: true).Should().BeFalse();

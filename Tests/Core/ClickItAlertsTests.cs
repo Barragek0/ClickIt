@@ -47,7 +47,7 @@ namespace ClickIt.Tests.Core
                 (_, _) => { },
                 (_, _) => { });
 
-            alertService.SetAlertSoundPathForTests(soundPath);
+            alertService.SetAlertSoundPathOverride(soundPath);
 
             var dict = alertService.LastAlertTimes;
             dict.Clear();

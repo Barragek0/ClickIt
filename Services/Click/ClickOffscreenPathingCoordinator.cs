@@ -4,6 +4,7 @@ using ClickIt.Services.Label.Classification;
 using ClickIt.Services.Click.Runtime;
 using ClickIt.Services.Click.Ranking;
 using ClickIt.Services.Click.Selection;
+using ClickIt.Services.Pathfinding.Diagnostics;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -236,7 +237,7 @@ namespace ClickIt.Services
             RectangleF win = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 center = new(win.X + (win.Width * 0.5f), win.Y + (win.Height * 0.5f));
 
-            _dependencies.PathfindingService.SetLatestOffscreenMovementDebug(new PathfindingService.OffscreenMovementDebugSnapshot(
+            _dependencies.PathfindingService.SetLatestOffscreenMovementDebug(new OffscreenMovementDebugSnapshot(
                 HasData: true,
                 Stage: stage,
                 TargetPath: targetPath,

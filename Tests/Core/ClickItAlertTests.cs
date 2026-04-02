@@ -29,7 +29,7 @@ namespace ClickIt.Tests.Core
                 (_, _) => { },
                 (_, _) => { });
 
-            alertService.SetAlertSoundPathForTests(null);
+            alertService.SetAlertSoundPathOverride(null);
 
             alertService.TryTriggerAlertForMatchedMod("alpha");
 
@@ -58,7 +58,7 @@ namespace ClickIt.Tests.Core
                     (_, _) => { },
                     (_, _) => { });
 
-                alertService.SetAlertSoundPathForTests(tmp);
+                alertService.SetAlertSoundPathOverride(tmp);
 
                 alertService.TryTriggerAlertForMatchedMod("alpha");
 

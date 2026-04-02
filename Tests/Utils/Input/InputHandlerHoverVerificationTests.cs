@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ClickIt.Utils;
+using ClickIt.Services.Click.Interaction;
 
 namespace ClickIt.Tests.Utils.Input
 {
@@ -24,7 +25,7 @@ namespace ClickIt.Tests.Utils.Input
             ulong hoverAddress,
             bool expected)
         {
-            bool result = InputHandler.ShouldSkipClickDueToHoverMismatch(
+            bool result = InteractionExecutor.ShouldSkipClickDueToHoverMismatch(
                 lazyModeEnabled,
                 verifyUiHoverWhenNotLazy,
                 expectedAddress,
@@ -36,14 +37,14 @@ namespace ClickIt.Tests.Utils.Input
         [TestMethod]
         public void ShouldSkipClickDueToHoverMismatch_RespectsForcedVerification_WhenNotLazyAndSettingDisabled()
         {
-            InputHandler.ShouldSkipClickDueToHoverMismatch(
+            InteractionExecutor.ShouldSkipClickDueToHoverMismatch(
                 lazyModeEnabled: false,
                 verifyUiHoverWhenNotLazy: false,
                 expectedAddress: 100UL,
                 hoverAddress: 200UL,
                 forceUiHoverVerification: true).Should().BeTrue();
 
-            InputHandler.ShouldSkipClickDueToHoverMismatch(
+            InteractionExecutor.ShouldSkipClickDueToHoverMismatch(
                 lazyModeEnabled: false,
                 verifyUiHoverWhenNotLazy: false,
                 expectedAddress: 100UL,
@@ -56,7 +57,7 @@ namespace ClickIt.Tests.Utils.Input
         {
             var requested = new SharpDX.Vector2(123f, 456f);
 
-            var resolved = InputHandler.ResolveClickExecutionPosition(requested, avoidCursorMove: false);
+            var resolved = InteractionExecutor.ResolveClickExecutionPosition(requested, avoidCursorMove: false);
 
             resolved.Should().Be(requested);
         }

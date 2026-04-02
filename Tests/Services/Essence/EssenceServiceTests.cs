@@ -2,7 +2,7 @@ using ClickIt.Services;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Services.Essence
+namespace ClickIt.Tests.Essence
 {
     [TestClass]
     public class EssenceServiceTests

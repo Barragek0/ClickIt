@@ -4,7 +4,7 @@ using ClickIt.Services;
 using ClickIt.Utils;
 using ClickIt.Definitions;
 
-namespace ClickIt.Tests.Services.Altar
+namespace ClickIt.Tests.Altar
 {
     [TestClass]
     public class AltarMatcherTests
@@ -85,7 +85,7 @@ namespace ClickIt.Tests.Services.Altar
             string modText = "SomeModId";
             string negativeModType = "Player gains:";
 
-            matcher.SeedModMatchCacheForTests(modText, negativeModType, true, "SomeModId");
+            matcher.SeedModMatchCacheEntry(modText, negativeModType, true, "SomeModId");
 
             bool result = matcher.TryMatchModCached(modText, negativeModType, out bool isUpside, out string matchedId);
 
@@ -104,7 +104,7 @@ namespace ClickIt.Tests.Services.Altar
             string second = matcher.CleanAltarModsText(input);
 
             first.Should().Be(second);
-            matcher.HasCleanedTextCacheEntryForTests(input).Should().BeTrue();
+            matcher.HasCleanedTextCacheEntry(input).Should().BeTrue();
         }
 
         [TestMethod]
@@ -125,8 +125,8 @@ namespace ClickIt.Tests.Services.Altar
 
             matcher.ClearCaches();
 
-            matcher.GetModMatchCacheCountForTests().Should().Be(0);
-            matcher.GetTextCleanCacheCountForTests().Should().Be(0);
+            matcher.GetModMatchCacheCount().Should().Be(0);
+            matcher.GetTextCleanCacheCount().Should().Be(0);
         }
     }
 }

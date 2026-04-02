@@ -1,5 +1,6 @@
 using ClickIt.Services;
 using ClickIt.Services.Label.Application;
+using ClickIt.Services.Label.Diagnostics;
 using ClickIt.Services.Label.Selection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -12,7 +13,7 @@ namespace ClickIt.Tests.Label.Application
         [TestMethod]
         public void GetNextLabelToClick_PublishesNoLabelsDebugEvent_WhenInputIsNull()
         {
-            global::ClickIt.Services.LabelFilterService.LabelDebugEvent? publishedEvent = null;
+            LabelDebugEvent? publishedEvent = null;
             var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
                 GameController: null,
                 CreateClickSettings: static _ => new ClickSettings(),

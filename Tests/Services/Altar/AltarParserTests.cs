@@ -3,7 +3,7 @@ using FluentAssertions;
 using ClickIt.Services;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.Services.Altar
+namespace ClickIt.Tests.Altar
 {
     [TestClass]
     public class AltarParserTests

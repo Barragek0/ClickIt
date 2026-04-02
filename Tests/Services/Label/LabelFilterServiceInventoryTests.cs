@@ -3,7 +3,7 @@ using ClickIt.Services.Label.Inventory;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Services.Label
+namespace ClickIt.Tests.Label
 {
     [TestClass]
     public class LabelFilterServiceInventoryTests

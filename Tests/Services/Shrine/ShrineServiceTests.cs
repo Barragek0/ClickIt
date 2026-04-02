@@ -7,7 +7,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ClickIt.Tests.Services.Shrine
+namespace ClickIt.Tests.Shrine
 {
     [TestClass]
     public class ShrineServiceTests
@@ -15,7 +15,7 @@ namespace ClickIt.Tests.Services.Shrine
         [TestCleanup]
         public void Cleanup()
         {
-            ShrineService.ClearThreadLocalStorageForTests();
+            ShrineService.ResetThreadLocalStorage();
         }
 
         [TestMethod]
@@ -23,9 +23,9 @@ namespace ClickIt.Tests.Services.Shrine
         {
             var service = CreateService();
 
-            service.SeedCacheWithSingleNullEntryForTests(0);
-            service.StartCacheTimerForTests();
-            service.SeedCacheWithSingleNullEntryForTests(service.GetCacheElapsedMillisecondsForTests());
+            service.SeedCacheWithSingleNullEntry(0);
+            service.EnsureCacheTimerStarted();
+            service.SeedCacheWithSingleNullEntry(service.GetCacheElapsedMilliseconds());
 
             service.AreShrinesPresent().Should().BeTrue();
         }
@@ -35,9 +35,9 @@ namespace ClickIt.Tests.Services.Shrine
         {
             var service = CreateService();
 
-            service.SeedCacheWithSingleNullEntryForTests(0);
-            service.StartCacheTimerForTests();
-            service.SeedCacheWithSingleNullEntryForTests(-1000L);
+            service.SeedCacheWithSingleNullEntry(0);
+            service.EnsureCacheTimerStarted();
+            service.SeedCacheWithSingleNullEntry(-1000L);
 
             service.AreShrinesPresent().Should().BeFalse();
         }
@@ -45,14 +45,14 @@ namespace ClickIt.Tests.Services.Shrine
         [TestMethod]
         public void ThreadLocalShrineList_IsIsolatedPerThread()
         {
-            ShrineService.ClearThreadLocalStorageForTests();
+            ShrineService.ResetThreadLocalStorage();
 
-            int mainThreadId = ShrineService.GetThreadLocalShrineListInstanceIdForTests();
+            int mainThreadId = ShrineService.GetThreadLocalShrineListInstanceId();
             int workerThreadId = 0;
 
             var thread = new Thread(() =>
             {
-                workerThreadId = ShrineService.GetThreadLocalShrineListInstanceIdForTests();
+                workerThreadId = ShrineService.GetThreadLocalShrineListInstanceId();
             });
 
             thread.Start();
@@ -66,12 +66,12 @@ namespace ClickIt.Tests.Services.Shrine
         public void InvalidateCache_ClearsCachedShrines()
         {
             var service = CreateService();
-            service.SeedCacheWithSingleNullEntryForTests(123L);
+            service.SeedCacheWithSingleNullEntry(123L);
 
             service.InvalidateCache();
 
-            service.HasCachedShrinesForTests().Should().BeFalse();
-            service.GetLastShrineCacheTimeForTests().Should().Be(0);
+            service.HasCachedShrines().Should().BeFalse();
+            service.GetLastShrineCacheTime().Should().Be(0);
         }
 
         [TestMethod]
@@ -111,9 +111,9 @@ namespace ClickIt.Tests.Services.Shrine
         {
             var service = CreateService();
 
-            service.SeedCacheWithSingleNullEntryForTests(0);
-            service.StartCacheTimerForTests();
-            service.SeedCacheWithSingleNullEntryForTests(service.GetCacheElapsedMillisecondsForTests());
+            service.SeedCacheWithSingleNullEntry(0);
+            service.EnsureCacheTimerStarted();
+            service.SeedCacheWithSingleNullEntry(service.GetCacheElapsedMilliseconds());
 
             bool result = service.AreShrinesPresentInClickableArea(_ => true);
 
@@ -125,9 +125,9 @@ namespace ClickIt.Tests.Services.Shrine
         {
             var service = CreateService();
 
-            service.SeedCacheWithSingleNullEntryForTests(0);
-            service.StartCacheTimerForTests();
-            service.SeedCacheWithSingleNullEntryForTests(service.GetCacheElapsedMillisecondsForTests());
+            service.SeedCacheWithSingleNullEntry(0);
+            service.EnsureCacheTimerStarted();
+            service.SeedCacheWithSingleNullEntry(service.GetCacheElapsedMilliseconds());
 
             var nearest = service.GetNearestShrineInRange(100);
 

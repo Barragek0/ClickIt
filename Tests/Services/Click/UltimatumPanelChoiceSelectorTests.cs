@@ -2,7 +2,7 @@ using ClickIt.Services.Click.Runtime;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Services.Click
+namespace ClickIt.Tests.Click
 {
     [TestClass]
     public class UltimatumPanelChoiceSelectorTests

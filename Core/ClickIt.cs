@@ -1,6 +1,4 @@
 ﻿using ExileCore;
-using System.IO;
-using System.Diagnostics;
 using ClickIt.Core.Runtime;
 
 namespace ClickIt
@@ -11,6 +9,7 @@ namespace ClickIt
 
         private ClickItSettings? _settingsOverrideForTests;
         private DebugClipboardService? _debugClipboardService;
+        private PluginLifecycleButtonBindings? _lifecycleButtonBindings;
 
         private ClickItSettings EffectiveSettings => Settings ?? _settingsOverrideForTests ?? new ClickItSettings();
 
@@ -20,6 +19,9 @@ namespace ClickIt
                 this,
                 GetEffectiveSettingsForLifecycle,
                 () => GameController));
+
+        internal PluginLifecycleButtonBindings LifecycleButtonBindings
+            => _lifecycleButtonBindings ??= new PluginLifecycleButtonBindings(this, DebugClipboardService);
 
         public override void OnLoad()
         {
@@ -47,62 +49,33 @@ namespace ClickIt
             return PluginLifecycleCoordinator.Initialise(this, settings);
         }
 
-        internal void SubscribeLifecycleButtonHandlers(ClickItSettings settings)
-        {
-            settings.ReportBugButton.OnPressed += ReportBugButtonPressed;
-            settings.CopyAdditionalDebugInfoButton.OnPressed += CopyAdditionalDebugInfoButtonPressed;
-        }
-
-        internal void UnsubscribeLifecycleButtonHandlers(ClickItSettings runtimeSettings)
-        {
-            runtimeSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
-            runtimeSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
-            if (!ReferenceEquals(runtimeSettings, EffectiveSettings))
-            {
-                EffectiveSettings.ReportBugButton.OnPressed -= ReportBugButtonPressed;
-                EffectiveSettings.CopyAdditionalDebugInfoButton.OnPressed -= CopyAdditionalDebugInfoButtonPressed;
-            }
-        }
-
-        private void ReportBugButtonPressed()
-        {
-            _ = Process.Start("explorer", "http://github.com/Barragek0/ClickIt/issues");
-        }
-
-        private void CopyAdditionalDebugInfoButtonPressed()
-        {
-            DebugClipboardService.RequestAdditionalDebugInfoCopy();
-            if (GameController != null)
-                DebugClipboardService.QueueDeepMemoryDumpCoroutine();
-        }
-
         public override void Render()
         {
-            if (State.IsShuttingDown || State.PerformanceMonitor == null) return;
+            if (State.Runtime.IsShuttingDown || State.Services.PerformanceMonitor == null) return;
 
             // Set flag to prevent logging during render loop
-            State.IsRendering = true;
+            State.Rendering.IsRendering = true;
             try
             {
                 RenderInternal();
             }
             finally
             {
-                State.IsRendering = false;
+                State.Rendering.IsRendering = false;
             }
         }
 
         public void LogMessage(string message, int frame = 5)
         {
             // Skip logging during render loop to prevent crashes
-            if (State.IsRendering) return;
+            if (State.Rendering.IsRendering) return;
             base.LogMessage(message, frame);
         }
 
         public void LogMessage(bool localDebug, string message, int frame = 0)
         {
             // Skip logging during render loop to prevent crashes
-            if (State.IsRendering) return;
+            if (State.Rendering.IsRendering) return;
             if (!localDebug || EffectiveSettings.DebugMode)
             {
                 base.LogMessage(message, frame);
@@ -111,13 +84,18 @@ namespace ClickIt
         public void LogError(string message, int frame = 0)
         {
             // Skip logging during render loop to prevent crashes
-            if (State.IsRendering) return;
+            if (State.Rendering.IsRendering) return;
             base.LogError(message, frame);
         }
 
         internal Services.AlertService GetAlertService()
         {
-            return GetOrCreateAlertService();
+            return PluginAlertServiceHost.GetOrCreateAlertService(this);
+        }
+
+        internal DebugClipboardService GetDebugClipboardService()
+        {
+            return DebugClipboardService;
         }
 
         internal ClickItSettings GetEffectiveSettingsForLifecycle()
@@ -128,37 +106,6 @@ namespace ClickIt
         internal void SetSettingsForTests(ClickItSettings settings)
         {
             _settingsOverrideForTests = settings ?? throw new ArgumentNullException(nameof(settings));
-        }
-
-        internal bool TryAutoCopyInventoryWarningDebugSnapshotForLifecycle(Services.Label.Inventory.InventoryDebugSnapshot snapshot, long now)
-        {
-            string[] debugLines = State.DeferredTextQueue?.GetPendingTextSnapshot(0) ?? [];
-            return DebugClipboardService.TryAutoCopyInventoryWarningDebugSnapshot(snapshot, now, debugLines);
-        }
-
-        private Services.AlertService GetOrCreateAlertService()
-        {
-            State.AlertService ??= new Services.AlertService(
-                () => Settings,
-                () => EffectiveSettings,
-                SafeGetConfigDirectory,
-                () => GameController,
-                LogMessage,
-                LogError);
-
-            return State.AlertService;
-        }
-
-        private string SafeGetConfigDirectory()
-        {
-            try
-            {
-                return ConfigDirectory;
-            }
-            catch
-            {
-                return Path.GetTempPath();
-            }
         }
 
     }

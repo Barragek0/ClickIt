@@ -5,7 +5,7 @@ using ClickIt.Services.Area;
 using SharpDX;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.Services.Area
+namespace ClickIt.Tests.Area
 {
     [TestClass]
     public class AreaServiceTests

@@ -7,7 +7,7 @@ using ClickIt.Services;
 using ClickIt.Components;
 using ExileCore.PoEMemory;
 
-namespace ClickIt.Tests.Services.Altar
+namespace ClickIt.Tests.Altar
 {
     [TestClass]
     public class AltarServiceTests

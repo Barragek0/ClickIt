@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ClickIt.Definitions;
 using ClickIt.Services;
+using ClickIt.Services.Label.Classification;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
@@ -17,21 +18,21 @@ namespace ClickIt.Tests.Core
             var whitelist = new[] { "Items/Currency/", "Items/Scarabs/" };
             var blacklist = new[] { "Items/Scarabs/" };
 
-            LabelFilterService.MatchesMetadataFiltersForTests("Metadata/Items/Currency/CurrencyModValues", whitelist, blacklist).Should().BeTrue();
-            LabelFilterService.MatchesMetadataFiltersForTests("Metadata/Items/Scarabs/PolishedScarab", whitelist, blacklist).Should().BeFalse();
-            LabelFilterService.MatchesMetadataFiltersForTests("Metadata/Items/Maps/MapTier16", whitelist, blacklist).Should().BeFalse();
+            MetadataFilterMatcher.Matches("Metadata/Items/Currency/CurrencyModValues", whitelist, blacklist).Should().BeTrue();
+            MetadataFilterMatcher.Matches("Metadata/Items/Scarabs/PolishedScarab", whitelist, blacklist).Should().BeFalse();
+            MetadataFilterMatcher.Matches("Metadata/Items/Maps/MapTier16", whitelist, blacklist).Should().BeFalse();
         }
 
         [TestMethod]
         public void MetadataFilter_SpecialHeistContractRules_MatchExpectedNames()
         {
-            LabelFilterService.MatchesMetadataFiltersForTests(
+            MetadataFilterMatcher.Matches(
                 "Metadata/Items/Heist/HeistContract",
                 "Contract: Trial Run",
                 new[] { "special:heist-quest-contract" },
                 Array.Empty<string>()).Should().BeTrue();
 
-            LabelFilterService.MatchesMetadataFiltersForTests(
+            MetadataFilterMatcher.Matches(
                 "Metadata/Items/Heist/HeistContract",
                 "Contract: Bunker",
                 new[] { "special:heist-non-quest-contract" },
@@ -41,14 +42,14 @@ namespace ClickIt.Tests.Core
         [TestMethod]
         public void MetadataFilter_StoneOfPassageMetadataPath_MatchesExpectedIdentifier()
         {
-            LabelFilterService.MatchesMetadataFiltersForTests(
+            MetadataFilterMatcher.Matches(
                 "Metadata/Items/QuestItems/Incursion/IncursionKey",
                 string.Empty,
                 "Stone of Passage",
                 new[] { "Incursion/IncursionKey" },
                 Array.Empty<string>()).Should().BeTrue();
 
-            LabelFilterService.MatchesMetadataFiltersForTests(
+            MetadataFilterMatcher.Matches(
                 "Metadata/Items/QuestItems/Incursion/SomeOtherQuestItem",
                 string.Empty,
                 "Stone of Passage",
@@ -89,6 +90,36 @@ namespace ClickIt.Tests.Core
 
             settings.ItemTypeWhitelistIds.Should().Contain("wombgifts");
             settings.ItemTypeBlacklistIds.Should().NotContain("wombgifts");
+        }
+
+        [TestMethod]
+        public void ItemTypeMetadataSnapshots_RemoveIdentifiers_WhenSelectionChanges()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ItemTypeWhitelistIds = ["gold"];
+            settings.ItemTypeBlacklistIds = ["currency"];
+            settings.GetItemTypeWhitelistMetadataIdentifiers().Should().Contain("Items/Gold/");
+
+            settings.ItemTypeWhitelistIds = ["currency"];
+            settings.ItemTypeBlacklistIds = ["gold"];
+
+            settings.GetItemTypeWhitelistMetadataIdentifiers().Should().NotContain("Items/Gold/");
+        }
+
+        [TestMethod]
+        public void StrongboxMetadataSnapshots_RemoveIdentifiers_WhenSelectionChanges()
+        {
+            var settings = new ClickItSettings();
+
+            settings.StrongboxClickIds = ["arcanist"];
+            settings.StrongboxDontClickIds = ["artisan"];
+            settings.GetStrongboxClickMetadataIdentifiers().Should().Contain(x => x.Contains("Arcanist", StringComparison.OrdinalIgnoreCase));
+
+            settings.StrongboxClickIds = ["artisan"];
+            settings.StrongboxDontClickIds = ["arcanist"];
+
+            settings.GetStrongboxClickMetadataIdentifiers().Should().NotContain(x => x.Contains("Arcanist", StringComparison.OrdinalIgnoreCase));
         }
 
         [TestMethod]

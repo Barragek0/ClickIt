@@ -1,4 +1,5 @@
 using ClickIt.Utils;
+using ClickIt.Utils.Input;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -13,10 +14,9 @@ namespace ClickIt.Tests.Utils.Input
         {
             var settings = new ClickItSettings();
             settings.ToggleItemsPostToggleClickBlockMs.Value = -25;
-            var perf = new PerformanceMonitor(settings);
-            var handler = new InputHandler(settings, perf);
+            var controller = new ToggleItemsController(settings, static (_, _) => { });
 
-            handler.GetToggleItemsPostClickBlockMs().Should().Be(0);
+            controller.GetToggleItemsPostClickBlockMs().Should().Be(0);
         }
 
         [TestMethod]
@@ -24,13 +24,12 @@ namespace ClickIt.Tests.Utils.Input
         {
             var settings = new ClickItSettings();
             settings.ToggleItemsPostToggleClickBlockMs.Value = 500;
-            var perf = new PerformanceMonitor(settings);
-            var handler = new InputHandler(settings, perf);
+            var controller = new ToggleItemsController(settings, static (_, _) => { });
 
             long now = Environment.TickCount64;
-            handler.SetLastToggleItemsTimestampForTests(now - 50L);
+            controller.SetLastToggleItemsTimestamp(now - 50L);
 
-            bool inWindow = handler.IsInToggleItemsPostClickBlockWindowForTests();
+            bool inWindow = controller.IsInPostClickBlockWindow();
 
             inWindow.Should().BeTrue();
         }
@@ -40,13 +39,12 @@ namespace ClickIt.Tests.Utils.Input
         {
             var settings = new ClickItSettings();
             settings.ToggleItemsPostToggleClickBlockMs.Value = 500;
-            var perf = new PerformanceMonitor(settings);
-            var handler = new InputHandler(settings, perf);
+            var controller = new ToggleItemsController(settings, static (_, _) => { });
 
             long now = Environment.TickCount64;
-            handler.SetLastToggleItemsTimestampForTests(now + 100L);
+            controller.SetLastToggleItemsTimestamp(now + 100L);
 
-            bool inWindow = handler.IsInToggleItemsPostClickBlockWindowForTests();
+            bool inWindow = controller.IsInPostClickBlockWindow();
 
             inWindow.Should().BeFalse();
         }
@@ -56,10 +54,9 @@ namespace ClickIt.Tests.Utils.Input
         {
             var settings = new ClickItSettings();
             settings.ToggleItems.Value = false;
-            var perf = new PerformanceMonitor(settings);
-            var handler = new InputHandler(settings, perf);
+            var controller = new ToggleItemsController(settings, static (_, _) => { });
 
-            bool triggered = handler.TriggerToggleItems();
+            bool triggered = controller.TriggerToggleItems();
 
             triggered.Should().BeFalse();
         }
@@ -70,12 +67,11 @@ namespace ClickIt.Tests.Utils.Input
             var settings = new ClickItSettings();
             settings.ToggleItems.Value = true;
             settings.ToggleItemsIntervalMs.Value = 1000;
-            var perf = new PerformanceMonitor(settings);
-            var handler = new InputHandler(settings, perf);
+            var controller = new ToggleItemsController(settings, static (_, _) => { });
 
-            handler.SetLastToggleItemsTimestampForTests(Environment.TickCount64);
+            controller.SetLastToggleItemsTimestamp(Environment.TickCount64);
 
-            bool triggered = handler.TriggerToggleItems();
+            bool triggered = controller.TriggerToggleItems();
 
             triggered.Should().BeFalse();
         }

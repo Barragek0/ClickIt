@@ -94,7 +94,7 @@ namespace ClickIt.Utils
             return Volatile.Read(ref _pendingCount);
         }
 
-        internal (RectangleF Rectangle, Color Color, int Thickness)[] GetSnapshotForTests()
+        internal (RectangleF Rectangle, Color Color, int Thickness)[] GetPendingFrameSnapshot()
         {
             lock (_queueLock)
             {

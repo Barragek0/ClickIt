@@ -4,30 +4,34 @@ namespace ClickIt.Core.Runtime
     {
         internal static void Reset(PluginContext context)
         {
-            context.AreaService = null;
-            context.AltarService = null;
-            context.ShrineService = null;
-            context.InputHandler = null;
-            context.DebugRenderer = null;
-            context.StrongboxRenderer = null;
-            context.UltimatumRenderer = null;
-            context.LazyModeRenderer = null;
-            context.ClickHotkeyToggleRenderer = null;
-            context.InventoryFullWarningRenderer = null;
-            context.PathfindingRenderer = null;
-            context.DeferredTextQueue = null;
-            context.DeferredFrameQueue = null;
-            context.AltarDisplayRenderer = null;
-            context.PathfindingService = null;
-            context.AlertService = null;
-            context.LabelService = null;
-            context.LabelFilterService = null;
-            context.ClickService = null;
-            context.ClickRuntimeHost = null;
-            context.Camera = null;
-            context.PerformanceMonitor = null;
-            context.ErrorHandler = null;
-            context.CachedLabels = null;
+            PluginServices serviceState = context.Services;
+            PluginRenderingState renderingState = context.Rendering;
+
+            serviceState.AreaService = null;
+            serviceState.AltarService = null;
+            serviceState.ShrineService = null;
+            serviceState.InputHandler = null;
+            serviceState.PathfindingService = null;
+            serviceState.AlertService = null;
+            serviceState.LabelService = null;
+            serviceState.LabelFilterService = null;
+            serviceState.ClickService = null;
+            serviceState.Camera = null;
+            serviceState.PerformanceMonitor = null;
+            serviceState.ErrorHandler = null;
+            serviceState.CachedLabels = null;
+
+            renderingState.DebugRenderer = null;
+            renderingState.StrongboxRenderer = null;
+            renderingState.UltimatumRenderer = null;
+            renderingState.LazyModeRenderer = null;
+            renderingState.ClickHotkeyToggleRenderer = null;
+            renderingState.InventoryFullWarningRenderer = null;
+            renderingState.PathfindingRenderer = null;
+            renderingState.DeferredTextQueue = null;
+            renderingState.DeferredFrameQueue = null;
+            renderingState.AltarDisplayRenderer = null;
+            renderingState.ClickRuntimeHost = null;
         }
     }
 }

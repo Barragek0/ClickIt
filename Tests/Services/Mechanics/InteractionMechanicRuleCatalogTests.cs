@@ -7,7 +7,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.CompilerServices;
 
-namespace ClickIt.Tests.Services.Mechanics
+namespace ClickIt.Tests.Mechanics
 {
     [TestClass]
     public class InteractionMechanicRuleCatalogTests

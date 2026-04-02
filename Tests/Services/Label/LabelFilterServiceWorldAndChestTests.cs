@@ -6,7 +6,7 @@ using ExileCore.Shared.Enums;
 using ClickIt.Definitions;
 using ClickIt.Services.Label.Classification;
 
-namespace ClickIt.Tests.Services.Label
+namespace ClickIt.Tests.Label
 {
     [TestClass]
     public class LabelFilterServiceWorldAndChestTests
@@ -215,22 +215,22 @@ namespace ClickIt.Tests.Services.Label
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_RequiresMatchingLevels_WhenIncubatorPathRuleApplies()
         {
-            global::ClickIt.Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, true, 68, true, 69).Should().BeFalse();
-            global::ClickIt.Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, true, 68, true, 68).Should().BeTrue();
+            global::ClickIt.Services.Label.Inventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, true, 69).Should().BeFalse();
+            global::ClickIt.Services.Label.Inventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, true, 68).Should().BeTrue();
         }
 
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_Rejects_WhenEitherLevelIsMissing()
         {
-            global::ClickIt.Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, false, 68, true, 68).Should().BeFalse();
-            global::ClickIt.Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(true, true, 68, false, 68).Should().BeFalse();
+            global::ClickIt.Services.Label.Inventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, false, 68, true, 68).Should().BeFalse();
+            global::ClickIt.Services.Label.Inventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, false, 68).Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_AllowsAllLevels_WhenRuleDoesNotApply()
         {
-            global::ClickIt.Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(false, false, 0, false, 0).Should().BeTrue();
-            global::ClickIt.Services.LabelFilterService.ShouldAllowIncubatorStackMatchCore(false, true, 1, true, 999).Should().BeTrue();
+            global::ClickIt.Services.Label.Inventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(false, false, 0, false, 0).Should().BeTrue();
+            global::ClickIt.Services.Label.Inventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(false, true, 1, true, 999).Should().BeTrue();
         }
 
         [TestMethod]

@@ -82,7 +82,7 @@ namespace ClickIt.Services
             }
         }
 
-        internal void SeedModMatchCacheForTests(string mod, string negativeModType, bool isUpside, string matchedId)
+        internal void SeedModMatchCacheEntry(string mod, string negativeModType, bool isUpside, string matchedId)
         {
             string cacheKey = $"{mod}|{negativeModType}";
             lock (_modMatchCacheLock)
@@ -91,7 +91,7 @@ namespace ClickIt.Services
             }
         }
 
-        internal bool HasCleanedTextCacheEntryForTests(string text)
+        internal bool HasCleanedTextCacheEntry(string text)
         {
             lock (_textCleanCacheLock)
             {
@@ -99,7 +99,7 @@ namespace ClickIt.Services
             }
         }
 
-        internal int GetModMatchCacheCountForTests()
+        internal int GetModMatchCacheCount()
         {
             lock (_modMatchCacheLock)
             {
@@ -107,7 +107,7 @@ namespace ClickIt.Services
             }
         }
 
-        internal int GetTextCleanCacheCountForTests()
+        internal int GetTextCleanCacheCount()
         {
             lock (_textCleanCacheLock)
             {

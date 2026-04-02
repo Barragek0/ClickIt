@@ -67,7 +67,7 @@ namespace ClickIt.Tests.Utils
                 // The StartCoroutines implementation may call into runtime-specific threads; ignore runtime-specific failures but assert that at least the altar coroutine was created.
             }
 
-            var altarCoroutine = ctx.AltarCoroutine;
+            var altarCoroutine = ctx.Runtime.AltarCoroutine;
             altarCoroutine.Should().NotBeNull();
             altarCoroutine!.Priority.Should().Be(ExileCore.Shared.Enums.CoroutinePriority.Normal);
         }
@@ -81,23 +81,23 @@ namespace ClickIt.Tests.Utils
 
             var ctx = new PluginContext();
             var perf = new global::ClickIt.Utils.PerformanceMonitor(settings);
-            ctx.PerformanceMonitor = perf;
-            ctx.ClickService = (global::ClickIt.Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.ClickService));
+            ctx.Services.PerformanceMonitor = perf;
+            ctx.Services.ClickService = (global::ClickIt.Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.ClickService));
 
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
             var eh = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
             var cm = new global::ClickIt.Utils.CoroutineManager(ctx, settings, gc!, eh);
 
-            ctx.Timer.Restart();
-            ctx.Timer.Stop();
-            ctx.Timer.Reset();
+            ctx.Runtime.Timer.Restart();
+            ctx.Runtime.Timer.Stop();
+            ctx.Runtime.Timer.Reset();
 
-            var enumerator = cm.RunClickLabelStepForTests();
+            var enumerator = cm.RunClickLabelStep();
             enumerator.Should().NotBeNull();
 
             enumerator!.MoveNext();
-            ctx.WorkFinished.Should().BeTrue();
+            ctx.Runtime.WorkFinished.Should().BeTrue();
         }
 
         [TestMethod]

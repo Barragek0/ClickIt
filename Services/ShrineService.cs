@@ -183,23 +183,23 @@ namespace ClickIt.Services
             _threadLocalShrineList = null;
         }
 
-        internal static void ClearThreadLocalStorageForTests()
+        internal static void ResetThreadLocalStorage()
         {
             _threadLocalShrineList = null;
         }
 
-        internal static int GetThreadLocalShrineListInstanceIdForTests()
+        internal static int GetThreadLocalShrineListInstanceId()
         {
             return RuntimeHelpers.GetHashCode(GetThreadLocalShrineList());
         }
 
-        internal void SeedCacheWithSingleNullEntryForTests(long lastShrineCacheTime)
+        internal void SeedCacheWithSingleNullEntry(long lastShrineCacheTime)
         {
             _cachedShrines = [null!];
             _lastShrineCacheTime = lastShrineCacheTime;
         }
 
-        internal void StartCacheTimerForTests()
+        internal void EnsureCacheTimerStarted()
         {
             if (!_shrineCacheTimer.IsRunning)
             {
@@ -207,17 +207,17 @@ namespace ClickIt.Services
             }
         }
 
-        internal long GetCacheElapsedMillisecondsForTests()
+        internal long GetCacheElapsedMilliseconds()
         {
             return _shrineCacheTimer.ElapsedMilliseconds;
         }
 
-        internal bool HasCachedShrinesForTests()
+        internal bool HasCachedShrines()
         {
             return _cachedShrines != null;
         }
 
-        internal long GetLastShrineCacheTimeForTests()
+        internal long GetLastShrineCacheTime()
         {
             return _lastShrineCacheTime;
         }

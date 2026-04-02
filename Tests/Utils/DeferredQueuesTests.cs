@@ -10,14 +10,14 @@ namespace ClickIt.Tests.Utils
     public class DeferredQueuesTests
     {
         [TestMethod]
-        public void DeferredFrameQueue_Enqueue_GetSnapshotForTests()
+        public void DeferredFrameQueue_Enqueue_GetPendingFrameSnapshot()
         {
             var q = new DeferredFrameQueue();
             var rect = new RectangleF(0, 0, 10, 10);
             var color = Color.Red;
 
             q.Enqueue(rect, color, 2);
-            var snapshot = q.GetSnapshotForTests();
+            var snapshot = q.GetPendingFrameSnapshot();
             snapshot.Should().HaveCount(1);
             snapshot[0].Rectangle.Should().Be(rect);
             snapshot[0].Thickness.Should().Be(2);
@@ -36,7 +36,7 @@ namespace ClickIt.Tests.Utils
             q.Enqueue(rect2, Color.Green, 2);
             q.Enqueue(rect3, Color.Blue, 3);
 
-            var snapshot = q.GetSnapshotForTests();
+            var snapshot = q.GetPendingFrameSnapshot();
             snapshot.Should().HaveCount(3);
             snapshot[0].Rectangle.Should().Be(rect1);
             snapshot[1].Rectangle.Should().Be(rect2);
@@ -165,7 +165,7 @@ namespace ClickIt.Tests.Utils
             tf.Flush(gfx, (s, f) => { });
             tt.Flush(gfx, (s, f) => { });
 
-            tf.GetSnapshotForTests().Should().BeEmpty();
+            tf.GetPendingFrameSnapshot().Should().BeEmpty();
             tt.GetPendingTextSnapshot().Should().BeEmpty();
         }
 
@@ -194,7 +194,7 @@ namespace ClickIt.Tests.Utils
             queue.ClearPending();
 
             queue.GetPendingCount().Should().Be(0);
-            queue.GetSnapshotForTests().Should().BeEmpty();
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
         }
 
         [TestMethod]
@@ -222,7 +222,7 @@ namespace ClickIt.Tests.Utils
             }
 
             queue.GetPendingCount().Should().BeLessOrEqualTo(8192);
-            var snapshot = queue.GetSnapshotForTests();
+            var snapshot = queue.GetPendingFrameSnapshot();
             snapshot.Should().NotBeEmpty();
             snapshot[^1].Rectangle.X.Should().Be(11999);
         }

@@ -2,7 +2,7 @@ namespace ClickIt.Core.Settings.Runtime
 {
     internal static class MetadataSnapshotCache
     {
-        public static void RefreshPair(
+        public static bool RefreshPair(
             ref int currentSignature,
             int nextSignature,
             Func<string[]> buildPrimarySnapshot,
@@ -14,11 +14,12 @@ namespace ClickIt.Core.Settings.Runtime
             secondarySnapshot = [];
 
             if (currentSignature == nextSignature)
-                return;
+                return false;
 
             primarySnapshot = buildPrimarySnapshot();
             secondarySnapshot = buildSecondarySnapshot();
             currentSignature = nextSignature;
+            return true;
         }
     }
 }

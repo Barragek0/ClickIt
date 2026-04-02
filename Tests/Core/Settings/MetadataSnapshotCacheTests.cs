@@ -12,7 +12,7 @@ namespace ClickIt.Tests.Core.Settings
         {
             int signature = 1;
 
-            MetadataSnapshotCache.RefreshPair(
+            bool changed = MetadataSnapshotCache.RefreshPair(
                 ref signature,
                 2,
                 () => ["a"],
@@ -20,6 +20,7 @@ namespace ClickIt.Tests.Core.Settings
                 out string[] primary,
                 out string[] secondary);
 
+            changed.Should().BeTrue();
             signature.Should().Be(2);
             primary.Should().Equal("a");
             secondary.Should().Equal("b");
@@ -30,7 +31,7 @@ namespace ClickIt.Tests.Core.Settings
         {
             int signature = 2;
 
-            MetadataSnapshotCache.RefreshPair(
+            bool changed = MetadataSnapshotCache.RefreshPair(
                 ref signature,
                 2,
                 () => ["a"],
@@ -38,6 +39,7 @@ namespace ClickIt.Tests.Core.Settings
                 out string[] primary,
                 out string[] secondary);
 
+            changed.Should().BeFalse();
             signature.Should().Be(2);
             primary.Should().BeEmpty();
             secondary.Should().BeEmpty();

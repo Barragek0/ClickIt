@@ -9,7 +9,7 @@ using SharpDX;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace ClickIt.Tests.Services.Click
+namespace ClickIt.Tests.Click
 {
     [TestClass]
     public class UltimatumAutomationServiceTests

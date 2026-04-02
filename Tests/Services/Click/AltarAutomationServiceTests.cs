@@ -6,7 +6,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 
-namespace ClickIt.Tests.Services.Click
+namespace ClickIt.Tests.Click
 {
     [TestClass]
     public class AltarAutomationServiceTests

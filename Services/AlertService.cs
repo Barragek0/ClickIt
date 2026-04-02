@@ -23,7 +23,7 @@ namespace ClickIt.Services
 
         internal Dictionary<string, DateTime> LastAlertTimes => _lastAlertTimes;
         internal string? CurrentAlertSoundPath => _alertSoundPath;
-        internal void SetAlertSoundPathForTests(string? path) => _alertSoundPath = path;
+        internal void SetAlertSoundPathOverride(string? path) => _alertSoundPath = path;
 
         private const string AlertFileName = "alert.wav";
         private const string AlertDownloadUrl = "https://raw.githubusercontent.com/Barragek0/ClickIt/main/alert.wav";

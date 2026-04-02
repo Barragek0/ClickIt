@@ -1,104 +1,85 @@
 ﻿using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
-using ClickIt.Services.Observability;
+using ClickIt.Services.Pathfinding.Diagnostics;
+using ClickIt.Services.Pathfinding.Grid;
+using ClickIt.Services.Pathfinding.Projection;
+using ClickIt.Services.Pathfinding.Terrain;
+using ClickIt.Services.Pathfinding.Runtime;
 
 namespace ClickIt.Services
 {
-    public sealed partial class PathfindingService(ClickItSettings settings, Utils.ErrorHandler? errorHandler = null)
+    public sealed class PathfindingService(ClickItSettings settings, Utils.ErrorHandler? errorHandler = null)
     {
-        private const int OffscreenMovementDebugTrailCapacity = 24;
         private readonly ClickItSettings _settings = settings;
         private readonly Utils.ErrorHandler? _errorHandler = errorHandler;
-        private readonly DebugSnapshotChannel<OffscreenMovementDebugSnapshot, OffscreenMovementDebugEvent> _offscreenMovementDebugChannel = new(
-            OffscreenMovementDebugSnapshot.Empty,
-            OffscreenMovementDebugTrailCapacity,
-            static (snapshot, _) => snapshot,
-            static snapshot =>
-                $"{snapshot.Stage} Path={snapshot.TargetPath} Built={snapshot.BuiltPath} Resolved={snapshot.ResolvedClickPoint} | {snapshot.MovementSkillDebug}",
-            static debugEvent => new OffscreenMovementDebugSnapshot(
-                HasData: true,
-                Stage: debugEvent.Stage,
-                TargetPath: debugEvent.TargetPath,
-                BuiltPath: debugEvent.BuiltPath,
-                ResolvedFromPath: debugEvent.ResolvedFromPath,
-                ResolvedClickPoint: debugEvent.ResolvedClickPoint,
-                WindowCenter: debugEvent.WindowCenter,
-                TargetScreen: debugEvent.TargetScreen,
-                ClickScreen: debugEvent.ClickScreen,
-                PlayerGrid: debugEvent.PlayerGrid,
-                TargetGrid: debugEvent.TargetGrid,
-                MovementSkillDebug: debugEvent.MovementSkillDebug,
-                TimestampMs: Environment.TickCount64));
+        private readonly PathfindingRuntimeState _runtimeState = new();
+        private readonly OffscreenMovementDiagnosticsChannel _offscreenMovementDiagnostics = new();
+
+        internal PathfindingRuntimeState RuntimeState => _runtimeState;
 
         public readonly record struct GridPoint(int X, int Y);
 
-        public sealed record PathfindingDebugSnapshot(
-            bool TerrainLoaded,
-            int AreaWidth,
-            int AreaHeight,
-            int LastExpandedNodes,
-            int LastPathLength,
-            long LastComputeMs,
-            string LastFailureReason,
-            string LastTargetPath,
-            GridPoint LastStart,
-            GridPoint LastRequestedGoal,
-            GridPoint LastResolvedGoal,
-            bool LastGoalResolutionUsedFallback,
-            string LastGoalResolutionNote);
+        public PathfindingDebugSnapshot GetDebugSnapshot()
+            => _runtimeState.GetDebugSnapshot();
 
-        public sealed record OffscreenMovementDebugSnapshot(
-            bool HasData,
-            string Stage,
-            string TargetPath,
-            bool BuiltPath,
-            bool ResolvedFromPath,
-            bool ResolvedClickPoint,
-            Vector2 WindowCenter,
-            Vector2 TargetScreen,
-            Vector2 ClickScreen,
-            Vector2 PlayerGrid,
-            Vector2 TargetGrid,
-            string MovementSkillDebug,
-            long TimestampMs)
+        public IReadOnlyList<Vector2> GetLatestScreenPath()
+            => _runtimeState.GetLatestScreenPath();
+
+        public IReadOnlyList<GridPoint> GetLatestGridPath()
+            => _runtimeState.GetLatestGridPath();
+
+        public OffscreenMovementDebugSnapshot GetLatestOffscreenMovementDebug()
+            => _runtimeState.GetLatestOffscreenMovementDebug();
+
+        public void SetLatestOffscreenMovementDebug(OffscreenMovementDebugSnapshot snapshot)
+            => _runtimeState.SetLatestOffscreenMovementDebug(snapshot);
+
+        public void ClearLatestPath()
+            => _runtimeState.ClearLatestPath();
+
+        internal bool ClearPathIfStale(int staleTimeoutMs)
+            => _runtimeState.ClearPathIfStale(staleTimeoutMs);
+
+        private void MarkPathBuildAttempt()
+            => _runtimeState.MarkPathBuildAttempt();
+
+        private void SetFailedPathBuildSnapshot(int expandedNodes, long computeMs, string targetPath, string failureReason)
+            => _runtimeState.SetFailedPathBuildSnapshot(expandedNodes, computeMs, targetPath, failureReason);
+
+        private void SetSuccessfulPathBuildSnapshot(
+            bool[][] walkable,
+            GridPoint dims,
+            int expandedNodes,
+            long computeMs,
+            string targetPath,
+            IReadOnlyList<GridPoint> gridPath,
+            IReadOnlyList<Vector2> screenPath)
+            => _runtimeState.SetSuccessfulPathBuildSnapshot(walkable, dims, expandedNodes, computeMs, targetPath, gridPath, screenPath);
+
+        private void SetGoalResolutionDebugSnapshot(
+            GridPoint start,
+            GridPoint requestedGoal,
+            GridPoint resolvedGoal,
+            bool usedFallback,
+            string note)
+            => _runtimeState.SetGoalResolutionDebugSnapshot(start, requestedGoal, resolvedGoal, usedFallback, note);
+
+        private bool Fail(string reason)
         {
-            public static readonly OffscreenMovementDebugSnapshot Empty = new(
-                HasData: false,
-                Stage: string.Empty,
-                TargetPath: string.Empty,
-                BuiltPath: false,
-                ResolvedFromPath: false,
-                ResolvedClickPoint: false,
-                WindowCenter: default,
-                TargetScreen: default,
-                ClickScreen: default,
-                PlayerGrid: default,
-                TargetGrid: default,
-                MovementSkillDebug: string.Empty,
-                TimestampMs: 0);
+            _runtimeState.Fail(reason);
+
+            _errorHandler?.LogMessage(localDebug: true, message: $"PathfindingService: {reason}", frame: 10);
+            return false;
         }
 
-        public sealed record OffscreenMovementDebugEvent(
-            string Stage,
-            string TargetPath,
-            bool BuiltPath,
-            bool ResolvedFromPath,
-            bool ResolvedClickPoint,
-            Vector2 WindowCenter,
-            Vector2 TargetScreen,
-            Vector2 ClickScreen,
-            Vector2 PlayerGrid,
-            Vector2 TargetGrid,
-            string MovementSkillDebug);
-
         public IReadOnlyList<string> GetLatestOffscreenMovementDebugTrail()
-            => _offscreenMovementDebugChannel.GetTrail();
+            => _offscreenMovementDiagnostics.GetTrail();
 
         public void PublishOffscreenMovementDebugEvent(OffscreenMovementDebugEvent debugEvent)
         {
-            _offscreenMovementDebugChannel.PublishEvent(debugEvent);
-            SetLatestOffscreenMovementDebug(_offscreenMovementDebugChannel.GetLatest());
+            _offscreenMovementDiagnostics.PublishEvent(debugEvent);
+            SetLatestOffscreenMovementDebug(_offscreenMovementDiagnostics.GetLatest());
         }
 
         public bool TryBuildPathToTarget(GameController? gameController, Entity? target, int maxExpandedNodes)
@@ -108,16 +89,18 @@ namespace ClickIt.Services
             if (gameController == null || target == null)
                 return Fail("GameController/target unavailable.");
 
-            if (!TryRefreshTerrainData(gameController, out bool[][] walkable, out GridPoint dims))
+            if (!PathTerrainSnapshotProvider.TryRefreshTerrainData(gameController, out bool[][] walkable, out GridPoint dims))
                 return Fail("Terrain/pathfinding data unavailable.");
 
-            if (!TryGetGridPos(gameController.Player, out GridPoint start))
+            _runtimeState.SetTerrainSnapshot(walkable, dims);
+
+            if (!PathGridSearch.TryGetGridPos(gameController.Player, out GridPoint start))
                 return Fail("Unable to resolve player grid position.");
 
-            if (!TryGetGridPos(target, out GridPoint goal))
+            if (!PathGridSearch.TryGetGridPos(target, out GridPoint goal))
                 return Fail("Unable to resolve target grid position.");
 
-            if (!TryResolveBestEffortGoal(
+            if (!PathGridSearch.TryResolveBestEffortGoal(
                     walkable,
                     start,
                     goal,
@@ -140,7 +123,7 @@ namespace ClickIt.Services
             SetGoalResolutionDebugSnapshot(start, goal, walkableGoal, usedGoalFallback, goalResolutionNote);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            List<GridPoint>? gridPath = FindPathAStar(walkable, start, walkableGoal, Math.Max(100, maxExpandedNodes), out int expandedNodes);
+            List<GridPoint>? gridPath = PathGridSearch.FindPathAStar(walkable, start, walkableGoal, Math.Max(100, maxExpandedNodes), out int expandedNodes);
             sw.Stop();
 
             if (gridPath == null || gridPath.Count == 0)
@@ -149,7 +132,7 @@ namespace ClickIt.Services
                 return false;
             }
 
-            List<Vector2> screenPath = BuildScreenPathApproximation(gameController, gridPath, start, goal, target);
+            List<Vector2> screenPath = ScreenPathProjector.BuildScreenPathApproximation(gameController, gridPath, start, goal, target);
 
             SetSuccessfulPathBuildSnapshot(
                 walkable,

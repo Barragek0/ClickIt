@@ -1,8 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Services;
+using ClickIt.Services.Label.Selection;
 
-namespace ClickIt.Tests.Services.Label
+namespace ClickIt.Tests.Label
 {
     [TestClass]
     public class LabelFilterServiceTests
@@ -10,7 +10,7 @@ namespace ClickIt.Tests.Services.Label
         [TestMethod]
         public void FilterHarvestLabels_ReturnsEmpty_WhenNullInput()
         {
-            LabelFilterService.FilterHarvestLabels(null, _ => true).Should().BeEmpty();
+            HarvestLabelFilter.FilterClickableHarvestLabels(null, _ => true).Should().BeEmpty();
         }
     }
 }

@@ -552,7 +552,50 @@ namespace ClickIt
         {
             InitializeDefaultWeights();
             ClickItSettingsMigrationService.Apply(this);
-            ComposeScreenNodes();
+            var safePanelRenderer = new global::ClickIt.SettingsPanelSafeRenderer(this);
+            var debugTestingPanelRenderer = new global::ClickIt.DebugTestingPanelRenderer(this);
+            var itemFiltersPanelRenderer = new global::ClickIt.ItemFiltersPanelRenderer(this);
+            var lazyModeNearbyMonsterRulesPanelRenderer = new global::ClickIt.LazyModeNearbyMonsterRulesPanelRenderer(this);
+            var mechanicPriorityPanelRenderer = new MechanicPriorityTablePanelRenderer(this);
+            var altarSettingsPanelRenderer = new global::ClickIt.AltarSettingsPanelRenderer(this);
+            var mechanicsTablePanelRenderer = new global::ClickIt.MechanicsTablePanelRenderer(this);
+            var ultimatumSettingsPanelRenderer = new global::ClickIt.UltimatumSettingsPanelRenderer(this);
+            ClickItSettingsScreenNodes screenNodes = ClickItSettingsScreen.Compose(new ClickItSettingsScreenBindings(
+                debugTestingPanelRenderer.Draw,
+                lazyModeNearbyMonsterRulesPanelRenderer.Draw,
+                altarSettingsPanelRenderer.DrawAltarsPanel,
+                altarSettingsPanelRenderer.DrawAltarModWeights,
+                itemFiltersPanelRenderer.DrawItemTypeFiltersPanel,
+                mechanicPriorityPanelRenderer.Draw,
+                itemFiltersPanelRenderer.DrawEssenceCorruptionTablePanel,
+                itemFiltersPanelRenderer.DrawStrongboxFilterTablePanel,
+                mechanicsTablePanelRenderer.Draw,
+                ultimatumSettingsPanelRenderer.DrawModifierTablePanel,
+                ultimatumSettingsPanelRenderer.DrawTakeRewardModifierTablePanel,
+                SettingsUiRenderHelpers.PushStandardSliderWidth,
+                SettingsUiRenderHelpers.PopStandardSliderWidth,
+                safePanelRenderer.DrawPanel));
+            DebugTestingPanel = screenNodes.DebugTestingPanel;
+            ControlsSliderWidthStart = screenNodes.ControlsSliderWidthStart;
+            ControlsSliderWidthEnd = screenNodes.ControlsSliderWidthEnd;
+            PathfindingSliderWidthStart = screenNodes.PathfindingSliderWidthStart;
+            PathfindingSliderWidthEnd = screenNodes.PathfindingSliderWidthEnd;
+            LazyModeSliderWidthStart = screenNodes.LazyModeSliderWidthStart;
+            LazyModeSliderWidthEnd = screenNodes.LazyModeSliderWidthEnd;
+            LazyModeNearbyMonsterRulesPanel = screenNodes.LazyModeNearbyMonsterRulesPanel;
+            PrioritiesSliderWidthStart = screenNodes.PrioritiesSliderWidthStart;
+            PrioritiesSliderWidthEnd = screenNodes.PrioritiesSliderWidthEnd;
+            DelveSliderWidthStart = screenNodes.DelveSliderWidthStart;
+            DelveSliderWidthEnd = screenNodes.DelveSliderWidthEnd;
+            AltarsPanel = screenNodes.AltarsPanel;
+            AltarModWeights = screenNodes.AltarModWeights;
+            ItemTypeFiltersPanel = screenNodes.ItemTypeFiltersPanel;
+            MechanicPriorityTablePanel = screenNodes.MechanicPriorityTablePanel;
+            EssenceCorruptionTablePanel = screenNodes.EssenceCorruptionTablePanel;
+            StrongboxFilterTablePanel = screenNodes.StrongboxFilterTablePanel;
+            MechanicsTablePanel = screenNodes.MechanicsTablePanel;
+            UltimatumModifierTablePanel = screenNodes.UltimatumModifierTablePanel;
+            UltimatumTakeRewardModifierTablePanel = screenNodes.UltimatumTakeRewardModifierTablePanel;
         }
 
     }

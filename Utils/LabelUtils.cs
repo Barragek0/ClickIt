@@ -29,7 +29,7 @@ namespace ClickIt.Utils
             return true;
         }
 
-        internal static void SortByDistanceForTests<T>(List<T> items, Func<T, float> getDistance)
+        internal static void SortByDistance<T>(List<T> items, Func<T, float> getDistance)
         {
             if (items == null) throw new ArgumentNullException(nameof(items));
             if (getDistance == null) throw new ArgumentNullException(nameof(getDistance));
@@ -126,7 +126,7 @@ namespace ClickIt.Utils
             }
         }
 
-        internal static bool IsValidEntityTypeForTests(EntityType type, string? path, bool chestOpenOnDamage)
+        internal static bool IsValidEntityTypeCore(EntityType type, string? path, bool chestOpenOnDamage)
         {
             string p = path ?? string.Empty;
             if (type == EntityType.WorldItem)
@@ -140,7 +140,7 @@ namespace ClickIt.Utils
             return false;
         }
 
-        internal static bool IsValidClickableLabelForTests(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment, bool harvestRootElementVisible)
+        internal static bool IsValidClickableLabelCore(bool labelNotNull, bool itemNotNull, bool isVisible, bool labelElementValid, bool inClickableArea, EntityType type, string? path, bool chestOpenOnDamage, bool hasEssenceImprisonment, bool harvestRootElementVisible)
         {
             if (!labelNotNull || !itemNotNull || !isVisible || !labelElementValid)
                 return false;
@@ -152,7 +152,7 @@ namespace ClickIt.Utils
             if (!inClickableArea)
                 return false;
 
-            if (IsValidEntityTypeForTests(type, path, chestOpenOnDamage)) return true;
+            if (IsValidEntityTypeCore(type, path, chestOpenOnDamage)) return true;
             if (!string.IsNullOrEmpty(path) && IsPathForClickableObject(path)) return true;
             if (hasEssenceImprisonment) return true;
             return false;
@@ -317,7 +317,7 @@ namespace ClickIt.Utils
             return i + 1;
         }
 
-        internal static bool ElementContainsAnyStringsForTests(Services.IElementAdapter? root, IEnumerable<string> patterns)
+        internal static bool ElementContainsAnyStringsCore(Services.IElementAdapter? root, IEnumerable<string> patterns)
         {
             if (root == null)
                 return false;
@@ -350,7 +350,7 @@ namespace ClickIt.Utils
             return false;
         }
 
-        internal static List<Services.IElementAdapter> GetElementsByStringContainsForTests(Services.IElementAdapter? label, string str)
+        internal static List<Services.IElementAdapter> GetElementsByStringContainsCore(Services.IElementAdapter? label, string str)
         {
             List<Services.IElementAdapter> list = [];
             if (label == null)
@@ -370,7 +370,7 @@ namespace ClickIt.Utils
             return list;
         }
 
-        internal static Services.IElementAdapter? GetElementByStringForTests(Services.IElementAdapter? root, string str)
+        internal static Services.IElementAdapter? GetElementByStringCore(Services.IElementAdapter? root, string str)
         {
             if (root == null)
                 return null;

@@ -1,4 +1,5 @@
 using ClickIt.Utils;
+using ClickIt.Core.Runtime;
 using ExileCore;
 using ExileCore.Shared;
 using System.Diagnostics;
@@ -13,11 +14,11 @@ namespace ClickIt
             ArgumentNullException.ThrowIfNull(owner);
             ArgumentNullException.ThrowIfNull(settings);
 
-            owner.State.IsShuttingDown = false;
-            owner.SubscribeLifecycleButtonHandlers(settings);
+            owner.State.Runtime.IsShuttingDown = false;
+            owner.LifecycleButtonBindings.Subscribe(settings);
             owner.State.InitializeCompositionRoot(owner, settings);
 
-            var errorHandler = owner.State.ErrorHandler
+            var errorHandler = owner.State.Services.ErrorHandler
                 ?? throw new InvalidOperationException("ErrorHandler was not initialized by composition root.");
             var gameController = owner.GameController
                 ?? throw new InvalidOperationException("GameController is null during coroutine manager initialization.");
@@ -40,8 +41,8 @@ namespace ClickIt
             ArgumentNullException.ThrowIfNull(owner);
             ArgumentNullException.ThrowIfNull(runtimeSettings);
 
-            owner.State.IsShuttingDown = true;
-            owner.UnsubscribeLifecycleButtonHandlers(runtimeSettings);
+            owner.State.Runtime.IsShuttingDown = true;
+            owner.LifecycleButtonBindings.Unsubscribe(runtimeSettings, owner.GetEffectiveSettingsForLifecycle());
 
             StopTrackedCoroutines(owner.State);
             StopNamedClickItCoroutines();
@@ -54,8 +55,8 @@ namespace ClickIt
             LabelUtils.ClearThreadLocalStorage();
             Services.ShrineService.ClearThreadLocalStorageForCurrentThread();
             Services.ClickService.ClearThreadLocalStorageForCurrentThread();
-            owner.State.LabelFilterService?.ClearInventoryProbeCacheForShutdown();
-            owner.State.AltarService?.ClearRuntimeCaches();
+            owner.State.Services.LabelFilterService?.ClearInventoryProbeCacheForShutdown();
+            owner.State.Services.AltarService?.ClearRuntimeCaches();
 
             owner.State.DisposeCompositionRoot();
 
@@ -64,29 +65,32 @@ namespace ClickIt
 
         private static void StopTrackedCoroutines(PluginContext state)
         {
-            state.AltarCoroutine?.Done();
-            state.ClickLabelCoroutine?.Done();
-            state.ManualUiHoverCoroutine?.Done();
-            state.DelveFlareCoroutine?.Done();
-            state.DeepMemoryDumpCoroutine?.Done();
+            PluginRuntimeState runtime = state.Runtime;
+            runtime.AltarCoroutine?.Done();
+            runtime.ClickLabelCoroutine?.Done();
+            runtime.ManualUiHoverCoroutine?.Done();
+            runtime.DelveFlareCoroutine?.Done();
+            runtime.DeepMemoryDumpCoroutine?.Done();
         }
 
         private static void WaitForTrackedCoroutines(PluginContext state)
         {
-            WaitForCoroutineShutdown(state.AltarCoroutine);
-            WaitForCoroutineShutdown(state.ClickLabelCoroutine);
-            WaitForCoroutineShutdown(state.ManualUiHoverCoroutine);
-            WaitForCoroutineShutdown(state.DelveFlareCoroutine);
-            WaitForCoroutineShutdown(state.DeepMemoryDumpCoroutine);
+            PluginRuntimeState runtime = state.Runtime;
+            WaitForCoroutineShutdown(runtime.AltarCoroutine);
+            WaitForCoroutineShutdown(runtime.ClickLabelCoroutine);
+            WaitForCoroutineShutdown(runtime.ManualUiHoverCoroutine);
+            WaitForCoroutineShutdown(runtime.DelveFlareCoroutine);
+            WaitForCoroutineShutdown(runtime.DeepMemoryDumpCoroutine);
         }
 
         private static void ClearTrackedCoroutineReferences(PluginContext state)
         {
-            state.AltarCoroutine = null;
-            state.ClickLabelCoroutine = null;
-            state.ManualUiHoverCoroutine = null;
-            state.DelveFlareCoroutine = null;
-            state.DeepMemoryDumpCoroutine = null;
+            PluginRuntimeState runtime = state.Runtime;
+            runtime.AltarCoroutine = null;
+            runtime.ClickLabelCoroutine = null;
+            runtime.ManualUiHoverCoroutine = null;
+            runtime.DelveFlareCoroutine = null;
+            runtime.DeepMemoryDumpCoroutine = null;
         }
 
         private static void WaitForCoroutineShutdown(Coroutine? coroutine, int timeoutMs = 750)

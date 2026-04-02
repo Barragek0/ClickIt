@@ -4,16 +4,16 @@ namespace ClickIt.Services.Label.Diagnostics
 {
     internal sealed class LabelSelectionDiagnostics
     {
-        private readonly DebugSnapshotChannel<LabelFilterService.LabelDebugSnapshot, LabelFilterService.LabelDebugEvent> _channel;
+        private readonly DebugSnapshotChannel<LabelDebugSnapshot, LabelDebugEvent> _channel;
 
         public LabelSelectionDiagnostics(int trailCapacity)
         {
-            _channel = new DebugSnapshotChannel<LabelFilterService.LabelDebugSnapshot, LabelFilterService.LabelDebugEvent>(
-                LabelFilterService.LabelDebugSnapshot.Empty,
+            _channel = new DebugSnapshotChannel<LabelDebugSnapshot, LabelDebugEvent>(
+                LabelDebugSnapshot.Empty,
                 trailCapacity,
                 static (snapshot, sequence) => snapshot with { Sequence = sequence },
                 static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}",
-                debugEvent => new LabelFilterService.LabelDebugSnapshot(
+                debugEvent => new LabelDebugSnapshot(
                     HasData: true,
                     Stage: debugEvent.Stage,
                     StartIndex: debugEvent.StartIndex,
@@ -32,16 +32,16 @@ namespace ClickIt.Services.Label.Diagnostics
                     TimestampMs: Environment.TickCount64));
         }
 
-        public LabelFilterService.LabelDebugSnapshot GetLatest()
+        public LabelDebugSnapshot GetLatest()
             => _channel.GetLatest();
 
         public IReadOnlyList<string> GetTrail()
             => _channel.GetTrail();
 
-        public void PublishSnapshot(LabelFilterService.LabelDebugSnapshot snapshot)
+        public void PublishSnapshot(LabelDebugSnapshot snapshot)
             => _channel.PublishSnapshot(snapshot);
 
-        public void PublishEvent(LabelFilterService.LabelDebugEvent debugEvent)
+        public void PublishEvent(LabelDebugEvent debugEvent)
             => _channel.PublishEvent(debugEvent);
     }
 }

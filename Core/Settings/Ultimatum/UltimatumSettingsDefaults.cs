@@ -6,12 +6,12 @@ namespace ClickIt
 {
     public partial class ClickItSettings
     {
-        private void ResetUltimatumModifierPriorityDefaults()
+        internal void ResetUltimatumModifierPriorityDefaults()
         {
             UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
         }
 
-        private void ResetUltimatumTakeRewardModifierDefaults()
+        internal void ResetUltimatumTakeRewardModifierDefaults()
         {
             UltimatumTakeRewardModifierNames.Clear();
             UltimatumContinueModifierNames = new HashSet<string>(UltimatumModifiersConstants.AllModifierNamesWithStages, StringComparer.OrdinalIgnoreCase);

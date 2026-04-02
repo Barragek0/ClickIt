@@ -6,19 +6,22 @@ using System;
 using System.Diagnostics;
 using ClickIt.Tests.Harness;
 using System.Threading;
+using ClickIt.Core.Runtime;
 
 namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class ClickItInputTests
     {
+        private static readonly PluginInputHost InputHost = new();
+
         [TestMethod]
         public void IsClickHotkeyPressed_ReturnsFalse_WhenInputHandlerMissing()
         {
             var plugin = new ClickIt();
-            plugin.State.InputHandler = null;
+            plugin.State.Services.InputHandler = null;
 
-            plugin.IsClickHotkeyPressedForTests().Should().BeFalse();
+            InputHost.IsClickHotkeyPressed(plugin.State).Should().BeFalse();
         }
 
         [TestMethod]
@@ -29,7 +32,7 @@ namespace ClickIt.Tests.Core
 
             var state = plugin.State;
 
-            state.WorkFinished = true;
+            state.Runtime.WorkFinished = true;
 
             // Disable native input to prevent real mouse operations during testing
             var originalDisable = Mouse.DisableNativeInput;
@@ -37,9 +40,9 @@ namespace ClickIt.Tests.Core
 
             try
             {
-                plugin.HandleHotkeyPressedForTests();
+                InputHost.HandleHotkeyPressed(plugin.State);
 
-                state.WorkFinished.Should().BeFalse();
+                state.Runtime.WorkFinished.Should().BeFalse();
             }
             finally
             {
@@ -57,17 +60,17 @@ namespace ClickIt.Tests.Core
             var state = plugin.State;
 
             var pm = new PerformanceMonitor(settings);
-            pm.SetClickCountForTests(5);
+            pm.ClickActivity.ClickCount = 5;
 
-            state.PerformanceMonitor = pm;
+            state.Services.PerformanceMonitor = pm;
 
-            state.InputHandler = null;
+            state.Services.InputHandler = null;
 
-            pm.GetClickCountForTests().Should().BeGreaterThan(0);
+            pm.ClickActivity.ClickCount.Should().BeGreaterThan(0);
 
             plugin.Tick();
 
-            pm.GetClickCountForTests().Should().Be(0);
+            pm.ClickActivity.ClickCount.Should().Be(0);
         }
 
         [TestMethod]
@@ -78,13 +81,13 @@ namespace ClickIt.Tests.Core
 
             var state = plugin.State;
 
-            state.SecondTimer.Restart();
+            state.Runtime.SecondTimer.Restart();
             Thread.Sleep(220);
-            state.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThan(200);
+            state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThan(200);
 
-            plugin.ResumeAltarScanningIfDueForTests(false);
+            InputHost.ResumeAltarScanningIfDue(state);
 
-            state.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
+            state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
         }
 
         [TestMethod]
@@ -95,12 +98,12 @@ namespace ClickIt.Tests.Core
 
             var state = plugin.State;
 
-            state.SecondTimer.Restart();
+            state.Runtime.SecondTimer.Restart();
             Thread.Sleep(220);
 
-            plugin.ResumeAltarScanningIfDueForTests(true);
+            InputHost.ResumeAltarScanningIfDue(state);
 
-            state.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
+            state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
         }
 
         [TestMethod]
@@ -108,7 +111,7 @@ namespace ClickIt.Tests.Core
         {
             try
             {
-                var res = ClickIt.FindExistingClickLogicCoroutineForTests();
+                var res = PluginCoroutineRegistry.FindClickLogicCoroutine();
                 res.Should().BeNull();
             }
             catch (NullReferenceException)
@@ -120,13 +123,13 @@ namespace ClickIt.Tests.Core
         [TestMethod]
         public void ShouldRunManualUiHoverCoroutineForInputState_ReturnsTrue_OnlyWhenManualEnabledAndNotLazy()
         {
-            ClickIt.ShouldRunManualUiHoverCoroutineForInputState(manualUiHoverEnabled: true, lazyModeEnabled: false)
+            PluginInputHost.ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: false)
                 .Should().BeTrue();
 
-            ClickIt.ShouldRunManualUiHoverCoroutineForInputState(manualUiHoverEnabled: true, lazyModeEnabled: true)
+            PluginInputHost.ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: true)
                 .Should().BeFalse();
 
-            ClickIt.ShouldRunManualUiHoverCoroutineForInputState(manualUiHoverEnabled: false, lazyModeEnabled: false)
+            PluginInputHost.ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: false, lazyModeEnabled: false)
                 .Should().BeFalse();
         }
 

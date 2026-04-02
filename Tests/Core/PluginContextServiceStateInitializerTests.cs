@@ -45,10 +45,10 @@ namespace ClickIt.Tests.Core
 
             PluginContextServiceStateInitializer.InitializeFromComposedServices(ctx, services);
 
-            ctx.AreaService.Should().BeSameAs(services.AreaService);
-            ctx.ClickService.Should().BeSameAs(services.ClickService);
-            ctx.AlertService.Should().BeSameAs(services.AlertService);
-            ctx.ClickRuntimeHost.Should().NotBeNull();
+            ctx.Services.AreaService.Should().BeSameAs(services.AreaService);
+            ctx.Services.ClickService.Should().BeSameAs(services.ClickService);
+            ctx.Services.AlertService.Should().BeSameAs(services.AlertService);
+            ctx.Rendering.ClickRuntimeHost.Should().NotBeNull();
         }
     }
 }

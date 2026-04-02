@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ExileCore.Shared.Enums;
 using SharpDX;
 using System.Collections.Generic;
-using ClickIt.Utils;
+using ClickIt.Services.Click.Interaction;
 
 namespace ClickIt.Tests.Utils.Input
 {
@@ -17,7 +17,7 @@ namespace ClickIt.Tests.Utils.Input
             var preferred = new Vector2(50, 20);
             var blocked = new List<RectangleF> { new RectangleF(0, 0, 10, 10) };
 
-            Vector2 result = InputHandler.ResolveVisibleClickPoint(target, preferred, blocked);
+            Vector2 result = LabelClickPointResolver.ResolveVisibleClickPoint(target, preferred, blocked);
 
             result.Should().Be(preferred);
         }
@@ -29,7 +29,7 @@ namespace ClickIt.Tests.Utils.Input
             var preferred = new Vector2(50, 20);
             var blocked = new List<RectangleF> { new RectangleF(40, 10, 20, 20) };
 
-            Vector2 result = InputHandler.ResolveVisibleClickPoint(target, preferred, blocked);
+            Vector2 result = LabelClickPointResolver.ResolveVisibleClickPoint(target, preferred, blocked);
 
             bool insideTarget = result.X >= target.Left && result.X <= target.Right && result.Y >= target.Top && result.Y <= target.Bottom;
             bool insideBlocked = result.X >= blocked[0].Left && result.X <= blocked[0].Right && result.Y >= blocked[0].Top && result.Y <= blocked[0].Bottom;
@@ -45,7 +45,7 @@ namespace ClickIt.Tests.Utils.Input
             var preferred = new Vector2(50, 20);
             var blocked = new List<RectangleF> { new RectangleF(0, 0, 100, 40) };
 
-            bool hasVisiblePoint = InputHandler.TryResolveVisibleClickPoint(target, preferred, blocked, out Vector2 resolved);
+            bool hasVisiblePoint = LabelClickPointResolver.TryResolveVisibleClickPoint(target, preferred, blocked, out Vector2 resolved);
 
             hasVisiblePoint.Should().BeFalse();
             resolved.Should().Be(preferred);
@@ -60,7 +60,7 @@ namespace ClickIt.Tests.Utils.Input
 
             static bool IsClickable(Vector2 p) => p.X < 40 || p.X > 60;
 
-            bool ok = InputHandler.TryResolveVisibleClickablePoint(target, preferred, blocked, IsClickable, out Vector2 resolved);
+            bool ok = LabelClickPointResolver.TryResolveVisibleClickablePoint(target, preferred, blocked, IsClickable, out Vector2 resolved);
 
             ok.Should().BeTrue();
             resolved.X.Should().NotBeInRange(40f, 60f);
@@ -77,7 +77,7 @@ namespace ClickIt.Tests.Utils.Input
 
             static bool IsClickable(Vector2 _) => false;
 
-            bool ok = InputHandler.TryResolveVisibleClickablePoint(target, preferred, blocked, IsClickable, out Vector2 resolved);
+            bool ok = LabelClickPointResolver.TryResolveVisibleClickablePoint(target, preferred, blocked, IsClickable, out Vector2 resolved);
 
             ok.Should().BeFalse();
             resolved.Should().Be(preferred);
@@ -90,7 +90,7 @@ namespace ClickIt.Tests.Utils.Input
             var gameWindow = new RectangleF(100, 100, 500, 400);
             var virtualScreen = new RectangleF(0, 0, 1920, 1080);
 
-            InputHandler.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeTrue();
+            LabelClickPointResolver.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeTrue();
         }
 
         [TestMethod]
@@ -100,7 +100,7 @@ namespace ClickIt.Tests.Utils.Input
             var gameWindow = new RectangleF(100, 100, 500, 400);
             var virtualScreen = new RectangleF(0, 0, 1920, 1080);
 
-            InputHandler.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
+            LabelClickPointResolver.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
         }
 
         [TestMethod]
@@ -110,21 +110,21 @@ namespace ClickIt.Tests.Utils.Input
             var gameWindow = new RectangleF(0, 0, 1920, 1080);
             var virtualScreen = new RectangleF(0, 0, 1920, 1080);
 
-            InputHandler.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
+            LabelClickPointResolver.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
         }
 
         [TestMethod]
         public void IsHeistContractWorldItem_DetectsByPathAndName()
         {
-            InputHandler.IsHeistContractWorldItem(
+            LabelClickPointResolver.IsHeistContractWorldItem(
                 "Metadata/Items/Heist/Contracts/ContractWeapons1",
                 "Whatever").Should().BeTrue();
 
-            InputHandler.IsHeistContractWorldItem(
+            LabelClickPointResolver.IsHeistContractWorldItem(
                 string.Empty,
                 "Contract: Smuggler's Den").Should().BeTrue();
 
-            InputHandler.IsHeistContractWorldItem(
+            LabelClickPointResolver.IsHeistContractWorldItem(
                 "Metadata/Items/Currency/CurrencyRerollRare",
                 "Chaos Orb").Should().BeFalse();
         }
@@ -132,19 +132,19 @@ namespace ClickIt.Tests.Utils.Input
         [TestMethod]
         public void IsHeistBlueprintWorldItem_DetectsByPathAndName()
         {
-            InputHandler.IsHeistBlueprintWorldItem(
+            LabelClickPointResolver.IsHeistBlueprintWorldItem(
                 "Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric",
                 "Whatever").Should().BeTrue();
 
-            InputHandler.IsHeistBlueprintWorldItem(
+            LabelClickPointResolver.IsHeistBlueprintWorldItem(
                 "Metadata/Items/Currency/Heist/Blueprint/BlueprintCurrency1",
                 "Whatever").Should().BeTrue();
 
-            InputHandler.IsHeistBlueprintWorldItem(
+            LabelClickPointResolver.IsHeistBlueprintWorldItem(
                 string.Empty,
                 "Blueprint: Smuggler's Den").Should().BeTrue();
 
-            InputHandler.IsHeistBlueprintWorldItem(
+            LabelClickPointResolver.IsHeistBlueprintWorldItem(
                 "Metadata/Items/Currency/CurrencyRerollRare",
                 "Chaos Orb").Should().BeFalse();
         }
@@ -152,15 +152,15 @@ namespace ClickIt.Tests.Utils.Input
         [TestMethod]
         public void IsRoguesMarkerWorldItem_DetectsByPathAndName()
         {
-            InputHandler.IsRoguesMarkerWorldItem(
+            LabelClickPointResolver.IsRoguesMarkerWorldItem(
                 "Metadata/Items/Heist/HeistCoin/HeistCoin1",
                 "Whatever").Should().BeTrue();
 
-            InputHandler.IsRoguesMarkerWorldItem(
+            LabelClickPointResolver.IsRoguesMarkerWorldItem(
                 string.Empty,
                 "Rogue's Marker").Should().BeTrue();
 
-            InputHandler.IsRoguesMarkerWorldItem(
+            LabelClickPointResolver.IsRoguesMarkerWorldItem(
                 "Metadata/Items/Currency/CurrencyRerollRare",
                 "Chaos Orb").Should().BeFalse();
         }
@@ -168,19 +168,19 @@ namespace ClickIt.Tests.Utils.Input
         [TestMethod]
         public void ShouldForceUiHoverVerificationForWorldItem_ReturnsTrue_ForHeistContractsBlueprintsAndMarkers()
         {
-            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+            LabelClickPointResolver.ShouldForceUiHoverVerificationForWorldItem(
                 "Metadata/Items/Heist/Contracts/ContractGeneric",
                 "Contract: Test").Should().BeTrue();
 
-            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+            LabelClickPointResolver.ShouldForceUiHoverVerificationForWorldItem(
                 "Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric",
                 "Blueprint: Test").Should().BeTrue();
 
-            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+            LabelClickPointResolver.ShouldForceUiHoverVerificationForWorldItem(
                 "Metadata/Items/Heist/HeistCoin/HeistCoin1",
                 "Rogue's Marker").Should().BeTrue();
 
-            InputHandler.ShouldForceUiHoverVerificationForWorldItem(
+            LabelClickPointResolver.ShouldForceUiHoverVerificationForWorldItem(
                 "Metadata/Items/Currency/CurrencyRerollRare",
                 "Chaos Orb").Should().BeFalse();
         }
@@ -190,7 +190,7 @@ namespace ClickIt.Tests.Utils.Input
         {
             var rect = new RectangleF(100, 200, 180, 40);
 
-            Vector2 preferred = InputHandler.ResolvePreferredLabelPoint(
+            Vector2 preferred = LabelClickPointResolver.ResolvePreferredLabelPoint(
                 rect,
                 EntityType.WorldItem,
                 chestHeightOffset: 0,
@@ -208,7 +208,7 @@ namespace ClickIt.Tests.Utils.Input
             var target = new RectangleF(0, 0, 100, 40);
             var preferred = new Vector2(50, 20);
 
-            bool hasUnblocked = InputHandler.HasUnblockedOverlapProbePoint(target, preferred, []);
+            bool hasUnblocked = LabelClickPointResolver.HasUnblockedOverlapProbePoint(target, preferred, []);
 
             hasUnblocked.Should().BeTrue();
         }
@@ -223,7 +223,7 @@ namespace ClickIt.Tests.Utils.Input
                 new RectangleF(45, 15, 10, 10)
             };
 
-            bool hasUnblocked = InputHandler.HasUnblockedOverlapProbePoint(target, preferred, potentialBlockers);
+            bool hasUnblocked = LabelClickPointResolver.HasUnblockedOverlapProbePoint(target, preferred, potentialBlockers);
 
             hasUnblocked.Should().BeTrue();
         }
@@ -238,7 +238,7 @@ namespace ClickIt.Tests.Utils.Input
                 new RectangleF(0, 0, 100, 40)
             };
 
-            bool hasUnblocked = InputHandler.HasUnblockedOverlapProbePoint(target, preferred, potentialBlockers);
+            bool hasUnblocked = LabelClickPointResolver.HasUnblockedOverlapProbePoint(target, preferred, potentialBlockers);
 
             hasUnblocked.Should().BeFalse();
         }

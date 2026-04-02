@@ -25,7 +25,10 @@ namespace ClickIt.Composition
                 core.DeferredTextQueue,
                 core.AreaService,
                 core.LabelFilterService.GetLatestInventoryDebug,
-                owner.TryAutoCopyInventoryWarningDebugSnapshotForLifecycle);
+                (snapshot, now) => owner.GetDebugClipboardService().TryAutoCopyInventoryWarningDebugSnapshot(
+                    snapshot,
+                    now,
+                    core.DeferredTextQueue.GetPendingTextSnapshot(0)));
             var pathfindingRenderer = new Rendering.PathfindingRenderer(core.PathfindingService);
 
             var altarDisplayRenderer = new Rendering.AltarDisplayRenderer(

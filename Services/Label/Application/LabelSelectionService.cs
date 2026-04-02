@@ -1,4 +1,5 @@
 using ClickIt.Services.Label.Selection;
+using ClickIt.Services.Label.Diagnostics;
 using ClickIt.Utils;
 using ExileCore;
 using ExileCore.PoEMemory.Elements;
@@ -19,7 +20,7 @@ namespace ClickIt.Services.Label.Application
         GameController? GameController,
         Func<IReadOnlyList<LabelOnGround>?, ClickSettings> CreateClickSettings,
         Func<bool> ShouldCaptureLabelDebug,
-        Action<global::ClickIt.Services.LabelFilterService.LabelDebugEvent> PublishLabelDebugStage,
+        Action<LabelDebugEvent> PublishLabelDebugStage,
         LabelCandidateBuilder TryBuildLabelCandidate,
         Func<LabelOnGround?, string?> GetMechanicIdForLabelCore);
 
@@ -59,7 +60,7 @@ namespace ClickIt.Services.Label.Application
                         ? _dependencies.GetMechanicIdForLabelCore(selected)
                         : null;
 
-                    _dependencies.PublishLabelDebugStage(new global::ClickIt.Services.LabelFilterService.LabelDebugEvent("SelectionReturned", start, end, allLabels.Count)
+                    _dependencies.PublishLabelDebugStage(new LabelDebugEvent("SelectionReturned", start, end, allLabels.Count)
                     {
                         ConsideredCandidates = 0,
                         NullOrDistanceRejected = 0,
@@ -82,7 +83,7 @@ namespace ClickIt.Services.Label.Application
 
         private void PublishSelectionLifecycleDebug(string stage, IReadOnlyList<LabelOnGround>? allLabels, int start, int end, string notes)
         {
-            _dependencies.PublishLabelDebugStage(new global::ClickIt.Services.LabelFilterService.LabelDebugEvent(stage, start, end, allLabels?.Count ?? 0)
+            _dependencies.PublishLabelDebugStage(new LabelDebugEvent(stage, start, end, allLabels?.Count ?? 0)
             {
                 ConsideredCandidates = 0,
                 NullOrDistanceRejected = 0,
@@ -118,7 +119,7 @@ namespace ClickIt.Services.Label.Application
                     ? selection.SelectedMechanicId
                     : string.Empty;
 
-                _dependencies.PublishLabelDebugStage(new global::ClickIt.Services.LabelFilterService.LabelDebugEvent(
+                _dependencies.PublishLabelDebugStage(new LabelDebugEvent(
                     selected == null ? "SelectionScanNone" : "SelectionScanSelected",
                     start,
                     end,

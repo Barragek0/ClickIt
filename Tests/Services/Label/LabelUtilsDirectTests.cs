@@ -3,7 +3,7 @@ using FluentAssertions;
 using ClickIt.Utils;
 using ExileCore.Shared.Enums;
 
-namespace ClickIt.Tests.Services.Label
+namespace ClickIt.Tests.Label
 {
     [TestClass]
     public class LabelUtilsDirectTests
@@ -22,11 +22,11 @@ namespace ClickIt.Tests.Services.Label
         }
 
         [TestMethod]
-        public void IsValidClickableLabelForTests_HarvestRequiresVisibleRootElement()
+        public void IsValidClickableLabelCore_HarvestRequiresVisibleRootElement()
         {
             var clickableHarvestPath = "Metadata/Terrain/Leagues/Harvest/Irrigator";
 
-            var blocked = LabelUtils.IsValidClickableLabelForTests(
+            var blocked = LabelUtils.IsValidClickableLabelCore(
                 labelNotNull: true,
                 itemNotNull: true,
                 isVisible: true,
@@ -40,7 +40,7 @@ namespace ClickIt.Tests.Services.Label
 
             blocked.Should().BeFalse();
 
-            var allowed = LabelUtils.IsValidClickableLabelForTests(
+            var allowed = LabelUtils.IsValidClickableLabelCore(
                 labelNotNull: true,
                 itemNotNull: true,
                 isVisible: true,
@@ -56,11 +56,11 @@ namespace ClickIt.Tests.Services.Label
         }
 
         [TestMethod]
-        public void IsValidClickableLabelForTests_NonHarvestIgnoresRootElementVisibility()
+        public void IsValidClickableLabelCore_NonHarvestIgnoresRootElementVisibility()
         {
             var nonHarvestPath = "Metadata/Terrain/Leagues/Ritual/SomeObject";
 
-            var result = LabelUtils.IsValidClickableLabelForTests(
+            var result = LabelUtils.IsValidClickableLabelCore(
                 labelNotNull: true,
                 itemNotNull: true,
                 isVisible: true,

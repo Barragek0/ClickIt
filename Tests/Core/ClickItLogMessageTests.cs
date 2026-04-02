@@ -13,7 +13,7 @@ namespace ClickIt.Tests.Core
             var clickIt = new ClickIt();
             ClickItHostHarness.SetSettings(clickIt, new ClickItSettings());
 
-            clickIt.State.IsRendering = false;
+            clickIt.State.Rendering.IsRendering = false;
 
             var alertService = clickIt.GetAlertService();
             var countBefore = alertService.LastAlertTimes.Count;
@@ -30,7 +30,7 @@ namespace ClickIt.Tests.Core
             var clickIt = new ClickIt();
             ClickItHostHarness.SetSettings(clickIt, new ClickItSettings());
 
-            clickIt.State.IsRendering = true;
+            clickIt.State.Rendering.IsRendering = true;
 
             var alertService = clickIt.GetAlertService();
             var countBefore = alertService.LastAlertTimes.Count;
