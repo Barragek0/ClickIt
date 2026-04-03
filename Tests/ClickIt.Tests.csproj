@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(IntermediateOutputPath)GlobalUsings.Generated.g.cs" AutoGen="true" DesignTime="true" Visible="false" />
+    <Compile Include="$(GeneratedGlobalUsingsFile)" AutoGen="true" DesignTime="true" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -79,11 +79,12 @@
 
   <PropertyGroup>
     <GlobalUsingsGeneratorProject>$(MSBuildProjectDirectory)\..\.scripts\GlobalUsingsGenerator\GlobalUsingsGenerator.csproj</GlobalUsingsGeneratorProject>
+    <GeneratedGlobalUsingsFile>obj\$(Configuration)\$(RuntimeIdentifier)\GlobalUsings.Generated.g.cs</GeneratedGlobalUsingsFile>
     <GlobalUsingGeneratorAssemblies>$(MSBuildProjectDirectory)\..\ThirdParty\ExileCore.dll;$(MSBuildProjectDirectory)\..\ThirdParty\GameOffsets.dll;$(MSBuildProjectDirectory)\..\ThirdParty\ProcessMemoryUtilities.dll</GlobalUsingGeneratorAssemblies>
   </PropertyGroup>
 
   <Target Name="GenerateClickItGlobalUsings" BeforeTargets="CoreCompile">
-    <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)\..&quot; --output &quot;$(IntermediateOutputPath)GlobalUsings.Generated.g.cs&quot; --mode tests --assemblies &quot;$(GlobalUsingGeneratorAssemblies)&quot;" />
+    <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)\..&quot; --output &quot;$(GeneratedGlobalUsingsFile)&quot; --mode tests --assemblies &quot;$(GlobalUsingGeneratorAssemblies)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 
 </Project>
