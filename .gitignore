@@ -115,6 +115,8 @@ Icon?
 
 # Plugin specific output directories
 debug/
+!UI/Debug/
+!UI/Debug/**
 
 # Test and coverage artifacts
 TestResults/
