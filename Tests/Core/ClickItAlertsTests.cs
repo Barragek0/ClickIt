@@ -1,6 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.IO;
-
 namespace ClickIt.Tests.Core
 {
     [TestClass]

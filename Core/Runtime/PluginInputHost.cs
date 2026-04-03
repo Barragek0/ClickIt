@@ -27,7 +27,7 @@ namespace ClickIt.Core.Runtime
         internal bool IsClickHotkeyPressed(PluginContext state)
         {
             PluginServices services = state.Services;
-            return services.InputHandler?.IsClickHotkeyPressed(services.CachedLabels, services.LabelFilterService) ?? false;
+            return services.InputHandler?.IsClickHotkeyPressed(services.CachedLabels, services.LabelFilterPort) ?? false;
         }
 
         internal void HandleHotkeyPressed(PluginContext state)
@@ -53,7 +53,7 @@ namespace ClickIt.Core.Runtime
         {
             PluginRuntimeState runtime = state.Runtime;
             PluginServices services = state.Services;
-            services.ClickService?.CancelPostChestLootSettlementState();
+            services.ClickAutomationPort?.CancelPostChestLootSettlementState();
 
             if (ShouldRunManualUiHoverCoroutine(settings))
             {

@@ -14,7 +14,7 @@ namespace ClickIt.Features.Labels.Selection
         internal ClickSettings Create(IReadOnlyList<LabelOnGround>? allLabels)
         {
             bool hasRestricted = _hasLazyModeRestrictedItems(allLabels);
-            bool hotkeyHeld = _isClickHotkeyHeld(_settings.ClickLabelKey.Value);
+            bool hotkeyHeld = _isClickHotkeyHeld(_settings.ClickLabelKeyBinding);
             bool applyLazyRestrictions = _settings.LazyMode.Value && hasRestricted && !hotkeyHeld;
 
             bool settlersOreEnabled = !applyLazyRestrictions && _settings.ClickSettlersOre.Value;

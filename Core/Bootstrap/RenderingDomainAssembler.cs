@@ -15,12 +15,12 @@ namespace ClickIt.Core.Bootstrap
         {
             var debugRenderer = new DebugRenderer(owner, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
             var strongboxRenderer = new StrongboxRenderer(settings, core.DeferredFrameQueue);
-            var lazyModeRenderer = new LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LabelFilterService.GetLazyModeBlockerService());
+            var lazyModeRenderer = new LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LabelFilterPort.GetLazyModeBlockerService());
             var clickHotkeyToggleRenderer = new ClickHotkeyToggleRenderer(settings, core.DeferredTextQueue, core.InputHandler);
             var inventoryFullWarningRenderer = new InventoryFullWarningRenderer(
                 core.DeferredTextQueue,
                 core.AreaService,
-                core.LabelFilterService.GetLatestInventoryDebug,
+                core.LabelFilterPort.GetLatestInventoryDebug,
                 (snapshot, now) => owner.GetDebugClipboardService().TryAutoCopyInventoryWarningDebugSnapshot(
                     snapshot,
                     now,
@@ -47,7 +47,7 @@ namespace ClickIt.Core.Bootstrap
                 altarDisplayRenderer);
         }
 
-        public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, ClickService clickService, DeferredFrameQueue deferredFrameQueue)
-            => new(settings, clickService, deferredFrameQueue);
+        public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, ClickService clickAutomationPort, DeferredFrameQueue deferredFrameQueue)
+            => new(settings, clickAutomationPort, deferredFrameQueue);
     }
 }

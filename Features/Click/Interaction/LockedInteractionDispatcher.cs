@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.Interaction
 {
     internal sealed class LockedInteractionDispatcher(InputHandler inputHandler)

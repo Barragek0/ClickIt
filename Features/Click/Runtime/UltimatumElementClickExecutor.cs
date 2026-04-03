@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal static class UltimatumElementClickExecutor

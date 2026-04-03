@@ -1,7 +1,3 @@
-using System.Collections;
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click
 {
     internal readonly record struct MovementSkillCoordinatorDependencies(
@@ -97,7 +93,7 @@ namespace ClickIt.Features.Click
 
             if (!Mouse.DisableNativeInput)
             {
-                Input.SetCursorPos(castPoint);
+                Input.SetCursorPos(new NumVector2(castPoint.X, castPoint.Y));
                 Thread.Sleep(10);
             }
 

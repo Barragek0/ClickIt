@@ -1,8 +1,3 @@
-using System.Collections.Generic;
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SharpDX;
-
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
@@ -15,7 +10,7 @@ namespace ClickIt.Tests.Features.Click
                 .Should()
                 .BeNull();
 
-            ChestLootSettlementMath.FindPendingChestLabel(new List<ExileCore.PoEMemory.Elements.LabelOnGround>(), itemAddress: 1, labelAddress: 2)
+            ChestLootSettlementMath.FindPendingChestLabel(new List<LabelOnGround>(), itemAddress: 1, labelAddress: 2)
                 .Should()
                 .BeNull();
         }

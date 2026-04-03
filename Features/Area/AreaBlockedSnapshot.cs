@@ -1,5 +1,3 @@
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Area
 {
     internal sealed class AreaBlockedSnapshot

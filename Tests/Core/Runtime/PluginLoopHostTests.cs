@@ -1,8 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Runtime.CompilerServices;
-
 namespace ClickIt.Tests.Core.Runtime
 {
     [TestClass]
@@ -13,19 +8,19 @@ namespace ClickIt.Tests.Core.Runtime
         {
             var settings = new ClickItSettings();
             var ctx = new PluginContext();
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            FluentActions.Invoking(() => new CoreRuntime.PluginLoopHost(null!, settings, gc!, eh))
+            FluentActions.Invoking(() => new PluginLoopHost(null!, settings, gc!, eh))
                 .Should().Throw<ArgumentNullException>();
 
-            FluentActions.Invoking(() => new CoreRuntime.PluginLoopHost(ctx, null!, gc!, eh))
+            FluentActions.Invoking(() => new PluginLoopHost(ctx, null!, gc!, eh))
                 .Should().Throw<ArgumentNullException>();
 
-            FluentActions.Invoking(() => new CoreRuntime.PluginLoopHost(ctx, settings, null!, eh))
+            FluentActions.Invoking(() => new PluginLoopHost(ctx, settings, null!, eh))
                 .Should().Throw<ArgumentNullException>();
 
-            FluentActions.Invoking(() => new CoreRuntime.PluginLoopHost(ctx, settings, gc!, null!))
+            FluentActions.Invoking(() => new PluginLoopHost(ctx, settings, gc!, null!))
                 .Should().Throw<ArgumentNullException>();
         }
 
@@ -34,10 +29,10 @@ namespace ClickIt.Tests.Core.Runtime
         {
             var settings = new ClickItSettings();
             var ctx = new PluginContext();
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var host = new CoreRuntime.PluginLoopHost(ctx, settings, gc!, eh);
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
 
             host.GetPlayerHealthPercent().Should().BeApproximately(100f, 0.001f);
             host.GetPlayerEnergyShieldPercent().Should().BeApproximately(100f, 0.001f);
@@ -49,12 +44,12 @@ namespace ClickIt.Tests.Core.Runtime
             var settings = new ClickItSettings();
             var ctx = new PluginContext();
 
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var host = new CoreRuntime.PluginLoopHost(ctx, settings, gc!, eh);
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
 
-            var pluginMock = new Moq.Mock<ExileCore.BaseSettingsPlugin<ClickItSettings>>();
+            var pluginMock = new Moq.Mock<BaseSettingsPlugin<ClickItSettings>>();
             var plugin = pluginMock.Object;
 
             try
@@ -67,7 +62,7 @@ namespace ClickIt.Tests.Core.Runtime
 
             var altarCoroutine = ctx.Runtime.AltarCoroutine;
             altarCoroutine.Should().NotBeNull();
-            altarCoroutine!.Priority.Should().Be(ExileCore.Shared.Enums.CoroutinePriority.Normal);
+            altarCoroutine!.Priority.Should().Be(CoroutinePriority.Normal);
         }
 
         [TestMethod]
@@ -80,13 +75,13 @@ namespace ClickIt.Tests.Core.Runtime
             var ctx = new PluginContext();
             var perf = new PerformanceMonitor(settings);
             ctx.Services.PerformanceMonitor = perf;
-            ctx.Services.ClickService = (ClickService)RuntimeHelpers.GetUninitializedObject(typeof(ClickService));
-            ctx.Rendering.ClickRuntimeHost = new CoreRuntime.ClickRuntimeHost(() => ctx.Services.ClickService);
+            ctx.Services.ClickAutomationPort = (ClickService)RuntimeHelpers.GetUninitializedObject(typeof(ClickService));
+            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => ctx.Services.ClickAutomationPort);
 
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
 
-            var host = new CoreRuntime.PluginLoopHost(ctx, settings, gc!, eh);
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
 
             ctx.Runtime.Timer.Restart();
             ctx.Runtime.Timer.Stop();
@@ -102,7 +97,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldRestartClickTimerAfterSuccessfulClick_ReturnsTrue_WhenSequenceIncreases()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldRestartClickTimerAfterSuccessfulClick(10, 11)
                 .Should().BeTrue();
         }
@@ -110,7 +105,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldRestartClickTimerAfterSuccessfulClick_ReturnsFalse_WhenSequenceUnchanged()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldRestartClickTimerAfterSuccessfulClick(10, 10)
                 .Should().BeFalse();
         }
@@ -118,7 +113,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldCancelOffscreenPathingForInputRelease_ReturnsTrue_WhenNotLazyAndHotkeyReleased()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled: false, clickHotkeyHeld: false)
                 .Should().BeTrue();
         }
@@ -126,7 +121,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldCancelOffscreenPathingForInputRelease_ReturnsFalse_WhenLazyModeEnabled()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled: true, clickHotkeyHeld: false)
                 .Should().BeFalse();
         }
@@ -134,7 +129,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldCancelOffscreenPathingForInputRelease_ReturnsFalse_WhenHotkeyHeld()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled: false, clickHotkeyHeld: true)
                 .Should().BeFalse();
         }
@@ -142,19 +137,19 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldRunManualUiHoverCoroutine_ReturnsTrue_OnlyWhenEnabledNonLazyAndNoHotkeyOverride()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: false)
                 .Should().BeTrue();
 
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: true, clickHotkeyActive: false)
                 .Should().BeFalse();
 
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: true)
                 .Should().BeFalse();
 
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: false, lazyModeEnabled: false, clickHotkeyActive: false)
                 .Should().BeFalse();
         }
@@ -162,11 +157,11 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldSuppressRegularClickForManualUiHoverMode_MatchesManualCoroutineRunCondition()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldSuppressRegularClickForManualUiHoverMode(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: false)
                 .Should().BeTrue();
 
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldSuppressRegularClickForManualUiHoverMode(manualUiHoverEnabled: true, lazyModeEnabled: false, clickHotkeyActive: true)
                 .Should().BeFalse();
         }
@@ -174,7 +169,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldEvaluateRitualState_ReturnsTrue_ForLazyMode()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldEvaluateRitualState(lazyModeEnabled: true, clickHotkeyActive: true)
                 .Should().BeTrue();
         }
@@ -182,7 +177,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldEvaluateRitualState_ReturnsTrue_WhenHotkeyInactive()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldEvaluateRitualState(lazyModeEnabled: false, clickHotkeyActive: false)
                 .Should().BeTrue();
         }
@@ -190,7 +185,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldEvaluateRitualState_ReturnsFalse_WhenNonLazyAndHotkeyActive()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldEvaluateRitualState(lazyModeEnabled: false, clickHotkeyActive: true)
                 .Should().BeFalse();
         }
@@ -198,11 +193,11 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void ShouldEvaluateLazyModeRestrictedItems_ReturnsTrue_OnlyWhenLazyModeEnabled()
         {
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled: true)
                 .Should().BeTrue();
 
-            CoreRuntime.PluginLoopHost
+            PluginLoopHost
                 .ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled: false)
                 .Should().BeFalse();
         }

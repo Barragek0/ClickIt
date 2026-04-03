@@ -1,5 +1,3 @@
-using System.Collections;
-
 namespace ClickIt.Features.Click.Core
 {
     internal readonly record struct ClickRuntimeEngineDependencies(

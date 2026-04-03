@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ClickIt.Tests.Shared.TestUtils
 {
     public static class TestBuilders

@@ -1,6 +1,3 @@
-using System.Numerics;
-using System.Collections.Immutable;
-
 namespace ClickIt.Shared.Game
 {
     public static class Constants

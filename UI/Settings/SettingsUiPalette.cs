@@ -1,5 +1,3 @@
-using System.Numerics;
-
 namespace ClickIt.UI.Settings
 {
     internal static class SettingsUiPalette

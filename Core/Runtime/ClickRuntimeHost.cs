@@ -1,5 +1,3 @@
-using System.Collections;
-
 namespace ClickIt.Core.Runtime
 {
     public sealed class ClickRuntimeHost

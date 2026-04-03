@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ClickIt.Core.Runtime
 {
     internal static class PluginRuntimeTimerCoordinator

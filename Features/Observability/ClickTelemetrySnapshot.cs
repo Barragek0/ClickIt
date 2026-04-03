@@ -1,5 +1,3 @@
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Observability
 {
     internal sealed record UltimatumOptionPreviewSnapshot(

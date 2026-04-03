@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace ClickIt.Tests.Features.Labels.Classification
 {
     [TestClass]
@@ -182,22 +177,22 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_RequiresMatchingLevels_WhenIncubatorPathRuleApplies()
         {
-            LabelInventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, true, 69).Should().BeFalse();
-            LabelInventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, true, 68).Should().BeTrue();
+            InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, true, 69).Should().BeFalse();
+            InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, true, 68).Should().BeTrue();
         }
 
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_Rejects_WhenEitherLevelIsMissing()
         {
-            LabelInventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, false, 68, true, 68).Should().BeFalse();
-            LabelInventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, false, 68).Should().BeFalse();
+            InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, false, 68, true, 68).Should().BeFalse();
+            InventoryStackingEngine.ShouldAllowIncubatorStackMatch(true, true, 68, false, 68).Should().BeFalse();
         }
 
         [TestMethod]
         public void ShouldAllowIncubatorStackMatchCore_AllowsAllLevels_WhenRuleDoesNotApply()
         {
-            LabelInventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(false, false, 0, false, 0).Should().BeTrue();
-            LabelInventory.InventoryStackingEngine.ShouldAllowIncubatorStackMatch(false, true, 1, true, 999).Should().BeTrue();
+            InventoryStackingEngine.ShouldAllowIncubatorStackMatch(false, false, 0, false, 0).Should().BeTrue();
+            InventoryStackingEngine.ShouldAllowIncubatorStackMatch(false, true, 1, true, 999).Should().BeTrue();
         }
 
         [TestMethod]

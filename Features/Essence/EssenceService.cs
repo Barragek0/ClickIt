@@ -1,4 +1,3 @@
-using SharpDX;
 namespace ClickIt.Features.Essence
 {
     public class EssenceService(ClickItSettings settings)
@@ -9,7 +8,7 @@ namespace ClickIt.Features.Essence
         {
             if (label == null)
                 return false;
-            if (LabelUtils.ElementContainsAnyStrings(label, ["Corrupted"]))
+            if (LabelElementSearch.ElementContainsAnyStrings(label, ["Corrupted"]))
                 return false;
 
             if (_settings.CorruptAllEssences.Value)
@@ -19,7 +18,7 @@ namespace ClickIt.Features.Essence
             if (selectedEssences.Count == 0)
                 return false;
 
-            return LabelUtils.ElementContainsAnyStrings(label, selectedEssences);
+            return LabelElementSearch.ElementContainsAnyStrings(label, selectedEssences);
         }
 
         public static Vector2? GetCorruptionClickPosition(LabelOnGround label, Vector2 windowTopLeft)

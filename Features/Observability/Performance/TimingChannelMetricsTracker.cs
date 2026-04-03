@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ClickIt.Features.Observability.Performance
 {
     internal sealed class TimingChannelMetricsTracker

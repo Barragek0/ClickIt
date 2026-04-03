@@ -1,7 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Newtonsoft.Json;
-
 namespace ClickIt.Tests.Core
 {
     [TestClass]

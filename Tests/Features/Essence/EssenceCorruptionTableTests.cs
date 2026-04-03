@@ -1,9 +1,3 @@
-using System;
-using System.Linq;
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Newtonsoft.Json;
-
 namespace ClickIt.Tests.Features.Essence
 {
     [TestClass]

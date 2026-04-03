@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.Application
 {
     internal readonly record struct OffscreenStickyTargetHandlerDependencies(

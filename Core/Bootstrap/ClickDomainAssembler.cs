@@ -15,7 +15,7 @@ namespace ClickIt.Core.Bootstrap
                 altarDisplayRenderer,
                 (point, _) => core.AreaService.PointIsInClickableArea(gameController, point),
                 core.InputHandler,
-                core.LabelFilterService,
+                core.LabelFilterPort,
                 core.ShrineService,
                 core.PathfindingService,
                 new Func<bool>(core.LabelService.GroundItemsVisible),

@@ -25,7 +25,7 @@ namespace ClickIt.Features.Labels.Classification
             if (!clickEssences)
                 return false;
 
-            return LabelUtils.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
+            return LabelElementSearch.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
         }
 
         public static string? GetRitualMechanicId(bool clickRitualInitiate, bool clickRitualCompleted, string path, LabelOnGround label)
@@ -33,7 +33,7 @@ namespace ClickIt.Features.Labels.Classification
             if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            bool hasFavoursText = LabelUtils.GetElementByString(label.Label, "Interact to view Favours") != null;
+            bool hasFavoursText = LabelElementSearch.GetElementByString(label.Label, "Interact to view Favours") != null;
             if (clickRitualInitiate && !hasFavoursText)
                 return MechanicIds.RitualInitiate;
             if (clickRitualCompleted && hasFavoursText)

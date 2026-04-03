@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Altars
 {
     public class PrimaryAltarComponent

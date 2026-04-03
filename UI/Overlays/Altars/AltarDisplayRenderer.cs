@@ -1,8 +1,3 @@
-using SharpDX;
-using Color = SharpDX.Color;
-using RectangleF = SharpDX.RectangleF;
-using Graphics = ExileCore.Graphics;
-
 #nullable enable
 
 namespace ClickIt.UI.Overlays.Altars

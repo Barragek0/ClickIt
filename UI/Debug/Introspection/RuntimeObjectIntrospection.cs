@@ -1,4 +1,3 @@
-using System.Collections;
 namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospection

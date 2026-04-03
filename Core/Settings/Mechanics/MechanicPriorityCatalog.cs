@@ -1,4 +1,3 @@
-
 namespace ClickIt.Core.Settings.Mechanics
 {
     internal sealed record MechanicPriorityEntry(string Id, string DisplayName);

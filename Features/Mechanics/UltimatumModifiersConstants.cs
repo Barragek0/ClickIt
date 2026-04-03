@@ -1,5 +1,3 @@
-﻿using System.Numerics;
-
 namespace ClickIt.Features.Mechanics
 {
     internal static class UltimatumModifiersConstants

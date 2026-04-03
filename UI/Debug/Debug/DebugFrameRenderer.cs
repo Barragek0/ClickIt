@@ -1,6 +1,3 @@
-using Color = SharpDX.Color;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.UI.Debug
 {
     internal sealed class DebugFrameRenderer(AreaService? areaService, DeferredFrameQueue deferredFrameQueue)

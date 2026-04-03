@@ -1,7 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-using SystemDrawingPoint = System.Drawing.Point;
-using System.Runtime.InteropServices;
 namespace ClickIt.Shared.Input
 {
     internal class Mouse

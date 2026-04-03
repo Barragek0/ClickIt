@@ -1,5 +1,3 @@
-using System.Collections;
-
 namespace ClickIt.Shared.Game
 {
     internal static class DynamicObjectAdapter

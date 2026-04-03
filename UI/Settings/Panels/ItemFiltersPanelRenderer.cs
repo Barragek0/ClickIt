@@ -1,6 +1,3 @@
-using ImGuiNET;
-using System.Numerics;
-
 namespace ClickIt.UI.Settings.Panels
 {
     internal sealed class ItemFiltersPanelRenderer(ClickItSettings settings)
@@ -134,7 +131,7 @@ namespace ClickIt.UI.Settings.Panels
 
             if (moveToWhitelist)
             {
-                bool leftArrowClicked = ImGui.Button($"<-##Move_{id}_{category.Id}", new Vector2(arrowWidth, 0));
+                bool leftArrowClicked = ImGui.Button($"<-##Move_{id}_{category.Id}", new NumVector2(arrowWidth, 0));
                 ImGui.SameLine();
                 bool rowClicked = DrawItemTypeSelectable(id, category, textColor, label, rowWidth);
                 bool rowHovered = ImGui.IsItemHovered();
@@ -144,7 +141,7 @@ namespace ClickIt.UI.Settings.Panels
             bool clicked = DrawItemTypeSelectable(id, category, textColor, label, rowWidth);
             bool hovered = ImGui.IsItemHovered();
             ImGui.SameLine();
-            bool rightArrowClicked = ImGui.Button($"->##Move_{id}_{category.Id}", new Vector2(arrowWidth, 0));
+            bool rightArrowClicked = ImGui.Button($"->##Move_{id}_{category.Id}", new NumVector2(arrowWidth, 0));
             return new ItemTypeRowRenderState(clicked, rightArrowClicked, hovered);
         }
 
@@ -158,7 +155,7 @@ namespace ClickIt.UI.Settings.Panels
         private bool DrawItemTypeSelectable(string id, ItemCategoryDefinition category, Vector4 textColor, string label, float rowWidth)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-            bool clicked = ImGui.Selectable(label, IsExpandedRow(id, category.Id), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+            bool clicked = ImGui.Selectable(label, IsExpandedRow(id, category.Id), ImGuiSelectableFlags.AllowDoubleClick, new NumVector2(rowWidth, 0));
             ImGui.PopStyleColor();
             return clicked;
         }

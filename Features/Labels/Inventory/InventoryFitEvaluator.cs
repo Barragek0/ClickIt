@@ -1,5 +1,3 @@
-using System.Buffers;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal static class InventoryFitEvaluator

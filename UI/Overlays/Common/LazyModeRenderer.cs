@@ -37,7 +37,7 @@ namespace ClickIt.UI.Overlays.Common
             var (leftClickBlocks, rightClickBlocks, mouseButtonBlocks) =
                 InputHandler.GetMouseButtonBlockingState(_settings, Input.GetKeyState);
 
-            var clickLabelKey = _settings.ClickLabelKey.Value;
+            Keys clickLabelKey = _settings.ClickLabelKeyBinding;
             bool hotkeyHeld = Input.GetKeyState(clickLabelKey);
             bool lazyModeDisableHeld = _inputHandler.IsLazyModeDisableActiveForCurrentInputState();
             bool lazyModeDisableToggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
@@ -85,7 +85,7 @@ namespace ClickIt.UI.Overlays.Common
             if (lazyModeDisableHeld)
             {
                 string resumeHint = lazyModeDisableToggleMode
-                    ? GetToggleDisableHint(_settings.LazyModeDisableKey.Value)
+                    ? GetToggleDisableHint(_settings.LazyModeDisableKeyBinding)
                     : ReleaseToResumeLazyClickingText;
 
                 return (SharpDX.Color.Red, LazyModeDisabledByHotkeyText, resumeHint, string.Empty);
@@ -160,7 +160,7 @@ namespace ClickIt.UI.Overlays.Common
 
         private void RenderLazyModeText(float centerX, float topY, SharpDX.Color color, string line1, string line2, string line3)
         {
-            _deferredTextQueue.Enqueue(LazyModeTitle, new SharpDX.Vector2(centerX, topY), color, 36, ExileCore.Shared.Enums.FontAlign.Center);
+            _deferredTextQueue.Enqueue(LazyModeTitle, new SharpDX.Vector2(centerX, topY), color, 36, FontAlign.Center);
 
             List<string> wrappedLines = [];
             wrappedLines.AddRange(WrapOverlayText(line1, OverlayLineLengthLimit));
@@ -174,7 +174,7 @@ namespace ClickIt.UI.Overlays.Common
             for (int i = 0; i < wrappedLines.Count; i++)
             {
                 float y = topY + ((i + 1) * lineHeight);
-                _deferredTextQueue.Enqueue(wrappedLines[i], new SharpDX.Vector2(centerX, y), color, BodyFontSize, ExileCore.Shared.Enums.FontAlign.Center);
+                _deferredTextQueue.Enqueue(wrappedLines[i], new SharpDX.Vector2(centerX, y), color, BodyFontSize, FontAlign.Center);
             }
         }
     }

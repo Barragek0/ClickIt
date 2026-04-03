@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ClickIt.Features.Altars
 {
     public class AlertService(

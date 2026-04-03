@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Pathfinding.Runtime
 {
     internal sealed class PathfindingRuntimeState

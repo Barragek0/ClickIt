@@ -15,9 +15,9 @@ namespace ClickIt.Core.Runtime
         public AreaService? AreaService { get => _ports.AreaService; set => _ports.AreaService = value; }
         public AltarService? AltarService { get => _ports.AltarService; set => _ports.AltarService = value; }
         public ShrineService? ShrineService { get => _ports.ShrineService; set => _ports.ShrineService = value; }
-        public LabelFilterService? LabelFilterService { get => _ports.LabelFilterService; set => _ports.LabelFilterService = value; }
+        public LabelFilterService? LabelFilterPort { get => _ports.LabelFilterPort; set => _ports.LabelFilterPort = value; }
         public LabelService? LabelService { get => _ports.LabelService; set => _ports.LabelService = value; }
-        public ClickService? ClickService { get => _ports.ClickService; set => _ports.ClickService = value; }
+        public ClickService? ClickAutomationPort { get => _ports.ClickAutomationPort; set => _ports.ClickAutomationPort = value; }
         public PathfindingService? PathfindingService { get => _ports.PathfindingService; set => _ports.PathfindingService = value; }
         public AlertService? AlertService { get => _ports.AlertService; set => _ports.AlertService = value; }
         public Camera? Camera { get => _ports.Camera; set => _ports.Camera = value; }

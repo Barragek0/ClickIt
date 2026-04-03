@@ -1,6 +1,3 @@
-using ImGuiNET;
-using System.Numerics;
-
 namespace ClickIt.UI.Settings.Panels
 {
     internal sealed class MechanicsTablePanelRenderer(ClickItSettings settings)
@@ -133,7 +130,7 @@ namespace ClickIt.UI.Settings.Panels
 
             if (moveToClick)
             {
-                bool leftArrowClicked = ImGui.Button($"<-##MoveGroup_{listId}_{group.Id}", new Vector2(arrowWidth, 0));
+                bool leftArrowClicked = ImGui.Button($"<-##MoveGroup_{listId}_{group.Id}", new NumVector2(arrowWidth, 0));
                 ImGui.SameLine();
                 bool rowClicked = DrawMechanicGroupSelectable(listId, group.Id, label, rowWidth, textColor);
                 return new MechanicGroupRowRenderState(rowClicked, leftArrowClicked);
@@ -141,14 +138,14 @@ namespace ClickIt.UI.Settings.Panels
 
             bool clicked = DrawMechanicGroupSelectable(listId, group.Id, label, rowWidth, textColor);
             ImGui.SameLine();
-            bool rightArrowClicked = ImGui.Button($"->##MoveGroup_{listId}_{group.Id}", new Vector2(arrowWidth, 0));
+            bool rightArrowClicked = ImGui.Button($"->##MoveGroup_{listId}_{group.Id}", new NumVector2(arrowWidth, 0));
             return new MechanicGroupRowRenderState(clicked, rightArrowClicked);
         }
 
         private bool DrawMechanicGroupSelectable(string listId, string groupId, string label, float rowWidth, Vector4 textColor)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-            bool clicked = ImGui.Selectable(label, IsExpandedMechanicTableRow(listId, groupId), ImGuiSelectableFlags.AllowDoubleClick, new Vector2(rowWidth, 0));
+            bool clicked = ImGui.Selectable(label, IsExpandedMechanicTableRow(listId, groupId), ImGuiSelectableFlags.AllowDoubleClick, new NumVector2(rowWidth, 0));
             ImGui.PopStyleColor();
             return clicked;
         }

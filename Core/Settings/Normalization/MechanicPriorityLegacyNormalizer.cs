@@ -1,4 +1,3 @@
-
 namespace ClickIt.Core.Settings.Normalization
 {
     internal static class MechanicPriorityLegacyNormalizer

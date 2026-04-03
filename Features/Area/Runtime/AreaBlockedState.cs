@@ -1,5 +1,3 @@
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Area.Runtime
 {
     internal sealed class AreaBlockedState

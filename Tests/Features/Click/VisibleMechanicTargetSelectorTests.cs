@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
@@ -13,9 +9,9 @@ namespace ClickIt.Tests.Features.Click
             var selector = new VisibleMechanicTargetSelector(new VisibleMechanicTargetSelectorDependencies(
                 Settings: new ClickItSettings
                 {
-                    ClickLostShipmentCrates = new ExileCore.Shared.Nodes.ToggleNode(false),
-                    ClickSettlersOre = new ExileCore.Shared.Nodes.ToggleNode(true),
-                    ClickDistance = new ExileCore.Shared.Nodes.RangeNode<int>(600, 0, 1000)
+                    ClickLostShipmentCrates = new ToggleNode(false),
+                    ClickSettlersOre = new ToggleNode(true),
+                    ClickDistance = new RangeNode<int>(600, 0, 1000)
                 },
                 GameController: null!,
                 ShouldCaptureClickDebug: static () => false,
@@ -36,9 +32,9 @@ namespace ClickIt.Tests.Features.Click
             var selector = new VisibleMechanicTargetSelector(new VisibleMechanicTargetSelectorDependencies(
                 Settings: new ClickItSettings
                 {
-                    ClickLostShipmentCrates = new ExileCore.Shared.Nodes.ToggleNode(true),
-                    ClickSettlersOre = new ExileCore.Shared.Nodes.ToggleNode(false),
-                    ClickDistance = new ExileCore.Shared.Nodes.RangeNode<int>(600, 0, 1000)
+                    ClickLostShipmentCrates = new ToggleNode(true),
+                    ClickSettlersOre = new ToggleNode(false),
+                    ClickDistance = new RangeNode<int>(600, 0, 1000)
                 },
                 GameController: null!,
                 ShouldCaptureClickDebug: static () => false,

@@ -1,19 +1,16 @@
-using System.Collections.Generic;
-using SharpDX;
-
 namespace ClickIt.Tests.Shared.TestUtils
 {
-    internal class ElementAdapterStub : global::ClickIt.Shared.Game.IElementAdapter
+    internal class ElementAdapterStub : IElementAdapter
     {
-        private readonly List<global::ClickIt.Shared.Game.IElementAdapter> _children = [];
+        private readonly List<IElementAdapter> _children = [];
         public ElementAdapterStub(string text)
         {
             Text = text;
         }
 
         public string Text { get; }
-        public ExileCore.PoEMemory.Element? Underlying => null;
-        public global::ClickIt.Shared.Game.IElementAdapter? Parent { get; private set; }
+        public Element? Underlying => null;
+        public IElementAdapter? Parent { get; private set; }
         public bool IsValid => true;
 
         public void AddChild(ElementAdapterStub c)
@@ -22,7 +19,7 @@ namespace ClickIt.Tests.Shared.TestUtils
             _children.Add(c);
         }
 
-        public global::ClickIt.Shared.Game.IElementAdapter? GetChildFromIndices(int a, int b)
+        public IElementAdapter? GetChildFromIndices(int a, int b)
         {
             if (b < 0 || b >= _children.Count) return null;
             return _children[b];

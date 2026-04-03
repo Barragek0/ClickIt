@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.Core
 {
     internal readonly record struct ClickTickContext(

@@ -1,7 +1,3 @@
-using System.Collections;
-using System.Diagnostics;
-using System.Text;
-
 namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospectionCoroutineWriter
@@ -15,7 +11,7 @@ namespace ClickIt.UI.Debug.Introspection
             int nodeBudgetPerYield = 250)
         {
             RuntimeObjectTraversalOptions normalized = RuntimeObjectIntrospectionReportBuilder.NormalizeOptions(options);
-            int budget = global::System.Math.Max(1, nodeBudgetPerYield);
+            int budget = SystemMath.Max(1, nodeBudgetPerYield);
 
             string fullPath = Path.GetFullPath(filePath);
             string? directory = Path.GetDirectoryName(fullPath);
@@ -82,7 +78,7 @@ namespace ClickIt.UI.Debug.Introspection
                     {
                         processedSinceYield = 0;
                         sliceStopwatch.Restart();
-                        int pct = global::System.Math.Min(99, (int)((long)engine.TotalProcessedNodes * 100L / global::System.Math.Max(1, normalized.MaxTotalNodes)));
+                        int pct = SystemMath.Min(99, (int)((long)engine.TotalProcessedNodes * 100L / SystemMath.Max(1, normalized.MaxTotalNodes)));
                         SafeInvokeProgress(onProgress, pct);
 
                         if (!RuntimeObjectIntrospectionStreamWriter.TryFlush(writer, out string? flushError))

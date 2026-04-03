@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ClickIt.Core.Lifecycle
 {
     internal sealed class PluginLifecycleButtonBindings(ClickIt owner, DebugClipboardService debugClipboardService)

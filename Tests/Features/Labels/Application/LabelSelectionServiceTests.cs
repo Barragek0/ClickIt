@@ -1,6 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace ClickIt.Tests.Features.Labels.Application
 {
     [TestClass]
@@ -15,7 +12,7 @@ namespace ClickIt.Tests.Features.Labels.Application
                 CreateClickSettings: static _ => new ClickSettings(),
                 ShouldCaptureLabelDebug: static () => true,
                 PublishLabelDebugStage: debugEvent => publishedEvent = debugEvent,
-                TryBuildLabelCandidate: static (ExileCore.PoEMemory.Elements.LabelOnGround _, ClickSettings _, out ExileCore.PoEMemory.MemoryObjects.Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                TryBuildLabelCandidate: static (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
                 {
                     item = null;
                     mechanicId = null;
@@ -40,7 +37,7 @@ namespace ClickIt.Tests.Features.Labels.Application
                 CreateClickSettings: static _ => new ClickSettings(),
                 ShouldCaptureLabelDebug: static () => false,
                 PublishLabelDebugStage: static _ => { },
-                TryBuildLabelCandidate: static (ExileCore.PoEMemory.Elements.LabelOnGround _, ClickSettings _, out ExileCore.PoEMemory.MemoryObjects.Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                TryBuildLabelCandidate: static (LabelOnGround _, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
                 {
                     item = null;
                     mechanicId = null;

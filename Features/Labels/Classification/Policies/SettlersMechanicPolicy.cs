@@ -1,4 +1,3 @@
-
 namespace ClickIt.Features.Labels.Classification.Policies
 {
     internal static class SettlersMechanicPolicy

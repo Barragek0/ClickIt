@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospectionReportBuilder
@@ -47,14 +45,14 @@ namespace ClickIt.UI.Debug.Introspection
 
             return new RuntimeObjectTraversalOptions(
                 Title: title,
-                MaxDepth: global::System.Math.Max(0, options.MaxDepth),
-                MaxCollectionItems: global::System.Math.Max(1, options.MaxCollectionItems),
+                MaxDepth: SystemMath.Max(0, options.MaxDepth),
+                MaxCollectionItems: SystemMath.Max(1, options.MaxCollectionItems),
                 PriorityMembers: options.PriorityMembers ?? [],
-                MaxMembersPerObject: global::System.Math.Max(1, options.MaxMembersPerObject),
+                MaxMembersPerObject: SystemMath.Max(1, options.MaxMembersPerObject),
                 IncludeNonPublicMembers: options.IncludeNonPublicMembers,
-                MaxValueChars: global::System.Math.Max(1, options.MaxValueChars),
-                MaxTotalNodes: global::System.Math.Max(1, options.MaxTotalNodes),
-                MaxElapsedMs: global::System.Math.Max(500, options.MaxElapsedMs));
+                MaxValueChars: SystemMath.Max(1, options.MaxValueChars),
+                MaxTotalNodes: SystemMath.Max(1, options.MaxTotalNodes),
+                MaxElapsedMs: SystemMath.Max(500, options.MaxElapsedMs));
         }
     }
 }

@@ -1,6 +1,3 @@
-using SharpDX;
-using Color = SharpDX.Color;
-
 namespace ClickIt.UI.Debug.Sections
 {
     internal sealed class StatusDebugOverlaySection(Debug.DebugOverlayRenderContext context)
@@ -73,7 +70,7 @@ namespace ClickIt.UI.Debug.Sections
 
             if (playerValid && gameController?.Player != null)
             {
-                var playerPos = gameController.Player.Pos;
+                var playerPos = gameController.Player.PosNum;
                 _context.DeferredTextQueue.Enqueue($"Player Pos: ({playerPos.X:F1}, {playerPos.Y:F1})", new Vector2(xPos, yPos), Color.White, 14);
                 yPos += lineHeight;
             }

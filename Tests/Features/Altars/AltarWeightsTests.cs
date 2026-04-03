@@ -1,7 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-using System;
-
 namespace ClickIt.Tests.Features.Altars
 {
     [TestClass]

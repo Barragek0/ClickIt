@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 namespace ClickIt.Shared.Input
 {
     internal static class Keyboard

@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ClickIt.Features.Labels.Selection
 {
     internal sealed class LabelCandidateBuilderService(LabelMechanicResolutionService mechanicResolutionService)

@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Pathfinding.Projection
 {
     internal static class ScreenPathProjector

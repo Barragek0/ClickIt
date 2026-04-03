@@ -1,7 +1,3 @@
-using System.Collections;
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click.Application
 {
     internal readonly record struct AltarAutomationServiceDependencies(

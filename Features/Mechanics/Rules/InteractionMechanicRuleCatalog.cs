@@ -4,7 +4,7 @@ namespace ClickIt.Features.Mechanics.Rules
         ClickSettings Settings,
         string Path,
         LabelOnGround Label,
-        ExileCore.GameController? GameController,
+        GameController? GameController,
         MechanicClassifierDependencies Dependencies);
 
     internal static class InteractionMechanicRuleCatalog
@@ -35,7 +35,7 @@ namespace ClickIt.Features.Mechanics.Rules
             ClickSettings settings,
             string path,
             LabelOnGround label,
-            ExileCore.GameController? gameController,
+            GameController? gameController,
             in MechanicClassifierDependencies dependencies)
         {
             InteractionRuleContext context = new(settings, path, label, gameController, dependencies);

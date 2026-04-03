@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Area
 {
     internal sealed class BlockedAreaEvaluatorPipeline(IReadOnlyList<Func<AreaBlockedSnapshot, Vector2, bool>> evaluators)

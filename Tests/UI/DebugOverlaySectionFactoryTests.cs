@@ -1,6 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace ClickIt.Tests.UI
 {
     [TestClass]
@@ -11,20 +8,20 @@ namespace ClickIt.Tests.UI
         {
             var settings = new ClickItSettings
             {
-                DebugShowStatus = new ExileCore.Shared.Nodes.ToggleNode(true),
-                DebugShowGameState = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowPerformance = new ExileCore.Shared.Nodes.ToggleNode(true),
-                DebugShowClickFrequencyTarget = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowAltarDetection = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowAltarService = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowLabels = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowInventoryPickup = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowHoveredItemMetadata = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowPathfinding = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowUltimatum = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowClicking = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowRuntimeDebugLogOverlay = new ExileCore.Shared.Nodes.ToggleNode(false),
-                DebugShowRecentErrors = new ExileCore.Shared.Nodes.ToggleNode(true)
+                DebugShowStatus = new ToggleNode(true),
+                DebugShowGameState = new ToggleNode(false),
+                DebugShowPerformance = new ToggleNode(true),
+                DebugShowClickFrequencyTarget = new ToggleNode(false),
+                DebugShowAltarDetection = new ToggleNode(false),
+                DebugShowAltarService = new ToggleNode(false),
+                DebugShowLabels = new ToggleNode(false),
+                DebugShowInventoryPickup = new ToggleNode(false),
+                DebugShowHoveredItemMetadata = new ToggleNode(false),
+                DebugShowPathfinding = new ToggleNode(false),
+                DebugShowUltimatum = new ToggleNode(false),
+                DebugShowClicking = new ToggleNode(false),
+                DebugShowRuntimeDebugLogOverlay = new ToggleNode(false),
+                DebugShowRecentErrors = new ToggleNode(true)
             };
 
             var factory = new DebugOverlaySectionFactory(new DebugOverlaySectionFactoryDependencies(

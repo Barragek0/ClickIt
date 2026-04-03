@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click
 {
     internal readonly record struct ChestLootSettlementTrackerDependencies(

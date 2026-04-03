@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.Core.Contracts
 {
     internal delegate void PublishClickFlowDebugStageDelegate(string stage, string notes, string? mechanicId);

@@ -1,6 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-
 namespace ClickIt.Tests.Core
 {
     [TestClass]

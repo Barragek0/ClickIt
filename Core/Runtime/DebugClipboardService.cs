@@ -1,7 +1,3 @@
-using System.Collections;
-using System.Diagnostics;
-using System.Text;
-
 namespace ClickIt.Core.Runtime
 {
     internal readonly record struct DebugClipboardServiceDependencies(
@@ -87,7 +83,7 @@ namespace ClickIt.Core.Runtime
                     Priority = CoroutinePriority.Normal
                 };
 
-                _ = global::ExileCore.Core.ParallelRunner.Run(runtime.DeepMemoryDumpCoroutine);
+                _ = ExileCoreApi.ParallelRunner.Run(runtime.DeepMemoryDumpCoroutine);
             }
         }
 

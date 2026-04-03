@@ -4,11 +4,11 @@ namespace ClickIt.Features.Labels.Classification
 {
     internal readonly record struct MechanicClassifierDependencies(
         Func<Entity, string> GetWorldItemMetadataPath,
-        Func<ClickSettings, Entity, ExileCore.GameController?, LabelOnGround, bool> ShouldAllowWorldItemByMetadata,
+        Func<ClickSettings, Entity, GameController?, LabelOnGround, bool> ShouldAllowWorldItemByMetadata,
         Func<ClickSettings, string, LabelOnGround, bool> ShouldClickStrongbox,
         Func<bool, LabelOnGround, bool> ShouldClickEssence,
         Func<bool, bool, string, LabelOnGround, string?> GetRitualMechanicId,
-        Func<ExileCore.GameController?, bool> ShouldAllowClosedDoorPastMechanic);
+        Func<GameController?, bool> ShouldAllowClosedDoorPastMechanic);
 
     internal static class MechanicClassifier
     {
@@ -43,7 +43,7 @@ namespace ClickIt.Features.Labels.Classification
             LabelOnGround label,
             Entity item,
             ClickSettings settings,
-            ExileCore.GameController? gameController,
+            GameController? gameController,
             in MechanicClassifierDependencies dependencies)
         {
             EntityType type = item.Type;
@@ -163,7 +163,7 @@ namespace ClickIt.Features.Labels.Classification
             ClickSettings settings,
             string path,
             LabelOnGround label,
-            ExileCore.GameController? gameController,
+            GameController? gameController,
             in MechanicClassifierDependencies dependencies)
         {
             string? special = GetSpecialPathMechanicId(settings, path, label, gameController, dependencies);
@@ -302,7 +302,7 @@ namespace ClickIt.Features.Labels.Classification
             ClickSettings settings,
             string path,
             LabelOnGround label,
-            ExileCore.GameController? gameController,
+            GameController? gameController,
             in MechanicClassifierDependencies dependencies)
         {
             if (string.IsNullOrEmpty(path))
@@ -322,7 +322,7 @@ namespace ClickIt.Features.Labels.Classification
             ClickSettings settings,
             string path,
             LabelOnGround label,
-            ExileCore.GameController? gameController,
+            GameController? gameController,
             in MechanicClassifierDependencies dependencies)
             => InteractionMechanicRuleCatalog.TryResolve(settings, path, label, gameController, dependencies);
 

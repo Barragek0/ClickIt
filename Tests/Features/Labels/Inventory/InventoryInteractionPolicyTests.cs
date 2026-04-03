@@ -1,8 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-
 namespace ClickIt.Tests.Features.Labels.Inventory
 {
     [TestClass]

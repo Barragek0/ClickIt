@@ -13,7 +13,7 @@ namespace ClickIt.Shared.Input
                 return false;
             }
 
-            int intervalMs = global::System.Math.Max(100, _settings.ToggleItemsIntervalMs.Value);
+            int intervalMs = SystemMath.Max(100, _settings.ToggleItemsIntervalMs.Value);
             long now = Environment.TickCount64;
 
             if (_lastToggleItemsTimestampMs > 0)
@@ -25,14 +25,14 @@ namespace ClickIt.Shared.Input
                 }
             }
 
-            _keyPress(_settings.ToggleItemsHotkey, 20);
-            _keyPress(_settings.ToggleItemsHotkey, 20);
+            _keyPress(_settings.ToggleItemsHotkeyBinding, 20);
+            _keyPress(_settings.ToggleItemsHotkeyBinding, 20);
             _lastToggleItemsTimestampMs = now;
             return true;
         }
 
         internal int GetToggleItemsPostClickBlockMs()
-            => global::System.Math.Max(0, _settings.ToggleItemsPostToggleClickBlockMs.Value);
+            => SystemMath.Max(0, _settings.ToggleItemsPostToggleClickBlockMs.Value);
 
         internal bool IsInPostClickBlockWindow()
         {

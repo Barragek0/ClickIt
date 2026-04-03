@@ -1,5 +1,3 @@
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Shared.Math
 {
     public static class GeometryHelpers

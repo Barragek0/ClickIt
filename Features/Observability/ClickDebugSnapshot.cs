@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Observability
 {
     public sealed record ClickDebugSnapshot(

@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click
 {
     internal readonly record struct LabelSelectionCoordinatorDependencies(
@@ -217,7 +214,7 @@ namespace ClickIt.Features.Click
                 Entity? candidateEntity = candidate.ItemOnGround;
                 bool shouldUseGroundProjection = ManualCursorSelectionMath.ShouldUseManualGroundProjectionForCandidate(
                     hasBackingEntity: candidateEntity != null,
-                    isWorldItem: candidateEntity?.Type == ExileCore.Shared.Enums.EntityType.WorldItem);
+                    isWorldItem: candidateEntity?.Type == EntityType.WorldItem);
                 Vector2 projectedGroundPoint = default;
 
                 bool hasLabelRect = LabelUtils.TryGetLabelRect(candidate, out RectangleF rect);

@@ -1,5 +1,3 @@
-using ImGuiNET;
-
 namespace ClickIt.UI.Settings.Panels
 {
     internal sealed class LazyModeNearbyMonsterRulesPanelRenderer(ClickItSettings settings)

@@ -1,6 +1,3 @@
-using ImGuiNET;
-using System.Numerics;
-
 namespace ClickIt.UI.Settings
 {
     internal sealed class SettingsPanelSafeRenderer(ClickItSettings settings)

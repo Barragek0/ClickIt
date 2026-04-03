@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace ClickIt.Features.Altars
 {
     public static class AltarParser

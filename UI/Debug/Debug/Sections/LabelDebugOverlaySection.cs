@@ -1,7 +1,3 @@
-using SharpDX;
-using Color = SharpDX.Color;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.UI.Debug.Sections
 {
     internal sealed class LabelDebugOverlaySection(Debug.DebugOverlayRenderContext context)

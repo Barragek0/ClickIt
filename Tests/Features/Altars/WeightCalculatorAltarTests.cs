@@ -1,6 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-
 namespace ClickIt.Tests.Features.Altars
 {
     [TestClass]
@@ -51,7 +48,7 @@ namespace ClickIt.Tests.Features.Altars
 
             var calc = new WeightCalculator(settings);
 
-            var elt = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.PoEMemory.Element)) as ExileCore.PoEMemory.Element;
+            var elt = RuntimeHelpers.GetUninitializedObject(typeof(Element)) as Element;
 
             var top = new SecondaryAltarComponent(elt, ["up0", "up1"], ["down0"]);
             var bottom = new SecondaryAltarComponent(elt, ["up1"], ["down1"]);

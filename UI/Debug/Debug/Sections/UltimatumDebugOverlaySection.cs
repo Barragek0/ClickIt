@@ -1,6 +1,3 @@
-using SharpDX;
-using Color = SharpDX.Color;
-
 namespace ClickIt.UI.Debug.Sections
 {
     internal sealed class UltimatumDebugOverlaySection(Debug.DebugOverlayRenderContext context)

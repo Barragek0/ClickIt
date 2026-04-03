@@ -15,11 +15,11 @@ namespace ClickIt.Core.Bootstrap
             CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, owner.GameController
                 ?? throw new InvalidOperationException("GameController is null during plugin initialization."));
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, owner.GameController, core);
-            ClickService clickService = ClickDomainAssembler.Assemble(owner, settings, owner.GameController, core, rendering.AltarDisplayRenderer);
-            UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickService, core.DeferredFrameQueue);
+            ClickService clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, owner.GameController, core, rendering.AltarDisplayRenderer);
+            UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
 
-            ApplyPorts(context, core, rendering, clickService, ultimatumRenderer, settingsDomain.AlertService);
+            ApplyPorts(context, core, rendering, clickAutomationPort, ultimatumRenderer, settingsDomain.AlertService);
 
             SettingsDomainAssembler.WireActions(settings, settingsDomain.EffectiveSettings, settingsDomain.AlertService, context.ServiceRegistry);
             context.ServiceRegistry.Register(() => context.Services.ErrorHandler?.UnregisterGlobalExceptionHandlers());
@@ -63,7 +63,7 @@ namespace ClickIt.Core.Bootstrap
             PluginContext context,
             CoreDomainServices core,
             RenderingDomainServices rendering,
-            ClickService clickService,
+            ClickService clickAutomationPort,
             UltimatumRenderer ultimatumRenderer,
             AlertService alertService)
         {
@@ -77,11 +77,11 @@ namespace ClickIt.Core.Bootstrap
             featurePorts.CachedLabels = core.CachedLabels;
             featurePorts.Camera = core.Camera;
             featurePorts.AltarService = core.AltarService;
-            featurePorts.LabelFilterService = core.LabelFilterService;
+            featurePorts.LabelFilterPort = core.LabelFilterPort;
             featurePorts.ShrineService = core.ShrineService;
             featurePorts.InputHandler = core.InputHandler;
             featurePorts.PathfindingService = core.PathfindingService;
-            featurePorts.ClickService = clickService;
+            featurePorts.ClickAutomationPort = clickAutomationPort;
             featurePorts.AlertService = alertService;
 
             overlayPorts.DeferredTextQueue = core.DeferredTextQueue;
@@ -93,7 +93,7 @@ namespace ClickIt.Core.Bootstrap
             overlayPorts.InventoryFullWarningRenderer = rendering.InventoryFullWarningRenderer;
             overlayPorts.PathfindingRenderer = rendering.PathfindingRenderer;
             overlayPorts.AltarDisplayRenderer = rendering.AltarDisplayRenderer;
-            overlayPorts.ClickRuntimeHost = new ClickRuntimeHost(() => featurePorts.ClickService);
+            overlayPorts.ClickRuntimeHost = new ClickRuntimeHost(() => featurePorts.ClickAutomationPort);
             overlayPorts.UltimatumRenderer = ultimatumRenderer;
         }
     }

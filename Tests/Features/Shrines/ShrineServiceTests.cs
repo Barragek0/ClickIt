@@ -1,9 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Runtime.CompilerServices;
-using System.Threading;
-
 namespace ClickIt.Tests.Features.Shrines
 {
     [TestClass]

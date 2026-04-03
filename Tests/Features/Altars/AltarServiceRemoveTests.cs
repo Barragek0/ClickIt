@@ -1,6 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-
 namespace ClickIt.Tests.Features.Altars
 {
     [TestClass]
@@ -13,7 +10,7 @@ namespace ClickIt.Tests.Features.Altars
             var settings = new ClickItSettings();
             var service = new AltarService(clickIt, settings, null);
 
-            var component = TestUtils.TestBuilders.BuildPrimary();
+            var component = TestBuilders.BuildPrimary();
             service.AddAltarComponent(component).Should().BeTrue();
 
             service.RemoveAltarComponentsByElement(null!);

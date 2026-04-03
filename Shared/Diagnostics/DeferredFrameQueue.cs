@@ -1,7 +1,3 @@
-using RectangleF = SharpDX.RectangleF;
-using Color = SharpDX.Color;
-using Graphics = ExileCore.Graphics;
-
 namespace ClickIt.Shared.Diagnostics
 {
     public class DeferredFrameQueue
@@ -39,7 +35,7 @@ namespace ClickIt.Shared.Diagnostics
                     if (_items.Count >= MaxBufferedItems)
                     {
                         // Keep recent entries and shed older buffered frames to cap retained memory.
-                        int removeCount = global::System.Math.Max(1, _items.Count / 2);
+                        int removeCount = SystemMath.Max(1, _items.Count / 2);
                         _items.RemoveRange(0, removeCount);
                     }
 

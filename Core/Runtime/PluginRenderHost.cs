@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using Graphics = ExileCore.Graphics;
-
 namespace ClickIt.Core.Runtime
 {
     internal sealed class PluginRenderHost
@@ -11,7 +8,7 @@ namespace ClickIt.Core.Runtime
         internal void Render(
             PluginContext state,
             ClickItSettings effectiveSettings,
-            ExileCore.GameController? gameController,
+            GameController? gameController,
             Graphics? graphics,
             DebugClipboardService debugClipboardService)
         {

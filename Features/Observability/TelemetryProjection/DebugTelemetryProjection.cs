@@ -3,14 +3,14 @@ namespace ClickIt.Features.Observability.TelemetryProjection
     internal static class DebugTelemetryProjection
     {
         public static DebugTelemetrySnapshot Build(
-            ClickService? clickService,
-            LabelFilterService? labelFilterService,
+            ClickService? clickAutomationPort,
+            LabelFilterService? labelFilterPort,
             PathfindingService? pathfindingService)
         {
-            ClickTelemetrySnapshot clickTelemetry = BuildClickTelemetry(clickService);
-            LabelTelemetrySnapshot labelTelemetry = BuildLabelTelemetry(labelFilterService);
+            ClickTelemetrySnapshot clickTelemetry = BuildClickTelemetry(clickAutomationPort);
+            LabelTelemetrySnapshot labelTelemetry = BuildLabelTelemetry(labelFilterPort);
             PathfindingTelemetrySnapshot pathfindingTelemetry = BuildPathfindingTelemetry(pathfindingService);
-            InventoryTelemetrySnapshot inventoryTelemetry = BuildInventoryTelemetry(labelFilterService);
+            InventoryTelemetrySnapshot inventoryTelemetry = BuildInventoryTelemetry(labelFilterPort);
 
             return new DebugTelemetrySnapshot(
                 Click: clickTelemetry,
@@ -19,13 +19,13 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 Inventory: inventoryTelemetry);
         }
 
-        private static ClickTelemetrySnapshot BuildClickTelemetry(ClickService? clickService)
+        private static ClickTelemetrySnapshot BuildClickTelemetry(ClickService? clickAutomationPort)
         {
-            if (clickService == null)
+            if (clickAutomationPort == null)
                 return ClickTelemetrySnapshot.Empty;
 
             List<UltimatumOptionPreviewSnapshot> ultimatumPreview = [];
-            if (clickService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+            if (clickAutomationPort.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
                 && previews.Count > 0)
             {
                 for (int i = 0; i < previews.Count; i++)
@@ -41,24 +41,24 @@ namespace ClickIt.Features.Observability.TelemetryProjection
 
             return new ClickTelemetrySnapshot(
                 ServiceAvailable: true,
-                Click: clickService.GetLatestClickDebug(),
-                ClickTrail: clickService.GetLatestClickDebugTrail(),
-                RuntimeLog: clickService.GetLatestRuntimeDebugLog(),
-                RuntimeLogTrail: clickService.GetLatestRuntimeDebugLogTrail(),
-                Ultimatum: clickService.GetLatestUltimatumDebug(),
-                UltimatumTrail: clickService.GetLatestUltimatumDebugTrail(),
+                Click: clickAutomationPort.GetLatestClickDebug(),
+                ClickTrail: clickAutomationPort.GetLatestClickDebugTrail(),
+                RuntimeLog: clickAutomationPort.GetLatestRuntimeDebugLog(),
+                RuntimeLogTrail: clickAutomationPort.GetLatestRuntimeDebugLogTrail(),
+                Ultimatum: clickAutomationPort.GetLatestUltimatumDebug(),
+                UltimatumTrail: clickAutomationPort.GetLatestUltimatumDebugTrail(),
                 UltimatumOptionPreview: ultimatumPreview);
         }
 
-        private static LabelTelemetrySnapshot BuildLabelTelemetry(LabelFilterService? labelFilterService)
+        private static LabelTelemetrySnapshot BuildLabelTelemetry(LabelFilterService? labelFilterPort)
         {
-            if (labelFilterService == null)
+            if (labelFilterPort == null)
                 return LabelTelemetrySnapshot.Empty;
 
             return new LabelTelemetrySnapshot(
                 ServiceAvailable: true,
-                Label: labelFilterService.GetLatestLabelDebug(),
-                LabelTrail: labelFilterService.GetLatestLabelDebugTrail());
+                Label: labelFilterPort.GetLatestLabelDebug(),
+                LabelTrail: labelFilterPort.GetLatestLabelDebugTrail());
         }
 
         private static PathfindingTelemetrySnapshot BuildPathfindingTelemetry(PathfindingService? pathfindingService)
@@ -73,16 +73,16 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 OffscreenMovementTrail: pathfindingService.GetLatestOffscreenMovementDebugTrail());
         }
 
-        private static InventoryTelemetrySnapshot BuildInventoryTelemetry(LabelFilterService? labelFilterService)
+        private static InventoryTelemetrySnapshot BuildInventoryTelemetry(LabelFilterService? labelFilterPort)
         {
-            if (labelFilterService == null)
+            if (labelFilterPort == null)
                 return new InventoryTelemetrySnapshot(
                     Inventory: InventoryDebugSnapshot.Empty,
                     InventoryTrail: []);
 
             return new InventoryTelemetrySnapshot(
-                Inventory: labelFilterService.GetLatestInventoryDebug(),
-                InventoryTrail: labelFilterService.GetLatestInventoryDebugTrail());
+                Inventory: labelFilterPort.GetLatestInventoryDebug(),
+                InventoryTrail: labelFilterPort.GetLatestInventoryDebugTrail());
         }
     }
 }

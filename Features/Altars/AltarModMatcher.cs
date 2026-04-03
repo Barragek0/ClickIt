@@ -1,4 +1,3 @@
-
 namespace ClickIt.Features.Altars
 {
     public static class AltarModMatcher

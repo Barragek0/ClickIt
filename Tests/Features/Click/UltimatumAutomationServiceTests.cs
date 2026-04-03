@@ -1,9 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SharpDX;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]

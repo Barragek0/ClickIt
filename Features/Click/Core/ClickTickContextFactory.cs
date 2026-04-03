@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click.Core
 {
     internal readonly record struct MovementSkillPostCastBlockState(bool IsBlocking, string Reason);

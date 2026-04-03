@@ -1,4 +1,3 @@
-
 namespace ClickIt.Features.Mechanics
 {
     internal static class MechanicRuleCatalog

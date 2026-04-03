@@ -1,4 +1,3 @@
-using SharpDX;
 namespace ClickIt.Shared.Input
 {
     public class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
@@ -110,7 +109,7 @@ namespace ClickIt.Shared.Input
 
             if (uiState?.ChatTitlePanel?.IsVisible ?? false)
                 return "Chat is open.";
-            if (uiState?.AtlasPanel?.IsVisible ?? false)
+            if (IsUiElementVisible(uiState, "Atlas", "AtlasPanel"))
                 return "Atlas panel is open.";
             if (uiState?.AtlasTreePanel?.IsVisible ?? false)
                 return "Atlas tree panel is open.";
@@ -118,9 +117,7 @@ namespace ClickIt.Shared.Input
                 return "Passive tree panel is open.";
             if ((uiState?.UltimatumPanel?.IsVisible ?? false) && !_settings.IsOtherUltimatumClickEnabled())
                 return "Ultimatum panel is open (Click Ultimatum Choices is disabled).";
-            if (uiState?.BetrayalWindow?.IsVisible ?? false)
-                return "Betrayal window is open.";
-            if (uiState?.SyndicatePanel?.IsVisible ?? false)
+            if (IsUiElementVisible(uiState, "SyndicatePanel", "BetrayalWindow"))
                 return "Syndicate panel is open.";
             if (uiState?.IncursionWindow?.IsVisible ?? false)
                 return "Incursion window is open.";
@@ -138,6 +135,22 @@ namespace ClickIt.Shared.Input
                 return "NPC dialog is open.";
 
             return null;
+        }
+
+        private static bool IsUiElementVisible(object? uiState, params string[] propertyNames)
+        {
+            if (uiState == null)
+                return false;
+
+            Type uiStateType = uiState.GetType();
+            for (int i = 0; i < propertyNames.Length; i++)
+            {
+                object? element = uiStateType.GetProperty(propertyNames[i])?.GetValue(uiState);
+                if (element?.GetType().GetProperty("IsVisible")?.GetValue(element) is true)
+                    return true;
+            }
+
+            return false;
         }
 
         public string GetCanClickFailureReason(GameController gameController)

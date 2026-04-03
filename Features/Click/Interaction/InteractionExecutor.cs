@@ -1,6 +1,3 @@
-using SharpDX;
-using System.Diagnostics;
-
 namespace ClickIt.Features.Click.Interaction
 {
     internal sealed class InteractionExecutor(
@@ -70,11 +67,9 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryConsumeLazyModeLimiter())
                 return;
 
-            HotkeyNode? clickKeyNode = _settings.ClickLabelKey;
-            if (clickKeyNode == null)
+            Keys clickKey = _settings.ClickLabelKeyBinding;
+            if (clickKey == Keys.None)
                 return;
-
-            Keys clickKey = clickKeyNode.Value;
             if (!TryPrepareClickExecution(
                 position,
                 expectedElement,
@@ -124,7 +119,7 @@ namespace ClickIt.Features.Click.Interaction
             if (gameController == null)
                 return null;
 
-            if (!LabelClickPointResolver.TryValidateAutomationScreenPoint(screenPoint, gameController, out _))
+            if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(screenPoint, gameController, out _))
                 return null;
 
             int sleepMs = delayMs > 0 ? delayMs : _settings?.LazyModeUIHoverSleep?.Value ?? 20;
@@ -132,7 +127,7 @@ namespace ClickIt.Features.Click.Interaction
             try
             {
                 if (!Mouse.DisableNativeInput)
-                    Input.SetCursorPos(screenPoint);
+                    Input.SetCursorPos(new NumVector2(screenPoint.X, screenPoint.Y));
 
                 Thread.Sleep(sleepMs);
                 return gameController.IngameState?.UIHoverElement;
@@ -206,7 +201,7 @@ namespace ClickIt.Features.Click.Interaction
             }
 
             Vector2 executionPosition = ResolveClickExecutionPosition(position, avoidCursorMove);
-            if (!LabelClickPointResolver.TryValidateAutomationScreenPoint(executionPosition, gameController, out string invalidPointReason))
+            if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(executionPosition, gameController, out string invalidPointReason))
             {
                 _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping {clickKind} at {executionPosition} ({invalidPointReason}).", 10);
                 swTotal.Stop();
@@ -214,7 +209,7 @@ namespace ClickIt.Features.Click.Interaction
             }
 
             if (!avoidCursorMove && !Mouse.DisableNativeInput)
-                Input.SetCursorPos(executionPosition);
+                Input.SetCursorPos(new NumVector2(executionPosition.X, executionPosition.Y));
 
             Thread.Sleep(_settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10);
 
@@ -271,11 +266,11 @@ namespace ClickIt.Features.Click.Interaction
                     Thread.Sleep(restoreDelayMs);
 
                     Vector2 beforeVec = new(before.X, before.Y);
-                    if (!LabelClickPointResolver.TryValidateAutomationScreenPoint(beforeVec, gameController, out _))
+                    if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(beforeVec, gameController, out _))
                         return;
 
                     if (!Mouse.DisableNativeInput)
-                        Input.SetCursorPos(beforeVec);
+                        Input.SetCursorPos(new NumVector2(beforeVec.X, beforeVec.Y));
 
                     _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);
                 }

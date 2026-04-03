@@ -123,10 +123,10 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool ShouldForceUiHoverVerificationForLabel(LabelOnGround? label)
         {
             Entity? item = label?.ItemOnGround;
-            if (item == null || item.Type != ExileCore.Shared.Enums.EntityType.WorldItem)
+            if (item == null || item.Type != EntityType.WorldItem)
                 return false;
 
-            return LabelClickPointResolver.ShouldForceUiHoverVerificationForWorldItem(item.Path, item.RenderName);
+            return WorldItemUiHoverPolicy.ShouldForceUiHoverVerificationForWorldItem(item.Path, item.RenderName);
         }
 
         internal static (bool ShouldDelay, long NextAddress, string NextPath, long NextFirstSeenTimestampMs, long RemainingDelayMs)

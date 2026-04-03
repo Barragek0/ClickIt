@@ -1,12 +1,7 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-using System;
-using System.Threading;
-
-namespace ClickIt.Tests.Core
+namespace ClickIt.Tests.Core.Runtime
 {
     [TestClass]
-    public class ClickItInputTests
+    public class PluginInputHostTests
     {
         private static readonly PluginInputHost InputHost = new();
 
@@ -23,7 +18,6 @@ namespace ClickIt.Tests.Core
         public void HandleHotkeyPressed_SetsWorkFinishedFalse()
         {
             var plugin = new ClickIt();
-
             var state = plugin.State;
 
             state.Runtime.WorkFinished = true;
@@ -38,28 +32,25 @@ namespace ClickIt.Tests.Core
         {
             var plugin = new ClickIt();
             var settings = new ClickItSettings();
-
             var state = plugin.State;
 
-            var pm = new PerformanceMonitor(settings);
-            pm.ClickActivity.ClickCount = 5;
+            var performanceMonitor = new PerformanceMonitor(settings);
+            performanceMonitor.ClickActivity.ClickCount = 5;
 
-            state.Services.PerformanceMonitor = pm;
-
+            state.Services.PerformanceMonitor = performanceMonitor;
             state.Services.InputHandler = null;
 
-            pm.ClickActivity.ClickCount.Should().BeGreaterThan(0);
+            performanceMonitor.ClickActivity.ClickCount.Should().BeGreaterThan(0);
 
             InputHost.Tick(state, settings);
 
-            pm.ClickActivity.ClickCount.Should().Be(0);
+            performanceMonitor.ClickActivity.ClickCount.Should().Be(0);
         }
 
         [TestMethod]
-        public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenDueAndNotDeferred()
+        public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenDue()
         {
             var plugin = new ClickIt();
-
             var state = plugin.State;
 
             state.Runtime.SecondTimer.Restart();
@@ -72,18 +63,18 @@ namespace ClickIt.Tests.Core
         }
 
         [TestMethod]
-        public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenHotkeyHeld()
+        public void ResumeAltarScanningIfDue_DoesNothing_WhenNotDue()
         {
             var plugin = new ClickIt();
-
             var state = plugin.State;
 
             state.Runtime.SecondTimer.Restart();
-            Thread.Sleep(220);
+            Thread.Sleep(20);
 
+            long before = state.Runtime.SecondTimer.ElapsedMilliseconds;
             InputHost.ResumeAltarScanningIfDue(state);
 
-            state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
+            state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(before);
         }
 
         [TestMethod]
@@ -91,17 +82,15 @@ namespace ClickIt.Tests.Core
         {
             try
             {
-                var res = PluginCoroutineRegistry.FindClickLogicCoroutine();
-                res.Should().BeNull();
+                PluginCoroutineRegistry.FindClickLogicCoroutine().Should().BeNull();
             }
             catch (NullReferenceException)
             {
-                // ParallelRunner can be unavailable in isolated tests.
             }
         }
 
         [TestMethod]
-        public void ShouldRunManualUiHoverCoroutineForInputState_ReturnsTrue_OnlyWhenManualEnabledAndNotLazy()
+        public void ShouldRunManualUiHoverCoroutine_ReturnsTrue_OnlyWhenManualEnabledAndNotLazy()
         {
             PluginInputHost.ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: false)
                 .Should().BeTrue();
@@ -113,5 +102,18 @@ namespace ClickIt.Tests.Core
                 .Should().BeFalse();
         }
 
+        [TestMethod]
+        public void ShouldRunManualUiHoverCoroutine_SettingsOverload_UsesRelevantFlags()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickOnManualUiHoverOnly.Value = true;
+            settings.LazyMode.Value = false;
+
+            PluginInputHost.ShouldRunManualUiHoverCoroutine(settings).Should().BeTrue();
+
+            settings.LazyMode.Value = true;
+
+            PluginInputHost.ShouldRunManualUiHoverCoroutine(settings).Should().BeFalse();
+        }
     }
 }

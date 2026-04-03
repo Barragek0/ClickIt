@@ -1,5 +1,3 @@
-using Newtonsoft.Json;
-
 namespace ClickIt
 {
     public partial class ClickItSettings : ISettings
@@ -109,9 +107,7 @@ namespace ClickIt
         public EmptyNode Click { get; set; } = new EmptyNode();
         [Menu("Click Hotkey", "Held hotkey to start clicking", 1, 1100)]
 
-        [Obsolete("Can be safely ignored for now.")]
-
-        public HotkeyNode ClickLabelKey { get; set; } = new HotkeyNode(Keys.F1);
+        public HotkeyNodeV2 ClickLabelKey { get; set; } = new HotkeyNodeV2(Keys.F1);
         [Menu("Click Hotkey Toggle Mode", "When enabled, pressing the Click Hotkey toggles clicking on/off.\nWhen disabled, clicking only occurs while holding the Click Hotkey (or via Lazy Mode).", 2, 1100)]
         public ToggleNode ClickHotkeyToggleMode { get; set; } = new ToggleNode(false);
 
@@ -142,7 +138,7 @@ namespace ClickIt
         [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels.", 9, 1100)]
         public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
         [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels.", 10, 1100)]
-        public HotkeyNode ToggleItemsHotkey { get; set; } = new HotkeyNode(Keys.Z);
+        public HotkeyNodeV2 ToggleItemsHotkey { get; set; } = new HotkeyNodeV2(Keys.Z);
         [Menu("Toggle Item View Interval (ms)", "How often Toggle Item View is allowed to trigger.\n1000 ms = 1 second.", 11, 1100)]
         public RangeNode<int> ToggleItemsIntervalMs { get; set; } = new RangeNode<int>(1500, 500, 10000);
         [Menu("Disable Clicking after Toggle Items (ms)", "Temporarily blocks further clicks after Toggle Item View triggers.\n\nIncrease this if clicks right after toggling are clicking incorrect labels.", 12, 1100)]
@@ -189,7 +185,7 @@ namespace ClickIt
         [Menu("Click Limiting (ms)", "When lazy mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while lazy mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 1115)]
         public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
         [Menu("Disable Hotkey", "When lazy mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1115)]
-        public HotkeyNode LazyModeDisableKey { get; set; } = new HotkeyNode(Keys.F2);
+        public HotkeyNodeV2 LazyModeDisableKey { get; set; } = new HotkeyNodeV2(Keys.F2);
         [Menu("Disable Hotkey Toggle Mode", "When enabled, pressing the Disable Hotkey toggles lazy mode clicking on/off until you press it again.\nWhen disabled, the hotkey works as hold-to-disable.", 4, 1115)]
         public ToggleNode LazyModeDisableKeyToggleMode { get; set; } = new ToggleNode(false);
         [Menu("Restore Cursor Position after Each Click", "When enabled, restores cursor to original position after clicking in lazy mode.", 5, 1115)]
@@ -529,7 +525,7 @@ namespace ClickIt
         [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 123)]
         public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
         [Menu("Flare Hotkey", "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.", 5, 123)]
-        public HotkeyNode DelveFlareHotkey { get; set; } = new HotkeyNode(Keys.D6);
+        public HotkeyNodeV2 DelveFlareHotkey { get; set; } = new HotkeyNodeV2(Keys.D6);
         [Menu("", 10009, 123)]
         [JsonIgnore]
         public CustomNode DelveSliderWidthStart { get; private set; } = new();
@@ -543,11 +539,35 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode DelveSliderWidthEnd { get; private set; } = new();
 
+        [JsonIgnore]
+        internal Keys ClickLabelKeyBinding
+        {
+            get => ClickLabelKey is null ? Keys.None : ClickLabelKey.Value.Key;
+        }
+
+        [JsonIgnore]
+        internal Keys ToggleItemsHotkeyBinding
+        {
+            get => ToggleItemsHotkey is null ? Keys.None : ToggleItemsHotkey.Value.Key;
+        }
+
+        [JsonIgnore]
+        internal Keys LazyModeDisableKeyBinding
+        {
+            get => LazyModeDisableKey is null ? Keys.None : LazyModeDisableKey.Value.Key;
+        }
+
+        [JsonIgnore]
+        internal Keys DelveFlareHotkeyBinding
+        {
+            get => DelveFlareHotkey is null ? Keys.None : DelveFlareHotkey.Value.Key;
+        }
+
         public ClickItSettings()
         {
             InitializeDefaultWeights();
             ClickItSettingsMigrationService.Apply(this);
-            ClickItSettingsScreenNodes screenNodes = UISettings.SettingsUiBootstrapper.CreateScreenNodes(this);
+            ClickItSettingsScreenNodes screenNodes = SettingsUiBootstrapper.CreateScreenNodes(this);
             DebugTestingPanel = screenNodes.DebugTestingPanel;
             ControlsSliderWidthStart = screenNodes.ControlsSliderWidthStart;
             ControlsSliderWidthEnd = screenNodes.ControlsSliderWidthEnd;

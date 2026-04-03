@@ -1,30 +1,27 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-
 namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
-    public class LabelUtilsDirectTests
+    public class ClickableLabelPolicyTests
     {
         [TestMethod]
         public void IsValidClickableLabel_NullOrMissingParts_ReturnsFalse()
         {
-            LabelUtils.IsValidClickableLabel(null!, (v) => true).Should().BeFalse();
+            ClickableLabelPolicy.IsValidClickableLabel(null!, static _ => true).Should().BeFalse();
         }
 
         [TestMethod]
         public void IsValidEntityPath_DetectsClickablePathAndHandlesNull()
         {
-            LabelUtils.IsValidEntityPathCore(null).Should().BeFalse();
-            LabelUtils.IsValidEntityPathCore("some/thing/PetrifiedWood/abc").Should().BeTrue();
+            ClickableLabelPolicy.IsValidEntityPathCore(null).Should().BeFalse();
+            ClickableLabelPolicy.IsValidEntityPathCore("some/thing/PetrifiedWood/abc").Should().BeTrue();
         }
 
         [TestMethod]
         public void IsValidClickableLabelCore_HarvestRequiresVisibleRootElement()
         {
-            var clickableHarvestPath = "Metadata/Terrain/Leagues/Harvest/Irrigator";
+            const string clickableHarvestPath = "Metadata/Terrain/Leagues/Harvest/Irrigator";
 
-            var blocked = LabelUtils.IsValidClickableLabelCore(
+            bool blocked = ClickableLabelPolicy.IsValidClickableLabelCore(
                 labelNotNull: true,
                 itemNotNull: true,
                 isVisible: true,
@@ -38,7 +35,7 @@ namespace ClickIt.Tests.Shared.Game
 
             blocked.Should().BeFalse();
 
-            var allowed = LabelUtils.IsValidClickableLabelCore(
+            bool allowed = ClickableLabelPolicy.IsValidClickableLabelCore(
                 labelNotNull: true,
                 itemNotNull: true,
                 isVisible: true,
@@ -56,9 +53,9 @@ namespace ClickIt.Tests.Shared.Game
         [TestMethod]
         public void IsValidClickableLabelCore_NonHarvestIgnoresRootElementVisibility()
         {
-            var nonHarvestPath = "Metadata/Terrain/Leagues/Ritual/SomeObject";
+            const string nonHarvestPath = "Metadata/Terrain/Leagues/Ritual/SomeObject";
 
-            var result = LabelUtils.IsValidClickableLabelCore(
+            bool result = ClickableLabelPolicy.IsValidClickableLabelCore(
                 labelNotNull: true,
                 itemNotNull: true,
                 isVisible: true,
@@ -73,5 +70,18 @@ namespace ClickIt.Tests.Shared.Game
             result.Should().BeTrue();
         }
 
+        [DataTestMethod]
+        [DataRow("DelveMineral/col1", true)]
+        [DataRow("some/Delve/Objects/Encounter/abc", true)]
+        [DataRow("CleansingFireAltar/something", true)]
+        [DataRow("copper_altar", true)]
+        [DataRow("Leagues/Ritual/blah", true)]
+        [DataRow("not/a/match", false)]
+        [DataRow("", false)]
+        [DataRow("DELVeMINERAL", false)]
+        public void IsPathForClickableObject_VariousPatterns(string path, bool expected)
+        {
+            ClickableLabelPolicy.IsPathForClickableObject(path).Should().Be(expected);
+        }
     }
 }

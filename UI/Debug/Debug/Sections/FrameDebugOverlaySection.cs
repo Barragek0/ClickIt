@@ -1,6 +1,3 @@
-using Color = SharpDX.Color;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.UI.Debug.Sections
 {
     internal sealed class FrameDebugOverlaySection(Debug.DebugOverlayRenderContext context)

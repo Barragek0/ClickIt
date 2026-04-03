@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal static class VisibleMechanicSelectionPolicy

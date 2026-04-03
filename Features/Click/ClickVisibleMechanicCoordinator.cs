@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click
 {
     internal readonly record struct VisibleMechanicCoordinatorDependencies(

@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Shared.Diagnostics
 {
     public class DeferredTextQueue
@@ -23,7 +21,7 @@ namespace ClickIt.Shared.Diagnostics
                     if (_items.Count >= MaxBufferedItems)
                     {
                         // Keep recent entries and shed older buffered lines to cap retained memory.
-                        int removeCount = global::System.Math.Max(1, _items.Count / 2);
+                        int removeCount = SystemMath.Max(1, _items.Count / 2);
                         _items.RemoveRange(0, removeCount);
                     }
 
@@ -36,7 +34,7 @@ namespace ClickIt.Shared.Diagnostics
             }
         }
 
-        public void Flush(ExileCore.Graphics graphics, Action<string, int> logMessage)
+        public void Flush(Graphics graphics, Action<string, int> logMessage)
         {
             if (graphics == null) return;
 
@@ -57,7 +55,7 @@ namespace ClickIt.Shared.Diagnostics
                 var entry = _spare[i];
                 try
                 {
-                    graphics.DrawText(entry.Text, entry.Position, entry.Color, entry.Size, entry.Align);
+                    graphics.DrawText(entry.Text, new NumVector2(entry.Position.X, entry.Position.Y), entry.Color, entry.Align);
                 }
                 catch
                 {
@@ -90,7 +88,7 @@ namespace ClickIt.Shared.Diagnostics
                 if (_items.Count == 0)
                     return [];
 
-                int from = global::System.Math.Clamp(startIndex, 0, _items.Count);
+                int from = SystemMath.Clamp(startIndex, 0, _items.Count);
                 int count = _items.Count - from;
                 if (count <= 0)
                     return [];

@@ -1,5 +1,3 @@
-using Color = SharpDX.Color;
-
 namespace ClickIt.UI.Overlays.Common
 {
     public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
@@ -49,7 +47,7 @@ namespace ClickIt.UI.Overlays.Common
                 if (!isClickableBySettings || !showFrames)
                     continue;
 
-                var chestComp = label?.ItemOnGround?.GetComponent<ExileCore.PoEMemory.Components.Chest>();
+                var chestComp = label?.ItemOnGround?.GetComponent<Chest>();
                 bool chestLocked = chestComp?.IsLocked == true;
 
                 var color = chestLocked ? Color.Red : Color.LawnGreen;

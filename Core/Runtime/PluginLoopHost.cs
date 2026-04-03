@@ -1,8 +1,6 @@
-using System.Collections;
-
 namespace ClickIt.Core.Runtime
 {
-    public class PluginLoopHost(
+    public partial class PluginLoopHost(
         PluginContext state,
         ClickItSettings settings,
         GameController gameController,
@@ -12,59 +10,7 @@ namespace ClickIt.Core.Runtime
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
         private readonly ErrorHandler _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
-        private const int LazyModeContextCacheMs = 50;
         private long _lastCanClickFailureLogTimestampMs;
-        private long _lastLazyModeContextRefreshTimestampMs = long.MinValue;
-        private bool _cachedRitualActive;
-        private bool _cachedHasLazyModeRestrictedItems;
-        private bool _cachedRitualEvaluated;
-        private bool _cachedRestrictedItemsEvaluated;
-        private IReadOnlyList<LabelOnGround>? _cachedLazyModeLabelsRef;
-        private int _cachedLazyModeLabelCount = -1;
-
-        private bool IsRitualActive()
-        {
-            return EntityHelpers.IsRitualActive(_gameController);
-        }
-
-        private (bool IsRitualActive, bool HasLazyModeRestrictedItems, IReadOnlyList<LabelOnGround>? Labels) GetCachedLazyModeContext(
-            bool shouldEvaluateRitualState,
-            bool shouldEvaluateRestrictedItems)
-        {
-            IReadOnlyList<LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
-            int labelCount = labels?.Count ?? 0;
-            long now = Environment.TickCount64;
-
-            bool cacheStillFresh = (now - _lastLazyModeContextRefreshTimestampMs) < LazyModeContextCacheMs
-                && ReferenceEquals(labels, _cachedLazyModeLabelsRef)
-                && labelCount == _cachedLazyModeLabelCount;
-
-            if (!cacheStillFresh)
-            {
-                _cachedLazyModeLabelsRef = labels;
-                _cachedLazyModeLabelCount = labelCount;
-                _lastLazyModeContextRefreshTimestampMs = now;
-                _cachedRitualEvaluated = false;
-                _cachedRestrictedItemsEvaluated = false;
-            }
-
-            if (shouldEvaluateRitualState && !_cachedRitualEvaluated)
-            {
-                _cachedRitualActive = IsRitualActive();
-                _cachedRitualEvaluated = true;
-            }
-
-            if (shouldEvaluateRestrictedItems && !_cachedRestrictedItemsEvaluated)
-            {
-                _cachedHasLazyModeRestrictedItems = _state.Services.LabelFilterService?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
-                _cachedRestrictedItemsEvaluated = true;
-            }
-
-            return (
-                shouldEvaluateRitualState ? _cachedRitualActive : false,
-                shouldEvaluateRestrictedItems ? _cachedHasLazyModeRestrictedItems : false,
-                labels);
-        }
 
         private double GetTargetTime(double frequencyTarget, double averageTiming)
         {
@@ -74,19 +20,19 @@ namespace ClickIt.Core.Runtime
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
         {
             _state.Runtime.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, "ClickIt.ScanForAltarsLogic", false);
-            _ = global::ExileCore.Core.ParallelRunner.Run(_state.Runtime.AltarCoroutine);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.AltarCoroutine);
             _state.Runtime.AltarCoroutine.Priority = CoroutinePriority.Normal;
 
             _state.Runtime.ClickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), plugin, "ClickIt.ClickLogic", false);
-            _ = global::ExileCore.Core.ParallelRunner.Run(_state.Runtime.ClickLabelCoroutine);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.ClickLabelCoroutine);
             _state.Runtime.ClickLabelCoroutine.Priority = CoroutinePriority.High;
 
             _state.Runtime.ManualUiHoverCoroutine = new Coroutine(MainManualUiHoverClickCoroutine(), plugin, "ClickIt.ManualUiHoverLogic", false);
-            _ = global::ExileCore.Core.ParallelRunner.Run(_state.Runtime.ManualUiHoverCoroutine);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.ManualUiHoverCoroutine);
             _state.Runtime.ManualUiHoverCoroutine.Priority = CoroutinePriority.High;
 
             _state.Runtime.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
-            _ = global::ExileCore.Core.ParallelRunner.Run(_state.Runtime.DelveFlareCoroutine);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.DelveFlareCoroutine);
             _state.Runtime.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
         }
 
@@ -123,7 +69,7 @@ namespace ClickIt.Core.Runtime
 
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null) yield break;
 
-            bool hotkeyActive = _state.Services.InputHandler?.IsClickHotkeyPressed(_state.Services.CachedLabels, _state.Services.LabelFilterService) == true;
+            bool hotkeyActive = _state.Services.InputHandler?.IsClickHotkeyPressed(_state.Services.CachedLabels, _state.Services.LabelFilterPort) == true;
             if (ShouldSuppressRegularClickForManualUiHoverMode(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
             {
                 _state.Runtime.WorkFinished = true;
@@ -207,7 +153,7 @@ namespace ClickIt.Core.Runtime
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null || _state.Services.InputHandler == null)
                 yield break;
 
-            bool hotkeyActive = _state.Services.InputHandler.IsClickHotkeyPressed(_state.Services.CachedLabels, _state.Services.LabelFilterService);
+            bool hotkeyActive = _state.Services.InputHandler.IsClickHotkeyPressed(_state.Services.CachedLabels, _state.Services.LabelFilterPort);
             if (!ShouldRunManualUiHoverCoroutine(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
                 yield break;
 
@@ -223,7 +169,7 @@ namespace ClickIt.Core.Runtime
             if (_state.Runtime.Timer.ElapsedMilliseconds < targetTime)
                 yield break;
 
-            IReadOnlyList<ExileCore.PoEMemory.Elements.LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
+            IReadOnlyList<LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
             long clickSequenceBefore = _state.Services.InputHandler.GetSuccessfulClickSequence();
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
@@ -288,29 +234,23 @@ namespace ClickIt.Core.Runtime
             if (!_settings.ClickDelveFlares || _gameController?.Player?.Buffs == null)
                 yield break;
 
-            int delveBuffCharges = -1;
-            foreach (var buff in _gameController.Player.Buffs)
-            {
-                if (buff != null && string.Equals(buff.Name, "delve_degen_buff", StringComparison.Ordinal))
-                {
-                    delveBuffCharges = buff.Charges;
-                    break;
-                }
-            }
-
-            if (delveBuffCharges < _settings.DarknessDebuffStacks.Value)
-                yield break;
+            int delveBuffCharges = PluginDelveFlarePolicy.FindDarknessDebuffCharges(_gameController.Player.Buffs);
 
             float healthPercent = GetPlayerHealthPercent();
             float energyShieldPercent = GetPlayerEnergyShieldPercent();
-            if (healthPercent > _settings.DelveFlareHealthThreshold.Value ||
-                energyShieldPercent > _settings.DelveFlareEnergyShieldThreshold.Value)
+            if (!PluginDelveFlarePolicy.ShouldUseFlare(
+                delveBuffCharges,
+                _settings.DarknessDebuffStacks.Value,
+                healthPercent,
+                _settings.DelveFlareHealthThreshold.Value,
+                energyShieldPercent,
+                _settings.DelveFlareEnergyShieldThreshold.Value))
                 yield break;
 
             if (_state.Services.InputHandler?.CanClick(_gameController, false, IsRitualActive()) != true)
                 yield break;
 
-            Keyboard.KeyPress(_settings.DelveFlareHotkey.Value, 50);
+            Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);
             _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuffCharges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
             yield return new WaitTime(1000);
         }
@@ -324,7 +264,7 @@ namespace ClickIt.Core.Runtime
                 if (player == null)
                     return 100f;
 
-                var life = player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+                var life = player.GetComponent<Life>();
                 if (life == null || life.Health.Max == 0)
                     return 100f;
 
@@ -348,7 +288,7 @@ namespace ClickIt.Core.Runtime
                 if (player == null)
                     return 100f;
 
-                var life = player.GetComponent<ExileCore.PoEMemory.Components.Life>();
+                var life = player.GetComponent<Life>();
                 if (life == null || life.EnergyShield.Max == 0)
                     return 100f;
 

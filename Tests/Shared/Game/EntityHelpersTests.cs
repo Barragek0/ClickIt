@@ -1,7 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-using System.Runtime.CompilerServices;
-
 namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
@@ -10,9 +6,9 @@ namespace ClickIt.Tests.Shared.Game
         [TestMethod]
         public void IsRitualActive_NullOrEmpty_ReturnsFalse()
         {
-            EntityHelpers.IsRitualActive((ExileCore.GameController?)null).Should().BeFalse();
+            EntityHelpers.IsRitualActive((GameController?)null).Should().BeFalse();
 
-            var gc = RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.GameController)) as ExileCore.GameController;
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             EntityHelpers.IsRitualActive(gc).Should().BeFalse();
         }
 

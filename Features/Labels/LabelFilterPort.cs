@@ -1,11 +1,11 @@
 namespace ClickIt.Features.Labels
 {
-    public sealed class LabelFilterPort : ILabelInteractionPort
+    public sealed partial class LabelFilterPort : ILabelInteractionPort
     {
         private readonly ClickItSettings _settings;
         private readonly EssenceService _essenceService;
         private readonly ErrorHandler _errorHandler;
-        private readonly ExileCore.GameController? _gameController;
+        private readonly GameController? _gameController;
         private readonly IWorldItemMetadataPolicy _worldItemMetadataPolicy = new WorldItemMetadataPolicy();
         private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
         private readonly LabelSelectionDiagnostics _labelSelectionDiagnostics = new(24);
@@ -19,79 +19,13 @@ namespace ClickIt.Features.Labels
         private MechanicClassifierDependencies? _classificationDependencies;
         private InventoryDomainServices? _inventoryDomainServices;
 
-        internal LabelFilterPort(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler, ExileCore.GameController? gameController)
+        internal LabelFilterPort(ClickItSettings settings, EssenceService essenceService, ErrorHandler errorHandler, GameController? gameController)
         {
             _settings = settings;
             _essenceService = essenceService;
             _errorHandler = errorHandler;
             _gameController = gameController;
         }
-
-        private LabelClickSettingsService ClickSettingsService
-            => _clickSettingsService ??= new LabelClickSettingsService(
-                _settings,
-                _mechanicPrioritySnapshotService,
-                LazyModeBlockerService.HasRestrictedItemsOnScreen,
-                Keyboard.IsKeyDown);
-
-        private InventoryInteractionPolicy InventoryInteractionPolicy
-        {
-            get
-            {
-                EnsureInventoryDomainServices();
-                return _inventoryDomainServices!.Value.InteractionPolicy;
-            }
-        }
-
-        private LabelInteractionRuleService InteractionRuleService
-            => _interactionRuleService ??= new LabelInteractionRuleService(
-                _worldItemMetadataPolicy,
-                InventoryInteractionPolicy);
-
-        private LabelCandidateBuilderService CandidateBuilderService
-            => _candidateBuilderService ??= new LabelCandidateBuilderService(LabelMechanicResolutionService);
-
-        private ILabelSelectionService LabelSelectionService
-            => _labelSelectionService ??= new LabelSelectionService(new LabelSelectionServiceDependencies(
-                _gameController,
-                ClickSettingsService.Create,
-                ShouldCaptureLabelDebug,
-                _labelSelectionDiagnostics.PublishEvent,
-                CandidateBuilderService.TryBuildCandidate,
-                LabelMechanicResolutionService.GetMechanicIdForLabel));
-
-        private LabelDebugService LabelDebugService
-            => _labelDebugService ??= new LabelDebugService(
-                _settings,
-                _errorHandler,
-                _gameController,
-                ClickSettingsService.Create,
-                InteractionRuleService.ShouldAllowWorldItemByMetadata,
-                LabelMechanicResolutionService);
-
-        private LabelMechanicResolutionService LabelMechanicResolutionService
-            => _labelMechanicResolutionService ??= new LabelMechanicResolutionService(
-                _gameController,
-                ClickSettingsService.Create,
-                () => ClassificationDependencies);
-
-        internal LazyModeBlockerService LazyModeBlockerService
-            => _lazyModeBlockerService ??= new LazyModeBlockerService(
-                _settings,
-                _gameController,
-                reason => _errorHandler.LogMessage(true, true, reason, 5));
-
-        internal LazyModeBlockerService GetLazyModeBlockerService()
-            => LazyModeBlockerService;
-
-        private MechanicClassifierDependencies ClassificationDependencies
-            => _classificationDependencies ??= new MechanicClassifierDependencies(
-                _worldItemMetadataPolicy.GetWorldItemMetadataPath,
-                InteractionRuleService.ShouldAllowWorldItemByMetadata,
-                LabelInteractionRuleService.ShouldClickStrongbox,
-                LabelInteractionRuleService.ShouldClickEssence,
-                LabelInteractionRuleService.GetRitualMechanicId,
-                InteractionRuleService.ShouldAllowClosedDoorPastMechanic);
 
         internal LabelDebugSnapshot GetLatestLabelDebug()
             => _labelSelectionDiagnostics.GetLatest();
@@ -130,15 +64,5 @@ namespace ClickIt.Features.Labels
 
         private bool ShouldCaptureLabelDebug()
             => _settings.DebugMode.Value && _settings.DebugShowLabels.Value;
-
-        private void EnsureInventoryDomainServices()
-        {
-            if (_inventoryDomainServices.HasValue)
-                return;
-
-            _inventoryDomainServices = InventoryDomainFactory.Create(new InventoryDomainFactoryDependencies(
-                _worldItemMetadataPolicy.GetWorldItemBaseName,
-                InventoryMetadataIdentifiers.StoneOfPassage));
-        }
     }
 }

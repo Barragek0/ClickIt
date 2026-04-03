@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.UI.Overlays.Inventory
 {
     internal class InventoryFullWarningRenderer(
@@ -88,7 +85,7 @@ namespace ClickIt.UI.Overlays.Inventory
                     offsetPosition,
                     SharpDX.Color.Black,
                     InventoryFullWarningTextSize,
-                    ExileCore.Shared.Enums.FontAlign.Center);
+                    FontAlign.Center);
             }
 
             _deferredTextQueue.Enqueue(
@@ -96,7 +93,7 @@ namespace ClickIt.UI.Overlays.Inventory
                 centerPosition,
                 SharpDX.Color.OrangeRed,
                 InventoryFullWarningTextSize,
-                ExileCore.Shared.Enums.FontAlign.Center);
+                FontAlign.Center);
         }
 
         internal static bool ShouldShowInventoryPickupBlockedWarning(InventoryDebugSnapshot snapshot)

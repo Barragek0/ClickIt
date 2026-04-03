@@ -1,7 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-using System;
-
 namespace ClickIt.Tests.Features.Altars
 {
     [TestClass]
@@ -42,6 +38,33 @@ namespace ClickIt.Tests.Features.Altars
             var primary = TestBuilders.BuildPrimary();
             Action act = () => primary.GetTopModsRect();
             act.Should().Throw<InvalidOperationException>();
+        }
+
+        [TestMethod]
+        public void GetBottomModsRect_ThrowsWhenElementNull()
+        {
+            var primary = TestBuilders.BuildPrimary();
+            Action act = () => primary.GetBottomModsRect();
+            act.Should().Throw<InvalidOperationException>();
+        }
+
+        [TestMethod]
+        public void InvalidateCache_ClearsWeightCache()
+        {
+            var primary = TestBuilders.BuildPrimary();
+            int callCount = 0;
+
+            AltarWeights Calculator(PrimaryAltarComponent component)
+            {
+                callCount++;
+                return new AltarWeights { TopUpsideWeight = component.TopMods?.Upsides.Count ?? 0 };
+            }
+
+            _ = primary.GetCachedWeights(Calculator);
+            primary.InvalidateCache();
+            _ = primary.GetCachedWeights(Calculator);
+
+            callCount.Should().Be(2);
         }
 
     }

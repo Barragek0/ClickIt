@@ -1,7 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SharpDX;
-
 namespace ClickIt.Tests.UI
 {
     [TestClass]

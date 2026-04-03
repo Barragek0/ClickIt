@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 #nullable enable
 
 namespace ClickIt.Features.Click.Application

@@ -97,7 +97,7 @@ namespace ClickIt.Features.Labels.Inventory
 
             try
             {
-                object? stack = itemEntity.GetComponent<Stack>();
+                object? stack = itemEntity.GetComponent<StackComponent>();
                 bool hasFullFlag = TryReadStackFullFlag(stack, out fullStack);
                 bool hasSize = TryReadStackSize(stack, out stackSize);
                 return hasFullFlag && hasSize && stackSize > 0;

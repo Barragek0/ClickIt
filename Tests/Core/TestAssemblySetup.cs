@@ -1,6 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Runtime.Versioning;
-
 [assembly: SupportedOSPlatform("windows7.0")]
 
 namespace ClickIt.Tests.Core

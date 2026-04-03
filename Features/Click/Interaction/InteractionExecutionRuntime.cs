@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.Interaction
 {
     internal readonly record struct InteractionExecutionRequest(

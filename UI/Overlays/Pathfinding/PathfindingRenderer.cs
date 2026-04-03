@@ -1,7 +1,3 @@
-using SharpDX;
-using Color = SharpDX.Color;
-using Graphics = ExileCore.Graphics;
-
 namespace ClickIt.UI.Overlays.Pathfinding
 {
     public sealed class PathfindingRenderer(PathfindingService pathfindingService)
@@ -89,7 +85,7 @@ namespace ClickIt.UI.Overlays.Pathfinding
 
         private static void DrawLine(Graphics graphics, Vector2 start, Vector2 end, int thickness, Color color)
         {
-            graphics.DrawLine(start, end, thickness, color);
+            graphics.DrawLine(new NumVector2(start.X, start.Y), new NumVector2(end.X, end.Y), thickness, color);
         }
 
         private bool TryRenderMapPath(GameController gameController, Graphics graphics, IReadOnlyList<PathfindingService.GridPoint> gridPath)

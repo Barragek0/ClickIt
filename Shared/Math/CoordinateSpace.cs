@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Shared.Math
 {
     internal static class CoordinateSpace
@@ -19,7 +17,7 @@ namespace ClickIt.Shared.Math
             float absoluteDistanceSq = DistanceSquared(cursorAbsolute, candidatePoint);
             Vector2 cursorClient = ToClient(cursorAbsolute, windowTopLeft);
             float clientDistanceSq = DistanceSquared(cursorClient, candidatePoint);
-            return global::System.Math.Min(absoluteDistanceSq, clientDistanceSq);
+            return SystemMath.Min(absoluteDistanceSq, clientDistanceSq);
         }
     }
 }

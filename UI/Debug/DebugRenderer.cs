@@ -1,6 +1,3 @@
-using SharpDX;
-using Color = SharpDX.Color;
-
 #nullable enable
 
 namespace ClickIt.UI

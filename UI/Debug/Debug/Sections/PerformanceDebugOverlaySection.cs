@@ -1,7 +1,3 @@
-using SharpDX;
-using System.Diagnostics;
-using Color = SharpDX.Color;
-
 namespace ClickIt.UI.Debug.Sections
 {
     internal sealed class PerformanceDebugOverlaySection(Debug.DebugOverlayRenderContext context)
@@ -52,18 +48,18 @@ namespace ClickIt.UI.Debug.Sections
             ClickItSettings pluginSettings = _context.Plugin.Settings ?? new ClickItSettings();
             bool lazyModeEnabled = pluginSettings.LazyMode.Value;
             int lazyModeTarget = pluginSettings.LazyModeClickLimiting.Value;
-            bool lazyModeDisableKeyHeld = Input.GetKeyState(pluginSettings.LazyModeDisableKey.Value);
+            bool lazyModeDisableKeyHeld = Input.GetKeyState(pluginSettings.LazyModeDisableKeyBinding);
 
             bool hasRestrictedItems = false;
             if (_context.Plugin is ClickIt clickItPlugin)
             {
                 var gameController = _context.Plugin.GameController;
-                LabelFilterService? labelFilterService = clickItPlugin.State.Services.LabelFilterService;
+                LabelFilterService? labelFilterPort = clickItPlugin.State.Services.LabelFilterPort;
                 InputHandler? inputHandler = clickItPlugin.State.Services.InputHandler;
-                if (labelFilterService != null)
+                if (labelFilterPort != null)
                 {
                     var allLabels = (IReadOnlyList<LabelOnGround>?)gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-                    hasRestrictedItems = labelFilterService.HasLazyModeRestrictedItemsOnScreen(allLabels);
+                    hasRestrictedItems = labelFilterPort.HasLazyModeRestrictedItemsOnScreen(allLabels);
                 }
 
                 if (inputHandler != null)

@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Pathfinding.Diagnostics
 {
     public sealed record OffscreenMovementDebugEvent(

@@ -1,6 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace ClickIt.Tests.Features.Labels.Classification
 {
     [TestClass]

@@ -4,7 +4,7 @@ namespace ClickIt.Core.Runtime
     {
         internal static Coroutine? FindActiveCoroutine(string coroutineName)
         {
-            foreach (Coroutine coroutine in global::ExileCore.Core.ParallelRunner.Coroutines)
+            foreach (Coroutine coroutine in ExileCoreApi.ParallelRunner.Coroutines)
             {
                 if (coroutine != null
                     && string.Equals(coroutine.Name, coroutineName, StringComparison.Ordinal)

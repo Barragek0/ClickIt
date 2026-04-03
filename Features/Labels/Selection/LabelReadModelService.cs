@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Labels.Selection
 {
     public sealed class LabelReadModelService
@@ -42,13 +40,13 @@ namespace ClickIt.Features.Labels.Selection
             for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
             {
                 LabelOnGround label = groundLabels[i];
-                if (LabelUtils.IsValidClickableLabel(label, IsClickableInEitherSpace))
+                if (ClickableLabelPolicy.IsValidClickableLabel(label, IsClickableInEitherSpace))
                 {
                     validLabels.Add(label);
                 }
             }
 
-            LabelUtils.SortLabelsByDistance(validLabels);
+            LabelGeometry.SortLabelsByDistance(validLabels);
 
             return validLabels;
         }

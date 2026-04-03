@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Area
 {
     public class AreaService
@@ -95,7 +92,7 @@ namespace ClickIt.Features.Area
         public bool PointIsInClickableArea(Vector2 point)
         {
             AreaBlockedSnapshot snapshot = _blockedSnapshotProvider.CurrentSnapshot;
-            if (!point.PointInRectangle(snapshot.FullScreenRectangle))
+            if (!BlockedAreaGeometryEngine.PointInUiRectangleAnyRepresentation(point, snapshot.FullScreenRectangle))
                 return false;
 
             return !IsBlockedByAreaEvaluatorPipeline(snapshot, point);

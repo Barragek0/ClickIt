@@ -1,8 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-using SharpDX;
-using System.Collections.Generic;
-
 namespace ClickIt.Tests.Features.Area
 {
     [TestClass]

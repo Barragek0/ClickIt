@@ -8,9 +8,9 @@ namespace ClickIt.Core.Runtime
         internal AreaService? AreaService { get; set; }
         internal AltarService? AltarService { get; set; }
         internal ShrineService? ShrineService { get; set; }
-        internal LabelFilterService? LabelFilterService { get; set; }
+        internal LabelFilterService? LabelFilterPort { get; set; }
         internal LabelService? LabelService { get; set; }
-        internal ClickService? ClickService { get; set; }
+        internal ClickService? ClickAutomationPort { get; set; }
         internal PathfindingService? PathfindingService { get; set; }
         internal AlertService? AlertService { get; set; }
         internal Camera? Camera { get; set; }
@@ -24,9 +24,9 @@ namespace ClickIt.Core.Runtime
             AreaService = null;
             AltarService = null;
             ShrineService = null;
-            LabelFilterService = null;
+            LabelFilterPort = null;
             LabelService = null;
-            ClickService = null;
+            ClickAutomationPort = null;
             PathfindingService = null;
             AlertService = null;
             Camera = null;

@@ -23,7 +23,7 @@ namespace ClickIt.UI.Overlays.Common
             SharpDX.Color color = clicking ? SharpDX.Color.LawnGreen : SharpDX.Color.Red;
             string statusText = clicking ? ClickingText : NotClickingText;
 
-            _deferredTextQueue.Enqueue(statusText, new SharpDX.Vector2(centerX, topY + (36f * 1.2f)), color, 24, ExileCore.Shared.Enums.FontAlign.Center);
+            _deferredTextQueue.Enqueue(statusText, new SharpDX.Vector2(centerX, topY + (36f * 1.2f)), color, 24, FontAlign.Center);
         }
     }
 }

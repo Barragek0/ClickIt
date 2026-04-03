@@ -62,6 +62,8 @@ internal sealed record Options(
 
         var mode = modeText.Equals("tests", StringComparison.OrdinalIgnoreCase)
             ? GenerationMode.Tests
+            : modeText.Equals("stub", StringComparison.OrdinalIgnoreCase)
+                ? GenerationMode.Stub
             : GenerationMode.Product;
 
         var assemblyPaths = values.TryGetValue("assemblies", out var assemblyList)
@@ -86,6 +88,7 @@ internal enum GenerationMode
 {
     Product,
     Tests,
+    Stub,
 }
 
 internal static class NamespaceCollector
@@ -216,18 +219,46 @@ internal static class GlobalUsingFileBuilder
 {
     private static readonly string[] BaselineNamespaces =
     [
+        "ImGuiNET",
+        "Microsoft.CSharp.RuntimeBinder",
+        "Newtonsoft.Json",
+        "SharpDX",
         "System",
+        "System.Buffers",
+        "System.Collections",
         "System.Collections.Generic",
+        "System.Collections.Immutable",
+        "System.Collections.ObjectModel",
         "System.Diagnostics",
+        "System.Diagnostics.CodeAnalysis",
         "System.IO",
         "System.Linq",
         "System.Net.Http",
         "System.Reflection",
         "System.Runtime.CompilerServices",
+        "System.Runtime.InteropServices",
+        "System.Runtime.Serialization",
+        "System.Runtime.Versioning",
         "System.Text",
+        "System.Text.RegularExpressions",
         "System.Threading",
         "System.Threading.Tasks",
         "System.Windows.Forms",
+    ];
+
+    private static readonly string[] StubBaselineNamespaces =
+    [
+        "System",
+        "System.Collections",
+        "System.Collections.Generic",
+        "System.Reflection",
+    ];
+
+    private static readonly string[] TestOnlyBaselineNamespaces =
+    [
+        "FluentAssertions",
+        "Microsoft.VisualStudio.TestTools.UnitTesting",
+        "Moq",
     ];
 
     private static readonly IReadOnlyList<KeyValuePair<string, string>> AliasOverrides =
@@ -296,13 +327,16 @@ internal static class GlobalUsingFileBuilder
         ["ChestLootSettlementTimingOptions"] = "ClickIt.Features.Click.ChestLootSettlementTimingOptions",
         ["ClickService"] = "ClickIt.Features.Click.ClickAutomationPort",
         ["ClickSettings"] = "ClickIt.Features.Labels.ClickSettings",
+        ["Color"] = "SharpDX.Color",
         ["Constants"] = "ClickIt.Shared.Game.Constants",
         ["DynamicAccess"] = "ClickIt.Shared.Game.DynamicAccess",
         ["DynamicAccessStats"] = "ClickIt.Shared.Game.DynamicAccessStats",
         ["ElementAdapter"] = "ClickIt.Shared.Game.ElementAdapter",
         ["EntityQueryService"] = "ClickIt.Shared.Game.EntityQueryService",
         ["EssenceService"] = "ClickIt.Features.Essence.EssenceService",
+        ["Graphics"] = "ExileCore.Graphics",
         ["IElementAdapter"] = "ClickIt.Shared.Game.IElementAdapter",
+        ["ILabelInteractionPort"] = "ClickIt.Features.Labels.ILabelInteractionPort",
         ["IntrospectionProfile"] = "ClickIt.UI.Debug.Introspection.IntrospectionProfile",
         ["ItemCategoryCatalog"] = "ClickIt.Features.Labels.Inventory.ItemCategoryCatalog",
         ["ItemCategoryDefinition"] = "ClickIt.Features.Labels.Inventory.ItemCategoryDefinition",
@@ -313,12 +347,21 @@ internal static class GlobalUsingFileBuilder
         ["LostShipmentCandidate"] = "ClickIt.Features.Click.State.LostShipmentCandidate",
         ["MechanicIds"] = "ClickIt.Features.Mechanics.MechanicIds",
         ["MechanicRank"] = "ClickIt.Features.Click.State.MechanicRank",
+        ["NumVector2"] = "System.Numerics.Vector2",
         ["PathfindingService"] = "ClickIt.Features.Pathfinding.PathfindingService",
+        ["ExileCoreApi"] = "ExileCore.Core",
+        ["PluginDelveFlarePolicy"] = "ClickIt.Core.Runtime.PluginDelveFlarePolicy",
+        ["RectangleF"] = "SharpDX.RectangleF",
         ["RuntimeObjectIntrospection"] = "ClickIt.UI.Debug.Introspection.RuntimeObjectIntrospection",
         ["RuntimeObjectIntrospectionOptions"] = "ClickIt.UI.Debug.Introspection.RuntimeObjectIntrospectionOptions",
         ["SettlersOreCandidate"] = "ClickIt.Features.Click.State.SettlersOreCandidate",
         ["ShrineService"] = "ClickIt.Features.Shrines.ShrineService",
+        ["StackComponent"] = "ExileCore.PoEMemory.Components.Stack",
+        ["SystemDrawingPoint"] = "System.Drawing.Point",
+        ["SystemMath"] = "System.Math",
         ["UltimatumModifiersConstants"] = "ClickIt.Features.Mechanics.UltimatumModifiersConstants",
+        ["Vector2"] = "SharpDX.Vector2",
+        ["Vector4"] = "System.Numerics.Vector4",
         ["VisibleMechanicCacheState"] = "ClickIt.Features.Click.State.VisibleMechanicCacheState",
         ["WeightCalculator"] = "ClickIt.Features.Altars.WeightCalculator",
         ["WeightTypeConstants"] = "ClickIt.Shared.Game.WeightTypeConstants",
@@ -334,11 +377,16 @@ internal static class GlobalUsingFileBuilder
         builder.AppendLine("#pragma warning disable IDE0005");
         builder.AppendLine();
 
-        foreach (var namespaceValue in BaselineNamespaces)
+        foreach (var namespaceValue in GetBaselineNamespaces(options.Mode))
         {
             builder.Append("global using ");
             builder.Append(namespaceValue);
             builder.AppendLine(";");
+        }
+
+        if (options.Mode == GenerationMode.Stub)
+        {
+            return builder.ToString();
         }
 
         builder.AppendLine();
@@ -374,6 +422,34 @@ internal static class GlobalUsingFileBuilder
         }
 
         return builder.ToString();
+    }
+
+    private static IEnumerable<string> GetBaselineNamespaces(GenerationMode mode)
+    {
+        if (mode == GenerationMode.Stub)
+        {
+            foreach (var namespaceValue in StubBaselineNamespaces)
+            {
+                yield return namespaceValue;
+            }
+
+            yield break;
+        }
+
+        foreach (var namespaceValue in BaselineNamespaces)
+        {
+            yield return namespaceValue;
+        }
+
+        if (mode != GenerationMode.Tests)
+        {
+            yield break;
+        }
+
+        foreach (var namespaceValue in TestOnlyBaselineNamespaces)
+        {
+            yield return namespaceValue;
+        }
     }
 
     private static IEnumerable<string> FilterNamespaces(IEnumerable<string> namespaces, GenerationMode mode)

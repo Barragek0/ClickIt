@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Pathfinding
 {
     public sealed class PathfindingService(ClickItSettings settings, ErrorHandler? errorHandler = null)

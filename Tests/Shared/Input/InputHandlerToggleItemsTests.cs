@@ -1,7 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-
 namespace ClickIt.Tests.Shared.Input
 {
     [TestClass]

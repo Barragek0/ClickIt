@@ -1,8 +1,3 @@
-using System.Collections;
-using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-
 namespace ClickIt.UI.Debug.Introspection
 {
     internal sealed class RuntimeObjectTraversalEngine
@@ -116,7 +111,7 @@ namespace ClickIt.UI.Debug.Introspection
                     return events;
                 }
 
-                int memberCount = global::System.Math.Min(members.Count, Options.MaxMembersPerObject);
+                int memberCount = SystemMath.Min(members.Count, Options.MaxMembersPerObject);
                 if (members.Count > Options.MaxMembersPerObject)
                     events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberOutputTruncated, pending.Path, Count: members.Count - Options.MaxMembersPerObject));
 

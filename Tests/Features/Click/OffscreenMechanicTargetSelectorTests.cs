@@ -1,6 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
@@ -11,12 +8,12 @@ namespace ClickIt.Tests.Features.Click
         {
             var settings = new ClickItSettings
             {
-                PrioritizeOnscreenClickableMechanicsOverPathfinding = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickShrines = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickLostShipmentCrates = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickSettlersOre = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickEaterAltars = new ExileCore.Shared.Nodes.ToggleNode(false),
-                ClickExarchAltars = new ExileCore.Shared.Nodes.ToggleNode(false)
+                PrioritizeOnscreenClickableMechanicsOverPathfinding = new ToggleNode(true),
+                ClickShrines = new ToggleNode(true),
+                ClickLostShipmentCrates = new ToggleNode(true),
+                ClickSettlersOre = new ToggleNode(true),
+                ClickEaterAltars = new ToggleNode(false),
+                ClickExarchAltars = new ToggleNode(false)
             };
 
             string? stage = null;
@@ -55,12 +52,12 @@ namespace ClickIt.Tests.Features.Click
         {
             var settings = new ClickItSettings
             {
-                PrioritizeOnscreenClickableMechanicsOverPathfinding = new ExileCore.Shared.Nodes.ToggleNode(false),
-                ClickShrines = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickLostShipmentCrates = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickSettlersOre = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickEaterAltars = new ExileCore.Shared.Nodes.ToggleNode(true),
-                ClickExarchAltars = new ExileCore.Shared.Nodes.ToggleNode(true)
+                PrioritizeOnscreenClickableMechanicsOverPathfinding = new ToggleNode(false),
+                ClickShrines = new ToggleNode(true),
+                ClickLostShipmentCrates = new ToggleNode(true),
+                ClickSettlersOre = new ToggleNode(true),
+                ClickEaterAltars = new ToggleNode(true),
+                ClickExarchAltars = new ToggleNode(true)
             };
 
             bool published = false;

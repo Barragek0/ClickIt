@@ -1,5 +1,3 @@
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click.Runtime
 {
     public readonly struct UltimatumPanelOptionPreview(RectangleF rect, string modifierName, int priorityIndex, bool isSelected)

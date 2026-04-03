@@ -1,7 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-using SharpDX;
-
 namespace ClickIt.Tests.Shared.Diagnostics
 {
     [TestClass]
@@ -76,7 +72,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
             q.Flush(null!, (s, f) => { });
             q.GetPendingCount().Should().Be(2);
 
-            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
             q.Flush(gfx, (s, f) => { });
             q.GetPendingCount().Should().Be(0);
         }
@@ -103,7 +99,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
             q.Flush(null!, (s, f) => { });
             q.GetPendingCount().Should().Be(2);
 
-            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
             q.Flush(gfx, (s, f) => { });
             q.GetPendingCount().Should().Be(0);
         }
@@ -123,7 +119,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
             q.Flush(null!, (s, f) => { });
             q.GetPendingCount().Should().Be(1000);
 
-            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
             q.Flush(gfx, (s, f) => { });
             q.GetPendingCount().Should().Be(0);
         }
@@ -143,7 +139,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
             q.Flush(null!, (s, f) => { });
             q.GetPendingCount().Should().Be(1000);
 
-            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(ExileCore.Graphics));
+            var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
             q.Flush(gfx, (s, f) => { });
             q.GetPendingCount().Should().Be(0);
         }
@@ -157,8 +153,8 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var tt = new DeferredTextQueue();
             tt.Enqueue("a", new Vector2(1, 2), Color.Red, 10);
 
-            var gfxType = typeof(ExileCore.Graphics);
-            var gfx = (ExileCore.Graphics)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(gfxType);
+            var gfxType = typeof(Graphics);
+            var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(gfxType);
 
             tf.Flush(gfx, (s, f) => { });
             tt.Flush(gfx, (s, f) => { });

@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Labels.Application
 {
     internal delegate bool LabelCandidateBuilder(

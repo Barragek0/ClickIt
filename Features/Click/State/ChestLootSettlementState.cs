@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.State
 {
     internal sealed class ChestLootSettlementState

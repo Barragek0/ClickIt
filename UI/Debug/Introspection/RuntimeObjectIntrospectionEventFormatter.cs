@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospectionEventFormatter

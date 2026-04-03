@@ -1,6 +1,3 @@
-using ImGuiNET;
-using System.Numerics;
-
 namespace ClickIt.UI.Settings.Panels
 {
     internal sealed class AltarSettingsPanelRenderer(ClickItSettings settings)
@@ -336,13 +333,13 @@ namespace ClickIt.UI.Settings.Panels
         private static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
         {
             ImDrawListPtr drawList = ImGui.GetWindowDrawList();
-            Vector2 p = ImGui.GetCursorScreenPos();
+            NumVector2 p = ImGui.GetCursorScreenPos();
             Vector4 colGood = new(0.2f, 1.0f, 0.2f, 1.0f);
             Vector4 colBad = new(1.0f, 0.2f, 0.2f, 1.0f);
             uint colLeft = ImGui.GetColorU32(bestAtHigh ? colBad : colGood);
             uint colRight = ImGui.GetColorU32(bestAtHigh ? colGood : colBad);
-            Vector2 rectMin = p;
-            Vector2 rectMax = new(p.X + width, p.Y + height);
+            NumVector2 rectMin = p;
+            NumVector2 rectMax = new(p.X + width, p.Y + height);
             drawList.AddRectFilledMultiColor(rectMin, rectMax, colLeft, colRight, colRight, colLeft);
             uint borderCol = ImGui.GetColorU32(ImGuiCol.Border);
             drawList.AddRect(rectMin, rectMax, borderCol);
@@ -354,23 +351,23 @@ namespace ClickIt.UI.Settings.Panels
             for (int i = 0; i <= steps; i++)
             {
                 float x = rectMin.X + (i * stepPx);
-                drawList.AddLine(new Vector2(x, tickTop), new Vector2(x, tickBottom), ImGui.GetColorU32(ImGuiCol.Text), 1.0f);
+                drawList.AddLine(new NumVector2(x, tickTop), new NumVector2(x, tickBottom), ImGui.GetColorU32(ImGuiCol.Text), 1.0f);
                 string label = (i == 0 ? 1 : i * 25).ToString();
-                Vector2 textSize = ImGui.CalcTextSize(label);
-                Vector2 textPos = new(x - (textSize.X * 0.5f), labelY);
+                NumVector2 textSize = ImGui.CalcTextSize(label);
+                NumVector2 textPos = new(x - (textSize.X * 0.5f), labelY);
                 drawList.AddText(textPos, ImGui.GetColorU32(ImGuiCol.Text), label);
             }
 
             string leftLegend = bestAtHigh ? "Worst" : "Best";
             string rightLegend = bestAtHigh ? "Best" : "Worst";
-            Vector2 leftLegendSize = ImGui.CalcTextSize(leftLegend);
-            Vector2 rightLegendSize = ImGui.CalcTextSize(rightLegend);
+            NumVector2 leftLegendSize = ImGui.CalcTextSize(leftLegend);
+            NumVector2 rightLegendSize = ImGui.CalcTextSize(rightLegend);
             const float margin = 2f;
-            Vector2 leftPos = new(rectMin.X + margin, labelY + leftLegendSize.Y + 4f);
-            Vector2 rightPos = new(rectMax.X - rightLegendSize.X - margin, labelY + rightLegendSize.Y + 4f);
+            NumVector2 leftPos = new(rectMin.X + margin, labelY + leftLegendSize.Y + 4f);
+            NumVector2 rightPos = new(rectMax.X - rightLegendSize.X - margin, labelY + rightLegendSize.Y + 4f);
             drawList.AddText(leftPos, ImGui.GetColorU32(ImGuiCol.Text), leftLegend);
             drawList.AddText(rightPos, ImGui.GetColorU32(ImGuiCol.Text), rightLegend);
-            ImGui.Dummy(new Vector2(width, height + 28f + leftLegendSize.Y));
+            ImGui.Dummy(new NumVector2(width, height + 28f + leftLegendSize.Y));
         }
 
     }

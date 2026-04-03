@@ -1,6 +1,3 @@
-using ImGuiNET;
-using System.Numerics;
-
 namespace ClickIt.UI.Settings
 {
     internal static class SettingsUiRenderHelpers
@@ -67,7 +64,7 @@ namespace ClickIt.UI.Settings
 
             if (moveToPrimaryList)
             {
-                bool leftArrowClicked = ImGui.Button($"<-##Move_{listId}_{key}", new Vector2(arrowWidth, 0));
+                bool leftArrowClicked = ImGui.Button($"<-##Move_{listId}_{key}", new NumVector2(arrowWidth, 0));
                 ImGui.SameLine();
                 DrawTransferListSelectable(listId, key, displayText, rowWidth, textColor);
                 return leftArrowClicked;
@@ -75,7 +72,7 @@ namespace ClickIt.UI.Settings
 
             DrawTransferListSelectable(listId, key, displayText, rowWidth, textColor);
             ImGui.SameLine();
-            return ImGui.Button($"->##Move_{listId}_{key}", new Vector2(arrowWidth, 0));
+            return ImGui.Button($"->##Move_{listId}_{key}", new NumVector2(arrowWidth, 0));
         }
 
         internal static bool BeginSingleColumnPriorityTable(string tableId, string headerText, float tableWidth)
@@ -207,7 +204,7 @@ namespace ClickIt.UI.Settings
         private static void DrawTransferListSelectable(string listId, string key, string displayText, float rowWidth, Vector4 textColor)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-            ImGui.Selectable($"{displayText}##{listId}_{key}", false, ImGuiSelectableFlags.None, new Vector2(rowWidth, 0));
+            ImGui.Selectable($"{displayText}##{listId}_{key}", false, ImGuiSelectableFlags.None, new NumVector2(rowWidth, 0));
             ImGui.PopStyleColor();
         }
 

@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal sealed class OffscreenTargetResolver(GameController gameController, PathfindingService pathfindingService)
@@ -57,7 +54,7 @@ namespace ClickIt.Features.Click.Runtime
             float radius = Math.Min(window.Width, window.Height) * 0.30f;
             TryGetGridDelta(target, out float deltaX, out float deltaY);
 
-            if (target.Type == ExileCore.Shared.Enums.EntityType.WorldItem
+            if (target.Type == EntityType.WorldItem
                 && TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen))
             {
                 return true;

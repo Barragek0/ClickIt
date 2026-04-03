@@ -15,8 +15,8 @@ namespace ClickIt
             _services = new PluginServices(_featurePorts);
             _rendering = new PluginRenderingState(_overlayPorts);
             _debugTelemetry = new PluginDebugTelemetryService(
-                () => _services.ClickService,
-                () => _services.LabelFilterService,
+                () => _services.ClickAutomationPort,
+                () => _services.LabelFilterPort,
                 () => _services.PathfindingService);
         }
 

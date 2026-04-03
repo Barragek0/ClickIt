@@ -1,5 +1,3 @@
-using System.Collections;
-
 namespace ClickIt.Features.Click.Application
 {
     public interface IClickAutomationService

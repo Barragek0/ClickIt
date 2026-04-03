@@ -1,7 +1,3 @@
-using SharpDX;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-
 namespace ClickIt.Features.Shrines
 {
     public class ShrineService(GameController gameController, Camera camera)

@@ -1,5 +1,3 @@
-using Microsoft.CSharp.RuntimeBinder;
-
 namespace ClickIt.Shared.Game
 {
     internal readonly record struct DynamicAccessStats(

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ClickIt.Shared.Diagnostics
 {
     public enum TimingChannel

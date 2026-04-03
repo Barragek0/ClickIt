@@ -1,5 +1,3 @@
-using SharpDX;
-
 namespace ClickIt.Features.Click.Selection
 {
     internal static class MechanicCandidateResolver

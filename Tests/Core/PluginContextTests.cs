@@ -1,8 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Runtime.CompilerServices;
-using System.Threading;
-
 namespace ClickIt.Tests.Core
 {
     [TestClass]
@@ -50,9 +45,9 @@ namespace ClickIt.Tests.Core
                     PerformanceMonitor = new PerformanceMonitor(new ClickItSettings()),
                     ErrorHandler = new ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
                     AreaService = new AreaService(),
-                    LabelFilterService = (LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterService)),
-                    LabelService = (global::ClickIt.Features.Labels.LabelService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Features.Labels.LabelService)),
-                    ClickService = (ClickService)RuntimeHelpers.GetUninitializedObject(typeof(ClickService)),
+                    LabelFilterPort = (LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterService)),
+                    LabelService = (LabelService)RuntimeHelpers.GetUninitializedObject(typeof(LabelService)),
+                    ClickAutomationPort = (ClickService)RuntimeHelpers.GetUninitializedObject(typeof(ClickService)),
                     PathfindingService = (PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(PathfindingService)),
                     AlertService = (AlertService)RuntimeHelpers.GetUninitializedObject(typeof(AlertService))
                 },
@@ -66,19 +61,15 @@ namespace ClickIt.Tests.Core
             state.DisposeCompositionRoot();
 
             state.Services.PerformanceMonitor.Should().BeNull();
-            state.Services.AreaService.Should().BeNull();
-            state.Rendering.DeferredTextQueue.Should().BeNull();
-            state.Rendering.DeferredFrameQueue.Should().BeNull();
-            state.Services.ClickService.Should().BeNull();
             state.Services.ErrorHandler.Should().BeNull();
             state.Services.AreaService.Should().BeNull();
-            state.Rendering.DeferredTextQueue.Should().BeNull();
-            state.Rendering.DeferredFrameQueue.Should().BeNull();
-            state.Services.LabelFilterService.Should().BeNull();
+            state.Services.LabelFilterPort.Should().BeNull();
             state.Services.LabelService.Should().BeNull();
-            state.Services.ClickService.Should().BeNull();
+            state.Services.ClickAutomationPort.Should().BeNull();
             state.Services.PathfindingService.Should().BeNull();
             state.Services.AlertService.Should().BeNull();
+            state.Rendering.DeferredTextQueue.Should().BeNull();
+            state.Rendering.DeferredFrameQueue.Should().BeNull();
         }
 
         [TestMethod]

@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal static class ClickLabelSelectionMath
@@ -22,7 +19,7 @@ namespace ClickIt.Features.Click.Runtime
             if (lbl == null || lbl.Label == null)
                 return false;
 
-            return LabelUtils.HasEssenceImprisonmentText(lbl);
+            return ClickableLabelPolicy.HasEssenceImprisonmentText(lbl);
         }
 
         internal static bool ShouldAttemptSpecialEssenceCorruption(bool corruptionPointInWindow, bool corruptionPointClickable)

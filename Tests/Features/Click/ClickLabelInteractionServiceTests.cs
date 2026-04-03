@@ -1,9 +1,3 @@
-using System;
-using System.Runtime.CompilerServices;
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SharpDX;
-
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
@@ -56,7 +50,7 @@ namespace ClickIt.Tests.Features.Click
                 Settings: (ClickItSettings)RuntimeHelpers.GetUninitializedObject(typeof(ClickItSettings)),
                 GameController: (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController)),
                 InputHandler: (InputHandler)RuntimeHelpers.GetUninitializedObject(typeof(InputHandler)),
-                LabelInteractionPort: (global::ClickIt.Features.Labels.ILabelInteractionPort)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Features.Labels.LabelFilterPort)),
+                LabelInteractionPort: (ILabelInteractionPort)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterPort)),
                 IsClickableInEitherSpace: static (_, _) => true,
                 IsInsideWindowInEitherSpace: static _ => true,
                 ExecuteInteraction: executeInteraction,

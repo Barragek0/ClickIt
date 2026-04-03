@@ -1,5 +1,3 @@
-using System.Collections;
-
 namespace ClickIt.Features.Click.Core
 {
     internal sealed class PostInteractionStateEngine(ClickRuntimeEngine owner)

@@ -1,5 +1,3 @@
-using System;
-
 namespace ClickIt.Tests.Harness
 {
     internal static class ClickItHostHarness

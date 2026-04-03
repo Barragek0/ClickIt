@@ -1,6 +1,3 @@
-using ImGuiNET;
-using System.Numerics;
-
 namespace ClickIt.UI.Settings.Panels
 {
     internal sealed class MechanicPriorityTablePanelRenderer(ClickItSettings settings)
@@ -127,7 +124,7 @@ namespace ClickIt.UI.Settings.Panels
 
             ImGui.SameLine();
             bool isExpanded = string.Equals(_settings.UiState.ExpandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase);
-            bool rowClicked = ImGui.Selectable($"{entry.DisplayName}##MechanicPriority_{mechanicId}", isExpanded, ImGuiSelectableFlags.AllowDoubleClick, new Vector2(0, 0));
+            bool rowClicked = ImGui.Selectable($"{entry.DisplayName}##MechanicPriority_{mechanicId}", isExpanded, ImGuiSelectableFlags.AllowDoubleClick, new NumVector2(0, 0));
             if (rowClicked)
                 _settings.UiState.ExpandedMechanicPriorityRowId = isExpanded ? string.Empty : mechanicId;
 

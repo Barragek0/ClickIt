@@ -1,5 +1,3 @@
-using System.Runtime.Serialization;
-
 namespace ClickIt
 {
     internal static class ClickItSettingsMigrationService

@@ -10,13 +10,14 @@ namespace ClickIt.Shared.Input
 
         internal bool IsClickHotkeyActive(Func<Keys, bool> keyStateProvider)
         {
-            if (_settings.ClickLabelKey == null)
+            Keys clickHotkey = _settings.ClickLabelKeyBinding;
+            if (clickHotkey == Keys.None)
             {
                 return false;
             }
 
             bool toggleMode = _settings.IsClickHotkeyToggleModeEnabled();
-            bool keyDown = keyStateProvider(_settings.ClickLabelKey.Value);
+            bool keyDown = keyStateProvider(clickHotkey);
             return ResolveClickHotkeyActive(toggleMode, keyDown, ref _clickHotkeyToggled, ref _clickHotkeyWasDown);
         }
 
@@ -28,7 +29,7 @@ namespace ClickIt.Shared.Input
             }
 
             bool toggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
-            bool keyDown = keyStateProvider(_settings.LazyModeDisableKey.Value);
+            bool keyDown = keyStateProvider(_settings.LazyModeDisableKeyBinding);
             return ResolveLazyModeDisableActive(toggleMode, keyDown, ref _lazyModeDisableToggled, ref _lazyModeDisableKeyWasDown);
         }
 

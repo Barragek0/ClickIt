@@ -1,8 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
-using System;
-using System.Collections.Generic;
-
 namespace ClickIt.Tests.Features.Altars
 {
     [TestClass]
@@ -52,8 +47,8 @@ namespace ClickIt.Tests.Features.Altars
             var bottom = TestBuilders.BuildSecondary(["Player|upA"], ["Boss|downA"]);
 
             var elemType = typeof(Element);
-            var topElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as Element;
-            var bottomElem = System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(elemType) as Element;
+            var topElem = RuntimeHelpers.GetUninitializedObject(elemType) as Element;
+            var bottomElem = RuntimeHelpers.GetUninitializedObject(elemType) as Element;
             top.Element = topElem;
             bottom.Element = bottomElem;
 
@@ -246,8 +241,8 @@ namespace ClickIt.Tests.Features.Altars
             var settings = new ClickItSettings();
             var calc = new WeightCalculator(settings);
 
-            var elTop = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
-            var elBottom = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
+            var elTop = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
+            var elBottom = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
             var topMods = new SecondaryAltarComponent(elTop, [], []);
             var bottomMods = new SecondaryAltarComponent(elBottom, [], []);
@@ -271,13 +266,13 @@ namespace ClickIt.Tests.Features.Altars
             var calc = new WeightCalculator(settings);
 
             var top = new SecondaryAltarComponent(null, [], []);
-            var bottom = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
+            var bottom = new SecondaryAltarComponent((Element)RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
             var primary = new PrimaryAltarComponent(AltarType.Unknown, top, new AltarButton(null), bottom, new AltarButton(null));
 
             Action act = () => calc.CalculateAltarWeights(primary);
             act.Should().Throw<ArgumentException>();
 
-            var top2 = new SecondaryAltarComponent((Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
+            var top2 = new SecondaryAltarComponent((Element)RuntimeHelpers.GetUninitializedObject(typeof(Element)), [], []);
             var bottom2 = new SecondaryAltarComponent(null, [], []);
             var primary2 = new PrimaryAltarComponent(AltarType.Unknown, top2, new AltarButton(null), bottom2, new AltarButton(null));
 
@@ -295,8 +290,8 @@ namespace ClickIt.Tests.Features.Altars
 
             var calc = new WeightCalculator(settings);
 
-            var elTop = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
-            var elBottom = (Element)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Element));
+            var elTop = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
+            var elBottom = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
             var topMods = new SecondaryAltarComponent(elTop, ["modTop1", "modTop2"], ["modTopD1"]);
             var bottomMods = new SecondaryAltarComponent(elBottom, ["modBottomU1"], ["modBottom1"]);

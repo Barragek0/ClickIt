@@ -1,8 +1,3 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]

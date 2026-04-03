@@ -17,7 +17,7 @@ namespace ClickIt.Shared.Diagnostics
             Func<TSnapshot, string> trailFormatter)
         {
             _latest = emptySnapshot;
-            _trailCapacity = global::System.Math.Max(1, trailCapacity);
+            _trailCapacity = SystemMath.Max(1, trailCapacity);
             _withSequence = withSequence ?? throw new ArgumentNullException(nameof(withSequence));
             _trailFormatter = trailFormatter ?? throw new ArgumentNullException(nameof(trailFormatter));
         }

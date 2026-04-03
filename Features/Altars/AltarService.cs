@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 namespace ClickIt.Features.Altars
 {
     public class AltarServiceDebugInfo
@@ -19,19 +18,25 @@ namespace ClickIt.Features.Altars
 
     public class AltarService(ClickIt clickIt, ClickItSettings settings, TimeCache<List<LabelOnGround>>? cachedLabels)
     {
-        private const int AltarModsTextReadLength = 4096;
-
         private readonly ClickIt _clickIt = clickIt;
         private readonly ClickItSettings _settings = settings;
         private readonly TimeCache<List<LabelOnGround>>? _cachedLabels = cachedLabels;
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
         private readonly AltarMatcher _altarMatcher = new();
+        private AltarComponentFactory? _componentFactory;
 
         private readonly List<PrimaryAltarComponent> _altarComponents = [];
         private readonly HashSet<string> _altarKeys = new(StringComparer.Ordinal);
         private readonly object _altarComponentsLock = new();
         private volatile PrimaryAltarComponent[] _altarSnapshot = [];
         private volatile ReadOnlyCollection<PrimaryAltarComponent> _altarReadOnlySnapshot = Array.AsReadOnly(Array.Empty<PrimaryAltarComponent>());
+
+        private AltarComponentFactory ComponentFactory
+            => _componentFactory ??= new AltarComponentFactory(
+                _altarMatcher,
+                matchedId => _clickIt.GetAlertService().TryTriggerAlertForMatchedMod(matchedId),
+                matchedCount => DebugInfo.ModsMatched += matchedCount,
+                RecordUnmatchedMod);
 
         public List<PrimaryAltarComponent> GetAltarComponents() => [.. _altarSnapshot];
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarReadOnlySnapshot;
@@ -188,35 +193,6 @@ namespace ClickIt.Features.Altars
             return values;
         }
 
-        private (List<string> upsides, List<string> downsides, bool hasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
-        {
-            var (upsides, downsides, unmatched) = AltarParser.ProcessMods(mods, negativeModType, (mod, neg) =>
-            {
-                if (_altarMatcher.TryMatchModCached(mod, neg, out bool isUpside, out string matchedId))
-                    return (true, isUpside, matchedId);
-                return (false, false, string.Empty);
-            });
-
-            DebugInfo.ModsMatched += upsides.Count + downsides.Count;
-
-            if (upsides?.Count > 0)
-            {
-                foreach (var matchedId in upsides)
-                {
-                    _clickIt.GetAlertService().TryTriggerAlertForMatchedMod(matchedId);
-                }
-            }
-
-            if (unmatched.Count > 0)
-            {
-                foreach (var mod in unmatched)
-                    RecordUnmatchedMod(mod, negativeModType);
-                return (upsides ?? [], downsides ?? [], true);
-            }
-
-            return (upsides ?? [], downsides ?? [], false);
-        }
-
         internal void RecordUnmatchedMod(string mod, string negativeModType)
         {
             DebugInfo.ModsUnmatched++;
@@ -232,28 +208,6 @@ namespace ClickIt.Features.Altars
             if (_settings.DebugMode)
             {
                 _clickIt.LogError($"Failed to match mod: '{mod}' (Cleaned: '{cleanedMod}') with NegativeModType: '{negativeModType}'", 10);
-            }
-        }
-
-        internal static void UpdateAltarComponentFromAdapter(bool top, PrimaryAltarComponent altarComponent, IElementAdapter element,
-            List<string> upsides, List<string> downsides, bool hasUnmatchedMods)
-        {
-            if (element == null) throw new ArgumentNullException(nameof(element));
-            UpdateAltarComponent(top, altarComponent, element.Underlying, upsides, downsides, hasUnmatchedMods);
-        }
-
-        private static void UpdateAltarComponent(bool top, PrimaryAltarComponent altarComponent, Element? element,
-            List<string> upsides, List<string> downsides, bool hasUnmatchedMods)
-        {
-            if (top)
-            {
-                altarComponent.TopButton = new AltarButton(element?.Parent);
-                altarComponent.TopMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
-            }
-            else
-            {
-                altarComponent.BottomButton = new AltarButton(element?.Parent);
-                altarComponent.BottomMods = new SecondaryAltarComponent(element, upsides, downsides, hasUnmatchedMods);
             }
         }
 
@@ -312,16 +266,16 @@ namespace ClickIt.Features.Altars
                 if (element == null)
                     continue;
 
-                DebugInfo.LastProcessedAltarType = DetermineAltarType(path).ToString();
                 AltarType altarType = DetermineAltarType(path);
-                PrimaryAltarComponent altarComponent = CreateAltarComponent(element, altarType);
+                DebugInfo.LastProcessedAltarType = altarType.ToString();
+                PrimaryAltarComponent altarComponent = ComponentFactory.CreateFromElement(element, altarType);
                 DebugInfo.ComponentsProcessed++;
 
                 if (!IsValidAltarComponent(altarComponent))
                     continue;
 
                 bool wasAdded = AddAltarComponent(altarComponent);
-                WarmAddedAltarData(altarComponent, wasAdded);
+                AltarComponentFactory.WarmAddedData(altarComponent, wasAdded);
 
                 if (wasAdded)
                     DebugInfo.ComponentsAdded++;
@@ -341,21 +295,6 @@ namespace ClickIt.Features.Altars
             });
         }
 
-        private static void PreCacheAltarData(PrimaryAltarComponent altar)
-        {
-            _ = altar.IsValidCached();
-            _ = altar.GetTopModsRect();
-            _ = altar.GetBottomModsRect();
-        }
-
-        internal static void WarmAddedAltarData(PrimaryAltarComponent altar, bool wasAdded)
-        {
-            if (!wasAdded)
-                return;
-
-            PreCacheAltarData(altar);
-        }
-
         internal static AltarType DetermineAltarType(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -368,67 +307,6 @@ namespace ClickIt.Features.Altars
 
             return AltarType.Unknown;
         }
-
-        private PrimaryAltarComponent CreateAltarComponent(Element element, AltarType altarType)
-        {
-            var adapter = new ElementAdapter(element);
-            return CreateAltarComponentFromAdapter(adapter, altarType);
-        }
-
-        internal PrimaryAltarComponent CreateAltarComponentFromAdapter(IElementAdapter elementAdapter, AltarType altarType)
-        {
-            if (elementAdapter == null || elementAdapter.Parent?.Parent == null)
-                throw new InvalidOperationException("Failed to create valid altar component - missing required elements");
-
-            IElementAdapter altarParentAdapter = elementAdapter.Parent.Parent;
-            IElementAdapter? topAltarAdapter = altarParentAdapter.GetChildFromIndices(0, 1);
-            IElementAdapter? bottomAltarAdapter = altarParentAdapter.GetChildFromIndices(1, 1);
-
-            var topMods = topAltarAdapter != null ? new SecondaryAltarComponent(topAltarAdapter.Underlying, [], []) : null;
-            var bottomMods = bottomAltarAdapter != null ? new SecondaryAltarComponent(bottomAltarAdapter.Underlying, [], []) : null;
-            var topButton = topAltarAdapter != null ? new AltarButton(topAltarAdapter.Parent?.Underlying) : null;
-            var bottomButton = bottomAltarAdapter != null ? new AltarButton(bottomAltarAdapter.Parent?.Underlying) : null;
-
-            if (topMods == null || bottomMods == null || topButton == null || bottomButton == null)
-                throw new InvalidOperationException("Failed to create valid altar component - missing required elements");
-
-            PrimaryAltarComponent altarComponent = new(altarType, topMods, topButton, bottomMods, bottomButton);
-
-            if (topAltarAdapter != null)
-            {
-                (string negativeModType, List<string> mods) = ExtractModsFromAdapter(topAltarAdapter);
-                (List<string> upsides, List<string> downsides, bool hasUnmatched) = ProcessMods(mods, negativeModType);
-                UpdateAltarComponentFromAdapter(true, altarComponent, topAltarAdapter, upsides, downsides, hasUnmatched);
-            }
-
-            if (bottomAltarAdapter != null)
-            {
-                (string negativeModType, List<string> mods) = ExtractModsFromAdapter(bottomAltarAdapter);
-                (List<string> upsides, List<string> downsides, bool hasUnmatched) = ProcessMods(mods, negativeModType);
-                UpdateAltarComponentFromAdapter(false, altarComponent, bottomAltarAdapter, upsides, downsides, hasUnmatched);
-            }
-
-            return altarComponent;
-        }
-
-        private (string negativeModType, List<string> mods) ExtractModsFromAdapter(IElementAdapter element)
-        {
-            string negativeModType = string.Empty;
-            var mods = new List<string>();
-            string altarMods = _altarMatcher.CleanAltarModsText(element.GetText(AltarModsTextReadLength));
-            int lineCount = TextHelpers.CountLines(altarMods);
-            for (int i = 0; i < lineCount; i++)
-            {
-                string line = TextHelpers.GetLine(altarMods, i);
-                if (i == 0)
-                    negativeModType = line;
-                else if (line != null)
-                    mods.Add(line);
-            }
-
-            return (negativeModType, mods);
-        }
-
         private bool IsValidAltarComponent(PrimaryAltarComponent altarComponent)
         {
             bool isValid = altarComponent.TopMods != null && altarComponent.TopButton != null &&

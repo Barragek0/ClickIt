@@ -1,5 +1,3 @@
-using Color = SharpDX.Color;
-
 namespace ClickIt.UI.Overlays.Ultimatum
 {
     public class UltimatumRenderer(ClickItSettings settings, IClickAutomationService? clickAutomationService, DeferredFrameQueue? deferredFrameQueue)

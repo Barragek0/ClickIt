@@ -11,7 +11,7 @@ namespace ClickIt.Features.Altars
             foreach (var label in altarLabels)
             {
                 if (label == null) continue;
-                var elements = LabelUtils.GetElementsByStringContains(label.Label, "valuedefault");
+                var elements = LabelElementSearch.GetElementsByStringContains(label.Label, "valuedefault");
                 if (elements == null || elements.Count == 0) continue;
                 string path = label.ItemOnGround?.Path ?? string.Empty;
 

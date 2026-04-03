@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ClickIt.Core.Lifecycle
 {
     internal static class PluginLifecycleCoordinator
@@ -50,7 +48,7 @@ namespace ClickIt.Core.Lifecycle
             LabelUtils.ClearThreadLocalStorage();
             ShrineService.ClearThreadLocalStorageForCurrentThread();
             ClickService.ClearThreadLocalStorageForCurrentThread();
-            owner.State.Services.LabelFilterService?.ClearInventoryProbeCacheForShutdown();
+            owner.State.Services.LabelFilterPort?.ClearInventoryProbeCacheForShutdown();
             owner.State.Services.AltarService?.ClearRuntimeCaches();
 
             owner.State.DisposeCompositionRoot();
@@ -104,7 +102,7 @@ namespace ClickIt.Core.Lifecycle
         {
             try
             {
-                var coroutines = global::ExileCore.Core.ParallelRunner.Coroutines
+                var coroutines = ExileCoreApi.ParallelRunner.Coroutines
                     .Where(c => c != null && c.Name != null && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
@@ -126,7 +124,7 @@ namespace ClickIt.Core.Lifecycle
                 var stopwatch = Stopwatch.StartNew();
                 while (stopwatch.ElapsedMilliseconds < timeoutMs)
                 {
-                    bool anyActive = global::ExileCore.Core.ParallelRunner.Coroutines
+                    bool anyActive = ExileCoreApi.ParallelRunner.Coroutines
                         .Any(c => c != null
                             && c.Name != null
                             && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase)

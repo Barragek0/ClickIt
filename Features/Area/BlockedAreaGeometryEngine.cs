@@ -1,6 +1,3 @@
-using SharpDX;
-using RectangleF = SharpDX.RectangleF;
-
 namespace ClickIt.Features.Area
 {
     internal static class BlockedAreaGeometryEngine
@@ -88,7 +85,7 @@ namespace ClickIt.Features.Area
 
         internal static bool PointInUiRectangleAnyRepresentation(Vector2 point, RectangleF rect)
         {
-            return PointInUiRectangle(point, rect) || point.PointInRectangle(rect);
+            return PointInUiRectangle(point, rect);
         }
     }
 }
