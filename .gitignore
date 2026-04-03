@@ -140,10 +140,9 @@ build.log
 .github/prompts/
 
 # Planning and review artifacts
-.github/plans/new_structure_plan.md
-.github/plans/phase1_plan.md
-.github/plans/phase2_changes.md
-.github/plans/phase3_review.md
+.github/plans/phase1-plan.md
+.github/plans/phase2-changes.md
+.github/plans/phase3-review.md
 .github/project-structure.md
 
 # Allow checking in explicit third-party runtime libs used by the tests

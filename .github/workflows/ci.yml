@@ -2,7 +2,7 @@ name: ClickIt CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, full-codebase-rewrite ]
   pull_request:
     branches: [ main ]
 
