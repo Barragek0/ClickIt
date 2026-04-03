@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using SharpDX;
 
-namespace ClickIt.Tests.TestUtils
+namespace ClickIt.Tests.Shared.TestUtils
 {
     internal class ElementAdapterStub : global::ClickIt.Shared.Game.IElementAdapter
     {

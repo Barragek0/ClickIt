@@ -1,5 +1,3 @@
-using ClickIt.Features.Observability;
-
 namespace ClickIt.Features.Pathfinding.Diagnostics
 {
     internal sealed class OffscreenMovementDiagnosticsChannel

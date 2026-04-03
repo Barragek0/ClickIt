@@ -1,5 +1,5 @@
 using System.Collections;
-namespace ClickIt.Shared
+namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospection
     {

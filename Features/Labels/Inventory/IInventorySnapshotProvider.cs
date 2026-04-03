@@ -1,5 +1,3 @@
-using ExileCore;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal interface IInventorySnapshotProvider

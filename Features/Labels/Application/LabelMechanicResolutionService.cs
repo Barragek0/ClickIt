@@ -1,9 +1,3 @@
-using ClickIt.Features.Labels.Classification;
-using ClickIt.Features.Labels.Selection;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Application
 {
     internal sealed class LabelMechanicResolutionService(

@@ -1,5 +1,3 @@
-using ExileCore.Shared.Nodes;
-
 namespace ClickIt.UI.Settings
 {
     internal sealed record ClickItSettingsScreenNodes(

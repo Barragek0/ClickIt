@@ -1,6 +1,3 @@
-using ClickIt.Shared;
-using ExileCore;
-
 namespace ClickIt.Features.Area
 {
     internal static class AreaUiSnapshotReader

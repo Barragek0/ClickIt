@@ -1,11 +1,3 @@
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared.Enums;
-using ClickIt.Features.Labels.Inventory;
-
 namespace ClickIt.Features.Labels.Classification
 {
     internal sealed class LabelInteractionRuleService(

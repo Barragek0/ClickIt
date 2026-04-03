@@ -1,9 +1,3 @@
-using ClickIt.Features.Click.Interaction;
-using ClickIt.Features.Labels.Classification.Policies;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal static class OffscreenPathingMath

@@ -1,5 +1,3 @@
-using ClickIt.Features.Labels.Diagnostics;
-
 namespace ClickIt.Features.Observability
 {
     internal sealed record LabelTelemetrySnapshot(

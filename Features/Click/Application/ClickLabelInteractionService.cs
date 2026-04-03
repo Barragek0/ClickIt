@@ -1,13 +1,3 @@
-using ClickIt.Features.Click.Interaction;
-using ClickIt.Features.Click.Label;
-using ClickIt.Features.Click.Runtime;
-using ClickIt.Features.Labels;
-using ClickIt.Features.Labels.Classification.Policies;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 
 namespace ClickIt.Features.Click.Application

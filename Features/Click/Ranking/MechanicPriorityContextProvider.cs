@@ -1,5 +1,3 @@
-using ClickIt.Features.Mechanics;
-
 namespace ClickIt.Features.Click.Ranking
 {
     internal sealed class MechanicPriorityContextProvider(

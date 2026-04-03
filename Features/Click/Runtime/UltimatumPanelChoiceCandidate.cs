@@ -1,5 +1,3 @@
-using ExileCore.PoEMemory;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal readonly struct UltimatumPanelChoiceCandidate(

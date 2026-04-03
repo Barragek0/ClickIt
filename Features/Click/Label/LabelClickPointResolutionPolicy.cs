@@ -1,5 +1,3 @@
-using ClickIt.Features.Labels.Classification.Policies;
-
 namespace ClickIt.Features.Click.Label
 {
     internal static class LabelClickPointResolutionPolicy

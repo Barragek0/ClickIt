@@ -1,8 +1,4 @@
 using System.Collections;
-using ClickIt.Features.Labels;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
 
 namespace ClickIt.Features.Click.Core
 {

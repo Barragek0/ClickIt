@@ -1,4 +1,3 @@
-using ClickIt.Shared;
 using Color = SharpDX.Color;
 using RectangleF = SharpDX.RectangleF;
 

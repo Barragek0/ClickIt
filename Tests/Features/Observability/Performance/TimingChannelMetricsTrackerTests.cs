@@ -1,5 +1,3 @@
-using ClickIt.Features.Observability.Performance;
-using ClickIt.Shared;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

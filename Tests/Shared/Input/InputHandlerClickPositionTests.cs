@@ -1,11 +1,9 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ExileCore.Shared.Enums;
 using SharpDX;
 using System.Collections.Generic;
-using ClickIt.Features.Click.Interaction;
 
-namespace ClickIt.Tests.Common.Input
+namespace ClickIt.Tests.Shared.Input
 {
     [TestClass]
     public class InputHandlerClickPositionTests

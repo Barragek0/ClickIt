@@ -1,7 +1,3 @@
-using ClickIt.Features.Observability;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using System.Diagnostics;
 using Color = SharpDX.Color;

@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Features.Area;
 using SharpDX;
 using System.Collections.Generic;
 

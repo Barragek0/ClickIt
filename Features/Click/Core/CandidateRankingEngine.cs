@@ -1,6 +1,3 @@
-using ClickIt.Features.Click.Ranking;
-using ClickIt.Features.Click.Runtime;
-
 namespace ClickIt.Features.Click.Core
 {
     internal sealed class CandidateRankingEngine(ClickRuntimeEngine owner)

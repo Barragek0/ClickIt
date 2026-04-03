@@ -2,11 +2,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System;
 using System.Collections.Generic;
-using ClickIt.Features.Labels.Classification;
-using ClickIt.Features.Labels.Selection;
-using ExileCore.Shared.Enums;
 
-namespace ClickIt.Tests.Labels.Classification
+namespace ClickIt.Tests.Features.Labels.Classification
 {
     [TestClass]
     public class LabelClassificationPolicyTests

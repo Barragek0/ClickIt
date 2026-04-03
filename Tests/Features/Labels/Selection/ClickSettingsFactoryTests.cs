@@ -1,11 +1,8 @@
-using ClickIt.Features.Labels.Selection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
-using ExileCore.PoEMemory.Elements;
-using ClickIt.Features.Mechanics;
 
-namespace ClickIt.Tests.Labels.Selection
+namespace ClickIt.Tests.Features.Labels.Selection
 {
     [TestClass]
     public class ClickSettingsFactoryTests

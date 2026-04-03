@@ -1,6 +1,3 @@
-using ExileCore.PoEMemory.MemoryObjects;
-using ClickIt.Features.Click.Runtime;
-
 namespace ClickIt.Features.Click.Ranking
 {
     internal static class OffscreenTargetRanker

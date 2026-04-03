@@ -1,7 +1,3 @@
-using ClickIt.Features.Observability;
-using ClickIt.Core.Bootstrap;
-using ClickIt.Core.Runtime;
-
 namespace ClickIt
 {
     public class PluginContext

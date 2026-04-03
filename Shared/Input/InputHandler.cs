@@ -1,9 +1,4 @@
-using ExileCore;
-using ExileCore.Shared.Cache;
-using ExileCore.PoEMemory.Elements;
 using SharpDX;
-using ExileCore.PoEMemory;
-using ClickIt.Features.Click.Interaction;
 namespace ClickIt.Shared.Input
 {
     public class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)

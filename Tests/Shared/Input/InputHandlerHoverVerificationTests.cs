@@ -1,8 +1,7 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ClickIt.Features.Click.Interaction;
 
-namespace ClickIt.Tests.Common.Input
+namespace ClickIt.Tests.Shared.Input
 {
     [TestClass]
     public class InputHandlerHoverVerificationTests

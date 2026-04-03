@@ -1,6 +1,3 @@
-using ClickIt.Features.Click.Runtime;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 
 namespace ClickIt.Features.Click.Core

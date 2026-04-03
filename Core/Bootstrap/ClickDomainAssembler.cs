@@ -1,5 +1,3 @@
-using ExileCore;
-
 namespace ClickIt.Core.Bootstrap
 {
     internal static class ClickDomainAssembler

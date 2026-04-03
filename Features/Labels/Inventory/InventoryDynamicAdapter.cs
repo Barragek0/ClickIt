@@ -1,6 +1,3 @@
-using ClickIt.Shared;
-using ExileCore;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal readonly record struct InventoryDynamicAdapterDependencies(

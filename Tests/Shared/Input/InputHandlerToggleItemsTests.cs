@@ -1,9 +1,8 @@
-using ClickIt.Shared;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace ClickIt.Tests.Common.Input
+namespace ClickIt.Tests.Shared.Input
 {
     [TestClass]
     public class InputHandlerToggleItemsTests

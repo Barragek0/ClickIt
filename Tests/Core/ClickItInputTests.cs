@@ -1,10 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Shared;
 using System;
-using ClickIt.Tests.Harness;
 using System.Threading;
-using ClickIt.Core.Runtime;
 
 namespace ClickIt.Tests.Core
 {
@@ -26,26 +23,14 @@ namespace ClickIt.Tests.Core
         public void HandleHotkeyPressed_SetsWorkFinishedFalse()
         {
             var plugin = new ClickIt();
-            ClickItHostHarness.SetSettings(plugin, new ClickItSettings());
 
             var state = plugin.State;
 
             state.Runtime.WorkFinished = true;
 
-            // Disable native input to prevent real mouse operations during testing
-            var originalDisable = Mouse.DisableNativeInput;
-            Mouse.DisableNativeInput = true;
+            InputHost.HandleHotkeyPressed(plugin.State);
 
-            try
-            {
-                InputHost.HandleHotkeyPressed(plugin.State);
-
-                state.Runtime.WorkFinished.Should().BeFalse();
-            }
-            finally
-            {
-                Mouse.DisableNativeInput = originalDisable;
-            }
+            state.Runtime.WorkFinished.Should().BeFalse();
         }
 
         [TestMethod]
@@ -53,7 +38,6 @@ namespace ClickIt.Tests.Core
         {
             var plugin = new ClickIt();
             var settings = new ClickItSettings();
-            ClickItHostHarness.SetSettings(plugin, settings);
 
             var state = plugin.State;
 
@@ -66,7 +50,7 @@ namespace ClickIt.Tests.Core
 
             pm.ClickActivity.ClickCount.Should().BeGreaterThan(0);
 
-            plugin.Tick();
+            InputHost.Tick(state, settings);
 
             pm.ClickActivity.ClickCount.Should().Be(0);
         }
@@ -75,7 +59,6 @@ namespace ClickIt.Tests.Core
         public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenDueAndNotDeferred()
         {
             var plugin = new ClickIt();
-            ClickItHostHarness.SetSettings(plugin, new ClickItSettings());
 
             var state = plugin.State;
 
@@ -92,7 +75,6 @@ namespace ClickIt.Tests.Core
         public void ResumeAltarScanningIfDue_RestartsSecondTimer_WhenHotkeyHeld()
         {
             var plugin = new ClickIt();
-            ClickItHostHarness.SetSettings(plugin, new ClickItSettings());
 
             var state = plugin.State;
 

@@ -1,9 +1,3 @@
-using ClickIt.Features.Labels.Selection;
-using ClickIt.Features.Labels.Diagnostics;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

@@ -1,10 +1,3 @@
-using ClickIt.Features.Labels.Selection;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared.Cache;
-
 namespace ClickIt.Core.Bootstrap
 {
     internal readonly record struct CoreDomainServices(

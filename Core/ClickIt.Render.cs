@@ -1,5 +1,3 @@
-using ClickIt.Core.Runtime;
-
 namespace ClickIt
 {
     public partial class ClickIt

@@ -1,4 +1,3 @@
-using ClickIt.Shared;
 using SharpDX;
 using Color = SharpDX.Color;
 

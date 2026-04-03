@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using ClickIt.Features.Observability;
-using ClickIt.Features.Observability.Performance;
 
 namespace ClickIt.Shared.Diagnostics
 {

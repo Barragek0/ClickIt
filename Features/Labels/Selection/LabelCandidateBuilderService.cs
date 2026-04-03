@@ -1,6 +1,3 @@
-using ClickIt.Features.Labels.Application;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ClickIt.Features.Labels.Selection

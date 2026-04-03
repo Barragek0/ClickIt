@@ -1,5 +1,3 @@
-using ClickIt.Features.Observability;
-
 namespace ClickIt.Core.Runtime
 {
     internal sealed class DebugTelemetryFreezeState

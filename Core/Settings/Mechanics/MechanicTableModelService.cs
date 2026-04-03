@@ -1,5 +1,3 @@
-using ExileCore.Shared.Nodes;
-
 namespace ClickIt.Core.Settings.Mechanics
 {
     internal static class MechanicTableModelService

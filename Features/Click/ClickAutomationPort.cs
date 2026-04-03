@@ -1,20 +1,4 @@
 using System.Collections;
-using ClickIt.Features.Altars;
-using ClickIt.Features.Click.Application;
-using ClickIt.Features.Click.Interaction;
-using ClickIt.Features.Click.Label;
-using ClickIt.Features.Click.Ranking;
-using ClickIt.Features.Click.Runtime;
-using ClickIt.Features.Click.Safety;
-using ClickIt.Features.Click.Selection;
-using ClickIt.Features.Labels.Classification.Policies;
-using ClickIt.Features.Labels;
-using ClickIt.Features.Mechanics;
-using ClickIt.Features.Observability;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Cache;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

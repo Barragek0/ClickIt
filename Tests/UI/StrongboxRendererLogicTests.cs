@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.UserInterface
+namespace ClickIt.Tests.UI
 {
     [TestClass]
     public class StrongboxRendererLogicTests

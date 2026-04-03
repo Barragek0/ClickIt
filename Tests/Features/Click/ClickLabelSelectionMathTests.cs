@@ -1,5 +1,3 @@
-using ClickIt.Features.Click.Runtime;
-using ExileCore.PoEMemory.Elements;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;

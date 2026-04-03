@@ -1,7 +1,4 @@
-using ExileCore;
-using ExileCore.PoEMemory;
 using SharpDX;
-using ClickIt.Shared;
 
 namespace ClickIt.Features.Click.Interaction
 {

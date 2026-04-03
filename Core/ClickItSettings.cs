@@ -1,6 +1,3 @@
-using ExileCore.Shared.Attributes;
-using ExileCore.Shared.Interfaces;
-using ExileCore.Shared.Nodes;
 using Newtonsoft.Json;
 
 namespace ClickIt

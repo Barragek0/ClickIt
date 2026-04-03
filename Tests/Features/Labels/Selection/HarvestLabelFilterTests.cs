@@ -1,8 +1,7 @@
-using ClickIt.Features.Labels.Selection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Labels.Selection
+namespace ClickIt.Tests.Features.Labels.Selection
 {
     [TestClass]
     public class HarvestLabelFilterTests

@@ -1,5 +1,3 @@
-using ClickIt.Shared;
-
 namespace ClickIt.Features.Observability.Performance
 {
     internal sealed class RenderSectionMetricsStore

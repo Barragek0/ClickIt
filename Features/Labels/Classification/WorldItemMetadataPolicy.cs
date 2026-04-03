@@ -1,9 +1,3 @@
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Classification
 {
     internal interface IWorldItemMetadataPolicy

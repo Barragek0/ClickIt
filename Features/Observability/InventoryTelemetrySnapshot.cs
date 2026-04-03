@@ -1,5 +1,3 @@
-using ClickIt.Features.Labels.Inventory;
-
 namespace ClickIt.Features.Observability
 {
     internal sealed record InventoryTelemetrySnapshot(

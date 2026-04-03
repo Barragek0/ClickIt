@@ -1,6 +1,3 @@
-using ClickIt.Features.Click.Application;
-using ClickIt.Features.Click.Runtime;
-using ClickIt.Shared;
 using Color = SharpDX.Color;
 
 namespace ClickIt.UI.Overlays.Ultimatum

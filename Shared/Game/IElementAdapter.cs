@@ -1,6 +1,4 @@
-﻿using ExileCore.PoEMemory;
-
-namespace ClickIt.Shared.Game
+﻿namespace ClickIt.Shared.Game
 {
     public interface IElementAdapter
     {

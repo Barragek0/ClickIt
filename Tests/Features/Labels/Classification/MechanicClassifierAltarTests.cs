@@ -1,8 +1,7 @@
-using ClickIt.Features.Labels.Classification;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Labels.Classification
+namespace ClickIt.Tests.Features.Labels.Classification
 {
     [TestClass]
     public class MechanicClassifierAltarTests

@@ -1,6 +1,3 @@
-using ClickIt.Features.Observability;
-using ClickIt.UI.Debug.Sections;
-
 namespace ClickIt.UI.Debug
 {
     internal readonly record struct DebugOverlaySectionFactoryDependencies(

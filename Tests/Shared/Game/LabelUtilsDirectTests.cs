@@ -1,9 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Shared;
-using ExileCore.Shared.Enums;
 
-namespace ClickIt.Tests.Common.Game
+namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
     public class LabelUtilsDirectTests

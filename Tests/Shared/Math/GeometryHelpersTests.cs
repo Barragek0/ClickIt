@@ -1,9 +1,8 @@
-using ClickIt.Shared;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 
-namespace ClickIt.Tests.Common.Math
+namespace ClickIt.Tests.Shared.Math
 {
     [TestClass]
     public class GeometryHelpersTests

@@ -1,5 +1,3 @@
-
-using ClickIt.Shared;
 using System.Text.RegularExpressions;
 
 namespace ClickIt.Features.Altars

@@ -1,4 +1,3 @@
-using ExileCore.Shared.Attributes;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

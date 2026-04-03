@@ -1,10 +1,10 @@
-using ClickIt.Shared;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Common.Game
+namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
+    [DoNotParallelize]
     public class DynamicAccessTests
     {
         [TestInitialize]

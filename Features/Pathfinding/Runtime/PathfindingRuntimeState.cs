@@ -1,5 +1,4 @@
 using SharpDX;
-using ClickIt.Features.Pathfinding.Diagnostics;
 
 namespace ClickIt.Features.Pathfinding.Runtime
 {

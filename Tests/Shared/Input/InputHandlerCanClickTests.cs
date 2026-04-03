@@ -1,9 +1,7 @@
-using ClickIt.Shared;
-using ClickIt.Features.Click.Interaction;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Common.Input
+namespace ClickIt.Tests.Shared.Input
 {
     [TestClass]
     public class InputHandlerCanClickTests

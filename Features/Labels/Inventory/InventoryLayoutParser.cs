@@ -1,5 +1,3 @@
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal readonly record struct InventoryLayoutParserDependencies(

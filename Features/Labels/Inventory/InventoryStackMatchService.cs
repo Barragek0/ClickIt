@@ -1,8 +1,3 @@
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal readonly record struct InventoryStackMatchDependencies(

@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Collections.Generic;
-using ExileCore.PoEMemory;
 using Moq;
 
 namespace ClickIt.Tests.Features.Altars

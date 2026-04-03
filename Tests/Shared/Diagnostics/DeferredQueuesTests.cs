@@ -1,10 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Shared;
 using SharpDX;
-using ExileCore.Shared.Enums;
 
-namespace ClickIt.Tests.Common.Diagnostics
+namespace ClickIt.Tests.Shared.Diagnostics
 {
     [TestClass]
     public class DeferredQueuesTests

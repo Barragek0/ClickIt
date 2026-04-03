@@ -1,7 +1,3 @@
-using ClickIt.Features.Click.Application;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Cache;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;

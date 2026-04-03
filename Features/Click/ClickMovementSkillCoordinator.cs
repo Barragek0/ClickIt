@@ -1,7 +1,4 @@
-using ExileCore;
 using System.Collections;
-using ClickIt.Shared;
-using ClickIt.Features.Click.Runtime;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

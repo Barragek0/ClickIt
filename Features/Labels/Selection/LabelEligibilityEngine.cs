@@ -1,6 +1,3 @@
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Selection
 {
     internal static class LabelEligibilityEngine

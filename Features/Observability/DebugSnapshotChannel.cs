@@ -1,5 +1,3 @@
-using ClickIt.Shared;
-
 namespace ClickIt.Features.Observability
 {
     internal sealed class DebugSnapshotChannel<TSnapshot, TEvent>

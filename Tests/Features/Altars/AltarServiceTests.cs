@@ -3,8 +3,6 @@ using System;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using ClickIt.Features.Altars;
-using ExileCore.PoEMemory;
 
 namespace ClickIt.Tests.Features.Altars
 {

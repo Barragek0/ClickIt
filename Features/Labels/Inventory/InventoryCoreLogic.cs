@@ -1,7 +1,3 @@
-using ClickIt.Shared;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal static class InventoryCoreLogic

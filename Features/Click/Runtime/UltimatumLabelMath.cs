@@ -1,6 +1,3 @@
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal static class UltimatumLabelMath

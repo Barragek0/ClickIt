@@ -1,5 +1,3 @@
-using ClickIt.Features.Pathfinding.Projection;
-using ClickIt.Features.Pathfinding.Terrain;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;

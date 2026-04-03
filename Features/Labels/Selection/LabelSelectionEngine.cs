@@ -1,7 +1,3 @@
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using ClickIt.Features.Click.Ranking;
-
 namespace ClickIt.Features.Labels.Selection
 {
     internal readonly record struct LabelCandidateBuildResult(

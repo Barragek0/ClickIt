@@ -1,5 +1,3 @@
-using ClickIt.Features.Click.Label;
-using ClickIt.Features.Observability;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

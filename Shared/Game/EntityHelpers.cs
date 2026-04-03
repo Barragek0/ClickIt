@@ -1,7 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Shared.Game
 {
     public static class EntityHelpers

@@ -1,5 +1,4 @@
 using FluentAssertions;
-using ClickIt.Features.Area;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 

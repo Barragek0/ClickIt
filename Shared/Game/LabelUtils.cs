@@ -1,10 +1,5 @@
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
-using ExileCore.Shared.Enums;
-using ExileCore.PoEMemory.Components;
 
 namespace ClickIt.Shared.Game
 {

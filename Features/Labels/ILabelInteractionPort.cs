@@ -1,6 +1,3 @@
-using ClickIt.Features.Labels.Application;
-using ExileCore.PoEMemory.Elements;
-
 namespace ClickIt.Features.Labels
 {
     internal interface ILabelInteractionPort

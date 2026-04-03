@@ -1,10 +1,3 @@
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared.Enums;
-using ClickIt.Features.Labels.Classification.Policies;
-using ClickIt.Features.Mechanics;
-using ClickIt.Features.Mechanics.Rules;
-
 #nullable enable
 
 namespace ClickIt.Features.Labels.Classification

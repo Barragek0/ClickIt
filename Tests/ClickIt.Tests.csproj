@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="$(IntermediateOutputPath)GlobalUsings.Generated.g.cs" AutoGen="true" DesignTime="true" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
     <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
@@ -72,5 +76,14 @@
          Use forward slashes and double-star patterns so exclusions reliably match absolute or relative source paths. -->
       <ExcludeByFile>**/Core/ClickItSettings.cs,**/Properties/Settings.Designer.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
     </PropertyGroup>
+
+  <PropertyGroup>
+    <GlobalUsingsGeneratorProject>$(MSBuildProjectDirectory)\..\.scripts\GlobalUsingsGenerator\GlobalUsingsGenerator.csproj</GlobalUsingsGeneratorProject>
+    <GlobalUsingGeneratorAssemblies>$(MSBuildProjectDirectory)\..\ThirdParty\ExileCore.dll;$(MSBuildProjectDirectory)\..\ThirdParty\GameOffsets.dll;$(MSBuildProjectDirectory)\..\ThirdParty\ProcessMemoryUtilities.dll</GlobalUsingGeneratorAssemblies>
+  </PropertyGroup>
+
+  <Target Name="GenerateClickItGlobalUsings" BeforeTargets="CoreCompile">
+    <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)\..&quot; --output &quot;$(IntermediateOutputPath)GlobalUsings.Generated.g.cs&quot; --mode tests --assemblies &quot;$(GlobalUsingGeneratorAssemblies)&quot;" />
+  </Target>
 
 </Project>

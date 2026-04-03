@@ -1,4 +1,3 @@
-using ExileCore.Shared.Nodes;
 using ImGuiNET;
 using System.Numerics;
 

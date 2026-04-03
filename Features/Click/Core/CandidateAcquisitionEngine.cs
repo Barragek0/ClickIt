@@ -1,7 +1,3 @@
-using ExileCore.Shared.Enums;
-using ExileCore.PoEMemory.Elements;
-using ClickIt.Features.Click.Runtime;
-
 namespace ClickIt.Features.Click.Core
 {
     internal sealed class CandidateAcquisitionEngine(ClickRuntimeEngine owner)

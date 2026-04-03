@@ -1,7 +1,4 @@
 using System.Collections.Generic;
-using ClickIt.Features.Altars;
-using ClickIt.Features.Click.Application;
-using ClickIt.Tests.TestUtils;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;

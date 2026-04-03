@@ -1,7 +1,4 @@
 using SharpDX;
-using ClickIt.Features.Click.Runtime;
-using ClickIt.Features.Click.Ranking;
-using ExileCore.PoEMemory.MemoryObjects;
 
 namespace ClickIt.Features.Click.Selection
 {

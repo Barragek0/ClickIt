@@ -1,6 +1,4 @@
 using System.Collections;
-using ExileCore.PoEMemory.Elements;
-using ClickIt.Features.Click.Application;
 
 namespace ClickIt.Core.Runtime
 {

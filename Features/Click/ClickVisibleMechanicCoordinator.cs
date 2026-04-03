@@ -1,10 +1,3 @@
-using ClickIt.Features.Observability;
-using ClickIt.Features.Click.Selection;
-using ClickIt.Features.Click.Runtime;
-using ClickIt.Features.Labels.Classification.Policies;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

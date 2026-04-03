@@ -1,6 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Enums;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

@@ -1,5 +1,3 @@
-using ClickIt.UI.Debug.Layout;
-
 namespace ClickIt.UI.Debug
 {
     internal readonly record struct DebugOverlaySection(bool Enabled, Func<int, int, int, (int NextX, int NextY)> Render);

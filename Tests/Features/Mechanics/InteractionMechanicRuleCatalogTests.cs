@@ -1,6 +1,3 @@
-using ClickIt.Features.Labels.Classification;
-using ClickIt.Features.Mechanics.Rules;
-using ExileCore.PoEMemory.Elements;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.CompilerServices;

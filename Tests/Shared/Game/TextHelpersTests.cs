@@ -1,8 +1,7 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ClickIt.Shared;
 
-namespace ClickIt.Tests.Common.Game
+namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
     public class TextHelpersTests

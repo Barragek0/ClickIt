@@ -1,9 +1,8 @@
 using System.Collections.Generic;
-using ClickIt.Features.Labels.Inventory;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Labels.Inventory
+namespace ClickIt.Tests.Features.Labels.Inventory
 {
     [TestClass]
     public class InventoryCoreLogicTests

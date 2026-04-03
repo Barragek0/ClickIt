@@ -1,5 +1,3 @@
-using ExileCore.Shared.Enums;
-
 namespace ClickIt.Features.Labels.Classification
 {
     internal static class TransitionMechanicClassifier

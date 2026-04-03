@@ -1,5 +1,3 @@
-using ClickIt.Core.Settings.Runtime;
-
 namespace ClickIt
 {
     public partial class ClickItSettings

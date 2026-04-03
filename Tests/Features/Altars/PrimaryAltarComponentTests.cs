@@ -1,7 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using ClickIt.Features.Altars;
-using ClickIt.Tests.TestUtils;
 using System;
 
 namespace ClickIt.Tests.Features.Altars

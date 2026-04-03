@@ -1,9 +1,8 @@
-using ClickIt.UI;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 
-namespace ClickIt.Tests.UserInterface
+namespace ClickIt.Tests.UI
 {
     [TestClass]
     public class PathfindingRendererTests

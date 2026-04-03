@@ -1,4 +1,3 @@
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 
 namespace ClickIt.Features.Click.State

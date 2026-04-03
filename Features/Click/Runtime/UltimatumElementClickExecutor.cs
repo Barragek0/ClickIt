@@ -1,4 +1,3 @@
-using ExileCore.PoEMemory;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

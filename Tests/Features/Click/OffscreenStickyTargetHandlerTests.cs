@@ -1,4 +1,3 @@
-using ClickIt.Features.Click.Application;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

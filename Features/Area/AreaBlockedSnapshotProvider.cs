@@ -1,5 +1,3 @@
-using ClickIt.Features.Area.Runtime;
-using ExileCore;
 using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Features.Area

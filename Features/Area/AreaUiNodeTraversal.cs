@@ -1,4 +1,3 @@
-using ExileCore.PoEMemory;
 using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Features.Area

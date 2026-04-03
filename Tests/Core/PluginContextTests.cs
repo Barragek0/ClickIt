@@ -1,5 +1,4 @@
 using FluentAssertions;
-using ClickIt.Features.Observability;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.CompilerServices;
 using System.Threading;

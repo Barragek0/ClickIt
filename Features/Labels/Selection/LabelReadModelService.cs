@@ -1,8 +1,4 @@
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Cache;
 using SharpDX;
-using ClickIt.Shared;
 
 namespace ClickIt.Features.Labels.Selection
 {

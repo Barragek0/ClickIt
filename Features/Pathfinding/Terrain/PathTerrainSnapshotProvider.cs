@@ -1,5 +1,3 @@
-using ExileCore;
-
 namespace ClickIt.Features.Pathfinding.Terrain
 {
     internal static class PathTerrainSnapshotProvider

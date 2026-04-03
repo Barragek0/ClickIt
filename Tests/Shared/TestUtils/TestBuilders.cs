@@ -1,7 +1,6 @@
-using ClickIt.Features.Altars;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.TestUtils
+namespace ClickIt.Tests.Shared.TestUtils
 {
     public static class TestBuilders
     {

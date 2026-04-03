@@ -1,6 +1,3 @@
-using ClickIt.Features.Labels.Classification;
-using ExileCore.PoEMemory.Elements;
-
 namespace ClickIt.Features.Mechanics.Rules
 {
     internal readonly record struct InteractionRuleContext(

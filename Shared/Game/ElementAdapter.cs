@@ -1,5 +1,3 @@
-using ExileCore.PoEMemory;
-
 namespace ClickIt.Shared.Game
 {
     public class ElementAdapter(Element? element) : IElementAdapter

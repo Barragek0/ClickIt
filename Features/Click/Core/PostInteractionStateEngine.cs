@@ -1,5 +1,4 @@
 using System.Collections;
-using ExileCore.Shared;
 
 namespace ClickIt.Features.Click.Core
 {

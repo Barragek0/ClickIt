@@ -1,10 +1,7 @@
-using ClickIt.Features.Labels.Application;
-using ClickIt.Features.Labels.Diagnostics;
-using ClickIt.Features.Labels.Selection;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Labels.Application
+namespace ClickIt.Tests.Features.Labels.Application
 {
     [TestClass]
     public class LabelSelectionServiceTests

@@ -1,12 +1,3 @@
-using ClickIt.Features.Labels.Application;
-using ClickIt.Features.Labels.Classification;
-using ClickIt.Features.Labels.Diagnostics;
-using ClickIt.Features.Labels.Inventory;
-using ClickIt.Features.Labels.Selection;
-using ClickIt.Features.Mechanics;
-using ClickIt.Shared;
-using ExileCore.PoEMemory.Elements;
-
 namespace ClickIt.Features.Labels
 {
     public sealed class LabelFilterPort : ILabelInteractionPort

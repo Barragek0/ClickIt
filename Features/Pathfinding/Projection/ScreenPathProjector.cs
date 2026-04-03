@@ -1,5 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 
 namespace ClickIt.Features.Pathfinding.Projection

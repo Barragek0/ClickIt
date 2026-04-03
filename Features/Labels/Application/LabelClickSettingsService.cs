@@ -1,7 +1,3 @@
-using ClickIt.Features.Mechanics;
-using ClickIt.Features.Labels.Selection;
-using ExileCore.PoEMemory.Elements;
-
 namespace ClickIt.Features.Labels.Application
 {
     internal sealed class LabelClickSettingsService(

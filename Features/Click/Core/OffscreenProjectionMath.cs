@@ -1,5 +1,4 @@
 using SharpDX;
-using ClickIt.Features.Click.Runtime;
 using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Features.Click.Core

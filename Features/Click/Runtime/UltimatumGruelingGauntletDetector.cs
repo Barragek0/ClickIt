@@ -1,5 +1,3 @@
-using ClickIt.Shared;
-
 namespace ClickIt.Features.Click.Runtime
 {
     internal sealed class UltimatumGruelingGauntletDetector

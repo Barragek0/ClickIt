@@ -1,6 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Shared.Game
 {
     internal static class EntityQueryService

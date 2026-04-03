@@ -1,11 +1,6 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Text;
-using ClickIt.Features.Labels.Inventory;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.Shared;
-using ExileCore.Shared.Enums;
 
 namespace ClickIt.Core.Runtime
 {

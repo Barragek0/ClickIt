@@ -1,5 +1,3 @@
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
 using RectangleF = SharpDX.RectangleF;
 
 namespace ClickIt.Features.Click.Runtime

@@ -1,7 +1,3 @@
-using ClickIt.Features.Altars;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory;
 using SharpDX;
 using Color = SharpDX.Color;
 using RectangleF = SharpDX.RectangleF;

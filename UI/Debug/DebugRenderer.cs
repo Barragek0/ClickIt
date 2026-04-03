@@ -1,10 +1,5 @@
-using ExileCore;
 using SharpDX;
-using ClickIt.Shared;
 using Color = SharpDX.Color;
-using ClickIt.Features.Observability;
-using ClickIt.UI.Debug;
-using ClickIt.UI.Debug.Layout;
 
 #nullable enable
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using ClickIt.Features.Labels.Classification;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;

@@ -1,5 +1,3 @@
-using ClickIt.Features.Click.Runtime;
-
 namespace ClickIt.Features.Observability
 {
     internal sealed class ClickTelemetryStore

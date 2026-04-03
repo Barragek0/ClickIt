@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using ClickIt.Shared;
 using Graphics = ExileCore.Graphics;
 
 namespace ClickIt.Core.Runtime

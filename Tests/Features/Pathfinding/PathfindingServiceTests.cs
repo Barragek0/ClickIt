@@ -1,5 +1,3 @@
-using ClickIt.Features.Pathfinding.Diagnostics;
-using ClickIt.Features.Pathfinding.Grid;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;

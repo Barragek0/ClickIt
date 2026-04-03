@@ -1,10 +1,4 @@
 using System.Collections;
-using ClickIt.Features.Altars;
-using ClickIt.Features.Click.Interaction;
-using ClickIt.Features.Click.Runtime;
-using ExileCore;
-using ExileCore.PoEMemory;
-using ExileCore.Shared;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

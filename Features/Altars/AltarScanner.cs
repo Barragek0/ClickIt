@@ -1,7 +1,3 @@
-using ClickIt.Shared;
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
-
 namespace ClickIt.Features.Altars
 {
     public static class AltarScanner

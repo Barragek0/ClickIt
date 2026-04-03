@@ -1,7 +1,3 @@
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Cache;
-using ClickIt.Shared;
 using System.Collections.ObjectModel;
 namespace ClickIt.Features.Altars
 {

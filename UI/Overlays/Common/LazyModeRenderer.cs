@@ -1,8 +1,3 @@
-using ClickIt.Features.Labels.Application;
-using ClickIt.UI.Debug.Layout;
-using ClickIt.Shared;
-using ExileCore;
-
 namespace ClickIt.UI.Overlays.Common
 {
     public class LazyModeRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, InputHandler inputHandler, LazyModeBlockerService? lazyModeBlockerService)

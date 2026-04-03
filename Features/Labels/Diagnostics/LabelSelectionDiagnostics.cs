@@ -1,5 +1,3 @@
-using ClickIt.Features.Observability;
-
 namespace ClickIt.Features.Labels.Diagnostics
 {
     internal sealed class LabelSelectionDiagnostics

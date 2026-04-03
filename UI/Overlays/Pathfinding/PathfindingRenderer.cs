@@ -1,6 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
 using SharpDX;
 using Color = SharpDX.Color;
 using Graphics = ExileCore.Graphics;

@@ -1,6 +1,3 @@
-using ClickIt.Features.Observability;
-using ClickIt.Features.Observability.TelemetryProjection;
-
 namespace ClickIt.Core.Runtime
 {
     internal sealed class PluginDebugTelemetryService(

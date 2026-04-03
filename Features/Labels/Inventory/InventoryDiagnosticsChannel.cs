@@ -1,5 +1,3 @@
-using ClickIt.Shared;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal sealed class InventoryDiagnosticsChannel(int trailCapacity)

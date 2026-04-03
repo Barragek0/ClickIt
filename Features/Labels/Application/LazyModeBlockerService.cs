@@ -1,9 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared.Enums;
-
 namespace ClickIt.Features.Labels.Application
 {
     public sealed class LazyModeBlockerService(

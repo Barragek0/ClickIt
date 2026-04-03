@@ -1,5 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.MemoryObjects;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;

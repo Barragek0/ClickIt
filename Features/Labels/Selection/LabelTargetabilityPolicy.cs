@@ -1,9 +1,3 @@
-using ClickIt.Features.Labels.Classification;
-using ClickIt.Shared;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Selection
 {
     internal static class LabelTargetabilityPolicy

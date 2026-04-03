@@ -1,12 +1,9 @@
-using ClickIt.Features.Labels.Inventory;
-using ExileCore;
-using ExileCore.PoEMemory.MemoryObjects;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace ClickIt.Tests.Labels.Inventory
+namespace ClickIt.Tests.Features.Labels.Inventory
 {
     [TestClass]
     public class InventoryInteractionPolicyTests

@@ -1,4 +1,3 @@
-using ClickIt.Core.Settings.Runtime;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

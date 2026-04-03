@@ -1,4 +1,3 @@
-using ExileCore;
 using System.Diagnostics;
 
 namespace ClickIt.Features.Altars

@@ -1,5 +1,4 @@
 using SharpDX;
-using ExileCore.Shared.Enums;
 
 namespace ClickIt.Shared.Diagnostics
 {

@@ -1,4 +1,3 @@
-using ClickIt.Features.Observability;
 using SharpDX;
 using Color = SharpDX.Color;
 

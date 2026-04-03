@@ -1,4 +1,3 @@
-using ClickIt.Features.Click.Ranking;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;

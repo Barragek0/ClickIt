@@ -1,6 +1,4 @@
-﻿using ExileCore.PoEMemory;
-
-namespace ClickIt.Features.Altars
+﻿namespace ClickIt.Features.Altars
 {
     public class AltarButton(Element? Element)
     {

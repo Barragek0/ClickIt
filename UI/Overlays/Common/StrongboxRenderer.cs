@@ -1,8 +1,4 @@
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Enums;
 using Color = SharpDX.Color;
-using ClickIt.Shared;
 
 namespace ClickIt.UI.Overlays.Common
 {

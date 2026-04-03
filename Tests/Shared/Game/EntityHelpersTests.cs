@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.Runtime.CompilerServices;
 
-namespace ClickIt.Tests.Common.Game
+namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
     public class EntityHelpersTests

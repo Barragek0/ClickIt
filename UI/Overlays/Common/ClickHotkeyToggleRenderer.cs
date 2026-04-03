@@ -1,6 +1,3 @@
-using ClickIt.Shared;
-using ExileCore;
-
 namespace ClickIt.UI.Overlays.Common
 {
     public class ClickHotkeyToggleRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, InputHandler inputHandler)

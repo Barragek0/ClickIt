@@ -1,6 +1,3 @@
-using ClickIt.Core.Runtime;
-using ClickIt.Shared;
-using ExileCore.Shared;
 using System.Diagnostics;
 
 namespace ClickIt.Core.Lifecycle

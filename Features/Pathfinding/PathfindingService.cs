@@ -1,11 +1,4 @@
-using ExileCore;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
-using ClickIt.Features.Pathfinding.Diagnostics;
-using ClickIt.Features.Pathfinding.Grid;
-using ClickIt.Features.Pathfinding.Projection;
-using ClickIt.Features.Pathfinding.Terrain;
-using ClickIt.Features.Pathfinding.Runtime;
 
 namespace ClickIt.Features.Pathfinding
 {

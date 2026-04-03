@@ -1,5 +1,3 @@
-using ExileCore.PoEMemory.Elements;
-
 namespace ClickIt.Features.Labels.Application
 {
     internal interface ILabelSelectionService

@@ -2,7 +2,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Text;
 
-namespace ClickIt.Shared
+namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospectionCoroutineWriter
     {

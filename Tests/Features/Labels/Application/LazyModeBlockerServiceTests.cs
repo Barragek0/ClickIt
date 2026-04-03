@@ -1,10 +1,8 @@
-using ClickIt.Features.Labels.Application;
-using ExileCore.PoEMemory.Elements;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 
-namespace ClickIt.Tests.Labels.Application
+namespace ClickIt.Tests.Features.Labels.Application
 {
     [TestClass]
     public class LazyModeBlockerServiceTests

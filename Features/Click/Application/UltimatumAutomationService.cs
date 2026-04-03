@@ -1,8 +1,3 @@
-using ClickIt.Features.Click.Runtime;
-using ExileCore;
-using ExileCore.PoEMemory;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Cache;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

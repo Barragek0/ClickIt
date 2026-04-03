@@ -1,5 +1,3 @@
-using ClickIt.Core.Runtime;
-using ClickIt.Features.Observability;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

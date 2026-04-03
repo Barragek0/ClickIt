@@ -1,8 +1,3 @@
-using ClickIt.Shared;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared.Enums;
-
 namespace ClickIt.Features.Labels.Classification
 {
     internal static class MetadataIdentifierRuleSet

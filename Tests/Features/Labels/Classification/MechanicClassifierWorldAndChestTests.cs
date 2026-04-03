@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using ClickIt.Features.Labels.Classification;
-using ExileCore.Shared.Enums;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Labels.Classification
+namespace ClickIt.Tests.Features.Labels.Classification
 {
     [TestClass]
     public class MechanicClassifierWorldAndChestTests

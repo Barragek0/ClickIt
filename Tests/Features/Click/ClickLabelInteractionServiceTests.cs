@@ -1,9 +1,5 @@
 using System;
 using System.Runtime.CompilerServices;
-using ClickIt.Features.Click.Application;
-using ClickIt.Features.Click.Interaction;
-using ClickIt.Shared;
-using ExileCore;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;

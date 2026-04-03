@@ -1,17 +1,13 @@
-﻿using ExileCore;
-using ClickIt.Core.Runtime;
-
-namespace ClickIt
+﻿namespace ClickIt
 {
     public partial class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
         public PluginContext State { get; } = new PluginContext();
 
-        private ClickItSettings? _settingsOverrideForTests;
         private DebugClipboardService? _debugClipboardService;
         private PluginLifecycleButtonBindings? _lifecycleButtonBindings;
 
-        private ClickItSettings EffectiveSettings => Settings ?? _settingsOverrideForTests ?? new ClickItSettings();
+        private ClickItSettings EffectiveSettings => Settings ?? new ClickItSettings();
 
         private DebugClipboardService DebugClipboardService
             => _debugClipboardService ??= new DebugClipboardService(new DebugClipboardServiceDependencies(
@@ -30,11 +26,9 @@ namespace ClickIt
 
         public override void OnClose()
         {
-            ClickItSettings runtimeSettings = Settings ?? EffectiveSettings;
+            ClickItSettings runtimeSettings = EffectiveSettings;
             PluginLifecycleCoordinator.Shutdown(this, runtimeSettings);
 
-            // In some test scenarios the Settings property isn't populated on the base class even though tests inject settings via the test seam.
-            // Avoid invoking base.OnClose when the real Settings property is null to prevent ExileCore.BaseSettingsPlugin from attempting to save a null settings instance.
             if (Settings != null)
             {
                 base.OnClose();
@@ -101,11 +95,6 @@ namespace ClickIt
         internal ClickItSettings GetEffectiveSettingsForLifecycle()
         {
             return EffectiveSettings;
-        }
-
-        internal void SetSettingsForTests(ClickItSettings settings)
-        {
-            _settingsOverrideForTests = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
     }

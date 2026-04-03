@@ -1,6 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.Components;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;

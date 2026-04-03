@@ -1,8 +1,7 @@
-using ClickIt.UI.Debug.Layout;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.UserInterface
+namespace ClickIt.Tests.UI
 {
     [TestClass]
     public class DebugTextLayoutEngineTests

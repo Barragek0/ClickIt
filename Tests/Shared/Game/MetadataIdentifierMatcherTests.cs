@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Common.Game
+namespace ClickIt.Tests.Shared.Game
 {
     [TestClass]
     public class MetadataIdentifierMatcherTests

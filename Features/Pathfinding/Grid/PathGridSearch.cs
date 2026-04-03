@@ -1,5 +1,3 @@
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Pathfinding.Grid
 {
     internal static class PathGridSearch

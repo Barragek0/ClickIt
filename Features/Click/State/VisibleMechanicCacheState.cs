@@ -1,6 +1,3 @@
-using ExileCore.PoEMemory.Elements;
-using ClickIt.Features.Click.Runtime;
-
 namespace ClickIt.Features.Click.State
 {
     internal sealed class VisibleMechanicCacheState

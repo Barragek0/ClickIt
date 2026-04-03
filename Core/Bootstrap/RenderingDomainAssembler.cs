@@ -1,6 +1,3 @@
-using ClickIt.Shared;
-using ExileCore;
-
 namespace ClickIt.Core.Bootstrap
 {
     internal readonly record struct RenderingDomainServices(

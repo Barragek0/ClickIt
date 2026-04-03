@@ -1,5 +1,3 @@
-using ExileCore.PoEMemory.Elements;
-using ClickIt.Shared;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

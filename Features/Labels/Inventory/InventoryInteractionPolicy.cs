@@ -1,6 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.MemoryObjects;
-
 namespace ClickIt.Features.Labels.Inventory
 {
     internal sealed class InventoryInteractionPolicy(

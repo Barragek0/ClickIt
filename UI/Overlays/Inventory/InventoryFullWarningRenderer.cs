@@ -1,6 +1,3 @@
-using ClickIt.Features.Labels.Inventory;
-using ClickIt.Shared;
-using ExileCore;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using ClickIt.Core.Runtime;
 
 namespace ClickIt.Core.Lifecycle
 {

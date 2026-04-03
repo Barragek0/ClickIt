@@ -1,7 +1,3 @@
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared;
-using ExileCore.Shared.Enums;
 using System.Collections;
 
 namespace ClickIt.Core.Runtime

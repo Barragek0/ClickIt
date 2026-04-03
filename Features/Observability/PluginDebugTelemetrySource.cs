@@ -1,5 +1,3 @@
-using ExileCore;
-
 namespace ClickIt.Features.Observability
 {
     internal sealed class PluginDebugTelemetrySource(BaseSettingsPlugin<ClickItSettings> plugin) : IDebugTelemetrySource

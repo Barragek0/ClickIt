@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ExileCore.Shared.Nodes;
 using System.Collections.Generic;
 
 namespace ClickIt.Tests.Core.Settings

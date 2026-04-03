@@ -1,12 +1,3 @@
-using ClickIt.Features.Labels.Classification;
-using ClickIt.Features.Labels.Classification.Policies;
-using ClickIt.Features.Labels.Selection;
-using ClickIt.Shared;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
-using ExileCore.Shared.Enums;
-
 namespace ClickIt.Features.Labels.Application
 {
     internal sealed class LabelDebugService(

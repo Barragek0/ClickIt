@@ -1,11 +1,3 @@
-using ClickIt.Shared;
-using ClickIt.Features.Click.Application;
-using ClickIt.Features.Click.Runtime;
-using ClickIt.Features.Click.Selection;
-using ClickIt.Features.Pathfinding.Diagnostics;
-using ExileCore;
-using ExileCore.PoEMemory.Elements;
-using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 using RectangleF = SharpDX.RectangleF;
 

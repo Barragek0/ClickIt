@@ -1,6 +1,3 @@
-using ClickIt.Features.Click.Runtime;
-using ClickIt.Features.Labels.Inventory;
-
 namespace ClickIt.Features.Observability.TelemetryProjection
 {
     internal static class DebugTelemetryProjection

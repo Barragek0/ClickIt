@@ -1,8 +1,7 @@
-using ClickIt.Features.Labels.Classification.Policies;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace ClickIt.Tests.Labels.Classification.Policies
+namespace ClickIt.Tests.Features.Labels.Classification.Policies
 {
     [TestClass]
     public class SettlersMechanicPolicyTests

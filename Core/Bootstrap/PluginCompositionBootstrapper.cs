@@ -1,5 +1,3 @@
-using ClickIt.Core.Runtime;
-
 namespace ClickIt.Core.Bootstrap
 {
     internal static class PluginCompositionBootstrapper

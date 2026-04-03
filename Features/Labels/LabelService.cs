@@ -1,7 +1,3 @@
-using ExileCore.PoEMemory.Elements;
-using ExileCore.Shared.Cache;
-using ClickIt.Features.Labels.Selection;
-
 namespace ClickIt.Features.Labels
 {
     public class LabelService
