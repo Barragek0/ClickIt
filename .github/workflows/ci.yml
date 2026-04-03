@@ -52,7 +52,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\TestResults') | Out-Null
 
           # Use XPlat collector here — this reliably produces a cobertura xml under Tests/TestResults/<guid>/coverage.cobertura.xml
-          dotnet test Tests/ClickIt.Tests.csproj -c Debug --collect:"XPlat Code Coverage" /p:IncludeIntegrationTests=false
+          dotnet test Tests/ClickIt.Tests.csproj -c Debug --collect:"XPlat Code Coverage" /p:CollectCoverage=false /p:IncludeIntegrationTests=false
 
           # Also generate an lcov report via coverlet so reportgenerator has a canonical lcov file
           # (place it in Tests/TestResults/lcov.info relative to repo root)

@@ -56,7 +56,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <CollectCoverage>true</CollectCoverage>
+    <CollectCoverage Condition="'$(CollectCoverage)' == ''">false</CollectCoverage>
     <CoverletOutputFormat>lcov</CoverletOutputFormat>
     <Include>[ClickIt]*</Include>
     <Exclude>[SharpDX*]*,[ImGui.NET*]*,[ExileCore*]*,[GameOffsets*]*,[ProcessMemoryUtilities*]*,[Newtonsoft.Json*]*</Exclude>

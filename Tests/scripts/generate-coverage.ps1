@@ -21,7 +21,7 @@ Set-StrictMode -Version Latest
 
 Write-Host "Running tests and collecting XPlat coverage (configuration=$configuration)"
 
-dotnet test Tests/ClickIt.Tests.csproj --collect:"XPlat Code Coverage" --settings runsettings.xml -c $configuration /p:BuildProjectReferences=false
+dotnet test Tests/ClickIt.Tests.csproj --collect:"XPlat Code Coverage" --settings runsettings.xml -c $configuration /p:CollectCoverage=false /p:BuildProjectReferences=false
 if ($LASTEXITCODE -ne 0) { Write-Error "dotnet test failed"; exit $LASTEXITCODE }
 
 $coverageFiles = Get-ChildItem -Path Tests/TestResults -Recurse -Filter "coverage.cobertura.xml" -ErrorAction SilentlyContinue
