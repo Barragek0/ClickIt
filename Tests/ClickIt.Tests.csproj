@@ -23,10 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(GeneratedGlobalUsingsFile)" AutoGen="true" DesignTime="true" Visible="false" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
     <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
@@ -79,12 +75,15 @@
 
   <PropertyGroup>
     <GlobalUsingsGeneratorProject>$(MSBuildProjectDirectory)\..\.scripts\GlobalUsingsGenerator\GlobalUsingsGenerator.csproj</GlobalUsingsGeneratorProject>
-    <GeneratedGlobalUsingsFile>obj\$(Configuration)\$(RuntimeIdentifier)\GlobalUsings.Generated.g.cs</GeneratedGlobalUsingsFile>
+    <ClickItGeneratedGlobalUsingsFile>$(TEMP)\ClickIt.Generated\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\GlobalUsings.Generated.g.cs</ClickItGeneratedGlobalUsingsFile>
     <GlobalUsingGeneratorAssemblies>$(MSBuildProjectDirectory)\..\ThirdParty\ExileCore.dll;$(MSBuildProjectDirectory)\..\ThirdParty\GameOffsets.dll;$(MSBuildProjectDirectory)\..\ThirdParty\ProcessMemoryUtilities.dll</GlobalUsingGeneratorAssemblies>
   </PropertyGroup>
 
   <Target Name="GenerateClickItGlobalUsings" BeforeTargets="CoreCompile">
-    <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)\..&quot; --output &quot;$(GeneratedGlobalUsingsFile)&quot; --mode tests --assemblies &quot;$(GlobalUsingGeneratorAssemblies)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)\..&quot; --output &quot;$(ClickItGeneratedGlobalUsingsFile)&quot; --mode tests --assemblies &quot;$(GlobalUsingGeneratorAssemblies)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <ItemGroup>
+      <Compile Include="$(ClickItGeneratedGlobalUsingsFile)" KeepDuplicates="false" AutoGen="true" DesignTime="true" Visible="false" />
+    </ItemGroup>
   </Target>
 
 </Project>
