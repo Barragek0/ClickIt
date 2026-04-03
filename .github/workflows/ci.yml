@@ -18,9 +18,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
       - name: Restore test project dependencies
         run: dotnet restore Tests\ClickIt.Tests.csproj
 
@@ -41,9 +38,9 @@ jobs:
           Copy-Item -Path .github\ci-stubs\out\ClickIt.dll -Destination (Join-Path $PWD 'Tests\bin\Debug\net48\ClickIt.dll') -Force
         shell: pwsh
 
-      - name: Build test project (MSBuild)
+      - name: Build test project
         run: |
-          msbuild Tests\ClickIt.Tests.csproj /p:Configuration=Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
+          dotnet build Tests\ClickIt.Tests.csproj -c Debug /p:Platform=AnyCPU /p:IncludeIntegrationTests=false
 
       - name: Test with coverage
         shell: pwsh
