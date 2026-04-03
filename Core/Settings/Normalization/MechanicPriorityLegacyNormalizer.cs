@@ -1,6 +1,5 @@
-using ClickIt.Definitions;
 
-namespace ClickIt
+namespace ClickIt.Core.Settings.Normalization
 {
     internal static class MechanicPriorityLegacyNormalizer
     {

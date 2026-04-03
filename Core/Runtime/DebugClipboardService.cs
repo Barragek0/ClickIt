@@ -1,9 +1,8 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Text;
-using System.Threading;
-using ClickIt.Services.Label.Inventory;
-using ClickIt.Utils;
+using ClickIt.Features.Labels.Inventory;
+using ClickIt.Shared;
 using ExileCore;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using ClickIt.Core.Runtime;
 
-namespace ClickIt
+namespace ClickIt.Core.Lifecycle
 {
     internal sealed class PluginLifecycleButtonBindings(ClickIt owner, DebugClipboardService debugClipboardService)
     {

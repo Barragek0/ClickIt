@@ -1,0 +1,115 @@
+using System.Diagnostics;
+using RectangleF = SharpDX.RectangleF;
+
+namespace ClickIt.Features.Altars
+{
+    public class PrimaryAltarComponent
+    {
+        public PrimaryAltarComponent(AltarType AltarType, SecondaryAltarComponent TopMods, AltarButton TopButton, SecondaryAltarComponent BottomMods, AltarButton BottomButton)
+        {
+            this.AltarType = AltarType;
+            this.TopMods = TopMods;
+            this.TopButton = TopButton;
+            this.BottomMods = BottomMods;
+            this.BottomButton = BottomButton;
+            _cacheTimer = new Stopwatch();
+            _cacheTimer.Start();
+        }
+        public AltarType AltarType { get; set; }
+        public SecondaryAltarComponent TopMods { get; set; }
+        public AltarButton TopButton { get; set; }
+        public SecondaryAltarComponent BottomMods { get; set; }
+        public AltarButton BottomButton { get; set; }
+
+        private bool? _isValidCache;
+        private long _lastValidationTime;
+        private AltarWeights? _cachedWeights;
+        private long _lastWeightCalculationTime;
+        private readonly Stopwatch _cacheTimer;
+        private const long CACHE_DURATION_MS = 1000;
+        private const long WEIGHT_CACHE_DURATION_MS = 5000;
+
+        // Thread safety lock for cache operations
+        private readonly object _cacheLock = new();
+
+        private T WithCacheLock<T>(Func<T> func)
+        {
+            using (LockManager.AcquireStatic(_cacheLock))
+            {
+                return func();
+            }
+        }
+
+        private void WithCacheLock(Action action)
+        {
+            using (LockManager.AcquireStatic(_cacheLock))
+            {
+                action();
+            }
+        }
+
+        public bool IsValidCached()
+        {
+            return WithCacheLock(() =>
+            {
+                long currentTime = _cacheTimer.ElapsedMilliseconds;
+                if (_isValidCache.HasValue && (currentTime - _lastValidationTime) < CACHE_DURATION_MS)
+                {
+                    return _isValidCache.Value;
+                }
+
+                bool isValid = TopMods?.Element?.IsValid == true && BottomMods?.Element?.IsValid == true &&
+                              !TopMods.HasUnmatchedMods && !BottomMods.HasUnmatchedMods;
+
+                _isValidCache = isValid;
+                _lastValidationTime = currentTime;
+                return isValid;
+            });
+        }
+
+        public AltarWeights? GetCachedWeights(Func<PrimaryAltarComponent, AltarWeights> weightCalculator)
+        {
+            return WithCacheLock(() =>
+            {
+                long currentTime = _cacheTimer.ElapsedMilliseconds;
+                if (_cachedWeights.HasValue && (currentTime - _lastWeightCalculationTime) < WEIGHT_CACHE_DURATION_MS)
+                {
+                    return _cachedWeights.Value;
+                }
+
+                var weights = weightCalculator(this);
+                _cachedWeights = weights;
+                _lastWeightCalculationTime = currentTime;
+                return weights;
+            });
+        }
+
+        private static RectangleF GetModsRect(SecondaryAltarComponent? mods, string name)
+        {
+            if (mods?.Element == null)
+            {
+                throw new InvalidOperationException($"Cannot get {name} mods rect - element is null");
+            }
+
+            if (!mods.Element.IsValid)
+            {
+                throw new InvalidOperationException($"Cannot get {name} mods rect - element is not valid");
+            }
+
+            return mods.Element.GetClientRect();
+        }
+
+        public RectangleF GetTopModsRect() => GetModsRect(TopMods, "top");
+
+        public RectangleF GetBottomModsRect() => GetModsRect(BottomMods, "bottom");
+
+        public void InvalidateCache()
+        {
+            WithCacheLock(() =>
+            {
+                _isValidCache = null;
+                _cachedWeights = null;
+            });
+        }
+    }
+}

@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using ClickIt.Definitions;
 using ExileCore.Shared.Nodes;
 
-namespace ClickIt
+namespace ClickIt.Core.Settings.Mechanics
 {
     internal static class MechanicTableModelService
     {

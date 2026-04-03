@@ -1,4 +1,4 @@
-namespace ClickIt
+namespace ClickIt.Core.Settings.Runtime
 {
     internal sealed class ClickItSettingsTransientState
     {

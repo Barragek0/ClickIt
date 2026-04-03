@@ -88,7 +88,7 @@ namespace ClickIt
             base.LogError(message, frame);
         }
 
-        internal Services.AlertService GetAlertService()
+        internal AlertService GetAlertService()
         {
             return PluginAlertServiceHost.GetOrCreateAlertService(this);
         }

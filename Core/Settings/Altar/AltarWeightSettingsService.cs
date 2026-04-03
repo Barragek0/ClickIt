@@ -1,7 +1,4 @@
-using System;
-using ClickIt.Definitions;
-
-namespace ClickIt
+namespace ClickIt.Core.Settings.Altar
 {
     internal static class AltarWeightSettingsService
     {

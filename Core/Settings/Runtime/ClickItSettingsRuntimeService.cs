@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace ClickIt
+namespace ClickIt.Core.Settings.Runtime
 {
     internal static class ClickItSettingsRuntimeService
     {

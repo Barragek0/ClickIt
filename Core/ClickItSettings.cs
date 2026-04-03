@@ -1,9 +1,7 @@
-﻿using ExileCore.Shared.Attributes;
+using ExileCore.Shared.Attributes;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
-using ImGuiNET;
 using Newtonsoft.Json;
-using ClickIt.Definitions;
 
 namespace ClickIt
 {
@@ -552,29 +550,7 @@ namespace ClickIt
         {
             InitializeDefaultWeights();
             ClickItSettingsMigrationService.Apply(this);
-            var safePanelRenderer = new global::ClickIt.SettingsPanelSafeRenderer(this);
-            var debugTestingPanelRenderer = new global::ClickIt.DebugTestingPanelRenderer(this);
-            var itemFiltersPanelRenderer = new global::ClickIt.ItemFiltersPanelRenderer(this);
-            var lazyModeNearbyMonsterRulesPanelRenderer = new global::ClickIt.LazyModeNearbyMonsterRulesPanelRenderer(this);
-            var mechanicPriorityPanelRenderer = new MechanicPriorityTablePanelRenderer(this);
-            var altarSettingsPanelRenderer = new global::ClickIt.AltarSettingsPanelRenderer(this);
-            var mechanicsTablePanelRenderer = new global::ClickIt.MechanicsTablePanelRenderer(this);
-            var ultimatumSettingsPanelRenderer = new global::ClickIt.UltimatumSettingsPanelRenderer(this);
-            ClickItSettingsScreenNodes screenNodes = ClickItSettingsScreen.Compose(new ClickItSettingsScreenBindings(
-                debugTestingPanelRenderer.Draw,
-                lazyModeNearbyMonsterRulesPanelRenderer.Draw,
-                altarSettingsPanelRenderer.DrawAltarsPanel,
-                altarSettingsPanelRenderer.DrawAltarModWeights,
-                itemFiltersPanelRenderer.DrawItemTypeFiltersPanel,
-                mechanicPriorityPanelRenderer.Draw,
-                itemFiltersPanelRenderer.DrawEssenceCorruptionTablePanel,
-                itemFiltersPanelRenderer.DrawStrongboxFilterTablePanel,
-                mechanicsTablePanelRenderer.Draw,
-                ultimatumSettingsPanelRenderer.DrawModifierTablePanel,
-                ultimatumSettingsPanelRenderer.DrawTakeRewardModifierTablePanel,
-                SettingsUiRenderHelpers.PushStandardSliderWidth,
-                SettingsUiRenderHelpers.PopStandardSliderWidth,
-                safePanelRenderer.DrawPanel));
+            ClickItSettingsScreenNodes screenNodes = UISettings.SettingsUiBootstrapper.CreateScreenNodes(this);
             DebugTestingPanel = screenNodes.DebugTestingPanel;
             ControlsSliderWidthStart = screenNodes.ControlsSliderWidthStart;
             ControlsSliderWidthEnd = screenNodes.ControlsSliderWidthEnd;

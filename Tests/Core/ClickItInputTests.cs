@@ -1,9 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
-using System.Runtime.CompilerServices;
-using ClickIt.Utils;
+using ClickIt.Shared;
 using System;
-using System.Diagnostics;
 using ClickIt.Tests.Harness;
 using System.Threading;
 using ClickIt.Core.Runtime;

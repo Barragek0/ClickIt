@@ -9,13 +9,13 @@ namespace ClickIt.Tests.Core.Settings
         [TestMethod]
         public void InitializeDefaultWeights_SeedsDivineOrbAlerts()
         {
-            var settings = new global::ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
 
-            global::ClickIt.AltarWeightSettingsService.InitializeDefaultWeights(settings);
+            AltarWeightSettingsService.InitializeDefaultWeights(settings);
 
-            settings.ModAlerts[global::ClickIt.AltarWeightSettingsService.BuildCompositeKey(global::ClickIt.ClickItSettings.AltarTypeMinion, "#% chance to drop an additional Divine Orb")]
+            settings.ModAlerts[AltarWeightSettingsService.BuildCompositeKey(ClickItSettings.AltarTypeMinion, "#% chance to drop an additional Divine Orb")]
                 .Should().BeTrue();
-            settings.ModAlerts[global::ClickIt.AltarWeightSettingsService.BuildCompositeKey(global::ClickIt.ClickItSettings.AltarTypeBoss, "Final Boss drops # additional Divine Orbs")]
+            settings.ModAlerts[AltarWeightSettingsService.BuildCompositeKey(ClickItSettings.AltarTypeBoss, "Final Boss drops # additional Divine Orbs")]
                 .Should().BeTrue();
         }
     }

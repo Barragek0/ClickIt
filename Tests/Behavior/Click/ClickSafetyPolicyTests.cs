@@ -1,4 +1,4 @@
-using ClickIt.Services.Click.Safety;
+using ClickIt.Features.Click.Safety;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;

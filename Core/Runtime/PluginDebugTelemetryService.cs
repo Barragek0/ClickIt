@@ -1,6 +1,5 @@
-using ClickIt.Services;
-using ClickIt.Services.Observability;
-using ClickIt.Services.Observability.TelemetryProjection;
+using ClickIt.Features.Observability;
+using ClickIt.Features.Observability.TelemetryProjection;
 
 namespace ClickIt.Core.Runtime
 {

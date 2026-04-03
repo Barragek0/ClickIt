@@ -1,11 +1,9 @@
-using ClickIt.Utils;
 using ClickIt.Core.Runtime;
-using ExileCore;
+using ClickIt.Shared;
 using ExileCore.Shared;
 using System.Diagnostics;
-using System.Threading;
 
-namespace ClickIt
+namespace ClickIt.Core.Lifecycle
 {
     internal static class PluginLifecycleCoordinator
     {
@@ -25,7 +23,7 @@ namespace ClickIt
 
             errorHandler.RegisterGlobalExceptionHandlers();
 
-            var coroutineManager = new CoroutineManager(
+            var coroutineManager = new PluginLoopHost(
                 owner.State,
                 settings,
                 gameController,
@@ -53,8 +51,8 @@ namespace ClickIt
             LockManager.Instance = null;
 
             LabelUtils.ClearThreadLocalStorage();
-            Services.ShrineService.ClearThreadLocalStorageForCurrentThread();
-            Services.ClickService.ClearThreadLocalStorageForCurrentThread();
+            ShrineService.ClearThreadLocalStorageForCurrentThread();
+            ClickService.ClearThreadLocalStorageForCurrentThread();
             owner.State.Services.LabelFilterService?.ClearInventoryProbeCacheForShutdown();
             owner.State.Services.AltarService?.ClearRuntimeCaches();
 

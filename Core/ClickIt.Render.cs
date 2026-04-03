@@ -1,8 +1,3 @@
-﻿using System.Diagnostics;
-using ClickIt.Services;
-using ClickIt.Utils;
-using ExileCore;
-using ExileCore.Shared.Enums;
 using ClickIt.Core.Runtime;
 
 namespace ClickIt

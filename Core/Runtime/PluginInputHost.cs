@@ -1,5 +1,3 @@
-using ExileCore.Shared;
-
 namespace ClickIt.Core.Runtime
 {
     internal sealed class PluginInputHost

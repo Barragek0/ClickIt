@@ -1,6 +1,3 @@
-using ExileCore.Shared.Nodes;
-using ImGuiNET;
-
 namespace ClickIt
 {
     public partial class ClickItSettings

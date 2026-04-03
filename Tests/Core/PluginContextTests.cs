@@ -1,5 +1,5 @@
 using FluentAssertions;
-using ClickIt.Services.Observability;
+using ClickIt.Features.Observability;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -48,19 +48,19 @@ namespace ClickIt.Tests.Core
             {
                 Services =
                 {
-                    PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(new ClickItSettings()),
-                    ErrorHandler = new global::ClickIt.Utils.ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
-                    AreaService = new global::ClickIt.Services.AreaService(),
-                    LabelFilterService = (global::ClickIt.Services.LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelFilterService)),
-                    LabelService = (global::ClickIt.Services.LabelService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.LabelService)),
-                    ClickService = (global::ClickIt.Services.ClickService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.ClickService)),
-                    PathfindingService = (global::ClickIt.Services.PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.PathfindingService)),
-                    AlertService = (global::ClickIt.Services.AlertService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Services.AlertService))
+                    PerformanceMonitor = new PerformanceMonitor(new ClickItSettings()),
+                    ErrorHandler = new ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
+                    AreaService = new AreaService(),
+                    LabelFilterService = (LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterService)),
+                    LabelService = (global::ClickIt.Features.Labels.LabelService)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Features.Labels.LabelService)),
+                    ClickService = (ClickService)RuntimeHelpers.GetUninitializedObject(typeof(ClickService)),
+                    PathfindingService = (PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(PathfindingService)),
+                    AlertService = (AlertService)RuntimeHelpers.GetUninitializedObject(typeof(AlertService))
                 },
                 Rendering =
                 {
-                    DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue(),
-                    DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue()
+                    DeferredTextQueue = new DeferredTextQueue(),
+                    DeferredFrameQueue = new DeferredFrameQueue()
                 }
             };
 

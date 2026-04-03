@@ -1,6 +1,5 @@
 using FluentAssertions;
-using ClickIt.Services;
-using ClickIt.Services.Area;
+using ClickIt.Features.Area;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpDX;
 

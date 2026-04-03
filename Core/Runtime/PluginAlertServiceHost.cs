@@ -1,6 +1,3 @@
-using System.IO;
-using ClickIt.Services;
-
 namespace ClickIt.Core.Runtime
 {
     internal static class PluginAlertServiceHost

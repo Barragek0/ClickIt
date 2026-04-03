@@ -1,0 +1,51 @@
+namespace ClickIt.Features.Labels.Inventory
+{
+    internal sealed record InventoryDebugSnapshot(
+        bool HasData,
+        string Stage,
+        bool InventoryFull,
+        string InventoryFullSource,
+        bool HasPrimaryInventory,
+        bool UsedFullFlag,
+        bool FullFlagValue,
+        bool UsedCellOccupancy,
+        int CapacityCells,
+        int OccupiedCells,
+        int InventoryEntityCount,
+        int LayoutEntryCount,
+        string GroundItemPath,
+        string GroundItemName,
+        bool IsGroundStackable,
+        int MatchingPathCount,
+        int PartialMatchingStackCount,
+        bool HasPartialMatchingStack,
+        bool DecisionAllowPickup,
+        string Notes,
+        long Sequence,
+        long TimestampMs)
+    {
+        public static readonly InventoryDebugSnapshot Empty = new(
+            HasData: false,
+            Stage: string.Empty,
+            InventoryFull: false,
+            InventoryFullSource: string.Empty,
+            HasPrimaryInventory: false,
+            UsedFullFlag: false,
+            FullFlagValue: false,
+            UsedCellOccupancy: false,
+            CapacityCells: 0,
+            OccupiedCells: 0,
+            InventoryEntityCount: 0,
+            LayoutEntryCount: 0,
+            GroundItemPath: string.Empty,
+            GroundItemName: string.Empty,
+            IsGroundStackable: false,
+            MatchingPathCount: 0,
+            PartialMatchingStackCount: 0,
+            HasPartialMatchingStack: false,
+            DecisionAllowPickup: false,
+            Notes: string.Empty,
+            Sequence: 0,
+            TimestampMs: 0);
+    }
+}

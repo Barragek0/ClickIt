@@ -1,4 +1,4 @@
-using ClickIt.Services.Click.Label;
+using ClickIt.Features.Click.Label;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

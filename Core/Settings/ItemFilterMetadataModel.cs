@@ -1,8 +1,4 @@
 using ClickIt.Core.Settings.Runtime;
-using ClickIt.Definitions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace ClickIt
 {

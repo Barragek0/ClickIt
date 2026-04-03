@@ -1,7 +1,3 @@
-using ClickIt.Definitions;
-using System;
-using System.Collections.Generic;
-
 namespace ClickIt
 {
     public partial class ClickItSettings

@@ -1,6 +1,5 @@
-using ClickIt.Definitions;
 
-namespace ClickIt
+namespace ClickIt.Core.Settings.Mechanics
 {
     internal sealed record UltimatumModifierGroupEntry(string Id, string DisplayName, string[] Members);
 

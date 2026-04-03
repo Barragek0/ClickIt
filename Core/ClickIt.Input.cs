@@ -1,5 +1,4 @@
 using ExileCore;
-using ExileCore.Shared;
 using ClickIt.Core.Runtime;
 
 namespace ClickIt

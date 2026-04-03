@@ -10,17 +10,17 @@ namespace ClickIt.Tests.Core.Settings
         [TestMethod]
         public void GetMechanicPriorityOrder_RebuildsSnapshotWhenSelectionChanges()
         {
-            var settings = new global::ClickIt.ClickItSettings
+            var settings = new ClickItSettings
             {
                 MechanicPriorityOrder = new List<string> { "essences", "items" },
-                MechanicPriorityIgnoreDistanceIds = new HashSet<string>(global::ClickIt.ClickItSettings.PriorityComparer),
-                MechanicPriorityIgnoreDistanceWithinById = new Dictionary<string, int>(global::ClickIt.ClickItSettings.PriorityComparer)
+                MechanicPriorityIgnoreDistanceIds = new HashSet<string>(ClickItSettings.PriorityComparer),
+                MechanicPriorityIgnoreDistanceWithinById = new Dictionary<string, int>(ClickItSettings.PriorityComparer)
             };
 
-            IReadOnlyList<string> initial = global::ClickIt.ClickItSettingsRuntimeService.GetMechanicPriorityOrder(settings);
+            IReadOnlyList<string> initial = ClickItSettingsRuntimeService.GetMechanicPriorityOrder(settings);
             settings.MechanicPriorityOrder = new List<string> { "items", "essences" };
 
-            IReadOnlyList<string> updated = global::ClickIt.ClickItSettingsRuntimeService.GetMechanicPriorityOrder(settings);
+            IReadOnlyList<string> updated = ClickItSettingsRuntimeService.GetMechanicPriorityOrder(settings);
 
             updated.Should().ContainInOrder("items", "essences");
             updated.Should().NotEqual(initial);
@@ -29,7 +29,7 @@ namespace ClickIt.Tests.Core.Settings
         [TestMethod]
         public void IsOnlyPathfindingDetailedDebugSectionEnabled_RequiresPathfindingAndNoOtherSections()
         {
-            var settings = new global::ClickIt.ClickItSettings();
+            var settings = new ClickItSettings();
             settings.DebugShowStatus.Value = false;
             settings.DebugShowGameState.Value = false;
             settings.DebugShowPerformance.Value = false;
@@ -45,10 +45,10 @@ namespace ClickIt.Tests.Core.Settings
             settings.DebugShowRecentErrors.Value = false;
             settings.DebugShowPathfinding.Value = true;
 
-            global::ClickIt.ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(settings).Should().BeTrue();
+            ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(settings).Should().BeTrue();
 
             settings.DebugShowLabels.Value = true;
-            global::ClickIt.ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(settings).Should().BeFalse();
+            ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(settings).Should().BeFalse();
         }
     }
 }

@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace ClickIt.Components
+namespace ClickIt.Features.Altars
 {
     public class AltarButton { }
 
@@ -23,9 +23,9 @@ namespace ClickIt.Components
     }
 }
 
-namespace ClickIt.Services
+namespace ClickIt.Core.Compatibility
 {
-    using ClickIt.Components;
+    using ClickIt.Features.Altars;
     using System.Reflection;
 
     public class AltarService

@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FluentAssertions;
 using System.IO;
 using System;
-using ClickIt.Services;
 
 namespace ClickIt.Tests.Core
 {

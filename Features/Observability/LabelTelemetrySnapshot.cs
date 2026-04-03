@@ -1,0 +1,17 @@
+using ClickIt.Features.Labels.Diagnostics;
+
+namespace ClickIt.Features.Observability
+{
+    internal sealed record LabelTelemetrySnapshot(
+        bool ServiceAvailable,
+        LabelDebugSnapshot Label,
+        IReadOnlyList<string> LabelTrail)
+    {
+        private static readonly IReadOnlyList<string> EmptyTrail = Array.Empty<string>();
+
+        public static readonly LabelTelemetrySnapshot Empty = new(
+            ServiceAvailable: false,
+            Label: LabelDebugSnapshot.Empty,
+            LabelTrail: EmptyTrail);
+    }
+}

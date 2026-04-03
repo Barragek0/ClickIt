@@ -1,4 +1,4 @@
-namespace ClickIt
+namespace ClickIt.Core.Settings.Normalization
 {
     internal interface ISettingsNormalizationService
     {

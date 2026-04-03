@@ -1,6 +1,4 @@
-using System;
-
-namespace ClickIt
+namespace ClickIt.Core.Settings.Normalization
 {
     internal sealed class SettingsNormalizationService : ISettingsNormalizationService
     {

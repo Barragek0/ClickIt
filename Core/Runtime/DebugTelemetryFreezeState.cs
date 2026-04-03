@@ -1,4 +1,4 @@
-using ClickIt.Services.Observability;
+using ClickIt.Features.Observability;
 
 namespace ClickIt.Core.Runtime
 {

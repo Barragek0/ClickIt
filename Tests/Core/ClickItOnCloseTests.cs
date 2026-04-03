@@ -14,15 +14,15 @@ namespace ClickIt.Tests.Core
 
             var settings = new ClickItSettings();
 
-            plugin.State.Services.PerformanceMonitor = new global::ClickIt.Utils.PerformanceMonitor(settings);
-            plugin.State.Services.ErrorHandler = new global::ClickIt.Utils.ErrorHandler(settings, (s, f) => { }, (s, f) => { });
-            plugin.State.Services.AreaService = new global::ClickIt.Services.AreaService();
-            plugin.State.Rendering.DeferredTextQueue = new global::ClickIt.Utils.DeferredTextQueue();
-            plugin.State.Rendering.DeferredFrameQueue = new global::ClickIt.Utils.DeferredFrameQueue();
+            plugin.State.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+            plugin.State.Services.ErrorHandler = new ErrorHandler(settings, (s, f) => { }, (s, f) => { });
+            plugin.State.Services.AreaService = new AreaService();
+            plugin.State.Rendering.DeferredTextQueue = new DeferredTextQueue();
+            plugin.State.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
 
-            plugin.State.Rendering.AltarDisplayRenderer = (global::ClickIt.Rendering.AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(global::ClickIt.Rendering.AltarDisplayRenderer));
+            plugin.State.Rendering.AltarDisplayRenderer = (AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(AltarDisplayRenderer));
 
-            global::ClickIt.Utils.LockManager.Instance = new global::ClickIt.Utils.LockManager(settings);
+            LockManager.Instance = new LockManager(settings);
 
             plugin.OnClose();
 
@@ -34,7 +34,7 @@ namespace ClickIt.Tests.Core
             plugin.State.Rendering.AltarDisplayRenderer.Should().BeNull();
             plugin.State.Runtime.IsShuttingDown.Should().BeTrue();
 
-            global::ClickIt.Utils.LockManager.Instance.Should().BeNull();
+            LockManager.Instance.Should().BeNull();
         }
     }
 }
