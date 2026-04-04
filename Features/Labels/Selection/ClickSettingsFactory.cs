@@ -59,6 +59,7 @@ namespace ClickIt.Features.Labels.Selection
                 ClickSettlersPetrifiedWood = settlersOreEnabled && _settings.ClickSettlersPetrifiedWood.Value,
                 ClickSettlersBismuth = settlersOreEnabled && _settings.ClickSettlersBismuth.Value,
                 ClickSettlersVerisium = settlersOreEnabled && _settings.ClickSettlersVerisium.Value,
+                ClickStrongboxes = _settings.ClickStrongboxes.Value,
                 StrongboxClickMetadata = _settings.GetStrongboxClickMetadataIdentifiers(),
                 StrongboxDontClickMetadata = _settings.GetStrongboxDontClickMetadataIdentifiers(),
                 ClickSanctum = _settings.ClickSanctum.Value,

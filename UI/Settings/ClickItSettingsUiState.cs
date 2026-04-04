@@ -15,5 +15,6 @@ namespace ClickIt.UI.Settings
         internal string MechanicsSearchFilter = string.Empty;
         internal string UltimatumSearchFilter = string.Empty;
         internal string UltimatumTakeRewardSearchFilter = string.Empty;
+        internal bool MechanicsAltarWeightTablesExpanded;
     }
 }

@@ -38,6 +38,7 @@ namespace ClickIt.Features.Labels
         public bool ClickSettlersPetrifiedWood { get; set; }
         public bool ClickSettlersBismuth { get; set; }
         public bool ClickSettlersVerisium { get; set; }
+        public bool ClickStrongboxes { get; set; }
         public IReadOnlyList<string> StrongboxClickMetadata { get; set; }
         public IReadOnlyList<string> StrongboxDontClickMetadata { get; set; }
         public bool ClickSanctum { get; set; }

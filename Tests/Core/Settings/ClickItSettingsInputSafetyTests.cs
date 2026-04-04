@@ -109,5 +109,48 @@ namespace ClickIt.Tests.Core.Settings
             settings.CorruptAllEssences.Value = true;
             settings.ShowEssenceCorruptionTablePanel.Should().BeFalse();
         }
+
+        [TestMethod]
+        public void LegacyMechanicCategorySections_AreHiddenFromTopLevelSettingsTree()
+        {
+            Dictionary<string, string> propertyConditions = new()
+            {
+                [nameof(ClickItSettings.ItemPickupCategory)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.ItemTypeFiltersPanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.Essences)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.CorruptAllEssences)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.EssenceCorruptionTablePanel)] = nameof(ClickItSettings.ShowLegacyEssenceCorruptionTablePanel),
+                [nameof(ClickItSettings.Ultimatum)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.ShowUltimatumOptionOverlay)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.UltimatumModifierTablePanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.UltimatumTakeRewardWhenChosenCategory)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.ClickUltimatumTakeRewardButton)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.UltimatumTakeRewardModifierTablePanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.Strongboxes)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.ShowStrongboxFrames)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.StrongboxFilterTablePanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.AltarsCategory)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.AltarsPanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.Delve)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.ClickDelveFlares)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.DelveFlareHotkey)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.DarknessDebuffStacks)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.DelveFlareHealthThreshold)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
+                [nameof(ClickItSettings.DelveFlareEnergyShieldThreshold)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings)
+            };
+
+            foreach ((string propertyName, string expectedConditionName) in propertyConditions)
+            {
+                var property = typeof(ClickItSettings).GetProperty(propertyName);
+
+                property.Should().NotBeNull();
+                property!
+                    .GetCustomAttributes(typeof(ConditionalDisplayAttribute), inherit: false)
+                    .Cast<ConditionalDisplayAttribute>()
+                    .Select(attribute => attribute.ConditionMethodName)
+                    .Should()
+                    .Contain(expectedConditionName);
+            }
+        }
     }
 }

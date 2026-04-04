@@ -35,10 +35,15 @@ namespace ClickIt.UI.Settings
 
         internal static void DrawRangeNodeControl(string label, RangeNode<int> node, int min, int max, string tooltip, bool useStandardWidth = true)
         {
+            DrawRangeNodeControl(label, node, min, max, tooltip, useStandardWidth, null);
+        }
+
+        internal static void DrawRangeNodeControl(string label, RangeNode<int> node, int min, int max, string tooltip, bool useStandardWidth, float? widthOverride)
+        {
             int value = node.Value;
             if (useStandardWidth)
             {
-                ImGui.SetNextItemWidth(400f);
+                ImGui.SetNextItemWidth(widthOverride ?? 400f);
             }
 
             if (ImGui.SliderInt(label, ref value, min, max))
@@ -58,10 +63,11 @@ namespace ClickIt.UI.Settings
             int min,
             int max,
             string rangeTooltip,
-            bool useStandardWidth = true)
+            bool useStandardWidth = true,
+            float? rangeWidthOverride = null)
         {
             DrawToggleNodeControl(toggleLabel, toggleNode, toggleTooltip);
-            DrawRangeNodeControl(rangeLabel, rangeNode, min, max, rangeTooltip, useStandardWidth);
+            DrawRangeNodeControl(rangeLabel, rangeNode, min, max, rangeTooltip, useStandardWidth, rangeWidthOverride);
         }
 
         internal static void DrawInlineTooltip(string tooltip)

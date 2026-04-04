@@ -4,12 +4,15 @@ namespace ClickIt.UI.Settings.Panels
     {
         private readonly ClickItSettings _settings = settings;
 
-        public void DrawItemTypeFiltersPanel()
+        public void DrawItemTypeFiltersPanel(bool embedded = false)
         {
             SettingsDefaultsService.EnsureItemTypeFiltersInitialized(_settings);
 
-            SettingsUiRenderHelpers.DrawInstructionText("Table rows with [v] next to them can be clicked to open subtype filter options.");
-            ImGui.Spacing();
+            if (!embedded)
+            {
+                SettingsUiRenderHelpers.DrawInstructionText("Table rows with [v] next to them can be clicked to open subtype filter options.");
+                ImGui.Spacing();
+            }
 
             SettingsUiRenderHelpers.DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref _settings.UiState.ItemTypeSearchFilter);
             if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
@@ -29,7 +32,7 @@ namespace ClickIt.UI.Settings.Panels
                 drawRight: () => DrawItemTypeList("Don't Click##ItemType", _settings.ItemTypeBlacklistIds, moveToWhitelist: true, textColor: SettingsUiPalette.BlacklistTextColor));
         }
 
-        public void DrawEssenceCorruptionTablePanel()
+        public void DrawEssenceCorruptionTablePanel(bool embedded = false)
         {
             SettingsDefaultsService.EnsureEssenceCorruptionFiltersInitialized(_settings);
 
@@ -51,7 +54,7 @@ namespace ClickIt.UI.Settings.Panels
                 drawRight: () => DrawEssenceCorruptionList("DontCorrupt##Essence", _settings.EssenceDontCorruptNames, moveToCorrupt: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f)));
         }
 
-        public void DrawStrongboxFilterTablePanel()
+        public void DrawStrongboxFilterTablePanel(bool embedded = false)
         {
             SettingsDefaultsService.EnsureStrongboxFiltersInitialized(_settings);
 

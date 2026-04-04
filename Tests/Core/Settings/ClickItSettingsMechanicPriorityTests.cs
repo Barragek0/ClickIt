@@ -223,5 +223,17 @@ namespace ClickIt.Tests.Core.Settings
             settings.ClickRitualCompleted.Value.Should().BeFalse();
         }
 
+        [TestMethod]
+        public void MechanicsSubmenuLogic_TableEntriesContainSingleItemsEssencesAndStrongboxesRows()
+        {
+            var settings = new ClickItSettings();
+
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+
+            entries.Count(entry => string.Equals(entry.Id, MechanicIds.Items, StringComparison.Ordinal)).Should().Be(1);
+            entries.Count(entry => string.Equals(entry.Id, MechanicIds.Essences, StringComparison.Ordinal)).Should().Be(1);
+            entries.Count(entry => string.Equals(entry.Id, MechanicIds.Strongboxes, StringComparison.Ordinal)).Should().Be(1);
+        }
+
     }
 }

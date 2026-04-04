@@ -147,6 +147,9 @@ namespace ClickIt
         [Menu("Essences", "Click essences", 31, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickEssences { get; set; } = new ToggleNode(true);
+        [Menu("Strongboxes", "Click strongboxes based on the configured strongbox filter lists.", 42, 1400)]
+        [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
+        public ToggleNode ClickStrongboxes { get; set; } = new ToggleNode(true);
         [Menu("Click Initial Ultimatum", "Click the first Ultimatum interaction from the ground label, then click Begin using configured modifier priority.", 32, 1400)]
         [ConditionalDisplay(nameof(ShowRawMechanicNodesInSettings))]
         public ToggleNode ClickInitialUltimatum { get; set; } = new ToggleNode(false);
@@ -192,10 +195,12 @@ namespace ClickIt
         public CustomNode PrioritiesSliderWidthEnd { get; internal set; } = new();
 
         [Menu("Items", 117, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
 
         [Menu("", 2, 117)]
         [JsonIgnore]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public CustomNode ItemTypeFiltersPanel { get; internal set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -211,13 +216,17 @@ namespace ClickIt
         public Dictionary<string, HashSet<string>> ItemTypeBlacklistSubtypeIds { get; set; } = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
         [Menu("Essences", 118, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public EmptyNode Essences { get; set; } = new EmptyNode();
         [Menu("Corrupt ALL Essences", "Overrides the essence table and attempts to corrupt every eligible essence encounter.", 1, 118)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public ToggleNode CorruptAllEssences { get; set; } = new ToggleNode(false);
         [JsonIgnore]
         public bool ShowEssenceCorruptionTablePanel => CorruptAllEssences?.Value != true;
+        [JsonIgnore]
+        public bool ShowLegacyEssenceCorruptionTablePanel => ShowLegacyMechanicCategorySectionsInSettings && ShowEssenceCorruptionTablePanel;
         [Menu("", 2, 118)]
-        [ConditionalDisplay(nameof(ShowEssenceCorruptionTablePanel))]
+        [ConditionalDisplay(nameof(ShowLegacyEssenceCorruptionTablePanel))]
         [JsonIgnore]
         public CustomNode EssenceCorruptionTablePanel { get; internal set; } = new();
 
@@ -228,21 +237,27 @@ namespace ClickIt
         public HashSet<string> EssenceDontCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         [Menu("Ultimatum", 119, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public EmptyNode Ultimatum { get; set; } = new EmptyNode();
         [Menu("Show Option Overlay", "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.", 3, 119)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public ToggleNode ShowUltimatumOptionOverlay { get; set; } = new ToggleNode(true);
         [Menu("", 4, 119)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         [JsonIgnore]
         public CustomNode UltimatumModifierTablePanel { get; internal set; } = new();
 
         [Menu("Take Reward when Modifier Is Chosen (Grueling Gauntlet)", 1195, 119)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public EmptyNode UltimatumTakeRewardWhenChosenCategory { get; set; } = new EmptyNode();
         [Menu("Click Take Reward Button", "When enabled, ClickIt can press the Take Reward button for Grueling Gauntlet based on your table decisions.\nWhen disabled, ClickIt will never press Take Reward and will only continue/confirm.", 1, 1195)]
         [JsonProperty("GruelingGauntletAutoDecision")]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public ToggleNode ClickUltimatumTakeRewardButton { get; set; } = new ToggleNode(true);
         [JsonIgnore]
         public bool ShowUltimatumTakeRewardModifierTablePanel => true;
         [Menu("", 2, 1195)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         [JsonIgnore]
         public CustomNode UltimatumTakeRewardModifierTablePanel { get; internal set; } = new();
 
@@ -256,10 +271,13 @@ namespace ClickIt
         public HashSet<string> UltimatumContinueModifierNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         [Menu("Strongboxes", 120, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public EmptyNode Strongboxes { get; set; } = new EmptyNode();
         [Menu("Show Strongbox Overlay", "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked.", 1, 120)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public ToggleNode ShowStrongboxFrames { get; set; } = new ToggleNode(true);
         [Menu("", 2, 120)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         [JsonIgnore]
         public CustomNode StrongboxFilterTablePanel { get; internal set; } = new();
 
@@ -270,10 +288,12 @@ namespace ClickIt
         public HashSet<string> StrongboxDontClickIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         [Menu("Altars", 121, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public EmptyNode AltarsCategory { get; set; } = new EmptyNode();
 
         [Menu("Settings", 1, 121)]
         [JsonIgnore]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public CustomNode AltarsPanel { get; internal set; } = new();
 
         [JsonIgnore]
@@ -327,23 +347,34 @@ namespace ClickIt
         public EmptyNode Ritual { get; set; } = new EmptyNode();
 
         [Menu("Delve", 123, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public EmptyNode Delve { get; set; } = new EmptyNode();
         [Menu("Flares", "Use flares when all of these conditions are true:\n\n-> Your darkness debuff stacks are at least the 'Darkness Debuff Stacks' value.\n-> Your health is below the 'Use flare below Health' value.\n-> Your energy shield is below the 'Use flare below Energy Shield' value.\n\nIf you're playing CI and have 1 max life, set Health to 100.\n\nIf you have no energy shield, set Energy Shield to 100.", 4, 123)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public ToggleNode ClickDelveFlares { get; set; } = new ToggleNode(false);
         [Menu("Flare Hotkey", "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.", 5, 123)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public HotkeyNodeV2 DelveFlareHotkey { get; set; } = new HotkeyNodeV2(Keys.D6);
         [Menu("", 10009, 123)]
         [JsonIgnore]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public CustomNode DelveSliderWidthStart { get; internal set; } = new();
         [Menu("Darkness Debuff Stacks", 6, 123)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
         [Menu("Flare Health %", 7, 123)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public RangeNode<int> DelveFlareHealthThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
         [Menu("Flare Energy Shield %", 8, 123)]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
         [Menu("", 10010, 123)]
         [JsonIgnore]
+        [ConditionalDisplay(nameof(ShowLegacyMechanicCategorySectionsInSettings))]
         public CustomNode DelveSliderWidthEnd { get; internal set; } = new();
+
+        [JsonIgnore]
+        public bool ShowLegacyMechanicCategorySectionsInSettings => false;
 
         [JsonIgnore]
         internal Keys ClickLabelKeyBinding

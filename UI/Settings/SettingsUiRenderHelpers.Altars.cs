@@ -43,7 +43,7 @@ namespace ClickIt.UI.Settings
                 "DownsideModsConfig",
                 ShowAlertColumn: false);
 
-        internal static void DrawAltarModSection(
+        internal static bool DrawAltarModSection(
             ClickItSettings settings,
             AltarModSectionDescriptor descriptor,
             ref string searchFilter,
@@ -53,18 +53,22 @@ namespace ClickIt.UI.Settings
             bool isOpen = ImGui.TreeNode(descriptor.TreeLabel);
             DrawInlineTooltip(descriptor.Tooltip);
             if (!isOpen)
-                return;
+                return false;
+
+            float availableWidth = Math.Max(220f, ImGui.GetContentRegionAvail().X);
 
             ImGui.Spacing();
             ImGui.Spacing();
             ImGui.TextWrapped(descriptor.ScaleHeading);
-            DrawWeightScale(descriptor.BestAtHigh);
+            DrawWeightScale(descriptor.BestAtHigh, Math.Min(400f, availableWidth));
             ImGui.Spacing();
             ImGui.Spacing();
             DrawSearchBar(descriptor.SearchId, descriptor.ClearId, ref searchFilter);
             ImGui.Spacing();
             DrawAltarModTable(settings, descriptor, searchFilter, mods, getSectionStyle);
             ImGui.TreePop();
+
+            return true;
         }
 
         internal static void DrawWeightScale(bool bestAtHigh = true, float width = 400f, float height = 20f)
@@ -135,21 +139,24 @@ namespace ClickIt.UI.Settings
 
         private static void SetupAltarModTableColumns(bool showAlertColumn)
         {
-            float modWidth = showAlertColumn ? 760 : 830;
+            float availableWidth = Math.Max(320f, ImGui.GetContentRegionAvail().X);
+            float reservedWidth = showAlertColumn ? 285f : 225f;
+            float modColumnWeight = Math.Max(1f, availableWidth - reservedWidth);
+
             if (showAlertColumn)
             {
-                SetupFixedWidthTableColumns(
-                    ("Weight", 125),
-                    ("Mod", modWidth),
-                    ("Type", 50),
-                    ("Alert", 55));
+                ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 125f);
+                ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthStretch, modColumnWeight);
+                ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 90f);
+                ImGui.TableSetupColumn("Alert", ImGuiTableColumnFlags.WidthFixed, 70f);
+                ImGui.TableHeadersRow();
                 return;
             }
 
-            SetupFixedWidthTableColumns(
-                ("Weight", 125),
-                ("Mod", modWidth),
-                ("Type", 50));
+            ImGui.TableSetupColumn("Weight", ImGuiTableColumnFlags.WidthFixed, 125f);
+            ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthStretch, modColumnWeight);
+            ImGui.TableSetupColumn("Type", ImGuiTableColumnFlags.WidthFixed, 100f);
+            ImGui.TableHeadersRow();
         }
 
         private static void DrawAltarSectionHeaderIfNeeded(ref string currentSection, AltarModSectionStyle style)

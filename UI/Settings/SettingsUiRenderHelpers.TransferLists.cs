@@ -9,19 +9,61 @@ namespace ClickIt.UI.Settings
             Vector4 leftBackground,
             Vector4 rightBackground,
             Action drawLeft,
-            Action drawRight)
+            Action drawRight,
+            float leftColumnWeight = 0.5f,
+            float rightColumnWeight = 0.5f)
         {
             if (!ImGui.BeginTable(tableId, 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable))
                 return;
 
             try
             {
-                SetupTwoColumnFilterTableHeader(leftHeader, rightHeader, leftBackground, rightBackground);
+                bool hideLeftColumn = leftColumnWeight <= 0f;
+                bool hideRightColumn = rightColumnWeight <= 0f;
+
+                SetupTwoColumnFilterTableHeader(leftHeader, rightHeader, leftBackground, rightBackground, leftColumnWeight, rightColumnWeight, hideLeftColumn, hideRightColumn);
                 ImGui.TableNextRow();
-                ImGui.TableSetColumnIndex(0);
-                drawLeft();
-                ImGui.TableSetColumnIndex(1);
-                drawRight();
+                if (ImGui.TableSetColumnIndex(0))
+                {
+                    drawLeft();
+                }
+
+                if (ImGui.TableSetColumnIndex(1))
+                {
+                    drawRight();
+                }
+            }
+            finally
+            {
+                ImGui.EndTable();
+            }
+        }
+
+        internal static void DrawSingleTransferTable(
+            string tableId,
+            string header,
+            Vector4 background,
+            Action drawContent)
+        {
+            if (!ImGui.BeginTable(tableId, 1, ImGuiTableFlags.Borders))
+                return;
+
+            try
+            {
+                ImGui.TableSetupColumn(header, ImGuiTableColumnFlags.WidthStretch, 1f);
+                ImGui.TableNextRow(ImGuiTableRowFlags.None);
+
+                if (ImGui.TableSetColumnIndex(0))
+                {
+                    ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(background));
+                    ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), header);
+                }
+
+                ImGui.TableNextRow();
+                if (ImGui.TableSetColumnIndex(0))
+                {
+                    drawContent();
+                }
             }
             finally
             {
@@ -83,20 +125,37 @@ namespace ClickIt.UI.Settings
         private static bool DrawExpandableTransferSelectable(string label, bool isExpanded, float rowWidth, Vector4 textColor)
             => DrawSelectableText(label, isExpanded, ImGuiSelectableFlags.AllowDoubleClick, textColor, new NumVector2(rowWidth, 0));
 
-        private static void SetupTwoColumnFilterTableHeader(string leftHeader, string rightHeader, Vector4 leftBackground, Vector4 rightBackground)
+        private static void SetupTwoColumnFilterTableHeader(
+            string leftHeader,
+            string rightHeader,
+            Vector4 leftBackground,
+            Vector4 rightBackground,
+            float leftColumnWeight,
+            float rightColumnWeight,
+            bool hideLeftColumn,
+            bool hideRightColumn)
         {
-            ImGui.TableSetupColumn(leftHeader, ImGuiTableColumnFlags.WidthStretch, 0.5f);
-            ImGui.TableSetupColumn(rightHeader, ImGuiTableColumnFlags.WidthStretch, 0.5f);
+            float normalizedLeftWeight = Math.Max(0.15f, leftColumnWeight);
+            float normalizedRightWeight = Math.Max(0.15f, rightColumnWeight);
+
+            ImGui.TableSetupColumn(leftHeader, ImGuiTableColumnFlags.WidthStretch, normalizedLeftWeight);
+            ImGui.TableSetupColumn(rightHeader, ImGuiTableColumnFlags.WidthStretch, normalizedRightWeight);
+            ImGui.TableSetColumnEnabled(0, !hideLeftColumn);
+            ImGui.TableSetColumnEnabled(1, !hideRightColumn);
 
             ImGui.TableNextRow(ImGuiTableRowFlags.None);
 
-            ImGui.TableSetColumnIndex(0);
-            ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(leftBackground));
-            ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), leftHeader);
+            if (ImGui.TableSetColumnIndex(0))
+            {
+                ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(leftBackground));
+                ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), leftHeader);
+            }
 
-            ImGui.TableSetColumnIndex(1);
-            ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(rightBackground));
-            ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), rightHeader);
+            if (ImGui.TableSetColumnIndex(1))
+            {
+                ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.GetColorU32(rightBackground));
+                ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 1.0f), rightHeader);
+            }
         }
     }
 }

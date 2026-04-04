@@ -4,12 +4,20 @@ namespace ClickIt.UI.Settings.Panels
     {
         private readonly ClickItSettings _settings = settings;
 
-        public void DrawAltarsPanel()
+        public void DrawAltarsPanel(bool embedded = false)
         {
+            bool weightTablesExpanded = false;
+
             DrawExarchSection();
             DrawEaterSection();
-            DrawAltarWeightingSection();
+            weightTablesExpanded = DrawAltarWeightingSection();
+
             DrawAlertSoundSection();
+
+            if (embedded)
+            {
+                _settings.UiState.MechanicsAltarWeightTablesExpanded = weightTablesExpanded;
+            }
         }
 
         public void DrawAltarModWeights()
@@ -34,15 +42,18 @@ namespace ClickIt.UI.Settings.Panels
                 "Highlights the recommended option for you to choose for eater of worlds altars, based on a decision tree created from your settings below.");
         }
 
-        private void DrawAltarWeightingSection()
+        private bool DrawAltarWeightingSection()
         {
             if (!ImGui.TreeNode("Altar Weights"))
-                return;
+                return false;
 
-            DrawAltarModWeights();
+            bool upsideExpanded = DrawUpsideModsSection();
+            bool downsideExpanded = DrawDownsideModsSection();
             DrawAltarWeightOverridesSection();
 
             ImGui.TreePop();
+
+            return upsideExpanded || downsideExpanded;
         }
 
         private void DrawAltarWeightOverridesSection()
@@ -58,7 +69,8 @@ namespace ClickIt.UI.Settings.Panels
                 _settings.ValuableUpsideThreshold,
                 1,
                 100,
-                "Minimum weight threshold for upside modifiers to trigger the high value override. Modifiers with weights at or above this value will cause the plugin to choose that altar option.");
+                "Minimum weight threshold for upside modifiers to trigger the high value override. Modifiers with weights at or above this value will cause the plugin to choose that altar option.",
+                rangeWidthOverride: 300f);
             SettingsUiRenderHelpers.DrawToggleAndRangeNodeControls(
                 "Unvaluable Upside",
                 _settings.UnvaluableUpside,
@@ -67,7 +79,8 @@ namespace ClickIt.UI.Settings.Panels
                 _settings.UnvaluableUpsideThreshold,
                 1,
                 100,
-                "Weight threshold that triggers the low value override. When any modifier has a weight at or below this value, the plugin will choose the opposite altar option.");
+                "Weight threshold that triggers the low value override. When any modifier has a weight at or below this value, the plugin will choose the opposite altar option.",
+                rangeWidthOverride: 300f);
             SettingsUiRenderHelpers.DrawToggleAndRangeNodeControls(
                 "Dangerous Downside",
                 _settings.DangerousDownside,
@@ -76,7 +89,8 @@ namespace ClickIt.UI.Settings.Panels
                 _settings.DangerousDownsideThreshold,
                 1,
                 100,
-                "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.");
+                "Maximum weight threshold for downside modifiers to trigger the dangerous override. Modifiers with weights at or above this value will cause the plugin to choose the opposite altar option.",
+                rangeWidthOverride: 300f);
             SettingsUiRenderHelpers.DrawToggleAndRangeNodeControls(
                 "Minimum Weight",
                 _settings.MinWeightThresholdEnabled,
@@ -85,7 +99,8 @@ namespace ClickIt.UI.Settings.Panels
                 _settings.MinWeightThreshold,
                 1,
                 100,
-                "Minimum final weight (1 - 100) an option must have to be considered valid. If both options are below this value, neither will be auto-chosen.");
+                "Minimum final weight (1 - 100) an option must have to be considered valid. If both options are below this value, neither will be auto-chosen.",
+                rangeWidthOverride: 300f);
 
             ImGui.TreePop();
         }
@@ -105,7 +120,7 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.TreePop();
         }
 
-        private void DrawUpsideModsSection()
+        private bool DrawUpsideModsSection()
             => SettingsUiRenderHelpers.DrawAltarModSection(
                 _settings,
                 SettingsUiRenderHelpers.GetUpsideAltarModSectionDescriptor(),
@@ -113,7 +128,7 @@ namespace ClickIt.UI.Settings.Panels
                 AltarModsConstants.UpsideMods,
                 static (type, _) => SettingsUiRenderHelpers.GetAltarUpsideSectionStyle(type));
 
-        private void DrawDownsideModsSection()
+        private bool DrawDownsideModsSection()
             => SettingsUiRenderHelpers.DrawAltarModSection(
                 _settings,
                 SettingsUiRenderHelpers.GetDownsideAltarModSectionDescriptor(),

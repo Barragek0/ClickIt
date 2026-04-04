@@ -7,7 +7,7 @@ namespace ClickIt.UI.Settings.Panels
         private static UltimatumModifierGroupEntry[] UltimatumModifierGroups => UltimatumModifierGroupCatalog.Groups;
         private static HashSet<string> UltimatumTieredModifierNames => UltimatumModifierGroupCatalog.TieredModifierNames;
 
-        public void DrawModifierTablePanel()
+        public void DrawModifierTablePanel(bool embedded = false)
         {
             _settings.EnsureUltimatumModifiersInitialized();
 
@@ -19,11 +19,14 @@ namespace ClickIt.UI.Settings.Panels
 
             ImGui.Spacing();
 
-            SettingsUiRenderHelpers.DrawInstructionText("Priority: top row is highest, bottom row is lowest.");
-            SettingsUiRenderHelpers.DrawWrappedText(
-                "Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.",
-                new Vector4(0.7f, 0.7f, 0.7f, 1f));
-            ImGui.Spacing();
+            if (!embedded)
+            {
+                SettingsUiRenderHelpers.DrawInstructionText("Priority: top row is highest, bottom row is lowest.");
+                SettingsUiRenderHelpers.DrawWrappedText(
+                    "Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.",
+                    new Vector4(0.7f, 0.7f, 0.7f, 1f));
+                ImGui.Spacing();
+            }
 
             float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
             if (!SettingsUiRenderHelpers.BeginSingleColumnPriorityTable("UltimatumModifierPriorityTable", "Modifiers", tableWidth))
@@ -83,14 +86,17 @@ namespace ClickIt.UI.Settings.Panels
             }
         }
 
-        public void DrawTakeRewardModifierTablePanel()
+        public void DrawTakeRewardModifierTablePanel(bool embedded = false)
         {
             _settings.EnsureUltimatumTakeRewardModifiersInitialized();
 
             _ = UltimatumGruelingGauntletDetectionStore.TryGet(out _);
-            SettingsUiRenderHelpers.DrawInstructionText("This table only does anything when Gruelling Gauntlet is allocated.");
-            SettingsUiRenderHelpers.DrawInstructionText("Rows with [v] can be clicked to open stage-specific submenu options.");
-            ImGui.Spacing();
+            if (!embedded)
+            {
+                SettingsUiRenderHelpers.DrawInstructionText("This table only does anything when Gruelling Gauntlet is allocated.");
+                SettingsUiRenderHelpers.DrawInstructionText("Rows with [v] can be clicked to open stage-specific submenu options.");
+                ImGui.Spacing();
+            }
 
             SettingsUiRenderHelpers.DrawSearchBar("##UltimatumTakeRewardSearch", "Clear##UltimatumTakeRewardSearchClear", ref _settings.UiState.UltimatumTakeRewardSearchFilter);
             if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##UltimatumTakeRewardResetDefaults"))

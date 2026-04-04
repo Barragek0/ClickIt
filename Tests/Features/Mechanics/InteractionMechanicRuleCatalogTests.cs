@@ -55,6 +55,7 @@ namespace ClickIt.Tests.Features.Mechanics
         {
             ClickSettings disabledSettings = new()
             {
+                ClickStrongboxes = true,
                 StrongboxClickMetadata = []
             };
 
@@ -69,6 +70,7 @@ namespace ClickIt.Tests.Features.Mechanics
 
             ClickSettings enabledSettings = new()
             {
+                ClickStrongboxes = true,
                 StrongboxClickMetadata = ["StrongBoxes/Strongbox"]
             };
 
@@ -80,6 +82,25 @@ namespace ClickIt.Tests.Features.Mechanics
                 CreateDependencies(shouldClickStrongbox: true));
 
             enabledResult.Should().Be(MechanicIds.Strongboxes);
+        }
+
+        [TestMethod]
+        public void TryResolve_RequiresStrongboxMechanicToggle()
+        {
+            ClickSettings settings = new()
+            {
+                ClickStrongboxes = false,
+                StrongboxClickMetadata = ["StrongBoxes/Strongbox"]
+            };
+
+            string? result = InteractionMechanicRuleCatalog.TryResolve(
+                settings,
+                "Metadata/StrongBoxes/Strongbox",
+                DummyLabel,
+                gameController: null,
+                CreateDependencies(shouldClickStrongbox: true));
+
+            result.Should().BeNull();
         }
 
         [TestMethod]

@@ -20,6 +20,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
             result.ClickDistance.Should().Be(settings.ClickDistance.Value);
             result.ClickLeagueChests.Should().Be(settings.ClickLeagueChests.Value);
             result.ClickSettlersOre.Should().Be(settings.ClickSettlersOre.Value);
+            result.ClickStrongboxes.Should().Be(settings.ClickStrongboxes.Value);
             result.ClickLabyrinthTrials.Should().Be(settings.ClickLabyrinthTrials.Value);
         }
 

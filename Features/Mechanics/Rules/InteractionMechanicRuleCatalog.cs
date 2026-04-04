@@ -71,7 +71,8 @@ namespace ClickIt.Features.Mechanics.Rules
         private sealed class StrongboxInteractionRule : IInteractionRule
         {
             public string? TryResolve(in InteractionRuleContext context)
-                => (context.Settings.StrongboxClickMetadata?.Count ?? 0) > 0
+                => context.Settings.ClickStrongboxes
+                    && (context.Settings.StrongboxClickMetadata?.Count ?? 0) > 0
                     && context.Dependencies.ShouldClickStrongbox(context.Settings, context.Path, context.Label)
                         ? MechanicIds.Strongboxes
                         : null;

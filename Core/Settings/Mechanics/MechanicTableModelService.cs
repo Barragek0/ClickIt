@@ -94,6 +94,7 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.Sanctum, "Sanctum", settings.ClickSanctum, null, true),
                 new(MechanicIds.Items, "Items", settings.ClickItems, null, true),
                 new(MechanicIds.Essences, "Essences", settings.ClickEssences, null, true),
+                new(MechanicIds.Strongboxes, "Strongboxes", settings.ClickStrongboxes, null, true),
                 new(MechanicIds.RitualInitiate, "Uncompleted Altars", settings.ClickRitualInitiate, "ritual-altars", true),
                 new(MechanicIds.RitualCompleted, "Completed Altars", settings.ClickRitualCompleted, "ritual-altars", true),
                 new(MechanicIds.LostShipment, "Lost Shipment", settings.ClickLostShipmentCrates, "settlers", true),
