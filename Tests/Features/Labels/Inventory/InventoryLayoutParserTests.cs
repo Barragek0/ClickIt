@@ -90,9 +90,12 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 IsReliable: true,
                 RawEntryCount: 9);
             int slotAccessorCalls = 0;
+            object primaryInventory = new();
+            var layoutCache = new InventoryLayoutCache(cacheWindowMs: 50);
+            layoutCache.Set(primaryInventory, Environment.TickCount64, 12, 5, expected);
 
             var parser = CreateParser(
-                tryGetCachedInventoryLayout: (_, _, _, _) => (true, expected),
+                layoutCache: layoutCache,
                 tryGetPrimaryServerInventorySlotItems: _ =>
                 {
                     slotAccessorCalls++;
@@ -100,7 +103,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 });
 
             bool success = parser.TryResolveInventoryLayoutEntries(
-                new object(),
+                primaryInventory,
                 inventoryWidth: 12,
                 inventoryHeight: 5,
                 out IReadOnlyList<InventoryLayoutEntry> entries,
@@ -144,18 +147,18 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 }
             };
             Entity fallbackSizedEntity = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            InventoryLayoutSnapshot capturedSnapshot = InventoryLayoutSnapshot.Empty;
+            object primaryInventory = new();
+            var layoutCache = new InventoryLayoutCache(cacheWindowMs: 50);
 
             var parser = CreateParser(
-                tryGetCachedInventoryLayout: (_, _, _, _) => (false, InventoryLayoutSnapshot.Empty),
-                setCachedInventoryLayout: (_, _, _, _, snapshot) => capturedSnapshot = snapshot,
+                layoutCache: layoutCache,
                 tryGetPrimaryServerInventorySlotItems: _ => (true, new object[] { firstEntry, secondEntry }),
                 enumerateObjects: collection => collection as object[] ?? Array.Empty<object?>(),
                 tryGetInventoryItemEntityFromEntry: entry => ReferenceEquals(entry, secondEntry) ? fallbackSizedEntity : null,
                 tryResolveInventoryItemSize: entity => ReferenceEquals(entity, fallbackSizedEntity) ? (true, 3, 4) : (false, 0, 0));
 
             bool success = parser.TryResolveInventoryLayoutEntries(
-                new object(),
+                primaryInventory,
                 inventoryWidth: 5,
                 inventoryHeight: 5,
                 out IReadOnlyList<InventoryLayoutEntry> entries,
@@ -179,6 +182,9 @@ namespace ClickIt.Tests.Features.Labels.Inventory
             isReliable.Should().BeTrue();
             rawEntryCount.Should().Be(2);
 
+            bool cached = layoutCache.TryGet(primaryInventory, Environment.TickCount64, 5, 5, out InventoryLayoutSnapshot capturedSnapshot);
+
+            cached.Should().BeTrue();
             capturedSnapshot.Source.Should().Be(source);
             capturedSnapshot.DebugDetails.Should().Be(debugDetails);
             capturedSnapshot.IsReliable.Should().BeTrue();
@@ -189,14 +195,14 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         [TestMethod]
         public void TryResolveInventoryLayoutEntries_ReturnsFailureAndCachesReadFailedSnapshot_WhenSlotItemsUnavailable()
         {
-            InventoryLayoutSnapshot capturedSnapshot = InventoryLayoutSnapshot.Empty;
+            object primaryInventory = new();
+            var layoutCache = new InventoryLayoutCache(cacheWindowMs: 50);
             var parser = CreateParser(
-                tryGetCachedInventoryLayout: (_, _, _, _) => (false, InventoryLayoutSnapshot.Empty),
-                setCachedInventoryLayout: (_, _, _, _, snapshot) => capturedSnapshot = snapshot,
+                layoutCache: layoutCache,
                 tryGetPrimaryServerInventorySlotItems: _ => (false, null));
 
             bool success = parser.TryResolveInventoryLayoutEntries(
-                new object(),
+                primaryInventory,
                 inventoryWidth: 12,
                 inventoryHeight: 5,
                 out IReadOnlyList<InventoryLayoutEntry> entries,
@@ -212,6 +218,9 @@ namespace ClickIt.Tests.Features.Labels.Inventory
             isReliable.Should().BeFalse();
             rawEntryCount.Should().Be(0);
 
+            bool cached = layoutCache.TryGet(primaryInventory, Environment.TickCount64, 12, 5, out InventoryLayoutSnapshot capturedSnapshot);
+
+            cached.Should().BeTrue();
             capturedSnapshot.Entries.Should().BeEmpty();
             capturedSnapshot.Source.Should().Be(source);
             capturedSnapshot.DebugDetails.Should().Be(debugDetails);
@@ -219,38 +228,26 @@ namespace ClickIt.Tests.Features.Labels.Inventory
             capturedSnapshot.RawEntryCount.Should().Be(0);
         }
 
-        [TestMethod]
-        public void TryResolveInventoryEntrySize_FallsBackToEntitySize_WhenEntrySizeFieldsAreMissing()
-        {
-            Entity entity = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            var parser = CreateParser(
-                tryResolveInventoryItemSize: resolved => ReferenceEquals(resolved, entity) ? (true, 2, 4) : (false, 0, 0));
-
-            bool success = parser.TryResolveInventoryEntrySize(new SlotEntryWithPositionOnly { PosX = 1, PosY = 2 }, entity, out int width, out int height);
-
-            success.Should().BeTrue();
-            width.Should().Be(2);
-            height.Should().Be(4);
-        }
-
         private static InventoryLayoutParser CreateParser(
+            InventoryLayoutCache? layoutCache = null,
             Func<object?, IEnumerable<object?>>? enumerateObjects = null,
-            Func<object, long, int, int, (bool Success, InventoryLayoutSnapshot Snapshot)>? tryGetCachedInventoryLayout = null,
-            Action<object, long, int, int, InventoryLayoutSnapshot>? setCachedInventoryLayout = null,
             Func<object, (bool Success, object? SlotItemsCollection)>? tryGetPrimaryServerInventorySlotItems = null,
             Func<object, Entity?>? tryGetInventoryItemEntityFromEntry = null,
             Func<Entity, (bool Success, int Width, int Height)>? tryResolveInventoryItemSize = null,
             Func<object?, Func<dynamic, object?>, (bool Success, object? Value)>? tryGetDynamicValue = null,
             Func<object?, Func<dynamic, object?>, (bool Success, int Value)>? tryReadInt = null)
         {
-            return new InventoryLayoutParser(new InventoryLayoutParserDependencies(
+            var entryResolver = new InventoryLayoutEntryResolver(new InventoryLayoutEntryResolverDependencies(
                 EnumerateObjects: enumerateObjects ?? InventoryDynamicAccess.EnumerateObjects,
-                TryGetCachedInventoryLayout: tryGetCachedInventoryLayout ?? ((_, _, _, _) => (false, InventoryLayoutSnapshot.Empty)),
-                SetCachedInventoryLayout: setCachedInventoryLayout ?? ((_, _, _, _, _) => { }),
-                TryGetPrimaryServerInventorySlotItems: tryGetPrimaryServerInventorySlotItems ?? (_ => (false, null)),
                 TryGetInventoryItemEntityFromEntry: tryGetInventoryItemEntityFromEntry ?? InventoryDynamicAccess.TryGetInventoryItemEntityFromEntry,
                 TryResolveInventoryItemSize: tryResolveInventoryItemSize ?? (_ => (false, 0, 0)),
                 TryGetDynamicValue: tryGetDynamicValue ?? InventoryDynamicAccess.TryGetDynamicValueResult,
+                TryReadInt: tryReadInt ?? InventoryDynamicAccess.TryReadIntResult));
+
+            return new InventoryLayoutParser(new InventoryLayoutParserDependencies(
+                TryGetPrimaryServerInventorySlotItems: tryGetPrimaryServerInventorySlotItems ?? (_ => (false, null)),
+                LayoutCache: layoutCache ?? new InventoryLayoutCache(cacheWindowMs: 50),
+                EntryResolver: entryResolver,
                 TryReadInt: tryReadInt ?? InventoryDynamicAccess.TryReadIntResult));
         }
     }

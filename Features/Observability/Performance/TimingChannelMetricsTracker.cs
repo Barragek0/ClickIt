@@ -11,11 +11,13 @@ namespace ClickIt.Features.Observability.Performance
         private readonly Queue<long> _altarCoroutineTimings = new(10);
         private readonly Queue<long> _flareCoroutineTimings = new(10);
         private readonly Queue<long> _renderTimings = new(60);
+        private readonly Queue<long> _successfulClickTimings = new(10);
 
         private readonly object _clickTimingsLock = new();
         private readonly object _altarTimingsLock = new();
         private readonly object _flareTimingsLock = new();
         private readonly object _renderTimingsLock = new();
+        private readonly object _successfulClickTimingsLock = new();
 
         private long _lastAltarTiming;
         private long _lastClickTiming;
@@ -186,6 +188,19 @@ namespace ClickIt.Features.Observability.Performance
             return GetAverageTiming(MapTimingChannel(timingType));
         }
 
+        public void RecordSuccessfulClickTiming(long duration)
+        {
+            EnqueueTiming(_successfulClickTimings, duration, 10, _successfulClickTimingsLock);
+        }
+
+        public double GetAverageSuccessfulClickTiming()
+        {
+            lock (_successfulClickTimingsLock)
+            {
+                return CalculateAverage(_successfulClickTimings);
+            }
+        }
+
         public double GetMaxTiming(TimingChannel channel)
         {
             return channel switch
@@ -229,6 +244,8 @@ namespace ClickIt.Features.Observability.Performance
                 _flareCoroutineTimings.Clear();
             lock (_renderTimingsLock)
                 _renderTimings.Clear();
+            lock (_successfulClickTimingsLock)
+                _successfulClickTimings.Clear();
 
             _lastAltarTiming = 0;
             _lastClickTiming = 0;

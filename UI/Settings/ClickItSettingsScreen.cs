@@ -2,6 +2,7 @@ namespace ClickIt.UI.Settings
 {
     internal sealed record ClickItSettingsScreenNodes(
         CustomNode DebugTestingPanel,
+        CustomNode ControlsPanel,
         CustomNode ControlsSliderWidthStart,
         CustomNode ControlsSliderWidthEnd,
         CustomNode PathfindingSliderWidthStart,
@@ -28,6 +29,7 @@ namespace ClickIt.UI.Settings
             ArgumentNullException.ThrowIfNull(settings);
 
             settings.DebugTestingPanel = DebugTestingPanel;
+            settings.ControlsPanel = ControlsPanel;
             settings.ControlsSliderWidthStart = ControlsSliderWidthStart;
             settings.ControlsSliderWidthEnd = ControlsSliderWidthEnd;
             settings.PathfindingSliderWidthStart = PathfindingSliderWidthStart;
@@ -53,6 +55,7 @@ namespace ClickIt.UI.Settings
 
     internal sealed record ClickItSettingsScreenBindings(
         Action DrawDebugTestingPanel,
+        Action DrawControlsPanel,
         Action DrawLazyModeNearbyMonsterRulesPanel,
         Action DrawAltarsPanel,
         Action DrawAltarModWeights,
@@ -72,6 +75,7 @@ namespace ClickIt.UI.Settings
         internal static ClickItSettingsScreenNodes Compose(ClickItSettingsScreenBindings bindings)
             => new(
                 SettingsScreenComposer.CreateSafePanelNode("DebugTestingPanel", bindings.DrawDebugTestingPanel, bindings.DrawPanelSafe),
+                SettingsScreenComposer.CreateSafePanelNode("ControlsPanel", bindings.DrawControlsPanel, bindings.DrawPanelSafe),
                 SettingsScreenComposer.CreateSliderWidthBoundaryNode(bindings.PushStandardSliderWidth),
                 SettingsScreenComposer.CreateSliderWidthBoundaryNode(bindings.PopStandardSliderWidth),
                 SettingsScreenComposer.CreateSliderWidthBoundaryNode(bindings.PushStandardSliderWidth),

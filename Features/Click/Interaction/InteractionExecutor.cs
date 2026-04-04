@@ -32,7 +32,7 @@ namespace ClickIt.Features.Click.Interaction
                 allowWhenHotkeyInactive,
                 avoidCursorMove,
                 "click",
-                "InputHandler: UIHover verification failed for current mode. Skipping click.",
+                "InteractionExecutor: UIHover verification failed for current mode. Skipping click.",
                 logExpectedElementMissing: true,
                 out Stopwatch swTotal,
                 out System.Drawing.Point before))
@@ -78,7 +78,7 @@ namespace ClickIt.Features.Click.Interaction
                 allowWhenHotkeyInactive,
                 avoidCursorMove,
                 "hold click",
-                "InputHandler: UIHover verification failed for hold-click. Skipping.",
+                "InteractionExecutor: UIHover verification failed for hold-click. Skipping.",
                 logExpectedElementMissing: false,
                 out Stopwatch swTotal,
                 out System.Drawing.Point before))
@@ -203,7 +203,7 @@ namespace ClickIt.Features.Click.Interaction
             Vector2 executionPosition = ResolveClickExecutionPosition(position, avoidCursorMove);
             if (!LabelClickPointSearch.TryValidateAutomationScreenPoint(executionPosition, gameController, out string invalidPointReason))
             {
-                _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping {clickKind} at {executionPosition} ({invalidPointReason}).", 10);
+                _errorHandler?.LogMessage(true, true, $"InteractionExecutor: Skipping {clickKind} at {executionPosition} ({invalidPointReason}).", 10);
                 swTotal.Stop();
                 return false;
             }
@@ -228,7 +228,7 @@ namespace ClickIt.Features.Click.Interaction
             }
 
             if (logExpectedElementMissing && expectedAddress == 0)
-                _errorHandler?.LogMessage(true, true, "InputHandler: UIHover verification skipped - expectedElement is null", 5);
+                _errorHandler?.LogMessage(true, true, "InteractionExecutor: UIHover verification skipped - expectedElement is null", 5);
 
             return true;
         }
@@ -242,7 +242,7 @@ namespace ClickIt.Features.Click.Interaction
                 long elapsed = now - _lastClickTimestampMs;
                 if (_lastClickTimestampMs != 0 && elapsed < limiterMs)
                 {
-                    _errorHandler?.LogMessage(true, true, $"InputHandler: Skipping click due to LazyMode limiter ({elapsed}ms < {limiterMs}ms)", 5);
+                    _errorHandler?.LogMessage(true, true, $"InteractionExecutor: Skipping click due to LazyMode limiter ({elapsed}ms < {limiterMs}ms)", 5);
                     return false;
                 }
             }
@@ -272,11 +272,11 @@ namespace ClickIt.Features.Click.Interaction
                     if (!Mouse.DisableNativeInput)
                         Input.SetCursorPos(new NumVector2(beforeVec.X, beforeVec.Y));
 
-                    _errorHandler?.LogMessage(true, true, $"InputHandler: Restored cursor to {before}", 5);
+                    _errorHandler?.LogMessage(true, true, $"InteractionExecutor: Restored cursor to {before}", 5);
                 }
                 catch (Exception ex)
                 {
-                    _errorHandler?.LogMessage(true, true, $"InputHandler: Failed to restore cursor position: {ex.Message}", 10);
+                    _errorHandler?.LogMessage(true, true, $"InteractionExecutor: Failed to restore cursor position: {ex.Message}", 10);
                 }
             }
         }

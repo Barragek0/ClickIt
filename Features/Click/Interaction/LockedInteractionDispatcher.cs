@@ -1,11 +1,14 @@
 namespace ClickIt.Features.Click.Interaction
 {
-    internal sealed class LockedInteractionDispatcher(InputHandler inputHandler)
+    internal sealed class LockedInteractionDispatcher(InteractionExecutor interactionExecutor)
     {
-        private readonly InputHandler _inputHandler = inputHandler;
+        private readonly InteractionExecutor _interactionExecutor = interactionExecutor;
         private readonly object _elementLock = new();
 
         internal object ElementLock => _elementLock;
+
+        internal long GetSuccessfulClickSequence()
+            => _interactionExecutor.GetSuccessfulClickSequence();
 
         internal void PerformClick(
             Vector2 clickPos,
@@ -17,7 +20,7 @@ namespace ClickIt.Features.Click.Interaction
         {
             using (LockManager.AcquireStatic(_elementLock))
             {
-                _inputHandler.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
+                _interactionExecutor.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
             }
         }
 
@@ -32,7 +35,7 @@ namespace ClickIt.Features.Click.Interaction
         {
             using (LockManager.AcquireStatic(_elementLock))
             {
-                _inputHandler.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
+                _interactionExecutor.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
             }
         }
     }

@@ -17,7 +17,7 @@ namespace ClickIt.Core.Bootstrap
             CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, owner.GameController
                 ?? throw new InvalidOperationException("GameController is null during plugin initialization."));
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, owner.GameController, core);
-            ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, owner.GameController, core, rendering.AltarDisplayRenderer);
+            ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, owner.GameController, core, rendering.AltarChoiceEvaluator);
             UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
 

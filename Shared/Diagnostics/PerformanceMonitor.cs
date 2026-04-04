@@ -36,8 +36,6 @@ namespace ClickIt.Shared.Diagnostics
 
         private readonly Stopwatch _mainTimer = new();
         private readonly Stopwatch _secondTimer = new();
-        private readonly Queue<long> _successfulClickTimings = new(10);
-        private readonly object _successfulClickTimingsLock = new();
 
         // Input safety timing
         private readonly Stopwatch _lastHotkeyReleaseTimer = new();
@@ -206,51 +204,19 @@ namespace ClickIt.Shared.Diagnostics
             _lastTickTimer.Stop();
             _timingTracker.Clear();
             _clickActivity.Clear();
-            lock (_successfulClickTimingsLock)
-                _successfulClickTimings.Clear();
         }
 
         public void RecordSuccessfulClickTiming(long duration)
         {
-            EnqueueTiming(_successfulClickTimings, duration, 10, _successfulClickTimingsLock);
+            _timingTracker.RecordSuccessfulClickTiming(duration);
         }
 
         public double GetAverageSuccessfulClickTiming()
         {
-            lock (_successfulClickTimingsLock)
-            {
-                return CalculateAverage(_successfulClickTimings);
-            }
+            return _timingTracker.GetAverageSuccessfulClickTiming();
         }
 
         internal int GetTimingSampleCount(TimingChannel channel)
             => _timingTracker.GetTimingSampleCount(channel);
-
-        private static void EnqueueTiming(Queue<long> queue, long value, int maxLength, object lockObject)
-        {
-            lock (lockObject)
-            {
-                queue.Enqueue(value);
-                if (queue.Count > maxLength)
-                {
-                    queue.Dequeue();
-                }
-            }
-        }
-
-        private static double CalculateAverage(Queue<long> queue)
-        {
-            int count = queue.Count;
-            if (count == 0)
-                return 0;
-
-            long sum = 0;
-            foreach (long value in queue)
-            {
-                sum += value;
-            }
-
-            return (double)sum / count;
-        }
     }
 }

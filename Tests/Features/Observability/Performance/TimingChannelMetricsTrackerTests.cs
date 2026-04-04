@@ -53,5 +53,21 @@ namespace ClickIt.Tests.Features.Observability.Performance
             tracker.GetMaxTiming(TimingChannel.Flare).Should().Be(0);
             tracker.GetRenderTimingsSnapshot().Should().BeEmpty();
         }
+
+        [TestMethod]
+        public void SuccessfulClickTiming_UsesBoundedAverageAndClearsWithTracker()
+        {
+            var tracker = new TimingChannelMetricsTracker();
+
+            tracker.RecordSuccessfulClickTiming(10);
+            tracker.RecordSuccessfulClickTiming(20);
+            tracker.RecordSuccessfulClickTiming(30);
+
+            tracker.GetAverageSuccessfulClickTiming().Should().Be(20);
+
+            tracker.Clear();
+
+            tracker.GetAverageSuccessfulClickTiming().Should().Be(0);
+        }
     }
 }

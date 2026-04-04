@@ -11,22 +11,27 @@ namespace ClickIt.UI.Settings
 
             var safePanelRenderer = new SettingsPanelSafeRenderer(settings);
             var debugTestingPanelRenderer = new DebugTestingPanelRenderer(settings);
-            var itemFiltersPanelRenderer = new ItemFiltersPanelRenderer(settings);
+            var controlsPanelRenderer = new ControlsPanelRenderer(settings);
+            var itemTypeFiltersPanelRenderer = new ItemTypeFiltersPanelRenderer(settings);
+            var essenceCorruptionPanelRenderer = new EssenceCorruptionPanelRenderer(settings);
+            var strongboxFilterPanelRenderer = new StrongboxFilterPanelRenderer(settings);
             var lazyModeNearbyMonsterRulesPanelRenderer = new LazyModeNearbyMonsterRulesPanelRenderer(settings);
             var mechanicPriorityPanelRenderer = new MechanicPriorityTablePanelRenderer(settings);
             var altarSettingsPanelRenderer = new AltarSettingsPanelRenderer(settings);
             var ultimatumSettingsPanelRenderer = new UltimatumSettingsPanelRenderer(settings);
-            var mechanicsTablePanelRenderer = new MechanicsTablePanelRenderer(settings, itemFiltersPanelRenderer, ultimatumSettingsPanelRenderer, altarSettingsPanelRenderer);
+            var mechanicsEmbeddedSettingsPanelRenderer = new MechanicsEmbeddedSettingsPanelRenderer(settings, itemTypeFiltersPanelRenderer, essenceCorruptionPanelRenderer, strongboxFilterPanelRenderer, ultimatumSettingsPanelRenderer, altarSettingsPanelRenderer);
+            var mechanicsTablePanelRenderer = new MechanicsTablePanelRenderer(settings, mechanicsEmbeddedSettingsPanelRenderer);
 
             return ClickItSettingsScreen.Compose(new ClickItSettingsScreenBindings(
                 debugTestingPanelRenderer.Draw,
+                controlsPanelRenderer.Draw,
                 lazyModeNearbyMonsterRulesPanelRenderer.Draw,
                 () => altarSettingsPanelRenderer.DrawAltarsPanel(),
                 altarSettingsPanelRenderer.DrawAltarModWeights,
-                () => itemFiltersPanelRenderer.DrawItemTypeFiltersPanel(),
+                () => itemTypeFiltersPanelRenderer.DrawPanel(),
                 mechanicPriorityPanelRenderer.Draw,
-                () => itemFiltersPanelRenderer.DrawEssenceCorruptionTablePanel(),
-                () => itemFiltersPanelRenderer.DrawStrongboxFilterTablePanel(),
+                () => essenceCorruptionPanelRenderer.DrawPanel(),
+                () => strongboxFilterPanelRenderer.DrawPanel(),
                 mechanicsTablePanelRenderer.Draw,
                 () => ultimatumSettingsPanelRenderer.DrawModifierTablePanel(),
                 () => ultimatumSettingsPanelRenderer.DrawTakeRewardModifierTablePanel(),

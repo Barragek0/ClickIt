@@ -37,7 +37,7 @@ namespace ClickIt.Core.Bootstrap
             var altarService = new AltarService(owner, settings, cachedLabels);
             var labelFilterPort = new LabelFilterPort(settings, new EssenceService(settings), errorHandler, gameController);
             var shrineService = new ShrineService(gameController, camera);
-            var inputHandler = new InputHandler(settings, performanceMonitor, errorHandler);
+            var inputHandler = new InputHandler(settings);
             var pathfindingService = new PathfindingService(settings, errorHandler);
             var weightCalculator = new WeightCalculator(settings);
 

@@ -2,35 +2,15 @@ namespace ClickIt.UI.Settings.Panels
 {
     internal sealed class MechanicsTablePanelRenderer(
         ClickItSettings settings,
-        ItemFiltersPanelRenderer itemFiltersPanelRenderer,
-        UltimatumSettingsPanelRenderer ultimatumSettingsPanelRenderer,
-        AltarSettingsPanelRenderer altarSettingsPanelRenderer)
+        MechanicsEmbeddedSettingsPanelRenderer embeddedSettingsPanelRenderer)
     {
         private readonly ClickItSettings _settings = settings;
-        private readonly ItemFiltersPanelRenderer _itemFiltersPanelRenderer = itemFiltersPanelRenderer;
-        private readonly UltimatumSettingsPanelRenderer _ultimatumSettingsPanelRenderer = ultimatumSettingsPanelRenderer;
-        private readonly AltarSettingsPanelRenderer _altarSettingsPanelRenderer = altarSettingsPanelRenderer;
+        private readonly MechanicsEmbeddedSettingsPanelRenderer _embeddedSettingsPanelRenderer = embeddedSettingsPanelRenderer;
 
         private const string ClickMechanicsListId = "Click##Mechanics";
         private const string DontClickMechanicsListId = "DontClick##Mechanics";
         private const float ExpandedColumnWeight = 0.72f;
         private const float CollapsedColumnWeight = 0.28f;
-
-        private readonly struct ChestDropSettleSettingsDescriptor(
-            string labelPrefix,
-            string idPrefix,
-            ToggleNode pauseNode,
-            RangeNode<int> initialDelayNode,
-            RangeNode<int> pollIntervalNode,
-            RangeNode<int> quietWindowNode)
-        {
-            public string LabelPrefix { get; } = labelPrefix;
-            public string IdPrefix { get; } = idPrefix;
-            public ToggleNode PauseNode { get; } = pauseNode;
-            public RangeNode<int> InitialDelayNode { get; } = initialDelayNode;
-            public RangeNode<int> PollIntervalNode { get; } = pollIntervalNode;
-            public RangeNode<int> QuietWindowNode { get; } = quietWindowNode;
-        }
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
@@ -270,7 +250,7 @@ namespace ClickIt.UI.Settings.Panels
             if (string.Equals(group.Id, "league-chests", StringComparison.OrdinalIgnoreCase))
             {
                 DrawLeagueChestGroupSubmenu(listId, group, entries);
-                DrawMechanicGroupExtraSettings(group.Id);
+                _embeddedSettingsPanelRenderer.DrawMechanicGroupExtraSettings(group.Id);
                 ImGui.Unindent();
                 return;
             }
@@ -290,7 +270,7 @@ namespace ClickIt.UI.Settings.Panels
                 }
             }
 
-            DrawMechanicGroupExtraSettings(group.Id);
+            _embeddedSettingsPanelRenderer.DrawMechanicGroupExtraSettings(group.Id);
 
             ImGui.Unindent();
         }
@@ -367,56 +347,6 @@ namespace ClickIt.UI.Settings.Panels
             }
         }
 
-        private void DrawMechanicGroupExtraSettings(string groupId)
-        {
-            if (string.Equals(groupId, "basic-chests", StringComparison.OrdinalIgnoreCase))
-            {
-                DrawChestDropSettleSettings(new ChestDropSettleSettingsDescriptor("Basic Chest", "BasicChests", _settings.PauseAfterOpeningBasicChests, _settings.PauseAfterOpeningBasicChestsInitialDelayMs, _settings.PauseAfterOpeningBasicChestsPollIntervalMs, _settings.PauseAfterOpeningBasicChestsQuietWindowMs));
-                return;
-            }
-
-            if (string.Equals(groupId, "league-chests", StringComparison.OrdinalIgnoreCase))
-            {
-                DrawChestDropSettleSettings(new ChestDropSettleSettingsDescriptor("League Mechanic Chest", "LeagueChests", _settings.PauseAfterOpeningLeagueChests, _settings.PauseAfterOpeningLeagueChestsInitialDelayMs, _settings.PauseAfterOpeningLeagueChestsPollIntervalMs, _settings.PauseAfterOpeningLeagueChestsQuietWindowMs));
-                return;
-            }
-
-            if (string.Equals(groupId, "delve", StringComparison.OrdinalIgnoreCase))
-            {
-                DrawDelveSettings();
-                return;
-            }
-
-            if (string.Equals(groupId, "ultimatum", StringComparison.OrdinalIgnoreCase))
-            {
-                DrawUltimatumSettings();
-                return;
-            }
-
-            if (string.Equals(groupId, "altars", StringComparison.OrdinalIgnoreCase))
-            {
-                DrawAltarsSettings();
-            }
-        }
-
-        private void DrawChestDropSettleSettings(ChestDropSettleSettingsDescriptor descriptor)
-        {
-            ImGui.Spacing();
-            SettingsUiRenderHelpers.DrawToggleNodeControl($"Wait for Drops to Settle##{descriptor.IdPrefix}PauseEnabled", descriptor.PauseNode, $"When enabled, ClickIt waits for new loot labels after opening a {descriptor.LabelPrefix} before resuming clicks.");
-            SettingsUiRenderHelpers.DrawToggleAndRangeNodeControls(
-                $"Allow Nearby Mechanics while Waiting##{descriptor.IdPrefix}AllowNearbyMechanics",
-                _settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle,
-                "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.",
-                $"Nearby mechanic distance##{descriptor.IdPrefix}AllowNearbyMechanicsDistance",
-                _settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance,
-                0,
-                100,
-                "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
-            SettingsUiRenderHelpers.DrawRangeNodeControl($"Initial delay (ms)##{descriptor.IdPrefix}InitialDelayMs", descriptor.InitialDelayNode, 100, 1500, "How long to wait after click confirmation before checking for new labels.");
-            SettingsUiRenderHelpers.DrawRangeNodeControl($"Poll interval (ms)##{descriptor.IdPrefix}PollIntervalMs", descriptor.PollIntervalNode, 50, 500, "How frequently ClickIt checks ItemsOnGroundLabels for newly added drops.");
-            SettingsUiRenderHelpers.DrawRangeNodeControl($"Quiet window (ms)##{descriptor.IdPrefix}QuietWindowMs", descriptor.QuietWindowNode, 100, 2000, "Loot is considered settled after this many milliseconds pass without new labels.");
-        }
-
         private void ResetMechanicsTableDefaults()
         {
             foreach (MechanicToggleTableEntry entry in _settings.GetMechanicTableEntries())
@@ -431,106 +361,7 @@ namespace ClickIt.UI.Settings.Panels
                 || string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase);
 
         private void DrawMechanicEntrySubmenu(string entryId)
-        {
-            ImGui.Indent();
-
-            if (string.Equals(entryId, MechanicIds.Items, StringComparison.OrdinalIgnoreCase))
-            {
-                _itemFiltersPanelRenderer.DrawItemTypeFiltersPanel(embedded: true);
-            }
-            else if (string.Equals(entryId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase))
-            {
-                SettingsUiRenderHelpers.DrawToggleNodeControl(
-                    "Corrupt ALL Essences##MechanicsEssenceCorruptAll",
-                    _settings.CorruptAllEssences,
-                    "Overrides the essence table and attempts to corrupt every eligible essence encounter.");
-
-                if (_settings.ShowEssenceCorruptionTablePanel)
-                {
-                    _itemFiltersPanelRenderer.DrawEssenceCorruptionTablePanel(embedded: true);
-                }
-            }
-            else if (string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase))
-            {
-                DrawStrongboxSettings();
-            }
-
-            ImGui.Unindent();
-        }
-
-        private void DrawStrongboxSettings()
-        {
-            ImGui.Spacing();
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Show Strongbox Overlay##MechanicsStrongboxesOverlay",
-                _settings.ShowStrongboxFrames,
-                "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked.");
-            _itemFiltersPanelRenderer.DrawStrongboxFilterTablePanel(embedded: true);
-        }
-
-        private void DrawDelveSettings()
-        {
-            ImGui.Spacing();
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Flares##MechanicsDelveFlares",
-                _settings.ClickDelveFlares,
-                "Use flares when darkness stacks and health or energy shield thresholds are reached.");
-            SettingsUiRenderHelpers.DrawRangeNodeControl(
-                "Darkness Debuff Stacks##MechanicsDelveStacks",
-                _settings.DarknessDebuffStacks,
-                1,
-                10,
-                "Minimum darkness debuff stacks before a flare can be used.");
-            SettingsUiRenderHelpers.DrawRangeNodeControl(
-                "Flare Health %##MechanicsDelveHealth",
-                _settings.DelveFlareHealthThreshold,
-                2,
-                100,
-                "Health threshold below which ClickIt can use a flare.");
-            SettingsUiRenderHelpers.DrawRangeNodeControl(
-                "Flare Energy Shield %##MechanicsDelveEnergyShield",
-                _settings.DelveFlareEnergyShieldThreshold,
-                2,
-                100,
-                "Energy shield threshold below which ClickIt can use a flare.");
-            DrawHotkeyNode(
-                _settings.DelveFlareHotkey,
-                "Flare Hotkey##MechanicsDelveFlareHotkey",
-                "Set this to your in-game keybind for flares. The plugin will press this button to use a flare.");
-        }
-
-        private void DrawUltimatumSettings()
-        {
-            ImGui.Spacing();
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Show Option Overlay##MechanicsUltimatumOverlay",
-                _settings.ShowUltimatumOptionOverlay,
-                "Draws outlines on Ultimatum options: green for the selected option and priority colors for the other options.");
-
-            bool modifiersOpen = ImGui.TreeNode("Modifier Priority##MechanicsUltimatumModifiers");
-            if (modifiersOpen)
-            {
-                _ultimatumSettingsPanelRenderer.DrawModifierTablePanel(embedded: true);
-                ImGui.TreePop();
-            }
-
-            bool takeRewardOpen = ImGui.TreeNode("Grueling Gauntlet##MechanicsUltimatumTakeReward");
-            if (!takeRewardOpen)
-                return;
-
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Click Take Reward Button##MechanicsUltimatumTakeRewardButton",
-                _settings.ClickUltimatumTakeRewardButton,
-                "When enabled, ClickIt can press the Take Reward button for Grueling Gauntlet based on your table decisions.");
-            _ultimatumSettingsPanelRenderer.DrawTakeRewardModifierTablePanel(embedded: true);
-            ImGui.TreePop();
-        }
-
-        private void DrawAltarsSettings()
-        {
-            ImGui.Spacing();
-            _altarSettingsPanelRenderer.DrawAltarsPanel(embedded: true);
-        }
+            => _embeddedSettingsPanelRenderer.DrawMechanicEntrySubmenu(entryId);
 
         private (float LeftColumnWeight, float RightColumnWeight) GetMechanicsTableColumnWeights()
         {
@@ -564,12 +395,6 @@ namespace ClickIt.UI.Settings.Panels
                 return (CollapsedColumnWeight, ExpandedColumnWeight);
 
             return (0.5f, 0.5f);
-        }
-
-        private static void DrawHotkeyNode(object hotkeyNode, string label, string tooltip)
-        {
-            hotkeyNode.GetType().GetMethod("DrawPickerButton", BindingFlags.Instance | BindingFlags.Public)?.Invoke(hotkeyNode, [label]);
-            SettingsUiRenderHelpers.DrawInlineTooltip(tooltip);
         }
 
         private bool IsExpandedMechanicTableRow(string listId, string rowId)

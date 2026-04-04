@@ -4,56 +4,32 @@ namespace ClickIt.Tests.Core.Settings
     public class ClickItSettingsInputSafetyTests
     {
         [TestMethod]
-        public void WrapperSubmenus_ProxyRootSettingsNodes()
+        public void Constructor_InitializesSettingsUiOwners_AndScreenNodes()
         {
             var settings = new ClickItSettings();
-            var debugTesting = new ClickItDebugSettingsSubmenu(settings);
-            var controls = new ClickItControlsSettingsSubmenu(settings);
 
-            debugTesting.DebugMode.Should().BeSameAs(settings.DebugMode);
-            debugTesting.DebugTestingPanel.Should().BeSameAs(settings.DebugTestingPanel);
-            controls.ClickLabelKey.Should().BeSameAs(settings.ClickLabelKey);
-            controls.Pathfinding.UseMovementSkillsForOffscreenPathfinding.Should().BeSameAs(settings.UseMovementSkillsForOffscreenPathfinding);
-            controls.LazyMode.LazyModeDisableKey.Should().BeSameAs(settings.LazyModeDisableKey);
-        }
-
-        [TestMethod]
-        public void RootSettingsSurface_DoesNotExposePublicWrapperProperties()
-        {
-            typeof(ClickItSettings).GetProperty("DebugTesting", BindingFlags.Instance | BindingFlags.Public)
-                .Should()
-                .BeNull();
-
-            typeof(ClickItSettings).GetProperty("Controls", BindingFlags.Instance | BindingFlags.Public)
-                .Should()
-                .BeNull();
-        }
-
-        [TestMethod]
-        public void MovedBackingProperties_AreHiddenFromRawSettingsTree()
-        {
-            var debugModeProperty = typeof(ClickItSettings).GetProperty(nameof(ClickItSettings.DebugMode));
-            var clickLabelKeyProperty = typeof(ClickItSettings).GetProperty(nameof(ClickItSettings.ClickLabelKey));
-            var lazyModeDisableKeyProperty = typeof(ClickItSettings).GetProperty(nameof(ClickItSettings.LazyModeDisableKey));
-
-            debugModeProperty.Should().NotBeNull();
-            clickLabelKeyProperty.Should().NotBeNull();
-            lazyModeDisableKeyProperty.Should().NotBeNull();
-
-            debugModeProperty!
-                .GetCustomAttributes(typeof(IgnoreMenuAttribute), inherit: false)
-                .Should()
-                .NotBeEmpty();
-
-            clickLabelKeyProperty!
-                .GetCustomAttributes(typeof(IgnoreMenuAttribute), inherit: false)
-                .Should()
-                .NotBeEmpty();
-
-            lazyModeDisableKeyProperty!
-                .GetCustomAttributes(typeof(IgnoreMenuAttribute), inherit: false)
-                .Should()
-                .NotBeEmpty();
+            settings.DebugTestingPanel.Should().NotBeNull();
+            settings.ControlsPanel.Should().NotBeNull();
+            settings.ControlsSliderWidthStart.Should().NotBeNull();
+            settings.ControlsSliderWidthEnd.Should().NotBeNull();
+            settings.PathfindingSliderWidthStart.Should().NotBeNull();
+            settings.PathfindingSliderWidthEnd.Should().NotBeNull();
+            settings.LazyModeSliderWidthStart.Should().NotBeNull();
+            settings.LazyModeSliderWidthEnd.Should().NotBeNull();
+            settings.LazyModeNearbyMonsterRulesPanel.Should().NotBeNull();
+            settings.PrioritiesSliderWidthStart.Should().NotBeNull();
+            settings.PrioritiesSliderWidthEnd.Should().NotBeNull();
+            settings.DelveSliderWidthStart.Should().NotBeNull();
+            settings.DelveSliderWidthEnd.Should().NotBeNull();
+            settings.AltarsPanel.Should().NotBeNull();
+            settings.AltarModWeights.Should().NotBeNull();
+            settings.ItemTypeFiltersPanel.Should().NotBeNull();
+            settings.MechanicPriorityTablePanel.Should().NotBeNull();
+            settings.EssenceCorruptionTablePanel.Should().NotBeNull();
+            settings.StrongboxFilterTablePanel.Should().NotBeNull();
+            settings.MechanicsTablePanel.Should().NotBeNull();
+            settings.UltimatumModifierTablePanel.Should().NotBeNull();
+            settings.UltimatumTakeRewardModifierTablePanel.Should().NotBeNull();
         }
 
         [TestMethod]
@@ -101,6 +77,14 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
+        public void LegacySettingsTreeGate_DefaultsToHidden()
+        {
+            var settings = new ClickItSettings();
+
+            settings.ShowLegacySettingsTreeNodes.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void ShowEssenceCorruptionTablePanel_DisabledWhenCorruptAllEnabled()
         {
             var settings = new ClickItSettings();
@@ -110,47 +94,5 @@ namespace ClickIt.Tests.Core.Settings
             settings.ShowEssenceCorruptionTablePanel.Should().BeFalse();
         }
 
-        [TestMethod]
-        public void LegacyMechanicCategorySections_AreHiddenFromTopLevelSettingsTree()
-        {
-            Dictionary<string, string> propertyConditions = new()
-            {
-                [nameof(ClickItSettings.ItemPickupCategory)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.ItemTypeFiltersPanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.Essences)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.CorruptAllEssences)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.EssenceCorruptionTablePanel)] = nameof(ClickItSettings.ShowLegacyEssenceCorruptionTablePanel),
-                [nameof(ClickItSettings.Ultimatum)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.ShowUltimatumOptionOverlay)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.UltimatumModifierTablePanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.UltimatumTakeRewardWhenChosenCategory)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.ClickUltimatumTakeRewardButton)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.UltimatumTakeRewardModifierTablePanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.Strongboxes)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.ShowStrongboxFrames)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.StrongboxFilterTablePanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.AltarsCategory)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.AltarsPanel)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.Delve)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.ClickDelveFlares)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.DelveFlareHotkey)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.DarknessDebuffStacks)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.DelveFlareHealthThreshold)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings),
-                [nameof(ClickItSettings.DelveFlareEnergyShieldThreshold)] = nameof(ClickItSettings.ShowLegacyMechanicCategorySectionsInSettings)
-            };
-
-            foreach ((string propertyName, string expectedConditionName) in propertyConditions)
-            {
-                var property = typeof(ClickItSettings).GetProperty(propertyName);
-
-                property.Should().NotBeNull();
-                property!
-                    .GetCustomAttributes(typeof(ConditionalDisplayAttribute), inherit: false)
-                    .Cast<ConditionalDisplayAttribute>()
-                    .Select(attribute => attribute.ConditionMethodName)
-                    .Should()
-                    .Contain(expectedConditionName);
-            }
-        }
     }
 }

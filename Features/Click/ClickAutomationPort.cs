@@ -14,7 +14,7 @@ namespace ClickIt.Features.Click
         private readonly ErrorHandler _errorHandler;
         private readonly AltarService _altarService;
         private readonly WeightCalculator _weightCalculator;
-        private readonly AltarDisplayRenderer _altarDisplayRenderer;
+        private readonly AltarChoiceEvaluator _altarChoiceEvaluator;
         private readonly Func<Vector2, string, bool> _pointIsInClickableArea;
         private readonly InputHandler _inputHandler;
         private readonly ILabelInteractionPort _labelInteractionPort;
@@ -60,7 +60,7 @@ namespace ClickIt.Features.Click
             ErrorHandler errorHandler,
             AltarService altarService,
             WeightCalculator weightCalculator,
-            AltarDisplayRenderer altarDisplayRenderer,
+            AltarChoiceEvaluator altarChoiceEvaluator,
             Func<Vector2, string, bool> pointIsInClickableArea,
             InputHandler inputHandler,
             ILabelInteractionPort labelInteractionPort,
@@ -76,7 +76,7 @@ namespace ClickIt.Features.Click
             _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
             _altarService = altarService ?? throw new ArgumentNullException(nameof(altarService));
             _weightCalculator = weightCalculator ?? throw new ArgumentNullException(nameof(weightCalculator));
-            _altarDisplayRenderer = altarDisplayRenderer ?? throw new ArgumentNullException(nameof(altarDisplayRenderer));
+            _altarChoiceEvaluator = altarChoiceEvaluator ?? throw new ArgumentNullException(nameof(altarChoiceEvaluator));
             _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
             _labelInteractionPort = labelInteractionPort ?? throw new ArgumentNullException(nameof(labelInteractionPort));
@@ -98,7 +98,8 @@ namespace ClickIt.Features.Click
                 PointIsInClickableArea: pointIsInClickableArea,
                 LogMessage: message => errorHandler.LogMessage(message),
                 FreezeDebugTelemetrySnapshot: freezeDebugTelemetrySnapshot));
-            _lockedInteractionDispatcher = new LockedInteractionDispatcher(inputHandler);
+            var interactionExecutor = new InteractionExecutor(settings, performanceMonitor, inputHandler.IsClickHotkeyActiveForCurrentInputState, errorHandler);
+            _lockedInteractionDispatcher = new LockedInteractionDispatcher(interactionExecutor);
             _mechanicPriorityContextProvider = new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService());
         }
 
@@ -131,6 +132,9 @@ namespace ClickIt.Features.Click
 
         internal bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => UltimatumAutomation.TryGetOptionPreview(out previews);
+
+        internal long GetSuccessfulClickSequence()
+            => _lockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
 
         internal ClickDebugSnapshot GetLatestClickDebug()
             => _support.GetLatestClickDebug();

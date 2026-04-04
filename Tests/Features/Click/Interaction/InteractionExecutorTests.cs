@@ -1,8 +1,38 @@
-namespace ClickIt.Tests.Shared.Input
+namespace ClickIt.Tests.Features.Click.Interaction
 {
     [TestClass]
-    public class InputHandlerHoverVerificationTests
+    public class InteractionExecutorTests
     {
+        [TestMethod]
+        public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsExpectedValues()
+        {
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: false,
+                clickHotkeyActive: false).Should().BeTrue();
+
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: false,
+                clickHotkeyActive: true).Should().BeFalse();
+
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: true,
+                clickHotkeyActive: false).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsFalse_WhenExplicitOverrideEnabled()
+        {
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: false,
+                clickHotkeyActive: false,
+                allowWhenHotkeyInactive: true).Should().BeFalse();
+
+            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
+                lazyModeEnabled: true,
+                clickHotkeyActive: false,
+                allowWhenHotkeyInactive: true).Should().BeFalse();
+        }
+
         [DataTestMethod]
         [DataRow(false, false, 100UL, 0UL, false)]
         [DataRow(false, false, 100UL, 200UL, false)]

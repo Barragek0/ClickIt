@@ -210,7 +210,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void GetSnapshot_ProjectsAltarTelemetry_WhenAltarServiceAvailable()
         {
-            var altarService = CreateAltarService(
+            var altarService = TestBuilders.BuildTelemetryAltarService(
                 topUpsides: ["Top Upside"],
                 topDownsides: ["Top Downside"],
                 bottomUpsides: ["Bottom Upside"],
@@ -249,7 +249,7 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void FreezeSnapshot_PreservesProjectedAltarTelemetry_WhileFrozen()
         {
-            AltarService currentAltarService = CreateAltarService(
+            AltarService currentAltarService = TestBuilders.BuildTelemetryAltarService(
                 topUpsides: ["Frozen Top"],
                 topDownsides: ["Frozen Down"],
                 bottomUpsides: [],
@@ -273,7 +273,7 @@ namespace ClickIt.Tests.Core.Runtime
 
             service.FreezeSnapshot("hold", holdDurationMs: 100);
 
-            currentAltarService = CreateAltarService(
+            currentAltarService = TestBuilders.BuildTelemetryAltarService(
                 topUpsides: ["Live Top"],
                 topDownsides: ["Live Down"],
                 bottomUpsides: [],
@@ -288,32 +288,6 @@ namespace ClickIt.Tests.Core.Runtime
             snapshot.Altar.ServiceDebug.LastScanExarchLabels.Should().Be(1);
             snapshot.Altar.ServiceDebug.LastScanEaterLabels.Should().Be(2);
             snapshot.Altar.ServiceDebug.LastProcessedAltarType.Should().Be("SearingExarch");
-        }
-
-        private static AltarService CreateAltarService(
-            IReadOnlyList<string> topUpsides,
-            IReadOnlyList<string> topDownsides,
-            IReadOnlyList<string> bottomUpsides,
-            IReadOnlyList<string> bottomDownsides,
-            int lastScanExarchLabels,
-            int lastScanEaterLabels,
-            string lastProcessedAltarType)
-        {
-            var settings = new ClickItSettings();
-            var owner = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
-            var altarService = new AltarService(owner, settings, cachedLabels: null);
-            altarService.AddAltarComponent(new PrimaryAltarComponent(
-                AltarType.EaterOfWorlds,
-                new SecondaryAltarComponent(element: null, upsides: [.. topUpsides], downsides: [.. topDownsides]),
-                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton)),
-                new SecondaryAltarComponent(element: null, upsides: [.. bottomUpsides], downsides: [.. bottomDownsides]),
-                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton))));
-            altarService.DebugInfo.LastScanExarchLabels = lastScanExarchLabels;
-            altarService.DebugInfo.LastScanEaterLabels = lastScanEaterLabels;
-            altarService.DebugInfo.LastProcessedAltarType = lastProcessedAltarType;
-            altarService.DebugInfo.ComponentsProcessed = 1;
-            altarService.DebugInfo.ComponentsAdded = 1;
-            return altarService;
         }
     }
 }

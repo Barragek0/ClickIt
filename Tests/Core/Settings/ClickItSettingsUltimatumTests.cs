@@ -42,7 +42,6 @@ namespace ClickIt.Tests.Core.Settings
             var settings = new ClickItSettings();
 
             settings.ClickUltimatumTakeRewardButton.Value.Should().BeTrue();
-            settings.ShowUltimatumTakeRewardModifierTablePanel.Should().BeTrue();
             settings.GetUltimatumTakeRewardModifierNames().Should().BeEmpty();
             settings.UltimatumContinueModifierNames.Should().HaveCount(UltimatumModifiersConstants.AllModifierNamesWithStages.Length);
         }

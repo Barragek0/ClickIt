@@ -1,10 +1,10 @@
 namespace ClickIt.UI.Settings.Panels
 {
-    internal sealed class ItemFiltersPanelRenderer(ClickItSettings settings)
+    internal sealed class ItemTypeFiltersPanelRenderer(ClickItSettings settings)
     {
         private readonly ClickItSettings _settings = settings;
 
-        public void DrawItemTypeFiltersPanel(bool embedded = false)
+        public void DrawPanel(bool embedded = false)
         {
             SettingsDefaultsService.EnsureItemTypeFiltersInitialized(_settings);
 
@@ -30,50 +30,6 @@ namespace ClickIt.UI.Settings.Panels
                 rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
                 drawLeft: () => DrawItemTypeList("Click##ItemType", _settings.ItemTypeWhitelistIds, moveToWhitelist: false, textColor: SettingsUiPalette.WhitelistTextColor),
                 drawRight: () => DrawItemTypeList("Don't Click##ItemType", _settings.ItemTypeBlacklistIds, moveToWhitelist: true, textColor: SettingsUiPalette.BlacklistTextColor));
-        }
-
-        public void DrawEssenceCorruptionTablePanel(bool embedded = false)
-        {
-            SettingsDefaultsService.EnsureEssenceCorruptionFiltersInitialized(_settings);
-
-            SettingsUiRenderHelpers.DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref _settings.UiState.EssenceSearchFilter);
-            if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
-            {
-                SettingsDefaultsService.ResetEssenceCorruptionDefaults(_settings);
-            }
-
-            ImGui.Spacing();
-
-            SettingsUiRenderHelpers.DrawDualTransferTable(
-                tableId: "EssenceCorruptionLists",
-                leftHeader: "Corrupt",
-                rightHeader: "Don't Corrupt",
-                leftBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
-                rightBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                drawLeft: () => DrawEssenceCorruptionList("Corrupt##Essence", _settings.EssenceCorruptNames, moveToCorrupt: false, textColor: new Vector4(0.8f, 0.4f, 0.4f, 1.0f)),
-                drawRight: () => DrawEssenceCorruptionList("DontCorrupt##Essence", _settings.EssenceDontCorruptNames, moveToCorrupt: true, textColor: new Vector4(0.4f, 0.8f, 0.4f, 1.0f)));
-        }
-
-        public void DrawStrongboxFilterTablePanel(bool embedded = false)
-        {
-            SettingsDefaultsService.EnsureStrongboxFiltersInitialized(_settings);
-
-            SettingsUiRenderHelpers.DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref _settings.UiState.StrongboxSearchFilter);
-            if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
-            {
-                SettingsDefaultsService.ResetStrongboxFilterDefaults(_settings);
-            }
-
-            ImGui.Spacing();
-
-            SettingsUiRenderHelpers.DrawDualTransferTable(
-                tableId: "StrongboxFilterLists",
-                leftHeader: "Click",
-                rightHeader: "Don't Click",
-                leftBackground: new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                rightBackground: new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
-                drawLeft: () => DrawStrongboxFilterList("Click##Strongbox", _settings.StrongboxClickIds, moveToClick: false, textColor: SettingsUiPalette.WhitelistTextColor),
-                drawRight: () => DrawStrongboxFilterList("DontClick##Strongbox", _settings.StrongboxDontClickIds, moveToClick: true, textColor: SettingsUiPalette.BlacklistTextColor));
         }
 
         private void DrawItemTypeList(string id, HashSet<string> sourceSet, bool moveToWhitelist, Vector4 textColor)
@@ -146,85 +102,6 @@ namespace ClickIt.UI.Settings.Panels
 
             string examples = string.Join(", ", category.ExampleItems);
             SettingsUiRenderHelpers.DrawWrappedText($"Examples: {examples}", new Vector4(0.65f, 0.65f, 0.65f, 1f), 1f);
-        }
-
-        private void DrawEssenceCorruptionList(string id, HashSet<string> sourceSet, bool moveToCorrupt, Vector4 textColor)
-        {
-            ImGui.PushID(id);
-
-            bool hasEntries = false;
-            foreach (string essenceName in ClickItSettings.EssenceAllTableNames)
-            {
-                if (!sourceSet.Contains(essenceName))
-                    continue;
-                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.EssenceSearchFilter, essenceName))
-                    continue;
-
-                hasEntries = true;
-                bool arrowClicked = SettingsUiRenderHelpers.DrawTransferListRow(id, essenceName, essenceName, moveToCorrupt, textColor);
-
-                if (arrowClicked)
-                {
-                    MoveEssenceName(essenceName, moveToCorrupt);
-                    break;
-                }
-            }
-
-            SettingsUiRenderHelpers.DrawNoEntriesPlaceholder(hasEntries);
-
-            ImGui.PopID();
-        }
-
-        private void DrawStrongboxFilterList(string id, HashSet<string> sourceSet, bool moveToClick, Vector4 textColor)
-        {
-            ImGui.PushID(id);
-
-            bool hasEntries = false;
-            foreach (ClickItSettings.StrongboxFilterEntry entry in ClickItSettings.StrongboxTableEntries)
-            {
-                if (!sourceSet.Contains(entry.Id))
-                    continue;
-                if (!MatchesStrongboxSearch(entry, _settings.UiState.StrongboxSearchFilter))
-                    continue;
-
-                hasEntries = true;
-                bool arrowClicked = SettingsUiRenderHelpers.DrawTransferListRow(id, entry.Id, entry.DisplayName, moveToClick, textColor);
-
-                if (arrowClicked)
-                {
-                    MoveStrongboxFilter(entry.Id, moveToClick);
-                    break;
-                }
-            }
-
-            SettingsUiRenderHelpers.DrawNoEntriesPlaceholder(hasEntries);
-
-            ImGui.PopID();
-        }
-
-        private void MoveStrongboxFilter(string strongboxId, bool moveToClick)
-        {
-            HashSet<string> source = moveToClick ? _settings.StrongboxDontClickIds : _settings.StrongboxClickIds;
-            HashSet<string> target = moveToClick ? _settings.StrongboxClickIds : _settings.StrongboxDontClickIds;
-
-            source.Remove(strongboxId);
-            target.Add(strongboxId);
-        }
-
-        private static bool MatchesStrongboxSearch(ClickItSettings.StrongboxFilterEntry entry, string filter)
-        {
-            return SettingsUiRenderHelpers.MatchesSearch(
-                filter,
-                entry.MetadataIdentifiers.Prepend(entry.DisplayName));
-        }
-
-        private void MoveEssenceName(string essenceName, bool moveToCorrupt)
-        {
-            HashSet<string> source = moveToCorrupt ? _settings.EssenceDontCorruptNames : _settings.EssenceCorruptNames;
-            HashSet<string> target = moveToCorrupt ? _settings.EssenceCorruptNames : _settings.EssenceDontCorruptNames;
-
-            source.Remove(essenceName);
-            target.Add(essenceName);
         }
 
         private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)
@@ -332,6 +209,5 @@ namespace ClickIt.UI.Settings.Panels
                 filter,
                 category.MetadataIdentifiers.Prepend(category.DisplayName).Append(category.Id));
         }
-
     }
 }

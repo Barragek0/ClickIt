@@ -14,7 +14,7 @@ namespace ClickIt.Tests.Features.Observability
             settings.ClickInitialUltimatum.Value = true;
             settings.ClickUltimatumChoices.Value = false;
 
-            DebugTelemetrySnapshot snapshot = global::ClickIt.Features.Observability.TelemetryProjection.DebugTelemetryProjection.Build(
+            DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(
                 clickAutomationPort: null,
                 labelFilterPort: null,
                 pathfindingService: null,
@@ -48,7 +48,7 @@ namespace ClickIt.Tests.Features.Observability
             errorHandler.LogError("first error");
             errorHandler.LogError("second error");
 
-            DebugTelemetrySnapshot snapshot = global::ClickIt.Features.Observability.TelemetryProjection.DebugTelemetryProjection.Build(
+            DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(
                 clickAutomationPort: null,
                 labelFilterPort: null,
                 pathfindingService: null,
@@ -73,7 +73,7 @@ namespace ClickIt.Tests.Features.Observability
         [TestMethod]
         public void Build_ProjectsAltarTelemetry_WhenAltarServiceIsAvailable()
         {
-            AltarService altarService = CreateAltarService(
+            AltarService altarService = TestBuilders.BuildTelemetryAltarService(
                 topUpsides: ["Top Upside"],
                 topDownsides: ["Top Downside"],
                 bottomUpsides: ["Bottom Upside"],
@@ -82,7 +82,7 @@ namespace ClickIt.Tests.Features.Observability
                 lastScanEaterLabels: 4,
                 lastProcessedAltarType: "EaterOfWorlds");
 
-            DebugTelemetrySnapshot snapshot = global::ClickIt.Features.Observability.TelemetryProjection.DebugTelemetryProjection.Build(
+            DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(
                 clickAutomationPort: null,
                 labelFilterPort: null,
                 pathfindingService: null,
@@ -104,32 +104,6 @@ namespace ClickIt.Tests.Features.Observability
             snapshot.Altar.ServiceDebug.LastScanExarchLabels.Should().Be(3);
             snapshot.Altar.ServiceDebug.LastScanEaterLabels.Should().Be(4);
             snapshot.Altar.ServiceDebug.LastProcessedAltarType.Should().Be("EaterOfWorlds");
-        }
-
-        private static AltarService CreateAltarService(
-            IReadOnlyList<string> topUpsides,
-            IReadOnlyList<string> topDownsides,
-            IReadOnlyList<string> bottomUpsides,
-            IReadOnlyList<string> bottomDownsides,
-            int lastScanExarchLabels,
-            int lastScanEaterLabels,
-            string lastProcessedAltarType)
-        {
-            var settings = new ClickItSettings();
-            var owner = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
-            var altarService = new AltarService(owner, settings, cachedLabels: null);
-            altarService.AddAltarComponent(new PrimaryAltarComponent(
-                AltarType.EaterOfWorlds,
-                new SecondaryAltarComponent(element: null, upsides: [.. topUpsides], downsides: [.. topDownsides]),
-                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton)),
-                new SecondaryAltarComponent(element: null, upsides: [.. bottomUpsides], downsides: [.. bottomDownsides]),
-                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton))));
-            altarService.DebugInfo.LastScanExarchLabels = lastScanExarchLabels;
-            altarService.DebugInfo.LastScanEaterLabels = lastScanEaterLabels;
-            altarService.DebugInfo.LastProcessedAltarType = lastProcessedAltarType;
-            altarService.DebugInfo.ComponentsProcessed = 1;
-            altarService.DebugInfo.ComponentsAdded = 1;
-            return altarService;
         }
     }
 }

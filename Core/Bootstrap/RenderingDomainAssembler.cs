@@ -7,6 +7,7 @@ namespace ClickIt.Core.Bootstrap
         ClickHotkeyToggleRenderer ClickHotkeyToggleRenderer,
         InventoryFullWarningRenderer InventoryFullWarningRenderer,
         PathfindingRenderer PathfindingRenderer,
+        AltarChoiceEvaluator AltarChoiceEvaluator,
         AltarDisplayRenderer AltarDisplayRenderer);
 
     internal static class RenderingDomainAssembler
@@ -26,12 +27,14 @@ namespace ClickIt.Core.Bootstrap
                     now,
                     core.DeferredTextQueue.GetPendingTextSnapshot(0)));
             var pathfindingRenderer = new PathfindingRenderer(core.PathfindingService);
+            var altarChoiceEvaluator = new AltarChoiceEvaluator(settings, owner.LogMessage);
 
             var altarDisplayRenderer = new AltarDisplayRenderer(
                 owner.Graphics,
                 settings,
                 gameController,
                 core.WeightCalculator,
+                altarChoiceEvaluator,
                 core.DeferredTextQueue,
                 core.DeferredFrameQueue,
                 core.AltarService,
@@ -44,6 +47,7 @@ namespace ClickIt.Core.Bootstrap
                 clickHotkeyToggleRenderer,
                 inventoryFullWarningRenderer,
                 pathfindingRenderer,
+                altarChoiceEvaluator,
                 altarDisplayRenderer);
         }
 

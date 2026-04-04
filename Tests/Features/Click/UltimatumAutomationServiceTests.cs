@@ -27,5 +27,54 @@ namespace ClickIt.Tests.Features.Click
 
             result.Should().BeFalse();
         }
+
+        [TestMethod]
+        public void TryClickPreferredModifier_ReturnsFalse_WhenLabelIsNull()
+        {
+            var settings = new ClickItSettings();
+            var gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
+            var cachedLabels = new TimeCache<List<LabelOnGround>>(() => [], 50);
+
+            var service = new UltimatumAutomationService(new UltimatumAutomationServiceDependencies(
+                settings,
+                gameController,
+                cachedLabels,
+                _ => true,
+                (_, _) => true,
+                _ => { },
+                (_, _) => { },
+                () => { },
+                () => false,
+                _ => { }));
+
+            bool result = service.TryClickPreferredModifier(null!, Vector2.Zero);
+
+            result.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryClickPreferredModifier_ReturnsFalse_WhenInitialUltimatumClickIsDisabled()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickInitialUltimatum.Value = false;
+            var gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
+            var cachedLabels = new TimeCache<List<LabelOnGround>>(() => [], 50);
+
+            var service = new UltimatumAutomationService(new UltimatumAutomationServiceDependencies(
+                settings,
+                gameController,
+                cachedLabels,
+                _ => true,
+                (_, _) => true,
+                _ => { },
+                (_, _) => { },
+                () => { },
+                () => false,
+                _ => { }));
+
+            bool result = service.TryClickPreferredModifier(null!, Vector2.Zero);
+
+            result.Should().BeFalse();
+        }
     }
 }

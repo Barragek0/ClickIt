@@ -9,21 +9,36 @@ namespace ClickIt.Features.Labels.Inventory.Composition
         private readonly int _inventoryProbeCacheWindowMs = inventoryProbeCacheWindowMs;
         private readonly int _inventoryDebugTrailCapacity = inventoryDebugTrailCapacity;
         private readonly InventoryDynamicAdapter _dynamicAdapter = new(new InventoryDynamicAdapterDependencies(InventoryDynamicAccess.TryGetFirstCollectionObject));
+        private InventoryLayoutCache? _layoutCache;
+        private InventoryLayoutEntryResolver? _layoutEntryResolver;
+        private InventoryItemEntityService? _itemEntityService;
         private InventoryProbeService? _probeService;
         private InventoryReadModelService? _snapshotProvider;
         private InventoryLayoutParser? _layoutParser;
 
         internal InventoryDomainServices Build()
         {
-            _layoutParser = new InventoryLayoutParser(new InventoryLayoutParserDependencies(
+            _layoutCache = new InventoryLayoutCache(_inventoryProbeCacheWindowMs);
+            _layoutEntryResolver = new InventoryLayoutEntryResolver(new InventoryLayoutEntryResolverDependencies(
                 InventoryDynamicAccess.EnumerateObjects,
-                TryGetCachedInventoryLayout,
-                SetCachedInventoryLayout,
-                TryGetPrimaryServerInventorySlotItems,
                 InventoryDynamicAccess.TryGetInventoryItemEntityFromEntry,
                 InventoryDomainFactory.TryResolveInventoryItemSize,
                 InventoryDynamicAccess.TryGetDynamicValueResult,
                 InventoryDynamicAccess.TryReadIntResult));
+
+            _layoutParser = new InventoryLayoutParser(new InventoryLayoutParserDependencies(
+                TryGetPrimaryServerInventorySlotItems,
+                _layoutCache,
+                _layoutEntryResolver,
+                InventoryDynamicAccess.TryReadIntResult));
+
+            _itemEntityService = new InventoryItemEntityService(new InventoryItemEntityServiceDependencies(
+                _inventoryProbeCacheWindowMs,
+                TryGetPrimaryServerInventory,
+                TryGetPrimaryServerInventorySlotItems,
+                InventoryDynamicAccess.EnumerateObjects,
+                InventoryDynamicAccess.TryGetInventoryItemEntityFromEntry,
+                InventoryDynamicAccess.ClassifyInventoryItemEntity));
 
             _snapshotProvider = new InventoryReadModelService(new InventorySnapshotProviderDependencies(
                 TryGetPrimaryServerInventory,
@@ -40,11 +55,7 @@ namespace ClickIt.Features.Labels.Inventory.Composition
                 _inventoryProbeCacheWindowMs,
                 _inventoryDebugTrailCapacity,
                 TryBuildInventorySnapshot,
-                TryGetPrimaryServerInventory,
-                TryGetPrimaryServerInventorySlotItems,
-                InventoryDynamicAccess.EnumerateObjects,
-                InventoryDynamicAccess.TryGetInventoryItemEntityFromEntry,
-                InventoryDynamicAccess.ClassifyInventoryItemEntity));
+                _layoutCache));
 
             InventoryStackMatchService stackMatchService = new(new InventoryStackMatchDependencies(TryEnumerateInventoryItemEntities));
 
@@ -64,6 +75,7 @@ namespace ClickIt.Features.Labels.Inventory.Composition
 
             InventoryInteractionPolicy interactionPolicy = new(
                 _probeService,
+                _itemEntityService,
                 pickupPolicy,
                 _dependencies.StoneOfPassageMetadataIdentifier);
 
@@ -135,27 +147,9 @@ namespace ClickIt.Features.Labels.Inventory.Composition
 
         private (bool Success, IReadOnlyList<Entity> Entities) TryEnumeratePrimaryInventoryItemEntitiesFast(object primaryInventory)
         {
-            bool success = _probeService!.TryEnumeratePrimaryInventoryItemEntitiesFast(primaryInventory, out IReadOnlyList<Entity> entities);
+            bool success = _itemEntityService!.TryEnumeratePrimaryInventoryItemEntitiesFast(primaryInventory, out IReadOnlyList<Entity> entities);
             return (success, entities);
         }
-
-        private (bool Success, InventoryLayoutSnapshot Snapshot) TryGetCachedInventoryLayout(
-            object primaryInventory,
-            long now,
-            int inventoryWidth,
-            int inventoryHeight)
-        {
-            bool success = _probeService!.TryGetCachedInventoryLayout(primaryInventory, now, inventoryWidth, inventoryHeight, out InventoryLayoutSnapshot snapshot);
-            return (success, snapshot);
-        }
-
-        private void SetCachedInventoryLayout(
-            object primaryInventory,
-            long now,
-            int inventoryWidth,
-            int inventoryHeight,
-            InventoryLayoutSnapshot snapshot)
-            => _probeService!.SetCachedInventoryLayout(primaryInventory, now, inventoryWidth, inventoryHeight, snapshot);
 
         private (bool InventoryFull, InventoryFullProbe Probe) IsInventoryFull(GameController? gameController)
         {
@@ -165,7 +159,7 @@ namespace ClickIt.Features.Labels.Inventory.Composition
 
         private (bool Success, IReadOnlyList<Entity> Items) TryEnumerateInventoryItemEntities(GameController? gameController)
         {
-            bool success = _probeService!.TryEnumerateInventoryItemEntities(gameController, out IReadOnlyList<Entity> items);
+            bool success = _itemEntityService!.TryEnumerateInventoryItemEntities(gameController, out IReadOnlyList<Entity> items);
             return (success, items);
         }
 

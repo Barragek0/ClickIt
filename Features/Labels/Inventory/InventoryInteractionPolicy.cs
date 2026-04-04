@@ -2,10 +2,12 @@ namespace ClickIt.Features.Labels.Inventory
 {
     internal sealed class InventoryInteractionPolicy(
         InventoryProbeService probeService,
+        InventoryItemEntityService itemEntityService,
         InventoryPickupPolicyEngine pickupPolicy,
         string stoneOfPassageMetadataIdentifier)
     {
         private readonly InventoryProbeService _probeService = probeService;
+        private readonly InventoryItemEntityService _itemEntityService = itemEntityService;
         private readonly InventoryPickupPolicyEngine _pickupPolicy = pickupPolicy;
         private readonly string _stoneOfPassageMetadataIdentifier = stoneOfPassageMetadataIdentifier;
 
@@ -28,14 +30,18 @@ namespace ClickIt.Features.Labels.Inventory
             return InventoryCoreLogic.ShouldAllowClosedDoorPastMechanic(hasStoneOfPassageInInventory, probe.Notes);
         }
 
-        public void ClearForShutdown() => _probeService.ClearForShutdown();
+        public void ClearForShutdown()
+        {
+            _probeService.ClearForShutdown();
+            _itemEntityService.ClearForShutdown();
+        }
 
         private bool HasMetadataPathInInventory(GameController? gameController)
         {
             if (string.IsNullOrWhiteSpace(_stoneOfPassageMetadataIdentifier))
                 return false;
 
-            if (!_probeService.TryEnumerateInventoryItemEntities(gameController, out IReadOnlyList<Entity> inventoryItems))
+            if (!_itemEntityService.TryEnumerateInventoryItemEntities(gameController, out IReadOnlyList<Entity> inventoryItems))
                 return false;
 
             for (int i = 0; i < inventoryItems.Count; i++)

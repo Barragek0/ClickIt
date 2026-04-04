@@ -140,5 +140,51 @@ namespace ClickIt.Tests.Core.Settings
 
             act.Should().NotThrow();
         }
+
+        [TestMethod]
+        public void TryInvokeHotkeyPicker_InvokesPublicDrawPickerButton_WhenPresent()
+        {
+            var hotkeyNode = new FakeHotkeyNode();
+
+            bool invoked = SettingsUiRenderHelpers.TryInvokeHotkeyPicker(hotkeyNode, "Flare Hotkey##MechanicsDelveFlareHotkey");
+
+            invoked.Should().BeTrue();
+            hotkeyNode.CallCount.Should().Be(1);
+            hotkeyNode.LastLabel.Should().Be("Flare Hotkey##MechanicsDelveFlareHotkey");
+        }
+
+        [TestMethod]
+        public void TryInvokeHotkeyPicker_ReturnsFalse_WhenNodeIsNull()
+        {
+            SettingsUiRenderHelpers.TryInvokeHotkeyPicker(null, "ignored").Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryInvokeHotkeyPicker_SwallowsExceptions_FromDrawPickerButton()
+        {
+            var hotkeyNode = new ThrowingFakeHotkeyNode();
+
+            bool invoked = SettingsUiRenderHelpers.TryInvokeHotkeyPicker(hotkeyNode, "bad-label");
+
+            invoked.Should().BeFalse();
+        }
+
+        private sealed class FakeHotkeyNode
+        {
+            public int CallCount { get; private set; }
+            public string LastLabel { get; private set; } = string.Empty;
+
+            public void DrawPickerButton(string label)
+            {
+                CallCount++;
+                LastLabel = label;
+            }
+        }
+
+        private sealed class ThrowingFakeHotkeyNode
+        {
+            public void DrawPickerButton(string label)
+                => throw new InvalidOperationException(label);
+        }
     }
 }

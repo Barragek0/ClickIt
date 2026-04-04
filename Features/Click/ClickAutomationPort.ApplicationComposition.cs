@@ -15,7 +15,7 @@ namespace ClickIt.Features.Click
             _altarService.GetAltarComponentsReadOnly,
             _altarService.RemoveAltarComponentsByElement,
             pc => _weightCalculator.CalculateAltarWeights(pc),
-            (altar, weights, topModsRect, bottomModsRect, topModsTopLeft) => _altarDisplayRenderer.DetermineAltarChoice(altar, weights, topModsRect, bottomModsRect, topModsTopLeft),
+            (altar, weights, topModsRect, bottomModsRect, topModsTopLeft) => _altarChoiceEvaluator.DetermineChoiceElement(altar, weights, topModsRect, bottomModsRect),
             _support.IsClickableInEitherSpace,
             _support.EnsureCursorInsideGameWindowForClick,
             InteractionExecutionRuntime.Execute,

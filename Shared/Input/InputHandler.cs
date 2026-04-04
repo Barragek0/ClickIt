@@ -1,51 +1,16 @@
 namespace ClickIt.Shared.Input
 {
-    public class InputHandler(ClickItSettings settings, PerformanceMonitor performanceMonitor, ErrorHandler? errorHandler = null)
+    public class InputHandler(ClickItSettings settings)
     {
         private readonly ClickItSettings _settings = settings;
-        private readonly ErrorHandler? _errorHandler = errorHandler;
-        private readonly PerformanceMonitor _performanceMonitor = performanceMonitor;
         private readonly ToggleItemsController _toggleItemsController = new(settings, Keyboard.KeyPress);
         private readonly InputHotkeyStateService _hotkeyStateService = new(settings);
-        private InteractionExecutor? _interactionExecutor;
-
-        private InteractionExecutor InteractionExecutor
-            => _interactionExecutor ??= new InteractionExecutor(
-                _settings,
-                _performanceMonitor,
-                () => IsClickHotkeyActiveForCurrentInputState(),
-                _errorHandler);
-
-        public long GetSuccessfulClickSequence()
-            => InteractionExecutor.GetSuccessfulClickSequence();
 
         public bool TriggerToggleItems()
             => _toggleItemsController.TriggerToggleItems();
 
         public int GetToggleItemsPostClickBlockMs()
             => _toggleItemsController.GetToggleItemsPostClickBlockMs();
-
-        public void PerformClick(
-            Vector2 position,
-            Element? expectedElement = null,
-            GameController? gameController = null,
-            bool forceUiHoverVerification = false,
-            bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
-            => InteractionExecutor.PerformClick(position, expectedElement, gameController, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
-
-        public void PerformClickAndHold(
-            Vector2 position,
-            int holdDurationMs,
-            Element? expectedElement = null,
-            GameController? gameController = null,
-            bool forceUiHoverVerification = false,
-            bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
-            => InteractionExecutor.PerformClickAndHold(position, holdDurationMs, expectedElement, gameController, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
-
-        public Element? HoverAndGetUIHover(Vector2 screenPoint, GameController? gameController, int delayMs = -1)
-            => InteractionExecutor.HoverAndGetUIHover(screenPoint, gameController, delayMs);
 
         public bool CanClick(GameController gameController, bool hasLazyModeRestrictedItemsOnScreen = false, bool isRitualActive = false)
         {

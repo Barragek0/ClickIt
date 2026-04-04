@@ -2,7 +2,7 @@ namespace ClickIt.Core.Bootstrap
 {
     internal static class ClickDomainAssembler
     {
-        public static ClickAutomationPort Assemble(ClickIt owner, ClickItSettings settings, GameController gameController, CoreDomainServices core, AltarDisplayRenderer altarDisplayRenderer)
+        public static ClickAutomationPort Assemble(ClickIt owner, ClickItSettings settings, GameController gameController, CoreDomainServices core, AltarChoiceEvaluator altarChoiceEvaluator)
         {
             LockManager.Instance = new LockManager(settings);
 
@@ -12,7 +12,7 @@ namespace ClickIt.Core.Bootstrap
                 core.ErrorHandler,
                 core.AltarService,
                 core.WeightCalculator,
-                altarDisplayRenderer,
+                altarChoiceEvaluator,
                 (point, _) => core.AreaService.PointIsInClickableArea(gameController, point),
                 core.InputHandler,
                 core.LabelFilterPort,

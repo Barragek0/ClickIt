@@ -7,9 +7,10 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         public void PublishDebug_UpdatesProbeLatestSnapshot()
         {
             InventoryProbeService probeService = CreateProbeService(InventorySnapshot.Empty);
+            InventoryItemEntityService itemEntityService = CreateItemEntityService();
             var pickupPolicy = (InventoryPickupPolicyEngine)RuntimeHelpers.GetUninitializedObject(typeof(InventoryPickupPolicyEngine));
 
-            var policy = new InventoryInteractionPolicy(probeService, pickupPolicy, "Incursion/IncursionKey");
+            var policy = new InventoryInteractionPolicy(probeService, itemEntityService, pickupPolicy, "Incursion/IncursionKey");
             InventoryDebugSnapshot snapshot = CreateDebugSnapshot("InventoryFullDecision", sequence: 42);
 
             policy.PublishDebug(snapshot);
@@ -25,9 +26,10 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         public void GetLatestDebugTrail_ReturnsProbeTrailEntries()
         {
             InventoryProbeService probeService = CreateProbeService(InventorySnapshot.Empty);
+            InventoryItemEntityService itemEntityService = CreateItemEntityService();
             var pickupPolicy = (InventoryPickupPolicyEngine)RuntimeHelpers.GetUninitializedObject(typeof(InventoryPickupPolicyEngine));
 
-            var policy = new InventoryInteractionPolicy(probeService, pickupPolicy, "Incursion/IncursionKey");
+            var policy = new InventoryInteractionPolicy(probeService, itemEntityService, pickupPolicy, "Incursion/IncursionKey");
             policy.PublishDebug(CreateDebugSnapshot("First", sequence: 1));
             policy.PublishDebug(CreateDebugSnapshot("Second", sequence: 2));
 
@@ -41,6 +43,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         public void ShouldAllowWorldItemWhenInventoryFull_DelegatesThroughInventoryPolicy()
         {
             InventoryProbeService probeService = CreateProbeService(InventorySnapshot.Empty);
+            InventoryItemEntityService itemEntityService = CreateItemEntityService();
             var groundItem = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             var controller = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
 
@@ -81,7 +84,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                         TimestampMs: 0),
                 _ => { }));
 
-            var policy = new InventoryInteractionPolicy(probeService, pickupPolicy, "Incursion/IncursionKey");
+            var policy = new InventoryInteractionPolicy(probeService, itemEntityService, pickupPolicy, "Incursion/IncursionKey");
 
             bool result = policy.ShouldAllowWorldItemWhenInventoryFull(groundItem, controller);
 
@@ -101,10 +104,11 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 }
             };
             InventoryProbeService probeService = CreateProbeService(snapshot);
+            InventoryItemEntityService itemEntityService = CreateItemEntityService();
             var pickupPolicy = (InventoryPickupPolicyEngine)RuntimeHelpers.GetUninitializedObject(typeof(InventoryPickupPolicyEngine));
             var controller = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
 
-            var policy = new InventoryInteractionPolicy(probeService, pickupPolicy, "Incursion/IncursionKey");
+            var policy = new InventoryInteractionPolicy(probeService, itemEntityService, pickupPolicy, "Incursion/IncursionKey");
 
             bool result = policy.ShouldAllowClosedDoorPastMechanic(controller);
 
@@ -117,6 +121,13 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 CacheWindowMs: 50,
                 DebugTrailCapacity: 8,
                 TryBuildInventorySnapshot: _ => (true, snapshot),
+                LayoutCache: new InventoryLayoutCache(cacheWindowMs: 50)));
+        }
+
+        private static InventoryItemEntityService CreateItemEntityService()
+        {
+            return new InventoryItemEntityService(new InventoryItemEntityServiceDependencies(
+                CacheWindowMs: 50,
                 TryGetPrimaryServerInventory: _ => (false, null),
                 TryGetPrimaryServerInventorySlotItems: _ => (false, null),
                 EnumerateObjects: _ => System.Array.Empty<object?>(),

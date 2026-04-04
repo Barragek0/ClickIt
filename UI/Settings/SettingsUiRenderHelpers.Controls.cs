@@ -2,6 +2,29 @@ namespace ClickIt.UI.Settings
 {
     internal static partial class SettingsUiRenderHelpers
     {
+        internal static bool TryInvokeHotkeyPicker(object? hotkeyNode, string label)
+        {
+            if (hotkeyNode == null)
+                return false;
+
+            try
+            {
+                hotkeyNode.GetType().GetMethod("DrawPickerButton", BindingFlags.Instance | BindingFlags.Public)?.Invoke(hotkeyNode, [label]);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static void DrawHotkeyNodeControl(object? hotkeyNode, string label, string tooltip)
+        {
+            _ = TryInvokeHotkeyPicker(hotkeyNode, label);
+            if (!string.IsNullOrWhiteSpace(tooltip))
+                DrawInlineTooltip(tooltip);
+        }
+
         internal static void DrawToggleNodeControl(string label, ToggleNode node, string tooltip)
         {
             bool value = node.Value;

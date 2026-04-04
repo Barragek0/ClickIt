@@ -69,7 +69,11 @@
                 ImGui.TreePop();
             }
 
-            SettingsSubmenuRenderer.DrawSection("Controls", settings.ControlsSubmenu);
+            if (ImGui.TreeNodeEx("Controls##ClickItControls", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                settings.ControlsPanel.DrawDelegate?.Invoke();
+                ImGui.TreePop();
+            }
 
             foreach (var drawer in Drawers)
             {

@@ -30,5 +30,31 @@ namespace ClickIt.Tests.Shared.TestUtils
             aw.BottomDownsideWeight = 0m; foreach (var v in aw.GetBottomDownsideWeights()) aw.BottomDownsideWeight += v;
             return aw;
         }
+
+        public static AltarService BuildTelemetryAltarService(
+            IReadOnlyList<string> topUpsides,
+            IReadOnlyList<string> topDownsides,
+            IReadOnlyList<string> bottomUpsides,
+            IReadOnlyList<string> bottomDownsides,
+            int lastScanExarchLabels,
+            int lastScanEaterLabels,
+            string lastProcessedAltarType)
+        {
+            var settings = new ClickItSettings();
+            var owner = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
+            var altarService = new AltarService(owner, settings, cachedLabels: null);
+            altarService.AddAltarComponent(new PrimaryAltarComponent(
+                AltarType.EaterOfWorlds,
+                new SecondaryAltarComponent(element: null, upsides: [.. topUpsides], downsides: [.. topDownsides]),
+                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton)),
+                new SecondaryAltarComponent(element: null, upsides: [.. bottomUpsides], downsides: [.. bottomDownsides]),
+                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton))));
+            altarService.DebugInfo.LastScanExarchLabels = lastScanExarchLabels;
+            altarService.DebugInfo.LastScanEaterLabels = lastScanEaterLabels;
+            altarService.DebugInfo.LastProcessedAltarType = lastProcessedAltarType;
+            altarService.DebugInfo.ComponentsProcessed = 1;
+            altarService.DebugInfo.ComponentsAdded = 1;
+            return altarService;
+        }
     }
 }

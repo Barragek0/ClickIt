@@ -69,7 +69,7 @@ namespace ClickIt.Core.Runtime
 
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null) yield break;
 
-            bool hotkeyActive = global::ClickIt.Core.Runtime.PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
+            bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
             if (PluginClickRuntimeStateEvaluator.ShouldSuppressRegularClickForManualUiHoverMode(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
             {
                 _state.Runtime.WorkFinished = true;
@@ -118,12 +118,12 @@ namespace ClickIt.Core.Runtime
                 yield break;
             }
 
-            long clickSequenceBefore = _state.Services.InputHandler?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceBefore = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             yield return runtimeHost.ProcessRegularClick();
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
-            long clickSequenceAfter = _state.Services.InputHandler?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceAfter = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
             if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
             {
                 _state.Runtime.Timer.Restart();
@@ -151,7 +151,7 @@ namespace ClickIt.Core.Runtime
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null || _state.Services.InputHandler == null)
                 yield break;
 
-            bool hotkeyActive = global::ClickIt.Core.Runtime.PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
+            bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
             if (!PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
                 yield break;
 
@@ -168,13 +168,13 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             IReadOnlyList<LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
-            long clickSequenceBefore = _state.Services.InputHandler.GetSuccessfulClickSequence();
+            long clickSequenceBefore = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             bool clicked = runtimeHost.TryClickManualUiHoverLabel(labels);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
-            long clickSequenceAfter = _state.Services.InputHandler.GetSuccessfulClickSequence();
+            long clickSequenceAfter = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
             if (clicked && PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
             {
                 _state.Runtime.Timer.Restart();
@@ -215,7 +215,7 @@ namespace ClickIt.Core.Runtime
                 _settings.DelveFlareEnergyShieldThreshold.Value))
                 yield break;
 
-            if (_state.Services.InputHandler?.CanClick(_gameController, false, global::ClickIt.Core.Runtime.PluginClickRuntimeStateEvaluator.ResolveIsRitualActive(_gameController)) != true)
+            if (_state.Services.InputHandler?.CanClick(_gameController, false, PluginClickRuntimeStateEvaluator.ResolveIsRitualActive(_gameController)) != true)
                 yield break;
 
             Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);
