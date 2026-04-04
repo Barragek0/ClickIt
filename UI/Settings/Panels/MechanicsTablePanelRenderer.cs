@@ -20,12 +20,6 @@ namespace ClickIt.UI.Settings.Panels
             public RangeNode<int> QuietWindowNode { get; } = quietWindowNode;
         }
 
-        private readonly struct MechanicGroupRowRenderState(bool rowClicked, bool arrowClicked)
-        {
-            public bool RowClicked { get; } = rowClicked;
-            public bool ArrowClicked { get; } = arrowClicked;
-        }
-
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
             new("league-chests", "League Mechanic Chests"),
@@ -45,7 +39,7 @@ namespace ClickIt.UI.Settings.Panels
 
         public void Draw()
         {
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open submenus.");
+            SettingsUiRenderHelpers.DrawInstructionText("Table rows with [v] next to them can be clicked to open submenus.");
 
             ImGui.Spacing();
 
@@ -98,7 +92,7 @@ namespace ClickIt.UI.Settings.Panels
                     continue;
 
                 hasEntries = true;
-                MechanicGroupRowRenderState rowState = DrawMechanicGroupRow(listId, group, moveToClick, textColor);
+                SettingsUiRenderHelpers.ExpandableTransferRowState rowState = DrawMechanicGroupRow(listId, group, moveToClick, textColor);
                 if (rowState.ArrowClicked)
                 {
                     ClickItSettings.SetMechanicGroupState(group.Id, entries, moveToClick);
@@ -122,32 +116,15 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.PopID();
         }
 
-        private MechanicGroupRowRenderState DrawMechanicGroupRow(string listId, MechanicToggleGroupEntry group, bool moveToClick, Vector4 textColor)
+        private SettingsUiRenderHelpers.ExpandableTransferRowState DrawMechanicGroupRow(string listId, MechanicToggleGroupEntry group, bool moveToClick, Vector4 textColor)
         {
             string label = $"{group.DisplayName} [v]##{listId}_{group.Id}";
-            float rowWidth = SettingsUiRenderHelpers.CalculateTransferRowWidth();
-            const float arrowWidth = 28f;
-
-            if (moveToClick)
-            {
-                bool leftArrowClicked = ImGui.Button($"<-##MoveGroup_{listId}_{group.Id}", new NumVector2(arrowWidth, 0));
-                ImGui.SameLine();
-                bool rowClicked = DrawMechanicGroupSelectable(listId, group.Id, label, rowWidth, textColor);
-                return new MechanicGroupRowRenderState(rowClicked, leftArrowClicked);
-            }
-
-            bool clicked = DrawMechanicGroupSelectable(listId, group.Id, label, rowWidth, textColor);
-            ImGui.SameLine();
-            bool rightArrowClicked = ImGui.Button($"->##MoveGroup_{listId}_{group.Id}", new NumVector2(arrowWidth, 0));
-            return new MechanicGroupRowRenderState(clicked, rightArrowClicked);
-        }
-
-        private bool DrawMechanicGroupSelectable(string listId, string groupId, string label, float rowWidth, Vector4 textColor)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-            bool clicked = ImGui.Selectable(label, IsExpandedMechanicTableRow(listId, groupId), ImGuiSelectableFlags.AllowDoubleClick, new NumVector2(rowWidth, 0));
-            ImGui.PopStyleColor();
-            return clicked;
+            return SettingsUiRenderHelpers.DrawExpandableTransferListRow(
+                $"MoveGroup_{listId}_{group.Id}",
+                label,
+                IsExpandedMechanicTableRow(listId, group.Id),
+                moveToClick,
+                textColor);
         }
 
         private void DrawMechanicGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
@@ -171,12 +148,10 @@ namespace ClickIt.UI.Settings.Panels
 
                 bool enabled = entry.Node.Value;
                 Vector4 rowColor = enabled ? SettingsUiPalette.WhitelistTextColor : SettingsUiPalette.BlacklistTextColor;
-                ImGui.PushStyleColor(ImGuiCol.Text, rowColor);
-                if (ImGui.Checkbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{group.Id}_{entry.Id}", ref enabled))
+                if (SettingsUiRenderHelpers.DrawCheckbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{group.Id}_{entry.Id}", ref enabled, rowColor))
                 {
                     entry.Node.Value = enabled;
                 }
-                ImGui.PopStyleColor();
             }
 
             DrawMechanicGroupExtraSettings(group.Id);
@@ -186,9 +161,9 @@ namespace ClickIt.UI.Settings.Panels
 
         private void DrawLeagueChestGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-            ImGui.TextWrapped("I'll add more specific league chests to this list in future releases of the plugin.");
-            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawWrappedText(
+                "I'll add more specific league chests to this list in future releases of the plugin.",
+                new Vector4(0.65f, 0.65f, 0.65f, 1f));
             ImGui.Spacing();
 
             List<MechanicToggleTableEntry> leagueEntries = entries
@@ -250,12 +225,10 @@ namespace ClickIt.UI.Settings.Panels
         {
             bool enabled = entry.Node.Value;
             Vector4 rowColor = enabled ? SettingsUiPalette.WhitelistTextColor : SettingsUiPalette.BlacklistTextColor;
-            ImGui.PushStyleColor(ImGuiCol.Text, rowColor);
-            if (ImGui.Checkbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{groupId}_{entry.Id}", ref enabled))
+            if (SettingsUiRenderHelpers.DrawCheckbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{groupId}_{entry.Id}", ref enabled, rowColor))
             {
                 entry.Node.Value = enabled;
             }
-            ImGui.PopStyleColor();
         }
 
         private void DrawMechanicGroupExtraSettings(string groupId)
@@ -276,8 +249,15 @@ namespace ClickIt.UI.Settings.Panels
         {
             ImGui.Spacing();
             SettingsUiRenderHelpers.DrawToggleNodeControl($"Wait for Drops to Settle##{descriptor.IdPrefix}PauseEnabled", descriptor.PauseNode, $"When enabled, ClickIt waits for new loot labels after opening a {descriptor.LabelPrefix} before resuming clicks.");
-            SettingsUiRenderHelpers.DrawToggleNodeControl($"Allow Nearby Mechanics while Waiting##{descriptor.IdPrefix}AllowNearbyMechanics", _settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle, "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.");
-            SettingsUiRenderHelpers.DrawRangeNodeControl($"Nearby mechanic distance##{descriptor.IdPrefix}AllowNearbyMechanicsDistance", _settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance, 0, 100, "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
+            SettingsUiRenderHelpers.DrawToggleAndRangeNodeControls(
+                $"Allow Nearby Mechanics while Waiting##{descriptor.IdPrefix}AllowNearbyMechanics",
+                _settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle,
+                "When enabled, nearby mechanics around the opened chest can still be clicked while drops are settling.",
+                $"Nearby mechanic distance##{descriptor.IdPrefix}AllowNearbyMechanicsDistance",
+                _settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance,
+                0,
+                100,
+                "Maximum distance from the opened chest where mechanics are still allowed during settle wait.");
             SettingsUiRenderHelpers.DrawRangeNodeControl($"Initial delay (ms)##{descriptor.IdPrefix}InitialDelayMs", descriptor.InitialDelayNode, 100, 1500, "How long to wait after click confirmation before checking for new labels.");
             SettingsUiRenderHelpers.DrawRangeNodeControl($"Poll interval (ms)##{descriptor.IdPrefix}PollIntervalMs", descriptor.PollIntervalNode, 50, 500, "How frequently ClickIt checks ItemsOnGroundLabels for newly added drops.");
             SettingsUiRenderHelpers.DrawRangeNodeControl($"Quiet window (ms)##{descriptor.IdPrefix}QuietWindowMs", descriptor.QuietWindowNode, 100, 2000, "Loot is considered settled after this many milliseconds pass without new labels.");

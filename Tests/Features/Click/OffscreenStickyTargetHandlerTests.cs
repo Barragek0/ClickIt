@@ -6,55 +6,56 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void TryResolveStickyOffscreenTarget_ReturnsFalse_WhenNoStickyTargetAddressIsSet()
         {
-            bool cleared = false;
+            var runtimeState = new ClickRuntimeState();
+            var settings = new ClickItSettings();
+            var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(
+                settings,
+                runtimeState));
             var handler = new OffscreenStickyTargetHandler(new OffscreenStickyTargetHandlerDependencies(
                 GameController: null!,
                 ShrineService: null!,
-                GetStickyOffscreenTargetAddress: static () => 0,
-                SetStickyOffscreenTargetAddress: _ => cleared = true,
-                FindEntityByAddress: static _ => null,
-                PerformPathingClick: static _ => false,
+                RuntimeState: runtimeState,
+                LabelInteraction: null!,
+                ChestLootSettlement: null!,
                 IsClickableInEitherSpace: static (_, _) => false,
-                ShouldSuppressPathfindingLabel: static _ => false,
-                GetMechanicIdForLabel: static _ => null,
-                TryResolveLabelClickPosition: static (_, _, _, _, _) => (false, default),
-                ExecuteStickyLabelInteraction: static (_, _, _) => false,
-                HoldDebugTelemetryAfterSuccess: static _ => { },
-                MarkPendingChestOpenConfirmation: static (_, _) => { },
-                InvalidateShrineCache: static () => { }));
+                PathfindingLabelSuppression: pathfindingLabelSuppression,
+                LabelInteractionPort: null!,
+                HoldDebugTelemetryAfterSuccess: static _ => { }));
 
             bool resolved = handler.TryResolveStickyOffscreenTarget(out var target);
 
             resolved.Should().BeFalse();
             target.Should().BeNull();
-            cleared.Should().BeFalse();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
         }
 
         [TestMethod]
         public void TryResolveStickyOffscreenTarget_ClearsStickyAddress_WhenEntityCannotBeResolved()
         {
-            long clearedAddress = -1;
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
+            var settings = new ClickItSettings();
+            var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(
+                settings,
+                runtimeState));
             var handler = new OffscreenStickyTargetHandler(new OffscreenStickyTargetHandlerDependencies(
                 GameController: null!,
                 ShrineService: null!,
-                GetStickyOffscreenTargetAddress: static () => 42,
-                SetStickyOffscreenTargetAddress: value => clearedAddress = value,
-                FindEntityByAddress: static _ => null,
-                PerformPathingClick: static _ => false,
+                RuntimeState: runtimeState,
+                LabelInteraction: null!,
+                ChestLootSettlement: null!,
                 IsClickableInEitherSpace: static (_, _) => false,
-                ShouldSuppressPathfindingLabel: static _ => false,
-                GetMechanicIdForLabel: static _ => null,
-                TryResolveLabelClickPosition: static (_, _, _, _, _) => (false, default),
-                ExecuteStickyLabelInteraction: static (_, _, _) => false,
-                HoldDebugTelemetryAfterSuccess: static _ => { },
-                MarkPendingChestOpenConfirmation: static (_, _) => { },
-                InvalidateShrineCache: static () => { }));
+                PathfindingLabelSuppression: pathfindingLabelSuppression,
+                LabelInteractionPort: null!,
+                HoldDebugTelemetryAfterSuccess: static _ => { }));
 
             bool resolved = handler.TryResolveStickyOffscreenTarget(out var target);
 
             resolved.Should().BeFalse();
             target.Should().BeNull();
-            clearedAddress.Should().Be(0);
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
         }
     }
 }

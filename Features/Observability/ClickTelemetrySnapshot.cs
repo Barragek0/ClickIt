@@ -14,7 +14,9 @@ namespace ClickIt.Features.Observability
         IReadOnlyList<string> RuntimeLogTrail,
         UltimatumDebugSnapshot Ultimatum,
         IReadOnlyList<string> UltimatumTrail,
-        IReadOnlyList<UltimatumOptionPreviewSnapshot> UltimatumOptionPreview)
+        IReadOnlyList<UltimatumOptionPreviewSnapshot> UltimatumOptionPreview,
+        ClickFrequencyTargetTelemetrySnapshot FrequencyTarget,
+        ClickSettingsTelemetrySnapshot Settings)
     {
         private static readonly IReadOnlyList<string> EmptyTrail = Array.Empty<string>();
         private static readonly IReadOnlyList<UltimatumOptionPreviewSnapshot> EmptyPreview = Array.Empty<UltimatumOptionPreviewSnapshot>();
@@ -27,6 +29,8 @@ namespace ClickIt.Features.Observability
             RuntimeLogTrail: EmptyTrail,
             Ultimatum: UltimatumDebugSnapshot.Empty,
             UltimatumTrail: EmptyTrail,
-            UltimatumOptionPreview: EmptyPreview);
+            UltimatumOptionPreview: EmptyPreview,
+            FrequencyTarget: ClickFrequencyTargetTelemetrySnapshot.Empty,
+            Settings: ClickSettingsTelemetrySnapshot.Empty);
     }
 }

@@ -7,7 +7,6 @@ namespace ClickIt.Shared.Input
         private readonly PerformanceMonitor _performanceMonitor = performanceMonitor;
         private readonly ToggleItemsController _toggleItemsController = new(settings, Keyboard.KeyPress);
         private readonly InputHotkeyStateService _hotkeyStateService = new(settings);
-        private readonly LabelClickPointResolver _labelClickPointResolver = new(settings);
         private InteractionExecutor? _interactionExecutor;
 
         private InteractionExecutor InteractionExecutor
@@ -19,20 +18,6 @@ namespace ClickIt.Shared.Input
 
         public long GetSuccessfulClickSequence()
             => InteractionExecutor.GetSuccessfulClickSequence();
-
-        public bool IsLabelFullyOverlapped(LabelOnGround label, IReadOnlyList<LabelOnGround>? allLabels)
-            => _labelClickPointResolver.IsLabelFullyOverlapped(label, allLabels);
-
-        public Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels = null)
-            => _labelClickPointResolver.CalculateClickPosition(label, windowTopLeft, allLabels);
-
-        public bool TryCalculateClickPosition(
-            LabelOnGround label,
-            Vector2 windowTopLeft,
-            IReadOnlyList<LabelOnGround>? allLabels,
-            Func<Vector2, bool>? isClickableArea,
-            out Vector2 clickPosition)
-            => _labelClickPointResolver.TryCalculateClickPosition(label, windowTopLeft, allLabels, isClickableArea, out clickPosition);
 
         public bool TriggerToggleItems()
             => _toggleItemsController.TriggerToggleItems();
@@ -194,7 +179,9 @@ namespace ClickIt.Shared.Input
                 && !IsBlockedByUiOrEscapeState(gameController);
         }
 
-        public bool IsClickHotkeyPressed(TimeCache<List<LabelOnGround>>? cachedLabels, LabelFilterService? labelFilterService)
+        public bool IsClickHotkeyPressed(
+            TimeCache<List<LabelOnGround>>? cachedLabels,
+            Func<IReadOnlyList<LabelOnGround>?, bool>? hasLazyModeRestrictedItemsOnScreen)
         {
             bool hotkeyHeld = IsClickHotkeyHeld();
             if (!_settings.LazyMode.Value)
@@ -203,7 +190,7 @@ namespace ClickIt.Shared.Input
             }
 
             var labels = cachedLabels?.Value;
-            bool hasRestricted = labelFilterService?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
+            bool hasRestricted = hasLazyModeRestrictedItemsOnScreen?.Invoke(labels) ?? false;
             bool disableKeyHeld = IsLazyModeDisableActiveForCurrentInputState();
             var (_, _, mouseButtonBlocks) = GetMouseButtonBlockingState(_settings, Keyboard.IsKeyDown);
 

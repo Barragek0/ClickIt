@@ -1,8 +1,8 @@
 namespace ClickIt.Features.Click.Core
 {
-    internal sealed class CandidateRankingEngine(ClickRuntimeEngine owner)
+    internal sealed class CandidateRankingEngine(CandidateRankingEngineDependencies dependencies)
     {
-        private readonly ClickRuntimeEngineDependencies _dependencies = owner.Dependencies;
+        private readonly CandidateRankingEngineDependencies _dependencies = dependencies;
 
         internal static bool ShouldPreferLostShipmentOverCandidates(
             in MechanicCandidateSignal lostShipment,
@@ -63,7 +63,7 @@ namespace ClickIt.Features.Click.Core
                 new MechanicCandidateSignal(
                     MechanicIds.Shrines,
                     context.NextShrine?.DistancePlayer,
-                    _dependencies.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
+                    _dependencies.LabelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
                 new MechanicCandidateSignal(
                     MechanicIds.LostShipment,
                     candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
@@ -85,7 +85,7 @@ namespace ClickIt.Features.Click.Core
                 new MechanicCandidateSignal(
                     MechanicIds.Shrines,
                     context.NextShrine?.DistancePlayer,
-                    _dependencies.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
+                    _dependencies.LabelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
                 context.MechanicPriorityContext);
         }
 
@@ -111,7 +111,7 @@ namespace ClickIt.Features.Click.Core
                 new MechanicCandidateSignal(
                     MechanicIds.Shrines,
                     context.NextShrine?.DistancePlayer,
-                    _dependencies.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
+                    _dependencies.LabelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
                 new MechanicCandidateSignal(
                     MechanicIds.LostShipment,
                     candidates.LostShipment.HasValue ? candidates.LostShipment.Value.Distance : null,
@@ -136,7 +136,7 @@ namespace ClickIt.Features.Click.Core
                 new MechanicCandidateSignal(
                     MechanicIds.Shrines,
                     context.NextShrine?.DistancePlayer,
-                    _dependencies.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
+                    _dependencies.LabelInteraction.TryGetCursorDistanceSquaredToEntity(context.NextShrine, context.CursorAbsolute, context.WindowTopLeft)),
                 context.MechanicPriorityContext);
         }
 

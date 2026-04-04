@@ -25,10 +25,7 @@ namespace ClickIt.Core.Runtime
         }
 
         internal bool IsClickHotkeyPressed(PluginContext state)
-        {
-            PluginServices services = state.Services;
-            return services.InputHandler?.IsClickHotkeyPressed(services.CachedLabels, services.LabelFilterPort) ?? false;
-        }
+            => PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(state.Services);
 
         internal void HandleHotkeyPressed(PluginContext state)
         {
@@ -55,7 +52,7 @@ namespace ClickIt.Core.Runtime
             PluginServices services = state.Services;
             services.ClickAutomationPort?.CancelPostChestLootSettlementState();
 
-            if (ShouldRunManualUiHoverCoroutine(settings))
+            if (PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(settings))
             {
                 runtime.ClickLabelCoroutine?.Pause();
 
@@ -88,13 +85,5 @@ namespace ClickIt.Core.Runtime
                 runtime.SecondTimer.Restart();
             }
         }
-
-        internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled)
-            => manualUiHoverEnabled && !lazyModeEnabled;
-
-        internal static bool ShouldRunManualUiHoverCoroutine(ClickItSettings? settings)
-            => ShouldRunManualUiHoverCoroutine(
-                settings?.ClickOnManualUiHoverOnly?.Value == true,
-                settings?.LazyMode?.Value == true);
     }
 }

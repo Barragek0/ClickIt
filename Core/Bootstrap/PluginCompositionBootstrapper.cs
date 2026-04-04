@@ -11,11 +11,13 @@ namespace ClickIt.Core.Bootstrap
             context.ServiceRegistry.Reset();
             context.Runtime.IsShuttingDown = false;
             context.DebugTelemetry.Clear();
+            context.SetGameControllerProvider(() => owner.GameController);
+            context.SetSettingsProvider(owner.GetEffectiveSettingsForLifecycle);
 
             CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, owner.GameController
                 ?? throw new InvalidOperationException("GameController is null during plugin initialization."));
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, owner.GameController, core);
-            ClickService clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, owner.GameController, core, rendering.AltarDisplayRenderer);
+            ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, owner.GameController, core, rendering.AltarDisplayRenderer);
             UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
 
@@ -55,46 +57,48 @@ namespace ClickIt.Core.Bootstrap
 
             context.ServiceRegistry.DisposeAll();
             context.DebugTelemetry.Clear();
-            context.FeaturePorts.Clear();
-            context.OverlayPorts.Clear();
+            context.SetGameControllerProvider(null);
+            context.SetSettingsProvider(null);
+            context.Services.Clear();
+            context.Rendering.Clear();
         }
 
-        internal static void ApplyPorts(
+        private static void ApplyPorts(
             PluginContext context,
             CoreDomainServices core,
             RenderingDomainServices rendering,
-            ClickService clickAutomationPort,
+            ClickAutomationPort clickAutomationPort,
             UltimatumRenderer ultimatumRenderer,
             AlertService alertService)
         {
-            PluginFeaturePorts featurePorts = context.FeaturePorts;
-            PluginOverlayPorts overlayPorts = context.OverlayPorts;
+            PluginServices services = context.Services;
+            PluginRenderingState renderingState = context.Rendering;
 
-            featurePorts.PerformanceMonitor = core.PerformanceMonitor;
-            featurePorts.ErrorHandler = core.ErrorHandler;
-            featurePorts.AreaService = core.AreaService;
-            featurePorts.LabelService = core.LabelService;
-            featurePorts.CachedLabels = core.CachedLabels;
-            featurePorts.Camera = core.Camera;
-            featurePorts.AltarService = core.AltarService;
-            featurePorts.LabelFilterPort = core.LabelFilterPort;
-            featurePorts.ShrineService = core.ShrineService;
-            featurePorts.InputHandler = core.InputHandler;
-            featurePorts.PathfindingService = core.PathfindingService;
-            featurePorts.ClickAutomationPort = clickAutomationPort;
-            featurePorts.AlertService = alertService;
+            services.PerformanceMonitor = core.PerformanceMonitor;
+            services.ErrorHandler = core.ErrorHandler;
+            services.AreaService = core.AreaService;
+            services.CachedLabels = core.CachedLabels;
+            services.Camera = core.Camera;
+            services.AltarService = core.AltarService;
+            services.LabelFilterPort = core.LabelFilterPort;
+            services.ShrineService = core.ShrineService;
+            services.InputHandler = core.InputHandler;
+            services.PathfindingService = core.PathfindingService;
+            services.ClickAutomationPort = clickAutomationPort;
+            services.AlertService = alertService;
+            services.WeightCalculator = core.WeightCalculator;
 
-            overlayPorts.DeferredTextQueue = core.DeferredTextQueue;
-            overlayPorts.DeferredFrameQueue = core.DeferredFrameQueue;
-            overlayPorts.DebugRenderer = rendering.DebugRenderer;
-            overlayPorts.StrongboxRenderer = rendering.StrongboxRenderer;
-            overlayPorts.LazyModeRenderer = rendering.LazyModeRenderer;
-            overlayPorts.ClickHotkeyToggleRenderer = rendering.ClickHotkeyToggleRenderer;
-            overlayPorts.InventoryFullWarningRenderer = rendering.InventoryFullWarningRenderer;
-            overlayPorts.PathfindingRenderer = rendering.PathfindingRenderer;
-            overlayPorts.AltarDisplayRenderer = rendering.AltarDisplayRenderer;
-            overlayPorts.ClickRuntimeHost = new ClickRuntimeHost(() => featurePorts.ClickAutomationPort);
-            overlayPorts.UltimatumRenderer = ultimatumRenderer;
+            renderingState.DeferredTextQueue = core.DeferredTextQueue;
+            renderingState.DeferredFrameQueue = core.DeferredFrameQueue;
+            renderingState.DebugRenderer = rendering.DebugRenderer;
+            renderingState.StrongboxRenderer = rendering.StrongboxRenderer;
+            renderingState.LazyModeRenderer = rendering.LazyModeRenderer;
+            renderingState.ClickHotkeyToggleRenderer = rendering.ClickHotkeyToggleRenderer;
+            renderingState.InventoryFullWarningRenderer = rendering.InventoryFullWarningRenderer;
+            renderingState.PathfindingRenderer = rendering.PathfindingRenderer;
+            renderingState.AltarDisplayRenderer = rendering.AltarDisplayRenderer;
+            renderingState.ClickRuntimeHost = new ClickRuntimeHost(() => services.ClickAutomationPort);
+            renderingState.UltimatumRenderer = ultimatumRenderer;
         }
     }
 }

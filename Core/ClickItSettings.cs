@@ -14,206 +14,12 @@ namespace ClickIt
         public ToggleNode Enable { get; set; } = new ToggleNode(true);
         public int SettingsVersion { get; set; } = ClickItSettingsMigrationService.CurrentVersion;
 
-        [Menu("Debug/Testing", 900)]
-        public EmptyNode EmptyTesting { get; set; } = new EmptyNode();
-
-        [Menu(" ", 1, 900)]
         [JsonIgnore]
-        public CustomNode DebugTestingPanel { get; private set; } = new();
+        internal ClickItDebugSettingsSubmenu DebugTestingSubmenu { get; }
 
         [JsonIgnore]
-        public bool ShowRawDebugNodesInSettings => false;
+        internal ClickItControlsSettingsSubmenu ControlsSubmenu { get; }
 
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Mode", "Enables debug mode to help with troubleshooting issues.", 1, 900)]
-        public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Additional Debug Information", "Provides more debug text related to rendering the overlay.", 2, 900)]
-        public ToggleNode RenderDebug { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Copy Additional Debug Information", "Copies the current Additional Debug Information text to clipboard.", 5, 900)]
-        public ButtonNode CopyAdditionalDebugInfoButton { get; set; } = new ButtonNode();
-        [JsonIgnore]
-        public bool MemoryDumpInProgress { get => TransientState.MemoryDumpInProgress; set => TransientState.MemoryDumpInProgress = value; }
-        [JsonIgnore]
-        public int MemoryDumpProgressPercent { get => TransientState.MemoryDumpProgressPercent; set => TransientState.MemoryDumpProgressPercent = value; }
-        [JsonIgnore]
-        public bool MemoryDumpLastRunSucceeded { get => TransientState.MemoryDumpLastRunSucceeded; set => TransientState.MemoryDumpLastRunSucceeded = value; }
-        [JsonIgnore]
-        public string MemoryDumpStatusText { get => TransientState.MemoryDumpStatusText; set => TransientState.MemoryDumpStatusText = value; }
-        [JsonIgnore]
-        public string MemoryDumpOutputPath { get => TransientState.MemoryDumpOutputPath; set => TransientState.MemoryDumpOutputPath = value; }
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Status", "Show/hide the status debug section", 1, 2)]
-        public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Game State", "Show/hide the Game State debug section", 2, 2)]
-        public ToggleNode DebugShowGameState { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Performance", "Show/hide the performance debug section", 3, 2)]
-        public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Click Frequency Target", "Show/hide the Click Frequency Target debug section", 4, 2)]
-        public ToggleNode DebugShowClickFrequencyTarget { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Altar Detection", "Show/hide the Altar Detection debug section", 5, 2)]
-        public ToggleNode DebugShowAltarDetection { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Altar Service", "Show/hide the Altar Service debug section", 6, 2)]
-        public ToggleNode DebugShowAltarService { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Labels", "Show/hide the labels debug section", 7, 2)]
-        public ToggleNode DebugShowLabels { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Inventory Pickup", "Show/hide inventory pickup/fullness debug section", 8, 2)]
-        public ToggleNode DebugShowInventoryPickup { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Hovered Item Metadata", "Show/hide the hovered item metadata debug section", 9, 2)]
-        public ToggleNode DebugShowHoveredItemMetadata { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Pathfinding", "Show/hide offscreen pathfinding debug section", 10, 2)]
-        public ToggleNode DebugShowPathfinding { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Ultimatum", "Show/hide ultimatum automation debug section", 11, 2)]
-        public ToggleNode DebugShowUltimatum { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Clicking", "Show/hide clicking debug section", 12, 2)]
-        public ToggleNode DebugShowClicking { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Log Overlay", "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail.", 13, 2)]
-        public ToggleNode DebugShowRuntimeDebugLogOverlay { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Recent Errors", "Show/hide the Recent Errors debug section", 14, 2)]
-        public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Debug Frames", "Show/hide the debug screen area frames", 15, 2)]
-        public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Auto Copy Inventory Warning Debug", "Automatically copies inventory warning debug details when the 'Your inventory is full' overlay is triggered. Copy attempts are throttled to once per second.", 4, 900)]
-        public ToggleNode AutoCopyInventoryWarningDebug { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        public RangeNode<int> DebugFreezeSuccessfulInteractionMs { get; set; } = new RangeNode<int>(10000, 0, 20000);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Log messages", "This will flood your log and screen with debug text.", 5, 900)]
-        public ToggleNode LogMessages { get; set; } = new ToggleNode(false);
-        [ConditionalDisplay(nameof(ShowRawDebugNodesInSettings))]
-        [Menu("Report Bug", "If you run into a bug that hasn't already been reported, please report it here.", 6, 900)]
-        public ButtonNode ReportBugButton { get; set; } = new ButtonNode();
-
-
-
-        [Menu("Controls", 1100)]
-
-        public EmptyNode Click { get; set; } = new EmptyNode();
-        [Menu("Click Hotkey", "Held hotkey to start clicking", 1, 1100)]
-
-        public HotkeyNodeV2 ClickLabelKey { get; set; } = new HotkeyNodeV2(Keys.F1);
-        [Menu("Click Hotkey Toggle Mode", "When enabled, pressing the Click Hotkey toggles clicking on/off.\nWhen disabled, clicking only occurs while holding the Click Hotkey (or via Lazy Mode).", 2, 1100)]
-        public ToggleNode ClickHotkeyToggleMode { get; set; } = new ToggleNode(false);
-
-        [Menu("Manual Cursor Target Mode", "When enabled, ClickIt repeatedly checks what your cursor is currently over, and only clicks when that on-cursor target is a valid ClickIt mechanic.\n\nSimple version: point your mouse at what you want picked up/clicked, and ClickIt will click that target without moving your cursor.\n\nThis feature is only for non-lazy mode. If Lazy Mode is enabled, this feature is ignored.\n\nHolding your Click Hotkey still overrides this feature exactly like normal, and while the hotkey is active this manual-cursor click mode is paused.", 3, 1100)]
-        public ToggleNode ClickOnManualUiHoverOnly { get; set; } = new ToggleNode(false);
-
-        [Menu("", 10001, 1100)]
-        [JsonIgnore]
-        public CustomNode ControlsSliderWidthStart { get; private set; } = new();
-        [Menu("Search Radius", "Radius the plugin will search in for interactable objects. A value of 100 is recommended for 1080p, though, you may need to increase this on higher resolutions.", 2, 1100)]
-
-        public RangeNode<int> ClickDistance { get; set; } = new RangeNode<int>(100, 0, 300);
-        [Menu("Click Frequency Target (ms)", "Target milliseconds between clicks for non-altar/shrine actions. Higher = less frequent clicks.\n\nThe plugin will try to maintain this target as best it can, but heavy CPU load or many visible labels may increase delays.", 4, 1100)]
-
-        public RangeNode<int> ClickFrequencyTarget { get; set; } = new RangeNode<int>(80, 80, 250);
-        [Menu("Chest Height Offset", "If you're experiencing a lot of missclicking for chests specifically (clicking too high or low),\n" +
-            "change this value. If you're clicking too high, lower the value, if you're clicking too low, raise the value", 5, 1100)]
-
-        public RangeNode<int> ChestHeightOffset { get; set; } = new RangeNode<int>(0, -100, 100);
-
-        public EmptyNode InputAndSafetyCategory { get; set; } = new EmptyNode();
-        [Menu("Block when Left or Right Panel open", "Prevent clicks when the inventory or character screen are open", 6, 1100)]
-        public ToggleNode BlockOnOpenLeftRightPanel { get; internal set; } = new ToggleNode(true);
-        [Menu("Verify Cursor is within Game Window before Clicking", "When enabled, the plugin will verify the OS cursor is inside the Path of Exile window before performing any automated clicks. If the cursor is outside the window, the click will be skipped.", 7, 1100)]
-        public ToggleNode VerifyCursorInGameWindowBeforeClick { get; set; } = new ToggleNode(true);
-        [Menu("Left-handed", "Changes the primary mouse button the plugin uses from left to right.", 8, 1100)]
-        public ToggleNode LeftHanded { get; set; } = new ToggleNode(false);
-        [Menu("Toggle Item View", "This will occasionally double tap your Toggle Items Hotkey to correct the position of ground items / labels.", 9, 1100)]
-        public ToggleNode ToggleItems { get; set; } = new ToggleNode(true);
-        [Menu("Toggle Items Hotkey", "Hotkey to toggle the display of ground items / labels.", 10, 1100)]
-        public HotkeyNodeV2 ToggleItemsHotkey { get; set; } = new HotkeyNodeV2(Keys.Z);
-        [Menu("Toggle Item View Interval (ms)", "How often Toggle Item View is allowed to trigger.\n1000 ms = 1 second.", 11, 1100)]
-        public RangeNode<int> ToggleItemsIntervalMs { get; set; } = new RangeNode<int>(1500, 500, 10000);
-        [Menu("Disable Clicking after Toggle Items (ms)", "Temporarily blocks further clicks after Toggle Item View triggers.\n\nIncrease this if clicks right after toggling are clicking incorrect labels.", 12, 1100)]
-        public RangeNode<int> ToggleItemsPostToggleClickBlockMs { get; set; } = new RangeNode<int>(20, 0, 250);
-        [Menu("", 10002, 1100)]
-        [JsonIgnore]
-        public CustomNode ControlsSliderWidthEnd { get; private set; } = new();
-        [Menu("UIHover Verification (non-lazy)", "When enabled, the plugin verifies UIHover before clicking while not in Lazy Mode.\n\nThis extra verification step can make clicking slower and less frequent, however, enabling this helps prevent accidentally picking up blacklisted items.\n\nI'd recommend keeping this disabled unless you frequently encounter issues with blacklisted items being picked up.", 13, 1100)]
-        public ToggleNode VerifyUIHoverWhenNotLazy { get; set; } = new ToggleNode(false);
-
-        [Menu("Avoid Overlapping Labels when Clicking", "When enabled, the plugin attempts to click a visible, non-overlapped part of the target label instead of always clicking center. Helps when one label partially covers another.", 14, 1100)]
-        public ToggleNode AvoidOverlappingLabelClickPoints { get; set; } = new ToggleNode(true);
-
-        [Menu("Pathfinding", 1114, 1100)]
-        public EmptyNode PathfindingCategory { get; set; } = new EmptyNode();
-        [Menu("Walk toward Offscreen Labels", "When enabled and no clickable labels are on screen, attempt to walk toward the nearest offscreen interactable target using terrain pathfinding data.\n\nI would be careful enabling this feature as its somewhat likely GGG could flag you as a bot.\n\nWhile that hasn't happen to me while testing the feature, I wouldn't be surprised if it did happen during prolonged use.", 1, 1114)]
-        public ToggleNode WalkTowardOffscreenLabels { get; set; } = new ToggleNode(false);
-        [Menu("Prioritize On-Screen Clickable Mechanics", "When enabled, offscreen pathfinding is skipped whenever there is at least one clickable on-screen mechanic candidate (for example: altars, shrines, settlers ore, or lost shipment).", 2, 1114)]
-        public ToggleNode PrioritizeOnscreenClickableMechanicsOverPathfinding { get; set; } = new ToggleNode(true);
-        [Menu("", 10003, 1114)]
-        [JsonIgnore]
-        public CustomNode PathfindingSliderWidthStart { get; private set; } = new();
-        [Menu("Offscreen Pathfinding Search Budget", "Controls pathfinding search complexity for offscreen walking. Higher values search deeper but increase CPU usage.", 3, 1114)]
-        public RangeNode<int> OffscreenPathfindingSearchBudget { get; set; } = new RangeNode<int>(6000, 1000, 50000);
-        [Menu("Offscreen Path Line Timeout (ms)", "Maximum age of the red pathfinding line. If pathfinding has not run within this timeout, the line is automatically cleared.", 4, 1114)]
-        public RangeNode<int> OffscreenPathfindingLineTimeoutMs { get; set; } = new RangeNode<int>(1500, 250, 10000);
-        [Menu("Use Movement Skills for Offscreen Pathfinding", "When enabled, the plugin will attempt to use an equipped movement skill keybind while pathing to offscreen targets. Supports common travel/blink gems when they are off cooldown and have a keyboard keybind.", 5, 1114)]
-        public ToggleNode UseMovementSkillsForOffscreenPathfinding { get; set; } = new ToggleNode(false);
-        [Menu("Movement Skill Minimum Path Subsection Length", "Minimum remaining path node count required before a movement skill cast is attempted. Lower values cast more often; higher values are more conservative.", 6, 1114)]
-        public RangeNode<int> OffscreenMovementSkillMinPathSubsectionLength { get; set; } = new RangeNode<int>(8, 1, 100);
-        [Menu("Shield Charge Post-Cast Delay (ms)", "Delay before normal clicking resumes after Shield Charge is used for offscreen pathing. Lower values cast/recover faster; higher values are safer for slower attack speed setups.", 7, 1114)]
-        public RangeNode<int> OffscreenShieldChargePostCastClickDelayMs { get; set; } = new RangeNode<int>(100, 0, 1000);
-        [Menu("", 10004, 1114)]
-        [JsonIgnore]
-        public CustomNode PathfindingSliderWidthEnd { get; private set; } = new();
-
-        [Menu("Lazy Mode", 1115, 1100)]
-        public EmptyNode LazyModeCategory { get; set; } = new EmptyNode();
-        [Menu("Lazy Mode - Important Info in Tooltip ->", "Will automatically click most things for you, without you needing to hold the key.\n\nThere are inherent limitations to this feature that cannot be fixed:\n\n-> If you are holding down a skill, for instance, Cyclone, you cannot interact with most things in the game.\n   If you use a skill that requires you to hold a key, you must set it to left or right click and enable\n   the 'Disable Lazy Mode while Left Click Held' or 'Disable Lazy Mode while Right Click Held' setting below for lazy mode to function correctly.\n\n-> The plugin cannot detect when a chest becomes unlocked,\n   This is a limitation with ExileAPI and not the plugin and for this reason, lazy mode is not allowed\n   to click chests that were locked when spawned. When a locked-on-spawn chest is on-screen,\n   lazy mode will be temporarily disabled, until the blacklisted item is off of the screen, which will\n   allow you to manually press the hotkey to click these items specifically if you want to.\n\n-> This will take control away from you at crucial moments, potentially causing you to die.\n\nHolding the click items hotkey you have set in Controls will override lazy mode blocking.", 1, 1115)]
-        public ToggleNode LazyMode { get; set; } = new ToggleNode(false);
-        [Menu("", 10005, 1115)]
-        [JsonIgnore]
-        public CustomNode LazyModeSliderWidthStart { get; private set; } = new();
-        [Menu("Click Limiting (ms)", "When lazy mode is enabled, this sets the minimum delay (in milliseconds)\nthat must pass between consecutive clicks performed by the plugin.\nThis limiter applies to all automated clicks (shrines, altars, strongboxes, etc.)\nonly while lazy mode is active. Increase this value to reduce click spam and\nprevent the plugin from taking control away from you.", 2, 1115)]
-        public RangeNode<int> LazyModeClickLimiting { get; set; } = new RangeNode<int>(80, 80, 1000);
-        [Menu("Disable Hotkey", "When lazy mode is enabled and active, holding this key will temporarily disable lazy mode clicking.\nThis allows you to pause automated clicking without disabling lazy mode entirely.", 3, 1115)]
-        public HotkeyNodeV2 LazyModeDisableKey { get; set; } = new HotkeyNodeV2(Keys.F2);
-        [Menu("Disable Hotkey Toggle Mode", "When enabled, pressing the Disable Hotkey toggles lazy mode clicking on/off until you press it again.\nWhen disabled, the hotkey works as hold-to-disable.", 4, 1115)]
-        public ToggleNode LazyModeDisableKeyToggleMode { get; set; } = new ToggleNode(false);
-        [Menu("Restore Cursor Position after Each Click", "When enabled, restores cursor to original position after clicking in lazy mode.", 5, 1115)]
-        public ToggleNode RestoreCursorInLazyMode { get; set; } = new ToggleNode(true);
-        [Menu("Restore Cursor Delay (ms)", "Delay before restoring cursor position after a lazy-mode click when cursor restore is enabled.\n\nWhen set below 20, this may cause the plugin to have to click an item multiple times to pick it up.", 6, 1115)]
-        public RangeNode<int> LazyModeRestoreCursorDelayMs { get; set; } = new RangeNode<int>(20, 0, 40);
-        [Menu("Item Hover Sleep (ms)", "Sleep duration before UIHover verification in lazy mode.\nIncrease if you notice the mouse moving and not successfully clicking on things when it should.\n\nA value of 20 is recommended.", 7, 1115)]
-        public RangeNode<int> LazyModeUIHoverSleep { get; set; } = new RangeNode<int>(20, 20, 40);
-        [Menu("Disable Lazy Mode while Left Click Held", "When enabled, holding left mouse button will disable lazy mode auto-clicking.", 8, 1115)]
-        public ToggleNode DisableLazyModeLeftClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Disable Lazy Mode while Right Click Held", "When enabled, holding right mouse button will disable lazy mode auto-clicking.", 9, 1115)]
-        public ToggleNode DisableLazyModeRightClickHeld { get; set; } = new ToggleNode(true);
-        [Menu("Lever Reclick Delay (ms)", "When lazy mode is enabled, prevents repeatedly clicking the same lever too quickly.\nIncrease this value if a lever is being clicked repeatedly.", 10, 1115)]
-        public RangeNode<int> LazyModeLeverReclickDelay { get; set; } = new RangeNode<int>(10000, 10000, 30000);
-        [Menu("Nearby Monster Blockers", "Prevents lazy mode clicking when nearby monster density reaches your configured thresholds.", 11, 1115)]
-        [JsonIgnore]
-        public CustomNode LazyModeNearbyMonsterRulesPanel { get; private set; } = new();
-        public int LazyModeNormalMonsterBlockCount { get; set; } = 0;
-        public int LazyModeNormalMonsterBlockDistance { get; set; } = 10;
-        public int LazyModeMagicMonsterBlockCount { get; set; } = 3;
-        public int LazyModeMagicMonsterBlockDistance { get; set; } = 10;
-        public int LazyModeRareMonsterBlockCount { get; set; } = 1;
-        public int LazyModeRareMonsterBlockDistance { get; set; } = 10;
-        public int LazyModeUniqueMonsterBlockCount { get; set; } = 1;
-        public int LazyModeUniqueMonsterBlockDistance { get; set; } = 10;
-        [Menu("", 10006, 1115)]
-        [JsonIgnore]
-        public CustomNode LazyModeSliderWidthEnd { get; private set; } = new();
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> MechanicPriorityOrder { get; set; } = new();
 
@@ -227,7 +33,7 @@ namespace ClickIt
         public EmptyNode WorldInteractionsCategory { get; set; } = new EmptyNode();
         [Menu("", 101, 1400)]
         [JsonIgnore]
-        public CustomNode MechanicsTablePanel { get; private set; } = new();
+        public CustomNode MechanicsTablePanel { get; internal set; } = new();
         [JsonIgnore]
         public bool ShowRawMechanicNodesInSettings => false;
         [Menu("Basic Chests", "Click normal (non-league related) chests.", 1, 1400)]
@@ -374,23 +180,23 @@ namespace ClickIt
 
         [Menu("", 10007, 124)]
         [JsonIgnore]
-        public CustomNode PrioritiesSliderWidthStart { get; private set; } = new();
+        public CustomNode PrioritiesSliderWidthStart { get; internal set; } = new();
         [Menu("Priority Distance Penalty", "Applies an extra distance cost per lower-priority row when comparing non-ignored mechanics.\n\nHigher values make table order matter more while still considering distance.\n\nSetting this to 0 will effectively disable the priorities feature, however, ignore distance values will still be respected.\n\nWhen priorities are disabled, distance will be the only factor considered in what to click.", 1, 124)]
         public RangeNode<int> MechanicPriorityDistancePenalty { get; set; } = new RangeNode<int>(25, 0, 100);
 
         [Menu("", 2, 124)]
         [JsonIgnore]
-        public CustomNode MechanicPriorityTablePanel { get; private set; } = new();
+        public CustomNode MechanicPriorityTablePanel { get; internal set; } = new();
         [Menu("", 10008, 124)]
         [JsonIgnore]
-        public CustomNode PrioritiesSliderWidthEnd { get; private set; } = new();
+        public CustomNode PrioritiesSliderWidthEnd { get; internal set; } = new();
 
         [Menu("Items", 117, 1400)]
         public EmptyNode ItemPickupCategory { get; set; } = new EmptyNode();
 
         [Menu("", 2, 117)]
         [JsonIgnore]
-        public CustomNode ItemTypeFiltersPanel { get; private set; } = new();
+        public CustomNode ItemTypeFiltersPanel { get; internal set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> ItemTypeWhitelistIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -413,7 +219,7 @@ namespace ClickIt
         [Menu("", 2, 118)]
         [ConditionalDisplay(nameof(ShowEssenceCorruptionTablePanel))]
         [JsonIgnore]
-        public CustomNode EssenceCorruptionTablePanel { get; private set; } = new();
+        public CustomNode EssenceCorruptionTablePanel { get; internal set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> EssenceCorruptNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -427,7 +233,7 @@ namespace ClickIt
         public ToggleNode ShowUltimatumOptionOverlay { get; set; } = new ToggleNode(true);
         [Menu("", 4, 119)]
         [JsonIgnore]
-        public CustomNode UltimatumModifierTablePanel { get; private set; } = new();
+        public CustomNode UltimatumModifierTablePanel { get; internal set; } = new();
 
         [Menu("Take Reward when Modifier Is Chosen (Grueling Gauntlet)", 1195, 119)]
         public EmptyNode UltimatumTakeRewardWhenChosenCategory { get; set; } = new EmptyNode();
@@ -438,7 +244,7 @@ namespace ClickIt
         public bool ShowUltimatumTakeRewardModifierTablePanel => true;
         [Menu("", 2, 1195)]
         [JsonIgnore]
-        public CustomNode UltimatumTakeRewardModifierTablePanel { get; private set; } = new();
+        public CustomNode UltimatumTakeRewardModifierTablePanel { get; internal set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public List<string> UltimatumModifierPriority { get; set; } = new();
@@ -455,7 +261,7 @@ namespace ClickIt
         public ToggleNode ShowStrongboxFrames { get; set; } = new ToggleNode(true);
         [Menu("", 2, 120)]
         [JsonIgnore]
-        public CustomNode StrongboxFilterTablePanel { get; private set; } = new();
+        public CustomNode StrongboxFilterTablePanel { get; internal set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> StrongboxClickIds { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -468,7 +274,7 @@ namespace ClickIt
 
         [Menu("Settings", 1, 121)]
         [JsonIgnore]
-        public CustomNode AltarsPanel { get; private set; } = new();
+        public CustomNode AltarsPanel { get; internal set; } = new();
 
         [JsonIgnore]
         public bool ShowRawAltarNodesInSettings => false;
@@ -487,7 +293,7 @@ namespace ClickIt
         public EmptyNode WeightOverrides { get; set; } = new EmptyNode();
         [JsonIgnore]
         [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
-        public CustomNode AltarModWeights { get; private set; } = new();
+        public CustomNode AltarModWeights { get; internal set; } = new();
 
         [ConditionalDisplay(nameof(ShowRawAltarNodesInSettings))]
         public ToggleNode ValuableUpside { get; set; } = new ToggleNode(true);
@@ -528,7 +334,7 @@ namespace ClickIt
         public HotkeyNodeV2 DelveFlareHotkey { get; set; } = new HotkeyNodeV2(Keys.D6);
         [Menu("", 10009, 123)]
         [JsonIgnore]
-        public CustomNode DelveSliderWidthStart { get; private set; } = new();
+        public CustomNode DelveSliderWidthStart { get; internal set; } = new();
         [Menu("Darkness Debuff Stacks", 6, 123)]
         public RangeNode<int> DarknessDebuffStacks { get; set; } = new RangeNode<int>(5, 1, 10);
         [Menu("Flare Health %", 7, 123)]
@@ -537,7 +343,7 @@ namespace ClickIt
         public RangeNode<int> DelveFlareEnergyShieldThreshold { get; set; } = new RangeNode<int>(75, 2, 100);
         [Menu("", 10010, 123)]
         [JsonIgnore]
-        public CustomNode DelveSliderWidthEnd { get; private set; } = new();
+        public CustomNode DelveSliderWidthEnd { get; internal set; } = new();
 
         [JsonIgnore]
         internal Keys ClickLabelKeyBinding
@@ -565,30 +371,11 @@ namespace ClickIt
 
         public ClickItSettings()
         {
+            DebugTestingSubmenu = new ClickItDebugSettingsSubmenu(this);
+            ControlsSubmenu = new ClickItControlsSettingsSubmenu(this);
             InitializeDefaultWeights();
             ClickItSettingsMigrationService.Apply(this);
-            ClickItSettingsScreenNodes screenNodes = SettingsUiBootstrapper.CreateScreenNodes(this);
-            DebugTestingPanel = screenNodes.DebugTestingPanel;
-            ControlsSliderWidthStart = screenNodes.ControlsSliderWidthStart;
-            ControlsSliderWidthEnd = screenNodes.ControlsSliderWidthEnd;
-            PathfindingSliderWidthStart = screenNodes.PathfindingSliderWidthStart;
-            PathfindingSliderWidthEnd = screenNodes.PathfindingSliderWidthEnd;
-            LazyModeSliderWidthStart = screenNodes.LazyModeSliderWidthStart;
-            LazyModeSliderWidthEnd = screenNodes.LazyModeSliderWidthEnd;
-            LazyModeNearbyMonsterRulesPanel = screenNodes.LazyModeNearbyMonsterRulesPanel;
-            PrioritiesSliderWidthStart = screenNodes.PrioritiesSliderWidthStart;
-            PrioritiesSliderWidthEnd = screenNodes.PrioritiesSliderWidthEnd;
-            DelveSliderWidthStart = screenNodes.DelveSliderWidthStart;
-            DelveSliderWidthEnd = screenNodes.DelveSliderWidthEnd;
-            AltarsPanel = screenNodes.AltarsPanel;
-            AltarModWeights = screenNodes.AltarModWeights;
-            ItemTypeFiltersPanel = screenNodes.ItemTypeFiltersPanel;
-            MechanicPriorityTablePanel = screenNodes.MechanicPriorityTablePanel;
-            EssenceCorruptionTablePanel = screenNodes.EssenceCorruptionTablePanel;
-            StrongboxFilterTablePanel = screenNodes.StrongboxFilterTablePanel;
-            MechanicsTablePanel = screenNodes.MechanicsTablePanel;
-            UltimatumModifierTablePanel = screenNodes.UltimatumModifierTablePanel;
-            UltimatumTakeRewardModifierTablePanel = screenNodes.UltimatumTakeRewardModifierTablePanel;
+            SettingsUiBootstrapper.InitializeScreenNodes(this);
         }
 
     }

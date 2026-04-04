@@ -1,8 +1,8 @@
 namespace ClickIt.Features.Click.Core
 {
-    internal sealed class CandidateAcquisitionEngine(ClickRuntimeEngine owner)
+    internal sealed class CandidateAcquisitionEngine(CandidateAcquisitionEngineDependencies dependencies)
     {
-        private readonly ClickRuntimeEngineDependencies _dependencies = owner.Dependencies;
+        private readonly CandidateAcquisitionEngineDependencies _dependencies = dependencies;
 
         public ClickCandidates Collect(ClickTickContext context)
         {
@@ -12,14 +12,14 @@ namespace ClickIt.Features.Click.Core
             if (!context.GroundItemsVisible)
             {
                 _dependencies.VisibleMechanics.ResolveHiddenFallbackCandidates(out lostShipment, out settlersOre);
-                _dependencies.PublishClickFlowDebugStage("GroundItemsHidden", "Ground item labels hidden; evaluating non-label fallbacks", null);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden", "Ground item labels hidden; evaluating non-label fallbacks", null);
                 return new ClickCandidates(lostShipment, settlersOre, null, null);
             }
 
             _dependencies.VisibleMechanics.ResolveVisibleMechanicCandidates(out lostShipment, out settlersOre, context.AllLabels);
             if (_dependencies.ShouldCaptureClickDebug())
             {
-                _dependencies.PublishClickFlowDebugStage("LabelSource", _dependencies.BuildLabelSourceDebugSummary(context.AllLabels), null);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", _dependencies.LabelInteraction.BuildLabelSourceDebugSummary(context.AllLabels), null);
             }
 
             LabelOnGround? nextLabel = _dependencies.LabelSelection.ResolveNextLabelCandidate(context.AllLabels);

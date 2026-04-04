@@ -1,13 +1,29 @@
 namespace ClickIt.Core.Runtime
 {
     internal sealed class PluginDebugTelemetryService(
-        Func<ClickService?> getClickAutomationPort,
-        Func<LabelFilterService?> getLabelFilterPort,
-        Func<PathfindingService?> getPathfindingService)
+        Func<ClickAutomationPort?> getClickAutomationPort,
+        Func<LabelFilterPort?> getLabelFilterPort,
+        Func<PathfindingService?> getPathfindingService,
+        Func<AltarService?> getAltarService,
+        Func<WeightCalculator?> getWeightCalculator,
+        Func<PluginRenderingState?> getRenderingState,
+        Func<GameController?> getGameController,
+        Func<InputHandler?> getInputHandler,
+        Func<ClickItSettings?> getSettings,
+        Func<TimeCache<List<LabelOnGround>>?> getCachedLabels,
+        Func<ErrorHandler?> getErrorHandler)
     {
-        private readonly Func<ClickService?> _getClickAutomationPort = getClickAutomationPort;
-        private readonly Func<LabelFilterService?> _getLabelFilterPort = getLabelFilterPort;
+        private readonly Func<ClickAutomationPort?> _getClickAutomationPort = getClickAutomationPort;
+        private readonly Func<LabelFilterPort?> _getLabelFilterPort = getLabelFilterPort;
         private readonly Func<PathfindingService?> _getPathfindingService = getPathfindingService;
+        private readonly Func<AltarService?> _getAltarService = getAltarService;
+        private readonly Func<WeightCalculator?> _getWeightCalculator = getWeightCalculator;
+        private readonly Func<PluginRenderingState?> _getRenderingState = getRenderingState;
+        private readonly Func<GameController?> _getGameController = getGameController;
+        private readonly Func<InputHandler?> _getInputHandler = getInputHandler;
+        private readonly Func<ClickItSettings?> _getSettings = getSettings;
+        private readonly Func<TimeCache<List<LabelOnGround>>?> _getCachedLabels = getCachedLabels;
+        private readonly Func<ErrorHandler?> _getErrorHandler = getErrorHandler;
         private readonly DebugTelemetryFreezeState _freezeState = new();
 
         internal DebugTelemetrySnapshot GetSnapshot()
@@ -15,12 +31,34 @@ namespace ClickIt.Core.Runtime
             if (_freezeState.TryGetFrozenSnapshot(Environment.TickCount64, out DebugTelemetrySnapshot frozenSnapshot))
                 return frozenSnapshot;
 
-            return DebugTelemetryProjection.Build(_getClickAutomationPort(), _getLabelFilterPort(), _getPathfindingService());
+            return DebugTelemetryProjection.Build(
+                _getClickAutomationPort(),
+                _getLabelFilterPort(),
+                _getPathfindingService(),
+                _getAltarService(),
+                _getWeightCalculator(),
+                _getRenderingState(),
+                _getGameController(),
+                _getInputHandler(),
+                _getSettings(),
+                _getCachedLabels(),
+                _getErrorHandler());
         }
 
         internal void FreezeSnapshot(string reason, int holdDurationMs)
         {
-            DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(_getClickAutomationPort(), _getLabelFilterPort(), _getPathfindingService());
+            DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(
+                _getClickAutomationPort(),
+                _getLabelFilterPort(),
+                _getPathfindingService(),
+                _getAltarService(),
+                _getWeightCalculator(),
+                _getRenderingState(),
+                _getGameController(),
+                _getInputHandler(),
+                _getSettings(),
+                _getCachedLabels(),
+                _getErrorHandler());
             _freezeState.Freeze(snapshot, reason, holdDurationMs, Environment.TickCount64);
         }
 

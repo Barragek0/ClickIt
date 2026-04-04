@@ -5,11 +5,10 @@ namespace ClickIt.Core.Bootstrap
         ErrorHandler ErrorHandler,
         AreaService AreaService,
         LabelReadModelService LabelReadModelService,
-        LabelService LabelService,
         TimeCache<List<LabelOnGround>> CachedLabels,
         Camera Camera,
         AltarService AltarService,
-        LabelFilterService LabelFilterPort,
+        LabelFilterPort LabelFilterPort,
         ShrineService ShrineService,
         InputHandler InputHandler,
         PathfindingService PathfindingService,
@@ -30,14 +29,13 @@ namespace ClickIt.Core.Bootstrap
             var labelReadModelService = new LabelReadModelService(
                 gameController,
                 point => areaService.PointIsInClickableArea(gameController, point));
-            var labelService = new LabelService(labelReadModelService);
-            var cachedLabels = labelService.CachedLabels;
+            var cachedLabels = labelReadModelService.CachedLabels;
 
             var camera = gameController.Game?.IngameState?.Camera
                 ?? throw new InvalidOperationException("Camera is null during plugin initialization.");
 
             var altarService = new AltarService(owner, settings, cachedLabels);
-            var labelFilterPort = new LabelFilterService(settings, new EssenceService(settings), errorHandler, gameController);
+            var labelFilterPort = new LabelFilterPort(settings, new EssenceService(settings), errorHandler, gameController);
             var shrineService = new ShrineService(gameController, camera);
             var inputHandler = new InputHandler(settings, performanceMonitor, errorHandler);
             var pathfindingService = new PathfindingService(settings, errorHandler);
@@ -51,7 +49,6 @@ namespace ClickIt.Core.Bootstrap
                 errorHandler,
                 areaService,
                 labelReadModelService,
-                labelService,
                 cachedLabels,
                 camera,
                 altarService,

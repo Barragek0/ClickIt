@@ -28,16 +28,17 @@ namespace ClickIt.Tests.Features.Altars
         }
 
         [TestMethod]
-        public void DetermineAltarType_PrivateMethod_ReturnsExpected()
+        public void AddAltarComponent_RejectsDuplicateComponentsWithSameKey()
         {
-            AltarType searing = AltarService.DetermineAltarType("SomePath/CleansingFireAltar/Other");
-            searing.Should().Be(AltarType.SearingExarch);
+            var clickIt = new ClickIt();
+            var settings = new ClickItSettings();
+            var service = new AltarService(clickIt, settings, null);
+            var first = TestBuilders.BuildPrimary();
+            var duplicate = TestBuilders.BuildPrimary();
 
-            AltarType eater = AltarService.DetermineAltarType("prefix/TangleAltar/suffix");
-            eater.Should().Be(AltarType.EaterOfWorlds);
-
-            AltarType unknown = AltarService.DetermineAltarType(string.Empty);
-            unknown.Should().Be(AltarType.Unknown);
+            service.AddAltarComponent(first).Should().BeTrue();
+            service.AddAltarComponent(duplicate).Should().BeFalse();
+            service.GetAltarComponentCount().Should().Be(1);
         }
     }
 }

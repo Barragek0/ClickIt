@@ -1,8 +1,8 @@
 namespace ClickIt.Features.Click.Core
 {
-    internal sealed class PostInteractionStateEngine(ClickRuntimeEngine owner)
+    internal sealed class PostInteractionStateEngine(PostInteractionStateEngineDependencies dependencies)
     {
-        private readonly ClickRuntimeEngineDependencies _dependencies = owner.Dependencies;
+        private readonly PostInteractionStateEngineDependencies _dependencies = dependencies;
 
         public IEnumerator Run(ExecutionResult executionResult)
         {

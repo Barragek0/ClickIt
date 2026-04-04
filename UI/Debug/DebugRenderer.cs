@@ -114,7 +114,7 @@ namespace ClickIt.UI
         }
 
         internal static IReadOnlyList<string> BuildClickSettingsDebugSnapshotLines(ClickItSettings settings)
-            => Debug.Sections.ClickingDebugOverlaySection.BuildClickSettingsDebugSnapshotLines(settings);
+            => ClickSettingsTelemetrySnapshot.FromSettings(settings).SummaryLines;
 
         public int RenderAltarDebug(int xPos, int yPos, int lineHeight)
             => _labelDebugOverlaySection.RenderAltarDebug(xPos, yPos, lineHeight);

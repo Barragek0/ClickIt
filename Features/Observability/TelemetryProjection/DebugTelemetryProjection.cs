@@ -1,64 +1,61 @@
 namespace ClickIt.Features.Observability.TelemetryProjection
 {
-    internal static class DebugTelemetryProjection
+    internal static partial class DebugTelemetryProjection
     {
         public static DebugTelemetrySnapshot Build(
-            ClickService? clickAutomationPort,
-            LabelFilterService? labelFilterPort,
-            PathfindingService? pathfindingService)
+            ClickAutomationPort? clickAutomationPort,
+            LabelFilterPort? labelFilterPort,
+            PathfindingService? pathfindingService,
+            AltarService? altarService,
+            WeightCalculator? weightCalculator,
+            PluginRenderingState? renderingState,
+            GameController? gameController,
+            InputHandler? inputHandler,
+            ClickItSettings? settings,
+            TimeCache<List<LabelOnGround>>? cachedLabels,
+            ErrorHandler? errorHandler)
         {
-            ClickTelemetrySnapshot clickTelemetry = BuildClickTelemetry(clickAutomationPort);
+            ClickTelemetrySnapshot clickTelemetry = BuildClickTelemetry(
+                clickAutomationPort,
+                labelFilterPort,
+                gameController,
+                inputHandler,
+                settings);
             LabelTelemetrySnapshot labelTelemetry = BuildLabelTelemetry(labelFilterPort);
             PathfindingTelemetrySnapshot pathfindingTelemetry = BuildPathfindingTelemetry(pathfindingService);
+            RenderingTelemetrySnapshot renderingTelemetry = BuildRenderingTelemetry(renderingState);
+            StatusTelemetrySnapshot statusTelemetry = BuildStatusTelemetry(gameController, cachedLabels);
+            ErrorTelemetrySnapshot errorTelemetry = BuildErrorTelemetry(errorHandler);
             InventoryTelemetrySnapshot inventoryTelemetry = BuildInventoryTelemetry(labelFilterPort);
+            AltarTelemetrySnapshot altarTelemetry = BuildAltarTelemetry(altarService, weightCalculator);
+            HoveredItemMetadataTelemetrySnapshot hoveredItemTelemetry = BuildHoveredItemMetadataTelemetry(gameController);
 
             return new DebugTelemetrySnapshot(
                 Click: clickTelemetry,
                 Label: labelTelemetry,
                 Pathfinding: pathfindingTelemetry,
-                Inventory: inventoryTelemetry);
+                Rendering: renderingTelemetry,
+                Status: statusTelemetry,
+                Errors: errorTelemetry,
+                Inventory: inventoryTelemetry,
+                Altar: altarTelemetry,
+                HoveredItem: hoveredItemTelemetry);
         }
 
-        private static ClickTelemetrySnapshot BuildClickTelemetry(ClickService? clickAutomationPort)
-        {
-            if (clickAutomationPort == null)
-                return ClickTelemetrySnapshot.Empty;
-
-            List<UltimatumOptionPreviewSnapshot> ultimatumPreview = [];
-            if (clickAutomationPort.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
-                && previews.Count > 0)
-            {
-                for (int i = 0; i < previews.Count; i++)
-                {
-                    UltimatumPanelOptionPreview preview = previews[i];
-                    ultimatumPreview.Add(new UltimatumOptionPreviewSnapshot(
-                        Rect: preview.Rect,
-                        ModifierName: preview.ModifierName,
-                        PriorityIndex: preview.PriorityIndex,
-                        IsSelected: preview.IsSelected));
-                }
-            }
-
-            return new ClickTelemetrySnapshot(
-                ServiceAvailable: true,
-                Click: clickAutomationPort.GetLatestClickDebug(),
-                ClickTrail: clickAutomationPort.GetLatestClickDebugTrail(),
-                RuntimeLog: clickAutomationPort.GetLatestRuntimeDebugLog(),
-                RuntimeLogTrail: clickAutomationPort.GetLatestRuntimeDebugLogTrail(),
-                Ultimatum: clickAutomationPort.GetLatestUltimatumDebug(),
-                UltimatumTrail: clickAutomationPort.GetLatestUltimatumDebugTrail(),
-                UltimatumOptionPreview: ultimatumPreview);
-        }
-
-        private static LabelTelemetrySnapshot BuildLabelTelemetry(LabelFilterService? labelFilterPort)
+        private static LabelTelemetrySnapshot BuildLabelTelemetry(LabelFilterPort? labelFilterPort)
         {
             if (labelFilterPort == null)
                 return LabelTelemetrySnapshot.Empty;
 
+            (bool labelsAvailable, int totalVisibleLabels, int validVisibleLabels) = labelFilterPort.GetVisibleLabelCounts();
+
             return new LabelTelemetrySnapshot(
                 ServiceAvailable: true,
                 Label: labelFilterPort.GetLatestLabelDebug(),
-                LabelTrail: labelFilterPort.GetLatestLabelDebugTrail());
+                LabelTrail: labelFilterPort.GetLatestLabelDebugTrail(),
+                LabelsAvailable: labelsAvailable,
+                TotalVisibleLabels: totalVisibleLabels,
+                ValidVisibleLabels: validVisibleLabels);
         }
 
         private static PathfindingTelemetrySnapshot BuildPathfindingTelemetry(PathfindingService? pathfindingService)
@@ -73,16 +70,15 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 OffscreenMovementTrail: pathfindingService.GetLatestOffscreenMovementDebugTrail());
         }
 
-        private static InventoryTelemetrySnapshot BuildInventoryTelemetry(LabelFilterService? labelFilterPort)
+        private static RenderingTelemetrySnapshot BuildRenderingTelemetry(PluginRenderingState? renderingState)
         {
-            if (labelFilterPort == null)
-                return new InventoryTelemetrySnapshot(
-                    Inventory: InventoryDebugSnapshot.Empty,
-                    InventoryTrail: []);
+            if (renderingState == null)
+                return RenderingTelemetrySnapshot.Empty;
 
-            return new InventoryTelemetrySnapshot(
-                Inventory: labelFilterPort.GetLatestInventoryDebug(),
-                InventoryTrail: labelFilterPort.GetLatestInventoryDebugTrail());
+            return new RenderingTelemetrySnapshot(
+                ServiceAvailable: true,
+                PendingTextCount: renderingState.DeferredTextQueue?.GetPendingCount() ?? 0,
+                PendingFrameCount: renderingState.DeferredFrameQueue?.GetPendingCount() ?? 0);
         }
     }
 }

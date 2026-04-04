@@ -1,8 +1,8 @@
 namespace ClickIt.Features.Click.Core
 {
-    internal sealed class InteractionExecutionEngine(ClickRuntimeEngine owner)
+    internal sealed class InteractionExecutionEngine(InteractionExecutionEngineDependencies dependencies)
     {
-        private readonly ClickRuntimeEngineDependencies _dependencies = owner.Dependencies;
+        private readonly InteractionExecutionEngineDependencies _dependencies = dependencies;
 
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
@@ -19,7 +19,7 @@ namespace ClickIt.Features.Click.Core
             if (_dependencies.ChestLootSettlement.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out string bypassDecision))
                 return false;
 
-            _dependencies.PublishClickFlowDebugStage(
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                 "PostChestLootSettleBlocked",
                 $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecision}",
                 mechanicId);
@@ -31,11 +31,11 @@ namespace ClickIt.Features.Click.Core
             if (!IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
                 && _dependencies.VisibleMechanics.TryClickSettlersOre(candidate))
             {
-                _dependencies.PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", candidate.MechanicId);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", candidate.MechanicId);
                 return true;
             }
 
-            _dependencies.PublishClickFlowDebugStage("HiddenSettlersFallbackSkipped", "Hidden settlers candidate was not targetable/valid at click time", candidate.MechanicId);
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenSettlersFallbackSkipped", "Hidden settlers candidate was not targetable/valid at click time", candidate.MechanicId);
             return false;
         }
 
@@ -94,7 +94,7 @@ namespace ClickIt.Features.Click.Core
             {
                 string chestLootSettleReason = context.ChestLootSettleReason;
                 _dependencies.DebugLog($"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
-                _dependencies.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason, null);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason, null);
                 return StopExecution();
             }
 
@@ -104,7 +104,7 @@ namespace ClickIt.Features.Click.Core
             }
 
             _dependencies.DebugLog("[ProcessRegularClick] Ground items not visible, breaking");
-            _dependencies.PublishClickFlowDebugStage("GroundItemsHiddenExit", "No clickable hidden fallback selected", null);
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHiddenExit", "No clickable hidden fallback selected", null);
             return StopExecution();
         }
 
@@ -142,14 +142,14 @@ namespace ClickIt.Features.Click.Core
             {
                 string chestLootSettleReason = context.ChestLootSettleReason;
                 _dependencies.DebugLog($"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
-                _dependencies.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason, null);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason, null);
                 return StopExecution();
             }
 
             _dependencies.LabelInteractionPort.LogSelectionDiagnostics(context.AllLabels, 0, context.AllLabels?.Count ?? 0);
             if (_dependencies.ShouldCaptureClickDebug())
             {
-                _dependencies.PublishClickFlowDebugStage("NoLabelCandidate", _dependencies.BuildNoLabelDebugSummary(context.AllLabels), null);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("NoLabelCandidate", _dependencies.LabelInteraction.BuildNoLabelDebugSummary(context.AllLabels), null);
             }
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value
@@ -164,7 +164,7 @@ namespace ClickIt.Features.Click.Core
             }
 
             _dependencies.DebugLog("[ProcessRegularClick] No label to click found, breaking");
-            _dependencies.PublishClickFlowDebugStage("NoLabelExit", "No label click attempted", null);
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("NoLabelExit", "No label click attempted", null);
             return StopExecution();
         }
 
@@ -181,11 +181,11 @@ namespace ClickIt.Features.Click.Core
 
             if (_dependencies.LabelSelection.ShouldSkipOrHandleSpecialLabel(nextLabel, context.WindowTopLeft))
             {
-                _dependencies.PublishClickFlowDebugStage("SpecialLabelHandled", "Special label handling consumed click tick", candidates.NextLabelMechanicId);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("SpecialLabelHandled", "Special label handling consumed click tick", candidates.NextLabelMechanicId);
                 return StopExecution();
             }
 
-            (bool resolved, Vector2 clickPos) = _dependencies.TryResolveLabelClickPosition(
+            (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
                 nextLabel,
                 candidates.NextLabelMechanicId,
                 context.WindowTopLeft,
@@ -195,9 +195,9 @@ namespace ClickIt.Features.Click.Core
                 return HandleVisibleLabelResolveFailure(context, candidates, nextLabel);
             }
 
-            _dependencies.PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", candidates.NextLabelMechanicId);
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", candidates.NextLabelMechanicId);
 
-            _dependencies.PublishLabelClickDebug(
+            _dependencies.ClickDebugPublisher.PublishLabelClickDebug(
                 "LabelCandidate",
                 candidates.NextLabelMechanicId,
                 nextLabel,
@@ -205,9 +205,9 @@ namespace ClickIt.Features.Click.Core
                 true,
                 "Settlers label candidate selected from ItemsOnGroundLabelsVisible");
 
-            bool clicked = _dependencies.ExecuteVisibleLabelInteraction(clickPos, nextLabel, candidates.NextLabelMechanicId);
+            bool clicked = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, nextLabel, candidates.NextLabelMechanicId);
 
-            _dependencies.PublishLabelClickDebug(
+            _dependencies.ClickDebugPublisher.PublishLabelClickDebug(
                 clicked ? "ClickSuccess" : "ClickFailed",
                 candidates.NextLabelMechanicId,
                 nextLabel,
@@ -215,7 +215,7 @@ namespace ClickIt.Features.Click.Core
                 clicked,
                 clicked ? "Settlers click completed via label pipeline" : "Settlers click attempt failed via label pipeline");
 
-            _dependencies.PublishClickFlowDebugStage(clicked ? "ClickExecuted" : "ClickRejected", clicked ? "Input click executed" : "Input click rejected", candidates.NextLabelMechanicId);
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(clicked ? "ClickExecuted" : "ClickRejected", clicked ? "Input click executed" : "Input click rejected", candidates.NextLabelMechanicId);
 
             if (clicked)
             {
@@ -230,7 +230,7 @@ namespace ClickIt.Features.Click.Core
                 }
 
                 _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(candidates.NextLabelMechanicId, nextLabel);
-                _dependencies.LabelSelection.MarkLeverClicked(nextLabel);
+                _dependencies.PathfindingLabelSuppression.RecordLeverClick(nextLabel);
                 if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
                 {
                     _dependencies.PathfindingService.ClearLatestPath();
@@ -243,16 +243,16 @@ namespace ClickIt.Features.Click.Core
         private ExecutionResult HandleVisibleLabelResolveFailure(ClickTickContext context, ClickCandidates candidates, LabelOnGround nextLabel)
         {
             _dependencies.DebugLog("[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
-            _dependencies.PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", candidates.NextLabelMechanicId);
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", candidates.NextLabelMechanicId);
 
             if (candidates.SettlersOre.HasValue
                 && OffscreenPathingMath.ShouldFallbackToSettlersEntityClickAfterLabelResolveFailure(candidates.NextLabelMechanicId, candidates.SettlersOre.Value.MechanicId))
             {
-                _dependencies.PublishClickFlowDebugStage("SettlersEntityFallbackAttempt", "Label unresolved; attempting settlers entity click", candidates.SettlersOre.Value.MechanicId);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("SettlersEntityFallbackAttempt", "Label unresolved; attempting settlers entity click", candidates.SettlersOre.Value.MechanicId);
                 if (!IsBlockedByPostChestLootSettlement(context, candidates.SettlersOre.Value.MechanicId, candidates.SettlersOre.Value.Entity)
                     && _dependencies.VisibleMechanics.TryClickSettlersOre(candidates.SettlersOre.Value))
                 {
-                    _dependencies.PublishClickFlowDebugStage("SettlersEntityFallbackSuccess", "Settlers entity click succeeded after label resolve failure", candidates.SettlersOre.Value.MechanicId);
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("SettlersEntityFallbackSuccess", "Settlers entity click succeeded after label resolve failure", candidates.SettlersOre.Value.MechanicId);
                     return StopExecution();
                 }
             }
@@ -263,7 +263,7 @@ namespace ClickIt.Features.Click.Core
                 candidates.NextLabelMechanicId);
             if (shouldContinueEntityPathing)
             {
-                _dependencies.PublishClickFlowDebugStage("EntityPathingFallback", "Label visible but unresolved click point; continuing pathing", candidates.NextLabelMechanicId);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("EntityPathingFallback", "Label visible but unresolved click point; continuing pathing", candidates.NextLabelMechanicId);
                 _ = _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(nextLabel.ItemOnGround);
             }
 

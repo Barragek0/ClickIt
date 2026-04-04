@@ -4,13 +4,6 @@ namespace ClickIt.UI.Settings.Panels
     {
         private readonly ClickItSettings _settings = settings;
 
-        private readonly struct UltimatumGroupRowRenderState(bool rowClicked, bool arrowClicked, bool isHovered)
-        {
-            public bool RowClicked { get; } = rowClicked;
-            public bool ArrowClicked { get; } = arrowClicked;
-            public bool IsHovered { get; } = isHovered;
-        }
-
         private static UltimatumModifierGroupEntry[] UltimatumModifierGroups => UltimatumModifierGroupCatalog.Groups;
         private static HashSet<string> UltimatumTieredModifierNames => UltimatumModifierGroupCatalog.TieredModifierNames;
 
@@ -26,10 +19,10 @@ namespace ClickIt.UI.Settings.Panels
 
             ImGui.Spacing();
 
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Priority: top row is highest, bottom row is lowest.");
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
-            ImGui.TextWrapped("Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.");
-            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawInstructionText("Priority: top row is highest, bottom row is lowest.");
+            SettingsUiRenderHelpers.DrawWrappedText(
+                "Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.",
+                new Vector4(0.7f, 0.7f, 0.7f, 1f));
             ImGui.Spacing();
 
             float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
@@ -65,9 +58,12 @@ namespace ClickIt.UI.Settings.Panels
                     }
 
                     ImGui.SameLine();
-                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.95f, 0.95f, 1f));
-                    ImGui.Selectable($"{modifier}##UltimatumModifier_{i}", false, ImGuiSelectableFlags.None, new NumVector2(0, 0));
-                    ImGui.PopStyleColor();
+                    _ = SettingsUiRenderHelpers.DrawSelectableText(
+                        $"{modifier}##UltimatumModifier_{i}",
+                        false,
+                        ImGuiSelectableFlags.None,
+                        new Vector4(0.95f, 0.95f, 0.95f, 1f),
+                        new NumVector2(0, 0));
 
                     if (ImGui.IsItemHovered())
                     {
@@ -76,9 +72,7 @@ namespace ClickIt.UI.Settings.Panels
                         {
                             ImGui.TableNextRow();
                             ImGui.TableSetColumnIndex(0);
-                            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-                            ImGui.TextWrapped(description);
-                            ImGui.PopStyleColor();
+                            SettingsUiRenderHelpers.DrawWrappedText(description, new Vector4(0.65f, 0.65f, 0.65f, 1f));
                         }
                     }
                 }
@@ -94,8 +88,8 @@ namespace ClickIt.UI.Settings.Panels
             _settings.EnsureUltimatumTakeRewardModifiersInitialized();
 
             _ = UltimatumGruelingGauntletDetectionStore.TryGet(out _);
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "This table only does anything when Gruelling Gauntlet is allocated.");
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Rows with [v] can be clicked to open stage-specific submenu options.");
+            SettingsUiRenderHelpers.DrawInstructionText("This table only does anything when Gruelling Gauntlet is allocated.");
+            SettingsUiRenderHelpers.DrawInstructionText("Rows with [v] can be clicked to open stage-specific submenu options.");
             ImGui.Spacing();
 
             SettingsUiRenderHelpers.DrawSearchBar("##UltimatumTakeRewardSearch", "Clear##UltimatumTakeRewardSearchClear", ref _settings.UiState.UltimatumTakeRewardSearchFilter);
@@ -138,11 +132,7 @@ namespace ClickIt.UI.Settings.Panels
                     string description = UltimatumModifiersConstants.GetDescription(modifier);
                     if (!string.IsNullOrWhiteSpace(description))
                     {
-                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-                        ImGui.Indent();
-                        ImGui.TextWrapped(description);
-                        ImGui.Unindent();
-                        ImGui.PopStyleColor();
+                        SettingsUiRenderHelpers.DrawWrappedText(description, new Vector4(0.65f, 0.65f, 0.65f, 1f), 1f);
                     }
                 }
 
@@ -161,7 +151,7 @@ namespace ClickIt.UI.Settings.Panels
                     continue;
 
                 hasEntries = true;
-                UltimatumGroupRowRenderState rowState = DrawUltimatumModifierGroupRow(id, group, moveToTakeReward, textColor);
+                SettingsUiRenderHelpers.ExpandableTransferRowState rowState = DrawUltimatumModifierGroupRow(id, group, moveToTakeReward, textColor);
                 if (rowState.ArrowClicked)
                 {
                     SetUltimatumModifierGroupState(group, moveToTakeReward);
@@ -173,16 +163,12 @@ namespace ClickIt.UI.Settings.Panels
                 if (rowState.RowClicked)
                     ToggleExpandedUltimatumTakeRewardRow(id, group.Id);
 
-                if (rowState.IsHovered)
+                if (rowState.RowHovered || rowState.ArrowHovered)
                 {
                     string description = UltimatumModifiersConstants.GetDescription(group.DisplayName);
                     if (!string.IsNullOrWhiteSpace(description))
                     {
-                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-                        ImGui.Indent();
-                        ImGui.TextWrapped(description);
-                        ImGui.Unindent();
-                        ImGui.PopStyleColor();
+                        SettingsUiRenderHelpers.DrawWrappedText(description, new Vector4(0.65f, 0.65f, 0.65f, 1f), 1f);
                     }
                 }
 
@@ -194,36 +180,15 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.PopID();
         }
 
-        private UltimatumGroupRowRenderState DrawUltimatumModifierGroupRow(string listId, UltimatumModifierGroupEntry group, bool moveToTakeReward, Vector4 textColor)
+        private SettingsUiRenderHelpers.ExpandableTransferRowState DrawUltimatumModifierGroupRow(string listId, UltimatumModifierGroupEntry group, bool moveToTakeReward, Vector4 textColor)
         {
             string label = $"{group.DisplayName} [v]##{listId}_{group.Id}";
-            float rowWidth = SettingsUiRenderHelpers.CalculateTransferRowWidth();
-            const float arrowWidth = 28f;
-
-            if (moveToTakeReward)
-            {
-                bool leftArrowClicked = ImGui.Button($"<-##MoveUltimatumGroup_{listId}_{group.Id}", new NumVector2(arrowWidth, 0));
-                bool leftArrowHovered = ImGui.IsItemHovered();
-                ImGui.SameLine();
-                bool rowClicked = DrawUltimatumModifierGroupSelectable(listId, group.Id, label, rowWidth, textColor);
-                bool rowHovered = ImGui.IsItemHovered();
-                return new UltimatumGroupRowRenderState(rowClicked, leftArrowClicked, rowHovered || leftArrowHovered);
-            }
-
-            bool clicked = DrawUltimatumModifierGroupSelectable(listId, group.Id, label, rowWidth, textColor);
-            bool rowIsHovered = ImGui.IsItemHovered();
-            ImGui.SameLine();
-            bool rightArrowClicked = ImGui.Button($"->##MoveUltimatumGroup_{listId}_{group.Id}", new NumVector2(arrowWidth, 0));
-            bool rightArrowHovered = ImGui.IsItemHovered();
-            return new UltimatumGroupRowRenderState(clicked, rightArrowClicked, rowIsHovered || rightArrowHovered);
-        }
-
-        private bool DrawUltimatumModifierGroupSelectable(string listId, string groupId, string label, float rowWidth, Vector4 textColor)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-            bool clicked = ImGui.Selectable(label, IsExpandedUltimatumTakeRewardRow(listId, groupId), ImGuiSelectableFlags.AllowDoubleClick, new NumVector2(rowWidth, 0));
-            ImGui.PopStyleColor();
-            return clicked;
+            return SettingsUiRenderHelpers.DrawExpandableTransferListRow(
+                $"MoveUltimatumGroup_{listId}_{group.Id}",
+                label,
+                IsExpandedUltimatumTakeRewardRow(listId, group.Id),
+                moveToTakeReward,
+                textColor);
         }
 
         private void DrawUltimatumModifierGroupSubmenu(string listId, UltimatumModifierGroupEntry group, bool moveToTakeReward)
@@ -240,13 +205,11 @@ namespace ClickIt.UI.Settings.Panels
                 bool isTakeReward = _settings.UltimatumTakeRewardModifierNames.Contains(modifier);
                 bool enabledForList = moveToTakeReward ? !isTakeReward : isTakeReward;
                 Vector4 rowColor = enabledForList ? (moveToTakeReward ? SettingsUiPalette.WhitelistTextColor : SettingsUiPalette.BlacklistTextColor) : (moveToTakeReward ? SettingsUiPalette.BlacklistTextColor : SettingsUiPalette.WhitelistTextColor);
-                ImGui.PushStyleColor(ImGuiCol.Text, rowColor);
-                if (ImGui.Checkbox($"{modifier}##UltimatumGroupSubmenu_{listId}_{group.Id}_{modifier}", ref enabledForList))
+                if (SettingsUiRenderHelpers.DrawCheckbox($"{modifier}##UltimatumGroupSubmenu_{listId}_{group.Id}_{modifier}", ref enabledForList, rowColor))
                 {
                     bool moveModifierToTakeReward = moveToTakeReward ? !enabledForList : enabledForList;
                     MoveUltimatumTakeRewardModifier(modifier, moveModifierToTakeReward);
                 }
-                ImGui.PopStyleColor();
             }
 
             ImGui.Unindent();

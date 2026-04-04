@@ -18,14 +18,13 @@ namespace ClickIt.Features.Click
         private readonly Func<Vector2, string, bool> _pointIsInClickableArea;
         private readonly InputHandler _inputHandler;
         private readonly ILabelInteractionPort _labelInteractionPort;
+        private readonly LabelClickPointResolver _labelClickPointResolver;
         private readonly ShrineService _shrineService;
         private readonly PathfindingService _pathfindingService;
         private readonly Func<bool> _groundItemsVisible;
         private readonly TimeCache<List<LabelOnGround>> _cachedLabels;
         private readonly PerformanceMonitor _performanceMonitor;
-        private readonly Action<string, int>? _freezeDebugTelemetrySnapshot;
-        private readonly ClickTelemetryStore _clickTelemetryStore;
-        private readonly IClickSafetyPolicy _clickSafetyPolicy = new ClickSafetyPolicy();
+        private readonly ClickAutomationSupport _support;
         private readonly LockedInteractionDispatcher _lockedInteractionDispatcher;
         private readonly ChestLootSettlementState _chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
@@ -34,17 +33,24 @@ namespace ClickIt.Features.Click
         private ClickTickContextFactory? _tickContextFactory;
         private AltarAutomationService? _altarAutomationService;
         private ClickDebugPublicationService? _clickDebugPublicationService;
+        private GroundLabelEntityAddressProvider? _groundLabelEntityAddressProvider;
         private VisibleLabelSnapshotProvider? _visibleLabelSnapshotProvider;
+        private PathfindingLabelSuppressionEvaluator? _pathfindingLabelSuppressionEvaluator;
+        private SpecialLabelInteractionHandler? _specialLabelInteractionHandler;
+        private ManualCursorLabelInteractionHandler? _manualCursorLabelInteractionHandler;
+        private LabelSelectionScanEngine? _labelSelectionScanEngine;
+        private ManualCursorLabelSelector? _manualCursorLabelSelector;
+        private ManualCursorVisibleMechanicSelector? _manualCursorVisibleMechanicSelector;
         private LabelSelectionCoordinator? _labelSelectionCoordinator;
         private ChestLootSettlementTracker? _chestLootSettlementTracker;
-        private VisibleMechanicTargetSelector? _visibleMechanicTargetSelector;
+        private LostShipmentTargetSelector? _lostShipmentTargetSelector;
+        private SettlersOreTargetSelector? _settlersOreTargetSelector;
         private VisibleMechanicCoordinator? _visibleMechanicCoordinator;
         private OffscreenStickyTargetHandler? _offscreenStickyTargetHandler;
         private OffscreenPathingCoordinator? _offscreenPathingCoordinator;
         private MovementSkillCoordinator? _movementSkillCoordinator;
         private ClickRuntimeEngine? _clickRuntimeEngine;
         private OffscreenTargetResolver? _offscreenTargetResolver;
-        private OffscreenMechanicTargetSelector? _offscreenMechanicTargetSelector;
         private ClickLabelInteractionService? _labelInteractionService;
         private UltimatumAutomationService? _ultimatumAutomationService;
 
@@ -74,13 +80,24 @@ namespace ClickIt.Features.Click
             _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
             _labelInteractionPort = labelInteractionPort ?? throw new ArgumentNullException(nameof(labelInteractionPort));
+            _labelClickPointResolver = new LabelClickPointResolver(settings);
             _shrineService = shrineService ?? throw new ArgumentNullException(nameof(shrineService));
             _pathfindingService = pathfindingService ?? throw new ArgumentNullException(nameof(pathfindingService));
             _groundItemsVisible = groundItemsVisible ?? throw new ArgumentNullException(nameof(groundItemsVisible));
             _cachedLabels = cachedLabels;
             _performanceMonitor = performanceMonitor ?? throw new ArgumentNullException(nameof(performanceMonitor));
-            _freezeDebugTelemetrySnapshot = freezeDebugTelemetrySnapshot;
-            _clickTelemetryStore = new ClickTelemetryStore(settings);
+            _support = new ClickAutomationSupport(new ClickAutomationSupportDependencies(
+                Settings: settings,
+                TelemetryStore: new ClickTelemetryStore(settings),
+                GetWindowRectangle: () => _gameController.Window.GetWindowRectangleTimeCache,
+                GetCursorPosition: static () =>
+                {
+                    var cursor = Mouse.GetCursorPosition();
+                    return new Vector2(cursor.X, cursor.Y);
+                },
+                PointIsInClickableArea: pointIsInClickableArea,
+                LogMessage: message => errorHandler.LogMessage(message),
+                FreezeDebugTelemetrySnapshot: freezeDebugTelemetrySnapshot));
             _lockedInteractionDispatcher = new LockedInteractionDispatcher(inputHandler);
             _mechanicPriorityContextProvider = new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService());
         }
@@ -116,131 +133,31 @@ namespace ClickIt.Features.Click
             => UltimatumAutomation.TryGetOptionPreview(out previews);
 
         internal ClickDebugSnapshot GetLatestClickDebug()
-            => _clickTelemetryStore.GetLatestClickDebug();
+            => _support.GetLatestClickDebug();
 
         internal IReadOnlyList<string> GetLatestClickDebugTrail()
-            => _clickTelemetryStore.GetLatestClickDebugTrail();
+            => _support.GetLatestClickDebugTrail();
 
         internal RuntimeDebugLogSnapshot GetLatestRuntimeDebugLog()
-            => _clickTelemetryStore.GetLatestRuntimeDebugLog();
+            => _support.GetLatestRuntimeDebugLog();
 
         internal IReadOnlyList<string> GetLatestRuntimeDebugLogTrail()
-            => _clickTelemetryStore.GetLatestRuntimeDebugLogTrail();
+            => _support.GetLatestRuntimeDebugLogTrail();
 
         internal UltimatumDebugSnapshot GetLatestUltimatumDebug()
-            => _clickTelemetryStore.GetLatestUltimatumDebug();
+            => _support.GetLatestUltimatumDebug();
 
         internal IReadOnlyList<string> GetLatestUltimatumDebugTrail()
-            => _clickTelemetryStore.GetLatestUltimatumDebugTrail();
-
-        internal void PublishClickSnapshot(ClickDebugSnapshot snapshot)
-        {
-            if (!ShouldCaptureClickDebug())
-                return;
-
-            _clickTelemetryStore.PublishClickSnapshot(snapshot);
-        }
-
-        internal void PublishUltimatumSnapshot(UltimatumDebugSnapshot snapshot)
-        {
-            if (!ShouldCaptureUltimatumDebug())
-                return;
-
-            _clickTelemetryStore.PublishUltimatumSnapshot(snapshot);
-        }
+            => _support.GetLatestUltimatumDebugTrail();
 
         internal void PublishRuntimeLog(string message)
-            => SetLatestRuntimeDebugLog(message);
-
-        private bool ShouldCaptureClickDebug()
-            => _settings.DebugMode.Value && _settings.DebugShowClicking.Value;
-
-        private bool ShouldCaptureUltimatumDebug()
-            => _settings.DebugMode.Value && _settings.DebugShowUltimatum.Value;
-
-        private void PublishUltimatumDebug(UltimatumDebugEvent debugEvent)
-        {
-            if (!ShouldCaptureUltimatumDebug())
-                return;
-
-            _clickTelemetryStore.PublishUltimatumEvent(debugEvent);
-        }
-
-        private void SetLatestRuntimeDebugLog(string message)
-            => _clickTelemetryStore.PublishRuntimeLog(message);
-
-        private bool TryClickPreferredUltimatumModifier(LabelOnGround label, Vector2 windowTopLeft)
-            => UltimatumAutomation.TryClickPreferredModifier(label, windowTopLeft);
+            => _support.PublishRuntimeLog(message);
 
         private bool TryHandleUltimatumPanelUi(Vector2 windowTopLeft)
             => UltimatumAutomation.TryHandlePanelUi(windowTopLeft);
 
-        private IReadOnlyList<LabelOnGround>? GetLabelsForOffscreenSelection()
-            => VisibleLabelSnapshots.GetVisibleOrCachedLabels();
-
         private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
             => VisibleLabelSnapshots.GetVisibleOrCachedLabels();
-
-        private void DebugLog(string message)
-        {
-            if (_settings.DebugMode?.Value != true)
-                return;
-
-            _clickTelemetryStore.PublishRuntimeLog(message);
-
-            if (_settings.LogMessages?.Value == true)
-                _errorHandler.LogMessage(message);
-        }
-
-        private bool IsClickableInEitherSpace(Vector2 clientPoint, string path)
-        {
-            RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            return _clickSafetyPolicy.IsPointClickableInEitherSpace(clientPoint, windowTopLeft, _pointIsInClickableArea, path);
-        }
-
-        private bool IsInsideWindowInEitherSpace(Vector2 point)
-        {
-            RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
-            return ClickLabelSelectionMath.IsInsideWindowInEitherSpace(point, windowArea);
-        }
-
-        private bool EnsureCursorInsideGameWindowForClick(string outsideWindowLogMessage)
-        {
-            if (_settings.VerifyCursorInGameWindowBeforeClick?.Value == true && !IsCursorInsideGameWindow())
-            {
-                DebugLog(outsideWindowLogMessage);
-                return false;
-            }
-
-            return true;
-        }
-
-        private void HoldDebugTelemetryAfterSuccessfulInteraction(string reason)
-        {
-            if (_settings.DebugMode?.Value != true || _settings.RenderDebug?.Value != true)
-                return;
-
-            int holdDurationMs = Math.Max(0, _settings.DebugFreezeSuccessfulInteractionMs?.Value ?? 0);
-            if (holdDurationMs <= 0)
-                return;
-
-            _freezeDebugTelemetrySnapshot?.Invoke(reason, holdDurationMs);
-        }
-
-        private bool IsCursorInsideGameWindow()
-        {
-            try
-            {
-                var winRect = _gameController.Window.GetWindowRectangleTimeCache;
-                var cursor = Mouse.GetCursorPosition();
-                return _clickSafetyPolicy.IsCursorInsideWindow(winRect, new Vector2(cursor.X, cursor.Y));
-            }
-            catch
-            {
-                return true;
-            }
-        }
 
         IEnumerator IClickAutomationService.ProcessRegularClick()
             => ProcessRegularClick();

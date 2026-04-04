@@ -47,7 +47,7 @@ namespace ClickIt.Core.Bootstrap
                 altarDisplayRenderer);
         }
 
-        public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, ClickService clickAutomationPort, DeferredFrameQueue deferredFrameQueue)
+        public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, IClickAutomationService clickAutomationPort, DeferredFrameQueue deferredFrameQueue)
             => new(settings, clickAutomationPort, deferredFrameQueue);
     }
 }

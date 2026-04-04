@@ -39,11 +39,11 @@ namespace ClickIt.UI.Settings.Panels
         private static void DrawMechanicPrioritySectionDescription()
         {
             ImGui.Spacing();
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Priority: top row is highest, bottom row is lowest.");
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Click a table row to open Ignore Distance options.");
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
-            ImGui.TextWrapped("Non-ignored mechanics use distance + (priority index * Priority Distance Penalty). Ignore Distance mechanics still use priority-first comparison.");
-            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawInstructionText("Priority: top row is highest, bottom row is lowest.");
+            SettingsUiRenderHelpers.DrawInstructionText("Click a table row to open Ignore Distance options.");
+            SettingsUiRenderHelpers.DrawWrappedText(
+                "Non-ignored mechanics use distance + (priority index * Priority Distance Penalty). Ignore Distance mechanics still use priority-first comparison.",
+                new Vector4(0.7f, 0.7f, 0.7f, 1f));
             ImGui.Spacing();
         }
 
@@ -124,7 +124,12 @@ namespace ClickIt.UI.Settings.Panels
 
             ImGui.SameLine();
             bool isExpanded = string.Equals(_settings.UiState.ExpandedMechanicPriorityRowId, mechanicId, StringComparison.OrdinalIgnoreCase);
-            bool rowClicked = ImGui.Selectable($"{entry.DisplayName}##MechanicPriority_{mechanicId}", isExpanded, ImGuiSelectableFlags.AllowDoubleClick, new NumVector2(0, 0));
+            bool rowClicked = SettingsUiRenderHelpers.DrawSelectableText(
+                $"{entry.DisplayName}##MechanicPriority_{mechanicId}",
+                isExpanded,
+                ImGuiSelectableFlags.AllowDoubleClick,
+                new Vector4(0.95f, 0.95f, 0.95f, 1f),
+                new NumVector2(0, 0));
             if (rowClicked)
                 _settings.UiState.ExpandedMechanicPriorityRowId = isExpanded ? string.Empty : mechanicId;
 
@@ -150,9 +155,9 @@ namespace ClickIt.UI.Settings.Panels
                     _settings.MechanicPriorityIgnoreDistanceIds.Remove(mechanicId);
             }
 
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
-            ImGui.TextWrapped("When enabled, this mechanic bypasses distance sorting and is resolved from configured priority order.");
-            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawWrappedText(
+                "When enabled, this mechanic bypasses distance sorting and is resolved from configured priority order.",
+                new Vector4(0.7f, 0.7f, 0.7f, 1f));
 
             if (ignoreDistance)
             {
@@ -165,9 +170,9 @@ namespace ClickIt.UI.Settings.Panels
                     _settings.MechanicPriorityIgnoreDistanceWithinById[mechanicId] = currentWithin;
                 }
 
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
-                ImGui.TextWrapped("Ignore Distance applies only while this mechanic is within the configured distance from the player.");
-                ImGui.PopStyleColor();
+                SettingsUiRenderHelpers.DrawWrappedText(
+                    "Ignore Distance applies only while this mechanic is within the configured distance from the player.",
+                    new Vector4(0.7f, 0.7f, 0.7f, 1f));
             }
 
             ImGui.Unindent(34f);

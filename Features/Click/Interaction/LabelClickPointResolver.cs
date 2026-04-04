@@ -11,7 +11,7 @@ namespace ClickIt.Features.Click.Interaction
             if (!avoidOverlapsEnabled)
                 return false;
 
-            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
+            if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
                 return false;
 
             Vector2 preferredPoint = WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(
@@ -34,7 +34,7 @@ namespace ClickIt.Features.Click.Interaction
 
         internal Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels = null)
         {
-            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
+            if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
                 throw new InvalidOperationException("Label element is invalid");
 
             Vector2 preferredPoint = WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(
@@ -65,7 +65,7 @@ namespace ClickIt.Features.Click.Interaction
         {
             clickPosition = default;
 
-            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
+            if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
                 return false;
 
             Vector2 preferredPoint = WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(

@@ -33,6 +33,22 @@ namespace ClickIt.Features.Labels
         internal IReadOnlyList<string> GetLatestLabelDebugTrail()
             => _labelSelectionDiagnostics.GetTrail();
 
+        internal (bool LabelsAvailable, int TotalVisibleLabels, int ValidVisibleLabels) GetVisibleLabelCounts()
+        {
+            IList<LabelOnGround>? labels = _gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+            if (labels == null)
+                return (false, 0, 0);
+
+            int validVisibleLabels = 0;
+            for (int i = 0; i < labels.Count; i++)
+            {
+                if (labels[i]?.ItemOnGround?.Path != null)
+                    validVisibleLabels++;
+            }
+
+            return (true, labels.Count, validVisibleLabels);
+        }
+
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
             => LabelSelectionService.GetNextLabelToClick(allLabels, startIndex, maxCount);
 

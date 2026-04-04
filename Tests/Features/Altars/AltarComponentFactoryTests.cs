@@ -156,45 +156,6 @@ namespace ClickIt.Tests.Features.Altars
             unmatchedType.Should().Be("Players");
         }
 
-        [TestMethod]
-        public void RecordUnmatchedMod_AddsEntriesAndTrimsToFive()
-        {
-            var clickIt = new ClickIt();
-            var settings = new ClickItSettings();
-            var service = new AltarService(clickIt, settings, null);
-
-            const string negativeType = "N";
-            service.RecordUnmatchedMod("a1", negativeType);
-            service.RecordUnmatchedMod("b2", negativeType);
-            service.RecordUnmatchedMod("c3", negativeType);
-            service.RecordUnmatchedMod("d4", negativeType);
-            service.RecordUnmatchedMod("e5", negativeType);
-            service.RecordUnmatchedMod("f6", negativeType);
-
-            service.DebugInfo.ModsUnmatched.Should().Be(6);
-            service.DebugInfo.RecentUnmatchedMods.Should().HaveCount(5);
-            service.DebugInfo.RecentUnmatchedMods[0].Should().StartWith("b ");
-            service.DebugInfo.RecentUnmatchedMods[4].Should().StartWith("f ");
-        }
-
-        [TestMethod]
-        public void RecordUnmatchedMod_DoesNotDuplicateEntries_ButStillIncrementsCounter()
-        {
-            var clickIt = new ClickIt();
-            var settings = new ClickItSettings();
-            var service = new AltarService(clickIt, settings, null);
-
-            const string negativeType = "X";
-            service.RecordUnmatchedMod("dup1", negativeType);
-            service.RecordUnmatchedMod("dup1", negativeType);
-            service.RecordUnmatchedMod("other1", negativeType);
-
-            service.DebugInfo.ModsUnmatched.Should().Be(3);
-            service.DebugInfo.RecentUnmatchedMods.Should().HaveCount(2);
-            service.DebugInfo.RecentUnmatchedMods.Should().Contain(s => s.StartsWith("dup"));
-            service.DebugInfo.RecentUnmatchedMods.Should().Contain(s => s.StartsWith("other"));
-        }
-
         private static AltarComponentFactory CreateFactory(
             Action<string>? triggerAlert = null,
             Action<int>? recordMatchedCount = null,

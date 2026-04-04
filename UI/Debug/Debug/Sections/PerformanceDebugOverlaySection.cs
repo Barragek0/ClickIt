@@ -45,33 +45,11 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue("--- Click Frequency Target ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            ClickItSettings pluginSettings = _context.Plugin.Settings ?? new ClickItSettings();
-            bool lazyModeEnabled = pluginSettings.LazyMode.Value;
-            int lazyModeTarget = pluginSettings.LazyModeClickLimiting.Value;
-            bool lazyModeDisableKeyHeld = Input.GetKeyState(pluginSettings.LazyModeDisableKeyBinding);
-
-            bool hasRestrictedItems = false;
-            if (_context.Plugin is ClickIt clickItPlugin)
-            {
-                var gameController = _context.Plugin.GameController;
-                LabelFilterService? labelFilterPort = clickItPlugin.State.Services.LabelFilterPort;
-                InputHandler? inputHandler = clickItPlugin.State.Services.InputHandler;
-                if (labelFilterPort != null)
-                {
-                    var allLabels = (IReadOnlyList<LabelOnGround>?)gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-                    hasRestrictedItems = labelFilterPort.HasLazyModeRestrictedItemsOnScreen(allLabels);
-                }
-
-                if (inputHandler != null)
-                {
-                    lazyModeDisableKeyHeld = inputHandler.IsLazyModeDisableActiveForCurrentInputState();
-                }
-            }
-
-            bool poeActive = _context.Plugin.GameController?.Window?.IsForeground() == true;
-            bool lazyModeActive = lazyModeEnabled && !lazyModeDisableKeyHeld && !hasRestrictedItems && poeActive;
-
-            double clickTarget = lazyModeActive ? lazyModeTarget : performanceSnapshot.ClickTargetIntervalMs;
+            DebugTelemetrySnapshot telemetry = _context.DebugTelemetrySource.GetSnapshot();
+            ClickFrequencyTargetTelemetrySnapshot frequencyTarget = telemetry.Click.FrequencyTarget;
+            double clickTarget = frequencyTarget.SettingsAvailable
+                ? frequencyTarget.TargetIntervalMs
+                : performanceSnapshot.ClickTargetIntervalMs;
             double avgClickProcessing = performanceSnapshot.ClickCoroutine.AverageMs;
             if (avgClickProcessing <= 0)
             {
@@ -107,7 +85,7 @@ namespace ClickIt.UI.Debug.Sections
             Color procColor = metrics.ProcessingMs > metrics.ClickTargetMs ? Color.Red : metrics.ProcessingMs >= metrics.ClickTargetMs * 0.75 ? Color.Yellow : Color.LawnGreen;
             double absSchedulerDelta = Math.Abs(metrics.SchedulerDeltaMs);
             Color schedulerColor = absSchedulerDelta <= 5 ? Color.LawnGreen : absSchedulerDelta <= 20 ? Color.Yellow : Color.OrangeRed;
-            _context.DeferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms {(lazyModeActive ? "(Lazy)" : string.Empty)}", new Vector2(xPos, yPos), Color.Yellow, 16);
+            _context.DeferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms {(frequencyTarget.ShowLazyModeTarget ? "(Lazy)" : string.Empty)}", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
             _context.DeferredTextQueue.Enqueue($"Click Delay: {delayStr.PadLeft(maxLen)} ms +", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
@@ -127,23 +105,23 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue("--- Recent Errors ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            if (_context.Plugin is ClickIt clickItPlugin)
+            if (_context.Plugin is not ClickIt)
+                return yPos;
+
+            IReadOnlyList<string> recentErrors = _context.DebugTelemetrySource.GetSnapshot().Errors.RecentErrors;
+            if (recentErrors.Count == 0)
             {
-                var recentErrors = clickItPlugin.State.RecentErrors;
-                if (recentErrors.Count == 0)
-                {
-                    _context.DeferredTextQueue.Enqueue("No Recent Errors", new Vector2(xPos, yPos), Color.LightGreen, 16);
-                    return yPos + lineHeight;
-                }
+                _context.DeferredTextQueue.Enqueue("No Recent Errors", new Vector2(xPos, yPos), Color.LightGreen, 16);
+                return yPos + lineHeight;
+            }
 
-                _context.DeferredTextQueue.Enqueue($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
-                yPos += lineHeight;
+            _context.DeferredTextQueue.Enqueue($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
+            yPos += lineHeight;
 
-                for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
-                {
-                    string error = recentErrors[i];
-                    yPos = _context.RenderWrappedText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14, lineHeight, 50);
-                }
+            for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
+            {
+                string error = recentErrors[i];
+                yPos = _context.RenderWrappedText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14, lineHeight, 50);
             }
 
             return yPos;
@@ -239,11 +217,12 @@ namespace ClickIt.UI.Debug.Sections
 
         private int RenderQueueDepthDebug(int xPos, int yPos, int lineHeight)
         {
-            if (_context.Plugin is not ClickIt clickIt)
+            DebugTelemetrySnapshot telemetry = _context.DebugTelemetrySource.GetSnapshot();
+            if (!telemetry.Rendering.ServiceAvailable)
                 return yPos;
 
-            int pendingText = clickIt.State.Rendering.DeferredTextQueue?.GetPendingCount() ?? 0;
-            int pendingFrames = clickIt.State.Rendering.DeferredFrameQueue?.GetPendingCount() ?? 0;
+            int pendingText = telemetry.Rendering.PendingTextCount;
+            int pendingFrames = telemetry.Rendering.PendingFrameCount;
             Color color = (pendingText + pendingFrames) > 200 ? Color.OrangeRed : Color.LightGray;
             _context.DeferredTextQueue.Enqueue($"  Queue: text={pendingText}, frames={pendingFrames}", new Vector2(xPos, yPos), color, 14);
             return yPos + lineHeight;

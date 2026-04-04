@@ -2,6 +2,9 @@ namespace ClickIt.UI.Settings
 {
     internal static class SettingsUiBootstrapper
     {
+        internal static void InitializeScreenNodes(ClickItSettings settings)
+            => CreateScreenNodes(settings).ApplyTo(settings);
+
         internal static ClickItSettingsScreenNodes CreateScreenNodes(ClickItSettings settings)
         {
             ArgumentNullException.ThrowIfNull(settings);

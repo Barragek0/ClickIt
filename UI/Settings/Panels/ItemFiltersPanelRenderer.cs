@@ -4,18 +4,11 @@ namespace ClickIt.UI.Settings.Panels
     {
         private readonly ClickItSettings _settings = settings;
 
-        private readonly struct ItemTypeRowRenderState(bool rowClicked, bool arrowClicked, bool rowHovered)
-        {
-            public bool RowClicked { get; } = rowClicked;
-            public bool ArrowClicked { get; } = arrowClicked;
-            public bool RowHovered { get; } = rowHovered;
-        }
-
         public void DrawItemTypeFiltersPanel()
         {
             SettingsDefaultsService.EnsureItemTypeFiltersInitialized(_settings);
 
-            ImGui.TextColored(new Vector4(0.95f, 0.85f, 0.35f, 1f), "Table rows with [v] next to them can be clicked to open subtype filter options.");
+            SettingsUiRenderHelpers.DrawInstructionText("Table rows with [v] next to them can be clicked to open subtype filter options.");
             ImGui.Spacing();
 
             SettingsUiRenderHelpers.DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref _settings.UiState.ItemTypeSearchFilter);
@@ -91,7 +84,7 @@ namespace ClickIt.UI.Settings.Panels
                     continue;
 
                 hasEntries = true;
-                ItemTypeRowRenderState rowState = DrawItemTypeRow(id, category, moveToWhitelist, textColor);
+                SettingsUiRenderHelpers.ExpandableTransferRowState rowState = DrawItemTypeRow(id, category, moveToWhitelist, textColor);
 
                 if (rowState.ArrowClicked)
                 {
@@ -123,26 +116,15 @@ namespace ClickIt.UI.Settings.Panels
             return sourceSet.Contains(category.Id) && MatchesItemTypeSearch(category, _settings.UiState.ItemTypeSearchFilter);
         }
 
-        private ItemTypeRowRenderState DrawItemTypeRow(string id, ItemCategoryDefinition category, bool moveToWhitelist, Vector4 textColor)
+        private SettingsUiRenderHelpers.ExpandableTransferRowState DrawItemTypeRow(string id, ItemCategoryDefinition category, bool moveToWhitelist, Vector4 textColor)
         {
             string label = BuildItemTypeRowLabel(id, category);
-            float rowWidth = SettingsUiRenderHelpers.CalculateTransferRowWidth();
-            const float arrowWidth = 28f;
-
-            if (moveToWhitelist)
-            {
-                bool leftArrowClicked = ImGui.Button($"<-##Move_{id}_{category.Id}", new NumVector2(arrowWidth, 0));
-                ImGui.SameLine();
-                bool rowClicked = DrawItemTypeSelectable(id, category, textColor, label, rowWidth);
-                bool rowHovered = ImGui.IsItemHovered();
-                return new ItemTypeRowRenderState(rowClicked, leftArrowClicked, rowHovered);
-            }
-
-            bool clicked = DrawItemTypeSelectable(id, category, textColor, label, rowWidth);
-            bool hovered = ImGui.IsItemHovered();
-            ImGui.SameLine();
-            bool rightArrowClicked = ImGui.Button($"->##Move_{id}_{category.Id}", new NumVector2(arrowWidth, 0));
-            return new ItemTypeRowRenderState(clicked, rightArrowClicked, hovered);
+            return SettingsUiRenderHelpers.DrawExpandableTransferListRow(
+                $"Move_{id}_{category.Id}",
+                label,
+                IsExpandedRow(id, category.Id),
+                moveToWhitelist,
+                textColor);
         }
 
         private static string BuildItemTypeRowLabel(string id, ItemCategoryDefinition category)
@@ -150,14 +132,6 @@ namespace ClickIt.UI.Settings.Panels
             bool hasSubtypeMenu = ClickItSettings.TryGetSubtypeDefinitions(category.Id, out _);
             string submenuIndicator = hasSubtypeMenu ? " [v]" : string.Empty;
             return $"{category.DisplayName}{submenuIndicator}##{id}_{category.Id}";
-        }
-
-        private bool DrawItemTypeSelectable(string id, ItemCategoryDefinition category, Vector4 textColor, string label, float rowWidth)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-            bool clicked = ImGui.Selectable(label, IsExpandedRow(id, category.Id), ImGuiSelectableFlags.AllowDoubleClick, new NumVector2(rowWidth, 0));
-            ImGui.PopStyleColor();
-            return clicked;
         }
 
         private static void DrawItemTypeExamplesIfHovered(ItemCategoryDefinition category, bool rowHovered)
@@ -168,11 +142,7 @@ namespace ClickIt.UI.Settings.Panels
             }
 
             string examples = string.Join(", ", category.ExampleItems);
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.65f, 0.65f, 0.65f, 1f));
-            ImGui.Indent();
-            ImGui.TextWrapped($"Examples: {examples}");
-            ImGui.Unindent();
-            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawWrappedText($"Examples: {examples}", new Vector4(0.65f, 0.65f, 0.65f, 1f), 1f);
         }
 
         private void DrawEssenceCorruptionList(string id, HashSet<string> sourceSet, bool moveToCorrupt, Vector4 textColor)
@@ -264,9 +234,9 @@ namespace ClickIt.UI.Settings.Panels
             HashSet<string> selectedSubtypeIds = GetOrCreateSubtypeSelection(isSourceWhitelist, category.Id);
 
             ImGui.Indent();
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.75f, 0.75f, 0.75f, 1f));
-            ImGui.TextWrapped("Subtype filter: select subtypes to narrow this category. Example: choosing only Helmets means Body Armours/Gloves/Boots/Shields will be treated as being in the opposite list.");
-            ImGui.PopStyleColor();
+            SettingsUiRenderHelpers.DrawWrappedText(
+                "Subtype filter: select subtypes to narrow this category. Example: choosing only Helmets means Body Armours/Gloves/Boots/Shields will be treated as being in the opposite list.",
+                new Vector4(0.75f, 0.75f, 0.75f, 1f));
 
             bool hasActiveSelection = selectedSubtypeIds.Count > 0;
             foreach (ClickItSettings.ItemSubtypeDefinition subtype in subtypeDefinitions)
@@ -291,8 +261,7 @@ namespace ClickIt.UI.Settings.Panels
                 : isSourceWhitelist;
             Vector4 subtypeTextColor = subtypeIsWhitelistSide ? SettingsUiPalette.WhitelistTextColor : SettingsUiPalette.BlacklistTextColor;
 
-            ImGui.PushStyleColor(ImGuiCol.Text, subtypeTextColor);
-            if (ImGui.Checkbox($"{subtype.DisplayName}##Subtype_{listId}_{categoryId}_{subtype.Id}", ref isSelected))
+            if (SettingsUiRenderHelpers.DrawCheckbox($"{subtype.DisplayName}##Subtype_{listId}_{categoryId}_{subtype.Id}", ref isSelected, subtypeTextColor))
             {
                 if (isSelected)
                 {
@@ -303,7 +272,6 @@ namespace ClickIt.UI.Settings.Panels
                     selectedSubtypeIds.Remove(subtype.Id);
                 }
             }
-            ImGui.PopStyleColor();
 
             if (ImGui.IsItemHovered())
             {

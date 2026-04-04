@@ -21,7 +21,35 @@ namespace ClickIt.UI.Settings
         CustomNode StrongboxFilterTablePanel,
         CustomNode MechanicsTablePanel,
         CustomNode UltimatumModifierTablePanel,
-        CustomNode UltimatumTakeRewardModifierTablePanel);
+        CustomNode UltimatumTakeRewardModifierTablePanel)
+    {
+        internal void ApplyTo(ClickItSettings settings)
+        {
+            ArgumentNullException.ThrowIfNull(settings);
+
+            settings.DebugTestingPanel = DebugTestingPanel;
+            settings.ControlsSliderWidthStart = ControlsSliderWidthStart;
+            settings.ControlsSliderWidthEnd = ControlsSliderWidthEnd;
+            settings.PathfindingSliderWidthStart = PathfindingSliderWidthStart;
+            settings.PathfindingSliderWidthEnd = PathfindingSliderWidthEnd;
+            settings.LazyModeSliderWidthStart = LazyModeSliderWidthStart;
+            settings.LazyModeSliderWidthEnd = LazyModeSliderWidthEnd;
+            settings.LazyModeNearbyMonsterRulesPanel = LazyModeNearbyMonsterRulesPanel;
+            settings.PrioritiesSliderWidthStart = PrioritiesSliderWidthStart;
+            settings.PrioritiesSliderWidthEnd = PrioritiesSliderWidthEnd;
+            settings.DelveSliderWidthStart = DelveSliderWidthStart;
+            settings.DelveSliderWidthEnd = DelveSliderWidthEnd;
+            settings.AltarsPanel = AltarsPanel;
+            settings.AltarModWeights = AltarModWeights;
+            settings.ItemTypeFiltersPanel = ItemTypeFiltersPanel;
+            settings.MechanicPriorityTablePanel = MechanicPriorityTablePanel;
+            settings.EssenceCorruptionTablePanel = EssenceCorruptionTablePanel;
+            settings.StrongboxFilterTablePanel = StrongboxFilterTablePanel;
+            settings.MechanicsTablePanel = MechanicsTablePanel;
+            settings.UltimatumModifierTablePanel = UltimatumModifierTablePanel;
+            settings.UltimatumTakeRewardModifierTablePanel = UltimatumTakeRewardModifierTablePanel;
+        }
+    }
 
     internal sealed record ClickItSettingsScreenBindings(
         Action DrawDebugTestingPanel,

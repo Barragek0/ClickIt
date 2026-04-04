@@ -4,12 +4,22 @@ namespace ClickIt.Features.Observability
         ClickTelemetrySnapshot Click,
         LabelTelemetrySnapshot Label,
         PathfindingTelemetrySnapshot Pathfinding,
-        InventoryTelemetrySnapshot Inventory)
+        RenderingTelemetrySnapshot Rendering,
+        StatusTelemetrySnapshot Status,
+        ErrorTelemetrySnapshot Errors,
+        InventoryTelemetrySnapshot Inventory,
+        AltarTelemetrySnapshot Altar,
+        HoveredItemMetadataTelemetrySnapshot HoveredItem)
     {
         public static readonly DebugTelemetrySnapshot Empty = new(
             Click: ClickTelemetrySnapshot.Empty,
             Label: LabelTelemetrySnapshot.Empty,
             Pathfinding: PathfindingTelemetrySnapshot.Empty,
-            Inventory: InventoryTelemetrySnapshot.Empty);
+            Rendering: RenderingTelemetrySnapshot.Empty,
+            Status: StatusTelemetrySnapshot.Empty,
+            Errors: ErrorTelemetrySnapshot.Empty,
+            Inventory: InventoryTelemetrySnapshot.Empty,
+            Altar: AltarTelemetrySnapshot.Empty,
+            HoveredItem: HoveredItemMetadataTelemetrySnapshot.Empty);
     }
 }

@@ -45,9 +45,8 @@ namespace ClickIt.Tests.Core
                     PerformanceMonitor = new PerformanceMonitor(new ClickItSettings()),
                     ErrorHandler = new ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
                     AreaService = new AreaService(),
-                    LabelFilterPort = (LabelFilterService)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterService)),
-                    LabelService = (LabelService)RuntimeHelpers.GetUninitializedObject(typeof(LabelService)),
-                    ClickAutomationPort = (ClickService)RuntimeHelpers.GetUninitializedObject(typeof(ClickService)),
+                    LabelFilterPort = (LabelFilterPort)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterPort)),
+                    ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort)),
                     PathfindingService = (PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(PathfindingService)),
                     AlertService = (AlertService)RuntimeHelpers.GetUninitializedObject(typeof(AlertService))
                 },
@@ -64,7 +63,6 @@ namespace ClickIt.Tests.Core
             state.Services.ErrorHandler.Should().BeNull();
             state.Services.AreaService.Should().BeNull();
             state.Services.LabelFilterPort.Should().BeNull();
-            state.Services.LabelService.Should().BeNull();
             state.Services.ClickAutomationPort.Should().BeNull();
             state.Services.PathfindingService.Should().BeNull();
             state.Services.AlertService.Should().BeNull();
@@ -87,7 +85,14 @@ namespace ClickIt.Tests.Core
             snapshot.Click.Ultimatum.HasData.Should().BeFalse();
             snapshot.Label.Label.HasData.Should().BeFalse();
             snapshot.Pathfinding.OffscreenMovement.HasData.Should().BeFalse();
+            snapshot.Rendering.ServiceAvailable.Should().BeTrue();
+            snapshot.Rendering.PendingTextCount.Should().Be(0);
+            snapshot.Rendering.PendingFrameCount.Should().Be(0);
+            snapshot.Status.GameControllerAvailable.Should().BeFalse();
+            snapshot.Errors.ServiceAvailable.Should().BeFalse();
             snapshot.Inventory.Inventory.HasData.Should().BeFalse();
+            snapshot.Altar.ServiceAvailable.Should().BeFalse();
+            snapshot.HoveredItem.LabelsAvailable.Should().BeFalse();
         }
 
         [TestMethod]
@@ -103,7 +108,10 @@ namespace ClickIt.Tests.Core
             snapshot.Click.UltimatumOptionPreview.Should().BeEmpty();
             snapshot.Label.LabelTrail.Should().BeEmpty();
             snapshot.Pathfinding.OffscreenMovementTrail.Should().BeEmpty();
+            snapshot.Errors.RecentErrors.Should().BeEmpty();
             snapshot.Inventory.InventoryTrail.Should().BeEmpty();
+            snapshot.Altar.Components.Should().BeEmpty();
+            snapshot.HoveredItem.EntityPath.Should().BeEmpty();
         }
 
         [TestMethod]

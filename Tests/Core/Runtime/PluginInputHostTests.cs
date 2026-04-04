@@ -77,43 +77,5 @@ namespace ClickIt.Tests.Core.Runtime
             state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(before);
         }
 
-        [TestMethod]
-        public void FindExistingClickLogicCoroutine_ReturnsNull_WhenNoMatchingCoroutine()
-        {
-            try
-            {
-                PluginCoroutineRegistry.FindClickLogicCoroutine().Should().BeNull();
-            }
-            catch (NullReferenceException)
-            {
-            }
-        }
-
-        [TestMethod]
-        public void ShouldRunManualUiHoverCoroutine_ReturnsTrue_OnlyWhenManualEnabledAndNotLazy()
-        {
-            PluginInputHost.ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: false)
-                .Should().BeTrue();
-
-            PluginInputHost.ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: true, lazyModeEnabled: true)
-                .Should().BeFalse();
-
-            PluginInputHost.ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled: false, lazyModeEnabled: false)
-                .Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldRunManualUiHoverCoroutine_SettingsOverload_UsesRelevantFlags()
-        {
-            var settings = new ClickItSettings();
-            settings.ClickOnManualUiHoverOnly.Value = true;
-            settings.LazyMode.Value = false;
-
-            PluginInputHost.ShouldRunManualUiHoverCoroutine(settings).Should().BeTrue();
-
-            settings.LazyMode.Value = true;
-
-            PluginInputHost.ShouldRunManualUiHoverCoroutine(settings).Should().BeFalse();
-        }
     }
 }

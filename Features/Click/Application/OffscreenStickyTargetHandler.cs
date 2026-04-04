@@ -3,41 +3,36 @@ namespace ClickIt.Features.Click.Application
     internal readonly record struct OffscreenStickyTargetHandlerDependencies(
         GameController GameController,
         ShrineService ShrineService,
-        Func<long> GetStickyOffscreenTargetAddress,
-        Action<long> SetStickyOffscreenTargetAddress,
-        Func<long, Entity?> FindEntityByAddress,
-        Func<Vector2, bool> PerformPathingClick,
+        ClickRuntimeState RuntimeState,
+        ClickLabelInteractionService LabelInteraction,
+        ChestLootSettlementTracker ChestLootSettlement,
         Func<Vector2, string, bool> IsClickableInEitherSpace,
-        Func<LabelOnGround, bool> ShouldSuppressPathfindingLabel,
-        Func<LabelOnGround, string?> GetMechanicIdForLabel,
-        Func<LabelOnGround, string?, Vector2, IReadOnlyList<LabelOnGround>?, string?, (bool Success, Vector2 ClickPos)> TryResolveLabelClickPosition,
-        Func<Vector2, LabelOnGround, string, bool> ExecuteStickyLabelInteraction,
-        Action<string> HoldDebugTelemetryAfterSuccess,
-        Action<string?, LabelOnGround> MarkPendingChestOpenConfirmation,
-        Action InvalidateShrineCache);
+        PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
+        ILabelInteractionPort LabelInteractionPort,
+        Action<string> HoldDebugTelemetryAfterSuccess);
 
     internal sealed class OffscreenStickyTargetHandler(OffscreenStickyTargetHandlerDependencies dependencies)
     {
         private readonly OffscreenStickyTargetHandlerDependencies _dependencies = dependencies;
 
         internal void SetStickyOffscreenTarget(Entity target)
-            => _dependencies.SetStickyOffscreenTargetAddress(target.Address);
+            => _dependencies.RuntimeState.StickyOffscreenTargetAddress = target.Address;
 
         internal void ClearStickyOffscreenTarget()
-            => _dependencies.SetStickyOffscreenTargetAddress(0);
+            => _dependencies.RuntimeState.StickyOffscreenTargetAddress = 0;
 
         internal bool IsStickyTarget(Entity? entity)
-            => entity != null && OffscreenPathingMath.IsSameEntityAddress(_dependencies.GetStickyOffscreenTargetAddress(), entity.Address);
+            => entity != null && OffscreenPathingMath.IsSameEntityAddress(_dependencies.RuntimeState.StickyOffscreenTargetAddress, entity.Address);
 
         internal bool TryResolveStickyOffscreenTarget(out Entity? target)
         {
             target = null;
 
-            long stickyAddress = _dependencies.GetStickyOffscreenTargetAddress();
+            long stickyAddress = _dependencies.RuntimeState.StickyOffscreenTargetAddress;
             if (stickyAddress == 0)
                 return false;
 
-            target = _dependencies.FindEntityByAddress(stickyAddress);
+            target = EntityQueryService.FindEntityByAddress(_dependencies.GameController, stickyAddress);
             if (target == null || !target.IsValid || target.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
             {
                 ClearStickyOffscreenTarget();
@@ -71,11 +66,11 @@ namespace ClickIt.Features.Click.Application
                 if (!_dependencies.IsClickableInEitherSpace(shrinePos, path))
                     return false;
 
-                bool clickedShrine = _dependencies.PerformPathingClick(shrinePos);
+                bool clickedShrine = _dependencies.LabelInteraction.PerformMechanicClick(shrinePos);
                 if (clickedShrine)
                 {
                     ClearStickyOffscreenTarget();
-                    _dependencies.InvalidateShrineCache();
+                    _dependencies.ShrineService.InvalidateCache();
                 }
 
                 return clickedShrine;
@@ -85,20 +80,20 @@ namespace ClickIt.Features.Click.Application
             if (stickyLabel == null)
                 return false;
 
-            if (_dependencies.ShouldSuppressPathfindingLabel(stickyLabel))
+            if (_dependencies.PathfindingLabelSuppression.ShouldSuppressPathfindingLabel(stickyLabel))
             {
                 ClearStickyOffscreenTarget();
                 return false;
             }
 
-            string? mechanicId = _dependencies.GetMechanicIdForLabel(stickyLabel);
+            string? mechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(stickyLabel);
             if (string.IsNullOrWhiteSpace(mechanicId))
             {
                 ClearStickyOffscreenTarget();
                 return false;
             }
 
-            (bool resolved, Vector2 clickPos) = _dependencies.TryResolveLabelClickPosition(
+            (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
                 stickyLabel,
                 mechanicId,
                 windowTopLeft,
@@ -107,14 +102,14 @@ namespace ClickIt.Features.Click.Application
             if (!resolved)
                 return false;
 
-            bool clickedLabel = _dependencies.ExecuteStickyLabelInteraction(clickPos, stickyLabel, mechanicId);
+            bool clickedLabel = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, stickyLabel, mechanicId);
             if (clickedLabel)
             {
                 string stickyReason = string.IsNullOrWhiteSpace(stickyTarget.Path)
                     ? "Sticky offscreen target click succeeded"
                     : $"Sticky offscreen target click succeeded: {stickyTarget.Path}";
                 _dependencies.HoldDebugTelemetryAfterSuccess(stickyReason);
-                _dependencies.MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
+                _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
                 ClearStickyOffscreenTarget();
             }
 

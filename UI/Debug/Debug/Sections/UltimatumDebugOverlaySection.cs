@@ -8,7 +8,7 @@ namespace ClickIt.UI.Debug.Sections
         {
             EnqueueLine(xPos, ref yPos, lineHeight, "--- Ultimatum ---", Color.Orange, 16);
 
-            if (_context.Plugin is not ClickIt clickIt)
+            if (_context.Plugin is not ClickIt)
             {
                 EnqueueLine(xPos, ref yPos, lineHeight, "Click service unavailable", Color.Gray, 14);
                 return yPos + lineHeight;
@@ -21,12 +21,11 @@ namespace ClickIt.UI.Debug.Sections
                 return yPos + lineHeight;
             }
 
-            var settings = _context.Plugin.Settings ?? new ClickItSettings();
             EnqueueLine(
                 xPos,
                 ref yPos,
                 lineHeight,
-                $"Enabled Initial/Other: {settings.IsInitialUltimatumClickEnabled()}/{settings.IsOtherUltimatumClickEnabled()}",
+                $"Enabled Initial/Other: {telemetry.Click.Settings.InitialUltimatumClickEnabled}/{telemetry.Click.Settings.OtherUltimatumClickEnabled}",
                 Color.White,
                 13);
 

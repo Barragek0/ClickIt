@@ -45,9 +45,9 @@ namespace ClickIt.Core.Lifecycle
 
             LockManager.Instance = null;
 
-            LabelUtils.ClearThreadLocalStorage();
+            LabelElementSearch.ClearThreadLocalStorage();
             ShrineService.ClearThreadLocalStorageForCurrentThread();
-            ClickService.ClearThreadLocalStorageForCurrentThread();
+            ClickAutomationPort.ClearThreadLocalStorageForCurrentThread();
             owner.State.Services.LabelFilterPort?.ClearInventoryProbeCacheForShutdown();
             owner.State.Services.AltarService?.ClearRuntimeCaches();
 

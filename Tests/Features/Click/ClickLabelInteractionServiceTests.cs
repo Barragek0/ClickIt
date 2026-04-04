@@ -44,13 +44,69 @@ namespace ClickIt.Tests.Features.Click
             capturedRequest.Value.ExpectedElement.Should().BeNull();
         }
 
-        private static ClickLabelInteractionService CreateService(Func<InteractionExecutionRequest, bool> executeInteraction)
+        [TestMethod]
+        public void TryResolveLabelClickPosition_ReturnsResolvedPosition_WhenPrimaryAttemptSucceeds()
+        {
+            int callCount = 0;
+            Func<Vector2, bool>? receivedClickablePredicate = null;
+            Vector2 expected = new(19, 27);
+            var service = CreateService(
+                _ => true,
+                (_, _, _, isClickableArea) =>
+                {
+                    callCount++;
+                    receivedClickablePredicate = isClickableArea;
+                    return (true, expected);
+                });
+
+            bool resolved = service.TryResolveLabelClickPosition(
+                (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround)),
+                mechanicId: "items",
+                windowTopLeft: Vector2.Zero,
+                allLabels: null,
+                out Vector2 clickPos,
+                explicitPath: "metadata/test");
+
+            resolved.Should().BeTrue();
+            clickPos.Should().Be(expected);
+            callCount.Should().Be(1);
+            receivedClickablePredicate.Should().NotBeNull();
+        }
+
+        [TestMethod]
+        public void TryResolveLabelClickPosition_DoesNotRetry_WhenMechanicIsNotSettlers()
+        {
+            int callCount = 0;
+            var service = CreateService(
+                _ => true,
+                (_, _, _, _) =>
+                {
+                    callCount++;
+                    return (false, default);
+                });
+
+            bool resolved = service.TryResolveLabelClickPosition(
+                (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround)),
+                mechanicId: "items",
+                windowTopLeft: Vector2.Zero,
+                allLabels: null,
+                out Vector2 clickPos,
+                explicitPath: "metadata/test");
+
+            resolved.Should().BeFalse();
+            clickPos.Should().Be(new Vector2(0, 0));
+            callCount.Should().Be(1);
+        }
+
+        private static ClickLabelInteractionService CreateService(
+            Func<InteractionExecutionRequest, bool> executeInteraction,
+            Func<LabelOnGround, Vector2, IReadOnlyList<LabelOnGround>?, Func<Vector2, bool>?, (bool Success, Vector2 ClickPos)>? tryResolveClickPosition = null)
         {
             return new ClickLabelInteractionService(new ClickLabelInteractionServiceDependencies(
                 Settings: (ClickItSettings)RuntimeHelpers.GetUninitializedObject(typeof(ClickItSettings)),
                 GameController: (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController)),
-                InputHandler: (InputHandler)RuntimeHelpers.GetUninitializedObject(typeof(InputHandler)),
                 LabelInteractionPort: (ILabelInteractionPort)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterPort)),
+                TryResolveClickPosition: tryResolveClickPosition ?? (static (_, _, _, _) => (false, default)),
                 IsClickableInEitherSpace: static (_, _) => true,
                 IsInsideWindowInEitherSpace: static _ => true,
                 ExecuteInteraction: executeInteraction,

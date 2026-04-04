@@ -59,6 +59,24 @@
             }
         }
 
+        public override void DrawSettings()
+        {
+            var settings = EffectiveSettings;
+
+            if (ImGui.TreeNodeEx("Debug/Testing##ClickItDebugTesting", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                settings.DebugTestingPanel.DrawDelegate?.Invoke();
+                ImGui.TreePop();
+            }
+
+            SettingsSubmenuRenderer.DrawSection("Controls", settings.ControlsSubmenu);
+
+            foreach (var drawer in Drawers)
+            {
+                drawer.Draw();
+            }
+        }
+
         public void LogMessage(string message, int frame = 5)
         {
             // Skip logging during render loop to prevent crashes

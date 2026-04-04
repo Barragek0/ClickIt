@@ -56,6 +56,87 @@
         "kind": "build",
         "isDefault": true
       }
+    },
+    {
+      "label": "Collect XPlat Coverage",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "Tests\\ClickIt.Tests.csproj",
+        "--collect",
+        "XPlat Code Coverage",
+        "--settings",
+        "runsettings.xml",
+        "-c",
+        "Debug",
+        "/p:CollectCoverage=false",
+        "/p:IncludeIntegrationTests=true",
+        "/p:BuildProjectReferences=false"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Generate XPlat Coverage Stats",
+      "type": "shell",
+      "command": "reportgenerator",
+      "args": [
+        "-reports:${workspaceFolder}/Tests/TestResults/coverage.cobertura.xml",
+        "-targetdir:${workspaceFolder}/Tests/TestResults/covstats-xplat"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "dependsOn": "Collect XPlat Coverage"
+    },
+    {
+      "label": "Move XPlat Coverage Results",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { Get-ChildItem -Path '.' -Recurse -Filter 'coverage.cobertura.xml' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { $destFile = 'Tests/TestResults/coverage.cobertura.xml'; $destDir = Split-Path $destFile -Parent; if (!(Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }; Copy-Item $_.FullName $destFile -Force; Write-Output \"Moved $($_.FullName) to $destFile\"; if ((Test-Path $_.Directory.FullName) -and $_.Directory.Name -match '^[0-9a-f-]+$') { Remove-Item $_.Directory.FullName -Recurse -Force } } }"
+      ],
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Review XPlat Coverage",
+      "dependsOn": [
+        "Collect XPlat Coverage",
+        "Move XPlat Coverage Results",
+        "Generate XPlat Coverage Stats"
+      ],
+      "dependsOrder": "sequence",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      }
     }
   ]
 }

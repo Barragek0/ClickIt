@@ -9,29 +9,25 @@ namespace ClickIt.Features.Click.Core
         Func<Vector2> getCursorAbsolutePosition,
         Func<Vector2, bool> tryHandleUltimatumPanelUi,
         Action<string> debugLog,
-        Func<long, MovementSkillPostCastBlockState> getMovementSkillPostCastBlockState,
-        Func<long, ChestLootSettlementBlockState> getChestLootSettlementBlockState,
+        MovementSkillCoordinator movementSkills,
+        ChestLootSettlementTracker chestLootSettlement,
         Func<IReadOnlyList<LabelOnGround>?> getLabelsForRegularSelection,
-        Func<Vector2, IReadOnlyList<LabelOnGround>?, bool> tryHandlePendingChestOpenConfirmation,
-        Func<Entity?> resolveNextShrineCandidate,
-        Action refreshMechanicPriorityCaches,
-        Func<MechanicPriorityContext> createMechanicPriorityContext,
+        VisibleMechanicCoordinator visibleMechanics,
+        MechanicPriorityContextProvider mechanicPriorityContextProvider,
         Func<bool> groundItemsVisible,
-        Action<string, string, string?> publishClickFlowDebugStage)
+        ClickDebugPublicationService clickDebugPublisher)
     {
         public Func<RectangleF> GetWindowRectangle { get; } = getWindowRectangle;
         public Func<Vector2> GetCursorAbsolutePosition { get; } = getCursorAbsolutePosition;
         public Func<Vector2, bool> TryHandleUltimatumPanelUi { get; } = tryHandleUltimatumPanelUi;
         public Action<string> DebugLog { get; } = debugLog;
-        public Func<long, MovementSkillPostCastBlockState> GetMovementSkillPostCastBlockState { get; } = getMovementSkillPostCastBlockState;
-        public Func<long, ChestLootSettlementBlockState> GetChestLootSettlementBlockState { get; } = getChestLootSettlementBlockState;
+        public MovementSkillCoordinator MovementSkills { get; } = movementSkills;
+        public ChestLootSettlementTracker ChestLootSettlement { get; } = chestLootSettlement;
         public Func<IReadOnlyList<LabelOnGround>?> GetLabelsForRegularSelection { get; } = getLabelsForRegularSelection;
-        public Func<Vector2, IReadOnlyList<LabelOnGround>?, bool> TryHandlePendingChestOpenConfirmation { get; } = tryHandlePendingChestOpenConfirmation;
-        public Func<Entity?> ResolveNextShrineCandidate { get; } = resolveNextShrineCandidate;
-        public Action RefreshMechanicPriorityCaches { get; } = refreshMechanicPriorityCaches;
-        public Func<MechanicPriorityContext> CreateMechanicPriorityContext { get; } = createMechanicPriorityContext;
+        public VisibleMechanicCoordinator VisibleMechanics { get; } = visibleMechanics;
+        public MechanicPriorityContextProvider MechanicPriorityContextProvider { get; } = mechanicPriorityContextProvider;
         public Func<bool> GroundItemsVisible { get; } = groundItemsVisible;
-        public Action<string, string, string?> PublishClickFlowDebugStage { get; } = publishClickFlowDebugStage;
+        public ClickDebugPublicationService ClickDebugPublisher { get; } = clickDebugPublisher;
     }
 
     internal sealed class ClickTickContextFactory(ClickTickContextFactoryDependencies dependencies)
@@ -57,27 +53,27 @@ namespace ClickIt.Features.Click.Core
                 _dependencies.DebugLog($"[ProcessRegularClick] Ultimatum UI handler failed, continuing regular click path: {ex.Message}");
             }
 
-            MovementSkillPostCastBlockState movementSkillBlockState = _dependencies.GetMovementSkillPostCastBlockState(Environment.TickCount64);
+            long now = Environment.TickCount64;
+            MovementSkillPostCastBlockState movementSkillBlockState = CreateMovementSkillPostCastBlockState(now);
             if (movementSkillBlockState.IsBlocking)
             {
                 _dependencies.DebugLog($"[ProcessRegularClick] Skipping click attempt while movement skill is still executing ({movementSkillBlockState.Reason}).");
-                _dependencies.PublishClickFlowDebugStage("MovementBlocked", movementSkillBlockState.Reason, null);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("MovementBlocked", movementSkillBlockState.Reason, null);
                 context = default;
                 return false;
             }
 
-            long now = Environment.TickCount64;
-            ChestLootSettlementBlockState chestLootSettlementBlockState = _dependencies.GetChestLootSettlementBlockState(now);
+            ChestLootSettlementBlockState chestLootSettlementBlockState = CreateChestLootSettlementBlockState(now);
             IReadOnlyList<LabelOnGround>? allLabels = _dependencies.GetLabelsForRegularSelection();
-            if (_dependencies.TryHandlePendingChestOpenConfirmation(windowTopLeft, allLabels))
+            if (_dependencies.ChestLootSettlement.TryHandlePendingChestOpenConfirmation(windowTopLeft, allLabels))
             {
                 context = default;
                 return false;
             }
 
-            Entity? nextShrine = _dependencies.ResolveNextShrineCandidate();
-            _dependencies.RefreshMechanicPriorityCaches();
-            MechanicPriorityContext mechanicPriorityContext = _dependencies.CreateMechanicPriorityContext();
+            Entity? nextShrine = _dependencies.VisibleMechanics.ResolveNextShrineCandidate();
+            _dependencies.MechanicPriorityContextProvider.Refresh();
+            MechanicPriorityContext mechanicPriorityContext = _dependencies.MechanicPriorityContextProvider.CreateContext();
 
             context = new ClickTickContext(
                 windowTopLeft,
@@ -91,6 +87,19 @@ namespace ClickIt.Features.Click.Core
                 _dependencies.GroundItemsVisible());
 
             return true;
+        }
+
+        private MovementSkillPostCastBlockState CreateMovementSkillPostCastBlockState(long now)
+        {
+            return _dependencies.MovementSkills.TryGetMovementSkillPostCastBlockState(now, out string reason)
+                ? new MovementSkillPostCastBlockState(true, reason)
+                : new MovementSkillPostCastBlockState(false, string.Empty);
+        }
+
+        private ChestLootSettlementBlockState CreateChestLootSettlementBlockState(long now)
+        {
+            bool isBlocking = _dependencies.ChestLootSettlement.IsPostChestLootSettlementBlocking(now, out string reason);
+            return new ChestLootSettlementBlockState(isBlocking, reason);
         }
     }
 }

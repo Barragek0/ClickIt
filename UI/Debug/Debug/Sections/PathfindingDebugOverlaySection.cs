@@ -9,20 +9,14 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue("--- Pathfinding ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            if (_context.Plugin is not ClickIt clickIt)
-            {
-                _context.DeferredTextQueue.Enqueue("Pathfinding service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
-                return yPos + lineHeight;
-            }
-
-            DebugTelemetrySnapshot telemetry = clickIt.State.GetDebugTelemetrySnapshot();
+            DebugTelemetrySnapshot telemetry = _context.DebugTelemetrySource.GetSnapshot();
             if (!telemetry.Pathfinding.ServiceAvailable)
             {
                 _context.DeferredTextQueue.Enqueue("Pathfinding service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
                 return yPos + lineHeight;
             }
 
-            if (clickIt.State.TryGetDebugTelemetryFreezeState(out long remainingMs, out string freezeReason))
+            if (_context.DebugTelemetrySource.TryGetFreezeState(out long remainingMs, out string freezeReason))
             {
                 string freezeSummary = string.IsNullOrWhiteSpace(freezeReason)
                     ? $"Telemetry Hold Active: {remainingMs}ms remaining"

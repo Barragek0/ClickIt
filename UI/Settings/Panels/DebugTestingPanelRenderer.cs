@@ -23,11 +23,7 @@ namespace ClickIt.UI.Settings.Panels
                 _settings.RenderDebug,
                 "Provides more debug text related to rendering the overlay.");
 
-            if (ImGui.Button("Copy Additional Debug Information"))
-            {
-                SettingsUiRenderHelpers.TriggerButtonNode(_settings.CopyAdditionalDebugInfoButton);
-            }
-            SettingsUiRenderHelpers.DrawInlineTooltip("Copies the current Additional Debug Information text to clipboard.");
+            SettingsUiRenderHelpers.DrawButtonNodeControl("Copy Additional Debug Information", _settings.CopyAdditionalDebugInfoButton, "Copies the current Additional Debug Information text to clipboard.");
 
             if (_settings.MemoryDumpInProgress)
             {
@@ -69,11 +65,7 @@ namespace ClickIt.UI.Settings.Panels
                 _settings.LogMessages,
                 "This will flood your log and screen with debug text.");
 
-            if (ImGui.Button("Report Bug"))
-            {
-                SettingsUiRenderHelpers.TriggerButtonNode(_settings.ReportBugButton);
-            }
-            SettingsUiRenderHelpers.DrawInlineTooltip("If you run into a bug that hasn't already been reported, please report it here.");
+            SettingsUiRenderHelpers.DrawButtonNodeControl("Report Bug", _settings.ReportBugButton, "If you run into a bug that hasn't already been reported, please report it here.");
         }
 
         private void DrawDebugSectionToggles()

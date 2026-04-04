@@ -54,7 +54,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static float? TryGetCursorDistanceSquaredToLabel(LabelOnGround? label, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
-            if (!LabelUtils.TryGetLabelRect(label, out RectangleF rect))
+            if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
                 return null;
 
             return GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, rect.Center, windowTopLeft);

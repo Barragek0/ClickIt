@@ -47,21 +47,7 @@ namespace ClickIt.Tests.Features.Click
         }
 
         private static AltarAutomationService CreateService(ClickItSettings settings, IReadOnlyList<PrimaryAltarComponent> snapshot)
-        {
-            return new AltarAutomationService(new AltarAutomationServiceDependencies(
-                Settings: settings,
-                GameController: null!,
-                GetAltarSnapshot: () => snapshot,
-                RemoveTrackedAltarByElement: static _ => { },
-                CalculateAltarWeights: static _ => default,
-                DetermineAltarChoice: static (_, _, _, _, _) => null,
-                IsClickableInEitherSpace: static (_, _) => false,
-                EnsureCursorInsideGameWindowForClick: static _ => true,
-                ExecuteInteraction: static _ => false,
-                DebugLog: static _ => { },
-                LogError: static (_, _) => { },
-                ElementAccessLock: new object()));
-        }
+            => ClickTestServiceFactory.CreateAltarAutomationService(settings, snapshot);
 
         private static PrimaryAltarComponent CreateAltar(AltarType altarType)
         {

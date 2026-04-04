@@ -69,8 +69,8 @@ namespace ClickIt.Core.Runtime
 
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null) yield break;
 
-            bool hotkeyActive = _state.Services.InputHandler?.IsClickHotkeyPressed(_state.Services.CachedLabels, _state.Services.LabelFilterPort) == true;
-            if (ShouldSuppressRegularClickForManualUiHoverMode(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
+            bool hotkeyActive = global::ClickIt.Core.Runtime.PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
+            if (PluginClickRuntimeStateEvaluator.ShouldSuppressRegularClickForManualUiHoverMode(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
             {
                 _state.Runtime.WorkFinished = true;
                 yield break;
@@ -79,16 +79,14 @@ namespace ClickIt.Core.Runtime
             double avgClickTime = _state.Services.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
             bool lazyModeEnabled = _settings.LazyMode.Value;
-            bool shouldEvaluateRestrictedItems = ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled);
-            bool shouldEvaluateRitualState = ShouldEvaluateRitualState(lazyModeEnabled, hotkeyActive);
+            bool shouldEvaluateRestrictedItems = PluginClickRuntimeStateEvaluator.ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled);
+            bool shouldEvaluateRitualState = PluginClickRuntimeStateEvaluator.ShouldEvaluateRitualState(lazyModeEnabled, hotkeyActive);
 
-            var lazyModeContext = GetCachedLazyModeContext(shouldEvaluateRitualState, shouldEvaluateRestrictedItems);
+            PluginLazyModeContextSnapshot lazyModeContext = LazyModeContextCache.GetContext(shouldEvaluateRitualState, shouldEvaluateRestrictedItems);
             bool isRitualActive = lazyModeContext.IsRitualActive;
             bool hasLazyModeRestrictedItemsOnScreen = lazyModeContext.HasLazyModeRestrictedItems;
             var cached = lazyModeContext.Labels;
-            bool lazyModeActive = lazyModeEnabled &&
-                                  !hasLazyModeRestrictedItemsOnScreen &&
-                                  !isRitualActive;
+            bool lazyModeActive = lazyModeContext.UseLazyModeTiming;
 
             double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
             double targetTime = GetTargetTime(frequencyTarget, avgClickTime);
@@ -97,7 +95,7 @@ namespace ClickIt.Core.Runtime
             if (!readyByTime || !canClick)
             {
                 bool hotkeyHeld = _state.Services.InputHandler == null || hotkeyActive;
-                if (ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled, hotkeyHeld))
+                if (PluginClickRuntimeStateEvaluator.ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled, hotkeyHeld))
                 {
                     runtimeHost.CancelOffscreenPathingState();
                 }
@@ -126,7 +124,7 @@ namespace ClickIt.Core.Runtime
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             long clickSequenceAfter = _state.Services.InputHandler?.GetSuccessfulClickSequence() ?? 0;
-            if (ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
+            if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
             {
                 _state.Runtime.Timer.Restart();
             }
@@ -153,11 +151,11 @@ namespace ClickIt.Core.Runtime
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null || _state.Services.InputHandler == null)
                 yield break;
 
-            bool hotkeyActive = _state.Services.InputHandler.IsClickHotkeyPressed(_state.Services.CachedLabels, _state.Services.LabelFilterPort);
-            if (!ShouldRunManualUiHoverCoroutine(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
+            bool hotkeyActive = global::ClickIt.Core.Runtime.PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
+            if (!PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
                 yield break;
 
-            bool isRitualActive = GetCachedLazyModeContext(shouldEvaluateRitualState: true, shouldEvaluateRestrictedItems: false).IsRitualActive;
+            bool isRitualActive = LazyModeContextCache.GetContext(shouldEvaluateRitualState: true, shouldEvaluateRestrictedItems: false).IsRitualActive;
             if (isRitualActive)
                 yield break;
 
@@ -177,40 +175,10 @@ namespace ClickIt.Core.Runtime
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             long clickSequenceAfter = _state.Services.InputHandler.GetSuccessfulClickSequence();
-            if (clicked && ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
+            if (clicked && PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
             {
                 _state.Runtime.Timer.Restart();
             }
-        }
-
-        internal static bool ShouldRestartClickTimerAfterSuccessfulClick(long clickSequenceBefore, long clickSequenceAfter)
-        {
-            return clickSequenceAfter > clickSequenceBefore;
-        }
-
-        internal static bool ShouldCancelOffscreenPathingForInputRelease(bool lazyModeEnabled, bool clickHotkeyHeld)
-        {
-            return !lazyModeEnabled && !clickHotkeyHeld;
-        }
-
-        internal static bool ShouldEvaluateRitualState(bool lazyModeEnabled, bool clickHotkeyActive)
-        {
-            return lazyModeEnabled || !clickHotkeyActive;
-        }
-
-        internal static bool ShouldEvaluateLazyModeRestrictedItems(bool lazyModeEnabled)
-        {
-            return lazyModeEnabled;
-        }
-
-        internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
-        {
-            return manualUiHoverEnabled && !lazyModeEnabled && !clickHotkeyActive;
-        }
-
-        internal static bool ShouldSuppressRegularClickForManualUiHoverMode(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
-        {
-            return ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive);
         }
 
         private IEnumerator FlareCoroutine()
@@ -247,7 +215,7 @@ namespace ClickIt.Core.Runtime
                 _settings.DelveFlareEnergyShieldThreshold.Value))
                 yield break;
 
-            if (_state.Services.InputHandler?.CanClick(_gameController, false, IsRitualActive()) != true)
+            if (_state.Services.InputHandler?.CanClick(_gameController, false, global::ClickIt.Core.Runtime.PluginClickRuntimeStateEvaluator.ResolveIsRitualActive(_gameController)) != true)
                 yield break;
 
             Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);

@@ -1,28 +1,52 @@
 namespace ClickIt.Features.Click.Core
 {
-    internal readonly record struct ClickRuntimeEngineDependencies(
+    internal readonly record struct CandidateAcquisitionEngineDependencies(
         ClickItSettings Settings,
-        GameController GameController,
-        InputHandler InputHandler,
         ILabelInteractionPort LabelInteractionPort,
-        PathfindingService PathfindingService,
-        ClickTickContextFactory TickContextFactory,
         VisibleMechanicCoordinator VisibleMechanics,
         LabelSelectionCoordinator LabelSelection,
+        ClickDebugPublicationService ClickDebugPublisher,
+        ClickLabelInteractionService LabelInteraction,
+        Func<bool> ShouldCaptureClickDebug);
+
+    internal readonly record struct CandidateRankingEngineDependencies(
+        LabelSelectionCoordinator LabelSelection,
+        ClickLabelInteractionService LabelInteraction);
+
+    internal readonly record struct InteractionExecutionEngineDependencies(
+        ClickItSettings Settings,
+        ILabelInteractionPort LabelInteractionPort,
+        PathfindingService PathfindingService,
+        VisibleMechanicCoordinator VisibleMechanics,
+        LabelSelectionCoordinator LabelSelection,
+        PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
         ChestLootSettlementTracker ChestLootSettlement,
         OffscreenPathingCoordinator OffscreenPathing,
-        Func<bool> HasClickableAltars,
-        Func<IEnumerator> ProcessAltarClicking,
-        PublishClickFlowDebugStageDelegate PublishClickFlowDebugStage,
+        ClickDebugPublicationService ClickDebugPublisher,
+        ClickLabelInteractionService LabelInteraction,
         Func<bool> ShouldCaptureClickDebug,
-        Func<IReadOnlyList<LabelOnGround>?, string> BuildLabelSourceDebugSummary,
-        Func<IReadOnlyList<LabelOnGround>?, string> BuildNoLabelDebugSummary,
-        ResolveCursorDistanceToEntityDelegate TryGetCursorDistanceSquaredToEntity,
-        ResolveLabelClickPositionDelegate TryResolveLabelClickPosition,
-        ExecuteVisibleLabelInteractionDelegate ExecuteVisibleLabelInteraction,
-        PublishLabelClickDebugDelegate PublishLabelClickDebug,
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog);
+
+    internal readonly record struct PostInteractionStateEngineDependencies(InputHandler InputHandler);
+
+    internal readonly record struct ClickRuntimeEngineDependencies(
+        ClickTickContextFactory TickContextFactory,
+        AltarAutomationService AltarAutomation,
+        ClickDebugPublicationService ClickDebugPublisher,
+        ClickItSettings Settings,
+        ILabelInteractionPort LabelInteractionPort,
+        VisibleMechanicCoordinator VisibleMechanics,
+        LabelSelectionCoordinator LabelSelection,
+        ClickLabelInteractionService LabelInteraction,
+        Func<bool> ShouldCaptureClickDebug,
+        PathfindingService PathfindingService,
+        PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
+        ChestLootSettlementTracker ChestLootSettlement,
+        OffscreenPathingCoordinator OffscreenPathing,
+        Action<string> HoldDebugTelemetryAfterSuccess,
+        Action<string> DebugLog,
+        InputHandler InputHandler);
 
     internal readonly record struct ClickCandidates(
         LostShipmentCandidate? LostShipment,
@@ -53,26 +77,58 @@ namespace ClickIt.Features.Click.Core
         private readonly InteractionExecutionEngine _executionPhase;
         private readonly PostInteractionStateEngine _postActionsPhase;
 
-        internal ClickRuntimeEngineDependencies Dependencies => _dependencies;
-
         public ClickRuntimeEngine(ClickRuntimeEngineDependencies dependencies)
         {
             _dependencies = dependencies;
-            _acquisitionPhase = new CandidateAcquisitionEngine(this);
-            _rankingPhase = new CandidateRankingEngine(this);
+            _acquisitionPhase = new CandidateAcquisitionEngine(CreateCandidateAcquisitionDependencies(dependencies));
+            _rankingPhase = new CandidateRankingEngine(CreateCandidateRankingDependencies(dependencies));
             _gatingPhase = new CandidateGatingPhase();
-            _executionPhase = new InteractionExecutionEngine(this);
-            _postActionsPhase = new PostInteractionStateEngine(this);
+            _executionPhase = new InteractionExecutionEngine(CreateInteractionExecutionDependencies(dependencies));
+            _postActionsPhase = new PostInteractionStateEngine(CreatePostInteractionStateDependencies(dependencies));
         }
+
+        private static CandidateAcquisitionEngineDependencies CreateCandidateAcquisitionDependencies(ClickRuntimeEngineDependencies dependencies)
+            => new(
+                dependencies.Settings,
+                dependencies.LabelInteractionPort,
+                dependencies.VisibleMechanics,
+                dependencies.LabelSelection,
+                dependencies.ClickDebugPublisher,
+                dependencies.LabelInteraction,
+                dependencies.ShouldCaptureClickDebug);
+
+        private static CandidateRankingEngineDependencies CreateCandidateRankingDependencies(ClickRuntimeEngineDependencies dependencies)
+            => new(
+                dependencies.LabelSelection,
+                dependencies.LabelInteraction);
+
+        private static InteractionExecutionEngineDependencies CreateInteractionExecutionDependencies(ClickRuntimeEngineDependencies dependencies)
+            => new(
+                dependencies.Settings,
+                dependencies.LabelInteractionPort,
+                dependencies.PathfindingService,
+                dependencies.VisibleMechanics,
+                dependencies.LabelSelection,
+                dependencies.PathfindingLabelSuppression,
+                dependencies.ChestLootSettlement,
+                dependencies.OffscreenPathing,
+                dependencies.ClickDebugPublisher,
+                dependencies.LabelInteraction,
+                dependencies.ShouldCaptureClickDebug,
+                dependencies.HoldDebugTelemetryAfterSuccess,
+                dependencies.DebugLog);
+
+        private static PostInteractionStateEngineDependencies CreatePostInteractionStateDependencies(ClickRuntimeEngineDependencies dependencies)
+            => new(dependencies.InputHandler);
 
         public IEnumerator Run()
         {
-            _dependencies.PublishClickFlowDebugStage("TickStart", "ProcessRegularClick entered", null);
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("TickStart", "ProcessRegularClick entered", null);
 
-            if (_dependencies.HasClickableAltars())
+            if (_dependencies.AltarAutomation.HasClickableAltars())
             {
-                _dependencies.PublishClickFlowDebugStage("AltarBranch", "Clickable altar detected; regular label click path skipped", null);
-                return _dependencies.ProcessAltarClicking();
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("AltarBranch", "Clickable altar detected; regular label click path skipped", null);
+                return _dependencies.AltarAutomation.ProcessAltarClicking();
             }
 
             return RunCore();

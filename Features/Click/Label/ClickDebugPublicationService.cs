@@ -11,12 +11,50 @@ namespace ClickIt.Features.Click.Label
     {
         private readonly ClickDebugPublicationServiceDependencies _dependencies = dependencies;
 
-        internal void PublishClickFlowDebugStage(string stage, string notes, string? mechanicId = null)
+        internal bool ShouldCaptureClickDebug()
+            => _dependencies.ShouldCaptureClickDebug();
+
+        internal void PublishClickDebugSnapshot(ClickDebugSnapshot snapshot)
         {
             if (!_dependencies.ShouldCaptureClickDebug())
                 return;
 
-            _dependencies.SetLatestClickDebug(new ClickDebugSnapshot(
+            _dependencies.SetLatestClickDebug(snapshot);
+        }
+
+        internal void PublishSettlersClickDebugSnapshot(
+            string stage,
+            string mechanicId,
+            string entityPath,
+            float distance,
+            Vector2 worldScreenRaw,
+            Vector2 worldScreenAbsolute,
+            Vector2 resolvedClickPoint,
+            bool resolved,
+            string notes)
+        {
+            PublishClickDebugSnapshot(new ClickDebugSnapshot(
+                HasData: true,
+                Stage: stage,
+                MechanicId: mechanicId,
+                EntityPath: entityPath,
+                Distance: distance,
+                WorldScreenRaw: worldScreenRaw,
+                WorldScreenAbsolute: worldScreenAbsolute,
+                ResolvedClickPoint: resolvedClickPoint,
+                Resolved: resolved,
+                CenterInWindow: _dependencies.IsInsideWindowInEitherSpace(worldScreenAbsolute),
+                CenterClickable: _dependencies.IsClickableInEitherSpace(worldScreenAbsolute, entityPath),
+                ResolvedInWindow: resolved && _dependencies.IsInsideWindowInEitherSpace(resolvedClickPoint),
+                ResolvedClickable: resolved && _dependencies.IsClickableInEitherSpace(resolvedClickPoint, entityPath),
+                Notes: notes,
+                Sequence: 0,
+                TimestampMs: Environment.TickCount64));
+        }
+
+        internal void PublishClickFlowDebugStage(string stage, string notes, string? mechanicId = null)
+        {
+            PublishClickDebugSnapshot(new ClickDebugSnapshot(
                 HasData: true,
                 Stage: stage,
                 MechanicId: mechanicId ?? string.Empty,
@@ -43,7 +81,7 @@ namespace ClickIt.Features.Click.Label
             bool resolved,
             string notes)
         {
-            if (!_dependencies.ShouldCaptureClickDebug())
+            if (!ShouldCaptureClickDebug())
                 return;
 
             Entity? entity = label?.ItemOnGround;
@@ -63,7 +101,7 @@ namespace ClickIt.Features.Click.Label
             bool resolvedInWindow = _dependencies.IsInsideWindowInEitherSpace(resolvedClickPos);
             bool resolvedClickable = _dependencies.IsClickableInEitherSpace(resolvedClickPos, entityPath);
 
-            _dependencies.SetLatestClickDebug(new ClickDebugSnapshot(
+            PublishClickDebugSnapshot(new ClickDebugSnapshot(
                 HasData: true,
                 Stage: stage,
                 MechanicId: mechanicId ?? string.Empty,

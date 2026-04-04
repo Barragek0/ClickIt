@@ -2,40 +2,43 @@ namespace ClickIt
 {
     public class PluginContext
     {
+        private static readonly Func<GameController?> EmptyGameControllerProvider = static () => null;
+        private static readonly Func<ClickItSettings?> EmptySettingsProvider = static () => null;
+
         private readonly PluginServiceRegistry _serviceRegistry = new();
-        private readonly PluginFeaturePorts _featurePorts = new();
         private readonly PluginServices _services;
         private readonly PluginRuntimeState _runtime = new();
-        private readonly PluginOverlayPorts _overlayPorts = new();
         private readonly PluginRenderingState _rendering;
         private readonly PluginDebugTelemetryService _debugTelemetry;
+        private Func<GameController?> _getGameController = EmptyGameControllerProvider;
+        private Func<ClickItSettings?> _getSettings = EmptySettingsProvider;
 
         public PluginContext()
         {
-            _services = new PluginServices(_featurePorts);
-            _rendering = new PluginRenderingState(_overlayPorts);
+            _services = new PluginServices();
+            _rendering = new PluginRenderingState();
             _debugTelemetry = new PluginDebugTelemetryService(
                 () => _services.ClickAutomationPort,
                 () => _services.LabelFilterPort,
-                () => _services.PathfindingService);
+                () => _services.PathfindingService,
+                () => _services.AltarService,
+                () => _services.WeightCalculator,
+                () => _rendering,
+                () => _getGameController(),
+                () => _services.InputHandler,
+                () => _getSettings(),
+                () => _services.CachedLabels,
+                () => _services.ErrorHandler);
         }
 
         internal PluginServiceRegistry ServiceRegistry => _serviceRegistry;
         internal PluginDebugTelemetryService DebugTelemetry => _debugTelemetry;
-        internal PluginFeaturePorts FeaturePorts => _featurePorts;
-        internal PluginOverlayPorts OverlayPorts => _overlayPorts;
 
         public PluginServices Services => _services;
         public PluginRuntimeState Runtime => _runtime;
         public PluginRenderingState Rendering => _rendering;
 
-        public ErrorHandler? ErrorHandler { get => _services.ErrorHandler; set => _services.ErrorHandler = value; }
         public Random Random { get; } = new Random();
-        public double CurrentFPS => _services.PerformanceMonitor?.CurrentFPS ?? 0;
-
-        public Queue<long> RenderTimings => _services.PerformanceMonitor?.GetRenderTimingsSnapshot() ?? new Queue<long>();
-
-        public IReadOnlyList<string> RecentErrors => ErrorHandler?.RecentErrors ?? [];
 
         internal DebugTelemetrySnapshot GetDebugTelemetrySnapshot()
             => _debugTelemetry.GetSnapshot();
@@ -46,13 +49,19 @@ namespace ClickIt
         internal bool TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason)
             => _debugTelemetry.TryGetFreezeState(out remainingMs, out reason);
 
-        public void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
+        internal void SetGameControllerProvider(Func<GameController?>? provider)
+            => _getGameController = provider ?? EmptyGameControllerProvider;
+
+        internal void SetSettingsProvider(Func<ClickItSettings?>? provider)
+            => _getSettings = provider ?? EmptySettingsProvider;
+
+        internal void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
             => PluginCompositionBootstrapper.InitializeCompositionRoot(this, owner, settings);
 
-        public void FinalizeCompositionRootForStartup(ClickIt owner, ClickItSettings settings)
+        internal void FinalizeCompositionRootForStartup(ClickIt owner, ClickItSettings settings)
             => PluginCompositionBootstrapper.FinalizeCompositionRootForStartup(this, owner, settings);
 
-        public void DisposeCompositionRoot()
+        internal void DisposeCompositionRoot()
             => PluginCompositionBootstrapper.DisposeCompositionRoot(this);
     }
 }

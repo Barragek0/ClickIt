@@ -8,17 +8,18 @@ namespace ClickIt.UI.Debug.Sections
         {
             _context.DeferredTextQueue.Enqueue("--- Altar Detection ---", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
-            var altarComps = _context.AltarService?.GetAltarComponentsReadOnly() ?? [];
-            Color altarCountColor = altarComps.Count > 0 ? Color.LightGreen : Color.Gray;
-            _context.DeferredTextQueue.Enqueue($"Altar Components: {altarComps.Count}", new Vector2(xPos, yPos), altarCountColor, 16);
+            DebugTelemetrySnapshot telemetry = _context.DebugTelemetrySource.GetSnapshot();
+            AltarTelemetrySnapshot altarTelemetry = telemetry.Altar;
+            Color altarCountColor = altarTelemetry.ComponentCount > 0 ? Color.LightGreen : Color.Gray;
+            _context.DeferredTextQueue.Enqueue($"Altar Components: {altarTelemetry.ComponentCount}", new Vector2(xPos, yPos), altarCountColor, 16);
             yPos += lineHeight;
-            if (altarComps.Count > 0)
+            if (altarTelemetry.Components.Count > 0)
             {
                 _context.DeferredTextQueue.Enqueue("Active Altars:", new Vector2(xPos, yPos), Color.Cyan, 16);
                 yPos += lineHeight;
-                for (int i = 0; i < Math.Min(altarComps.Count, 2); i++)
+                for (int i = 0; i < altarTelemetry.Components.Count; i++)
                 {
-                    var altar = altarComps[i];
+                    AltarComponentTelemetrySnapshot altar = altarTelemetry.Components[i];
                     yPos = RenderSingleAltarDebug(xPos, yPos, lineHeight, altar, i + 1);
                 }
             }
@@ -31,12 +32,14 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue("--- Altar Service ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            var debugInfo = _context.AltarService?.DebugInfo;
-            if (debugInfo == null)
+            DebugTelemetrySnapshot telemetry = _context.DebugTelemetrySource.GetSnapshot();
+            if (!telemetry.Altar.ServiceAvailable)
             {
                 _context.DeferredTextQueue.Enqueue("  Altar Service: NULL", new Vector2(xPos, yPos), Color.Red, 16);
                 return yPos + lineHeight;
             }
+
+            AltarServiceDebugTelemetrySnapshot debugInfo = telemetry.Altar.ServiceDebug;
 
             _context.DeferredTextQueue.Enqueue($"Last Scan Exarch: {debugInfo.LastScanExarchLabels}", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
@@ -77,12 +80,6 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue("--- Labels ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            if (_context.Plugin is not ClickIt clickIt)
-            {
-                _context.DeferredTextQueue.Enqueue("Label filter service unavailable", new Vector2(xPos, yPos), Color.Gray, 14);
-                return yPos + lineHeight;
-            }
-
             DebugTelemetrySnapshot telemetry = _context.DebugTelemetrySource.GetSnapshot();
             if (!telemetry.Label.ServiceAvailable)
             {
@@ -90,26 +87,16 @@ namespace ClickIt.UI.Debug.Sections
                 return yPos + lineHeight;
             }
 
-            var gameController = _context.Plugin.GameController;
-            var labelsCollection = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            if (labelsCollection == null)
+            if (!telemetry.Label.LabelsAvailable)
             {
                 _context.DeferredTextQueue.Enqueue("Labels collection: null", new Vector2(xPos, yPos), Color.Red, 14);
                 return yPos + lineHeight;
             }
 
-            int totalLabels = labelsCollection.Count;
-            _context.DeferredTextQueue.Enqueue($"Total Visible: {totalLabels}", new Vector2(xPos, yPos), Color.White, 14);
+            _context.DeferredTextQueue.Enqueue($"Total Visible: {telemetry.Label.TotalVisibleLabels}", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
-            int validLabels = 0;
-            foreach (var label in labelsCollection)
-            {
-                if (label?.ItemOnGround?.Path != null)
-                    validLabels++;
-            }
-
-            _context.DeferredTextQueue.Enqueue($"Valid Labels: {validLabels}", new Vector2(xPos, yPos), Color.White, 14);
+            _context.DeferredTextQueue.Enqueue($"Valid Labels: {telemetry.Label.ValidVisibleLabels}", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
             var snap = telemetry.Label.Label;
@@ -220,103 +207,34 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue("--- Hovered Item Metadata ---", new Vector2(xPos, yPos), Color.Orange, 16);
             yPos += lineHeight;
 
-            var gameController = _context.Plugin.GameController;
-            var labels = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            if (labels == null || labels.Count == 0)
+            HoveredItemMetadataTelemetrySnapshot hoveredItem = _context.DebugTelemetrySource.GetSnapshot().HoveredItem;
+            if (!hoveredItem.LabelsAvailable)
             {
                 _context.DeferredTextQueue.Enqueue("No ground labels available", new Vector2(xPos, yPos), Color.Gray, 16);
                 return yPos + lineHeight;
             }
 
-            RectangleF winRect = gameController?.Window.GetWindowRectangleTimeCache ?? RectangleF.Empty;
-            var cursorPos = Mouse.GetCursorPosition();
-
-            if (!Debug.DebugOverlayRenderContext.IsCursorInsideWindow(winRect, cursorPos.X, cursorPos.Y))
+            if (!hoveredItem.CursorInsideWindow || !hoveredItem.HasHoveredItem)
             {
                 _context.DeferredTextQueue.Enqueue("Hover a ground-item label to inspect metadata", new Vector2(xPos, yPos), Color.Gray, 16);
                 return yPos + lineHeight;
             }
 
-            LabelOnGround? hovered = null;
-            float bestDistance = float.MaxValue;
-
-            for (int i = 0; i < labels.Count; i++)
-            {
-                LabelOnGround? label = labels[i];
-                if (label?.Label?.IsValid != true)
-                    continue;
-
-                object? rectObj = label.Label.GetClientRect();
-                if (rectObj is not RectangleF labelRect)
-                    continue;
-
-                if (!Debug.DebugOverlayRenderContext.IsCursorOverLabelRect(labelRect, winRect, cursorPos.X, cursorPos.Y))
-                    continue;
-
-                float dist = label.ItemOnGround?.DistancePlayer ?? float.MaxValue;
-                if (dist < bestDistance)
-                {
-                    hovered = label;
-                    bestDistance = dist;
-                }
-            }
-
-            if (hovered == null)
-            {
-                _context.DeferredTextQueue.Enqueue("Hover a ground-item label to inspect metadata", new Vector2(xPos, yPos), Color.Gray, 16);
-                return yPos + lineHeight;
-            }
-
-            string name = hovered.ItemOnGround?.RenderName ?? "<unknown>";
-            string entityPath = hovered.ItemOnGround?.Path ?? string.Empty;
-            string metadata = Debug.DebugOverlayRenderContext.ResolveHoveredItemMetadataPath(hovered);
-
-            _context.DeferredTextQueue.Enqueue($"Name: {name}", new Vector2(xPos, yPos), Color.LightGreen, 16);
+            _context.DeferredTextQueue.Enqueue($"Name: {hoveredItem.GroundItemName}", new Vector2(xPos, yPos), Color.LightGreen, 16);
             yPos += lineHeight;
-            yPos = _context.RenderWrappedText($"Entity Path: {entityPath}", new Vector2(xPos, yPos), Color.White, 14, lineHeight, 60);
-            yPos = _context.RenderWrappedText($"Item Metadata: {metadata}", new Vector2(xPos, yPos), Color.Cyan, 14, lineHeight, 60);
+            yPos = _context.RenderWrappedText($"Entity Path: {hoveredItem.EntityPath}", new Vector2(xPos, yPos), Color.White, 14, lineHeight, 60);
+            yPos = _context.RenderWrappedText($"Item Metadata: {hoveredItem.MetadataPath}", new Vector2(xPos, yPos), Color.Cyan, 14, lineHeight, 60);
 
             return yPos;
         }
 
-        private int RenderSingleAltarDebug(int xPos, int yPos, int lineHeight, PrimaryAltarComponent altar, int altarNumber)
+        private int RenderSingleAltarDebug(int xPos, int yPos, int lineHeight, AltarComponentTelemetrySnapshot altar, int altarNumber)
         {
             _context.DeferredTextQueue.Enqueue($"Altar {altarNumber}:", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
 
-            AltarWeights? weights = null;
-            if (_context.WeightCalculator != null)
-            {
-                weights = altar.GetCachedWeights(pc => _context.WeightCalculator.CalculateAltarWeights(pc));
-            }
-
-            if (altar?.TopMods != null)
-            {
-                decimal[]? topUpsideWeights = null;
-                decimal[]? topDownsideWeights = null;
-                if (weights.HasValue)
-                {
-                    var localWeights = weights.Value;
-                    topUpsideWeights = localWeights.GetTopUpsideWeights();
-                    topDownsideWeights = localWeights.GetTopDownsideWeights();
-                }
-
-                yPos = RenderModsSection(xPos, yPos, lineHeight, "Top", altar.TopMods, topUpsideWeights, topDownsideWeights);
-            }
-
-            if (altar?.BottomMods != null)
-            {
-                decimal[]? bottomUpsideWeights = null;
-                decimal[]? bottomDownsideWeights = null;
-                if (weights.HasValue)
-                {
-                    var localWeights = weights.Value;
-                    bottomUpsideWeights = localWeights.GetBottomUpsideWeights();
-                    bottomDownsideWeights = localWeights.GetBottomDownsideWeights();
-                }
-
-                yPos = RenderModsSection(xPos, yPos, lineHeight, "Bottom", altar.BottomMods, bottomUpsideWeights, bottomDownsideWeights);
-            }
+            yPos = RenderModsSection(xPos, yPos, lineHeight, altar.Top);
+            yPos = RenderModsSection(xPos, yPos, lineHeight, altar.Bottom);
 
             return yPos;
         }
@@ -325,18 +243,13 @@ namespace ClickIt.UI.Debug.Sections
             int xPos,
             int yPos,
             int lineHeight,
-            string sectionName,
-            SecondaryAltarComponent mods,
-            decimal[]? upsideWeights,
-            decimal[]? downsideWeights)
+            AltarModSectionTelemetrySnapshot section)
         {
-            int upsideCount = mods.Upsides?.Count ?? 0;
-            int downsideCount = mods.Downsides?.Count ?? 0;
-            _context.DeferredTextQueue.Enqueue($"  {sectionName} Mods (Upsides: {upsideCount}, Downsides: {downsideCount}):", new Vector2(xPos, yPos), Color.White, 14);
+            _context.DeferredTextQueue.Enqueue($"  {section.SectionName} Mods (Upsides: {section.UpsideCount}, Downsides: {section.DownsideCount}):", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
-            yPos = RenderModsList(xPos, yPos, lineHeight, mods.Upsides, upsideWeights, Color.LightBlue);
-            yPos = RenderModsList(xPos, yPos, lineHeight, mods.Downsides, downsideWeights, Color.LightCoral);
+            yPos = RenderModsList(xPos, yPos, lineHeight, section.Upsides, Color.LightBlue);
+            yPos = RenderModsList(xPos, yPos, lineHeight, section.Downsides, Color.LightCoral);
 
             return yPos;
         }
@@ -345,20 +258,17 @@ namespace ClickIt.UI.Debug.Sections
             int xPos,
             int yPos,
             int lineHeight,
-            IReadOnlyList<string>? mods,
-            decimal[]? weights,
+            IReadOnlyList<AltarWeightedModTelemetrySnapshot> mods,
             Color color)
         {
-            int count = Math.Min(mods?.Count ?? 0, 8);
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < mods.Count; i++)
             {
-                string mod = mods?[i] ?? string.Empty;
-                if (!string.IsNullOrEmpty(mod))
-                {
-                    decimal weight = weights != null && i < weights.Length ? weights[i] : 0m;
-                    string weightText = weights != null ? $" ({weight})" : string.Empty;
-                    yPos = _context.RenderWrappedText($"    {i + 1}: {mod}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
-                }
+                AltarWeightedModTelemetrySnapshot mod = mods[i];
+                if (string.IsNullOrEmpty(mod.Text))
+                    continue;
+
+                string weightText = mod.Weight.HasValue ? $" ({mod.Weight.Value})" : string.Empty;
+                yPos = _context.RenderWrappedText($"    {i + 1}: {mod.Text}{weightText}", new Vector2(xPos, yPos), color, 12, lineHeight, 45);
             }
 
             return yPos;

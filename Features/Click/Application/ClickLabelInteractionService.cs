@@ -3,8 +3,8 @@ namespace ClickIt.Features.Click.Application
     internal readonly record struct ClickLabelInteractionServiceDependencies(
         ClickItSettings Settings,
         GameController GameController,
-        InputHandler InputHandler,
         ILabelInteractionPort LabelInteractionPort,
+        Func<LabelOnGround, Vector2, IReadOnlyList<LabelOnGround>?, Func<Vector2, bool>?, (bool Success, Vector2 ClickPos)> TryResolveClickPosition,
         Func<Vector2, string, bool> IsClickableInEitherSpace,
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
         Func<InteractionExecutionRequest, bool> ExecuteInteraction,
@@ -140,32 +140,38 @@ namespace ClickIt.Features.Click.Application
         {
             string path = explicitPath ?? label.ItemOnGround?.Path ?? string.Empty;
 
-            if (_dependencies.InputHandler.TryCalculateClickPosition(
+            (bool clickResolvable, Vector2 resolvedClickPos) = _dependencies.TryResolveClickPosition(
                 label,
                 windowTopLeft,
                 allLabels,
-                point => _dependencies.IsClickableInEitherSpace(point, path),
-                out clickPos))
+                point => _dependencies.IsClickableInEitherSpace(point, path));
+            if (clickResolvable)
             {
+                clickPos = resolvedClickPos;
                 return true;
             }
 
             if (!LabelClickPointResolutionPolicy.ShouldRetryWithoutClickableArea(mechanicId))
+            {
+                clickPos = default;
                 return false;
+            }
 
             if (!LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(
                 label.ItemOnGround != null,
                 IsItemWorldProjectionInWindow(label.ItemOnGround, windowTopLeft)))
             {
+                clickPos = default;
                 return false;
             }
 
-            return _dependencies.InputHandler.TryCalculateClickPosition(
+            (clickResolvable, resolvedClickPos) = _dependencies.TryResolveClickPosition(
                 label,
                 windowTopLeft,
                 allLabels,
-                isClickableArea: null,
-                out clickPos);
+                null);
+            clickPos = resolvedClickPos;
+            return clickResolvable;
         }
 
         internal (bool Success, Vector2 ClickPos) TryResolveLabelClickPositionResult(
