@@ -127,9 +127,8 @@ If `exapiPackage` is not set, the project also has a local fallback path for dev
 
 ## Coverage
 
-There are two common coverage flows in the workspace tasks:
-- `Review Test Coverage`
-- `Review XPlat Coverage`
+The workspace coverage flow is:
+- `Review Coverage`
 
 Coverage output is written under `Tests/TestResults/`.
 

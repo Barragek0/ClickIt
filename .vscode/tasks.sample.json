@@ -2,19 +2,25 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build ClickIt",
+      "label": "Build and Test",
       "type": "process",
-      "command": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
+      "command": "powershell",
       "args": [
-        "ClickIt.sln",
-        "/p:Configuration=Debug",
-        "/p:IncludeIntegrationTests=true",
-        "/p:exapiPackage=..\\..\\PoeHelper\\net48\\"
+        "-NoProfile",
+        "-Command",
+        "& { $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86'); $vswhere = $null; if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) { $vswhere = Join-Path $programFilesX86 'Microsoft Visual Studio\\Installer\\vswhere.exe' }; $msbuild = $null; if ($vswhere -and (Test-Path $vswhere)) { $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\\**\\Bin\\MSBuild.exe' | Select-Object -First 1 }; if ([string]::IsNullOrWhiteSpace($msbuild)) { $msbuildCommand = Get-Command msbuild.exe -ErrorAction SilentlyContinue; if ($null -ne $msbuildCommand) { $msbuild = $msbuildCommand.Source } }; if ([string]::IsNullOrWhiteSpace($msbuild)) { Write-Error 'MSBuild.exe could not be resolved. Install Visual Studio Build Tools or ensure MSBuild is on PATH.'; exit 1 }; & $msbuild 'ClickIt.sln' '/p:Configuration=Debug' '/p:IncludeIntegrationTests=true' '/p:exapiPackage=..\\..\\PoeHelper\\net48\\'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & dotnet test 'Tests\\ClickIt.Tests.csproj' -c Debug -p:IncludeIntegrationTests=true; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $src = Join-Path $pwd 'bin\\Debug\\net10.0-windows\\win-x64\\ClickIt.dll'; if (-not (Test-Path $src)) { Write-Error \"Compiled DLL not found at $src\"; exit 1 }; $dest = 'C:\\Path\\To\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt'; if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; Copy-Item -Path $src -Destination $dest -Force; Write-Output \"Copied $src to $dest\" }"
       ],
-      "problemMatcher": "$msCompile"
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     },
     {
-      "label": "Run Tests (dotnet test)",
+      "label": "Test",
       "type": "process",
       "command": "dotnet",
       "args": [
@@ -27,110 +33,24 @@
       "presentation": {
         "reveal": "always"
       },
-      "problemMatcher": []
-    },
-    {
-      "label": "Copy Compiled DLL",
-      "type": "process",
-      "command": "powershell",
-      "args": [
-        "-NoProfile",
-        "-Command",
-        "& { $src = Join-Path $pwd 'bin\\Debug\\net10.0-windows\\win-x64\\ClickIt.dll'; if (-not (Test-Path $src)) { Write-Error \"Compiled DLL not found at $src\"; exit 1 }; $dest = 'C:\\1.Path stuff\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt'; if(-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; Copy-Item -Path $src -Destination $dest -Force; Write-Output \"Copied $src to $dest\" }"
-      ],
-      "presentation": {
-        "reveal": "always"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Build and Test",
-      "dependsOn": [
-        "Build ClickIt",
-        "Run Tests (dotnet test)",
-        "Copy Compiled DLL"
-      ],
-      "dependsOrder": "sequence",
       "problemMatcher": [],
       "group": {
-        "kind": "build",
+        "kind": "test",
         "isDefault": true
       }
     },
     {
-      "label": "Collect XPlat Coverage",
-      "type": "process",
-      "command": "dotnet",
-      "args": [
-        "test",
-        "Tests\\ClickIt.Tests.csproj",
-        "--collect",
-        "XPlat Code Coverage",
-        "--settings",
-        "runsettings.xml",
-        "-c",
-        "Debug",
-        "/p:CollectCoverage=false",
-        "/p:IncludeIntegrationTests=true",
-        "/p:BuildProjectReferences=false"
-      ],
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": [],
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      }
-    },
-    {
-      "label": "Generate XPlat Coverage Stats",
-      "type": "shell",
-      "command": "reportgenerator",
-      "args": [
-        "-reports:${workspaceFolder}/Tests/TestResults/coverage.cobertura.xml",
-        "-targetdir:${workspaceFolder}/Tests/TestResults/covstats-xplat"
-      ],
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": [],
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      },
-      "dependsOn": "Collect XPlat Coverage"
-    },
-    {
-      "label": "Move XPlat Coverage Results",
+      "label": "Review Coverage",
       "type": "process",
       "command": "powershell",
       "args": [
         "-NoProfile",
         "-Command",
-        "& { Get-ChildItem -Path '.' -Recurse -Filter 'coverage.cobertura.xml' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { $destFile = 'Tests/TestResults/coverage.cobertura.xml'; $destDir = Split-Path $destFile -Parent; if (!(Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }; Copy-Item $_.FullName $destFile -Force; Write-Output \"Moved $($_.FullName) to $destFile\"; if ((Test-Path $_.Directory.FullName) -and $_.Directory.Name -match '^[0-9a-f-]+$') { Remove-Item $_.Directory.FullName -Recurse -Force } } }"
+        "& { & dotnet test 'Tests\\ClickIt.Tests.csproj' --collect 'XPlat Code Coverage' --settings 'runsettings.xml' -c Debug '/p:CollectCoverage=false' '/p:IncludeIntegrationTests=true' '/p:BuildProjectReferences=false'; $testExitCode = $LASTEXITCODE; $latestCoverage = Get-ChildItem -Path '.' -Recurse -Filter 'coverage.cobertura.xml' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($null -eq $latestCoverage) { if ($testExitCode -ne 0) { Write-Warning 'No coverage.cobertura.xml file was found after the failing test run.'; exit $testExitCode }; Write-Error 'No coverage.cobertura.xml file was produced.'; exit 1 }; $destFile = 'Tests\\TestResults\\coverage.cobertura.xml'; $destDir = Split-Path $destFile -Parent; if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }; Copy-Item $latestCoverage.FullName $destFile -Force; if ((Test-Path $latestCoverage.Directory.FullName) -and $latestCoverage.Directory.Name -match '^[0-9a-f-]+$') { Remove-Item $latestCoverage.Directory.FullName -Recurse -Force }; & reportgenerator '-reports:${workspaceFolder}/Tests/TestResults/coverage.cobertura.xml' '-targetdir:${workspaceFolder}/Tests/TestResults/covstats-xplat'; $reportExitCode = $LASTEXITCODE; if ($reportExitCode -ne 0) { exit $reportExitCode }; exit $testExitCode }"
       ],
       "presentation": {
-        "reveal": "silent"
-      },
-      "problemMatcher": [],
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      }
-    },
-    {
-      "label": "Review XPlat Coverage",
-      "dependsOn": [
-        "Collect XPlat Coverage",
-        "Move XPlat Coverage Results",
-        "Generate XPlat Coverage Stats"
-      ],
-      "dependsOrder": "sequence",
-      "presentation": {
-        "reveal": "always"
+        "reveal": "always",
+        "panel": "new"
       },
       "problemMatcher": [],
       "group": {

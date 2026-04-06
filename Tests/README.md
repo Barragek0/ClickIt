@@ -39,9 +39,9 @@ If you want the same workflow the repo expects in VS Code, use the default `Buil
 
 ## Coverage
 
-The repo has two common coverage flows:
+The repo has one common workspace coverage flow:
 
-- VS Code tasks: `Review Test Coverage` and `Review XPlat Coverage`
+- VS Code task: `Review Coverage`
 - Script: `Tests/Scripts/generate-coverage.ps1`
 
 The script runs XPlat coverage, generates a ReportGenerator XML summary, and writes the usual outputs under `Tests/TestResults/`:
