@@ -86,6 +86,13 @@ namespace ClickIt.Core.Settings.Normalization
                 yield break;
             }
 
+            if (mechanicId.Equals(MechanicIds.HeistDoors, StringComparison.OrdinalIgnoreCase)
+                || mechanicId.Equals(MechanicIds.AlvaTempleDoors, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return MechanicIds.Doors;
+                yield break;
+            }
+
             yield return mechanicId;
         }
     }

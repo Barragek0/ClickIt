@@ -81,7 +81,18 @@ namespace ClickIt.Features.Click.Runtime
                 target,
                 _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
             if (!builtPath)
+            {
+                PathfindingDebugSnapshot pathfindingSnapshot = _dependencies.PathfindingService.GetDebugSnapshot();
+                if (OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(pathfindingSnapshot.LastFailureReason))
+                {
+                    PublishOffscreenMovementDebug(target, targetPath, builtPath, false, false, default, default, "BlockedNoRoute", pathfindingSnapshot.LastFailureReason);
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={targetPath}");
+                    _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen traversal because A* did not find a route.");
+                    return false;
+                }
+
                 _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Pathfinding route not found; trying directional walk click.");
+            }
 
             (bool resolvedFromPath, Vector2 targetScreen) = builtPath
                 ? TryResolveOffscreenTargetScreenPointFromPath()

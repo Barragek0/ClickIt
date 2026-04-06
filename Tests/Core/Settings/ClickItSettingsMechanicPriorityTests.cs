@@ -216,6 +216,40 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
+        public void MechanicsSubmenuLogic_DoorsGroupToggleUpdatesUnderlyingDoorStates()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickDoors.Value = true;
+            settings.ClickHeistDoors.Value = true;
+            settings.ClickAlvaTempleDoors.Value = true;
+
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            ClickItSettings.SetMechanicGroupState("doors", entries, false);
+
+            settings.ClickDoors.Value.Should().BeFalse();
+            settings.ClickHeistDoors.Value.Should().BeTrue();
+            settings.ClickAlvaTempleDoors.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void MechanicsSubmenuLogic_HeistGroupToggleUpdatesUnderlyingHeistStates()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickHeistDoors.Value = true;
+            settings.ClickHeistSecureLocker.Value = true;
+            settings.ClickHeistSecureRepository.Value = true;
+            settings.ClickHeistHazards.Value = true;
+
+            IReadOnlyList<MechanicToggleTableEntry> entries = settings.GetMechanicTableEntries();
+            ClickItSettings.SetMechanicGroupState("heist", entries, false);
+
+            settings.ClickHeistDoors.Value.Should().BeFalse();
+            settings.ClickHeistSecureLocker.Value.Should().BeFalse();
+            settings.ClickHeistSecureRepository.Value.Should().BeFalse();
+            settings.ClickHeistHazards.Value.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void MechanicsSubmenuLogic_TableEntriesContainSingleItemsEssencesAndStrongboxesRows()
         {
             var settings = new ClickItSettings();

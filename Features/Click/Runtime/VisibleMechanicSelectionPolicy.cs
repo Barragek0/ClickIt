@@ -6,6 +6,7 @@ namespace ClickIt.Features.Click.Runtime
         private const string LostShipmentLoosePathMarker = "LostShipment";
         private const string LostGoodsRenderNameMarker = "Lost Goods";
         private const string LostShipmentRenderNameMarker = "Lost Shipment";
+        private const string HeistHazardsPathMarker = "Heist/Objects/Level/Hazards";
 
         internal static bool IsLostShipmentPath(string? path)
             => ContainsAny(path, LostShipmentPathMarker, LostShipmentLoosePathMarker);
@@ -13,6 +14,9 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool IsLostShipmentEntity(string? path, string? renderName)
             => IsLostShipmentPath(path)
                || ContainsAny(renderName, LostGoodsRenderNameMarker, LostShipmentRenderNameMarker);
+
+        internal static bool IsHeistHazardsPath(string? path)
+            => ContainsAny(path, HeistHazardsPathMarker);
 
         internal static bool ShouldSkipLostShipmentEntity(bool isValid, float distance, int clickDistance, bool isOpened)
             => !isValid || isOpened || distance > clickDistance;

@@ -22,6 +22,7 @@ namespace ClickIt.Tests.Features.Labels.Selection
             result.ClickSettlersOre.Should().Be(settings.ClickSettlersOre.Value);
             result.ClickStrongboxes.Should().Be(settings.ClickStrongboxes.Value);
             result.ClickLabyrinthTrials.Should().Be(settings.ClickLabyrinthTrials.Value);
+            result.ClickHeistDoors.Should().Be(settings.ClickHeistDoors.Value);
         }
 
         [TestMethod]
@@ -70,11 +71,15 @@ namespace ClickIt.Tests.Features.Labels.Selection
             settings.ClickMirageGoldenDjinnCache.Value = true;
             settings.ClickMirageSilverDjinnCache.Value = false;
             settings.ClickHeistSecureLocker.Value = true;
+            settings.ClickHeistSecureRepository.Value = true;
+            settings.ClickHeistHazards.Value = true;
 
             IReadOnlySet<string> enabled = ClickSettingsFactory.BuildEnabledLeagueChestSpecificIds(settings, leagueChestsEnabled: true);
 
             enabled.Should().Contain(MechanicIds.MirageGoldenDjinnCache);
             enabled.Should().Contain(MechanicIds.HeistSecureLocker);
+            enabled.Should().Contain(MechanicIds.HeistSecureRepository);
+            enabled.Should().Contain(MechanicIds.HeistHazards);
             enabled.Should().NotContain(MechanicIds.MirageSilverDjinnCache);
         }
     }

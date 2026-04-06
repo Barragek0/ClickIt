@@ -11,6 +11,7 @@ namespace ClickIt.Features.Labels
         public bool ClickLeagueChestsOther { get; set; }
         public IReadOnlySet<string> EnabledLeagueChestSpecificIds { get; set; }
         public bool ClickDoors { get; set; }
+        public bool ClickHeistDoors { get; set; }
         public bool ClickLevers { get; set; }
         public bool ClickAreaTransitions { get; set; }
         public bool ClickLabyrinthTrials { get; set; }

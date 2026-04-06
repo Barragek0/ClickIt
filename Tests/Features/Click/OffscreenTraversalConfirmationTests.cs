@@ -79,5 +79,21 @@ namespace ClickIt.Tests.Features.Click
                 .BeNull();
         }
 
+        [TestMethod]
+        public void ShouldBlockOffscreenTraversalAfterPathBuildFailure_BlocksOnlyNoRouteFailure()
+        {
+            OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(PathfindingService.AStarNoRouteFailureReason)
+                .Should()
+                .BeTrue();
+
+            OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure("Terrain/pathfinding data unavailable.")
+                .Should()
+                .BeFalse();
+
+            OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(string.Empty)
+                .Should()
+                .BeFalse();
+        }
+
     }
 }

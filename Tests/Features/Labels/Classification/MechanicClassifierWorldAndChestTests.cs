@@ -11,6 +11,8 @@ namespace ClickIt.Tests.Features.Labels.Classification
             bool clickMirageSilverDjinnCache,
             bool clickMirageBronzeDjinnCache,
             bool clickHeistSecureLocker,
+            bool clickHeistSecureRepository,
+            bool clickHeistHazards,
             bool clickBlightCyst,
             bool clickBreachGraspingCoffers,
             bool clickSynthesisSynthesisedStash,
@@ -23,6 +25,8 @@ namespace ClickIt.Tests.Features.Labels.Classification
             if (clickMirageSilverDjinnCache) enabledSpecificLeagueChestIds.Add(MechanicIds.MirageSilverDjinnCache);
             if (clickMirageBronzeDjinnCache) enabledSpecificLeagueChestIds.Add(MechanicIds.MirageBronzeDjinnCache);
             if (clickHeistSecureLocker) enabledSpecificLeagueChestIds.Add(MechanicIds.HeistSecureLocker);
+            if (clickHeistSecureRepository) enabledSpecificLeagueChestIds.Add(MechanicIds.HeistSecureRepository);
+            if (clickHeistHazards) enabledSpecificLeagueChestIds.Add(MechanicIds.HeistHazards);
             if (clickBlightCyst) enabledSpecificLeagueChestIds.Add(MechanicIds.BlightCyst);
             if (clickBreachGraspingCoffers) enabledSpecificLeagueChestIds.Add(MechanicIds.BreachGraspingCoffers);
             if (clickSynthesisSynthesisedStash) enabledSpecificLeagueChestIds.Add(MechanicIds.SynthesisSynthesisedStash);
@@ -47,28 +51,77 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [TestMethod]
         public void ShouldClickChest_RecognizesBasicChest_WhenSettingsAllow()
         {
-            var res = InvokeChestMechanicFromConfiguredRules(true, false, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest");
+            var res = InvokeChestMechanicFromConfiguredRules(true, false, true, true, true, true, true, true, false, true, true, true, EntityType.Chest, "content/some/chest", "Tribal Chest");
             res.Should().Be("basic-chests");
         }
 
         [TestMethod]
         public void ShouldClickChest_UsesOtherLeagueToggle_ForNonMirageLeagueChests()
         {
-            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
-            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, true, false, true, true, true, EntityType.Chest, "content/some/chest", "Some League Chest");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
         }
 
+        [DataTestMethod]
+        [DataRow("Golden Djinn's Cache", true, false, false, "mirage-golden-djinn-cache")]
+        [DataRow("Silver Djinn's Cache", false, true, false, "mirage-silver-djinn-cache")]
+        [DataRow("Bronze Djinn's Cache", false, false, true, "mirage-bronze-djinn-cache")]
+        public void ShouldClickChest_UsesSpecificMirageMechanicId_WhenMatchingTierIsEnabled(
+            string renderName,
+            bool goldenEnabled,
+            bool silverEnabled,
+            bool bronzeEnabled,
+            string expectedMechanicId)
+        {
+            string? disabled = InvokeChestMechanicFromConfiguredRules(
+                clickBasicChests: false,
+                clickLeagueChests: true,
+                clickLeagueChestsOther: false,
+                clickMirageGoldenDjinnCache: false,
+                clickMirageSilverDjinnCache: false,
+                clickMirageBronzeDjinnCache: false,
+                clickHeistSecureLocker: true,
+                clickHeistSecureRepository: true,
+                clickHeistHazards: true,
+                clickBlightCyst: true,
+                clickBreachGraspingCoffers: true,
+                clickSynthesisSynthesisedStash: true,
+                type: EntityType.Chest,
+                path: "Metadata/Chests/Mirage",
+                renderName: renderName);
+
+            string? enabled = InvokeChestMechanicFromConfiguredRules(
+                clickBasicChests: false,
+                clickLeagueChests: true,
+                clickLeagueChestsOther: false,
+                clickMirageGoldenDjinnCache: goldenEnabled,
+                clickMirageSilverDjinnCache: silverEnabled,
+                clickMirageBronzeDjinnCache: bronzeEnabled,
+                clickHeistSecureLocker: true,
+                clickHeistSecureRepository: true,
+                clickHeistHazards: true,
+                clickBlightCyst: true,
+                clickBreachGraspingCoffers: true,
+                clickSynthesisSynthesisedStash: true,
+                type: EntityType.Chest,
+                path: "Metadata/Chests/Mirage",
+                renderName: renderName);
+
+            disabled.Should().BeNull();
+            enabled.Should().Be(expectedMechanicId);
+        }
+
         [TestMethod]
         public void ShouldClickChest_UsesHeistToggle_ForSecureLockerRenderName()
         {
-            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, false, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
-            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, false, false, false, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, false, false, true, true, true, EntityType.Chest, "content/heist/chest", "Secure Locker");
 
             disabled.Should().BeNull();
-            enabled.Should().Be("league-chests");
+            enabled.Should().Be(MechanicIds.HeistSecureLocker);
         }
 
         [TestMethod]
@@ -76,11 +129,35 @@ namespace ClickIt.Tests.Features.Labels.Classification
         {
             const string heistPath = "Metadata/Chests/LeagueHeist/MilitaryChests/HeistChestPathMilitary";
 
-            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
-            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, false, false, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, false, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
 
             disabled.Should().BeNull();
             enabled.Should().Be("league-chests");
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesEitherHeistSecureToggle_ForLeagueHeistMetadataPathWithoutSpecificName()
+        {
+            const string heistPath = "Metadata/Chests/LeagueHeist/MilitaryChests/HeistChestPathMilitary";
+
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, false, false, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
+            var lockerEnabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, true, false, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
+            var repositoryEnabled = InvokeChestMechanicFromConfiguredRules(false, true, true, true, true, true, false, true, false, true, true, true, EntityType.Chest, heistPath, "Military Supplies");
+
+            disabled.Should().BeNull();
+            lockerEnabled.Should().Be("league-chests");
+            repositoryEnabled.Should().Be("league-chests");
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesHeistToggle_ForSecureRepositoryRenderName()
+        {
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, false, false, false, true, true, EntityType.Chest, "content/heist/chest", "Secure Repository");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, false, true, true, EntityType.Chest, "content/heist/chest", "Secure Repository");
+
+            disabled.Should().BeNull();
+            enabled.Should().Be(MechanicIds.HeistSecureRepository);
         }
 
         [TestMethod]
@@ -88,11 +165,11 @@ namespace ClickIt.Tests.Features.Labels.Classification
         {
             const string blightPath = "Metadata/Chests/Blight/BlightChestObject";
 
-            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, false, true, true, EntityType.Chest, blightPath, "Blight Cyst");
-            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, blightPath, "Blight Cyst");
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, false, true, true, EntityType.Chest, blightPath, "Blight Cyst");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, true, true, EntityType.Chest, blightPath, "Blight Cyst");
 
             disabled.Should().BeNull();
-            enabled.Should().Be("league-chests");
+            enabled.Should().Be(MechanicIds.BlightCyst);
         }
 
         [TestMethod]
@@ -100,11 +177,11 @@ namespace ClickIt.Tests.Features.Labels.Classification
         {
             const string breachPath = "Metadata/Chests/Breach/BreachBoxChest02";
 
-            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, EntityType.Chest, breachPath, "Grasping Coffers");
-            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, breachPath, "Grasping Coffers");
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, false, true, EntityType.Chest, breachPath, "Grasping Coffers");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, true, true, EntityType.Chest, breachPath, "Grasping Coffers");
 
             disabled.Should().BeNull();
-            enabled.Should().Be("league-chests");
+            enabled.Should().Be(MechanicIds.BreachGraspingCoffers);
         }
 
         [TestMethod]
@@ -112,11 +189,35 @@ namespace ClickIt.Tests.Features.Labels.Classification
         {
             const string synthesisPath = "Metadata/Chests/SynthesisChests/SynthesisChest";
 
-            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, false, EntityType.Chest, synthesisPath, "Synthesised Stash");
-            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, synthesisPath, "Synthesised Stash");
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, true, false, EntityType.Chest, synthesisPath, "Synthesised Stash");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, true, true, EntityType.Chest, synthesisPath, "Synthesised Stash");
 
             disabled.Should().BeNull();
-            enabled.Should().Be("league-chests");
+            enabled.Should().Be(MechanicIds.SynthesisSynthesisedStash);
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesHeistHazardsToggle_ForHeistHazardsMetadataPath()
+        {
+            const string hazardsPath = "Metadata/Heist/Objects/Level/Hazards";
+
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, true, true, EntityType.Chest, hazardsPath, "Hazards");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, true, true, EntityType.Chest, hazardsPath, "Hazards");
+
+            disabled.Should().BeNull();
+            enabled.Should().Be(MechanicIds.HeistHazards);
+        }
+
+        [TestMethod]
+        public void ShouldClickChest_UsesHeistHazardsToggle_ForHeistHazardsMetadataPath_WhenTypeIsNotChest()
+        {
+            const string hazardsPath = "Heist/Objects/Level/Hazards/Strength_SmashMarker";
+
+            var disabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, false, true, true, true, EntityType.Monster, hazardsPath, "Strength Smash Marker");
+            var enabled = InvokeChestMechanicFromConfiguredRules(false, true, false, true, true, true, true, true, true, true, true, true, EntityType.Monster, hazardsPath, "Strength Smash Marker");
+
+            disabled.Should().BeNull();
+            enabled.Should().Be(MechanicIds.HeistHazards);
         }
 
         [TestMethod]

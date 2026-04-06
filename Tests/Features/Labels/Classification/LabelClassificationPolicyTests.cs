@@ -3,9 +3,29 @@ namespace ClickIt.Tests.Features.Labels.Classification
     [TestClass]
     public class LabelClassificationPolicyTests
     {
+        private static readonly MethodInfo GetNamedInteractableMechanicIdMethod = typeof(MechanicClassifier)
+            .GetMethod("GetNamedInteractableMechanicId", BindingFlags.Static | BindingFlags.NonPublic)!;
+
         public sealed class FakeTargetableEntity
         {
             public bool IsTargetable { get; set; }
+        }
+
+        [TestMethod]
+        public void GetNamedInteractableMechanicId_UsesDoorMechanicForHeistDoorPath_WithoutMatchingBasicVariant()
+        {
+            string heistDoorVariant = "Metadata/Heist/Objects/Level/Door_NPCCatburglar";
+            string basicHeistDoor = "Metadata/Heist/Objects/Level/Door_Basic";
+
+            string? variantEnabled = InvokeNamedInteractableMechanic(clickDoors: false, clickHeistDoors: true, clickLevers: false, metadataPath: heistDoorVariant);
+            string? variantDisabled = InvokeNamedInteractableMechanic(clickDoors: false, clickHeistDoors: false, clickLevers: false, metadataPath: heistDoorVariant);
+            string? basicWithHeistToggle = InvokeNamedInteractableMechanic(clickDoors: false, clickHeistDoors: true, clickLevers: false, metadataPath: basicHeistDoor);
+            string? basicWithDoorToggle = InvokeNamedInteractableMechanic(clickDoors: true, clickHeistDoors: true, clickLevers: false, metadataPath: basicHeistDoor);
+
+            variantEnabled.Should().Be(MechanicIds.HeistDoors);
+            variantDisabled.Should().BeNull();
+            basicWithHeistToggle.Should().BeNull();
+            basicWithDoorToggle.Should().Be(MechanicIds.Doors);
         }
 
         [TestMethod]
@@ -16,6 +36,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 bool clickMirageSilverDjinnCache,
                 bool clickMirageBronzeDjinnCache,
                 bool clickHeistSecureLocker,
+                bool clickHeistSecureRepository,
                 bool clickBlightCyst,
                 bool clickBreachGraspingCoffers,
                 bool clickSynthesisSynthesisedStash)
@@ -25,6 +46,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 if (clickMirageSilverDjinnCache) enabled.Add(MechanicIds.MirageSilverDjinnCache);
                 if (clickMirageBronzeDjinnCache) enabled.Add(MechanicIds.MirageBronzeDjinnCache);
                 if (clickHeistSecureLocker) enabled.Add(MechanicIds.HeistSecureLocker);
+                if (clickHeistSecureRepository) enabled.Add(MechanicIds.HeistSecureRepository);
                 if (clickBlightCyst) enabled.Add(MechanicIds.BlightCyst);
                 if (clickBreachGraspingCoffers) enabled.Add(MechanicIds.BreachGraspingCoffers);
                 if (clickSynthesisSynthesisedStash) enabled.Add(MechanicIds.SynthesisSynthesisedStash);
@@ -39,6 +61,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 bool clickMirageSilverDjinnCache,
                 bool clickMirageBronzeDjinnCache,
                 bool clickHeistSecureLocker,
+                bool clickHeistSecureRepository,
                 bool clickBlightCyst,
                 bool clickBreachGraspingCoffers,
                 bool clickSynthesisSynthesisedStash,
@@ -51,6 +74,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                     clickMirageSilverDjinnCache,
                     clickMirageBronzeDjinnCache,
                     clickHeistSecureLocker,
+                    clickHeistSecureRepository,
                     clickBlightCyst,
                     clickBreachGraspingCoffers,
                     clickSynthesisSynthesisedStash);
@@ -65,50 +89,56 @@ namespace ClickIt.Tests.Features.Labels.Classification
                     renderName);
             }
 
-            var res1 = ResolveChestMechanic(true, true, true, true, true, true, true, true, true, true, EntityType.Monster, "some/path", "chest");
+            var res1 = ResolveChestMechanic(true, true, true, true, true, true, true, true, true, true, true, EntityType.Monster, "some/path", "chest");
             res1.Should().BeNull();
 
-            var res2 = ResolveChestMechanic(true, false, true, true, true, true, true, true, true, true, EntityType.Chest, null, "Chest");
+            var res2 = ResolveChestMechanic(true, false, true, true, true, true, true, true, true, true, true, EntityType.Chest, null, "Chest");
             res2.Should().Be("basic-chests");
 
-            var res3 = ResolveChestMechanic(false, true, true, true, true, true, true, true, true, true, EntityType.Chest, null, "Some League");
+            var res3 = ResolveChestMechanic(false, true, true, true, true, true, true, true, true, true, true, EntityType.Chest, null, "Some League");
             res3.Should().Be("league-chests");
 
-            var res4 = ResolveChestMechanic(true, true, true, true, true, true, true, true, true, true, EntityType.Chest, "StrongBoxes/Strongbox", "strongbox");
+            var res4 = ResolveChestMechanic(true, true, true, true, true, true, true, true, true, true, true, EntityType.Chest, "StrongBoxes/Strongbox", "strongbox");
             res4.Should().BeNull();
 
-            var mirageDisabled = ResolveChestMechanic(false, true, false, false, false, false, false, true, true, true, EntityType.Chest, null, "Golden Djinn's Cache");
+            var mirageDisabled = ResolveChestMechanic(false, true, false, false, false, false, false, false, true, true, true, EntityType.Chest, null, "Golden Djinn's Cache");
             mirageDisabled.Should().BeNull();
 
-            var mirageEnabled = ResolveChestMechanic(false, true, false, true, false, false, false, true, true, true, EntityType.Chest, null, "Golden Djinn's Cache");
-            mirageEnabled.Should().Be("league-chests");
+            var mirageEnabled = ResolveChestMechanic(false, true, false, true, false, false, false, false, true, true, true, EntityType.Chest, null, "Golden Djinn's Cache");
+            mirageEnabled.Should().Be(MechanicIds.MirageGoldenDjinnCache);
 
-            var heistDisabled = ResolveChestMechanic(false, true, false, true, true, true, false, true, true, true, EntityType.Chest, null, "Secure Locker");
+            var heistDisabled = ResolveChestMechanic(false, true, false, true, true, true, false, false, true, true, true, EntityType.Chest, null, "Secure Locker");
             heistDisabled.Should().BeNull();
 
-            var heistEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, null, "Secure Locker");
-            heistEnabled.Should().Be("league-chests");
+            var heistEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, false, true, true, true, EntityType.Chest, null, "Secure Locker");
+            heistEnabled.Should().Be(MechanicIds.HeistSecureLocker);
+
+            var repositoryDisabled = ResolveChestMechanic(false, true, false, true, true, true, true, false, true, true, true, EntityType.Chest, null, "Secure Repository");
+            repositoryDisabled.Should().BeNull();
+
+            var repositoryEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, true, EntityType.Chest, null, "Secure Repository");
+            repositoryEnabled.Should().Be(MechanicIds.HeistSecureRepository);
 
             const string blightCystPath = "Metadata/Chests/Blight/BlightChestObject";
-            var blightDisabled = ResolveChestMechanic(false, true, false, true, true, true, true, false, true, true, EntityType.Chest, blightCystPath, "Blight Cyst");
+            var blightDisabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, false, true, true, EntityType.Chest, blightCystPath, "Blight Cyst");
             blightDisabled.Should().BeNull();
 
-            var blightEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, blightCystPath, "Blight Cyst");
-            blightEnabled.Should().Be("league-chests");
+            var blightEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, true, EntityType.Chest, blightCystPath, "Blight Cyst");
+            blightEnabled.Should().Be(MechanicIds.BlightCyst);
 
             const string breachGraspingCoffersPath = "Metadata/Chests/Breach/BreachBoxChest02";
-            var breachDisabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, false, true, EntityType.Chest, breachGraspingCoffersPath, "Grasping Coffers");
+            var breachDisabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, false, true, EntityType.Chest, breachGraspingCoffersPath, "Grasping Coffers");
             breachDisabled.Should().BeNull();
 
-            var breachEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, breachGraspingCoffersPath, "Grasping Coffers");
-            breachEnabled.Should().Be("league-chests");
+            var breachEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, true, EntityType.Chest, breachGraspingCoffersPath, "Grasping Coffers");
+            breachEnabled.Should().Be(MechanicIds.BreachGraspingCoffers);
 
             const string synthesisStashPath = "Metadata/Chests/SynthesisChests/SynthesisChest";
-            var synthesisDisabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, false, EntityType.Chest, synthesisStashPath, "Synthesised Stash");
+            var synthesisDisabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, false, EntityType.Chest, synthesisStashPath, "Synthesised Stash");
             synthesisDisabled.Should().BeNull();
 
-            var synthesisEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, EntityType.Chest, synthesisStashPath, "Synthesised Stash");
-            synthesisEnabled.Should().Be("league-chests");
+            var synthesisEnabled = ResolveChestMechanic(false, true, false, true, true, true, true, true, true, true, true, EntityType.Chest, synthesisStashPath, "Synthesised Stash");
+            synthesisEnabled.Should().Be(MechanicIds.SynthesisSynthesisedStash);
         }
 
         [TestMethod]
@@ -210,5 +240,8 @@ namespace ClickIt.Tests.Features.Labels.Classification
             var emptyPath = LabelTargetabilityPolicy.RequiresTargetabilityGate(string.Empty);
             emptyPath.Should().BeFalse();
         }
+
+        private static string? InvokeNamedInteractableMechanic(bool clickDoors, bool clickHeistDoors, bool clickLevers, string? metadataPath)
+            => (string?)GetNamedInteractableMechanicIdMethod.Invoke(null, [clickDoors, clickHeistDoors, clickLevers, null, metadataPath]);
     }
 }

@@ -52,6 +52,7 @@ namespace ClickIt.Features.Observability
             [
                 $"waitBasicChestDrops:{settings.PauseAfterOpeningBasicChests.Value}",
                 $"waitLeagueChestDrops:{settings.PauseAfterOpeningLeagueChests.Value}",
+                $"waitHeistChestDrops:{settings.PauseAfterOpeningHeistChests.Value}",
                 $"allowNearbyDuringSettle:{settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value}",
                 $"nearbySettleDist:{settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance.Value}"
             ]);

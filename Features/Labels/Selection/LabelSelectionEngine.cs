@@ -22,8 +22,10 @@ namespace ClickIt.Features.Labels.Selection
         public LabelSelectionStats AddReject(LabelCandidateRejectReason rejectReason)
             => rejectReason switch
             {
-                LabelCandidateRejectReason.NullItemOrOutOfDistance => this with { NullOrDistanceRejected = NullOrDistanceRejected + 1 },
+                LabelCandidateRejectReason.NullItem => this with { NullOrDistanceRejected = NullOrDistanceRejected + 1 },
+                LabelCandidateRejectReason.OutOfDistance => this with { NullOrDistanceRejected = NullOrDistanceRejected + 1 },
                 LabelCandidateRejectReason.Untargetable => this with { UntargetableRejected = UntargetableRejected + 1 },
+                LabelCandidateRejectReason.NotVisible => this with { UntargetableRejected = UntargetableRejected + 1 },
                 LabelCandidateRejectReason.NoMechanic => this with { NoMechanicRejected = NoMechanicRejected + 1 },
                 _ => this,
             };
@@ -37,9 +39,11 @@ namespace ClickIt.Features.Labels.Selection
     internal enum LabelCandidateRejectReason
     {
         None = 0,
-        NullItemOrOutOfDistance = 1,
+        NullItem = 1,
         Untargetable = 2,
-        NoMechanic = 3
+        NoMechanic = 3,
+        NotVisible = 4,
+        OutOfDistance = 5
     }
 
     internal static class LabelSelectionEngine

@@ -23,14 +23,12 @@ namespace ClickIt.Features.Click.Runtime
 
     internal readonly struct ChestLootSettlementTimingOptions
     {
-        public ChestLootSettlementTimingOptions(ChestLootSettlementTiming basic, ChestLootSettlementTiming league)
+        public ChestLootSettlementTimingOptions(ChestLootSettlementTiming shared)
         {
-            Basic = basic;
-            League = league;
+            Shared = shared;
         }
 
-        public ChestLootSettlementTiming Basic { get; }
-        public ChestLootSettlementTiming League { get; }
+        public ChestLootSettlementTiming Shared { get; }
     }
 
     internal sealed class ChestLootSettlementTracker(ChestLootSettlementTrackerDependencies dependencies)
@@ -45,7 +43,8 @@ namespace ClickIt.Features.Click.Runtime
             if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
                 mechanicId,
                 settings.PauseAfterOpeningBasicChests?.Value == true,
-                settings.PauseAfterOpeningLeagueChests?.Value == true))
+                settings.PauseAfterOpeningLeagueChests?.Value == true,
+                settings.PauseAfterOpeningHeistChests?.Value == true))
             {
                 return;
             }
@@ -116,17 +115,23 @@ namespace ClickIt.Features.Click.Runtime
             ClickItSettings settings = _dependencies.Settings;
             ChestLootSettlementState state = _dependencies.State;
 
-            if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
+            string? resolvedMechanicId = ChestLootSettlementMath.ResolveChestLootSettlementMechanicIdForOpenedLabel(
                 mechanicId,
+                chestLabel?.ItemOnGround?.Path,
+                chestLabel?.ItemOnGround?.RenderName);
+
+            if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
+                resolvedMechanicId,
                 settings.PauseAfterOpeningBasicChests?.Value == true,
-                settings.PauseAfterOpeningLeagueChests?.Value == true))
+                settings.PauseAfterOpeningLeagueChests?.Value == true,
+                settings.PauseAfterOpeningHeistChests?.Value == true))
             {
                 return;
             }
 
             ClearPendingChestOpenConfirmation();
             state.PendingOpenConfirmationActive = true;
-            state.PendingOpenMechanicId = mechanicId;
+            state.PendingOpenMechanicId = resolvedMechanicId;
             state.PendingOpenItemAddress = chestLabel?.ItemOnGround?.Address ?? 0;
             state.PendingOpenLabelAddress = chestLabel?.Label?.Address ?? 0;
             state.SourceGridValid = ChestLootSettlementMath.TryGetEntityGridPosition(chestLabel?.ItemOnGround, out state.SourceGrid);
@@ -245,11 +250,7 @@ namespace ClickIt.Features.Click.Runtime
                 new ChestLootSettlementTiming(
                     _dependencies.Settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? ChestLootSettlementMath.DefaultInitialDelayMs,
                     _dependencies.Settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? ChestLootSettlementMath.DefaultPollIntervalMs,
-                    _dependencies.Settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? ChestLootSettlementMath.DefaultQuietWindowMs),
-                new ChestLootSettlementTiming(
-                    _dependencies.Settings.PauseAfterOpeningLeagueChestsInitialDelayMs?.Value ?? ChestLootSettlementMath.DefaultInitialDelayMs,
-                    _dependencies.Settings.PauseAfterOpeningLeagueChestsPollIntervalMs?.Value ?? ChestLootSettlementMath.DefaultPollIntervalMs,
-                    _dependencies.Settings.PauseAfterOpeningLeagueChestsQuietWindowMs?.Value ?? ChestLootSettlementMath.DefaultQuietWindowMs));
+                    _dependencies.Settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? ChestLootSettlementMath.DefaultQuietWindowMs));
 
         private static float CalculateDistanceSquared(Vector2 left, Vector2 right)
         {

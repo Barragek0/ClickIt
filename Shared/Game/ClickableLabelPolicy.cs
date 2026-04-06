@@ -68,30 +68,32 @@ namespace ClickIt.Shared.Game
 
         public static bool IsPathForClickableObject(string path)
         {
-            return path.Contains("DelveMineral")
-                   || path.Contains("Delve/Objects/Encounter")
-                   || path.Contains("AzuriteEncounterController")
+             return path.Contains(Constants.DelveMineral)
+                 || path.Contains(Constants.DelveEncounter)
+                 || path.Contains(Constants.AzuriteEncounterController)
                    || IsHarvestPath(path)
-                   || path.Contains("CleansingFireAltar")
-                   || path.Contains("TangleAltar")
-                   || path.Contains("CraftingUnlocks")
-                   || path.Contains("Brequel")
-                   || path.Contains("CrimsonIron")
-                   || path.Contains("copper_altar")
-                   || path.Contains("PetrifiedWood")
-                   || path.Contains("Bismuth")
-                   || path.Contains("MiscellaneousObjects/Lights")
-                   || path.Contains("MiscellaneousObjects/Door")
-                   || path.Contains("Heist/Objects/Level/Door_Basic")
-                   || path.Contains("ClosedDoorPast")
-                   || path.Contains("LegionInitiator")
-                   || path.Contains("DarkShrine")
-                   || path.Contains("Sanctum")
-                   || path.Contains("BetrayalMakeChoice")
-                   || path.Contains("BlightPump")
-                   || path.Contains("Leagues/Ultimatum/Objects/UltimatumChallengeInteractable", StringComparison.OrdinalIgnoreCase)
-                   || path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase)
-                   || path.Contains("Leagues/Ritual");
+                 || path.Contains(Constants.CleansingFireAltar)
+                 || path.Contains(Constants.TangleAltar)
+                 || path.Contains(Constants.CraftingUnlocks)
+                 || path.Contains(Constants.Brequel)
+                 || path.Contains(Constants.CrimsonIron)
+                 || path.Contains(Constants.CopperAltar)
+                 || path.Contains(Constants.PetrifiedWood)
+                 || path.Contains(Constants.Bismuth)
+                 || path.Contains(Constants.MiscellaneousObjectsLights)
+                 || path.Contains(Constants.MiscellaneousObjectsDoor)
+                   || IsHeistDoorPath(path)
+                 || path.Contains(Constants.HeistDoorBasic)
+                 || path.Contains(Constants.HeistHazards)
+                 || path.Contains(Constants.ClosedDoorPast)
+                 || path.Contains(Constants.LegionInitiator)
+                 || path.Contains(Constants.DarkShrine)
+                 || path.Contains(Constants.Sanctum)
+                 || path.Contains(Constants.BetrayalMakeChoice)
+                 || path.Contains(Constants.BlightPump)
+                 || path.Contains(Constants.UltimatumChallengeInteractablePath)
+                 || path.Contains(Constants.SwitchOnce)
+                 || path.Contains(Constants.RitualPath);
         }
 
         public static bool HasEssenceImprisonmentText(LabelOnGround label)
@@ -147,6 +149,11 @@ namespace ClickIt.Shared.Game
 
         private static bool IsHarvestPath(string path)
             => path.Contains("Harvest/Irrigator") || path.Contains("Harvest/Extractor");
+
+        private static bool IsHeistDoorPath(string path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains("Heist/Objects/Level/Door", StringComparison.OrdinalIgnoreCase)
+               && !path.Contains(Constants.HeistDoorBasic, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsHarvestRootElementVisible(LabelOnGround label)
             => label.Label?.GetChildAtIndex(0)?.IsVisible == true;

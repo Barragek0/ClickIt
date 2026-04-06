@@ -15,6 +15,20 @@ namespace ClickIt.Shared.Game
         public const string ClosedDoorPast = "ClosedDoorPast";
         public const string LegionInitiator = "LegionInitiator";
         public const string UltimatumChallengeInteractablePath = "Leagues/Ultimatum/Objects/UltimatumChallengeInteractable";
+        public const string DelveMineral = "DelveMineral";
+        public const string DelveEncounter = "Delve/Objects/Encounter";
+        public const string AzuriteEncounterController = "AzuriteEncounterController";
+        public const string CraftingUnlocks = "CraftingUnlocks";
+        public const string HeistDoorBasic = "Heist/Objects/Level/Door_Basic";
+        public const string HeistHazards = "Heist/Objects/Level/Hazards";
+        public const string MiscellaneousObjectsLights = "MiscellaneousObjects/Lights";
+        public const string MiscellaneousObjectsDoor = "MiscellaneousObjects/Door";
+        public const string DarkShrine = "DarkShrine";
+        public const string Sanctum = "Sanctum";
+        public const string BetrayalMakeChoice = "BetrayalMakeChoice";
+        public const string BlightPump = "BlightPump";
+        public const string SwitchOnce = "Switch_Once";
+        public const string RitualPath = "Leagues/Ritual";
 
         public static bool IsUltimatumInteractablePath(string? path)
         {

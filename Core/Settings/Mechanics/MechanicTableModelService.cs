@@ -3,10 +3,15 @@ namespace ClickIt.Core.Settings.Mechanics
     internal static class MechanicTableModelService
     {
         private const string LeagueChestSubgroupMirage = "Mirage";
-        private const string LeagueChestSubgroupHeist = "Heist";
+        private const string HeistSubgroupChests = "Chests";
+        private const string HeistSubgroupDoors = "Doors";
+        private const string HeistSubgroupHazards = "Hazards";
         private const string LeagueChestSubgroupBlight = "Blight";
         private const string LeagueChestSubgroupBreach = "Breach";
         private const string LeagueChestSubgroupSynthesis = "Synthesis";
+        private const string DoorsSubgroupRegular = "Regular";
+        private const string DoorsSubgroupHeist = "Heist";
+        private const string DoorsSubgroupAlvaTemple = "Alva Temple";
 
         internal static bool ShouldRenderEntry(MechanicToggleTableEntry entry, bool moveToClick, string filter)
         {
@@ -74,7 +79,9 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.MirageGoldenDjinnCache, "Golden Djinn's Cache", settings.ClickMirageGoldenDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
                 new(MechanicIds.MirageSilverDjinnCache, "Silver Djinn's Cache", settings.ClickMirageSilverDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
                 new(MechanicIds.MirageBronzeDjinnCache, "Bronze Djinn's Cache", settings.ClickMirageBronzeDjinnCache, "league-chests", true, LeagueChestSubgroupMirage),
-                new(MechanicIds.HeistSecureLocker, "Secure Locker", settings.ClickHeistSecureLocker, "league-chests", true, LeagueChestSubgroupHeist),
+                new(MechanicIds.HeistSecureLocker, "Secure Locker (small chest)", settings.ClickHeistSecureLocker, "heist", true, HeistSubgroupChests),
+                new(MechanicIds.HeistSecureRepository, "Secure Repository (big chest)", settings.ClickHeistSecureRepository, "heist", true, HeistSubgroupChests),
+                new(MechanicIds.HeistHazards, "Hazards", settings.ClickHeistHazards, "heist", false, HeistSubgroupHazards),
                 new(MechanicIds.BlightCyst, "Blight Cyst", settings.ClickBlightCyst, "league-chests", true, LeagueChestSubgroupBlight),
                 new(MechanicIds.BreachGraspingCoffers, "Grasping Coffers", settings.ClickBreachGraspingCoffers, "league-chests", true, LeagueChestSubgroupBreach),
                 new(MechanicIds.SynthesisSynthesisedStash, "Synthesised Stash", settings.ClickSynthesisSynthesisedStash, "league-chests", true, LeagueChestSubgroupSynthesis),
@@ -83,9 +90,10 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.AreaTransitions, "Area Transitions", settings.ClickAreaTransitions, null, false),
                 new(MechanicIds.LabyrinthTrials, "Labyrinth Trials", settings.ClickLabyrinthTrials, null, false),
                 new(MechanicIds.CraftingRecipes, "Crafting Recipes", settings.ClickCraftingRecipes, null, true),
-                new(MechanicIds.Doors, "Doors", settings.ClickDoors, null, false),
+                new(MechanicIds.Doors, "Regular Doors", settings.ClickDoors, "doors", false, DoorsSubgroupRegular),
+                new(MechanicIds.HeistDoors, "Doors", settings.ClickHeistDoors, "heist", false, HeistSubgroupDoors),
                 new(MechanicIds.Levers, "Levers", settings.ClickLevers, null, false),
-                new(MechanicIds.AlvaTempleDoors, "Alva Temple Doors", settings.ClickAlvaTempleDoors, null, true),
+                new(MechanicIds.AlvaTempleDoors, "Alva Temple Doors", settings.ClickAlvaTempleDoors, "doors", true, DoorsSubgroupAlvaTemple),
                 new(MechanicIds.Betrayal, "Betrayal", settings.ClickBetrayal, null, false),
                 new(MechanicIds.Blight, "Blight", settings.ClickBlight, null, true),
                 new(MechanicIds.BreachNodes, "Breach Nodes", settings.ClickBreachNodes, null, false),

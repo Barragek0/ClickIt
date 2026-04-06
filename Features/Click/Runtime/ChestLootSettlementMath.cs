@@ -2,6 +2,8 @@ namespace ClickIt.Features.Click.Runtime
 {
     internal static class ChestLootSettlementMath
     {
+        internal const string HeistChestSettleMechanicId = "heist-chests";
+
         internal const int DefaultInitialDelayMs = 500;
         internal const int DefaultPollIntervalMs = 100;
         internal const int DefaultQuietWindowMs = 500;
@@ -79,15 +81,32 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool ShouldWaitForChestLootSettlement(
             string? mechanicId,
             bool waitAfterOpeningBasicChests,
-            bool waitAfterOpeningLeagueChests)
+            bool waitAfterOpeningLeagueChests,
+            bool waitAfterOpeningHeistChests)
         {
             if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
                 return waitAfterOpeningBasicChests;
+
+            if (string.Equals(mechanicId, HeistChestSettleMechanicId, StringComparison.OrdinalIgnoreCase))
+                return waitAfterOpeningHeistChests;
 
             if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
                 return waitAfterOpeningLeagueChests;
 
             return false;
+        }
+
+        internal static string? ResolveChestLootSettlementMechanicIdForOpenedLabel(
+            string? mechanicId,
+            string? entityPath,
+            string? entityRenderName)
+        {
+            if (!IsLeagueChestMechanic(mechanicId))
+                return mechanicId;
+
+            return IsHeistChestPath(entityPath) || IsHeistChestRenderName(entityRenderName)
+                ? HeistChestSettleMechanicId
+                : MechanicIds.LeagueChests;
         }
 
         internal static ChestLootSettlementTiming ResolvePostChestLootSettlementTimingSettings(
@@ -96,12 +115,17 @@ namespace ClickIt.Features.Click.Runtime
         {
             if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
             {
-                return NormalizeChestLootSettlementTiming(options.Basic);
+                return NormalizeChestLootSettlementTiming(options.Shared);
+            }
+
+            if (string.Equals(mechanicId, HeistChestSettleMechanicId, StringComparison.OrdinalIgnoreCase))
+            {
+                return NormalizeChestLootSettlementTiming(options.Shared);
             }
 
             if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
             {
-                return NormalizeChestLootSettlementTiming(options.League);
+                return NormalizeChestLootSettlementTiming(options.Shared);
             }
 
             return new ChestLootSettlementTiming(
@@ -144,6 +168,26 @@ namespace ClickIt.Features.Click.Runtime
             remainingMs = quietWindowMs - elapsed;
             return false;
         }
+
+        private static bool IsHeistChestPath(string? entityPath)
+            => !string.IsNullOrWhiteSpace(entityPath)
+               && entityPath.Contains("/LeagueHeist/", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsLeagueChestMechanic(string? mechanicId)
+            => string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.MirageGoldenDjinnCache, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.MirageSilverDjinnCache, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.MirageBronzeDjinnCache, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.HeistSecureLocker, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.HeistSecureRepository, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.BlightCyst, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.BreachGraspingCoffers, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(mechanicId, MechanicIds.SynthesisSynthesisedStash, StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsHeistChestRenderName(string? entityRenderName)
+            => !string.IsNullOrWhiteSpace(entityRenderName)
+               && (entityRenderName.Contains("Secure Locker", StringComparison.OrdinalIgnoreCase)
+                   || entityRenderName.Contains("Secure Repository", StringComparison.OrdinalIgnoreCase));
 
         private static ChestLootSettlementTiming NormalizeChestLootSettlementTiming(in ChestLootSettlementTiming timing)
             => new(

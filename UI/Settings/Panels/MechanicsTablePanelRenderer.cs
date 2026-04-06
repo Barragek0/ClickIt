@@ -14,6 +14,8 @@ namespace ClickIt.UI.Settings.Panels
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
+            new("heist", "Heist"),
+            new("doors", "Doors"),
             new("league-chests", "League Mechanic Chests"),
             new("basic-chests", "Basic Chests"),
             new("ritual-altars", "Ritual"),
@@ -34,6 +36,8 @@ namespace ClickIt.UI.Settings.Panels
             MechanicIds.Items,
             MechanicIds.Essences,
             MechanicIds.Strongboxes,
+            "heist",
+            "doors",
             "basic-chests",
             "delve",
             "ultimatum",
@@ -255,6 +259,19 @@ namespace ClickIt.UI.Settings.Panels
                 return;
             }
 
+            List<MechanicToggleTableEntry> groupedEntries = entries
+                .Where(entry => string.Equals(entry.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            bool hasSubgroups = groupedEntries.Any(static entry => !string.IsNullOrWhiteSpace(entry.Subgroup));
+            if (hasSubgroups)
+            {
+                DrawGroupedMechanicSubmenu(listId, group, groupedEntries);
+                _embeddedSettingsPanelRenderer.DrawMechanicGroupExtraSettings(group.Id);
+                ImGui.Unindent();
+                return;
+            }
+
             foreach (MechanicToggleTableEntry entry in entries)
             {
                 if (!string.Equals(entry.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
@@ -273,6 +290,61 @@ namespace ClickIt.UI.Settings.Panels
             _embeddedSettingsPanelRenderer.DrawMechanicGroupExtraSettings(group.Id);
 
             ImGui.Unindent();
+        }
+
+        private void DrawGroupedMechanicSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
+        {
+            var subgroupNames = entries
+                .Where(static entry => !string.IsNullOrWhiteSpace(entry.Subgroup))
+                .Select(static entry => entry.Subgroup!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            bool searchIsEmpty = string.IsNullOrWhiteSpace(_settings.UiState.MechanicsSearchFilter);
+
+            foreach (string subgroupName in subgroupNames)
+            {
+                MechanicToggleTableEntry[] subgroupEntries = entries
+                    .Where(entry => string.Equals(entry.Subgroup, subgroupName, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                bool subgroupMatchesSearch = SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, subgroupName);
+                bool hasEntryMatch = subgroupEntries.Any(entry => SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName));
+                if (!searchIsEmpty && !subgroupMatchesSearch && !hasEntryMatch)
+                    continue;
+
+                bool isOpen = ImGui.TreeNodeEx($"{subgroupName}##MechanicSubmenu_{listId}_{group.Id}_{subgroupName}", ImGuiTreeNodeFlags.DefaultOpen);
+                if (!isOpen)
+                    continue;
+
+                for (int i = 0; i < subgroupEntries.Length; i++)
+                {
+                    MechanicToggleTableEntry entry = subgroupEntries[i];
+                    if (!searchIsEmpty && !subgroupMatchesSearch && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName))
+                        continue;
+
+                    DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
+                }
+
+                _embeddedSettingsPanelRenderer.DrawMechanicSubgroupExtraSettings(group.Id, subgroupName);
+
+                ImGui.TreePop();
+            }
+
+            MechanicToggleTableEntry[] ungroupedEntries = entries.Where(static entry => string.IsNullOrWhiteSpace(entry.Subgroup)).ToArray();
+            for (int i = 0; i < ungroupedEntries.Length; i++)
+            {
+                MechanicToggleTableEntry entry = ungroupedEntries[i];
+                if (!searchIsEmpty
+                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName)
+                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, group.DisplayName))
+                {
+                    continue;
+                }
+
+                DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
+            }
         }
 
         private void DrawLeagueChestGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
@@ -344,6 +416,11 @@ namespace ClickIt.UI.Settings.Panels
             if (SettingsUiRenderHelpers.DrawCheckbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{groupId}_{entry.Id}", ref enabled, rowColor))
             {
                 entry.Node.Value = enabled;
+            }
+
+            if (string.Equals(entry.Id, MechanicIds.HeistHazards, StringComparison.OrdinalIgnoreCase))
+            {
+                SettingsUiRenderHelpers.DrawInlineTooltip("Hazards are objects that block your path and must be destroyed to get past.");
             }
         }
 

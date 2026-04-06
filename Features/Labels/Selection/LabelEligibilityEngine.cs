@@ -15,9 +15,15 @@ namespace ClickIt.Features.Labels.Selection
             mechanicId = null;
             rejectReason = LabelCandidateRejectReason.None;
 
-            if (item == null || item.DistancePlayer > clickSettings.ClickDistance)
+            if (item == null)
             {
-                rejectReason = LabelCandidateRejectReason.NullItemOrOutOfDistance;
+                rejectReason = LabelCandidateRejectReason.NullItem;
+                return false;
+            }
+
+            if (item.DistancePlayer > clickSettings.ClickDistance)
+            {
+                rejectReason = LabelCandidateRejectReason.OutOfDistance;
                 return false;
             }
 

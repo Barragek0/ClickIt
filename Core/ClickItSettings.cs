@@ -47,6 +47,10 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickHeistSecureLocker { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickHeistSecureRepository { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickHeistHazards { get; set; } = new ToggleNode(false);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBreachGraspingCoffers { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBlightCyst { get; set; } = new ToggleNode(true);
@@ -66,6 +70,8 @@ namespace ClickIt
         public RangeNode<int> AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance { get; set; } = new RangeNode<int>(20, 1, 100);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode PauseAfterOpeningLeagueChests { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode PauseAfterOpeningHeistChests { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public RangeNode<int> PauseAfterOpeningLeagueChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
@@ -90,6 +96,9 @@ namespace ClickIt
         [Menu("Doors", "Click doors", 7, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickDoors { get; set; } = new ToggleNode(false);
+        [Menu("Heist Doors", "Click Heist specific door labels. ", 8, 1400)]
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickHeistDoors { get; set; } = new ToggleNode(false);
         [Menu("Levers", "Click levers", 8, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickLevers { get; set; } = new ToggleNode(false);

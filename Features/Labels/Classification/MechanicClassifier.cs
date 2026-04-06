@@ -16,24 +16,20 @@ namespace ClickIt.Features.Labels.Classification
         private const string BlightCystPathMarker = "Chests/Blight";
         private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
         private const string SynthesisSynthesisedStashPathMarker = "SynthesisChests/SynthesisChest";
+        private const string HeistHazardsPathMarker = "Heist/Objects/Level/Hazards";
 
         private readonly record struct LeagueChestRule(
             string SpecificId,
             Func<string?, string?, bool> Matches);
-
-        private enum LeagueChestRuleMatchState
-        {
-            None,
-            Enabled,
-            Disabled
-        }
 
         private static readonly LeagueChestRule[] LeagueChestRules =
         [
             new(MechanicIds.MirageGoldenDjinnCache, static (name, _) => IsMirageGoldenDjinnCacheName(name)),
             new(MechanicIds.MirageSilverDjinnCache, static (name, _) => IsMirageSilverDjinnCacheName(name)),
             new(MechanicIds.MirageBronzeDjinnCache, static (name, _) => IsMirageBronzeDjinnCacheName(name)),
-            new(MechanicIds.HeistSecureLocker, static (name, path) => IsHeistSecureLockerName(name) || IsHeistSecureLockerPath(path)),
+            new(MechanicIds.HeistSecureRepository, static (name, _) => IsHeistSecureRepositoryName(name)),
+            new(MechanicIds.HeistSecureLocker, static (name, _) => IsHeistSecureLockerName(name)),
+            new(MechanicIds.HeistHazards, static (_, path) => IsHeistHazardsPath(path)),
             new(MechanicIds.BlightCyst, static (_, path) => IsBlightCystPath(path)),
             new(MechanicIds.BreachGraspingCoffers, static (_, path) => IsBreachGraspingCoffersPath(path)),
             new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path))
@@ -91,6 +87,16 @@ namespace ClickIt.Features.Labels.Classification
             string? path,
             string renderName)
         {
+            if (IsHeistHazardsPath(path))
+            {
+                if (!clickLeagueChests)
+                    return null;
+
+                return IsLeagueChestSpecificRuleEnabled(enabledSpecificLeagueChestIds, MechanicIds.HeistHazards)
+                    ? MechanicIds.HeistHazards
+                    : null;
+            }
+
             if (type != EntityType.Chest)
                 return null;
 
@@ -104,11 +110,8 @@ namespace ClickIt.Features.Labels.Classification
             if (!clickLeagueChests || isBasic)
                 return null;
 
-            LeagueChestRuleMatchState configuredLeagueChestMatchState = TryResolveConfiguredLeagueChestMechanicId(renderName, path, enabledSpecificLeagueChestIds);
-            if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Enabled)
-                return MechanicIds.LeagueChests;
-            if (configuredLeagueChestMatchState == LeagueChestRuleMatchState.Disabled)
-                return null;
+            if (TryResolveConfiguredLeagueChestMechanicId(renderName, path, enabledSpecificLeagueChestIds, out string? configuredMechanicId))
+                return configuredMechanicId;
 
             if (clickLeagueChestsOther)
                 return MechanicIds.LeagueChests;
@@ -192,7 +195,7 @@ namespace ClickIt.Features.Labels.Classification
             if (!string.IsNullOrWhiteSpace(chest))
                 return chest;
 
-            string? named = GetNamedInteractableMechanicId(settings.ClickDoors, settings.ClickLevers, item.RenderName, path);
+            string? named = GetNamedInteractableMechanicId(settings.ClickDoors, settings.ClickHeistDoors, settings.ClickLevers, item.RenderName, path);
             if (!string.IsNullOrWhiteSpace(named))
                 return named;
 
@@ -219,20 +222,65 @@ namespace ClickIt.Features.Labels.Classification
                 renderName);
         }
 
-        private static LeagueChestRuleMatchState TryResolveConfiguredLeagueChestMechanicId(string? renderName, string? path, IReadOnlySet<string>? enabledSpecificLeagueChestIds)
+        private static bool TryResolveConfiguredLeagueChestMechanicId(
+            string? renderName,
+            string? path,
+            IReadOnlySet<string>? enabledSpecificLeagueChestIds,
+            out string? mechanicId)
         {
+            mechanicId = null;
+
+            if (TryResolveHeistSecureChestMechanicId(renderName, path, enabledSpecificLeagueChestIds, out mechanicId))
+                return true;
+
             for (int i = 0; i < LeagueChestRules.Length; i++)
             {
                 LeagueChestRule rule = LeagueChestRules[i];
                 if (!rule.Matches(renderName, path))
                     continue;
 
-                return IsLeagueChestSpecificRuleEnabled(enabledSpecificLeagueChestIds, rule.SpecificId)
-                    ? LeagueChestRuleMatchState.Enabled
-                    : LeagueChestRuleMatchState.Disabled;
+                mechanicId = IsLeagueChestSpecificRuleEnabled(enabledSpecificLeagueChestIds, rule.SpecificId)
+                    ? rule.SpecificId
+                    : null;
+                return true;
             }
 
-            return LeagueChestRuleMatchState.None;
+            return false;
+        }
+
+        private static bool TryResolveHeistSecureChestMechanicId(
+            string? renderName,
+            string? path,
+            IReadOnlySet<string>? enabledSpecificLeagueChestIds,
+            out string? mechanicId)
+        {
+            mechanicId = null;
+            bool isLockerByName = IsHeistSecureLockerName(renderName);
+            bool isRepositoryByName = IsHeistSecureRepositoryName(renderName);
+            bool isHeistSecureContainerPath = IsHeistSecureContainerPath(path);
+            if (!isLockerByName && !isRepositoryByName && !isHeistSecureContainerPath)
+                return false;
+
+            bool lockerEnabled = IsLeagueChestSpecificRuleEnabled(enabledSpecificLeagueChestIds, MechanicIds.HeistSecureLocker);
+            bool repositoryEnabled = IsLeagueChestSpecificRuleEnabled(enabledSpecificLeagueChestIds, MechanicIds.HeistSecureRepository);
+
+            if (isRepositoryByName)
+            {
+                mechanicId = repositoryEnabled ? MechanicIds.HeistSecureRepository : null;
+                return true;
+            }
+
+            if (isLockerByName)
+            {
+                mechanicId = lockerEnabled ? MechanicIds.HeistSecureLocker : null;
+                return true;
+            }
+
+            // Path-only heist container remains grouped because locker/repository cannot be inferred safely.
+            mechanicId = (lockerEnabled || repositoryEnabled)
+                ? MechanicIds.LeagueChests
+                : null;
+            return true;
         }
 
         private static bool IsLeagueChestSpecificRuleEnabled(IReadOnlySet<string>? enabledSpecificLeagueChestIds, string? specificId)
@@ -253,9 +301,13 @@ namespace ClickIt.Features.Labels.Classification
             => !string.IsNullOrWhiteSpace(name)
                && name.Contains("Secure Locker", StringComparison.OrdinalIgnoreCase);
 
-        private static bool IsHeistSecureLockerPath(string? path)
-            => !string.IsNullOrWhiteSpace(path)
-               && path.Contains("/LeagueHeist/", StringComparison.OrdinalIgnoreCase);
+        private static bool IsHeistSecureRepositoryName(string? name)
+            => !string.IsNullOrWhiteSpace(name)
+            && name.Contains("Secure Repository", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsHeistSecureContainerPath(string? path)
+           => !string.IsNullOrWhiteSpace(path)
+            && path.Contains("/LeagueHeist/", StringComparison.OrdinalIgnoreCase);
 
         private static bool IsBreachGraspingCoffersPath(string? path)
             => !string.IsNullOrWhiteSpace(path)
@@ -269,6 +321,10 @@ namespace ClickIt.Features.Labels.Classification
             => !string.IsNullOrWhiteSpace(path)
                && path.Contains(SynthesisSynthesisedStashPathMarker, StringComparison.OrdinalIgnoreCase);
 
+        private static bool IsHeistHazardsPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(HeistHazardsPathMarker, StringComparison.OrdinalIgnoreCase);
+
         private static bool IsDjinnCacheName(string? name, string tier)
         {
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(tier))
@@ -278,15 +334,18 @@ namespace ClickIt.Features.Labels.Classification
                 || name.Equals($"{tier} djinns cache", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string? GetNamedInteractableMechanicId(bool clickDoors, bool clickLevers, string? renderName, string? metadataPath)
+        private static string? GetNamedInteractableMechanicId(bool clickDoors, bool clickHeistDoors, bool clickLevers, string? renderName, string? metadataPath)
         {
             string path = metadataPath?.Trim() ?? string.Empty;
+            bool isHeistDoor = IsHeistDoorPath(path);
 
             bool isDoor = path.Contains("MiscellaneousObjects/Lights", StringComparison.OrdinalIgnoreCase)
                 || path.Contains("MiscellaneousObjects/Door", StringComparison.OrdinalIgnoreCase)
                 || path.Contains("Heist/Objects/Level/Door_Basic", StringComparison.OrdinalIgnoreCase);
             bool isLever = path.Contains("Switch_Once", StringComparison.OrdinalIgnoreCase);
 
+            if (clickHeistDoors && isHeistDoor)
+                return MechanicIds.HeistDoors;
             if (clickDoors && isDoor)
                 return MechanicIds.Doors;
             if (clickLevers && isLever)
@@ -294,6 +353,11 @@ namespace ClickIt.Features.Labels.Classification
 
             return null;
         }
+
+        private static bool IsHeistDoorPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains("Heist/Objects/Level/Door", StringComparison.OrdinalIgnoreCase)
+               && !path.Contains("Heist/Objects/Level/Door_Basic", StringComparison.OrdinalIgnoreCase);
 
         internal static bool IsSettlersPetrifiedWoodPath(string path)
             => MechanicRuleCatalog.IsSettlersPetrifiedWoodPath(path);

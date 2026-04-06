@@ -11,9 +11,27 @@ namespace ClickIt.Tests.Core.Settings
 
             var entries = MechanicTableModelService.GetTableEntries(settings);
             var ritualCompleted = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.RitualCompleted).Subject;
+            var secureRepository = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.HeistSecureRepository).Subject;
+            var heistHazards = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.HeistHazards).Subject;
+            var regularDoors = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.Doors).Subject;
+            var heistDoors = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.HeistDoors).Subject;
+            var alvaTempleDoors = entries.Should().ContainSingle(entry => entry.Id == MechanicIds.AlvaTempleDoors).Subject;
 
             ritualCompleted.Node.Should().BeSameAs(settings.ClickRitualCompleted);
             ritualCompleted.DefaultEnabled.Should().BeTrue();
+            secureRepository.Node.Should().BeSameAs(settings.ClickHeistSecureRepository);
+            secureRepository.GroupId.Should().Be("heist");
+            heistHazards.Node.Should().BeSameAs(settings.ClickHeistHazards);
+            heistHazards.GroupId.Should().Be("heist");
+            heistHazards.Subgroup.Should().Be("Hazards");
+            heistHazards.DefaultEnabled.Should().BeFalse();
+            regularDoors.Node.Should().BeSameAs(settings.ClickDoors);
+            regularDoors.GroupId.Should().Be("doors");
+            heistDoors.Node.Should().BeSameAs(settings.ClickHeistDoors);
+            heistDoors.GroupId.Should().Be("heist");
+            heistDoors.DefaultEnabled.Should().BeFalse();
+            alvaTempleDoors.Node.Should().BeSameAs(settings.ClickAlvaTempleDoors);
+            alvaTempleDoors.GroupId.Should().Be("doors");
         }
 
         [TestMethod]

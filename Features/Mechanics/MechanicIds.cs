@@ -11,10 +11,13 @@ namespace ClickIt.Features.Mechanics
         public const string MirageSilverDjinnCache = "mirage-silver-djinn-cache";
         public const string MirageBronzeDjinnCache = "mirage-bronze-djinn-cache";
         public const string HeistSecureLocker = "heist-secure-locker";
+        public const string HeistSecureRepository = "heist-secure-repository";
+        public const string HeistHazards = "heist-hazards";
         public const string BreachGraspingCoffers = "breach-grasping-coffers";
         public const string BlightCyst = "blight-cyst";
         public const string SynthesisSynthesisedStash = "synthesis-synthesised-stash";
         public const string Doors = "doors";
+        public const string HeistDoors = "heist-doors";
         public const string Levers = "levers";
         public const string AreaTransitions = "area-transitions";
         public const string LabyrinthTrials = "labyrinth-trials";

@@ -51,6 +51,9 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool ShouldSkipOffscreenPathfindingForRitual(bool ritualActive)
             => ritualActive;
 
+        internal static bool ShouldBlockOffscreenTraversalAfterPathBuildFailure(string? failureReason)
+            => string.Equals(failureReason, PathfindingService.AStarNoRouteFailureReason, StringComparison.Ordinal);
+
         internal static bool IsBackedByGroundLabel(long entityAddress, IReadOnlySet<long>? labelEntityAddresses)
         {
             return entityAddress != 0

@@ -16,6 +16,7 @@ namespace ClickIt.Tests.UI
             lines[2].Should().Contain("blockPanels:");
             lines[3].Should().Contain("walkOffscreen:");
             lines[4].Should().Contain("waitBasicChestDrops:");
+            lines[4].Should().Contain("waitHeistChestDrops:");
         }
 
         [TestMethod]

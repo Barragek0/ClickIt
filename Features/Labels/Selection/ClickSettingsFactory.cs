@@ -39,6 +39,7 @@ namespace ClickIt.Features.Labels.Selection
                 ClickLeagueChestsOther = leagueChestsEnabled && _settings.ClickLeagueChestsOther.Value,
                 EnabledLeagueChestSpecificIds = enabledLeagueChestSpecificIds,
                 ClickDoors = _settings.ClickDoors.Value,
+                ClickHeistDoors = _settings.ClickHeistDoors.Value,
                 ClickLevers = _settings.ClickLevers.Value,
                 ClickAreaTransitions = _settings.ClickAreaTransitions.Value,
                 ClickLabyrinthTrials = _settings.ClickLabyrinthTrials.Value,
@@ -88,6 +89,8 @@ namespace ClickIt.Features.Labels.Selection
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickMirageSilverDjinnCache.Value, MechanicIds.MirageSilverDjinnCache);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickMirageBronzeDjinnCache.Value, MechanicIds.MirageBronzeDjinnCache);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickHeistSecureLocker.Value, MechanicIds.HeistSecureLocker);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickHeistSecureRepository.Value, MechanicIds.HeistSecureRepository);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickHeistHazards.Value, MechanicIds.HeistHazards);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBlightCyst.Value, MechanicIds.BlightCyst);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBreachGraspingCoffers.Value, MechanicIds.BreachGraspingCoffers);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickSynthesisSynthesisedStash.Value, MechanicIds.SynthesisSynthesisedStash);

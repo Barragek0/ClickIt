@@ -22,6 +22,15 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void IsHeistHazardsPath_MatchesHeistHazardsMarkers()
+        {
+            VisibleMechanicSelectionPolicy.IsHeistHazardsPath("Heist/Objects/Level/Hazards/Strength_SmashMarker").Should().BeTrue();
+            VisibleMechanicSelectionPolicy.IsHeistHazardsPath("Metadata/Heist/Objects/Level/Hazards").Should().BeTrue();
+            VisibleMechanicSelectionPolicy.IsHeistHazardsPath("Metadata/Heist/Objects/Level/Door_Basic").Should().BeFalse();
+            VisibleMechanicSelectionPolicy.IsHeistHazardsPath(null).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void SettlersSkipAndDistanceHelpers_PreserveSelectionMathContract()
         {
             VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid: false, distance: 5f, clickDistance: 10).Should().BeTrue();

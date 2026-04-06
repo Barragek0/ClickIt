@@ -2,6 +2,8 @@ namespace ClickIt.Features.Pathfinding
 {
     public sealed class PathfindingService(ClickItSettings settings, ErrorHandler? errorHandler = null)
     {
+        public const string AStarNoRouteFailureReason = "A* did not find a route.";
+
         private readonly ClickItSettings _settings = settings;
         private readonly ErrorHandler? _errorHandler = errorHandler;
         private readonly PathfindingRuntimeState _runtimeState = new();
@@ -119,7 +121,7 @@ namespace ClickIt.Features.Pathfinding
 
             if (gridPath == null || gridPath.Count == 0)
             {
-                SetFailedPathBuildSnapshot(expandedNodes, sw.ElapsedMilliseconds, target.Path ?? string.Empty, "A* did not find a route.");
+                SetFailedPathBuildSnapshot(expandedNodes, sw.ElapsedMilliseconds, target.Path ?? string.Empty, AStarNoRouteFailureReason);
                 return false;
             }
 
