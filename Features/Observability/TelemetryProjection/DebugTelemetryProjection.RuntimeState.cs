@@ -2,16 +2,16 @@ namespace ClickIt.Features.Observability.TelemetryProjection
 {
     internal static partial class DebugTelemetryProjection
     {
-        private static InventoryTelemetrySnapshot BuildInventoryTelemetry(LabelFilterPort? labelFilterPort)
+        private static InventoryTelemetrySnapshot BuildInventoryTelemetry(InventoryProbeService? inventoryProbeService)
         {
-            if (labelFilterPort == null)
+            if (inventoryProbeService == null)
                 return new InventoryTelemetrySnapshot(
                     Inventory: InventoryDebugSnapshot.Empty,
                     InventoryTrail: []);
 
             return new InventoryTelemetrySnapshot(
-                Inventory: labelFilterPort.GetLatestInventoryDebug(),
-                InventoryTrail: labelFilterPort.GetLatestInventoryDebugTrail());
+                Inventory: inventoryProbeService.GetLatestDebug(),
+                InventoryTrail: inventoryProbeService.GetLatestDebugTrail());
         }
 
         private static HoveredItemMetadataTelemetrySnapshot BuildHoveredItemMetadataTelemetry(GameController? gameController)

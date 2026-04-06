@@ -118,12 +118,12 @@ namespace ClickIt.Core.Runtime
                 yield break;
             }
 
-            long clickSequenceBefore = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceBefore = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             yield return runtimeHost.ProcessRegularClick();
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
-            long clickSequenceAfter = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceAfter = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
             if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
             {
                 _state.Runtime.Timer.Restart();
@@ -168,13 +168,13 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             IReadOnlyList<LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
-            long clickSequenceBefore = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceBefore = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             bool clicked = runtimeHost.TryClickManualUiHoverLabel(labels);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
-            long clickSequenceAfter = _state.Services.ClickAutomationPort?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceAfter = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
             if (clicked && PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
             {
                 _state.Runtime.Timer.Restart();

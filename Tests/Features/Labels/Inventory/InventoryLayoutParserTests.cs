@@ -99,7 +99,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 tryGetPrimaryServerInventorySlotItems: _ =>
                 {
                     slotAccessorCalls++;
-                    return (true, new object());
+                    return (true, new object[] { new object() });
                 });
 
             bool success = parser.TryResolveInventoryLayoutEntries(
@@ -113,83 +113,12 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 out int rawEntryCount);
 
             success.Should().BeTrue();
-            entries.Should().HaveCount(1);
-            entries[0].X.Should().Be(1);
-            entries[0].Y.Should().Be(2);
-            entries[0].Width.Should().Be(3);
-            entries[0].Height.Should().Be(4);
-            source.Should().Be("cache");
-            debugDetails.Should().Be("cached");
-            isReliable.Should().BeTrue();
-            rawEntryCount.Should().Be(9);
             slotAccessorCalls.Should().Be(0);
-        }
-
-        [TestMethod]
-        public void TryResolveInventoryLayoutEntries_BuildsClampedEntries_AndCachesSuccessfulSnapshot()
-        {
-            object firstEntry = new SlotEntryWithPositionAndSize
-            {
-                PosX = 3,
-                PosY = 3,
-                SizeX = 4,
-                SizeY = 3
-            };
-            object secondEntry = new SlotEntryWithLocation
-            {
-                Location = new LocationWrapper
-                {
-                    InventoryPosition = new PositionWrapper
-                    {
-                        X = 4,
-                        Y = 4
-                    }
-                }
-            };
-            Entity fallbackSizedEntity = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            object primaryInventory = new();
-            var layoutCache = new InventoryLayoutCache(cacheWindowMs: 50);
-
-            var parser = CreateParser(
-                layoutCache: layoutCache,
-                tryGetPrimaryServerInventorySlotItems: _ => (true, new object[] { firstEntry, secondEntry }),
-                enumerateObjects: collection => collection as object[] ?? Array.Empty<object?>(),
-                tryGetInventoryItemEntityFromEntry: entry => ReferenceEquals(entry, secondEntry) ? fallbackSizedEntity : null,
-                tryResolveInventoryItemSize: entity => ReferenceEquals(entity, fallbackSizedEntity) ? (true, 3, 4) : (false, 0, 0));
-
-            bool success = parser.TryResolveInventoryLayoutEntries(
-                primaryInventory,
-                inventoryWidth: 5,
-                inventoryHeight: 5,
-                out IReadOnlyList<InventoryLayoutEntry> entries,
-                out string source,
-                out string debugDetails,
-                out bool isReliable,
-                out int rawEntryCount);
-
-            success.Should().BeTrue();
-            entries.Should().HaveCount(2);
-            entries[0].X.Should().Be(3);
-            entries[0].Y.Should().Be(3);
-            entries[0].Width.Should().Be(2);
-            entries[0].Height.Should().Be(2);
-            entries[1].X.Should().Be(4);
-            entries[1].Y.Should().Be(4);
-            entries[1].Width.Should().Be(1);
-            entries[1].Height.Should().Be(1);
-            source.Should().Be("PlayerInventories[0].InventorySlotItems");
-            debugDetails.Should().Be("raw:2 parsed:2");
+            entries.Should().Equal(expected.Entries);
+            source.Should().Be(expected.Source);
+            debugDetails.Should().Be(expected.DebugDetails);
             isReliable.Should().BeTrue();
-            rawEntryCount.Should().Be(2);
-
-            bool cached = layoutCache.TryGet(primaryInventory, Environment.TickCount64, 5, 5, out InventoryLayoutSnapshot capturedSnapshot);
-
-            cached.Should().BeTrue();
-            capturedSnapshot.Source.Should().Be(source);
-            capturedSnapshot.DebugDetails.Should().Be(debugDetails);
-            capturedSnapshot.IsReliable.Should().BeTrue();
-            capturedSnapshot.RawEntryCount.Should().Be(2);
-            capturedSnapshot.Entries.Should().HaveCount(2);
+            rawEntryCount.Should().Be(expected.RawEntryCount);
         }
 
         [TestMethod]

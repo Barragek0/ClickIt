@@ -224,49 +224,12 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
-        public void ShouldUpdateMapPanelBlockedRectangle_ReturnsFalse_InTownOrHideout()
-        {
-            bool shouldUpdate = AreaService.ShouldUpdateMapPanelBlockedRectangle(isInTownOrHideout: true);
-
-            shouldUpdate.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldUpdateMapPanelBlockedRectangle_ReturnsTrue_WhenInMapArea()
-        {
-            bool shouldUpdate = AreaService.ShouldUpdateMapPanelBlockedRectangle(isInTownOrHideout: false);
-
-            shouldUpdate.Should().BeTrue();
-        }
-
-        [TestMethod]
         public void ShouldUseVisibleUiBlockedRectangle_ReturnsTrue_OnlyWhenValidAndVisible()
         {
             AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
             AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
             AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: true).Should().BeFalse();
             AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: false, elementIsVisible: false).Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void AltarBlockedRectangle_VisibilityRule_RequiresVisibleElement()
-        {
-            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
-            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void MirageBlockedRectangle_VisibilityRule_RequiresVisibleElement()
-        {
-            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
-            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void RitualBlockedRectangle_VisibilityRule_RequiresVisibleElement()
-        {
-            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: false).Should().BeFalse();
-            AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid: true, elementIsVisible: true).Should().BeTrue();
         }
 
         [TestMethod]

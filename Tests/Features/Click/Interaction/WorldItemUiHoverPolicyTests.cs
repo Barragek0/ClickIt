@@ -3,76 +3,48 @@ namespace ClickIt.Tests.Features.Click.Interaction
     [TestClass]
     public class WorldItemUiHoverPolicyTests
     {
-        [TestMethod]
-        public void IsHeistContractWorldItem_DetectsByPathAndName()
+        [DataTestMethod]
+        [DataRow("Metadata/Items/Heist/Contracts/ContractWeapons1", "Whatever", true)]
+        [DataRow("", "Contract: Smuggler's Den", true)]
+        [DataRow(null, "contract: smugglers den", true)]
+        [DataRow("Metadata/Items/Currency/CurrencyRerollRare", "Chaos Orb", false)]
+        [DataRow("   ", "   ", false)]
+        public void IsHeistContractWorldItem_ReturnsExpected(string? itemPath, string? renderName, bool expected)
         {
-            WorldItemUiHoverPolicy.IsHeistContractWorldItem(
-                "Metadata/Items/Heist/Contracts/ContractWeapons1",
-                "Whatever").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.IsHeistContractWorldItem(
-                string.Empty,
-                "Contract: Smuggler's Den").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.IsHeistContractWorldItem(
-                "Metadata/Items/Currency/CurrencyRerollRare",
-                "Chaos Orb").Should().BeFalse();
+            WorldItemUiHoverPolicy.IsHeistContractWorldItem(itemPath, renderName).Should().Be(expected);
         }
 
-        [TestMethod]
-        public void IsHeistBlueprintWorldItem_DetectsByPathAndName()
+        [DataTestMethod]
+        [DataRow("Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric", "Whatever", true)]
+        [DataRow("Metadata/Items/Currency/Heist/Blueprint/BlueprintCurrency1", "Whatever", true)]
+        [DataRow("", "Blueprint: Smuggler's Den", true)]
+        [DataRow(null, "blueprint: smugglers den", true)]
+        [DataRow("Metadata/Items/Currency/CurrencyRerollRare", "Chaos Orb", false)]
+        [DataRow("   ", "   ", false)]
+        public void IsHeistBlueprintWorldItem_ReturnsExpected(string? itemPath, string? renderName, bool expected)
         {
-            WorldItemUiHoverPolicy.IsHeistBlueprintWorldItem(
-                "Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric",
-                "Whatever").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.IsHeistBlueprintWorldItem(
-                "Metadata/Items/Currency/Heist/Blueprint/BlueprintCurrency1",
-                "Whatever").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.IsHeistBlueprintWorldItem(
-                string.Empty,
-                "Blueprint: Smuggler's Den").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.IsHeistBlueprintWorldItem(
-                "Metadata/Items/Currency/CurrencyRerollRare",
-                "Chaos Orb").Should().BeFalse();
+            WorldItemUiHoverPolicy.IsHeistBlueprintWorldItem(itemPath, renderName).Should().Be(expected);
         }
 
-        [TestMethod]
-        public void IsRoguesMarkerWorldItem_DetectsByPathAndName()
+        [DataTestMethod]
+        [DataRow("Metadata/Items/Heist/HeistCoin/HeistCoin1", "Whatever", true)]
+        [DataRow("", "Rogue's Marker", true)]
+        [DataRow(null, "rogue's marker", true)]
+        [DataRow("Metadata/Items/Currency/CurrencyRerollRare", "Chaos Orb", false)]
+        [DataRow("   ", "   ", false)]
+        public void IsRoguesMarkerWorldItem_ReturnsExpected(string? itemPath, string? renderName, bool expected)
         {
-            WorldItemUiHoverPolicy.IsRoguesMarkerWorldItem(
-                "Metadata/Items/Heist/HeistCoin/HeistCoin1",
-                "Whatever").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.IsRoguesMarkerWorldItem(
-                string.Empty,
-                "Rogue's Marker").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.IsRoguesMarkerWorldItem(
-                "Metadata/Items/Currency/CurrencyRerollRare",
-                "Chaos Orb").Should().BeFalse();
+            WorldItemUiHoverPolicy.IsRoguesMarkerWorldItem(itemPath, renderName).Should().Be(expected);
         }
 
-        [TestMethod]
-        public void ShouldForceUiHoverVerificationForWorldItem_ReturnsTrue_ForHeistContractsBlueprintsAndMarkers()
+        [DataTestMethod]
+        [DataRow("Metadata/Items/Heist/Contracts/ContractGeneric", "Contract: Test", true)]
+        [DataRow("Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric", "Blueprint: Test", true)]
+        [DataRow("Metadata/Items/Heist/HeistCoin/HeistCoin1", "Rogue's Marker", true)]
+        [DataRow("Metadata/Items/Currency/CurrencyRerollRare", "Chaos Orb", false)]
+        public void ShouldForceUiHoverVerificationForWorldItem_ReturnsExpected(string? itemPath, string? renderName, bool expected)
         {
-            WorldItemUiHoverPolicy.ShouldForceUiHoverVerificationForWorldItem(
-                "Metadata/Items/Heist/Contracts/ContractGeneric",
-                "Contract: Test").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.ShouldForceUiHoverVerificationForWorldItem(
-                "Metadata/Items/Heist/HeistBlueprint/BlueprintGeneric",
-                "Blueprint: Test").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.ShouldForceUiHoverVerificationForWorldItem(
-                "Metadata/Items/Heist/HeistCoin/HeistCoin1",
-                "Rogue's Marker").Should().BeTrue();
-
-            WorldItemUiHoverPolicy.ShouldForceUiHoverVerificationForWorldItem(
-                "Metadata/Items/Currency/CurrencyRerollRare",
-                "Chaos Orb").Should().BeFalse();
+            WorldItemUiHoverPolicy.ShouldForceUiHoverVerificationForWorldItem(itemPath, renderName).Should().Be(expected);
         }
 
         [TestMethod]
@@ -90,6 +62,21 @@ namespace ClickIt.Tests.Features.Click.Interaction
             preferred.Y.Should().BeGreaterThan(rect.Center.Y);
             preferred.Y.Should().BeLessThan(rect.Bottom);
             preferred.X.Should().Be(rect.Center.X);
+        }
+
+        [TestMethod]
+        public void ResolvePreferredLabelPoint_UsesCenter_ForNonChestNonHeistWorldItems()
+        {
+            var rect = new RectangleF(100, 200, 180, 40);
+
+            Vector2 preferred = WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(
+                rect,
+                EntityType.WorldItem,
+                chestHeightOffset: 12,
+                itemPath: "Metadata/Items/Currency/CurrencyRerollRare",
+                renderName: "Chaos Orb");
+
+            preferred.Should().Be(rect.Center);
         }
     }
 }

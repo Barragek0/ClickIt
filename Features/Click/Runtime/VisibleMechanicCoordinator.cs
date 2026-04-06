@@ -4,12 +4,20 @@ namespace ClickIt.Features.Click.Runtime
     {
         Entity? ResolveNextShrineCandidate();
         bool HasClickableShrine();
+        void ResolveVisibleMechanicCandidates(
+            out LostShipmentCandidate? lostShipmentCandidate,
+            out SettlersOreCandidate? settlersOreCandidate,
+            IReadOnlyList<LabelOnGround>? labelsOverride = null);
+        void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate);
         (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates();
         (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability();
     }
 
     internal interface IVisibleMechanicManualInteractionPort : IVisibleMechanicSelectionSource
     {
+        bool TryClickSettlersOre(SettlersOreCandidate candidate);
+        void TryClickLostShipment(LostShipmentCandidate candidate);
+        void TryClickShrine(Entity shrine);
         void HandleSuccessfulMechanicEntityClick(Entity? entity);
         void HandleSuccessfulShrineClick(Entity? shrine);
     }

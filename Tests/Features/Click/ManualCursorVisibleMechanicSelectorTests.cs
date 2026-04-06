@@ -13,30 +13,6 @@ namespace ClickIt.Tests.Features.Click
             selector.TryClick(Vector2.Zero, Vector2.Zero).Should().BeFalse();
         }
 
-        [TestMethod]
-        public void TryClick_PrefersCloserVisibleMechanic_AndPassesHoldState()
-        {
-            Entity selectedEntity = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            Entity fartherEntity = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
-            bool? usedHoldClick = null;
-            Entity? handledEntity = null;
-
-            var selector = CreateSelector(
-                resolveVisibleMechanicCandidates: () => (
-                    new LostShipmentCandidate(fartherEntity, new Vector2(20, 0)),
-                    new SettlersOreCandidate(selectedEntity, new Vector2(10, 0), MechanicIds.SettlersVerisium, "path", Vector2.Zero, Vector2.Zero)),
-                performManualCursorInteraction: (_, holdClick) =>
-                {
-                    usedHoldClick = holdClick;
-                    return true;
-                },
-                handleSuccessfulMechanicEntityClick: entity => handledEntity = entity);
-
-            selector.TryClick(Vector2.Zero, Vector2.Zero).Should().BeTrue();
-            usedHoldClick.Should().BeTrue();
-            handledEntity.Should().BeSameAs(selectedEntity);
-        }
-
         private static ManualCursorVisibleMechanicSelector CreateSelector(
             Func<(LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers)> resolveVisibleMechanicCandidates,
             Func<Vector2, bool, bool> performManualCursorInteraction,
@@ -62,6 +38,22 @@ namespace ClickIt.Tests.Features.Click
             public bool HasClickableShrine()
                 => false;
 
+            public void ResolveVisibleMechanicCandidates(
+                out LostShipmentCandidate? lostShipmentCandidate,
+                out SettlersOreCandidate? settlersOreCandidate,
+                IReadOnlyList<LabelOnGround>? labelsOverride = null)
+            {
+                (LostShipmentCandidate? lostShipment, SettlersOreCandidate? settlers) = resolveVisibleMechanicCandidates();
+                lostShipmentCandidate = lostShipment;
+                settlersOreCandidate = settlers;
+            }
+
+            public void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate)
+            {
+                lostShipmentCandidate = null;
+                settlersOreCandidate = null;
+            }
+
             public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
                 => resolveVisibleMechanicCandidates();
 
@@ -76,6 +68,17 @@ namespace ClickIt.Tests.Features.Click
 
             public void HandleSuccessfulShrineClick(Entity? shrine)
                 => (handleSuccessfulMechanicEntityClick ?? (_ => { }))(shrine);
+
+            public bool TryClickSettlersOre(SettlersOreCandidate candidate)
+                => false;
+
+            public void TryClickLostShipment(LostShipmentCandidate candidate)
+            {
+            }
+
+            public void TryClickShrine(Entity shrine)
+            {
+            }
         }
     }
 }

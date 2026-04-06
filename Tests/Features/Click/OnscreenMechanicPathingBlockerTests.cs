@@ -70,6 +70,21 @@ namespace ClickIt.Tests.Features.Click
             public bool HasClickableShrine()
                 => hasClickableShrine;
 
+            public void ResolveVisibleMechanicCandidates(
+                out LostShipmentCandidate? lostShipmentCandidate,
+                out SettlersOreCandidate? settlersOreCandidate,
+                IReadOnlyList<LabelOnGround>? labelsOverride = null)
+            {
+                lostShipmentCandidate = null;
+                settlersOreCandidate = null;
+            }
+
+            public void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate)
+            {
+                lostShipmentCandidate = null;
+                settlersOreCandidate = null;
+            }
+
             public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
                 => (null, null);
 

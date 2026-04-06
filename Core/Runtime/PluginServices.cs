@@ -13,6 +13,12 @@ namespace ClickIt.Core.Runtime
         public AltarService? AltarService { get; set; }
         public ShrineService? ShrineService { get; set; }
         public LabelFilterPort? LabelFilterPort { get; set; }
+        internal LabelDebugService? LabelDebugService { get; set; }
+        internal LazyModeBlockerService? LazyModeBlockerService { get; set; }
+        internal InventoryProbeService? InventoryProbeService { get; set; }
+        internal InventoryInteractionPolicy? InventoryInteractionPolicy { get; set; }
+        internal ClickAutomationSupport? ClickAutomationSupport { get; set; }
+        internal LockedInteractionDispatcher? LockedInteractionDispatcher { get; set; }
         public ClickAutomationPort? ClickAutomationPort { get; set; }
         public PathfindingService? PathfindingService { get; set; }
         public AlertService? AlertService { get; set; }
@@ -29,6 +35,12 @@ namespace ClickIt.Core.Runtime
             AltarService = null;
             ShrineService = null;
             LabelFilterPort = null;
+            LabelDebugService = null;
+            LazyModeBlockerService = null;
+            InventoryProbeService = null;
+            InventoryInteractionPolicy = null;
+            ClickAutomationSupport = null;
+            LockedInteractionDispatcher = null;
             ClickAutomationPort = null;
             PathfindingService = null;
             AlertService = null;

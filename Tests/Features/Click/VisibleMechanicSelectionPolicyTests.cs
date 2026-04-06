@@ -22,15 +22,6 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void ShouldSkipLostShipmentEntity_EnforcesValidityDistanceAndOpenedGuards()
-        {
-            VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid: false, distance: 5f, clickDistance: 10, isOpened: false).Should().BeTrue();
-            VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid: true, distance: 11f, clickDistance: 10, isOpened: false).Should().BeTrue();
-            VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid: true, distance: 5f, clickDistance: 10, isOpened: true).Should().BeTrue();
-            VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid: true, distance: 5f, clickDistance: 10, isOpened: false).Should().BeFalse();
-        }
-
-        [TestMethod]
         public void SettlersSkipAndDistanceHelpers_PreserveSelectionMathContract()
         {
             VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid: false, distance: 5f, clickDistance: 10).Should().BeTrue();

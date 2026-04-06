@@ -4,87 +4,124 @@ namespace ClickIt.Tests.Features.Click.Interaction
     public class InteractionExecutorTests
     {
         [TestMethod]
-        public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsExpectedValues()
+        public void PerformClick_ReturnsWithoutIncrementingSequence_WhenHotkeyInactiveAndNotLazy()
         {
-            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
-                lazyModeEnabled: false,
-                clickHotkeyActive: false).Should().BeTrue();
+            var settings = new ClickItSettings();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => false);
 
-            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
-                lazyModeEnabled: false,
-                clickHotkeyActive: true).Should().BeFalse();
+            executor.PerformClick(new Vector2(10f, 20f));
 
-            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
-                lazyModeEnabled: true,
-                clickHotkeyActive: false).Should().BeFalse();
+            executor.GetSuccessfulClickSequence().Should().Be(0);
         }
 
         [TestMethod]
-        public void ShouldSkipClickWhenNotLazyAndHotkeyInactive_ReturnsFalse_WhenExplicitOverrideEnabled()
+        public void PerformClick_LogsAndReturns_WhenPointOutsideVirtualScreen()
         {
-            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
-                lazyModeEnabled: false,
-                clickHotkeyActive: false,
-                allowWhenHotkeyInactive: true).Should().BeFalse();
+            var settings = new ClickItSettings();
+            settings.DebugMode.Value = true;
+            settings.LogMessages.Value = true;
+            var messages = new List<string>();
+            var executor = new InteractionExecutor(
+                settings,
+                new PerformanceMonitor(settings),
+                () => true,
+                new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
 
-            InteractionExecutor.ShouldSkipClickWhenNotLazyAndHotkeyInactive(
-                lazyModeEnabled: true,
-                clickHotkeyActive: false,
-                allowWhenHotkeyInactive: true).Should().BeFalse();
-        }
+            executor.PerformClick(new Vector2(-5000f, -5000f));
 
-        [DataTestMethod]
-        [DataRow(false, false, 100UL, 0UL, false)]
-        [DataRow(false, false, 100UL, 200UL, false)]
-        [DataRow(false, true, 100UL, 100UL, false)]
-        [DataRow(false, true, 100UL, 200UL, true)]
-        [DataRow(false, true, 100UL, 0UL, true)]
-        [DataRow(false, true, 0UL, 0UL, false)]
-        [DataRow(true, false, 100UL, 100UL, false)]
-        [DataRow(true, false, 100UL, 200UL, true)]
-        [DataRow(true, false, 100UL, 0UL, true)]
-        public void ShouldSkipClickDueToHoverMismatch_ReturnsExpectedResult(
-            bool lazyModeEnabled,
-            bool verifyUiHoverWhenNotLazy,
-            ulong expectedAddress,
-            ulong hoverAddress,
-            bool expected)
-        {
-            bool result = InteractionExecutor.ShouldSkipClickDueToHoverMismatch(
-                lazyModeEnabled,
-                verifyUiHoverWhenNotLazy,
-                expectedAddress,
-                hoverAddress);
-
-            result.Should().Be(expected);
+            executor.GetSuccessfulClickSequence().Should().Be(0);
+            messages.Should().ContainSingle(message => message.Contains("Skipping click at", StringComparison.Ordinal)
+                && message.Contains("outside virtual screen bounds", StringComparison.Ordinal));
         }
 
         [TestMethod]
-        public void ShouldSkipClickDueToHoverMismatch_RespectsForcedVerification_WhenNotLazyAndSettingDisabled()
+        public void PerformClickAndHold_ReturnsWithoutIncrementingSequence_WhenKeyBindingIsNone()
         {
-            InteractionExecutor.ShouldSkipClickDueToHoverMismatch(
-                lazyModeEnabled: false,
-                verifyUiHoverWhenNotLazy: false,
-                expectedAddress: 100UL,
-                hoverAddress: 200UL,
-                forceUiHoverVerification: true).Should().BeTrue();
+            var settings = new ClickItSettings
+            {
+                ClickLabelKey = new HotkeyNodeV2(Keys.None)
+            };
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
 
-            InteractionExecutor.ShouldSkipClickDueToHoverMismatch(
-                lazyModeEnabled: false,
-                verifyUiHoverWhenNotLazy: false,
-                expectedAddress: 100UL,
-                hoverAddress: 100UL,
-                forceUiHoverVerification: true).Should().BeFalse();
+            executor.PerformClickAndHold(new Vector2(10f, 20f), holdDurationMs: 100);
+
+            executor.GetSuccessfulClickSequence().Should().Be(0);
         }
 
         [TestMethod]
-        public void ResolveClickExecutionPosition_UsesRequestedPosition_WhenCursorMoveAllowed()
+        public void PerformClickAndHold_ReturnsWithoutIncrementingSequence_WhenHotkeyInactiveAndNotLazy()
         {
-            var requested = new SharpDX.Vector2(123f, 456f);
+            var settings = new ClickItSettings
+            {
+                ClickLabelKey = new HotkeyNodeV2(Keys.F)
+            };
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => false);
 
-            var resolved = InteractionExecutor.ResolveClickExecutionPosition(requested, avoidCursorMove: false);
+            executor.PerformClickAndHold(new Vector2(10f, 20f), holdDurationMs: 100);
 
-            resolved.Should().Be(requested);
+            executor.GetSuccessfulClickSequence().Should().Be(0);
         }
+
+        [TestMethod]
+        public void PerformClickAndHold_LogsAndReturns_WhenLazyModeLimiterIsActive()
+        {
+            var settings = new ClickItSettings
+            {
+                ClickLabelKey = new HotkeyNodeV2(Keys.F)
+            };
+            settings.DebugMode.Value = true;
+            settings.LogMessages.Value = true;
+            settings.LazyMode.Value = true;
+            settings.LazyModeClickLimiting.Value = 500;
+            var messages = new List<string>();
+            var executor = new InteractionExecutor(
+                settings,
+                new PerformanceMonitor(settings),
+                () => true,
+                new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
+
+            RuntimeMemberAccessor.SetRequiredMember(executor, "_lastClickTimestampMs", Environment.TickCount64);
+
+            executor.PerformClickAndHold(new Vector2(10f, 20f), holdDurationMs: 100);
+
+            executor.GetSuccessfulClickSequence().Should().Be(0);
+            messages.Should().ContainSingle(message => message.Contains("LazyMode limiter", StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public void PerformClickAndHold_LogsAndReturns_WhenPointOutsideVirtualScreen()
+        {
+            var settings = new ClickItSettings
+            {
+                ClickLabelKey = new HotkeyNodeV2(Keys.F)
+            };
+            settings.DebugMode.Value = true;
+            settings.LogMessages.Value = true;
+            var messages = new List<string>();
+            var executor = new InteractionExecutor(
+                settings,
+                new PerformanceMonitor(settings),
+                () => true,
+                new ErrorHandler(settings, static (_, _) => { }, (message, _) => messages.Add(message)));
+
+            executor.PerformClickAndHold(new Vector2(-5000f, -5000f), holdDurationMs: 100);
+
+            executor.GetSuccessfulClickSequence().Should().Be(0);
+            messages.Should().ContainSingle(message => message.Contains("Skipping hold click at", StringComparison.Ordinal)
+                && message.Contains("outside virtual screen bounds", StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public void HoverAndGetUIHover_ReturnsNull_WhenPointIsOutsideVirtualScreen()
+        {
+            var settings = new ClickItSettings();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
+            GameController gameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));
+
+            Element? hover = executor.HoverAndGetUIHover(new Vector2(-5000f, -5000f), gameController);
+
+            hover.Should().BeNull();
+        }
+
     }
 }

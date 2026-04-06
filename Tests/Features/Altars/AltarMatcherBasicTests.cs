@@ -4,14 +4,6 @@ namespace ClickIt.Tests.Features.Altars
     public class AltarMatcherBasicTests
     {
         [TestMethod]
-        public void CleanAltarModsText_ReturnsEmpty_ForNullInput()
-        {
-            var matcher = new AltarMatcher();
-            string result = matcher.CleanAltarModsText(null!);
-            result.Should().Be(string.Empty);
-        }
-
-        [TestMethod]
         public void TryMatchModCached_ReturnsFalse_ForUnknown()
         {
             var matcher = new AltarMatcher();

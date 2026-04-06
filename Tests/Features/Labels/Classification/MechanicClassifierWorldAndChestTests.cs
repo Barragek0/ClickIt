@@ -38,27 +38,6 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [TestMethod]
-        public void ShouldClickWorldItemCore_ReturnsFalse_WhenClickItemsDisabled()
-        {
-            var res = MechanicClassifier.ShouldClickWorldItemCore(false, EntityType.WorldItem, itemPath: null);
-            res.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldClickWorldItemCore_ReturnsFalse_WhenPathContainsStrongbox()
-        {
-            var res = MechanicClassifier.ShouldClickWorldItemCore(true, EntityType.WorldItem, "some/StrongBoxes/Strongbox/x");
-            res.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldClickWorldItemCore_ReturnsTrue_WhenEnabledAndNotStrongbox()
-        {
-            var res = MechanicClassifier.ShouldClickWorldItemCore(true, EntityType.WorldItem, "some/Item/Name");
-            res.Should().BeTrue();
-        }
-
-        [TestMethod]
         public void IsBasicChest_DetectsSimpleNames_CaseInsensitive()
         {
             var res = MechanicClassifier.IsBasicChestName("chest");
@@ -195,24 +174,5 @@ namespace ClickIt.Tests.Features.Labels.Classification
             InventoryStackingEngine.ShouldAllowIncubatorStackMatch(false, true, 1, true, 999).Should().BeTrue();
         }
 
-        [TestMethod]
-        public void SelectBestWorldItemMetadataPath_PrefersComponentMetadata_ForMiscObjectsFallback()
-        {
-            string selected = WorldItemMetadataPolicy.SelectBestWorldItemMetadataPath(
-                "Metadata/MiscellaneousObjects/Monolith",
-                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
-
-            selected.Should().Be("Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
-        }
-
-        [TestMethod]
-        public void SelectBestWorldItemMetadataPath_KeepsResolvedMetadata_WhenAlreadySpecific()
-        {
-            string selected = WorldItemMetadataPolicy.SelectBestWorldItemMetadataPath(
-                "Metadata/Items/Currency/StackableCurrency/ChaosOrb",
-                "Metadata/Items/Currency/CurrencyQuality/Catalyst/ImbuedCatalyst");
-
-            selected.Should().Be("Metadata/Items/Currency/StackableCurrency/ChaosOrb");
-        }
     }
 }

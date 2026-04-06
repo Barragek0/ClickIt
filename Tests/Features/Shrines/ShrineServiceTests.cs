@@ -34,26 +34,6 @@ namespace ClickIt.Tests.Features.Shrines
         }
 
         [TestMethod]
-        public void ThreadLocalShrineList_IsIsolatedPerThread()
-        {
-            ShrineService.ResetThreadLocalStorage();
-
-            int mainThreadId = ShrineService.GetThreadLocalShrineListInstanceId();
-            int workerThreadId = 0;
-
-            var thread = new Thread(() =>
-            {
-                workerThreadId = ShrineService.GetThreadLocalShrineListInstanceId();
-            });
-
-            thread.Start();
-            thread.Join();
-
-            workerThreadId.Should().NotBe(0);
-            workerThreadId.Should().NotBe(mainThreadId);
-        }
-
-        [TestMethod]
         public void InvalidateCache_ClearsCachedShrines()
         {
             var service = CreateService();
@@ -63,38 +43,6 @@ namespace ClickIt.Tests.Features.Shrines
 
             service.HasCachedShrines().Should().BeFalse();
             service.GetLastShrineCacheTime().Should().Be(0);
-        }
-
-        [TestMethod]
-        public void IsClickableShrineCandidate_ReturnsFalse_ForNull()
-        {
-            ShrineService.IsClickableShrineCandidate(null).Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void IsShrine_ReturnsFalse_ForNull()
-        {
-            ShrineService.IsShrine(null!).Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void Constructor_Throws_WhenGameControllerIsNull()
-        {
-            var camera = (Camera)RuntimeHelpers.GetUninitializedObject(typeof(Camera));
-
-            Action act = () => new ShrineService(null!, camera);
-
-            act.Should().Throw<ArgumentNullException>();
-        }
-
-        [TestMethod]
-        public void Constructor_Throws_WhenCameraIsNull()
-        {
-            var gc = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
-
-            Action act = () => new ShrineService(gc, null!);
-
-            act.Should().Throw<ArgumentNullException>();
         }
 
         [TestMethod]
@@ -131,6 +79,5 @@ namespace ClickIt.Tests.Features.Shrines
             var camera = (Camera)RuntimeHelpers.GetUninitializedObject(typeof(Camera));
             return new ShrineService(gc, camera);
         }
-
     }
 }

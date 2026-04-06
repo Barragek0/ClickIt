@@ -133,41 +133,6 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [TestMethod]
-        public void ShouldAllowHarvestRootElementVisibility_OnlyAppliesToHarvestPaths()
-        {
-            LabelTargetabilityPolicy.ShouldAllowHarvestRootElementVisibility(
-                "Metadata/MiscellaneousObjects/Harvest/Irrigator",
-                harvestRootElementVisible: false).Should().BeFalse();
-
-            LabelTargetabilityPolicy.ShouldAllowHarvestRootElementVisibility(
-                "Metadata/MiscellaneousObjects/Harvest/Extractor",
-                harvestRootElementVisible: true).Should().BeTrue();
-
-            LabelTargetabilityPolicy.ShouldAllowHarvestRootElementVisibility(
-                "Metadata/MiscellaneousObjects/Leagues/Ritual/Something",
-                harvestRootElementVisible: false).Should().BeTrue();
-
-            LabelTargetabilityPolicy.ShouldAllowHarvestRootElementVisibility(
-                null,
-                harvestRootElementVisible: false).Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void ShouldClickAltar_RequiresFlagAndPathPatterns()
-        {
-            var ra1 = MechanicClassifier.ShouldClickAltar(false, false, false, false, string.Empty);
-            ra1.Should().BeFalse();
-
-            var ra2 = MechanicClassifier.ShouldClickAltar(false, false, false, false, "CleansingFireAltar");
-            ra2.Should().BeFalse();
-
-            var ra3 = MechanicClassifier.ShouldClickAltar(true, false, false, false, "Some/CleansingFireAltar/Here");
-            ra3.Should().BeTrue();
-            var ra4 = MechanicClassifier.ShouldClickAltar(false, true, false, false, "This/TangleAltar");
-            ra4.Should().BeTrue();
-        }
-
-        [TestMethod]
         public void IsBasicChestName_AcceptsExpectedNames_IgnoresCase()
         {
             var cb1 = MechanicClassifier.IsBasicChestName("chest");

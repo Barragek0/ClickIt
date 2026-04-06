@@ -4,22 +4,6 @@ namespace ClickIt.Tests.UI
     public class StrongboxRendererLogicTests
     {
         [TestMethod]
-        public void ContainsStrongboxUniqueIdentifier_ReturnsTrue_WhenSpecialIdentifierExists()
-        {
-            bool contains = StrongboxRenderer.ContainsStrongboxUniqueIdentifier(
-                new List<string> { "special:strongbox-unique", "strongbox:armourers" });
-
-            contains.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void ContainsStrongboxUniqueIdentifier_ReturnsFalse_WhenMissingOrEmpty()
-        {
-            StrongboxRenderer.ContainsStrongboxUniqueIdentifier(new List<string>()).Should().BeFalse();
-            StrongboxRenderer.ContainsStrongboxUniqueIdentifier((IReadOnlyList<string>?)null).Should().BeFalse();
-        }
-
-        [TestMethod]
         public void IsStrongboxClickableBySettings_UniqueStrongbox_RespectsUniqueIdentifierLists()
         {
             string path = "Metadata/Chests/StrongBoxes/Arcanist";

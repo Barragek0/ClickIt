@@ -2,7 +2,10 @@ namespace ClickIt.Core.Runtime
 {
     internal sealed class PluginDebugTelemetryService(
         Func<ClickAutomationPort?> getClickAutomationPort,
-        Func<LabelFilterPort?> getLabelFilterPort,
+        Func<ClickAutomationSupport?> getClickAutomationSupport,
+        Func<LabelDebugService?> getLabelDebugService,
+        Func<LazyModeBlockerService?> getLazyModeBlockerService,
+        Func<InventoryProbeService?> getInventoryProbeService,
         Func<PathfindingService?> getPathfindingService,
         Func<AltarService?> getAltarService,
         Func<WeightCalculator?> getWeightCalculator,
@@ -14,7 +17,10 @@ namespace ClickIt.Core.Runtime
         Func<ErrorHandler?> getErrorHandler)
     {
         private readonly Func<ClickAutomationPort?> _getClickAutomationPort = getClickAutomationPort;
-        private readonly Func<LabelFilterPort?> _getLabelFilterPort = getLabelFilterPort;
+        private readonly Func<ClickAutomationSupport?> _getClickAutomationSupport = getClickAutomationSupport;
+        private readonly Func<LabelDebugService?> _getLabelDebugService = getLabelDebugService;
+        private readonly Func<LazyModeBlockerService?> _getLazyModeBlockerService = getLazyModeBlockerService;
+        private readonly Func<InventoryProbeService?> _getInventoryProbeService = getInventoryProbeService;
         private readonly Func<PathfindingService?> _getPathfindingService = getPathfindingService;
         private readonly Func<AltarService?> _getAltarService = getAltarService;
         private readonly Func<WeightCalculator?> _getWeightCalculator = getWeightCalculator;
@@ -33,7 +39,10 @@ namespace ClickIt.Core.Runtime
 
             return DebugTelemetryProjection.Build(
                 _getClickAutomationPort(),
-                _getLabelFilterPort(),
+                _getClickAutomationSupport(),
+                _getLabelDebugService(),
+                _getLazyModeBlockerService(),
+                _getInventoryProbeService(),
                 _getPathfindingService(),
                 _getAltarService(),
                 _getWeightCalculator(),
@@ -49,7 +58,10 @@ namespace ClickIt.Core.Runtime
         {
             DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(
                 _getClickAutomationPort(),
-                _getLabelFilterPort(),
+                _getClickAutomationSupport(),
+                _getLabelDebugService(),
+                _getLazyModeBlockerService(),
+                _getInventoryProbeService(),
                 _getPathfindingService(),
                 _getAltarService(),
                 _getWeightCalculator(),

@@ -47,6 +47,8 @@ namespace ClickIt.Features.Click
         private SettlersOreTargetSelector? _settlersOreTargetSelector;
         private VisibleMechanicCoordinator? _visibleMechanicCoordinator;
         private OffscreenStickyTargetHandler? _offscreenStickyTargetHandler;
+        private OnscreenMechanicPathingBlocker? _onscreenMechanicPathingBlocker;
+        private OffscreenTraversalTargetResolver? _offscreenTraversalTargetResolver;
         private OffscreenPathingCoordinator? _offscreenPathingCoordinator;
         private MovementSkillCoordinator? _movementSkillCoordinator;
         private ClickRuntimeEngine? _clickRuntimeEngine;
@@ -132,30 +134,6 @@ namespace ClickIt.Features.Click
 
         internal bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => UltimatumAutomation.TryGetOptionPreview(out previews);
-
-        internal long GetSuccessfulClickSequence()
-            => _lockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
-
-        internal ClickDebugSnapshot GetLatestClickDebug()
-            => _support.GetLatestClickDebug();
-
-        internal IReadOnlyList<string> GetLatestClickDebugTrail()
-            => _support.GetLatestClickDebugTrail();
-
-        internal RuntimeDebugLogSnapshot GetLatestRuntimeDebugLog()
-            => _support.GetLatestRuntimeDebugLog();
-
-        internal IReadOnlyList<string> GetLatestRuntimeDebugLogTrail()
-            => _support.GetLatestRuntimeDebugLogTrail();
-
-        internal UltimatumDebugSnapshot GetLatestUltimatumDebug()
-            => _support.GetLatestUltimatumDebug();
-
-        internal IReadOnlyList<string> GetLatestUltimatumDebugTrail()
-            => _support.GetLatestUltimatumDebugTrail();
-
-        internal void PublishRuntimeLog(string message)
-            => _support.PublishRuntimeLog(message);
 
         private bool TryHandleUltimatumPanelUi(Vector2 windowTopLeft)
             => UltimatumAutomation.TryHandlePanelUi(windowTopLeft);

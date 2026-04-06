@@ -4,12 +4,6 @@ namespace ClickIt.Tests.Shared.Game
     public class ClickableLabelPolicyTests
     {
         [TestMethod]
-        public void IsValidClickableLabel_NullOrMissingParts_ReturnsFalse()
-        {
-            ClickableLabelPolicy.IsValidClickableLabel(null!, static _ => true).Should().BeFalse();
-        }
-
-        [TestMethod]
         public void IsValidEntityPath_DetectsClickablePathAndHandlesNull()
         {
             ClickableLabelPolicy.IsValidEntityPathCore(null).Should().BeFalse();

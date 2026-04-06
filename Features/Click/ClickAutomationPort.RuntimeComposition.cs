@@ -20,25 +20,29 @@ namespace ClickIt.Features.Click
                         _labelInteractionPort,
                         _support.HoldDebugTelemetryAfterSuccessfulInteraction));
 
+                private OnscreenMechanicPathingBlocker OnscreenMechanicPathingBlocker => _onscreenMechanicPathingBlocker ??= new(new OnscreenMechanicPathingBlockerDependencies(
+                        _settings,
+                        AltarAutomation,
+                        VisibleMechanics,
+                        ClickDebugPublisher));
+
+                private OffscreenTraversalTargetResolver OffscreenTraversalTargets => _offscreenTraversalTargetResolver ??= new(new OffscreenTraversalTargetResolverDependencies(
+                        _settings,
+                        _gameController,
+                        _mechanicPriorityContextProvider,
+                        LabelInteraction,
+                        _labelInteractionPort,
+                        VisibleLabelSnapshots,
+                        _support.IsClickableInEitherSpace,
+                        _support.IsInsideWindowInEitherSpace,
+                        PathfindingLabelSuppression));
+
                 private OffscreenPathingCoordinator OffscreenPathing => _offscreenPathingCoordinator ??= new(new OffscreenPathingCoordinatorDependencies(
                         _settings,
                         _gameController,
                         _pathfindingService,
-                                        new OnscreenMechanicPathingBlocker(new OnscreenMechanicPathingBlockerDependencies(
-                                                _settings,
-                                                AltarAutomation,
-                                                VisibleMechanics,
-                                                ClickDebugPublisher)),
-                                        new OffscreenTraversalTargetResolver(new OffscreenTraversalTargetResolverDependencies(
-                                                _settings,
-                                                _gameController,
-                                                _mechanicPriorityContextProvider,
-                                                LabelInteraction,
-                                                _labelInteractionPort,
-                                                VisibleLabelSnapshots,
-                                                _support.IsClickableInEitherSpace,
-                                                _support.IsInsideWindowInEitherSpace,
-                                                PathfindingLabelSuppression)),
+                        OnscreenMechanicPathingBlocker,
+                        OffscreenTraversalTargets,
                         OffscreenStickyTargets,
                         OffscreenTargetResolver,
                         MovementSkills,
@@ -90,5 +94,11 @@ namespace ClickIt.Features.Click
                         mechanicPriorityContextProvider: _mechanicPriorityContextProvider,
                         groundItemsVisible: _groundItemsVisible,
                         clickDebugPublisher: ClickDebugPublisher));
+
+                internal ClickAutomationSupport ClickAutomationSupport
+                        => _support;
+
+                internal LockedInteractionDispatcher LockedInteractionDispatcher
+                        => _lockedInteractionDispatcher;
         }
 }

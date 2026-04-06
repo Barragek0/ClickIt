@@ -9,12 +9,21 @@ namespace ClickIt.Features.Labels
                 LazyModeBlockerService.HasRestrictedItemsOnScreen,
                 Keyboard.IsKeyDown);
 
-        private InventoryInteractionPolicy InventoryInteractionPolicy
+        internal InventoryInteractionPolicy InventoryInteractionPolicy
         {
             get
             {
                 EnsureInventoryDomainServices();
                 return _inventoryDomainServices!.Value.InteractionPolicy;
+            }
+        }
+
+        internal InventoryProbeService InventoryProbeService
+        {
+            get
+            {
+                EnsureInventoryDomainServices();
+                return _inventoryDomainServices!.Value.ProbeService;
             }
         }
 
@@ -35,14 +44,15 @@ namespace ClickIt.Features.Labels
                 CandidateBuilderService.TryBuildCandidate,
                 LabelMechanicResolutionService.GetMechanicIdForLabel));
 
-        private LabelDebugService LabelDebugService
+        internal LabelDebugService LabelDebugService
             => _labelDebugService ??= new LabelDebugService(
                 _settings,
                 _errorHandler,
                 _gameController,
                 ClickSettingsService.Create,
                 InteractionRuleService.ShouldAllowWorldItemByMetadata,
-                LabelMechanicResolutionService);
+                LabelMechanicResolutionService,
+                _labelSelectionDiagnostics);
 
         private LabelMechanicResolutionService LabelMechanicResolutionService
             => _labelMechanicResolutionService ??= new LabelMechanicResolutionService(
@@ -55,9 +65,6 @@ namespace ClickIt.Features.Labels
                 _settings,
                 _gameController,
                 reason => _errorHandler.LogMessage(true, true, reason, 5));
-
-        internal LazyModeBlockerService GetLazyModeBlockerService()
-            => LazyModeBlockerService;
 
         private MechanicClassifierDependencies ClassificationDependencies
             => _classificationDependencies ??= MechanicClassifierDependenciesFactory.Create(

@@ -17,13 +17,20 @@ namespace ClickIt.UI.Overlays.Common
 
             var windowRect = gameController.Window.GetWindowRectangleTimeCache;
             float centerX = windowRect.Width / 2f;
-            float topY = _settings.LazyMode.Value ? 130f : TitleY;
+            float topY = ResolveTopY(_settings.LazyMode.Value);
 
             bool clicking = _inputHandler.IsClickHotkeyActiveForCurrentInputState();
-            SharpDX.Color color = clicking ? SharpDX.Color.LawnGreen : SharpDX.Color.Red;
-            string statusText = clicking ? ClickingText : NotClickingText;
+            (SharpDX.Color color, string statusText) = BuildStatus(clicking);
 
             _deferredTextQueue.Enqueue(statusText, new SharpDX.Vector2(centerX, topY + (36f * 1.2f)), color, 24, FontAlign.Center);
         }
+
+        internal static float ResolveTopY(bool lazyModeEnabled)
+            => lazyModeEnabled ? 130f : TitleY;
+
+        internal static (SharpDX.Color Color, string StatusText) BuildStatus(bool clicking)
+            => clicking
+                ? (SharpDX.Color.LawnGreen, ClickingText)
+                : (SharpDX.Color.Red, NotClickingText);
     }
 }

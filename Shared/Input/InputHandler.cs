@@ -1,5 +1,20 @@
 namespace ClickIt.Shared.Input
 {
+    internal readonly record struct UiBlockingState(
+        bool ChatOpen,
+        bool AtlasPanelOpen,
+        bool AtlasTreePanelOpen,
+        bool PassiveTreePanelOpen,
+        bool UltimatumPanelOpen,
+        bool SyndicatePanelOpen,
+        bool IncursionWindowOpen,
+        bool RitualWindowOpen,
+        bool SanctumFloorWindowOpen,
+        bool SanctumRewardWindowOpen,
+        bool MicrotransactionShopWindowOpen,
+        bool ResurrectPanelOpen,
+        bool NpcDialogOpen);
+
     public class InputHandler(ClickItSettings settings)
     {
         private readonly ClickItSettings _settings = settings;
@@ -19,14 +34,25 @@ namespace ClickIt.Shared.Input
 
             bool keyState = IsClickKeyStateActive(hasLazyModeRestrictedItemsOnScreen);
             bool clickHotkeyHeld = IsClickHotkeyHeld();
+            bool blockOnOpenPanels = _settings?.BlockOnOpenLeftRightPanel?.Value == true;
+            bool isPoeActive = IsPOEActive(gameController);
+            bool isPanelOpen = IsPanelOpen(gameController);
+            bool isInTownOrHideout = IsInTownOrHideout(gameController);
+            bool isInToggleItemsPostClickBlockWindow = IsInToggleItemsPostClickBlockWindow();
+            bool isEscapeState = gameController.Game.IsEscapeState;
+            string? uiBlockingReason = GetUiBlockingReason(gameController);
 
             return keyState
-                && IsPOEActive(gameController)
-                && (_settings?.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController))
-                && !IsInTownOrHideout(gameController)
+                && ShouldAllowClickWithoutInputState(
+                    isPoeActive,
+                    isPanelOpen,
+                    isInTownOrHideout,
+                    isInToggleItemsPostClickBlockWindow,
+                    isEscapeState,
+                    uiBlockingReason,
+                    blockOnOpenPanels)
                 && (!isRitualActive || clickHotkeyHeld)
-                && !IsInToggleItemsPostClickBlockWindow()
-                && !IsBlockedByUiOrEscapeState(gameController);
+                ;
         }
 
         private bool IsClickKeyStateActive(bool hasLazyModeRestrictedItemsOnScreen)
@@ -54,34 +80,55 @@ namespace ClickIt.Shared.Input
         }
 
         private string? GetUiBlockingReason(GameController? gameController)
-        {
-            var uiState = gameController?.IngameState?.IngameUi;
+            => ResolveUiBlockingReason(
+                CaptureUiBlockingState(gameController?.IngameState?.IngameUi),
+                _settings.IsOtherUltimatumClickEnabled());
 
-            if (uiState?.ChatTitlePanel?.IsVisible ?? false)
+        internal static UiBlockingState CaptureUiBlockingState(object? uiState)
+        {
+            return new UiBlockingState(
+                ChatOpen: IsUiElementVisible(uiState, "ChatTitlePanel"),
+                AtlasPanelOpen: IsUiElementVisible(uiState, "Atlas", "AtlasPanel"),
+                AtlasTreePanelOpen: IsUiElementVisible(uiState, "AtlasTreePanel"),
+                PassiveTreePanelOpen: IsUiElementVisible(uiState, "TreePanel"),
+                UltimatumPanelOpen: IsUiElementVisible(uiState, "UltimatumPanel"),
+                SyndicatePanelOpen: IsUiElementVisible(uiState, "SyndicatePanel", "BetrayalWindow"),
+                IncursionWindowOpen: IsUiElementVisible(uiState, "IncursionWindow"),
+                RitualWindowOpen: IsUiElementVisible(uiState, "RitualWindow"),
+                SanctumFloorWindowOpen: IsUiElementVisible(uiState, "SanctumFloorWindow"),
+                SanctumRewardWindowOpen: IsUiElementVisible(uiState, "SanctumRewardWindow"),
+                MicrotransactionShopWindowOpen: IsUiElementVisible(uiState, "MicrotransactionShopWindow"),
+                ResurrectPanelOpen: IsUiElementVisible(uiState, "ResurrectPanel"),
+                NpcDialogOpen: IsUiElementVisible(uiState, "NpcDialog"));
+        }
+
+        internal static string? ResolveUiBlockingReason(UiBlockingState state, bool otherUltimatumClickEnabled)
+        {
+            if (state.ChatOpen)
                 return "Chat is open.";
-            if (IsUiElementVisible(uiState, "Atlas", "AtlasPanel"))
+            if (state.AtlasPanelOpen)
                 return "Atlas panel is open.";
-            if (uiState?.AtlasTreePanel?.IsVisible ?? false)
+            if (state.AtlasTreePanelOpen)
                 return "Atlas tree panel is open.";
-            if (uiState?.TreePanel?.IsVisible ?? false)
+            if (state.PassiveTreePanelOpen)
                 return "Passive tree panel is open.";
-            if ((uiState?.UltimatumPanel?.IsVisible ?? false) && !_settings.IsOtherUltimatumClickEnabled())
+            if (state.UltimatumPanelOpen && !otherUltimatumClickEnabled)
                 return "Ultimatum panel is open (Click Ultimatum Choices is disabled).";
-            if (IsUiElementVisible(uiState, "SyndicatePanel", "BetrayalWindow"))
+            if (state.SyndicatePanelOpen)
                 return "Syndicate panel is open.";
-            if (uiState?.IncursionWindow?.IsVisible ?? false)
+            if (state.IncursionWindowOpen)
                 return "Incursion window is open.";
-            if (uiState?.RitualWindow?.IsVisible ?? false)
+            if (state.RitualWindowOpen)
                 return "Ritual window is open.";
-            if (uiState?.SanctumFloorWindow?.IsVisible ?? false)
+            if (state.SanctumFloorWindowOpen)
                 return "Sanctum floor window is open.";
-            if (uiState?.SanctumRewardWindow?.IsVisible ?? false)
+            if (state.SanctumRewardWindowOpen)
                 return "Sanctum reward window is open.";
-            if (uiState?.MicrotransactionShopWindow?.IsVisible ?? false)
+            if (state.MicrotransactionShopWindowOpen)
                 return "Microtransaction shop window is open.";
-            if (uiState?.ResurrectPanel?.IsVisible ?? false)
+            if (state.ResurrectPanelOpen)
                 return "Resurrect panel is open.";
-            if (uiState?.NpcDialog?.IsVisible ?? false)
+            if (state.NpcDialogOpen)
                 return "NPC dialog is open.";
 
             return null;
@@ -105,31 +152,14 @@ namespace ClickIt.Shared.Input
 
         public string GetCanClickFailureReason(GameController gameController)
         {
-            if (gameController?.Window?.IsForeground() == false)
-                return "PoE not in focus.";
-
-            var area = gameController?.Area?.CurrentArea;
-            if (_settings.BlockOnOpenLeftRightPanel.Value)
-            {
-                var ui = gameController?.IngameState?.IngameUi;
-                if (ui?.OpenLeftPanel?.Address != 0 || ui?.OpenRightPanel?.Address != 0)
-                    return "Panel is open.";
-            }
-
-            if (area?.IsTown == true || area?.IsHideout == true)
-                return "In town/hideout.";
-
-            if (IsInToggleItemsPostClickBlockWindow())
-                return "Waiting after Toggle Item View.";
-
-            string? uiReason = GetUiBlockingReason(gameController);
-            if (!string.IsNullOrEmpty(uiReason))
-                return uiReason;
-
-            if (gameController?.Game?.IsEscapeState == true)
-                return "Escape menu is open.";
-
-            return "Clicking disabled.";
+            return ResolveCanClickFailureReason(
+                isPoeActive: gameController?.Window?.IsForeground() == true,
+                isPanelOpen: gameController != null && IsPanelOpen(gameController),
+                isInTownOrHideout: gameController != null && IsInTownOrHideout(gameController),
+                isInToggleItemsPostClickBlockWindow: IsInToggleItemsPostClickBlockWindow(),
+                isEscapeState: gameController?.Game?.IsEscapeState == true,
+                uiBlockingReason: GetUiBlockingReason(gameController),
+                blockOnOpenPanels: _settings.BlockOnOpenLeftRightPanel.Value);
         }
 
         public bool CanClickWithoutInputState(GameController gameController)
@@ -137,11 +167,56 @@ namespace ClickIt.Shared.Input
             if (gameController == null)
                 return false;
 
-            return IsPOEActive(gameController)
-                && (_settings?.BlockOnOpenLeftRightPanel?.Value != true || !IsPanelOpen(gameController))
-                && !IsInTownOrHideout(gameController)
-                && !IsInToggleItemsPostClickBlockWindow()
-                && !IsBlockedByUiOrEscapeState(gameController);
+            return ShouldAllowClickWithoutInputState(
+                isPoeActive: IsPOEActive(gameController),
+                isPanelOpen: IsPanelOpen(gameController),
+                isInTownOrHideout: IsInTownOrHideout(gameController),
+                isInToggleItemsPostClickBlockWindow: IsInToggleItemsPostClickBlockWindow(),
+                isEscapeState: gameController.Game.IsEscapeState,
+                uiBlockingReason: GetUiBlockingReason(gameController),
+                blockOnOpenPanels: _settings?.BlockOnOpenLeftRightPanel?.Value == true);
+        }
+
+        internal static bool ShouldAllowClickWithoutInputState(
+            bool isPoeActive,
+            bool isPanelOpen,
+            bool isInTownOrHideout,
+            bool isInToggleItemsPostClickBlockWindow,
+            bool isEscapeState,
+            string? uiBlockingReason,
+            bool blockOnOpenPanels)
+        {
+            return isPoeActive
+                && (!blockOnOpenPanels || !isPanelOpen)
+                && !isInTownOrHideout
+                && !isInToggleItemsPostClickBlockWindow
+                && !isEscapeState
+                && string.IsNullOrEmpty(uiBlockingReason);
+        }
+
+        internal static string ResolveCanClickFailureReason(
+            bool isPoeActive,
+            bool isPanelOpen,
+            bool isInTownOrHideout,
+            bool isInToggleItemsPostClickBlockWindow,
+            bool isEscapeState,
+            string? uiBlockingReason,
+            bool blockOnOpenPanels)
+        {
+            if (!isPoeActive)
+                return "PoE not in focus.";
+            if (blockOnOpenPanels && isPanelOpen)
+                return "Panel is open.";
+            if (isInTownOrHideout)
+                return "In town/hideout.";
+            if (isInToggleItemsPostClickBlockWindow)
+                return "Waiting after Toggle Item View.";
+            if (!string.IsNullOrEmpty(uiBlockingReason))
+                return uiBlockingReason;
+            if (isEscapeState)
+                return "Escape menu is open.";
+
+            return "Clicking disabled.";
         }
 
         public bool IsClickHotkeyPressed(
@@ -192,7 +267,7 @@ namespace ClickIt.Shared.Input
             if (ui == null)
                 return false;
 
-            return ui.OpenLeftPanel.Address != 0 || ui.OpenRightPanel.Address != 0;
+            return HasOpenSidePanels(ui.OpenLeftPanel.Address, ui.OpenRightPanel.Address);
         }
 
         private static bool IsInTownOrHideout(GameController gameController)
@@ -204,8 +279,14 @@ namespace ClickIt.Shared.Input
             if (area == null)
                 return false;
 
-            return area.IsHideout || area.IsTown;
+            return IsTownOrHideoutArea(area.IsHideout, area.IsTown);
         }
+
+        internal static bool HasOpenSidePanels(long leftPanelAddress, long rightPanelAddress)
+            => leftPanelAddress != 0 || rightPanelAddress != 0;
+
+        internal static bool IsTownOrHideoutArea(bool isHideout, bool isTown)
+            => isHideout || isTown;
 
         private bool IsInToggleItemsPostClickBlockWindow()
             => _toggleItemsController.IsInPostClickBlockWindow();

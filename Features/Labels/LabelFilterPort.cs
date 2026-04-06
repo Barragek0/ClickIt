@@ -28,26 +28,13 @@ namespace ClickIt.Features.Labels
         }
 
         internal LabelDebugSnapshot GetLatestLabelDebug()
-            => _labelSelectionDiagnostics.GetLatest();
+            => LabelDebugService.GetLatestDebug();
 
         internal IReadOnlyList<string> GetLatestLabelDebugTrail()
-            => _labelSelectionDiagnostics.GetTrail();
+            => LabelDebugService.GetLatestDebugTrail();
 
         internal (bool LabelsAvailable, int TotalVisibleLabels, int ValidVisibleLabels) GetVisibleLabelCounts()
-        {
-            IList<LabelOnGround>? labels = _gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            if (labels == null)
-                return (false, 0, 0);
-
-            int validVisibleLabels = 0;
-            for (int i = 0; i < labels.Count; i++)
-            {
-                if (labels[i]?.ItemOnGround?.Path != null)
-                    validVisibleLabels++;
-            }
-
-            return (true, labels.Count, validVisibleLabels);
-        }
+            => LabelDebugService.GetVisibleLabelCounts();
 
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
             => LabelSelectionService.GetNextLabelToClick(allLabels, startIndex, maxCount);
@@ -67,10 +54,10 @@ namespace ClickIt.Features.Labels
             => LazyModeBlockerService.HasRestrictedItemsOnScreen(allLabels);
 
         internal InventoryDebugSnapshot GetLatestInventoryDebug()
-            => InventoryInteractionPolicy.GetLatestDebug();
+            => InventoryProbeService.GetLatestDebug();
 
         internal IReadOnlyList<string> GetLatestInventoryDebugTrail()
-            => InventoryInteractionPolicy.GetLatestDebugTrail();
+            => InventoryProbeService.GetLatestDebugTrail();
 
         internal void ClearInventoryProbeCacheForShutdown()
             => InventoryInteractionPolicy.ClearForShutdown();

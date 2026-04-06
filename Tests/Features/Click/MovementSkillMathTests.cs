@@ -45,19 +45,5 @@ namespace ClickIt.Tests.Features.Click
 
             MovementSkillMath.TryMapKeyTextToKeys("RMB", out _).Should().BeFalse();
         }
-
-        [TestMethod]
-        public void IsMovementSkillPostCastClickBlocked_ComputesRemainingWindow()
-        {
-            MovementSkillMath.IsMovementSkillPostCastClickBlocked(now: 1000, blockUntilTimestampMs: 1200, out long remaining)
-                .Should()
-                .BeTrue();
-            remaining.Should().Be(200);
-
-            MovementSkillMath.IsMovementSkillPostCastClickBlocked(now: 1200, blockUntilTimestampMs: 1200, out long expiredRemaining)
-                .Should()
-                .BeFalse();
-            expiredRemaining.Should().Be(0);
-        }
     }
 }

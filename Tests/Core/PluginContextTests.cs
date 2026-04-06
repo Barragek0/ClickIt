@@ -138,5 +138,82 @@ namespace ClickIt.Tests.Core
             remainingMs.Should().Be(0);
             reason.Should().BeEmpty();
         }
+
+        [TestMethod]
+        public void InitializeCompositionRoot_WhenGameControllerMissing_ResetsWarmStateBeforeThrowing()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            bool disposed = false;
+
+            plugin.State.ServiceRegistry.Register(() => disposed = true);
+            plugin.State.Runtime.IsShuttingDown = true;
+            plugin.State.FreezeDebugTelemetrySnapshot("startup-hold", 1000);
+
+            Action act = () => plugin.State.InitializeCompositionRoot(plugin, settings);
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*GameController is null during plugin initialization.*");
+            plugin.State.Runtime.IsShuttingDown.Should().BeFalse();
+            plugin.State.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeFalse();
+            remainingMs.Should().Be(0);
+            reason.Should().BeEmpty();
+
+            plugin.State.DisposeCompositionRoot();
+
+            disposed.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void FinalizeCompositionRootForStartup_NormalizesWeights_ReloadsAlertSound_AndStartsTimers()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            var performanceMonitor = new PerformanceMonitor(settings);
+            string divineKey = ClickItSettings.BuildCompositeKey(
+                ClickItSettings.AltarTypeMinion,
+                "#% chance to drop an additional Divine Orb");
+            string configDir = Path.Combine(Path.GetTempPath(), "clickit_bootstrap_" + Guid.NewGuid().ToString("N"));
+            string alertPath = Path.Combine(configDir, "alert.wav");
+
+            Directory.CreateDirectory(configDir);
+
+            try
+            {
+                File.WriteAllText(alertPath, "empty");
+                settings.ModAlerts.Remove(divineKey);
+                plugin.State.Services.PerformanceMonitor = performanceMonitor;
+                plugin.State.Services.AlertService = new AlertService(
+                    () => settings,
+                    () => settings,
+                    () => configDir,
+                    () => null,
+                    static (_, _) => { },
+                    static (_, _) => { });
+
+                plugin.State.FinalizeCompositionRootForStartup(plugin, settings);
+                Thread.Sleep(10);
+
+                settings.ModAlerts.Should().ContainKey(divineKey);
+                settings.ModAlerts[divineKey].Should().BeTrue();
+                plugin.State.Services.AlertService!.CurrentAlertSoundPath.Should().Be(alertPath);
+                plugin.State.Runtime.LastRenderTimer.IsRunning.Should().BeTrue();
+                plugin.State.Runtime.LastTickTimer.IsRunning.Should().BeTrue();
+                plugin.State.Runtime.Timer.IsRunning.Should().BeTrue();
+                plugin.State.Runtime.SecondTimer.IsRunning.Should().BeTrue();
+                performanceMonitor.ShouldTriggerMainTimerAction(0).Should().BeTrue();
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(configDir, true);
+                }
+                catch
+                {
+                    // Best effort temp cleanup for the test harness.
+                }
+            }
+        }
     }
 }

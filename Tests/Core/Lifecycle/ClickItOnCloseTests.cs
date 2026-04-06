@@ -1,6 +1,7 @@
 namespace ClickIt.Tests.Core.Lifecycle
 {
     [TestClass]
+    [DoNotParallelize]
     public class ClickItOnCloseTests
     {
         [TestMethod]

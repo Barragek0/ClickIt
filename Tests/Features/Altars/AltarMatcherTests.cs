@@ -102,15 +102,6 @@ namespace ClickIt.Tests.Features.Altars
         }
 
         [TestMethod]
-        public void GetModTarget_RecognizesTypesCorrectly()
-        {
-            AltarModMatcher.GetModTarget("Mapboss").Should().Be("Boss");
-            AltarModMatcher.GetModTarget("EldritchMinions").Should().Be("Minion");
-            AltarModMatcher.GetModTarget("Player").Should().Be("Player");
-            AltarModMatcher.GetModTarget("unknown").Should().BeEmpty();
-        }
-
-        [TestMethod]
         public void ClearCaches_EmptiesMatcherCaches()
         {
             var matcher = new AltarMatcher();

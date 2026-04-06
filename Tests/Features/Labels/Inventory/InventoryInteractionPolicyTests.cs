@@ -6,7 +6,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         [TestMethod]
         public void PublishDebug_UpdatesProbeLatestSnapshot()
         {
-            InventoryProbeService probeService = CreateProbeService(InventorySnapshot.Empty);
+            InventoryProbeService probeService = CreateProbeService(default);
             InventoryItemEntityService itemEntityService = CreateItemEntityService();
             var pickupPolicy = (InventoryPickupPolicyEngine)RuntimeHelpers.GetUninitializedObject(typeof(InventoryPickupPolicyEngine));
 
@@ -25,7 +25,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         [TestMethod]
         public void GetLatestDebugTrail_ReturnsProbeTrailEntries()
         {
-            InventoryProbeService probeService = CreateProbeService(InventorySnapshot.Empty);
+            InventoryProbeService probeService = CreateProbeService(default);
             InventoryItemEntityService itemEntityService = CreateItemEntityService();
             var pickupPolicy = (InventoryPickupPolicyEngine)RuntimeHelpers.GetUninitializedObject(typeof(InventoryPickupPolicyEngine));
 
@@ -42,7 +42,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         [TestMethod]
         public void ShouldAllowWorldItemWhenInventoryFull_DelegatesThroughInventoryPolicy()
         {
-            InventoryProbeService probeService = CreateProbeService(InventorySnapshot.Empty);
+            InventoryProbeService probeService = CreateProbeService(default);
             InventoryItemEntityService itemEntityService = CreateItemEntityService();
             var groundItem = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
             var controller = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
@@ -94,7 +94,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         [TestMethod]
         public void ShouldAllowClosedDoorPastMechanic_AllowsWhenInventoryProbeNotesAreUnreliable()
         {
-            InventorySnapshot snapshot = InventorySnapshot.Empty with
+            InventorySnapshot snapshot = default(InventorySnapshot) with
             {
                 HasPrimaryInventory = true,
                 FullProbe = InventoryFullProbe.Empty with

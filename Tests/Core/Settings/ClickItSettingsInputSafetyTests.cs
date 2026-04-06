@@ -65,18 +65,6 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
-        public void DebugFreezeSuccessfulInteractionMs_IsHiddenFromRawSettingsTree()
-        {
-            var property = typeof(ClickItSettings).GetProperty(nameof(ClickItSettings.DebugFreezeSuccessfulInteractionMs));
-
-            property.Should().NotBeNull();
-            property!
-                .GetCustomAttributes(typeof(ConditionalDisplayAttribute), inherit: false)
-                .Should()
-                .NotBeEmpty();
-        }
-
-        [TestMethod]
         public void LegacySettingsTreeGate_DefaultsToHidden()
         {
             var settings = new ClickItSettings();

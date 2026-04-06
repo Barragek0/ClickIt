@@ -3,30 +3,44 @@ namespace ClickIt.Features.Area
     internal static class AreaUiSnapshotReader
     {
         internal static object? TryGetIngameUiProperty(GameController? gameController, string propertyName)
+            => TryResolveIngameUiProperty(gameController?.IngameState?.IngameUi, propertyName);
+
+        internal static object? TryResolveIngameUiProperty(object? ingameUi, string propertyName)
         {
-            if (gameController?.IngameState?.IngameUi == null || string.IsNullOrWhiteSpace(propertyName))
+            if (ingameUi == null || string.IsNullOrWhiteSpace(propertyName))
                 return null;
 
             return propertyName switch
             {
-                "QuestTracker" => TryGetIngameUiMember(gameController.IngameState.IngameUi, DynamicAccessProfiles.IngameUiQuestTracker),
-                "ChatPanel" => TryGetIngameUiMember(gameController.IngameState.IngameUi, DynamicAccessProfiles.IngameUiChatPanel),
-                "Map" => TryGetIngameUiMember(gameController.IngameState.IngameUi, DynamicAccessProfiles.IngameUiMap),
-                "GameUI" => TryGetIngameUiMember(gameController.IngameState.IngameUi, DynamicAccessProfiles.IngameUiGameUi),
-                "Root" => TryGetIngameUiMember(gameController.IngameState.IngameUi, DynamicAccessProfiles.IngameUiRoot),
+                "QuestTracker" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiQuestTracker),
+                "ChatPanel" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiChatPanel),
+                "Map" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiMap),
+                "GameUI" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiGameUi),
+                "Root" => TryGetIngameUiMember(ingameUi, DynamicAccessProfiles.IngameUiRoot),
                 _ => null,
             };
         }
 
         internal static bool TryReadCurrentAreaHash(GameController? gameController, out long areaHash)
+            => TryReadCurrentAreaHashValue(gameController?.Game, out areaHash);
+
+        internal static bool TryReadCurrentAreaHashValue(object? game, out long areaHash)
         {
             areaHash = long.MinValue;
-            object? game = gameController?.Game;
             if (!DynamicAccess.TryGetDynamicValue(game, DynamicAccessProfiles.CurrentAreaHash, out object? rawAreaHash)
                 || rawAreaHash == null)
             {
                 return false;
             }
+
+            return TryConvertAreaHash(rawAreaHash, out areaHash);
+        }
+
+        internal static bool TryConvertAreaHash(object? rawAreaHash, out long areaHash)
+        {
+            areaHash = long.MinValue;
+            if (rawAreaHash == null)
+                return false;
 
             try
             {

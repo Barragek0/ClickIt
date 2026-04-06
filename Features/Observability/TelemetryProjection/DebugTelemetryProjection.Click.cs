@@ -4,7 +4,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
     {
         private static ClickTelemetrySnapshot BuildClickTelemetry(
             ClickAutomationPort? clickAutomationPort,
-            LabelFilterPort? labelFilterPort,
+            ClickAutomationSupport? clickAutomationSupport,
+            LazyModeBlockerService? lazyModeBlockerService,
             GameController? gameController,
             InputHandler? inputHandler,
             ClickItSettings? settings)
@@ -30,28 +31,28 @@ namespace ClickIt.Features.Observability.TelemetryProjection
 
             return new ClickTelemetrySnapshot(
                 ServiceAvailable: clickAutomationPort != null,
-                Click: clickAutomationPort?.GetLatestClickDebug() ?? ClickDebugSnapshot.Empty,
-                ClickTrail: clickAutomationPort?.GetLatestClickDebugTrail() ?? Array.Empty<string>(),
-                RuntimeLog: clickAutomationPort?.GetLatestRuntimeDebugLog() ?? RuntimeDebugLogSnapshot.Empty,
-                RuntimeLogTrail: clickAutomationPort?.GetLatestRuntimeDebugLogTrail() ?? Array.Empty<string>(),
-                Ultimatum: clickAutomationPort?.GetLatestUltimatumDebug() ?? UltimatumDebugSnapshot.Empty,
-                UltimatumTrail: clickAutomationPort?.GetLatestUltimatumDebugTrail() ?? Array.Empty<string>(),
+                Click: clickAutomationSupport?.GetLatestClickDebug() ?? ClickDebugSnapshot.Empty,
+                ClickTrail: clickAutomationSupport?.GetLatestClickDebugTrail() ?? Array.Empty<string>(),
+                RuntimeLog: clickAutomationSupport?.GetLatestRuntimeDebugLog() ?? RuntimeDebugLogSnapshot.Empty,
+                RuntimeLogTrail: clickAutomationSupport?.GetLatestRuntimeDebugLogTrail() ?? Array.Empty<string>(),
+                Ultimatum: clickAutomationSupport?.GetLatestUltimatumDebug() ?? UltimatumDebugSnapshot.Empty,
+                UltimatumTrail: clickAutomationSupport?.GetLatestUltimatumDebugTrail() ?? Array.Empty<string>(),
                 UltimatumOptionPreview: ultimatumPreview,
-                FrequencyTarget: BuildClickFrequencyTargetTelemetry(settings, inputHandler, labelFilterPort, gameController),
+                FrequencyTarget: BuildClickFrequencyTargetTelemetry(settings, inputHandler, lazyModeBlockerService, gameController),
                 Settings: ClickSettingsTelemetrySnapshot.FromSettings(settings));
         }
 
         private static ClickFrequencyTargetTelemetrySnapshot BuildClickFrequencyTargetTelemetry(
             ClickItSettings? settings,
             InputHandler? inputHandler,
-            LabelFilterPort? labelFilterPort,
+            LazyModeBlockerService? lazyModeBlockerService,
             GameController? gameController)
         {
             if (settings == null)
                 return ClickFrequencyTargetTelemetrySnapshot.Empty;
 
             IReadOnlyList<LabelOnGround>? visibleLabels = (IReadOnlyList<LabelOnGround>?)gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            bool hasRestrictedItems = PluginClickRuntimeStateEvaluator.ResolveHasLazyModeRestrictedItems(labelFilterPort, visibleLabels);
+            bool hasRestrictedItems = PluginClickRuntimeStateEvaluator.ResolveHasLazyModeRestrictedItems(lazyModeBlockerService, visibleLabels);
             bool lazyModeDisableActive = settings.LazyMode.Value
                 && PluginClickRuntimeStateEvaluator.ResolveLazyModeDisableActive(settings, inputHandler);
             PluginClickRuntimeStateSnapshot runtimeState = PluginClickRuntimeStateEvaluator.BuildSnapshot(

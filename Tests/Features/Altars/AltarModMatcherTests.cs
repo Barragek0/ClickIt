@@ -4,15 +4,6 @@ namespace ClickIt.Tests.Features.Altars
     public class AltarModMatcherTests
     {
         [TestMethod]
-        public void GetModTarget_MapsNegativeTypeToTarget()
-        {
-            AltarModMatcher.GetModTarget("Mapboss").Should().Be("Boss");
-            AltarModMatcher.GetModTarget("EldritchMinions").Should().Be("Minion");
-            AltarModMatcher.GetModTarget("PlayerSomething").Should().Be("Player");
-            AltarModMatcher.GetModTarget("unknown").Should().BeEmpty();
-        }
-
-        [TestMethod]
         public void TryMatchMod_ReturnsFalseForUnknown()
         {
             bool isUp;

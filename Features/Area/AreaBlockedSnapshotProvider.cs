@@ -159,31 +159,41 @@ namespace ClickIt.Features.Area
         private void RefreshQuestTrackerAreas(GameController gameController, long now)
         {
             List<RectangleF> current = AreaBlockedRectangleCollectionResolver.ResolveQuestTrackerBlockedRectangles(gameController);
-            if (current.Count > 0)
-            {
-                _blockedState.QuestTrackerBlockedRectangles.Clear();
-                _blockedState.QuestTrackerBlockedRectangles.AddRange(current);
-                _blockedState.LastQuestTrackerRectanglesSuccessTimestampMs = now;
-                return;
-            }
-
-            if (!BlockedAreaRefreshScheduler.ShouldRetainQuestTrackerRectanglesOnEmptyRead(
-                _blockedState.QuestTrackerBlockedRectangles.Count,
-                now,
-                _blockedState.LastQuestTrackerRectanglesSuccessTimestampMs,
-                QuestTrackerRectanglesHoldLastGoodMs))
-            {
-                _blockedState.QuestTrackerBlockedRectangles.Clear();
-            }
+            ApplyQuestTrackerRectangles(_blockedState, current, now);
         }
 
         private void RefreshBuffAndDebuffAreas(GameController gameController)
         {
             List<RectangleF> rectangles = AreaBlockedRectangleCollectionResolver.ResolveBuffsAndDebuffsBlockedRectangles(gameController);
-            _blockedState.BuffsAndDebuffsRectangles.Clear();
-            _blockedState.BuffsAndDebuffsRectangles.AddRange(rectangles);
-            _blockedState.BuffsAndDebuffsRectangle = _blockedState.BuffsAndDebuffsRectangles.Count > 0
-                ? _blockedState.BuffsAndDebuffsRectangles[0]
+            ApplyBuffAndDebuffRectangles(_blockedState, rectangles);
+        }
+
+        internal static void ApplyQuestTrackerRectangles(AreaBlockedState blockedState, IReadOnlyList<RectangleF> current, long now)
+        {
+            if (current.Count > 0)
+            {
+                blockedState.QuestTrackerBlockedRectangles.Clear();
+                blockedState.QuestTrackerBlockedRectangles.AddRange(current);
+                blockedState.LastQuestTrackerRectanglesSuccessTimestampMs = now;
+                return;
+            }
+
+            if (!BlockedAreaRefreshScheduler.ShouldRetainQuestTrackerRectanglesOnEmptyRead(
+                blockedState.QuestTrackerBlockedRectangles.Count,
+                now,
+                blockedState.LastQuestTrackerRectanglesSuccessTimestampMs,
+                QuestTrackerRectanglesHoldLastGoodMs))
+            {
+                blockedState.QuestTrackerBlockedRectangles.Clear();
+            }
+        }
+
+        internal static void ApplyBuffAndDebuffRectangles(AreaBlockedState blockedState, IReadOnlyList<RectangleF> rectangles)
+        {
+            blockedState.BuffsAndDebuffsRectangles.Clear();
+            blockedState.BuffsAndDebuffsRectangles.AddRange(rectangles);
+            blockedState.BuffsAndDebuffsRectangle = blockedState.BuffsAndDebuffsRectangles.Count > 0
+                ? blockedState.BuffsAndDebuffsRectangles[0]
                 : RectangleF.Empty;
         }
 

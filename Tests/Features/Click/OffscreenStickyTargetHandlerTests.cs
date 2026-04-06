@@ -57,5 +57,24 @@ namespace ClickIt.Tests.Features.Click
             target.Should().BeNull();
             runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
         }
+
+        private static OffscreenStickyTargetHandler CreateHandler(ClickRuntimeState runtimeState, GameController gameController)
+        {
+            var settings = new ClickItSettings();
+            var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(
+                settings,
+                runtimeState));
+
+            return new OffscreenStickyTargetHandler(new OffscreenStickyTargetHandlerDependencies(
+                GameController: gameController,
+                ShrineService: null!,
+                RuntimeState: runtimeState,
+                LabelInteraction: null!,
+                ChestLootSettlement: null!,
+                IsClickableInEitherSpace: static (_, _) => false,
+                PathfindingLabelSuppression: pathfindingLabelSuppression,
+                LabelInteractionPort: null!,
+                HoldDebugTelemetryAfterSuccess: static _ => { }));
+        }
     }
 }

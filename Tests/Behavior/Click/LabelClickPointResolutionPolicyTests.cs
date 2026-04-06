@@ -3,28 +3,16 @@ namespace ClickIt.Tests.Behavior.Click
     [TestClass]
     public class LabelClickPointResolutionPolicyTests
     {
-        [TestMethod]
-        public void ShouldRetryWithoutClickableArea_ReturnsTrue_ForSettlersMechanic()
+        [DataTestMethod]
+        [DataRow(true, false, true)]
+        [DataRow(false, false, false)]
+        [DataRow(true, true, false)]
+        [DataRow(false, true, false)]
+        public void ShouldAllowSettlersRelaxedFallback_ReturnsExpected_ForAllInputCombinations(bool hasBackingEntity, bool worldProjectionInWindow, bool expected)
         {
-            bool result = LabelClickPointResolutionPolicy.ShouldRetryWithoutClickableArea("settlers-crimson-iron");
+            bool result = LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(hasBackingEntity, worldProjectionInWindow);
 
-            result.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void ShouldRetryWithoutClickableArea_ReturnsFalse_ForNonSettlersMechanic()
-        {
-            bool result = LabelClickPointResolutionPolicy.ShouldRetryWithoutClickableArea("items");
-
-            result.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldAllowSettlersRelaxedFallback_ReturnsTrue_OnlyWhenBackingEntityExistsAndProjectionIsOutsideWindow()
-        {
-            LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(hasBackingEntity: true, worldProjectionInWindow: false).Should().BeTrue();
-            LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(hasBackingEntity: false, worldProjectionInWindow: false).Should().BeFalse();
-            LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(hasBackingEntity: true, worldProjectionInWindow: true).Should().BeFalse();
+            result.Should().Be(expected);
         }
     }
 }

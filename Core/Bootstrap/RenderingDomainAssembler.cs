@@ -16,12 +16,12 @@ namespace ClickIt.Core.Bootstrap
         {
             var debugRenderer = new DebugRenderer(owner, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
             var strongboxRenderer = new StrongboxRenderer(settings, core.DeferredFrameQueue);
-            var lazyModeRenderer = new LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LabelFilterPort.GetLazyModeBlockerService());
+            var lazyModeRenderer = new LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LazyModeBlockerService);
             var clickHotkeyToggleRenderer = new ClickHotkeyToggleRenderer(settings, core.DeferredTextQueue, core.InputHandler);
             var inventoryFullWarningRenderer = new InventoryFullWarningRenderer(
                 core.DeferredTextQueue,
                 core.AreaService,
-                core.LabelFilterPort.GetLatestInventoryDebug,
+                core.InventoryProbeService.GetLatestDebug,
                 (snapshot, now) => owner.GetDebugClipboardService().TryAutoCopyInventoryWarningDebugSnapshot(
                     snapshot,
                     now,

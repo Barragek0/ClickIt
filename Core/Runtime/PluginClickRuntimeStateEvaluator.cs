@@ -12,20 +12,20 @@ namespace ClickIt.Core.Runtime
     internal static class PluginClickRuntimeStateEvaluator
     {
         internal static bool ResolveHotkeyActive(PluginServices services)
-            => ResolveHotkeyActive(services.InputHandler, services.CachedLabels, services.LabelFilterPort);
+            => ResolveHotkeyActive(services.InputHandler, services.CachedLabels, services.LazyModeBlockerService);
 
         internal static bool ResolveHotkeyActive(
             InputHandler? inputHandler,
             TimeCache<List<LabelOnGround>>? cachedLabels,
-            LabelFilterPort? labelFilterPort)
+            LazyModeBlockerService? lazyModeBlockerService)
             => inputHandler?.IsClickHotkeyPressed(
                 cachedLabels,
-                labels => ResolveHasLazyModeRestrictedItems(labelFilterPort, labels)) ?? false;
+                labels => ResolveHasLazyModeRestrictedItems(lazyModeBlockerService, labels)) ?? false;
 
         internal static bool ResolveHasLazyModeRestrictedItems(
-            LabelFilterPort? labelFilterPort,
+            LazyModeBlockerService? lazyModeBlockerService,
             IReadOnlyList<LabelOnGround>? labels)
-            => labelFilterPort?.HasLazyModeRestrictedItemsOnScreen(labels) ?? false;
+            => lazyModeBlockerService?.HasRestrictedItemsOnScreen(labels) ?? false;
 
         internal static bool ResolveIsRitualActive(GameController? gameController)
             => EntityHelpers.IsRitualActive(gameController);

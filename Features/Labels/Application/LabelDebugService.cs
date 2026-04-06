@@ -6,7 +6,8 @@ namespace ClickIt.Features.Labels.Application
         GameController? gameController,
         Func<IReadOnlyList<LabelOnGround>?, ClickSettings> createClickSettings,
         Func<ClickSettings, Entity, GameController?, LabelOnGround?, bool> shouldAllowWorldItemByMetadata,
-        LabelMechanicResolutionService mechanicResolutionService)
+        LabelMechanicResolutionService mechanicResolutionService,
+        LabelSelectionDiagnostics diagnostics)
     {
         private readonly ClickItSettings _settings = settings;
         private readonly ErrorHandler _errorHandler = errorHandler;
@@ -14,6 +15,29 @@ namespace ClickIt.Features.Labels.Application
         private readonly Func<IReadOnlyList<LabelOnGround>?, ClickSettings> _createClickSettings = createClickSettings;
         private readonly Func<ClickSettings, Entity, GameController?, LabelOnGround?, bool> _shouldAllowWorldItemByMetadata = shouldAllowWorldItemByMetadata;
         private readonly LabelMechanicResolutionService _mechanicResolutionService = mechanicResolutionService;
+        private readonly LabelSelectionDiagnostics _diagnostics = diagnostics;
+
+        public LabelDebugSnapshot GetLatestDebug()
+            => _diagnostics.GetLatest();
+
+        public IReadOnlyList<string> GetLatestDebugTrail()
+            => _diagnostics.GetTrail();
+
+        public (bool LabelsAvailable, int TotalVisibleLabels, int ValidVisibleLabels) GetVisibleLabelCounts()
+        {
+            IList<LabelOnGround>? labels = _gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+            if (labels == null)
+                return (false, 0, 0);
+
+            int validVisibleLabels = 0;
+            for (int i = 0; i < labels.Count; i++)
+            {
+                if (labels[i]?.ItemOnGround?.Path != null)
+                    validVisibleLabels++;
+            }
+
+            return (true, labels.Count, validVisibleLabels);
+        }
 
         public SelectionDebugSummary GetSelectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {

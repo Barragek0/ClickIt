@@ -81,6 +81,12 @@ namespace ClickIt.Core.Bootstrap
             services.Camera = core.Camera;
             services.AltarService = core.AltarService;
             services.LabelFilterPort = core.LabelFilterPort;
+            services.LabelDebugService = core.LabelDebugService;
+            services.LazyModeBlockerService = core.LazyModeBlockerService;
+            services.InventoryProbeService = core.InventoryProbeService;
+            services.InventoryInteractionPolicy = core.InventoryInteractionPolicy;
+            services.ClickAutomationSupport = clickAutomationPort.ClickAutomationSupport;
+            services.LockedInteractionDispatcher = clickAutomationPort.LockedInteractionDispatcher;
             services.ShrineService = core.ShrineService;
             services.InputHandler = core.InputHandler;
             services.PathfindingService = core.PathfindingService;

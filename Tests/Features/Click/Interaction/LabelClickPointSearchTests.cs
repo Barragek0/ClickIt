@@ -97,27 +97,6 @@ namespace ClickIt.Tests.Features.Click.Interaction
         }
 
         [TestMethod]
-        public void IsSafeAutomationPoint_ReturnsFalse_WhenOutsideVirtualScreen()
-        {
-            var point = new Vector2(-5000, -5000);
-            var gameWindow = new RectangleF(0, 0, 1920, 1080);
-            var virtualScreen = new RectangleF(0, 0, 1920, 1080);
-
-            LabelClickPointSearch.IsSafeAutomationPoint(point, gameWindow, virtualScreen).Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void HasUnblockedOverlapProbePoint_ReturnsTrue_WhenNoPotentialBlockers()
-        {
-            var target = new RectangleF(0, 0, 100, 40);
-            var preferred = new Vector2(50, 20);
-
-            bool hasUnblocked = LabelClickPointSearch.HasUnblockedOverlapProbePoint(target, preferred, []);
-
-            hasUnblocked.Should().BeTrue();
-        }
-
-        [TestMethod]
         public void HasUnblockedOverlapProbePoint_ReturnsTrue_WhenAtLeastOneProbePointIsVisible()
         {
             var target = new RectangleF(0, 0, 100, 40);

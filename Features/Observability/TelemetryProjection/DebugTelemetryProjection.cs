@@ -4,7 +4,10 @@ namespace ClickIt.Features.Observability.TelemetryProjection
     {
         public static DebugTelemetrySnapshot Build(
             ClickAutomationPort? clickAutomationPort,
-            LabelFilterPort? labelFilterPort,
+            ClickAutomationSupport? clickAutomationSupport,
+            LabelDebugService? labelDebugService,
+            LazyModeBlockerService? lazyModeBlockerService,
+            InventoryProbeService? inventoryProbeService,
             PathfindingService? pathfindingService,
             AltarService? altarService,
             WeightCalculator? weightCalculator,
@@ -17,16 +20,17 @@ namespace ClickIt.Features.Observability.TelemetryProjection
         {
             ClickTelemetrySnapshot clickTelemetry = BuildClickTelemetry(
                 clickAutomationPort,
-                labelFilterPort,
+                clickAutomationSupport,
+                lazyModeBlockerService,
                 gameController,
                 inputHandler,
                 settings);
-            LabelTelemetrySnapshot labelTelemetry = BuildLabelTelemetry(labelFilterPort);
+            LabelTelemetrySnapshot labelTelemetry = BuildLabelTelemetry(labelDebugService);
             PathfindingTelemetrySnapshot pathfindingTelemetry = BuildPathfindingTelemetry(pathfindingService);
             RenderingTelemetrySnapshot renderingTelemetry = BuildRenderingTelemetry(renderingState);
             StatusTelemetrySnapshot statusTelemetry = BuildStatusTelemetry(gameController, cachedLabels);
             ErrorTelemetrySnapshot errorTelemetry = BuildErrorTelemetry(errorHandler);
-            InventoryTelemetrySnapshot inventoryTelemetry = BuildInventoryTelemetry(labelFilterPort);
+            InventoryTelemetrySnapshot inventoryTelemetry = BuildInventoryTelemetry(inventoryProbeService);
             AltarTelemetrySnapshot altarTelemetry = BuildAltarTelemetry(altarService, weightCalculator);
             HoveredItemMetadataTelemetrySnapshot hoveredItemTelemetry = BuildHoveredItemMetadataTelemetry(gameController);
 
@@ -42,17 +46,17 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 HoveredItem: hoveredItemTelemetry);
         }
 
-        private static LabelTelemetrySnapshot BuildLabelTelemetry(LabelFilterPort? labelFilterPort)
+        private static LabelTelemetrySnapshot BuildLabelTelemetry(LabelDebugService? labelDebugService)
         {
-            if (labelFilterPort == null)
+            if (labelDebugService == null)
                 return LabelTelemetrySnapshot.Empty;
 
-            (bool labelsAvailable, int totalVisibleLabels, int validVisibleLabels) = labelFilterPort.GetVisibleLabelCounts();
+            (bool labelsAvailable, int totalVisibleLabels, int validVisibleLabels) = labelDebugService.GetVisibleLabelCounts();
 
             return new LabelTelemetrySnapshot(
                 ServiceAvailable: true,
-                Label: labelFilterPort.GetLatestLabelDebug(),
-                LabelTrail: labelFilterPort.GetLatestLabelDebugTrail(),
+                Label: labelDebugService.GetLatestDebug(),
+                LabelTrail: labelDebugService.GetLatestDebugTrail(),
                 LabelsAvailable: labelsAvailable,
                 TotalVisibleLabels: totalVisibleLabels,
                 ValidVisibleLabels: validVisibleLabels);

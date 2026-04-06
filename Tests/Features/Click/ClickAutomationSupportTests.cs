@@ -33,6 +33,102 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void ShouldCaptureUltimatumDebug_ReturnsTrueOnlyWhenDebugModeAndUltimatumDebugAreEnabled()
+        {
+            var settings = new ClickItSettings();
+            var support = CreateSupport(settings);
+
+            support.ShouldCaptureUltimatumDebug().Should().BeFalse();
+
+            settings.DebugMode.Value = true;
+            support.ShouldCaptureUltimatumDebug().Should().BeFalse();
+
+            settings.DebugShowUltimatum.Value = true;
+            support.ShouldCaptureUltimatumDebug().Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void PublishUltimatumSnapshot_DoesNothing_WhenUltimatumDebugCaptureDisabled()
+        {
+            var settings = new ClickItSettings();
+            settings.DebugMode.Value = false;
+
+            var support = CreateSupport(settings);
+
+            support.PublishUltimatumSnapshot(new UltimatumDebugSnapshot(
+                HasData: true,
+                Stage: "PanelHandled",
+                Source: "PanelUi",
+                IsInitialUltimatumEnabled: true,
+                IsOtherUltimatumEnabled: true,
+                IsPanelVisible: true,
+                IsGruelingGauntletActive: false,
+                HasSaturatedChoice: false,
+                SaturatedModifier: string.Empty,
+                ShouldTakeReward: false,
+                Action: "Confirm",
+                CandidateCount: 2,
+                SaturatedCandidateCount: 0,
+                BestModifier: "Ruin",
+                BestPriority: 3,
+                ClickedChoice: true,
+                ClickedConfirm: true,
+                ClickedTakeRewards: false,
+                Notes: "notes",
+                Sequence: 0,
+                TimestampMs: 1));
+
+            support.GetLatestUltimatumDebug().Should().Be(UltimatumDebugSnapshot.Empty);
+            support.GetLatestUltimatumDebugTrail().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void PublishUltimatumEvent_PublishesProjectedSnapshotAndTrail_WhenCaptureEnabled()
+        {
+            var settings = new ClickItSettings();
+            settings.DebugMode.Value = true;
+            settings.DebugShowUltimatum.Value = true;
+            settings.ClickInitialUltimatum.Value = true;
+            settings.ClickUltimatumChoices.Value = false;
+
+            var support = CreateSupport(settings);
+
+            support.PublishUltimatumEvent(new UltimatumDebugEvent(
+                Stage: "PanelHandled",
+                Source: "PanelUi",
+                IsPanelVisible: true,
+                IsGruelingGauntletActive: true)
+            {
+                HasSaturatedChoice = true,
+                SaturatedModifier = "Ruin",
+                ShouldTakeReward = true,
+                Action = "TakeRewards",
+                CandidateCount = 3,
+                SaturatedCandidateCount = 1,
+                BestModifier = "Ruin III",
+                BestPriority = 2,
+                ClickedChoice = true,
+                ClickedConfirm = false,
+                ClickedTakeRewards = true,
+                Notes = "projected from event"
+            });
+
+            UltimatumDebugSnapshot snapshot = support.GetLatestUltimatumDebug();
+
+            snapshot.HasData.Should().BeTrue();
+            snapshot.Stage.Should().Be("PanelHandled");
+            snapshot.Source.Should().Be("PanelUi");
+            snapshot.IsInitialUltimatumEnabled.Should().BeTrue();
+            snapshot.IsOtherUltimatumEnabled.Should().BeFalse();
+            snapshot.IsGruelingGauntletActive.Should().BeTrue();
+            snapshot.SaturatedModifier.Should().Be("Ruin");
+            snapshot.Action.Should().Be("TakeRewards");
+            snapshot.ClickedTakeRewards.Should().BeTrue();
+            snapshot.Notes.Should().Be("projected from event");
+            support.GetLatestUltimatumDebugTrail().Should().ContainSingle().Which.Should().Contain("PanelHandled");
+        }
+
+        [TestMethod]
         public void DebugLog_PublishesRuntimeLog_AndForwardsMessage_WhenLoggingEnabled()
         {
             var settings = new ClickItSettings();

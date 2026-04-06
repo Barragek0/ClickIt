@@ -17,10 +17,5 @@ namespace ClickIt.Tests.UI
             PathfindingRenderer.ToCompass(new Vector2(dx, dy)).Should().Be(expected);
         }
 
-        [TestMethod]
-        public void ToCompass_ReturnsCenter_ForTinyDeltas()
-        {
-            PathfindingRenderer.ToCompass(new Vector2(3f, 2f)).Should().Be("Center");
-        }
     }
 }

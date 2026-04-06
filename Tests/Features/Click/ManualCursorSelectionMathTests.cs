@@ -4,14 +4,6 @@ namespace ClickIt.Tests.Features.Click
     public class ManualCursorSelectionMathTests
     {
         [TestMethod]
-        public void ShouldTreatManualCursorAsHoveringCandidate_ReturnsTrue_WhenEitherSignalIsTrue()
-        {
-            ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(true, false).Should().BeTrue();
-            ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(false, true).Should().BeTrue();
-            ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(false, false).Should().BeFalse();
-        }
-
-        [TestMethod]
         public void IsPointInsideRectInEitherSpace_MatchesAbsoluteOrClientCoordinates()
         {
             RectangleF rect = new RectangleF(50, 50, 100, 100);

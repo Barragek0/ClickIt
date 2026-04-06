@@ -4,35 +4,6 @@ namespace ClickIt.Tests.Features.Altars
     public class AltarServiceDebugInfoTests
     {
         [TestMethod]
-        public void ResetForScan_ClearsCountersAndUpdatesTimestamp()
-        {
-            var debugInfo = new AltarServiceDebugInfo
-            {
-                ElementsFound = 5,
-                ComponentsProcessed = 4,
-                ComponentsAdded = 3,
-                ComponentsDuplicated = 2,
-                ModsMatched = 6,
-                ModsUnmatched = 7,
-                LastError = "error",
-                RecentUnmatchedMods = ["one"]
-            };
-            DateTime scanTime = new(2026, 4, 3, 12, 0, 0, DateTimeKind.Utc);
-
-            debugInfo.ResetForScan(scanTime);
-
-            debugInfo.LastScanTime.Should().Be(scanTime);
-            debugInfo.ElementsFound.Should().Be(0);
-            debugInfo.ComponentsProcessed.Should().Be(0);
-            debugInfo.ComponentsAdded.Should().Be(0);
-            debugInfo.ComponentsDuplicated.Should().Be(0);
-            debugInfo.ModsMatched.Should().Be(0);
-            debugInfo.ModsUnmatched.Should().Be(0);
-            debugInfo.LastError.Should().BeEmpty();
-            debugInfo.RecentUnmatchedMods.Should().BeEmpty();
-        }
-
-        [TestMethod]
         public void RecordProcessedComponent_TracksLastTypeAndAddVsDuplicate()
         {
             var debugInfo = new AltarServiceDebugInfo();

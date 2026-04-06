@@ -3,6 +3,10 @@ namespace ClickIt.Tests.Features.Click
     [TestClass]
     public class MovementSkillBindingResolverTests
     {
+        [TestCleanup]
+        public void TestCleanup()
+            => MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+
         [TestMethod]
         public void TryFindReadyMovementSkillBinding_UsesChildPathFallback_ForKeyResolution()
         {

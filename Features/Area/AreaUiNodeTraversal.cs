@@ -31,10 +31,10 @@ namespace ClickIt.Features.Area
 
             if (requireVisibleElement)
             {
-                if (current is not Element element)
+                if (!TryReadVisibility(current, out bool elementIsValid, out bool elementIsVisible))
                     return false;
 
-                if (!AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(element.IsValid, element.IsVisible))
+                if (!AreaVisibilityRules.ShouldUseVisibleUiBlockedRectangle(elementIsValid, elementIsVisible))
                     return false;
             }
 
@@ -46,6 +46,24 @@ namespace ClickIt.Features.Area
 
             rect = resolvedRect;
             return true;
+        }
+
+        internal static bool TryReadVisibility(object? source, out bool isValid, out bool isVisible)
+        {
+            isValid = false;
+            isVisible = false;
+
+            if (source is Element element)
+            {
+                isValid = element.IsValid;
+                isVisible = element.IsVisible;
+                return true;
+            }
+
+            if (!TryReadBoolMember(source, "IsValid", out isValid))
+                return false;
+
+            return TryReadBoolMember(source, "IsVisible", out isVisible);
         }
 
         internal static List<object?> ResolveChildNodes(object source)
@@ -65,21 +83,88 @@ namespace ClickIt.Features.Area
         internal static bool TryGetClientRect(object source, out RectangleF rect)
         {
             rect = RectangleF.Empty;
-            if (source is not Element element)
-                return false;
+            if (source is Element element)
+            {
+                rect = element.GetClientRect();
+                return true;
+            }
 
-            rect = element.GetClientRect();
-            return true;
+            if (TryReadMemberValue(source, "ClientRect", out object? rawRect) && rawRect is RectangleF rectangle)
+            {
+                rect = rectangle;
+                return true;
+            }
+
+            return false;
         }
 
         internal static bool TryGetChildNode(object? source, int index, out object? child)
         {
             child = null;
-            if (source is not Element element || index < 0)
+            if (index < 0)
                 return false;
 
-            child = element.GetChildAtIndex(index);
-            return child != null;
+            if (source is Element element)
+            {
+                child = element.GetChildAtIndex(index);
+                return child != null;
+            }
+
+            if (!TryReadMemberValue(source, "Children", out object? rawChildren) || rawChildren is not IEnumerable children)
+                return false;
+
+            int currentIndex = 0;
+            foreach (object? candidate in children)
+            {
+                if (currentIndex == index)
+                {
+                    child = candidate;
+                    return child != null;
+                }
+
+                currentIndex++;
+            }
+
+            return false;
+        }
+
+        private static bool TryReadBoolMember(object? source, string memberName, out bool value)
+        {
+            value = false;
+            return TryReadMemberValue(source, memberName, out object? rawValue)
+                && rawValue is bool boolValue
+                && (value = boolValue) == boolValue;
+        }
+
+        private static bool TryReadMemberValue(object? source, string memberName, out object? value)
+        {
+            value = null;
+            if (source == null || string.IsNullOrWhiteSpace(memberName))
+                return false;
+
+            Type? currentType = source.GetType();
+            while (currentType != null)
+            {
+                PropertyInfo? property = currentType.GetProperty(memberName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                if (property?.GetMethod != null)
+                {
+                    value = property.GetValue(source);
+                    return true;
+                }
+
+                FieldInfo? field = currentType.GetField(memberName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                    ?? currentType.GetField($"<{memberName}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                    ?? currentType.GetField($"_{char.ToLowerInvariant(memberName[0])}{memberName[1..]}", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                if (field != null)
+                {
+                    value = field.GetValue(source);
+                    return true;
+                }
+
+                currentType = currentType.BaseType;
+            }
+
+            return false;
         }
     }
 }

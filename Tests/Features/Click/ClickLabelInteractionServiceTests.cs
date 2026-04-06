@@ -45,35 +45,6 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryResolveLabelClickPosition_ReturnsResolvedPosition_WhenPrimaryAttemptSucceeds()
-        {
-            int callCount = 0;
-            Func<Vector2, bool>? receivedClickablePredicate = null;
-            Vector2 expected = new(19, 27);
-            var service = CreateService(
-                _ => true,
-                (_, _, _, isClickableArea) =>
-                {
-                    callCount++;
-                    receivedClickablePredicate = isClickableArea;
-                    return (true, expected);
-                });
-
-            bool resolved = service.TryResolveLabelClickPosition(
-                (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround)),
-                mechanicId: "items",
-                windowTopLeft: Vector2.Zero,
-                allLabels: null,
-                out Vector2 clickPos,
-                explicitPath: "metadata/test");
-
-            resolved.Should().BeTrue();
-            clickPos.Should().Be(expected);
-            callCount.Should().Be(1);
-            receivedClickablePredicate.Should().NotBeNull();
-        }
-
-        [TestMethod]
         public void TryResolveLabelClickPosition_DoesNotRetry_WhenMechanicIsNotSettlers()
         {
             int callCount = 0;

@@ -96,10 +96,11 @@ namespace ClickIt.Shared.Diagnostics
         /// </summary>
         public void LogError(string message, int frame = 0)
         {
+            TrackError(message);
+
             if (_settings.DebugMode)
             {
                 _logError(message, frame);
-                TrackError(message);
             }
         }
 

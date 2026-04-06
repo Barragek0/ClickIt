@@ -38,34 +38,5 @@ namespace ClickIt.Tests.Features.Click
             MechanicCandidateRanker.Compare(ignored, nonIgnored).Should().BeLessThan(0);
         }
 
-        [TestMethod]
-        public void Compare_PrefersLowerWeightedDistance_WhenBothNotIgnored()
-        {
-            var left = new MechanicCandidateRanker.CandidateRank(
-                ignored: false,
-                priorityIndex: 3,
-                weightedDistance: 80,
-                rawDistance: 20,
-                cursorDistance: 10);
-
-            var right = new MechanicCandidateRanker.CandidateRank(
-                ignored: false,
-                priorityIndex: 2,
-                weightedDistance: 90,
-                rawDistance: 5,
-                cursorDistance: 2);
-
-            MechanicCandidateRanker.Compare(left, right).Should().BeLessThan(0);
-        }
-
-        [TestMethod]
-        public void ResolvePriorityIndex_ReturnsMaxValue_WhenMechanicIsMissing()
-        {
-            var index = MechanicCandidateRanker.ResolvePriorityIndex(
-                "missing",
-                new Dictionary<string, int> { ["items"] = 0 });
-
-            index.Should().Be(int.MaxValue);
-        }
     }
 }

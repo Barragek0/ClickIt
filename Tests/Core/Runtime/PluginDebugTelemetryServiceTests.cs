@@ -17,6 +17,9 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => null,
+                () => null,
+                () => null,
+                () => null,
                 () => null);
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
@@ -30,7 +33,10 @@ namespace ClickIt.Tests.Core.Runtime
             bool shouldThrow = false;
             var service = new PluginDebugTelemetryService(
                 () => shouldThrow ? throw new InvalidOperationException("click provider should not run while frozen") : null,
-                () => shouldThrow ? throw new InvalidOperationException("label provider should not run while frozen") : null,
+                () => shouldThrow ? throw new InvalidOperationException("click support provider should not run while frozen") : null,
+                () => shouldThrow ? throw new InvalidOperationException("label debug provider should not run while frozen") : null,
+                () => shouldThrow ? throw new InvalidOperationException("lazy-mode provider should not run while frozen") : null,
+                () => shouldThrow ? throw new InvalidOperationException("inventory probe provider should not run while frozen") : null,
                 () => shouldThrow ? throw new InvalidOperationException("path provider should not run while frozen") : null,
                 () => shouldThrow ? throw new InvalidOperationException("altar provider should not run while frozen") : null,
                 () => shouldThrow ? throw new InvalidOperationException("weight provider should not run while frozen") : null,
@@ -58,7 +64,10 @@ namespace ClickIt.Tests.Core.Runtime
             bool shouldThrow = false;
             var service = new PluginDebugTelemetryService(
                 () => shouldThrow ? throw new InvalidOperationException("click provider should run after clear") : null,
-                () => shouldThrow ? throw new InvalidOperationException("label provider should run after clear") : null,
+                () => shouldThrow ? throw new InvalidOperationException("click support provider should run after clear") : null,
+                () => shouldThrow ? throw new InvalidOperationException("label debug provider should run after clear") : null,
+                () => shouldThrow ? throw new InvalidOperationException("lazy-mode provider should run after clear") : null,
+                () => shouldThrow ? throw new InvalidOperationException("inventory probe provider should run after clear") : null,
                 () => shouldThrow ? throw new InvalidOperationException("path provider should run after clear") : null,
                 () => shouldThrow ? throw new InvalidOperationException("altar provider should run after clear") : null,
                 () => shouldThrow ? throw new InvalidOperationException("weight provider should run after clear") : null,
@@ -102,6 +111,9 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => null,
+                () => null,
+                () => null,
+                () => null,
                 () => cachedLabels,
                 () => errorHandler);
 
@@ -123,6 +135,9 @@ namespace ClickIt.Tests.Core.Runtime
             settings.LazyModeClickLimiting.Value = 456;
 
             var service = new PluginDebugTelemetryService(
+                () => null,
+                () => null,
+                () => null,
                 () => null,
                 () => null,
                 () => null,
@@ -164,6 +179,9 @@ namespace ClickIt.Tests.Core.Runtime
                 () => null,
                 () => null,
                 () => null,
+                () => null,
+                () => null,
+                () => null,
                 () => settings,
                 () => null,
                 () => null);
@@ -188,6 +206,9 @@ namespace ClickIt.Tests.Core.Runtime
             rendering.DeferredFrameQueue.Enqueue(new RectangleF(1, 2, 3, 4), Color.White, 1);
 
             var service = new PluginDebugTelemetryService(
+                () => null,
+                () => null,
+                () => null,
                 () => null,
                 () => null,
                 () => null,
@@ -220,6 +241,9 @@ namespace ClickIt.Tests.Core.Runtime
                 lastProcessedAltarType: "EaterOfWorlds");
 
             var service = new PluginDebugTelemetryService(
+                () => null,
+                () => null,
+                () => null,
                 () => null,
                 () => null,
                 () => null,
@@ -259,6 +283,9 @@ namespace ClickIt.Tests.Core.Runtime
                 lastProcessedAltarType: "SearingExarch");
 
             var service = new PluginDebugTelemetryService(
+                () => null,
+                () => null,
+                () => null,
                 () => null,
                 () => null,
                 () => null,

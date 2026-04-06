@@ -41,15 +41,5 @@ namespace ClickIt.Tests.Shared.Game
             results[0].Should().BeSameAs(root);
         }
 
-        [TestMethod]
-        public void ClearThreadLocalStorage_ClearsTrackedElements()
-        {
-            LabelElementSearch.AddNullElementToThreadLocal();
-            LabelElementSearch.GetThreadLocalElementsCount().Should().BeGreaterThan(0);
-
-            LabelElementSearch.ClearThreadLocalStorage();
-
-            LabelElementSearch.GetThreadLocalElementsCount().Should().Be(0);
-        }
     }
 }

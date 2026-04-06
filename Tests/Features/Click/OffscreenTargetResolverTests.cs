@@ -4,24 +4,6 @@ namespace ClickIt.Tests.Features.Click
     public class OffscreenTargetResolverTests
     {
         [TestMethod]
-        public void CountRemainingPathNodes_HandlesEmptyAndBounds()
-        {
-            OffscreenTargetResolver.CountRemainingPathNodes(null, 0).Should().Be(0);
-
-            var path = new[]
-            {
-                new PathfindingService.GridPoint(0, 0),
-                new PathfindingService.GridPoint(1, 0),
-                new PathfindingService.GridPoint(2, 0)
-            };
-
-            OffscreenTargetResolver.CountRemainingPathNodes(path, -1).Should().Be(0);
-            OffscreenTargetResolver.CountRemainingPathNodes(path, 0).Should().Be(2);
-            OffscreenTargetResolver.CountRemainingPathNodes(path, 2).Should().Be(0);
-            OffscreenTargetResolver.CountRemainingPathNodes(path, 100).Should().Be(0);
-        }
-
-        [TestMethod]
         public void FindClosestPathIndexToPlayer_ReturnsNearestManhattanNode()
         {
             var path = new[]
@@ -37,28 +19,51 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryComputeGridDirectionPoint_ReturnsNormalizedProjectedPoint_WhenInputValid()
+        public void TryGetSmoothedPathDirection_ReturnsWeightedAverage_ForUpcomingPathNodes()
         {
-            bool ok = OffscreenTargetResolver.TryComputeGridDirectionPoint(
-                new Vector2(100, 100),
-                deltaGridX: 5,
-                deltaGridY: 2,
-                radius: 30,
-                out Vector2 point);
+            var path = new[]
+            {
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(2, 0),
+                new PathfindingService.GridPoint(4, 0),
+                new PathfindingService.GridPoint(8, 0)
+            };
+
+            bool ok = OffscreenTargetResolver.TryGetSmoothedPathDirection(
+                path,
+                new PathfindingService.GridPoint(0, 0),
+                nearestIndex: 0,
+                out float deltaX,
+                out float deltaY);
 
             ok.Should().BeTrue();
-            point.X.Should().NotBe(100);
-            point.Y.Should().NotBe(100);
+            deltaX.Should().BeApproximately(5.666667f, 0.01f);
+            deltaY.Should().BeApproximately(0f, 0.01f);
         }
 
         [TestMethod]
-        public void IsInsideWindow_RecognizesInsideAndOutsidePoints()
+        public void TryGetSmoothedPathDirection_ReturnsFalse_WhenPathCannotProduceDirection()
         {
-            RectangleF window = new RectangleF(10, 20, 100, 80);
+            var path = new[]
+            {
+                new PathfindingService.GridPoint(3, 3),
+                new PathfindingService.GridPoint(3, 3)
+            };
 
-            OffscreenTargetResolver.IsInsideWindow(window, new Vector2(40, 50)).Should().BeTrue();
-            OffscreenTargetResolver.IsInsideWindow(window, new Vector2(9, 50)).Should().BeFalse();
-            OffscreenTargetResolver.IsInsideWindow(window, new Vector2(40, 101)).Should().BeFalse();
+            OffscreenTargetResolver.TryGetSmoothedPathDirection(
+                path,
+                new PathfindingService.GridPoint(3, 3),
+                nearestIndex: 0,
+                out _,
+                out _).Should().BeFalse();
+
+            OffscreenTargetResolver.TryGetSmoothedPathDirection(
+                path,
+                new PathfindingService.GridPoint(3, 3),
+                nearestIndex: -1,
+                out _,
+                out _).Should().BeFalse();
         }
+
     }
 }

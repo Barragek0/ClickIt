@@ -18,6 +18,7 @@
     <DefineConstants>RUNTIME_EXILECORE</DefineConstants>
     <!-- Prevent SDK from generating assembly attributes (we have Properties/AssemblyInfo.cs) -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <!-- Use SDK default compile inclusion and explicitly remove test sources from this project -->
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
   </PropertyGroup>

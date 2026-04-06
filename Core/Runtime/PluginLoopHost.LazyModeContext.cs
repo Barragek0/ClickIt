@@ -9,7 +9,7 @@ namespace ClickIt.Core.Runtime
                 _settings,
                 GetLabels: () => _state.Services.CachedLabels?.Value,
                 IsRitualActive: () => PluginClickRuntimeStateEvaluator.ResolveIsRitualActive(_gameController),
-                HasLazyModeRestrictedItems: labels => PluginClickRuntimeStateEvaluator.ResolveHasLazyModeRestrictedItems(_state.Services.LabelFilterPort, labels),
+                HasLazyModeRestrictedItems: labels => PluginClickRuntimeStateEvaluator.ResolveHasLazyModeRestrictedItems(_state.Services.LazyModeBlockerService, labels),
                 GetTimestampMs: () => Environment.TickCount64));
     }
 }

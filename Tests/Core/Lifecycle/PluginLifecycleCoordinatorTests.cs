@@ -1,8 +1,23 @@
 namespace ClickIt.Tests.Core.Lifecycle
 {
     [TestClass]
+    [DoNotParallelize]
     public class PluginLifecycleCoordinatorTests
     {
+        [TestInitialize]
+        public void TestInitialize()
+        {
+            LabelElementSearch.ClearThreadLocalStorage();
+            MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+        }
+
+        [TestCleanup]
+        public void TestCleanup()
+        {
+            LabelElementSearch.ClearThreadLocalStorage();
+            MovementSkillMath.ClearThreadSkillBarEntriesBuffer();
+        }
+
         [TestMethod]
         public void Shutdown_ClearsThreadLocalBuffers_AndAltarRuntimeCaches()
         {
@@ -56,6 +71,67 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Rendering.DeferredTextQueue.Should().BeNull();
             plugin.State.Rendering.DeferredFrameQueue.Should().BeNull();
             LockManager.Instance.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void Shutdown_ClearsInventoryInteractionPolicyCaches()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            var gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
+            int snapshotBuildCount = 0;
+
+            InventoryProbeService probeService = new(new InventoryProbeServiceDependencies(
+                CacheWindowMs: 50,
+                DebugTrailCapacity: 8,
+                TryBuildInventorySnapshot: _ =>
+                {
+                    snapshotBuildCount++;
+                    return (true, default(InventorySnapshot) with
+                    {
+                        FullProbe = InventoryFullProbe.Empty with
+                        {
+                            HasPrimaryInventory = true,
+                            IsFull = snapshotBuildCount > 1
+                        }
+                    });
+                },
+                LayoutCache: new InventoryLayoutCache(cacheWindowMs: 50)));
+
+            InventoryItemEntityService itemEntityService = new(new InventoryItemEntityServiceDependencies(
+                CacheWindowMs: 50,
+                TryGetPrimaryServerInventory: _ => (false, null),
+                TryGetPrimaryServerInventorySlotItems: _ => (false, null),
+                EnumerateObjects: _ => Array.Empty<object?>(),
+                TryGetInventoryItemEntityFromEntry: _ => null,
+                ClassifyInventoryItemEntity: _ => (false, string.Empty)));
+
+            var pickupPolicy = (InventoryPickupPolicyEngine)RuntimeHelpers.GetUninitializedObject(typeof(InventoryPickupPolicyEngine));
+            InventoryInteractionPolicy interactionPolicy = new(probeService, itemEntityService, pickupPolicy, "Incursion/IncursionKey");
+            plugin.State.Services.InventoryInteractionPolicy = interactionPolicy;
+
+            probeService.IsInventoryFull(gameController, out InventoryFullProbe firstProbe).Should().BeFalse();
+            firstProbe.IsFull.Should().BeFalse();
+            snapshotBuildCount.Should().Be(1);
+
+            PluginLifecycleCoordinator.Shutdown(plugin, settings);
+
+            probeService.IsInventoryFull(gameController, out InventoryFullProbe secondProbe).Should().BeTrue();
+            secondProbe.IsFull.Should().BeTrue();
+            snapshotBuildCount.Should().Be(2);
+        }
+
+        [TestMethod]
+        public void Initialise_WhenGameControllerMissing_ThrowsAfterPrimingLifecycleState()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+
+            Action act = () => PluginLifecycleCoordinator.Initialise(plugin, settings);
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*GameController is null during plugin initialization.*");
+            plugin.State.Runtime.IsShuttingDown.Should().BeFalse();
         }
     }
 }

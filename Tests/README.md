@@ -65,6 +65,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ./Tests/Scripts/generate-coverage.
 - If a test needs special access, prefer test-side reflection or test-project build configuration over adding a production seam.
 - If coverage is missing, target the most meaningful uncovered branches first instead of adding lots of narrow tests.
 
+## ExileCore Notes
+
+- Use `Tests/Shared/TestUtils/ExileCoreOpaqueFactory.cs` when you need an ExileCore object only as an opaque reference token in a test.
+- Before assuming an ExileCore property is safe on an uninitialized object, inspect the type with `Tests/Shared/TestUtils/ExileCoreMetadataInspector.cs` and check the opaque-usage notes.
+- Treat `LabelOnGround`, `Entity`, and `GameController` as unsafe by default when a test branch dereferences runtime-backed members such as `Label`, `ItemOnGround`, `DistancePlayer`, `Path`, `EntityListWrapper`, or nested UI state.
+- Prefer testing through delegates, ports, and existing runtime contracts before trying to fabricate deep ExileCore graphs.
+- If a branch still needs remote-memory-backed members, record the exact blocker and move sideways to a nearby branch unless a test-side builder can supply the required graph without touching production code.
+
 ## CI Notes
 
 CI is currently defined in `.github/workflows/ci.yml`.

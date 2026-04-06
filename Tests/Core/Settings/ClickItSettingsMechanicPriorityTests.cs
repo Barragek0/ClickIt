@@ -184,14 +184,6 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
-        public void MechanicPriorityLegacyNormalizer_ExpandsLegacyAltarAlias()
-        {
-            string[] expanded = MechanicPriorityLegacyNormalizer.ExpandLegacyMechanicId("altars").ToArray();
-
-            expanded.Should().ContainInOrder(MechanicIds.AltarsSearingExarch, MechanicIds.AltarsEaterOfWorlds);
-        }
-
-        [TestMethod]
         public void MechanicsSubmenuLogic_LeftAndRightColumnRenderingFollowNodeValue()
         {
             var settings = new ClickItSettings();

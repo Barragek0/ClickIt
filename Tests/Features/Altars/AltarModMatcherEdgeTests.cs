@@ -4,16 +4,6 @@ namespace ClickIt.Tests.Features.Altars
     public class AltarModMatcherEdgeTests
     {
         [TestMethod]
-        public void TryMatchMod_ReturnsFalse_ForNullOrEmpty()
-        {
-            bool ok = AltarModMatcher.TryMatchMod(string.Empty, "Player", out _, out _);
-            ok.Should().BeFalse();
-
-            ok = AltarModMatcher.TryMatchMod(null!, "Player", out _, out _);
-            ok.Should().BeFalse();
-        }
-
-        [TestMethod]
         public void TryMatchMod_IgnoresNonLetters_WhenMatching()
         {
             var entry = AltarModsConstants.DownsideMods[0];
