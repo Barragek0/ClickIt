@@ -30,6 +30,8 @@ namespace ClickIt.Features.Area.Runtime
         {
             return new AreaBlockedSnapshot
             {
+                LastBlockedUiRectanglesRefreshTimestampMs = LastBlockedUiRectanglesRefreshTimestampMs,
+                LastBuffsAndDebuffsRectanglesRefreshTimestampMs = LastBuffsAndDebuffsRectanglesRefreshTimestampMs,
                 FullScreenRectangle = FullScreenRectangle,
                 HealthAndFlaskRectangle = HealthAndFlaskRectangle,
                 ManaAndSkillsRectangle = ManaAndSkillsRectangle,
@@ -54,6 +56,8 @@ namespace ClickIt.Features.Area.Runtime
 
         internal void ApplySnapshot(AreaBlockedSnapshot snapshot)
         {
+            LastBlockedUiRectanglesRefreshTimestampMs = snapshot.LastBlockedUiRectanglesRefreshTimestampMs;
+            LastBuffsAndDebuffsRectanglesRefreshTimestampMs = snapshot.LastBuffsAndDebuffsRectanglesRefreshTimestampMs;
             FullScreenRectangle = snapshot.FullScreenRectangle;
             HealthAndFlaskRectangle = snapshot.HealthAndFlaskRectangle;
             ManaAndSkillsRectangle = snapshot.ManaAndSkillsRectangle;

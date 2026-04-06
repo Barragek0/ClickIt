@@ -43,6 +43,23 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
+        public void ApplySnapshot_PublishesRefreshTimestamps()
+        {
+            var provider = new AreaBlockedSnapshotProvider();
+
+            provider.ApplySnapshot(new AreaBlockedSnapshot
+            {
+                LastBlockedUiRectanglesRefreshTimestampMs = 123,
+                LastBuffsAndDebuffsRectanglesRefreshTimestampMs = 456
+            });
+
+            AreaBlockedSnapshot current = provider.CurrentSnapshot;
+
+            current.LastBlockedUiRectanglesRefreshTimestampMs.Should().Be(123);
+            current.LastBuffsAndDebuffsRectanglesRefreshTimestampMs.Should().Be(456);
+        }
+
+        [TestMethod]
         public void ApplyQuestTrackerRectangles_RetainsExistingRectangles_OnEmptyReadWithinHoldWindow()
         {
             var blockedState = new AreaBlockedState

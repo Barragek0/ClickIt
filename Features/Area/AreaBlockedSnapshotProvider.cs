@@ -2,8 +2,7 @@ namespace ClickIt.Features.Area
 {
     internal sealed class AreaBlockedSnapshotProvider
     {
-        private const int BlockedUiRectanglesRefreshIntervalMs = 10_000;
-        private const int BuffsAndDebuffsRectanglesRefreshIntervalMs = 1_000;
+        internal const int DefaultBlockedUiRectanglesRefreshIntervalMs = 250;
         private const int QuestTrackerRectanglesHoldLastGoodMs = 1_000;
         private const float SideCompanionHeightRatio = 0.625f;
         private const float SideCompanionWidthRatio = 0.555f;
@@ -25,7 +24,7 @@ namespace ClickIt.Features.Area
             }
         }
 
-        internal void UpdateScreenAreas(GameController gameController)
+        internal void UpdateScreenAreas(GameController gameController, int blockedUiRefreshIntervalMs, bool forceBlockedUiRefresh = false)
         {
             using (LockManager.AcquireStatic(_syncLock))
             {
@@ -36,8 +35,8 @@ namespace ClickIt.Features.Area
                 if (BlockedAreaRefreshScheduler.ShouldRefresh(
                     now,
                     _blockedState.LastBlockedUiRectanglesRefreshTimestampMs,
-                    BlockedUiRectanglesRefreshIntervalMs,
-                    forceRefresh: areaChanged))
+                    blockedUiRefreshIntervalMs,
+                    forceRefresh: areaChanged || forceBlockedUiRefresh))
                 {
                     RefreshMainBlockedAreas(gameController, now);
                     _blockedState.LastBlockedUiRectanglesRefreshTimestampMs = now;
@@ -47,7 +46,8 @@ namespace ClickIt.Features.Area
                 if (BlockedAreaRefreshScheduler.ShouldRefresh(
                     now,
                     _blockedState.LastBuffsAndDebuffsRectanglesRefreshTimestampMs,
-                    BuffsAndDebuffsRectanglesRefreshIntervalMs))
+                    blockedUiRefreshIntervalMs,
+                    forceRefresh: forceBlockedUiRefresh))
                 {
                     RefreshBuffAndDebuffAreas(gameController);
                     _blockedState.LastBuffsAndDebuffsRectanglesRefreshTimestampMs = now;

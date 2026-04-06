@@ -209,6 +209,7 @@ namespace ClickIt.Tests.Core.Bootstrap
                 new WeightCalculator(settings),
                 CreateOpaque<AltarChoiceEvaluator>(),
                 static (_, _) => true,
+                static (_, _) => true,
                 core.InputHandler,
                 ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
                 CreateOpaque<ShrineService>(),

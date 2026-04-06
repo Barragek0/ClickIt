@@ -67,7 +67,45 @@ namespace ClickIt.UI.Debug.Sections
                 yPos += lineHeight;
             }
 
+            yPos = RenderAreaRefreshDebug(xPos, yPos, lineHeight);
+
             return yPos;
+        }
+
+        private int RenderAreaRefreshDebug(int xPos, int yPos, int lineHeight)
+        {
+            if (_context.AreaService == null)
+                return yPos;
+
+            int refreshIntervalMs = _context.AreaService.ConfiguredBlockedUiRefreshIntervalMs;
+            long? blockedAgeMs = _context.AreaService.BlockedUiRefreshAgeMs;
+            long? buffsAgeMs = _context.AreaService.BuffsAndDebuffsRefreshAgeMs;
+
+            _context.DeferredTextQueue.Enqueue($"Blocked UI Refresh: {FormatRefreshAge(blockedAgeMs)} / {refreshIntervalMs} ms", new Vector2(xPos, yPos), ResolveRefreshAgeColor(blockedAgeMs, refreshIntervalMs), 14);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"Buff UI Refresh: {FormatRefreshAge(buffsAgeMs)} / {refreshIntervalMs} ms", new Vector2(xPos, yPos), ResolveRefreshAgeColor(buffsAgeMs, refreshIntervalMs), 14);
+            yPos += lineHeight;
+
+            return yPos;
+        }
+
+        private static string FormatRefreshAge(long? ageMs)
+            => ageMs.HasValue ? $"{ageMs.Value} ms ago" : "never";
+
+        private static Color ResolveRefreshAgeColor(long? ageMs, int refreshIntervalMs)
+        {
+            if (!ageMs.HasValue)
+                return Color.Gray;
+
+            long safeInterval = Math.Max(1, refreshIntervalMs);
+            if (ageMs.Value <= safeInterval)
+                return Color.LightGreen;
+
+            if (ageMs.Value <= safeInterval * 2L)
+                return Color.Yellow;
+
+            return Color.OrangeRed;
         }
     }
 }

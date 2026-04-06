@@ -66,6 +66,9 @@ namespace ClickIt
         public ToggleNode AvoidOverlappingLabelClickPoints { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
+        public RangeNode<int> BlockedUiRefreshIntervalMs { get; set; } = new RangeNode<int>(250, 50, 5000);
+
+        [IgnoreMenu]
         public EmptyNode PathfindingCategory { get; set; } = new EmptyNode();
 
         [IgnoreMenu]

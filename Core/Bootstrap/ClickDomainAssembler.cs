@@ -14,6 +14,7 @@ namespace ClickIt.Core.Bootstrap
                 core.WeightCalculator,
                 altarChoiceEvaluator,
                 (point, _) => core.AreaService.PointIsInClickableArea(gameController, point),
+                (point, _) => core.AreaService.PointIsInClickableArea(gameController, point, forceBlockedUiRefresh: false),
                 core.InputHandler,
                 core.LabelFilterPort,
                 core.ShrineService,

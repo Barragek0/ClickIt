@@ -16,6 +16,7 @@ namespace ClickIt.Features.Click
         private readonly WeightCalculator _weightCalculator;
         private readonly AltarChoiceEvaluator _altarChoiceEvaluator;
         private readonly Func<Vector2, string, bool> _pointIsInClickableArea;
+        private readonly Func<Vector2, string, bool> _forceRefreshPointIsInClickableArea;
         private readonly InputHandler _inputHandler;
         private readonly ILabelInteractionPort _labelInteractionPort;
         private readonly LabelClickPointResolver _labelClickPointResolver;
@@ -64,6 +65,7 @@ namespace ClickIt.Features.Click
             WeightCalculator weightCalculator,
             AltarChoiceEvaluator altarChoiceEvaluator,
             Func<Vector2, string, bool> pointIsInClickableArea,
+            Func<Vector2, string, bool> forceRefreshPointIsInClickableArea,
             InputHandler inputHandler,
             ILabelInteractionPort labelInteractionPort,
             ShrineService shrineService,
@@ -80,6 +82,7 @@ namespace ClickIt.Features.Click
             _weightCalculator = weightCalculator ?? throw new ArgumentNullException(nameof(weightCalculator));
             _altarChoiceEvaluator = altarChoiceEvaluator ?? throw new ArgumentNullException(nameof(altarChoiceEvaluator));
             _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
+            _forceRefreshPointIsInClickableArea = forceRefreshPointIsInClickableArea ?? throw new ArgumentNullException(nameof(forceRefreshPointIsInClickableArea));
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
             _labelInteractionPort = labelInteractionPort ?? throw new ArgumentNullException(nameof(labelInteractionPort));
             _labelClickPointResolver = new LabelClickPointResolver(settings);

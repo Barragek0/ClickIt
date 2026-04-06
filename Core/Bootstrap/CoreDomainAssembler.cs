@@ -27,7 +27,7 @@ namespace ClickIt.Core.Bootstrap
             var performanceMonitor = new PerformanceMonitor(settings);
             var errorHandler = new ErrorHandler(settings, owner.LogError, owner.LogMessage);
 
-            var areaService = new AreaService();
+            var areaService = new AreaService(settings);
             areaService.UpdateScreenAreas(gameController);
 
             var labelReadModelService = new LabelReadModelService(

@@ -13,6 +13,8 @@ namespace ClickIt.Features.Click.Interaction
 
     internal readonly record struct InteractionExecutionRuntimeDependencies(
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
+        Func<Vector2, bool> IsClickPositionAllowed,
+        Action<string> DebugLog,
         Action<Vector2, Element?, GameController?, bool, bool, bool> PerformLockedClick,
         Action<Vector2, int, Element?, GameController?, bool, bool, bool> PerformLockedHoldClick,
         Action RecordClickInterval);
@@ -30,6 +32,12 @@ namespace ClickIt.Features.Click.Interaction
         {
             if (!_dependencies.EnsureCursorInsideGameWindowForClick(request.OutsideWindowLogMessage))
                 return false;
+
+            if (!_dependencies.IsClickPositionAllowed(request.ClickPosition))
+            {
+                _dependencies.DebugLog($"[InteractionExecutionRuntime] Skipping interaction inside blocked UI rectangle at {request.ClickPosition}.");
+                return false;
+            }
 
             if (request.UseHoldClick)
             {

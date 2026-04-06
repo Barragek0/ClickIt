@@ -2,11 +2,13 @@ namespace ClickIt.Features.Area
 {
     public class AreaService
     {
+        private readonly ClickItSettings? _settings;
         private readonly AreaBlockedSnapshotProvider _blockedSnapshotProvider = new();
         private readonly BlockedAreaEvaluatorPipeline _blockedAreaEvaluatorPipeline;
 
-        public AreaService()
+        public AreaService(ClickItSettings? settings = null)
         {
+            _settings = settings;
             _blockedAreaEvaluatorPipeline = new BlockedAreaEvaluatorPipeline(
             [
                 (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.HealthSquareRectangle, snapshot.FullScreenRectangle),
@@ -47,12 +49,15 @@ namespace ClickIt.Features.Area
         public RectangleF RitualBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.RitualBlockedRectangle;
         public RectangleF SentinelBlockedRectangle => _blockedSnapshotProvider.CurrentSnapshot.SentinelBlockedRectangle;
         public IReadOnlyList<RectangleF> QuestTrackerBlockedRectangles => _blockedSnapshotProvider.CurrentSnapshot.QuestTrackerBlockedRectangles;
+        public long? BlockedUiRefreshAgeMs => ResolveRefreshAgeMs(Environment.TickCount64, _blockedSnapshotProvider.CurrentSnapshot.LastBlockedUiRectanglesRefreshTimestampMs);
+        public long? BuffsAndDebuffsRefreshAgeMs => ResolveRefreshAgeMs(Environment.TickCount64, _blockedSnapshotProvider.CurrentSnapshot.LastBuffsAndDebuffsRectanglesRefreshTimestampMs);
+        public int ConfiguredBlockedUiRefreshIntervalMs => ResolveBlockedUiRefreshIntervalMs();
 
         internal void ApplyBlockedSnapshot(AreaBlockedSnapshot snapshot)
             => _blockedSnapshotProvider.ApplySnapshot(snapshot);
 
-        public void UpdateScreenAreas(GameController gameController)
-            => _blockedSnapshotProvider.UpdateScreenAreas(gameController);
+        public void UpdateScreenAreas(GameController gameController, bool forceBlockedUiRefresh = false)
+            => _blockedSnapshotProvider.UpdateScreenAreas(gameController, ResolveBlockedUiRefreshIntervalMs(), forceBlockedUiRefresh);
 
         internal static bool ShouldUpdateMapPanelBlockedRectangle(bool isInTownOrHideout)
             => AreaBlockedSnapshotProvider.ShouldUpdateMapPanelBlockedRectangle(isInTownOrHideout);
@@ -101,11 +106,23 @@ namespace ClickIt.Features.Area
         private bool IsBlockedByAreaEvaluatorPipeline(AreaBlockedSnapshot snapshot, Vector2 point)
             => _blockedAreaEvaluatorPipeline.IsBlocked(snapshot, point);
 
-        public bool PointIsInClickableArea(GameController? gameController, Vector2 point)
+        public bool PointIsInClickableArea(GameController? gameController, Vector2 point, bool forceBlockedUiRefresh = false)
         {
             if (gameController != null)
-                UpdateScreenAreas(gameController);
+                UpdateScreenAreas(gameController, forceBlockedUiRefresh);
             return PointIsInClickableArea(point);
         }
+
+        internal static long? ResolveRefreshAgeMs(long now, long lastRefreshTimestampMs)
+        {
+            if (lastRefreshTimestampMs <= 0)
+                return null;
+
+            long elapsed = now - lastRefreshTimestampMs;
+            return elapsed < 0 ? 0 : elapsed;
+        }
+
+        private int ResolveBlockedUiRefreshIntervalMs()
+            => Math.Max(50, _settings?.BlockedUiRefreshIntervalMs?.Value ?? AreaBlockedSnapshotProvider.DefaultBlockedUiRectanglesRefreshIntervalMs);
     }
 }

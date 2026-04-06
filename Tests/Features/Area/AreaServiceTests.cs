@@ -406,6 +406,24 @@ namespace ClickIt.Tests.Features.Area
             svc.PointIsInClickableArea(new Vector2(600, 450)).Should().BeTrue();
         }
 
+        [TestMethod]
+        public void ResolveRefreshAgeMs_ReturnsElapsedTime_WhenTimestampIsInThePast()
+        {
+            AreaService.ResolveRefreshAgeMs(now: 1_000, lastRefreshTimestampMs: 750).Should().Be(250);
+        }
+
+        [TestMethod]
+        public void ResolveRefreshAgeMs_ReturnsZero_WhenTimestampIsInTheFuture()
+        {
+            AreaService.ResolveRefreshAgeMs(now: 1_000, lastRefreshTimestampMs: 1_100).Should().Be(0);
+        }
+
+        [TestMethod]
+        public void ResolveRefreshAgeMs_ReturnsNull_WhenTimestampWasNeverSet()
+        {
+            AreaService.ResolveRefreshAgeMs(now: 1_000, lastRefreshTimestampMs: 0).Should().BeNull();
+        }
+
         private static void ApplySnapshot(
             AreaService svc,
             RectangleF full,

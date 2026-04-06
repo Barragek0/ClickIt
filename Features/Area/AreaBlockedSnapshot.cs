@@ -2,6 +2,8 @@ namespace ClickIt.Features.Area
 {
     internal sealed class AreaBlockedSnapshot
     {
+        internal long LastBlockedUiRectanglesRefreshTimestampMs { get; init; }
+        internal long LastBuffsAndDebuffsRectanglesRefreshTimestampMs { get; init; }
         internal RectangleF FullScreenRectangle { get; init; } = RectangleF.Empty;
         internal RectangleF HealthAndFlaskRectangle { get; init; } = RectangleF.Empty;
         internal RectangleF ManaAndSkillsRectangle { get; init; } = RectangleF.Empty;

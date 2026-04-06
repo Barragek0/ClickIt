@@ -5,6 +5,8 @@ namespace ClickIt.Features.Click
         private IInteractionExecutionRuntime InteractionExecutionRuntime => _interactionExecutionRuntime ??= new InteractionExecutionRuntime(
             new InteractionExecutionRuntimeDependencies(
                 _support.EnsureCursorInsideGameWindowForClick,
+                point => _forceRefreshPointIsInClickableArea(point, string.Empty),
+                _support.DebugLog,
                 _lockedInteractionDispatcher.PerformClick,
                 _lockedInteractionDispatcher.PerformHoldClick,
                 _performanceMonitor.RecordClickInterval));

@@ -23,6 +23,10 @@ namespace ClickIt.Core.Runtime
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.AltarCoroutine);
             _state.Runtime.AltarCoroutine.Priority = CoroutinePriority.Normal;
 
+            _state.Runtime.AreaBlockedUiRefreshCoroutine = new Coroutine(MainAreaBlockedUiRefreshCoroutine(), plugin, "ClickIt.BlockedUiRefresh", true);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.AreaBlockedUiRefreshCoroutine);
+            _state.Runtime.AreaBlockedUiRefreshCoroutine.Priority = CoroutinePriority.Normal;
+
             _state.Runtime.ClickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), plugin, "ClickIt.ClickLogic", false);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.ClickLabelCoroutine);
             _state.Runtime.ClickLabelCoroutine.Priority = CoroutinePriority.High;
@@ -41,6 +45,17 @@ namespace ClickIt.Core.Runtime
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
             {
                 yield return ScanForAltarsLogic();
+            }
+        }
+
+        private IEnumerator MainAreaBlockedUiRefreshCoroutine()
+        {
+            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            {
+                _state.Services.AreaService?.UpdateScreenAreas(_gameController, forceBlockedUiRefresh: true);
+
+                int waitMs = Math.Max(50, _settings.BlockedUiRefreshIntervalMs?.Value ?? AreaBlockedSnapshotProvider.DefaultBlockedUiRectanglesRefreshIntervalMs);
+                yield return new WaitTime(waitMs);
             }
         }
 
