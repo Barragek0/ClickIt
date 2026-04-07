@@ -2,6 +2,26 @@ namespace ClickIt.Features.Click
 {
         public sealed partial class ClickAutomationPort
         {
+                private readonly record struct OffscreenTraversalServices(
+                        OnscreenMechanicPathingBlocker PathingBlocker,
+                        OffscreenTraversalTargetResolver TraversalTargets,
+                        OffscreenStickyTargetHandler StickyTargets,
+                        OffscreenTargetResolver TargetResolver,
+                        MovementSkillCoordinator MovementSkills,
+                        ClickLabelInteractionService LabelInteraction,
+                        ClickDebugPublicationService ClickDebugPublisher);
+
+                private readonly record struct RuntimeInteractionServices(
+                        ClickTickContextFactory TickContextFactory,
+                        AltarAutomationService AltarAutomation,
+                        ClickDebugPublicationService ClickDebugPublisher,
+                        VisibleMechanicCoordinator VisibleMechanics,
+                        LabelSelectionCoordinator LabelSelection,
+                        ClickLabelInteractionService LabelInteraction,
+                        PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
+                        ChestLootSettlementTracker ChestLootSettlement,
+                        OffscreenPathingCoordinator OffscreenPathing);
+
                 private ChestLootSettlementTracker ChestLootSettlement => _chestLootSettlementTracker ??= new(CreateChestLootSettlementDependencies());
 
                 private OffscreenStickyTargetHandler OffscreenStickyTargets => _offscreenStickyTargetHandler ??= new(CreateOffscreenStickyTargetHandlerDependencies());
@@ -66,39 +86,45 @@ namespace ClickIt.Features.Click
                                 PathfindingLabelSuppression);
 
                 private OffscreenPathingCoordinatorDependencies CreateOffscreenPathingCoordinatorDependencies()
-                        => new(
+                {
+                        OffscreenTraversalServices services = ResolveOffscreenTraversalServices();
+                        return new(
                                 _settings,
                                 _gameController,
                                 _pathfindingService,
-                                OnscreenMechanicPathingBlocker,
-                                OffscreenTraversalTargets,
-                                OffscreenStickyTargets,
-                                OffscreenTargetResolver,
-                                MovementSkills,
-                                LabelInteraction,
+                                services.PathingBlocker,
+                                services.TraversalTargets,
+                                services.StickyTargets,
+                                services.TargetResolver,
+                                services.MovementSkills,
+                                services.LabelInteraction,
                                 _support.DebugLog,
                                 _support.HoldDebugTelemetryAfterSuccessfulInteraction,
-                                ClickDebugPublisher,
+                                services.ClickDebugPublisher,
                                 _pointIsInClickableArea);
+                }
 
                 private ClickRuntimeEngineDependencies CreateClickRuntimeEngineDependencies()
-                        => new(
-                                TickContextFactory,
-                                AltarAutomation,
-                                ClickDebugPublisher,
+                {
+                        RuntimeInteractionServices services = ResolveRuntimeInteractionServices();
+                        return new(
+                                services.TickContextFactory,
+                                services.AltarAutomation,
+                                services.ClickDebugPublisher,
                                 _settings,
                                 _labelInteractionPort,
-                                VisibleMechanics,
-                                LabelSelection,
-                                LabelInteraction,
+                                services.VisibleMechanics,
+                                services.LabelSelection,
+                                services.LabelInteraction,
                                 _support.ShouldCaptureClickDebug,
                                 _pathfindingService,
-                                PathfindingLabelSuppression,
-                                ChestLootSettlement,
-                                OffscreenPathing,
+                                services.PathfindingLabelSuppression,
+                                services.ChestLootSettlement,
+                                services.OffscreenPathing,
                                 _support.HoldDebugTelemetryAfterSuccessfulInteraction,
                                 _support.DebugLog,
                                 _inputHandler);
+                }
 
                 private MovementSkillCoordinatorDependencies CreateMovementSkillCoordinatorDependencies()
                         => new(
@@ -124,5 +150,27 @@ namespace ClickIt.Features.Click
                                 mechanicPriorityContextProvider: _mechanicPriorityContextProvider,
                                 groundItemsVisible: _groundItemsVisible,
                                 clickDebugPublisher: ClickDebugPublisher);
+
+                private OffscreenTraversalServices ResolveOffscreenTraversalServices()
+                        => new(
+                                PathingBlocker: OnscreenMechanicPathingBlocker,
+                                TraversalTargets: OffscreenTraversalTargets,
+                                StickyTargets: OffscreenStickyTargets,
+                                TargetResolver: OffscreenTargetResolver,
+                                MovementSkills: MovementSkills,
+                                LabelInteraction: LabelInteraction,
+                                ClickDebugPublisher: ClickDebugPublisher);
+
+                private RuntimeInteractionServices ResolveRuntimeInteractionServices()
+                        => new(
+                                TickContextFactory: TickContextFactory,
+                                AltarAutomation: AltarAutomation,
+                                ClickDebugPublisher: ClickDebugPublisher,
+                                VisibleMechanics: VisibleMechanics,
+                                LabelSelection: LabelSelection,
+                                LabelInteraction: LabelInteraction,
+                                PathfindingLabelSuppression: PathfindingLabelSuppression,
+                                ChestLootSettlement: ChestLootSettlement,
+                                OffscreenPathing: OffscreenPathing);
         }
 }

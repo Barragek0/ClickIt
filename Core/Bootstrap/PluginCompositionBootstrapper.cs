@@ -2,6 +2,13 @@ namespace ClickIt.Core.Bootstrap
 {
     internal static class PluginCompositionBootstrapper
     {
+        private readonly record struct CompositionRootParts(
+            CoreDomainServices Core,
+            RenderingDomainServices Rendering,
+            ClickAutomationPort ClickAutomationPort,
+            UltimatumRenderer UltimatumRenderer,
+            SettingsDomainServices SettingsDomain);
+
         internal static void InitializeCompositionRoot(PluginContext context, ClickIt owner, ClickItSettings settings)
         {
             ArgumentNullException.ThrowIfNull(context);
@@ -10,24 +17,9 @@ namespace ClickIt.Core.Bootstrap
 
             context.PrepareForComposition(() => owner.GameController, owner.GetEffectiveSettingsForLifecycle);
 
-            GameController gameController = owner.GameController
-                ?? throw new InvalidOperationException("GameController is null during plugin initialization.");
-            CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, gameController);
-            RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, gameController, core);
-            ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, gameController, core, rendering.AltarChoiceEvaluator);
-            UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
-            SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
-
-            ApplyPorts(context, core, rendering, clickAutomationPort, ultimatumRenderer, settingsDomain.AlertService);
-
-            SettingsDomainAssembler.WireActions(settings, settingsDomain.EffectiveSettings, settingsDomain.AlertService, context.ServiceRegistry);
-            context.ServiceRegistry.Register(() => context.Services.ErrorHandler?.UnregisterGlobalExceptionHandlers());
-            context.ServiceRegistry.Register(() => context.Services.PerformanceMonitor?.ShutdownForHotReload());
-            context.ServiceRegistry.Register(() => PluginRuntimeTimerCoordinator.StopAll(
-                context.Runtime.LastRenderTimer,
-                context.Runtime.LastTickTimer,
-                context.Runtime.Timer,
-                context.Runtime.SecondTimer));
+            CompositionRootParts parts = AssembleCompositionParts(owner, settings);
+            PublishCompositionState(context, settings, parts);
+            RegisterCompositionShutdownActions(context);
         }
 
         internal static void FinalizeCompositionRootForStartup(PluginContext context, ClickIt owner, ClickItSettings settings)
@@ -54,6 +46,46 @@ namespace ClickIt.Core.Bootstrap
 
             context.ServiceRegistry.DisposeAll();
             context.ClearPublishedCompositionState();
+        }
+
+        private static CompositionRootParts AssembleCompositionParts(ClickIt owner, ClickItSettings settings)
+        {
+            GameController gameController = owner.GameController
+                ?? throw new InvalidOperationException("GameController is null during plugin initialization.");
+            CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, gameController);
+            RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, gameController, core);
+            ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, gameController, core, rendering.AltarChoiceEvaluator);
+            UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
+            SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
+            return new CompositionRootParts(core, rendering, clickAutomationPort, ultimatumRenderer, settingsDomain);
+        }
+
+        private static void PublishCompositionState(PluginContext context, ClickItSettings settings, CompositionRootParts parts)
+        {
+            ApplyPorts(
+                context,
+                parts.Core,
+                parts.Rendering,
+                parts.ClickAutomationPort,
+                parts.UltimatumRenderer,
+                parts.SettingsDomain.AlertService);
+
+            SettingsDomainAssembler.WireActions(
+                settings,
+                parts.SettingsDomain.EffectiveSettings,
+                parts.SettingsDomain.AlertService,
+                context.ServiceRegistry);
+        }
+
+        private static void RegisterCompositionShutdownActions(PluginContext context)
+        {
+            context.ServiceRegistry.Register(() => context.Services.ErrorHandler?.UnregisterGlobalExceptionHandlers());
+            context.ServiceRegistry.Register(() => context.Services.PerformanceMonitor?.ShutdownForHotReload());
+            context.ServiceRegistry.Register(() => PluginRuntimeTimerCoordinator.StopAll(
+                context.Runtime.LastRenderTimer,
+                context.Runtime.LastTickTimer,
+                context.Runtime.Timer,
+                context.Runtime.SecondTimer));
         }
 
         private static void ApplyPorts(

@@ -47,10 +47,17 @@ namespace ClickIt.Features.Click.Selection
             if (!clicked)
                 return false;
 
-            _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, hoveredLabel);
-            _dependencies.PathfindingLabelSuppression.RecordLeverClick(hoveredLabel);
-            if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
-                _dependencies.PathfindingService.ClearLatestPath();
+            ClickCore.SuccessfulInteractionAftermathApplier.Apply(
+                new ClickCore.SuccessfulInteractionAftermath(
+                    Reason: "Successful manual cursor interaction",
+                    ShouldClearPath: _dependencies.Settings.WalkTowardOffscreenLabels.Value,
+                    PendingChestMechanicId: mechanicId,
+                    PendingChestLabel: hoveredLabel,
+                    ShouldRecordLeverClick: true),
+                static _ => { },
+                clearPath: () => _dependencies.PathfindingService.ClearLatestPath(),
+                markPendingChestOpenConfirmation: (resolvedMechanicId, label) => _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(resolvedMechanicId, label),
+                recordLeverClick: label => _dependencies.PathfindingLabelSuppression.RecordLeverClick(label));
 
             return true;
         }

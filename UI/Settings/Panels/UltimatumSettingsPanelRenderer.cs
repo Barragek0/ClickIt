@@ -3,6 +3,7 @@ namespace ClickIt.UI.Settings.Panels
     internal sealed class UltimatumSettingsPanelRenderer(ClickItSettings settings)
     {
         private readonly ClickItSettings _settings = settings;
+        private readonly record struct TakeRewardListRenderProgress(bool HasEntries, bool ShouldStopRendering);
 
         private static UltimatumModifierGroupEntry[] UltimatumModifierGroups => UltimatumModifierGroupCatalog.Groups;
         private static HashSet<string> UltimatumTieredModifierNames => UltimatumModifierGroupCatalog.TieredModifierNames;
@@ -11,44 +12,63 @@ namespace ClickIt.UI.Settings.Panels
         {
             _settings.EnsureUltimatumModifiersInitialized();
 
-            SettingsUiRenderHelpers.DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref _settings.UiState.UltimatumSearchFilter);
-            if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##UltimatumResetDefaults"))
-            {
-                _settings.ResetUltimatumModifierPriorityDefaults();
-            }
-
-            ImGui.Spacing();
+            DrawModifierPriorityControls();
 
             if (!embedded)
-            {
-                SettingsUiRenderHelpers.DrawInstructionText("Priority: top row is highest, bottom row is lowest.");
-                SettingsUiRenderHelpers.DrawWrappedText(
-                    "Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.",
-                    new Vector4(0.7f, 0.7f, 0.7f, 1f));
-                ImGui.Spacing();
-            }
+                DrawModifierPriorityInstructions();
 
+            DrawModifierPriorityTable();
+        }
+
+        private void DrawModifierPriorityControls()
+        {
+
+            SettingsUiRenderHelpers.DrawSearchBar("##UltimatumSearch", "Clear##UltimatumSearchClear", ref _settings.UiState.UltimatumSearchFilter);
+            if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##UltimatumResetDefaults"))
+                _settings.ResetUltimatumModifierPriorityDefaults();
+
+            ImGui.Spacing();
+        }
+
+        private static void DrawModifierPriorityInstructions()
+        {
+            SettingsUiRenderHelpers.DrawInstructionText("Priority: top row is highest, bottom row is lowest.");
+            SettingsUiRenderHelpers.DrawWrappedText(
+                "Example: if this table has Resistant Monsters above Reduced Recovery above Ruin, and those three are offered, Resistant Monsters is selected.",
+                new Vector4(0.7f, 0.7f, 0.7f, 1f));
+            ImGui.Spacing();
+        }
+
+        private void DrawModifierPriorityTable()
+        {
             float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
             if (!SettingsUiRenderHelpers.BeginSingleColumnPriorityTable("UltimatumModifierPriorityTable", "Modifiers", tableWidth))
                 return;
 
             try
             {
-                for (int i = 0; i < _settings.UltimatumModifierPriority.Count; i++)
-                {
-                    string modifier = _settings.UltimatumModifierPriority[i];
-                    if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.UltimatumSearchFilter, modifier))
-                        continue;
-
-                    if (DrawModifierPriorityRow(i, modifier))
-                        continue;
-                }
+                DrawModifierPriorityRows();
             }
             finally
             {
                 ImGui.EndTable();
             }
         }
+
+        private void DrawModifierPriorityRows()
+        {
+            for (int i = 0; i < _settings.UltimatumModifierPriority.Count; i++)
+            {
+                string modifier = _settings.UltimatumModifierPriority[i];
+                if (!ShouldRenderModifierPriorityRow(modifier))
+                    continue;
+
+                DrawModifierPriorityRow(i, modifier);
+            }
+        }
+
+        private bool ShouldRenderModifierPriorityRow(string modifier)
+            => SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.UltimatumSearchFilter, modifier);
 
         private bool DrawModifierPriorityRow(int index, string modifier)
         {
@@ -148,42 +168,70 @@ namespace ClickIt.UI.Settings.Panels
         {
             ImGui.PushID(id);
 
+            string filter = _settings.UiState.UltimatumTakeRewardSearchFilter;
+            TakeRewardListRenderProgress ungroupedProgress = DrawUngroupedTakeRewardModifierRows(id, sourceSet, filter, moveToTakeReward, textColor);
+            if (ungroupedProgress.ShouldStopRendering)
+            {
+                ImGui.PopID();
+                return;
+            }
+
+            TakeRewardListRenderProgress groupedProgress = DrawGroupedTakeRewardModifierRows(id, sourceSet, filter, moveToTakeReward, textColor);
+            if (groupedProgress.ShouldStopRendering)
+            {
+                ImGui.PopID();
+                return;
+            }
+
+            SettingsUiRenderHelpers.DrawNoEntriesPlaceholder(ungroupedProgress.HasEntries || groupedProgress.HasEntries);
+            ImGui.PopID();
+        }
+
+        private TakeRewardListRenderProgress DrawUngroupedTakeRewardModifierRows(string listId, HashSet<string> sourceSet, string filter, bool moveToTakeReward, Vector4 textColor)
+        {
             bool hasEntries = false;
             foreach (string modifier in UltimatumModifiersConstants.AllModifierNamesWithStages)
             {
-                if (UltimatumTieredModifierNames.Contains(modifier))
-                    continue;
-                if (!sourceSet.Contains(modifier))
-                    continue;
-                if (!SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.UltimatumTakeRewardSearchFilter, modifier))
+                if (!ShouldRenderUngroupedTakeRewardModifier(sourceSet, filter, modifier))
                     continue;
 
                 hasEntries = true;
-                if (TryHandleTakeRewardModifierRow(id, modifier, moveToTakeReward, textColor))
-                {
-                    ImGui.PopID();
-                    return;
-                }
+                if (TryHandleTakeRewardModifierRow(listId, modifier, moveToTakeReward, textColor))
+                    return new TakeRewardListRenderProgress(hasEntries, ShouldStopRendering: true);
             }
 
+            return new TakeRewardListRenderProgress(hasEntries, ShouldStopRendering: false);
+        }
+
+        private TakeRewardListRenderProgress DrawGroupedTakeRewardModifierRows(string listId, HashSet<string> sourceSet, string filter, bool moveToTakeReward, Vector4 textColor)
+        {
+            bool hasEntries = false;
             foreach (UltimatumModifierGroupEntry group in UltimatumModifierGroups)
             {
-                if (!ShouldRenderUltimatumModifierGroup(group, sourceSet, _settings.UiState.UltimatumTakeRewardSearchFilter))
+                if (!ShouldRenderUltimatumModifierGroup(group, sourceSet, filter))
                     continue;
 
                 hasEntries = true;
-                if (TryHandleTakeRewardModifierGroupRow(id, group, moveToTakeReward, textColor))
-                {
-                    ImGui.PopID();
-                    return;
-                }
+                if (TryHandleTakeRewardModifierGroupRow(listId, group, moveToTakeReward, textColor))
+                    return new TakeRewardListRenderProgress(hasEntries, ShouldStopRendering: true);
 
-                if (IsExpandedUltimatumTakeRewardRow(id, group.Id))
-                    DrawUltimatumModifierGroupSubmenu(id, group, moveToTakeReward);
+                DrawExpandedUltimatumModifierGroupSubmenu(listId, group, moveToTakeReward);
             }
 
-            SettingsUiRenderHelpers.DrawNoEntriesPlaceholder(hasEntries);
-            ImGui.PopID();
+            return new TakeRewardListRenderProgress(hasEntries, ShouldStopRendering: false);
+        }
+
+        private static bool ShouldRenderUngroupedTakeRewardModifier(HashSet<string> sourceSet, string filter, string modifier)
+            => !UltimatumTieredModifierNames.Contains(modifier)
+                && sourceSet.Contains(modifier)
+                && SettingsUiRenderHelpers.MatchesSearch(filter, modifier);
+
+        private void DrawExpandedUltimatumModifierGroupSubmenu(string listId, UltimatumModifierGroupEntry group, bool moveToTakeReward)
+        {
+            if (!IsExpandedUltimatumTakeRewardRow(listId, group.Id))
+                return;
+
+            DrawUltimatumModifierGroupSubmenu(listId, group, moveToTakeReward);
         }
 
         private bool TryHandleTakeRewardModifierRow(string listId, string modifier, bool moveToTakeReward, Vector4 textColor)

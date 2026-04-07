@@ -28,13 +28,10 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryGetUltimatumRoot(label, diagnostics, out Element? root) || root == null)
                 return null;
 
-            if (!TryGetTreeNode(root, diagnostics, "Label->Child(0)", 0, out Element? child0) || child0 == null)
+            if (!TryGetPrimaryTreeBranch(root, diagnostics, out Element? branch) || branch == null)
                 return null;
 
-            if (!TryGetTreeNode(child0, diagnostics, "Label->Child(0)->Child(0)", 0, out Element? child1) || child1 == null)
-                return null;
-
-            if (!TryGetTreeNode(child1, diagnostics, "Label->Child(0)->Child(0)->Child(4)", 4, out Element? beginNode) || beginNode == null)
+            if (!TryGetTreeNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(4)", 4, out Element? beginNode) || beginNode == null)
                 return null;
 
             if (!TryGetTreeNode(beginNode, diagnostics, "Label->Child(0)->Child(0)->Child(4)->Child(0)", 0, out Element? beginButton) || beginButton == null)
@@ -88,6 +85,19 @@ namespace ClickIt.Features.Click.Runtime
             return text;
         }
 
+        internal static string ResolveUltimatumModifierName(Element option, string? modifierName)
+            => !string.IsNullOrWhiteSpace(modifierName)
+                ? modifierName
+                : GetUltimatumModifierName(option);
+
+        internal static string ResolveUltimatumModifierName(Element option, int seen, IReadOnlyList<string> modifierNamesByIndex)
+        {
+            if (seen >= 0 && seen < modifierNamesByIndex.Count)
+                return ResolveUltimatumModifierName(option, modifierNamesByIndex[seen]);
+
+            return GetUltimatumModifierName(option);
+        }
+
         private static bool TryGetUltimatumOptionsFromChoicePanelObject(
             Element root,
             List<string>? diagnostics,
@@ -95,21 +105,10 @@ namespace ClickIt.Features.Click.Runtime
         {
             results = new List<(Element OptionElement, string ModifierName)>(3);
 
-            if (!TryGetChoicePanelElement(root, diagnostics, out Element? panelElement) || panelElement == null)
+            if (!TryGetVisibleChoicePanel(root, diagnostics, out UltimatumChoicePanel? choicePanel, out Element? panelElement)
+                || choicePanel == null
+                || panelElement == null)
                 return false;
-
-            UltimatumChoicePanel? choicePanel = panelElement.AsObject<UltimatumChoicePanel>();
-            if (choicePanel == null)
-            {
-                diagnostics?.Add($"ChoicePanel fail: AsObject<UltimatumChoicePanel> returned null for 0x{panelElement.Address:X}.");
-                return false;
-            }
-
-            if (!choicePanel.IsVisible)
-            {
-                diagnostics?.Add("ChoicePanel fail: panel object exists but is not visible.");
-                return false;
-            }
 
             var choiceElements = choicePanel.ChoiceElements;
             if (choiceElements == null)
@@ -120,26 +119,7 @@ namespace ClickIt.Features.Click.Runtime
 
             IReadOnlyList<string> modifierNamesByIndex = GetUltimatumChoicePanelModifierNames(choicePanel, diagnostics);
 
-            int seen = 0;
-            foreach (object? choiceObj in DynamicObjectAdapter.EnumerateObjects(choiceElements))
-            {
-                if (!TryExtractElement(choiceObj, out Element? option) || option == null)
-                {
-                    diagnostics?.Add($"ChoicePanel option[{seen}] is not an Element.");
-                    seen++;
-                    continue;
-                }
-
-                string modifierName = ResolveUltimatumChoiceModifierName(option, seen, modifierNamesByIndex);
-                if (string.IsNullOrWhiteSpace(modifierName))
-                {
-                    modifierName = $"Unknown Option {seen + 1}";
-                }
-
-                diagnostics?.Add($"ChoicePanel option[{seen}] modifier='{modifierName}', option=0x{option.Address:X}, visible={option.IsVisible}, valid={option.IsValid}");
-                results.Add((option, modifierName));
-                seen++;
-            }
+            CollectChoicePanelOptions(choiceElements, modifierNamesByIndex, diagnostics, results);
 
             return results.Count > 0;
         }
@@ -191,14 +171,23 @@ namespace ClickIt.Features.Click.Runtime
         {
             container = null;
 
-            if (!TryGetTreeNode(root, diagnostics, "Label->Child(0)", 0, out Element? child0) || child0 == null)
+            if (!TryGetPrimaryTreeBranch(root, diagnostics, out Element? branch) || branch == null)
                 return false;
-            if (!TryGetTreeNode(child0, diagnostics, "Label->Child(0)->Child(0)", 0, out Element? child1) || child1 == null)
-                return false;
-            if (!TryGetTreeNode(child1, diagnostics, "Label->Child(0)->Child(0)->Child(2)", 2, out Element? child2) || child2 == null)
+
+            if (!TryGetTreeNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(2)", 2, out Element? child2) || child2 == null)
                 return false;
 
             return TryGetTreeNode(child2, diagnostics, "Label->Child(0)->Child(0)->Child(2)->Child(0)", 0, out container);
+        }
+
+        private static bool TryGetPrimaryTreeBranch(Element root, List<string>? diagnostics, out Element? branch)
+        {
+            branch = null;
+
+            if (!TryGetTreeNode(root, diagnostics, "Label->Child(0)", 0, out Element? child0) || child0 == null)
+                return false;
+
+            return TryGetTreeNode(child0, diagnostics, "Label->Child(0)->Child(0)", 0, out branch);
         }
 
         private static bool TryGetChoicePanelElement(Element root, List<string>? diagnostics, out Element? panelElement)
@@ -210,6 +199,60 @@ namespace ClickIt.Features.Click.Runtime
 
             diagnostics?.Add("ChoicePanel fail: Label->Child(0)->Child(0)->Child(2) is null.");
             return false;
+        }
+
+        private static bool TryGetVisibleChoicePanel(
+            Element root,
+            List<string>? diagnostics,
+            out UltimatumChoicePanel? choicePanel,
+            out Element? panelElement)
+        {
+            choicePanel = null;
+            panelElement = null;
+
+            if (!TryGetChoicePanelElement(root, diagnostics, out panelElement) || panelElement == null)
+                return false;
+
+            choicePanel = panelElement.AsObject<UltimatumChoicePanel>();
+            if (choicePanel == null)
+            {
+                diagnostics?.Add($"ChoicePanel fail: AsObject<UltimatumChoicePanel> returned null for 0x{panelElement.Address:X}.");
+                return false;
+            }
+
+            if (!choicePanel.IsVisible)
+            {
+                diagnostics?.Add("ChoicePanel fail: panel object exists but is not visible.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void CollectChoicePanelOptions(
+            object? choiceElements,
+            IReadOnlyList<string> modifierNamesByIndex,
+            List<string>? diagnostics,
+            List<(Element OptionElement, string ModifierName)> results)
+        {
+            int seen = 0;
+            foreach (object? choiceObj in DynamicObjectAdapter.EnumerateObjects(choiceElements))
+            {
+                if (!TryExtractElement(choiceObj, out Element? option) || option == null)
+                {
+                    diagnostics?.Add($"ChoicePanel option[{seen}] is not an Element.");
+                    seen++;
+                    continue;
+                }
+
+                string modifierName = ResolveUltimatumModifierName(option, seen, modifierNamesByIndex);
+                if (string.IsNullOrWhiteSpace(modifierName))
+                    modifierName = $"Unknown Option {seen + 1}";
+
+                diagnostics?.Add($"ChoicePanel option[{seen}] modifier='{modifierName}', option=0x{option.Address:X}, visible={option.IsVisible}, valid={option.IsValid}");
+                results.Add((option, modifierName));
+                seen++;
+            }
         }
 
         private static bool TryGetTreeNode(Element parent, List<string>? diagnostics, string path, int index, out Element? child)
@@ -228,21 +271,8 @@ namespace ClickIt.Features.Click.Runtime
             return ExtractUltimatumModifierNames(modifiersObj, diagnostics, "ChoicePanel: Modifiers missing.");
         }
 
-        private static string ResolveUltimatumChoiceModifierName(Element option, int seen, IReadOnlyList<string> modifierNamesByIndex)
-        {
-            if (seen >= 0 && seen < modifierNamesByIndex.Count)
-            {
-                string modifierFromPanel = modifierNamesByIndex[seen];
-                if (!string.IsNullOrWhiteSpace(modifierFromPanel))
-                    return modifierFromPanel;
-            }
-
-            return GetUltimatumModifierName(option);
-        }
-
         private static bool TryGetModifierNameFromChildren(Element option, out string text)
         {
-            // Ultimatum option text can sit in child labels before tooltip hydration.
             for (int i = 0; i < 8; i++)
             {
                 Element? child = option.GetChildAtIndex(i);

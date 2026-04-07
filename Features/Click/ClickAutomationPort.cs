@@ -113,8 +113,7 @@ namespace ClickIt.Features.Click
 
         internal void CancelOffscreenPathingState()
         {
-            OffscreenPathing.ClearStickyOffscreenTarget();
-            _pathfindingService.ClearLatestPath();
+            OffscreenPathing.CancelTraversalState();
         }
 
         internal void CancelPostChestLootSettlementState()

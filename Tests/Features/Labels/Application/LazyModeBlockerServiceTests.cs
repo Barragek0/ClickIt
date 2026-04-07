@@ -127,7 +127,7 @@ namespace ClickIt.Tests.Features.Labels.Application
 
             SeedNearbyMonsterCache(service, settings, now, cachedResult: true, cachedReason: "Rare 1/1 within 60");
 
-            (bool blocked, string? reason) = InvokeTryGetNearbyMonsterBlockReason(service);
+            (bool blocked, string? reason) = InvokeResolveNearbyMonsterRestriction(service);
 
             blocked.Should().BeTrue();
             reason.Should().Be("Rare 1/1 within 60");
@@ -140,7 +140,7 @@ namespace ClickIt.Tests.Features.Labels.Application
             long now = 3_000;
             var service = new LazyModeBlockerService(settings, null, _ => { }, () => now);
 
-            (bool blocked, string? reason) = InvokeTryGetNearbyMonsterBlockReason(service);
+            (bool blocked, string? reason) = InvokeResolveNearbyMonsterRestriction(service);
 
             blocked.Should().BeFalse();
             reason.Should().BeNull();
@@ -155,7 +155,7 @@ namespace ClickIt.Tests.Features.Labels.Application
 
             SeedNearbyMonsterCache(service, settings, now - 100, cachedResult: true, cachedReason: "Cached result should expire");
 
-            (bool blocked, string? reason) = InvokeTryGetNearbyMonsterBlockReason(service);
+            (bool blocked, string? reason) = InvokeResolveNearbyMonsterRestriction(service);
 
             blocked.Should().BeFalse();
             reason.Should().BeNull();
@@ -171,7 +171,7 @@ namespace ClickIt.Tests.Features.Labels.Application
             SeedNearbyMonsterCache(service, settings, now, cachedResult: true, cachedReason: "Signature should invalidate cache");
             settings.LazyModeUniqueMonsterBlockDistance += 5;
 
-            (bool blocked, string? reason) = InvokeTryGetNearbyMonsterBlockReason(service);
+            (bool blocked, string? reason) = InvokeResolveNearbyMonsterRestriction(service);
 
             blocked.Should().BeFalse();
             reason.Should().BeNull();
@@ -320,20 +320,20 @@ namespace ClickIt.Tests.Features.Labels.Application
                 settings.LazyModeUniqueMonsterBlockCount,
                 settings.LazyModeUniqueMonsterBlockDistance);
 
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionTimestampMs", now - 10);
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionSettingsSignature", settingsSignature);
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionResult", cachedResult);
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionReason", cachedReason);
+            RuntimeMemberAccessor.SetRequiredMember(
+                service,
+                "_cachedNearbyMonsterRestrictionCacheState",
+                new NearbyMonsterRestrictionCacheState(
+                    now - 10,
+                    settingsSignature,
+                    new LazyModeRestrictionResult(cachedResult, cachedReason)));
         }
 
-        private static (bool Blocked, string? Reason) InvokeTryGetNearbyMonsterBlockReason(LazyModeBlockerService service)
+        private static (bool Blocked, string? Reason) InvokeResolveNearbyMonsterRestriction(LazyModeBlockerService service)
         {
-            MethodInfo method = typeof(LazyModeBlockerService).GetMethod("TryGetNearbyMonsterBlockReason", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            object?[] arguments = [null];
-
-            bool blocked = (bool)method.Invoke(service, arguments)!;
-
-            return (blocked, (string?)arguments[0]);
+            MethodInfo method = typeof(LazyModeBlockerService).GetMethod("ResolveNearbyMonsterRestriction", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            LazyModeRestrictionResult restriction = (LazyModeRestrictionResult)method.Invoke(service, null)!;
+            return (restriction.Blocked, restriction.Reason);
         }
 
     }

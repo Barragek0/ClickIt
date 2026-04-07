@@ -22,9 +22,7 @@ namespace ClickIt.Features.Click.Runtime
                     continue;
                 }
 
-                string modifierName = options[i].ModifierName;
-                if (string.IsNullOrWhiteSpace(modifierName))
-                    modifierName = UltimatumUiTreeResolver.GetUltimatumModifierName(optionElement);
+                string modifierName = UltimatumUiTreeResolver.ResolveUltimatumModifierName(optionElement, options[i].ModifierName);
 
                 int priorityIndex = UltimatumModifierPriorityMatcher.GetModifierPriorityIndex(modifierName, priorities);
 

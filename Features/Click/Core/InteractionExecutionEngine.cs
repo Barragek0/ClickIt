@@ -219,19 +219,19 @@ namespace ClickIt.Features.Click.Core
                 string mechanicDisplay = string.IsNullOrWhiteSpace(candidates.NextLabelMechanicId)
                     ? "visible-label-click"
                     : candidates.NextLabelMechanicId;
-                _dependencies.HoldDebugTelemetryAfterSuccess($"Successful automated click: {mechanicDisplay}");
-
-                if (_dependencies.OffscreenPathing.IsStickyTarget(nextLabel.ItemOnGround))
-                {
-                    _dependencies.OffscreenPathing.ClearStickyOffscreenTarget();
-                }
-
-                _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(candidates.NextLabelMechanicId, nextLabel);
-                _dependencies.PathfindingLabelSuppression.RecordLeverClick(nextLabel);
-                if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
-                {
-                    _dependencies.PathfindingService.ClearLatestPath();
-                }
+                SuccessfulInteractionAftermathApplier.Apply(
+                    new SuccessfulInteractionAftermath(
+                        Reason: $"Successful automated click: {mechanicDisplay}",
+                        ShouldClearStickyTarget: _dependencies.OffscreenPathing.IsStickyTarget(nextLabel.ItemOnGround),
+                        ShouldClearPath: _dependencies.Settings.WalkTowardOffscreenLabels.Value,
+                        PendingChestMechanicId: candidates.NextLabelMechanicId,
+                        PendingChestLabel: nextLabel,
+                        ShouldRecordLeverClick: true),
+                    _dependencies.HoldDebugTelemetryAfterSuccess,
+                        clearStickyTarget: () => _dependencies.OffscreenPathing.ClearStickyOffscreenTarget(),
+                        clearPath: () => _dependencies.PathfindingService.ClearLatestPath(),
+                        markPendingChestOpenConfirmation: (mechanicId, label) => _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, label),
+                        recordLeverClick: label => _dependencies.PathfindingLabelSuppression.RecordLeverClick(label));
             }
 
             return new ExecutionResult(true);

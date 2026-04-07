@@ -98,37 +98,14 @@ namespace ClickIt.Features.Click.Runtime
         {
             candidate = default;
 
-            if (!UltimatumUiTreeResolver.TryExtractElement(choiceObj, out Element? choiceEl) || choiceEl == null)
-            {
-                if (logFailures)
-                    debugLog($"[TryClickUltimatumPanelChoice] Choice[{seen}] is not an Element.");
+            if (!TryGetUsableChoiceElement(choiceObj, seen, logFailures, debugLog, out Element? choiceEl, out RectangleF choiceRect)
+                || choiceEl == null)
                 return false;
-            }
 
-            if (!choiceEl.IsValid)
-            {
-                if (logFailures)
-                    debugLog($"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - valid={choiceEl.IsValid}");
-                return false;
-            }
-
-            RectangleF choiceRect = choiceEl.GetClientRect();
-            if (choiceRect.Width <= 0 || choiceRect.Height <= 0)
-            {
-                if (logFailures)
-                    debugLog($"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - empty rect {choiceRect}.");
-                return false;
-            }
-
-            string modifierName = ResolveModifierName(choiceEl, seen, modifierNamesByIndex);
+            string modifierName = UltimatumUiTreeResolver.ResolveUltimatumModifierName(choiceEl, seen, modifierNamesByIndex);
             int priorityIndex = UltimatumModifierPriorityMatcher.GetModifierPriorityIndex(modifierName, priorities);
 
-            bool saturatedForSelection = false;
-            if (isGruelingGauntletActive)
-            {
-                bool hasSaturationState = UltimatumGruelingGauntletPolicy.TryReadChoiceSaturation(choiceEl, out bool isSaturated);
-                saturatedForSelection = UltimatumGruelingGauntletPolicy.ShouldTreatChoiceAsSaturated(hasSaturationState, isSaturated, choiceEl.IsVisible);
-            }
+            bool saturatedForSelection = ResolveSaturationState(choiceEl, isGruelingGauntletActive);
 
             if (logFailures)
             {
@@ -146,16 +123,48 @@ namespace ClickIt.Features.Click.Runtime
             return true;
         }
 
-        private static string ResolveModifierName(Element choiceEl, int seen, IReadOnlyList<string> modifierNamesByIndex)
+        private static bool TryGetUsableChoiceElement(
+            object? choiceObj,
+            int seen,
+            bool logFailures,
+            Action<string> debugLog,
+            out Element? choiceEl,
+            out RectangleF choiceRect)
         {
-            if (seen < modifierNamesByIndex.Count)
+            choiceRect = default;
+
+            if (!UltimatumUiTreeResolver.TryExtractElement(choiceObj, out choiceEl) || choiceEl == null)
             {
-                string modifierFromPanel = modifierNamesByIndex[seen];
-                if (!string.IsNullOrWhiteSpace(modifierFromPanel))
-                    return modifierFromPanel;
+                if (logFailures)
+                    debugLog($"[TryClickUltimatumPanelChoice] Choice[{seen}] is not an Element.");
+                return false;
             }
 
-            return UltimatumUiTreeResolver.GetUltimatumModifierName(choiceEl);
+            if (!choiceEl.IsValid)
+            {
+                if (logFailures)
+                    debugLog($"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - valid={choiceEl.IsValid}");
+                return false;
+            }
+
+            choiceRect = choiceEl.GetClientRect();
+            if (choiceRect.Width <= 0 || choiceRect.Height <= 0)
+            {
+                if (logFailures)
+                    debugLog($"[TryClickUltimatumPanelChoice] Choice[{seen}] ignored - empty rect {choiceRect}.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ResolveSaturationState(Element choiceEl, bool isGruelingGauntletActive)
+        {
+            if (!isGruelingGauntletActive)
+                return false;
+
+            bool hasSaturationState = UltimatumGruelingGauntletPolicy.TryReadChoiceSaturation(choiceEl, out bool isSaturated);
+            return UltimatumGruelingGauntletPolicy.ShouldTreatChoiceAsSaturated(hasSaturationState, isSaturated, choiceEl.IsVisible);
         }
     }
 }

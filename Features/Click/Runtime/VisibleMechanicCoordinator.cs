@@ -19,9 +19,21 @@ namespace ClickIt.Features.Click.Runtime
     {
         Entity? ResolveNextShrineCandidate();
         bool HasClickableShrine();
+
+        VisibleMechanicSelectionSnapshot GetVisibleMechanicSelectionSnapshotForLabels(IReadOnlyList<LabelOnGround>? labelsOverride)
+        {
+            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers, labelsOverride);
+            return new VisibleMechanicSelectionSnapshot(lostShipment, settlers);
+        }
+
         VisibleMechanicSelectionSnapshot GetVisibleMechanicSelectionSnapshot()
         {
-            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
+            return GetVisibleMechanicSelectionSnapshotForLabels(labelsOverride: null);
+        }
+
+        VisibleMechanicSelectionSnapshot GetHiddenFallbackSelectionSnapshot()
+        {
+            ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
             return new VisibleMechanicSelectionSnapshot(lostShipment, settlers);
         }
 
@@ -71,6 +83,8 @@ namespace ClickIt.Features.Click.Runtime
         private const int HiddenFallbackCandidateCacheWindowMs = 150;
         private const int VisibleMechanicCandidateCacheWindowMs = 80;
 
+        private readonly record struct SettlersClickPlan(Entity? Entity, bool UseHoldClick, bool CaptureClickDebug);
+
         private readonly VisibleMechanicCacheState cacheState = new();
         private readonly VisibleMechanicCoordinatorDependencies _dependencies = dependencies;
 
@@ -101,52 +115,42 @@ namespace ClickIt.Features.Click.Runtime
             out SettlersOreCandidate? settlersOreCandidate,
             IReadOnlyList<LabelOnGround>? labelsOverride = null)
         {
-            int labelCount = GetVisibleMechanicLabelCount(labelsOverride);
-            long now = Environment.TickCount64;
-
-            if (TryResolveCachedCandidates(now, labelCount, useHiddenFallbackCache: false, out lostShipmentCandidate, out settlersOreCandidate))
-            {
-                return;
-            }
-
-            ResolveFreshCandidates(now, labelCount, labelsOverride, useHiddenFallbackCache: false, out lostShipmentCandidate, out settlersOreCandidate);
+            WriteSelectionSnapshot(
+                ResolveSelectionSnapshot(labelsOverride, useHiddenFallbackCache: false),
+                out lostShipmentCandidate,
+                out settlersOreCandidate);
         }
 
         public void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate)
         {
-            int labelCount = GetVisibleMechanicLabelCount(labelsOverride: null);
-            long now = Environment.TickCount64;
-
-            if (TryResolveCachedCandidates(now, labelCount, useHiddenFallbackCache: true, out lostShipmentCandidate, out settlersOreCandidate))
-            {
-                return;
-            }
-
-            ResolveFreshCandidates(now, labelCount, labelsOverride: null, useHiddenFallbackCache: true, out lostShipmentCandidate, out settlersOreCandidate);
+            WriteSelectionSnapshot(
+                ResolveSelectionSnapshot(labelsOverride: null, useHiddenFallbackCache: true),
+                out lostShipmentCandidate,
+                out settlersOreCandidate);
         }
 
         public bool TryClickShrineInteraction(Entity shrine)
         {
             var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
             Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-            return TryExecuteMechanicClick(shrineClickPos, () => HandleSuccessfulShrineClick(shrine));
+            return TryClickDirectMechanic(shrineClickPos, onSuccess: () => TryHandleSuccessfulMechanicAftermath(shrine, invalidateShrineCache: true));
         }
 
         public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate)
         {
             _dependencies.DebugLog("[ProcessRegularClick] Clicking Lost Shipment candidate via ItemOnGround position.");
-            return TryExecuteMechanicClick(candidate.ClickPosition, () => HandleSuccessfulMechanicEntityClick(candidate.Entity));
+            return TryClickDirectMechanic(candidate.ClickPosition, onSuccess: () => TryHandleSuccessfulMechanicAftermath(candidate.Entity, invalidateShrineCache: false));
         }
 
         public bool TryClickSettlersOre(SettlersOreCandidate candidate)
         {
-            if (!TryPrepareSettlersClick(candidate, out Entity? entity, out bool captureClickDebug))
+            if (!TryBuildSettlersClickPlan(candidate, out SettlersClickPlan plan))
                 return false;
 
-            if (!TryExecuteSettlersClick(candidate, captureClickDebug))
+            if (!TryExecuteSettlersClick(candidate, plan))
                 return false;
 
-            HandleSuccessfulMechanicEntityClick(entity);
+            TryHandleSuccessfulMechanicAftermath(plan.Entity, invalidateShrineCache: false);
 
             return true;
         }
@@ -165,41 +169,45 @@ namespace ClickIt.Features.Click.Runtime
                 notes: notes);
         }
 
-        private bool TryPrepareSettlersClick(
+        private bool TryBuildSettlersClickPlan(
             SettlersOreCandidate candidate,
-            out Entity? entity,
-            out bool captureClickDebug)
+            out SettlersClickPlan plan)
         {
-            entity = candidate.Entity;
-            captureClickDebug = false;
+            Entity? entity = candidate.Entity;
+            plan = default;
 
             if (!IsSettlersCandidateTargetable(candidate, entity))
                 return false;
 
             _dependencies.DebugLog($"[ProcessRegularClick] Clicking settlers ore candidate ({candidate.MechanicId}) via entity position.");
-            captureClickDebug = _dependencies.ClickDebugPublisher.ShouldCaptureClickDebug();
+            bool captureClickDebug = _dependencies.ClickDebugPublisher.ShouldCaptureClickDebug();
             if (captureClickDebug)
                 PublishSettlersCandidateDebug("ClickAttempt", candidate, "Attempting settlers click");
+
+            plan = new SettlersClickPlan(
+                Entity: entity,
+                UseHoldClick: SettlersMechanicPolicy.RequiresHoldClick(candidate.MechanicId),
+                CaptureClickDebug: captureClickDebug);
 
             return true;
         }
 
-        private bool TryExecuteSettlersClick(SettlersOreCandidate candidate, bool captureClickDebug)
+        private bool TryExecuteSettlersClick(SettlersOreCandidate candidate, SettlersClickPlan plan)
         {
             bool clicked = _dependencies.LabelInteraction.PerformMechanicInteraction(
                 candidate.ClickPosition,
-                SettlersMechanicPolicy.RequiresHoldClick(candidate.MechanicId));
+                plan.UseHoldClick);
 
             if (!clicked)
                 return false;
 
-            if (captureClickDebug)
+            if (plan.CaptureClickDebug)
                 PublishSettlersCandidateDebug("ClickSuccess", candidate, "Settlers click completed");
 
             return true;
         }
 
-        private bool TryExecuteMechanicClick(Vector2 clickPosition, Action onSuccess)
+        private bool TryClickDirectMechanic(Vector2 clickPosition, Action onSuccess)
         {
             if (!_dependencies.LabelInteraction.PerformMechanicClick(clickPosition))
                 return false;
@@ -221,6 +229,45 @@ namespace ClickIt.Features.Click.Runtime
             => labelsOverride?.Count
                 ?? _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.Count
                 ?? 0;
+
+        private VisibleMechanicSelectionSnapshot ResolveSelectionSnapshot(
+            IReadOnlyList<LabelOnGround>? labelsOverride,
+            bool useHiddenFallbackCache)
+        {
+            int labelCount = GetVisibleMechanicLabelCount(labelsOverride);
+            long now = Environment.TickCount64;
+
+            if (TryResolveCachedCandidates(now, labelCount, useHiddenFallbackCache, out LostShipmentCandidate? cachedLostShipment, out SettlersOreCandidate? cachedSettlers))
+                return new VisibleMechanicSelectionSnapshot(cachedLostShipment, cachedSettlers);
+
+            return ResolveFreshSelectionSnapshot(now, labelCount, labelsOverride, useHiddenFallbackCache);
+        }
+
+        private VisibleMechanicSelectionSnapshot ResolveFreshSelectionSnapshot(
+            long now,
+            int labelCount,
+            IReadOnlyList<LabelOnGround>? labelsOverride,
+            bool useHiddenFallbackCache)
+        {
+            LostShipmentCandidate? lostShipmentCandidate = ResolveLostShipmentCandidate(useHiddenFallbackCache, labelsOverride);
+            SettlersOreCandidate? settlersOreCandidate = _dependencies.SettlersOreTargets.ResolveNextSettlersOreCandidate();
+
+            if (useHiddenFallbackCache)
+                cacheState.StoreHiddenFallbackCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
+            else
+                cacheState.StoreVisibleCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
+
+            return new VisibleMechanicSelectionSnapshot(lostShipmentCandidate, settlersOreCandidate);
+        }
+
+        private static void WriteSelectionSnapshot(
+            VisibleMechanicSelectionSnapshot snapshot,
+            out LostShipmentCandidate? lostShipmentCandidate,
+            out SettlersOreCandidate? settlersOreCandidate)
+        {
+            lostShipmentCandidate = snapshot.LostShipment;
+            settlersOreCandidate = snapshot.Settlers;
+        }
 
         private bool TryResolveCachedCandidates(
             long now,
@@ -249,26 +296,6 @@ namespace ClickIt.Features.Click.Runtime
                 out settlersOreCandidate);
         }
 
-        private void ResolveFreshCandidates(
-            long now,
-            int labelCount,
-            IReadOnlyList<LabelOnGround>? labelsOverride,
-            bool useHiddenFallbackCache,
-            out LostShipmentCandidate? lostShipmentCandidate,
-            out SettlersOreCandidate? settlersOreCandidate)
-        {
-            lostShipmentCandidate = ResolveLostShipmentCandidate(useHiddenFallbackCache, labelsOverride);
-            settlersOreCandidate = _dependencies.SettlersOreTargets.ResolveNextSettlersOreCandidate();
-
-            if (useHiddenFallbackCache)
-            {
-                cacheState.StoreHiddenFallbackCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
-                return;
-            }
-
-            cacheState.StoreVisibleCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
-        }
-
         private LostShipmentCandidate? ResolveLostShipmentCandidate(bool useHiddenFallbackCache, IReadOnlyList<LabelOnGround>? labelsOverride)
             => useHiddenFallbackCache
                 ? _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate()
@@ -283,21 +310,41 @@ namespace ClickIt.Features.Click.Runtime
          */
         public void HandleSuccessfulMechanicEntityClick(Entity? entity)
         {
-            if (entity == null)
-                return;
-
-            HandleSuccessfulMechanicEntityClick(entity.Path, _dependencies.StickyTargets.IsStickyTarget(entity));
+            TryHandleSuccessfulMechanicAftermath(entity, invalidateShrineCache: false);
         }
 
         internal void HandleSuccessfulMechanicEntityClick(string? entityPath, bool isStickyTarget)
         {
-            ApplySuccessfulMechanicAftermath(BuildSuccessfulMechanicClickReason(entityPath), isStickyTarget);
+            HandleSuccessfulMechanicAftermath(entityPath, isStickyTarget, invalidateShrineCache: false);
         }
 
         public void HandleSuccessfulShrineClick(Entity? shrine)
         {
-            HandleSuccessfulMechanicEntityClick(shrine);
-            _dependencies.ShrineService.InvalidateCache();
+            TryHandleSuccessfulMechanicAftermath(shrine, invalidateShrineCache: true);
+        }
+
+        private bool TryHandleSuccessfulMechanicAftermath(Entity? entity, bool invalidateShrineCache)
+        {
+            if (entity == null)
+                return false;
+
+            HandleSuccessfulMechanicAftermath(
+                entity.Path,
+                _dependencies.StickyTargets.IsStickyTarget(entity),
+                invalidateShrineCache);
+            return true;
+        }
+
+        private void HandleSuccessfulMechanicAftermath(
+            string? entityPath,
+            bool isStickyTarget,
+            bool invalidateShrineCache)
+        {
+            ApplySuccessfulMechanicAftermath(new ClickCore.SuccessfulInteractionAftermath(
+                Reason: BuildSuccessfulMechanicClickReason(entityPath),
+                ShouldClearStickyTarget: isStickyTarget,
+                ShouldClearPath: _dependencies.Settings.WalkTowardOffscreenLabels.Value,
+                ShouldInvalidateShrineCache: invalidateShrineCache));
         }
 
         private static string BuildSuccessfulMechanicClickReason(string? entityPath)
@@ -308,16 +355,13 @@ namespace ClickIt.Features.Click.Runtime
                 : $"Successful mechanic click: {resolvedEntityPath}";
         }
 
-        private void ApplySuccessfulMechanicAftermath(string reason, bool isStickyTarget)
-        {
-            _dependencies.HoldDebugTelemetryAfterSuccess(reason);
-
-            if (isStickyTarget)
-                _dependencies.StickyTargets.ClearStickyOffscreenTarget();
-
-            if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
-                _dependencies.PathfindingService.ClearLatestPath();
-        }
+        private void ApplySuccessfulMechanicAftermath(ClickCore.SuccessfulInteractionAftermath aftermath)
+            => ClickCore.SuccessfulInteractionAftermathApplier.Apply(
+                aftermath,
+                _dependencies.HoldDebugTelemetryAfterSuccess,
+                clearStickyTarget: () => _dependencies.StickyTargets.ClearStickyOffscreenTarget(),
+                clearPath: () => _dependencies.PathfindingService.ClearLatestPath(),
+                invalidateShrineCache: () => _dependencies.ShrineService.InvalidateCache());
 
         private bool IsLostShipmentCandidateUsable(LostShipmentCandidate? candidate)
         {

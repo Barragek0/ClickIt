@@ -17,21 +17,7 @@ namespace ClickIt
         {
             _services = new PluginServices();
             _rendering = new PluginRenderingState();
-            _debugTelemetry = new PluginDebugTelemetryService(
-                () => _services.ClickAutomationPort,
-                () => _services.ClickAutomationSupport,
-                () => _services.LabelDebugService,
-                () => _services.LazyModeBlockerService,
-                () => _services.InventoryProbeService,
-                () => _services.PathfindingService,
-                () => _services.AltarService,
-                () => _services.WeightCalculator,
-                () => _rendering,
-                () => _getGameController(),
-                () => _services.InputHandler,
-                () => _getSettings(),
-                () => _services.CachedLabels,
-                () => _services.ErrorHandler);
+            _debugTelemetry = CreateDebugTelemetryService();
         }
 
         internal PluginServiceRegistry ServiceRegistry => _serviceRegistry;
@@ -60,21 +46,56 @@ namespace ClickIt
 
         internal void PrepareForComposition(Func<GameController?> gameControllerProvider, Func<ClickItSettings?> settingsProvider)
         {
-            _serviceRegistry.Reset();
-            _runtime.IsShuttingDown = false;
-            _debugTelemetry.Clear();
+            ResetWarmCompositionState();
             SetGameControllerProvider(gameControllerProvider);
             SetSettingsProvider(settingsProvider);
         }
 
         internal void ClearPublishedCompositionState()
         {
+            ClearPublishedRuntimeState();
+            ClearCompositionProviders();
+            ClearPublishedServiceState();
+        }
+
+        private void ResetWarmCompositionState()
+        {
+            _serviceRegistry.Reset();
+            _runtime.IsShuttingDown = false;
             _debugTelemetry.Clear();
+        }
+
+        private void ClearPublishedRuntimeState()
+            => _debugTelemetry.Clear();
+
+        private void ClearCompositionProviders()
+        {
             SetGameControllerProvider(null);
             SetSettingsProvider(null);
+        }
+
+        private void ClearPublishedServiceState()
+        {
             _services.Clear();
             _rendering.Clear();
         }
+
+        private PluginDebugTelemetryService CreateDebugTelemetryService()
+            => new(
+                () => _services.ClickAutomationPort,
+                () => _services.ClickAutomationSupport,
+                () => _services.LabelDebugService,
+                () => _services.LazyModeBlockerService,
+                () => _services.InventoryProbeService,
+                () => _services.PathfindingService,
+                () => _services.AltarService,
+                () => _services.WeightCalculator,
+                () => _rendering,
+                () => _getGameController(),
+                () => _services.InputHandler,
+                () => _getSettings(),
+                () => _services.CachedLabels,
+                () => _services.ErrorHandler);
 
         internal void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
             => PluginCompositionBootstrapper.InitializeCompositionRoot(this, owner, settings);

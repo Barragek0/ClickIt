@@ -15,6 +15,16 @@ namespace ClickIt.Features.Click.Selection
         bool CursorNearGroundProjection,
         float GroundProjectionScore);
 
+    internal readonly record struct ManualCursorCandidateHoverState(
+        bool CursorInsideLabelRect,
+        float LabelRectScore,
+        bool CursorNearGroundProjection,
+        float GroundProjectionScore)
+    {
+        internal bool IsHovered
+            => ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(CursorInsideLabelRect, CursorNearGroundProjection);
+    }
+
     internal sealed class ManualCursorLabelSelector(ManualCursorLabelSelectorDependencies dependencies)
     {
         private readonly ManualCursorLabelSelectorDependencies _dependencies = dependencies;
@@ -107,28 +117,51 @@ namespace ClickIt.Features.Click.Selection
             out ManualCursorEvaluatedCandidate evaluatedCandidate)
         {
             evaluatedCandidate = default;
-            if (candidate == null || IsCandidateSuppressed(candidate, allLabels))
+            if (!TryResolveCandidateMechanicId(candidate, allLabels, out string? mechanicId))
                 return false;
 
-            string? mechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(candidate);
-            if (string.IsNullOrWhiteSpace(mechanicId))
-                return false;
-
-            Entity? candidateEntity = candidate.ItemOnGround;
-            bool cursorInsideLabelRect = TryResolveCursorInsideLabelRect(candidate, cursorAbsolute, windowTopLeft, out float labelRectScore);
-            bool cursorNearGroundProjection = TryResolveCursorNearGroundProjection(candidateEntity, cursorAbsolute, windowTopLeft, out float groundProjectionScore);
-            if (!ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect, cursorNearGroundProjection))
+            Entity? candidateEntity = candidate!.ItemOnGround;
+            ManualCursorCandidateHoverState hoverState = ResolveCandidateHoverState(candidate, candidateEntity, cursorAbsolute, windowTopLeft);
+            if (!hoverState.IsHovered)
                 return false;
 
             evaluatedCandidate = new ManualCursorEvaluatedCandidate(
                 candidate,
                 mechanicId,
                 IsSuppressed: false,
+                hoverState.CursorInsideLabelRect,
+                hoverState.LabelRectScore,
+                hoverState.CursorNearGroundProjection,
+                hoverState.GroundProjectionScore);
+            return true;
+        }
+
+        private bool TryResolveCandidateMechanicId(
+            LabelOnGround? candidate,
+            IReadOnlyList<LabelOnGround> allLabels,
+            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? mechanicId)
+        {
+            mechanicId = null;
+            if (candidate == null || IsCandidateSuppressed(candidate, allLabels))
+                return false;
+
+            mechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(candidate);
+            return !string.IsNullOrWhiteSpace(mechanicId);
+        }
+
+        private ManualCursorCandidateHoverState ResolveCandidateHoverState(
+            LabelOnGround candidate,
+            Entity? candidateEntity,
+            Vector2 cursorAbsolute,
+            Vector2 windowTopLeft)
+        {
+            bool cursorInsideLabelRect = TryResolveCursorInsideLabelRect(candidate, cursorAbsolute, windowTopLeft, out float labelRectScore);
+            bool cursorNearGroundProjection = TryResolveCursorNearGroundProjection(candidateEntity, cursorAbsolute, windowTopLeft, out float groundProjectionScore);
+            return new ManualCursorCandidateHoverState(
                 cursorInsideLabelRect,
                 labelRectScore,
                 cursorNearGroundProjection,
                 groundProjectionScore);
-            return true;
         }
 
         private bool IsCandidateSuppressed(LabelOnGround candidate, IReadOnlyList<LabelOnGround> allLabels)

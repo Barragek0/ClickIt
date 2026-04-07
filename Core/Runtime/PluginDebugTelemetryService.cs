@@ -1,5 +1,21 @@
 namespace ClickIt.Core.Runtime
 {
+    internal readonly record struct PluginDebugTelemetryProjectionSources(
+        Func<ClickAutomationPort?> GetClickAutomationPort,
+        Func<ClickAutomationSupport?> GetClickAutomationSupport,
+        Func<LabelDebugService?> GetLabelDebugService,
+        Func<LazyModeBlockerService?> GetLazyModeBlockerService,
+        Func<InventoryProbeService?> GetInventoryProbeService,
+        Func<PathfindingService?> GetPathfindingService,
+        Func<AltarService?> GetAltarService,
+        Func<WeightCalculator?> GetWeightCalculator,
+        Func<PluginRenderingState?> GetRenderingState,
+        Func<GameController?> GetGameController,
+        Func<InputHandler?> GetInputHandler,
+        Func<ClickItSettings?> GetSettings,
+        Func<TimeCache<List<LabelOnGround>>?> GetCachedLabels,
+        Func<ErrorHandler?> GetErrorHandler);
+
     internal sealed class PluginDebugTelemetryService(
         Func<ClickAutomationPort?> getClickAutomationPort,
         Func<ClickAutomationSupport?> getClickAutomationSupport,
@@ -16,20 +32,21 @@ namespace ClickIt.Core.Runtime
         Func<TimeCache<List<LabelOnGround>>?> getCachedLabels,
         Func<ErrorHandler?> getErrorHandler)
     {
-        private readonly Func<ClickAutomationPort?> _getClickAutomationPort = getClickAutomationPort;
-        private readonly Func<ClickAutomationSupport?> _getClickAutomationSupport = getClickAutomationSupport;
-        private readonly Func<LabelDebugService?> _getLabelDebugService = getLabelDebugService;
-        private readonly Func<LazyModeBlockerService?> _getLazyModeBlockerService = getLazyModeBlockerService;
-        private readonly Func<InventoryProbeService?> _getInventoryProbeService = getInventoryProbeService;
-        private readonly Func<PathfindingService?> _getPathfindingService = getPathfindingService;
-        private readonly Func<AltarService?> _getAltarService = getAltarService;
-        private readonly Func<WeightCalculator?> _getWeightCalculator = getWeightCalculator;
-        private readonly Func<PluginRenderingState?> _getRenderingState = getRenderingState;
-        private readonly Func<GameController?> _getGameController = getGameController;
-        private readonly Func<InputHandler?> _getInputHandler = getInputHandler;
-        private readonly Func<ClickItSettings?> _getSettings = getSettings;
-        private readonly Func<TimeCache<List<LabelOnGround>>?> _getCachedLabels = getCachedLabels;
-        private readonly Func<ErrorHandler?> _getErrorHandler = getErrorHandler;
+        private readonly PluginDebugTelemetryProjectionSources _projectionSources = new(
+            getClickAutomationPort,
+            getClickAutomationSupport,
+            getLabelDebugService,
+            getLazyModeBlockerService,
+            getInventoryProbeService,
+            getPathfindingService,
+            getAltarService,
+            getWeightCalculator,
+            getRenderingState,
+            getGameController,
+            getInputHandler,
+            getSettings,
+            getCachedLabels,
+            getErrorHandler);
         private readonly DebugTelemetryFreezeState _freezeState = new();
 
         internal DebugTelemetrySnapshot GetSnapshot()
@@ -54,19 +71,19 @@ namespace ClickIt.Core.Runtime
 
         private DebugTelemetrySnapshot BuildCurrentSnapshot()
             => DebugTelemetryProjection.Build(
-                _getClickAutomationPort(),
-                _getClickAutomationSupport(),
-                _getLabelDebugService(),
-                _getLazyModeBlockerService(),
-                _getInventoryProbeService(),
-                _getPathfindingService(),
-                _getAltarService(),
-                _getWeightCalculator(),
-                _getRenderingState(),
-                _getGameController(),
-                _getInputHandler(),
-                _getSettings(),
-                _getCachedLabels(),
-                _getErrorHandler());
+                _projectionSources.GetClickAutomationPort(),
+                _projectionSources.GetClickAutomationSupport(),
+                _projectionSources.GetLabelDebugService(),
+                _projectionSources.GetLazyModeBlockerService(),
+                _projectionSources.GetInventoryProbeService(),
+                _projectionSources.GetPathfindingService(),
+                _projectionSources.GetAltarService(),
+                _projectionSources.GetWeightCalculator(),
+                _projectionSources.GetRenderingState(),
+                _projectionSources.GetGameController(),
+                _projectionSources.GetInputHandler(),
+                _projectionSources.GetSettings(),
+                _projectionSources.GetCachedLabels(),
+                _projectionSources.GetErrorHandler());
     }
 }

@@ -52,25 +52,11 @@ namespace ClickIt.Core.Runtime
             PluginServices services = state.Services;
             services.ClickAutomationPort?.CancelPostChestLootSettlementState();
 
-            PluginManualUiHoverModeDecision manualUiHoverMode = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
+            bool shouldRunManualUiHoverCoroutine = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
                 settings,
-                clickHotkeyActive: false);
+                clickHotkeyActive: false).ShouldRunCoroutine;
 
-            if (manualUiHoverMode.ShouldRunCoroutine)
-            {
-                runtime.ClickLabelCoroutine?.Pause();
-
-                if (runtime.ManualUiHoverCoroutine?.IsDone == true)
-                {
-                    runtime.ManualUiHoverCoroutine = PluginCoroutineRegistry.FindManualUiHoverCoroutine();
-                }
-
-                runtime.ManualUiHoverCoroutine?.Resume();
-            }
-            else
-            {
-                runtime.ManualUiHoverCoroutine?.Pause();
-            }
+            UpdateManualUiHoverCoroutineForHotkeyRelease(runtime, shouldRunManualUiHoverCoroutine);
 
             if (runtime.WorkFinished)
             {
@@ -88,6 +74,24 @@ namespace ClickIt.Core.Runtime
                 runtime.AltarCoroutine?.Resume();
                 runtime.SecondTimer.Restart();
             }
+        }
+
+        private static void UpdateManualUiHoverCoroutineForHotkeyRelease(PluginRuntimeState runtime, bool shouldRunCoroutine)
+        {
+            if (!shouldRunCoroutine)
+            {
+                runtime.ManualUiHoverCoroutine?.Pause();
+                return;
+            }
+
+            runtime.ClickLabelCoroutine?.Pause();
+
+            if (runtime.ManualUiHoverCoroutine?.IsDone == true)
+            {
+                runtime.ManualUiHoverCoroutine = PluginCoroutineRegistry.FindManualUiHoverCoroutine();
+            }
+
+            runtime.ManualUiHoverCoroutine?.Resume();
         }
     }
 }

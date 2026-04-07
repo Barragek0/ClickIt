@@ -11,6 +11,7 @@ namespace ClickIt.UI.Settings.Panels
         private const string DontClickMechanicsListId = "DontClick##Mechanics";
         private const float ExpandedColumnWeight = 0.72f;
         private const float CollapsedColumnWeight = 0.28f;
+        private readonly record struct MechanicsListRenderProgress(bool HasEntries, bool ShouldStopRendering);
 
         private static readonly MechanicToggleGroupEntry[] MechanicToggleGroups =
         [
@@ -139,6 +140,31 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.PushID(listId);
 
             IReadOnlyList<MechanicToggleTableEntry> entries = _settings.GetMechanicTableEntries();
+            MechanicsListRenderProgress entryProgress = DrawStandaloneMechanicEntries(listId, entries, moveToClick, textColor);
+            if (entryProgress.ShouldStopRendering)
+            {
+                ImGui.PopID();
+                return;
+            }
+
+            MechanicsListRenderProgress groupProgress = DrawMechanicGroupRows(listId, entries, moveToClick, textColor);
+            if (groupProgress.ShouldStopRendering)
+            {
+                ImGui.PopID();
+                return;
+            }
+
+            SettingsUiRenderHelpers.DrawNoEntriesPlaceholder(entryProgress.HasEntries || groupProgress.HasEntries);
+
+            ImGui.PopID();
+        }
+
+        private MechanicsListRenderProgress DrawStandaloneMechanicEntries(
+            string listId,
+            IReadOnlyList<MechanicToggleTableEntry> entries,
+            bool moveToClick,
+            Vector4 textColor)
+        {
             bool hasEntries = false;
 
             foreach (MechanicToggleTableEntry entry in entries)
@@ -152,19 +178,30 @@ namespace ClickIt.UI.Settings.Panels
                 if (TryDrawMechanicEntryWithSubmenu(listId, entry, moveToClick, textColor, out bool shouldStopRendering))
                 {
                     if (shouldStopRendering)
-                        break;
+                        return new MechanicsListRenderProgress(hasEntries, ShouldStopRendering: true);
 
                     continue;
                 }
 
                 bool arrowClicked = SettingsUiRenderHelpers.DrawTransferListRow(listId, entry.Id, entry.DisplayName, moveToClick, textColor);
-                if (arrowClicked)
-                {
-                    entry.Node.Value = moveToClick;
-                    _settings.UiState.ExpandedMechanicsTableRowId = string.Empty;
-                    break;
-                }
+                if (!arrowClicked)
+                    continue;
+
+                entry.Node.Value = moveToClick;
+                _settings.UiState.ExpandedMechanicsTableRowId = string.Empty;
+                return new MechanicsListRenderProgress(hasEntries, ShouldStopRendering: true);
             }
+
+            return new MechanicsListRenderProgress(hasEntries, ShouldStopRendering: false);
+        }
+
+        private MechanicsListRenderProgress DrawMechanicGroupRows(
+            string listId,
+            IReadOnlyList<MechanicToggleTableEntry> entries,
+            bool moveToClick,
+            Vector4 textColor)
+        {
+            bool hasEntries = false;
 
             foreach (MechanicToggleGroupEntry group in MechanicToggleGroups)
             {
@@ -177,23 +214,17 @@ namespace ClickIt.UI.Settings.Panels
                 {
                     ClickItSettings.SetMechanicGroupState(group.Id, entries, moveToClick);
                     _settings.UiState.ExpandedMechanicsTableRowId = string.Empty;
-                    break;
+                    return new MechanicsListRenderProgress(hasEntries, ShouldStopRendering: true);
                 }
 
                 if (rowState.RowClicked)
-                {
                     ToggleExpandedMechanicTableRow(listId, group.Id);
-                }
 
                 if (IsExpandedMechanicTableRow(listId, group.Id))
-                {
                     DrawMechanicGroupSubmenu(listId, group, entries);
-                }
             }
 
-            SettingsUiRenderHelpers.DrawNoEntriesPlaceholder(hasEntries);
-
-            ImGui.PopID();
+            return new MechanicsListRenderProgress(hasEntries, ShouldStopRendering: false);
         }
 
         private bool TryDrawMechanicEntryWithSubmenu(string listId, MechanicToggleTableEntry entry, bool moveToClick, Vector4 textColor, out bool shouldStopRendering)

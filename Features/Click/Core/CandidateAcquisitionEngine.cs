@@ -6,17 +6,14 @@ namespace ClickIt.Features.Click.Core
 
         public ClickCandidates Collect(ClickTickContext context)
         {
-            LostShipmentCandidate? lostShipment;
-            SettlersOreCandidate? settlersOre;
-
             if (!context.GroundItemsVisible)
             {
-                _dependencies.VisibleMechanics.ResolveHiddenFallbackCandidates(out lostShipment, out settlersOre);
+                VisibleMechanicSelectionSnapshot hiddenFallbackSelection = _dependencies.VisibleMechanics.GetHiddenFallbackSelectionSnapshot();
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden", "Ground item labels hidden; evaluating non-label fallbacks", null);
-                return new ClickCandidates(lostShipment, settlersOre, null, null);
+                return new ClickCandidates(hiddenFallbackSelection.LostShipment, hiddenFallbackSelection.Settlers, null, null);
             }
 
-            _dependencies.VisibleMechanics.ResolveVisibleMechanicCandidates(out lostShipment, out settlersOre, context.AllLabels);
+            VisibleMechanicSelectionSnapshot visibleMechanicSelection = _dependencies.VisibleMechanics.GetVisibleMechanicSelectionSnapshotForLabels(context.AllLabels);
             if (_dependencies.ShouldCaptureClickDebug())
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", _dependencies.LabelInteraction.BuildLabelSourceDebugSummary(context.AllLabels), null);
@@ -33,7 +30,7 @@ namespace ClickIt.Features.Click.Core
                 isWorldItemLabel: nextLabel?.ItemOnGround?.Type == EntityType.WorldItem,
                 clickItemsEnabled: _dependencies.Settings.ClickItems.Value);
 
-            return new ClickCandidates(lostShipment, settlersOre, nextLabel, nextLabelMechanicId);
+            return new ClickCandidates(visibleMechanicSelection.LostShipment, visibleMechanicSelection.Settlers, nextLabel, nextLabelMechanicId);
         }
     }
 }

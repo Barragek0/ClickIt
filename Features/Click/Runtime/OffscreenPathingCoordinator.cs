@@ -20,6 +20,10 @@ namespace ClickIt.Features.Click.Runtime
         private readonly OffscreenPathingCoordinatorDependencies _dependencies = dependencies;
         private readonly OffscreenTraversalConfirmationGate _traversalConfirmationGate = new();
 
+        private readonly record struct OffscreenTraversalTargetContext(
+            Entity Target,
+            string TargetPath);
+
         public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
         {
             if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value)
@@ -37,94 +41,25 @@ namespace ClickIt.Features.Click.Runtime
                     null,
                     null);
 
-            if (!TryResolveTraversalTarget(preferredTarget, out Entity? target) || target == null)
+            if (!TryStartTraversal(preferredTarget, out OffscreenTraversalTargetContext context))
                 return false;
 
-            string targetPath = target.Path ?? string.Empty;
-            if (preferredTarget == null && _traversalConfirmationGate.ShouldDelay(target, targetPath, out long remainingDelayMs))
-            {
-                _dependencies.PathfindingService.ClearLatestPath();
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
-                    "OffscreenPathingAwaitingConfirmation",
-                    $"target={targetPath} remainingMs={remainingDelayMs}");
+            if (!TryBuildTraversalPath(context, out bool builtPath))
                 return false;
-            }
-
-            _traversalConfirmationGate.Reset();
-            SetStickyOffscreenTarget(target);
-
-            bool builtPath = _dependencies.PathfindingService.TryBuildPathToTarget(
-                _dependencies.GameController,
-                target,
-                _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
-            if (!builtPath)
-            {
-                PathfindingDebugSnapshot pathfindingSnapshot = _dependencies.PathfindingService.GetDebugSnapshot();
-                if (OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(pathfindingSnapshot.LastFailureReason))
-                {
-                    PublishOffscreenMovementDebug(target, targetPath, builtPath, false, false, default, default, "BlockedNoRoute", pathfindingSnapshot.LastFailureReason);
-                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={targetPath}");
-                    _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen traversal because A* did not find a route.");
-                    return false;
-                }
-
-                _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Pathfinding route not found; trying directional walk click.");
-            }
-
-            (bool resolvedFromPath, Vector2 targetScreen) = builtPath
-                ? TryResolveOffscreenTargetScreenPointFromPath()
-                : (false, default);
-            if (!resolvedFromPath)
-            {
-                (bool success, Vector2 resolvedTargetScreen) = TryResolveOffscreenTargetScreenPoint(target);
-                if (!success)
-                {
-                    PublishOffscreenMovementDebug(target, targetPath, builtPath, false, false, targetScreen, default, "ResolveTargetScreenFailed");
-                    _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Failed to resolve target screen point.");
-                    return false;
-                }
-
-                targetScreen = resolvedTargetScreen;
-            }
-
-            if (!TryResolveDirectionalWalkClickPosition(targetScreen, targetPath, out Vector2 walkClick))
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, false, targetScreen, default, "ResolveClickPointFailed");
-                _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Failed to resolve directional click point.");
+            if (!TryResolveTraversalClick(context, builtPath, out bool resolvedFromPath, out Vector2 targetScreen, out Vector2 walkClick))
                 return false;
-            }
 
-            (bool movementSkillUsed, Vector2 movementSkillCastPoint, string movementSkillDebug) = TryUseMovementSkillForOffscreenPathing(targetPath, targetScreen, builtPath);
+            (bool movementSkillUsed, Vector2 movementSkillCastPoint, string movementSkillDebug) = TryUseMovementSkillForOffscreenPathing(context.TargetPath, targetScreen, builtPath);
             if (movementSkillUsed)
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, true, targetScreen, movementSkillCastPoint, "MovementSkillUsed", movementSkillDebug);
-                _dependencies.HoldDebugTelemetryAfterSuccess($"Offscreen traversal movement skill used: {targetPath}");
-                _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Used movement skill toward offscreen target: {targetPath}");
-                return true;
-            }
+                return HandleSuccessfulTraversalMovementSkill(context, builtPath, resolvedFromPath, targetScreen, movementSkillCastPoint, movementSkillDebug);
 
             if (!string.IsNullOrWhiteSpace(movementSkillDebug))
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Movement skill not used: {movementSkillDebug}");
 
-            PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "BeforeClick", movementSkillDebug);
+            PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "BeforeClick", movementSkillDebug);
 
             bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(walkClick);
-            if (clicked)
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "Clicked", movementSkillDebug);
-                _dependencies.HoldDebugTelemetryAfterSuccess($"Offscreen traversal click succeeded: {targetPath}");
-                _ = _dependencies.PathfindingService.TryBuildPathToTarget(
-                    _dependencies.GameController,
-                    target,
-                    _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
-                _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Walking toward offscreen target: {targetPath}");
-            }
-            else
-            {
-                PublishOffscreenMovementDebug(target, targetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "ClickRejected", movementSkillDebug);
-            }
-
-            return clicked;
+            return HandleTraversalClickResult(context, builtPath, resolvedFromPath, targetScreen, walkClick, movementSkillDebug, clicked);
         }
 
         public bool TryHandleStickyOffscreenTarget(Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
@@ -145,8 +80,59 @@ namespace ClickIt.Features.Click.Runtime
         public void ClearStickyOffscreenTarget()
             => _dependencies.StickyTargetHandler.ClearStickyOffscreenTarget();
 
+        public void CancelTraversalState()
+            => ResetTraversalState(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
+
         public bool IsStickyTarget(Entity? entity)
             => _dependencies.StickyTargetHandler.IsStickyTarget(entity);
+
+        private bool HandleSuccessfulTraversalMovementSkill(
+            OffscreenTraversalTargetContext context,
+            bool builtPath,
+            bool resolvedFromPath,
+            Vector2 targetScreen,
+            Vector2 movementSkillCastPoint,
+            string movementSkillDebug)
+        {
+            PublishOffscreenMovementDebug(
+                context.Target,
+                context.TargetPath,
+                builtPath,
+                resolvedFromPath,
+                true,
+                targetScreen,
+                movementSkillCastPoint,
+                "MovementSkillUsed",
+                movementSkillDebug);
+            _dependencies.HoldDebugTelemetryAfterSuccess($"Offscreen traversal movement skill used: {context.TargetPath}");
+            _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Used movement skill toward offscreen target: {context.TargetPath}");
+            return true;
+        }
+
+        private bool HandleTraversalClickResult(
+            OffscreenTraversalTargetContext context,
+            bool builtPath,
+            bool resolvedFromPath,
+            Vector2 targetScreen,
+            Vector2 walkClick,
+            string movementSkillDebug,
+            bool clicked)
+        {
+            if (!clicked)
+            {
+                PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "ClickRejected", movementSkillDebug);
+                return false;
+            }
+
+            PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "Clicked", movementSkillDebug);
+            _dependencies.HoldDebugTelemetryAfterSuccess($"Offscreen traversal click succeeded: {context.TargetPath}");
+            _ = _dependencies.PathfindingService.TryBuildPathToTarget(
+                _dependencies.GameController,
+                context.Target,
+                _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
+            _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Walking toward offscreen target: {context.TargetPath}");
+            return true;
+        }
 
         private void PublishOffscreenMovementDebug(
             Entity target,
@@ -212,18 +198,96 @@ namespace ClickIt.Features.Click.Runtime
             return (success, castPoint, debugReason);
         }
 
+        private bool TryStartTraversal(Entity? preferredTarget, out OffscreenTraversalTargetContext context)
+        {
+            context = default;
+
+            if (!TryResolveTraversalTarget(preferredTarget, out Entity? target) || target == null)
+                return false;
+
+            string targetPath = target.Path ?? string.Empty;
+            if (preferredTarget == null && _traversalConfirmationGate.ShouldDelay(target, targetPath, out long remainingDelayMs))
+            {
+                _dependencies.PathfindingService.ClearLatestPath();
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                    "OffscreenPathingAwaitingConfirmation",
+                    $"target={targetPath} remainingMs={remainingDelayMs}");
+                return false;
+            }
+
+            _traversalConfirmationGate.Reset();
+            SetStickyOffscreenTarget(target);
+            context = new OffscreenTraversalTargetContext(target, targetPath);
+            return true;
+        }
+
+        private bool TryBuildTraversalPath(OffscreenTraversalTargetContext context, out bool builtPath)
+        {
+            builtPath = _dependencies.PathfindingService.TryBuildPathToTarget(
+                _dependencies.GameController,
+                context.Target,
+                _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
+            if (builtPath)
+                return true;
+
+            PathfindingDebugSnapshot pathfindingSnapshot = _dependencies.PathfindingService.GetDebugSnapshot();
+            if (OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(pathfindingSnapshot.LastFailureReason))
+            {
+                PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, default, default, "BlockedNoRoute", pathfindingSnapshot.LastFailureReason);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={context.TargetPath}");
+                _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen traversal because A* did not find a route.");
+                return false;
+            }
+
+            _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Pathfinding route not found; trying directional walk click.");
+            return true;
+        }
+
+        private bool TryResolveTraversalClick(
+            OffscreenTraversalTargetContext context,
+            bool builtPath,
+            out bool resolvedFromPath,
+            out Vector2 targetScreen,
+            out Vector2 walkClick)
+        {
+            walkClick = default;
+
+            (resolvedFromPath, targetScreen) = builtPath
+                ? TryResolveOffscreenTargetScreenPointFromPath()
+                : (false, default);
+            if (!resolvedFromPath)
+            {
+                (bool success, Vector2 resolvedTargetScreen) = TryResolveOffscreenTargetScreenPoint(context.Target);
+                if (!success)
+                {
+                    PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, targetScreen, default, "ResolveTargetScreenFailed");
+                    _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Failed to resolve target screen point.");
+                    return false;
+                }
+
+                targetScreen = resolvedTargetScreen;
+            }
+
+            if (TryResolveDirectionalWalkClickPosition(targetScreen, context.TargetPath, out walkClick))
+                return true;
+
+            PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, false, targetScreen, default, "ResolveClickPointFailed");
+            _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Failed to resolve directional click point.");
+            return false;
+        }
+
         private bool TryResolveTraversalTarget(Entity? preferredTarget, out Entity? target)
         {
             target = preferredTarget ?? _dependencies.TraversalTargetResolver.ResolveNearestOffscreenWalkTarget();
             if (target == null)
             {
-                AbortOffscreenPathing(resetConfirmation: true, clearStickyTarget: preferredTarget != null, clearLatestPath: true);
+                ResetTraversalState(resetConfirmation: true, clearStickyTarget: preferredTarget != null, clearLatestPath: true);
                 return false;
             }
 
             if (!target.IsValid || target.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
             {
-                AbortOffscreenPathing(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
+                ResetTraversalState(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
                 target = null;
                 return false;
             }
@@ -233,7 +297,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool AbortOffscreenPathingForBlocker(string debugMessage, string? debugStage, string? debugDetails)
         {
-            AbortOffscreenPathing(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
+            CancelTraversalState();
             _dependencies.DebugLog(debugMessage);
             if (!string.IsNullOrWhiteSpace(debugStage))
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(debugStage, debugDetails ?? string.Empty);
@@ -241,7 +305,7 @@ namespace ClickIt.Features.Click.Runtime
             return false;
         }
 
-        private void AbortOffscreenPathing(bool resetConfirmation, bool clearStickyTarget, bool clearLatestPath)
+        private void ResetTraversalState(bool resetConfirmation, bool clearStickyTarget, bool clearLatestPath)
         {
             if (resetConfirmation)
                 _traversalConfirmationGate.Reset();

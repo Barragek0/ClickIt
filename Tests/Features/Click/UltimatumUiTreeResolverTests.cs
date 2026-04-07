@@ -98,20 +98,9 @@ namespace ClickIt.Tests.Features.Click
         {
             Element option = (Element)RuntimeHelpers.GetUninitializedObject(typeof(Element));
 
-            string modifierName = InvokeResolveUltimatumChoiceModifierName(option, 0, ["Ruin III"]);
+            string modifierName = UltimatumUiTreeResolver.ResolveUltimatumModifierName(option, 0, ["Ruin III"]);
 
             modifierName.Should().Be("Ruin III");
-        }
-
-        private static string InvokeResolveUltimatumChoiceModifierName(Element option, int seen, IReadOnlyList<string> modifierNamesByIndex)
-        {
-            MethodInfo method = typeof(UltimatumUiTreeResolver).GetMethod(
-                "ResolveUltimatumChoiceModifierName",
-                BindingFlags.NonPublic | BindingFlags.Static)!;
-
-            method.Should().NotBeNull();
-
-            return (string)method.Invoke(null, [option, seen, modifierNamesByIndex])!;
         }
 
         private sealed class ModifierNameProbe(string value)

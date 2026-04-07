@@ -59,23 +59,30 @@ namespace ClickIt.Features.Click.Application
         internal bool TryClickStickyTargetIfPossible(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
         {
             if (ShrineService.IsShrine(stickyTarget))
-            {
-                var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(stickyTarget.PosNum);
-                Vector2 shrinePos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-                string path = stickyTarget.Path ?? string.Empty;
-                if (!_dependencies.IsClickableInEitherSpace(shrinePos, path))
-                    return false;
+                return TryClickStickyShrine(stickyTarget);
 
-                bool clickedShrine = _dependencies.LabelInteraction.PerformMechanicClick(shrinePos);
-                if (clickedShrine)
-                {
-                    ClearStickyOffscreenTarget();
-                    _dependencies.ShrineService.InvalidateCache();
-                }
+            return TryClickStickyLabel(stickyTarget, windowTopLeft, allLabels);
+        }
 
-                return clickedShrine;
-            }
+        private bool TryClickStickyShrine(Entity stickyTarget)
+        {
+            var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(stickyTarget.PosNum);
+            Vector2 shrinePos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
+            string path = stickyTarget.Path ?? string.Empty;
+            if (!_dependencies.IsClickableInEitherSpace(shrinePos, path))
+                return false;
 
+            bool clickedShrine = _dependencies.LabelInteraction.PerformMechanicClick(shrinePos);
+            if (!clickedShrine)
+                return false;
+
+            ClearStickyOffscreenTarget();
+            _dependencies.ShrineService.InvalidateCache();
+            return true;
+        }
+
+        private bool TryClickStickyLabel(Entity stickyTarget, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)
+        {
             LabelOnGround? stickyLabel = OffscreenPathingMath.FindVisibleLabelForEntity(stickyTarget, allLabels);
             if (stickyLabel == null)
                 return false;
@@ -103,17 +110,27 @@ namespace ClickIt.Features.Click.Application
                 return false;
 
             bool clickedLabel = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, stickyLabel, mechanicId);
-            if (clickedLabel)
-            {
-                string stickyReason = string.IsNullOrWhiteSpace(stickyTarget.Path)
-                    ? "Sticky offscreen target click succeeded"
-                    : $"Sticky offscreen target click succeeded: {stickyTarget.Path}";
-                _dependencies.HoldDebugTelemetryAfterSuccess(stickyReason);
-                _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, stickyLabel);
-                ClearStickyOffscreenTarget();
-            }
+            if (!clickedLabel)
+                return false;
 
-            return clickedLabel;
+            ApplySuccessfulStickyLabelClick(stickyTarget.Path, mechanicId, stickyLabel);
+            return true;
         }
+
+        private void ApplySuccessfulStickyLabelClick(string? stickyTargetPath, string mechanicId, LabelOnGround stickyLabel)
+            => SuccessfulInteractionAftermathApplier.Apply(
+                new SuccessfulInteractionAftermath(
+                    Reason: BuildStickyClickSuccessReason(stickyTargetPath),
+                    ShouldClearStickyTarget: true,
+                    PendingChestMechanicId: mechanicId,
+                    PendingChestLabel: stickyLabel),
+                _dependencies.HoldDebugTelemetryAfterSuccess,
+                clearStickyTarget: () => ClearStickyOffscreenTarget(),
+                markPendingChestOpenConfirmation: (resolvedMechanicId, label) => _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(resolvedMechanicId, label));
+
+        private static string BuildStickyClickSuccessReason(string? stickyTargetPath)
+            => string.IsNullOrWhiteSpace(stickyTargetPath)
+                ? "Sticky offscreen target click succeeded"
+                : $"Sticky offscreen target click succeeded: {stickyTargetPath}";
     }
 }

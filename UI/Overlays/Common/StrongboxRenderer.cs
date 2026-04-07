@@ -3,6 +3,7 @@ namespace ClickIt.UI.Overlays.Common
     public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+        private readonly record struct StrongboxFrame(SharpDX.RectangleF Rect, Color Color);
         private readonly record struct StrongboxRenderState(
             bool ShowFrames,
             IReadOnlyList<string> ClickMetadata,
@@ -37,14 +38,25 @@ namespace ClickIt.UI.Overlays.Common
                 return;
             }
 
+            RenderStrongboxFrames(labels, windowArea, renderState);
+        }
+
+        private void RenderStrongboxFrames(
+            IEnumerable<LabelOnGround> labels,
+            SharpDX.RectangleF windowArea,
+            StrongboxRenderState renderState)
+        {
             foreach (var label in labels)
             {
-                if (!TryBuildStrongboxFrame(label, windowArea, renderState, out SharpDX.RectangleF rect, out Color color))
+                if (!TryResolveStrongboxFrame(label, windowArea, renderState, out StrongboxFrame frame))
                     continue;
 
-                _deferredFrameQueue.Enqueue(rect, color, 2);
+                EnqueueStrongboxFrame(frame);
             }
         }
+
+        private void EnqueueStrongboxFrame(StrongboxFrame frame)
+            => _deferredFrameQueue.Enqueue(frame.Rect, frame.Color, 2);
 
         private StrongboxRenderState ResolveRenderState()
             => new(
@@ -55,20 +67,18 @@ namespace ClickIt.UI.Overlays.Common
         private static bool ShouldRenderAnyStrongboxes(StrongboxRenderState renderState)
             => renderState.ShowFrames || renderState.ClickMetadata.Count > 0;
 
-        private static bool TryBuildStrongboxFrame(
+        private static bool TryResolveStrongboxFrame(
             LabelOnGround? label,
             SharpDX.RectangleF windowArea,
             StrongboxRenderState renderState,
-            out SharpDX.RectangleF rect,
-            out Color color)
+            out StrongboxFrame frame)
         {
-            rect = default;
-            color = default;
+            frame = default;
 
             if (!renderState.ShowFrames)
                 return false;
 
-            if (!TryGetVisibleLabelRect(label, windowArea, out rect, out string? itemPathRaw))
+            if (!TryGetVisibleLabelRect(label, windowArea, out SharpDX.RectangleF rect, out string? itemPathRaw))
                 return false;
 
             string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
@@ -76,7 +86,7 @@ namespace ClickIt.UI.Overlays.Common
             if (!IsStrongboxClickableBySettings(itemPathRaw!, renderName, renderState.ClickMetadata, renderState.DontClickMetadata, isUniqueStrongbox))
                 return false;
 
-            color = ResolveStrongboxFrameColor(label);
+            frame = new StrongboxFrame(rect, ResolveStrongboxFrameColor(label));
             return true;
         }
 
@@ -97,7 +107,7 @@ namespace ClickIt.UI.Overlays.Common
             var elem = label?.Label;
             if (elem == null || !elem.IsValid) return false;
 
-            // and in other contexts (or different runtime assemblies) it returns a
+            // Tests can surface a non-RectangleF return here through assembly-shim boundaries.
             object? maybeRectObj = elem.GetClientRect();
             if (maybeRectObj == null) return false;
 

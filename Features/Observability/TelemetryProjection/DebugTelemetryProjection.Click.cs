@@ -58,13 +58,17 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 inputHandler,
                 lazyModeBlockerService,
                 gameController,
-                cachedLabels?.Value);
+                cachedLabels);
+
+            PluginClickFrequencyTargetDecision frequencyTarget = PluginClickRuntimeStateEvaluator.ResolveFrequencyTargetDecision(
+                settings,
+                runtimeState);
 
             return new ClickFrequencyTargetTelemetrySnapshot(
                 SettingsAvailable: true,
-                ClickTargetMs: settings.ClickFrequencyTarget.Value,
-                LazyModeTargetMs: settings.LazyModeClickLimiting.Value,
-                ShowLazyModeTarget: runtimeState.ShowLazyModeTarget);
+                ClickTargetMs: frequencyTarget.ClickTargetMs,
+                LazyModeTargetMs: frequencyTarget.LazyModeTargetMs,
+                ShowLazyModeTarget: frequencyTarget.ShowLazyModeTarget);
         }
     }
 }

@@ -30,8 +30,15 @@ namespace ClickIt.Core.Runtime
     internal readonly record struct PluginManualUiHoverModeDecision(
         bool ShouldRunCoroutine)
     {
-        internal bool ShouldSuppressRegularClick
-            => ShouldRunCoroutine;
+    }
+
+    internal readonly record struct PluginClickFrequencyTargetDecision(
+        double ClickTargetMs,
+        double LazyModeTargetMs,
+        bool ShowLazyModeTarget)
+    {
+        internal double TargetIntervalMs
+            => ShowLazyModeTarget ? LazyModeTargetMs : ClickTargetMs;
     }
 
     internal static class PluginClickRuntimeStateEvaluator
@@ -66,6 +73,19 @@ namespace ClickIt.Core.Runtime
                 return false;
             }
         }
+
+        internal static PluginClickRuntimeStateSnapshot ResolveSnapshot(
+            ClickItSettings? settings,
+            InputHandler? inputHandler,
+            LazyModeBlockerService? lazyModeBlockerService,
+            GameController? gameController,
+            TimeCache<List<LabelOnGround>>? cachedLabels)
+            => ResolveSnapshot(
+                settings,
+                inputHandler,
+                lazyModeBlockerService,
+                gameController,
+                cachedLabels?.Value);
 
         internal static PluginClickRuntimeStateSnapshot ResolveSnapshot(
             ClickItSettings? settings,
@@ -147,8 +167,11 @@ namespace ClickIt.Core.Runtime
         internal static bool ShouldRunManualUiHoverCoroutine(ClickItSettings? settings)
             => ResolveManualUiHoverMode(settings, clickHotkeyActive: false).ShouldRunCoroutine;
 
-        internal static bool ShouldSuppressRegularClickForManualUiHoverMode(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
-            => ResolveManualUiHoverMode(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive).ShouldSuppressRegularClick;
+        internal static PluginManualUiHoverModeDecision ResolveManualUiHoverModeFromSettings(ClickItSettings settings, bool clickHotkeyActive)
+            => ResolveManualUiHoverMode(
+                settings.ClickOnManualUiHoverOnly.Value,
+                settings.LazyMode.Value,
+                clickHotkeyActive);
 
         internal static PluginManualUiHoverModeDecision ResolveManualUiHoverMode(ClickItSettings? settings, bool clickHotkeyActive)
             => ResolveManualUiHoverMode(
@@ -172,10 +195,11 @@ namespace ClickIt.Core.Runtime
             bool poeForeground)
             => useLazyModeTiming && !lazyModeDisableActive && poeForeground;
 
-        internal static double ResolveFrequencyTarget(ClickItSettings settings, PluginClickRuntimeStateSnapshot runtimeState)
-            => runtimeState.UseLazyModeTiming
-                ? settings.LazyModeClickLimiting.Value
-                : settings.ClickFrequencyTarget.Value;
+        internal static PluginClickFrequencyTargetDecision ResolveFrequencyTargetDecision(ClickItSettings settings, PluginClickRuntimeStateSnapshot runtimeState)
+            => new(
+                ClickTargetMs: settings.ClickFrequencyTarget.Value,
+                LazyModeTargetMs: settings.LazyModeClickLimiting.Value,
+                ShowLazyModeTarget: runtimeState.ShowLazyModeTarget);
 
         internal static PluginClickGateDecision ResolveRegularClickGateDecision(
             InputHandler? inputHandler,

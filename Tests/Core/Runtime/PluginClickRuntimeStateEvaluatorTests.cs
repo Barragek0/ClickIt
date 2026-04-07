@@ -77,10 +77,10 @@ namespace ClickIt.Tests.Core.Runtime
                 clickHotkeyActive);
 
             result.Should().Be(expected);
-            PluginClickRuntimeStateEvaluator.ShouldSuppressRegularClickForManualUiHoverMode(
+            PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
                 manualUiHoverEnabled,
                 lazyModeEnabled,
-                clickHotkeyActive).Should().Be(expected);
+                clickHotkeyActive).ShouldRunCoroutine.Should().Be(expected);
         }
 
         [DataTestMethod]
@@ -209,10 +209,13 @@ namespace ClickIt.Tests.Core.Runtime
                 settings.LazyModeUniqueMonsterBlockCount,
                 settings.LazyModeUniqueMonsterBlockDistance);
 
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionTimestampMs", now - 10);
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionSettingsSignature", settingsSignature);
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionResult", cachedResult);
-            RuntimeMemberAccessor.SetRequiredMember(service, "_cachedNearbyMonsterRestrictionReason", cachedReason);
+            RuntimeMemberAccessor.SetRequiredMember(
+                service,
+                "_cachedNearbyMonsterRestrictionCacheState",
+                new NearbyMonsterRestrictionCacheState(
+                    now - 10,
+                    settingsSignature,
+                    new LazyModeRestrictionResult(cachedResult, cachedReason)));
         }
 
         private static void SeedInputHotkeyState(

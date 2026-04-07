@@ -17,6 +17,27 @@ namespace ClickIt.Core.Runtime
             return (frequencyTarget - averageTiming) + _state.Random.Next(0, 6);
         }
 
+        private double ResolveClickTargetTime(double frequencyTarget)
+        {
+            double avgClickTime = _state.Services.PerformanceMonitor?.GetAverageTiming(TimingChannel.Click) ?? 0;
+            return GetTargetTime(frequencyTarget, avgClickTime);
+        }
+
+        private long GetSuccessfulClickSequence()
+            => _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
+
+        private void RestartClickTimerAfterSuccessfulInteraction(long clickSequenceBefore, bool interactionSucceeded = true)
+        {
+            if (!interactionSucceeded)
+                return;
+
+            long clickSequenceAfter = GetSuccessfulClickSequence();
+            if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
+            {
+                _state.Runtime.Timer.Restart();
+            }
+        }
+
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
         {
             _state.Runtime.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, "ClickIt.ScanForAltarsLogic", false);
@@ -85,27 +106,17 @@ namespace ClickIt.Core.Runtime
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null) yield break;
 
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
-            PluginManualUiHoverModeDecision manualUiHoverMode = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
-                _settings.ClickOnManualUiHoverOnly.Value,
-                _settings.LazyMode.Value,
-                hotkeyActive);
-            if (manualUiHoverMode.ShouldSuppressRegularClick)
+            PluginManualUiHoverModeDecision manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
+            if (manualUiHoverMode.ShouldRunCoroutine)
             {
                 _state.Runtime.WorkFinished = true;
                 yield break;
             }
 
-            double avgClickTime = _state.Services.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
+            (PluginLazyModeContextSnapshot lazyModeContext, PluginClickRuntimeStateSnapshot runtimeState) = ResolveRegularClickRuntimeState(hotkeyActive);
 
-            PluginLazyModeContextSnapshot lazyModeContext = ResolveRegularClickLazyModeContext(hotkeyActive);
-            PluginClickRuntimeStateSnapshot runtimeState = PluginClickRuntimeStateEvaluator.ResolveSnapshot(
-                _settings,
-                _state.Services.InputHandler,
-                _gameController,
-                lazyModeContext);
-
-            double frequencyTarget = PluginClickRuntimeStateEvaluator.ResolveFrequencyTarget(_settings, runtimeState);
-            double targetTime = GetTargetTime(frequencyTarget, avgClickTime);
+            PluginClickFrequencyTargetDecision frequencyTarget = PluginClickRuntimeStateEvaluator.ResolveFrequencyTargetDecision(_settings, runtimeState);
+            double targetTime = ResolveClickTargetTime(frequencyTarget.TargetIntervalMs);
             PluginClickGateDecision gateDecision = PluginClickRuntimeStateEvaluator.ResolveRegularClickGateDecision(
                 _state.Services.InputHandler,
                 _gameController,
@@ -135,16 +146,12 @@ namespace ClickIt.Core.Runtime
                 yield break;
             }
 
-            long clickSequenceBefore = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceBefore = GetSuccessfulClickSequence();
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             yield return runtimeHost.ProcessRegularClick();
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
-            long clickSequenceAfter = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
-            if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
-            {
-                _state.Runtime.Timer.Restart();
-            }
+            RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore);
 
             _state.Runtime.WorkFinished = true;
         }
@@ -169,10 +176,7 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
-            PluginManualUiHoverModeDecision manualUiHoverMode = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
-                _settings.ClickOnManualUiHoverOnly.Value,
-                _settings.LazyMode.Value,
-                hotkeyActive);
+            PluginManualUiHoverModeDecision manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
             if (!manualUiHoverMode.ShouldRunCoroutine)
                 yield break;
 
@@ -180,8 +184,7 @@ namespace ClickIt.Core.Runtime
             if (runtimeState.IsRitualActive)
                 yield break;
 
-            double avgClickTime = _state.Services.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
-            double targetTime = GetTargetTime(_settings.ClickFrequencyTarget.Value, avgClickTime);
+            double targetTime = ResolveClickTargetTime(_settings.ClickFrequencyTarget.Value);
             PluginClickReadinessDecision gateDecision = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverGateDecision(
                 _state.Services.InputHandler,
                 _gameController,
@@ -191,17 +194,13 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             IReadOnlyList<LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
-            long clickSequenceBefore = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
+            long clickSequenceBefore = GetSuccessfulClickSequence();
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             bool clicked = runtimeHost.TryClickManualUiHoverLabel(labels);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
-            long clickSequenceAfter = _state.Services.LockedInteractionDispatcher?.GetSuccessfulClickSequence() ?? 0;
-            if (clicked && PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
-            {
-                _state.Runtime.Timer.Restart();
-            }
+            RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore, clicked);
         }
 
         private IEnumerator FlareCoroutine()

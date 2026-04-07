@@ -40,55 +40,66 @@ namespace ClickIt.Features.Labels.Application
         int Rare,
         int Unique);
 
+    internal readonly record struct NearbyMonsterThresholdState(
+        string Label,
+        int Count,
+        int Threshold,
+        int Distance,
+        bool Triggered);
+
+    internal readonly record struct LazyModeRestrictionResult(
+        bool Blocked,
+        string? Reason)
+    {
+        internal string EffectiveReason
+            => string.IsNullOrWhiteSpace(Reason)
+                ? "Nearby monster threshold reached"
+                : Reason;
+    }
+
+    internal readonly record struct NearbyMonsterRestrictionCacheState(
+        long TimestampMs,
+        int SettingsSignature,
+        LazyModeRestrictionResult Result)
+    {
+        internal static NearbyMonsterRestrictionCacheState Empty
+            => new(long.MinValue, 0, default);
+
+        internal bool IsFresh(long nowMs, int settingsSignature)
+            => TimestampMs != long.MinValue
+                && (nowMs - TimestampMs) <= LazyModeBlockerService.NearbyMonsterRestrictionCacheDurationMs
+                && SettingsSignature == settingsSignature;
+    }
+
     public sealed class LazyModeBlockerService(
         ClickItSettings settings,
         GameController? gameController,
         Action<string> logRestriction,
         Func<long>? nowProvider = null)
     {
-        private const int NearbyMonsterRestrictionCacheDurationMs = 50;
+        internal const int NearbyMonsterRestrictionCacheDurationMs = 50;
         private const int LazyModeRestrictionLogThrottleMs = 500;
 
         private readonly ClickItSettings _settings = settings;
         private readonly GameController? _gameController = gameController;
         private readonly Action<string> _logRestriction = logRestriction;
         private readonly Func<long> _nowProvider = nowProvider ?? (() => Environment.TickCount64);
-        private long _cachedNearbyMonsterRestrictionTimestampMs = long.MinValue;
-        private int _cachedNearbyMonsterRestrictionSettingsSignature;
-        private bool _cachedNearbyMonsterRestrictionResult;
-        private string? _cachedNearbyMonsterRestrictionReason;
+        private NearbyMonsterRestrictionCacheState _cachedNearbyMonsterRestrictionCacheState = NearbyMonsterRestrictionCacheState.Empty;
         private long _lastLazyModeRestrictionLogTimestampMs = long.MinValue;
         private string _lastLazyModeRestrictionLogReason = string.Empty;
         public string? LastRestrictionReason { get; private set; }
 
         public bool HasRestrictedItemsOnScreen(IReadOnlyList<LabelOnGround>? allLabels)
         {
-            if (TryGetNearbyMonsterBlockReason(out string? nearbyMonsterReason))
-            {
-                string reason = nearbyMonsterReason ?? "Nearby monster threshold reached";
-                LastRestrictionReason = reason;
-                TryLogLazyModeRestriction(reason);
-                return true;
-            }
-
-            if (allLabels == null)
-            {
-                LastRestrictionReason = null;
+            LazyModeRestrictionResult restriction = ResolveRestriction(allLabels);
+            LastRestrictionReason = restriction.Blocked
+                ? restriction.EffectiveReason
+                : null;
+            if (!restriction.Blocked)
                 return false;
-            }
 
-            string? lockedChestReason = TryFindLockedChestRestrictionReason(
-                allLabels,
-                _settings.ClickDistance.Value);
-            if (lockedChestReason != null)
-            {
-                LastRestrictionReason = lockedChestReason;
-                TryLogLazyModeRestriction(lockedChestReason);
-                return true;
-            }
-
-            LastRestrictionReason = null;
-            return false;
+            TryLogLazyModeRestriction(restriction.EffectiveReason);
+            return true;
         }
 
         private void TryLogLazyModeRestriction(string reason)
@@ -105,10 +116,30 @@ namespace ClickIt.Features.Labels.Application
             _logRestriction(reason);
         }
 
-        private bool TryGetNearbyMonsterBlockReason(out string? reason)
+        private LazyModeRestrictionResult ResolveRestriction(IReadOnlyList<LabelOnGround>? allLabels)
         {
-            reason = null;
+            LazyModeRestrictionResult nearbyMonsterRestriction = ResolveNearbyMonsterRestriction();
+            if (nearbyMonsterRestriction.Blocked)
+                return nearbyMonsterRestriction;
 
+            return ResolveLockedChestRestriction(allLabels);
+        }
+
+        private LazyModeRestrictionResult ResolveLockedChestRestriction(IReadOnlyList<LabelOnGround>? allLabels)
+        {
+            if (allLabels == null)
+                return default;
+
+            string? reason = TryFindLockedChestRestrictionReason(
+                allLabels,
+                _settings.ClickDistance.Value);
+            return reason == null
+                ? default
+                : new LazyModeRestrictionResult(true, reason);
+        }
+
+        private LazyModeRestrictionResult ResolveNearbyMonsterRestriction()
+        {
             NearbyMonsterRestrictionSettings restrictionSettings = BuildNearbyMonsterRestrictionSettings(
                 _settings.LazyModeNormalMonsterBlockCount,
                 _settings.LazyModeNormalMonsterBlockDistance,
@@ -119,53 +150,42 @@ namespace ClickIt.Features.Labels.Application
                 _settings.LazyModeUniqueMonsterBlockCount,
                 _settings.LazyModeUniqueMonsterBlockDistance);
             if (!restrictionSettings.HasEnabledRestrictions)
-                return false;
+                return default;
 
             long nowMs = _nowProvider();
-            if (TryGetCachedNearbyMonsterRestriction(nowMs, restrictionSettings.Signature, out bool cachedBlocked, out string? cachedReason))
-            {
-                reason = cachedReason;
-                return cachedBlocked;
-            }
+            if (TryGetCachedNearbyMonsterRestriction(nowMs, restrictionSettings.Signature, out LazyModeRestrictionResult cachedRestriction))
+                return cachedRestriction;
 
             var entities = _gameController?.EntityListWrapper?.OnlyValidEntities;
             if (entities == null)
-                return false;
+                return default;
 
-            (bool blocked, string? resolvedReason) = EvaluateNearbyMonsterRestriction(entities, restrictionSettings);
-            reason = resolvedReason;
-
-            CacheNearbyMonsterRestriction(nowMs, restrictionSettings.Signature, blocked, reason);
-            return blocked;
+            LazyModeRestrictionResult restriction = EvaluateNearbyMonsterRestrictionResult(entities, restrictionSettings);
+            CacheNearbyMonsterRestriction(nowMs, restrictionSettings.Signature, restriction);
+            return restriction;
         }
 
         private bool TryGetCachedNearbyMonsterRestriction(
             long nowMs,
             int settingsSignature,
-            out bool blocked,
-            out string? reason)
+            out LazyModeRestrictionResult restriction)
         {
-            bool cacheFresh = _cachedNearbyMonsterRestrictionTimestampMs != long.MinValue
-                && (nowMs - _cachedNearbyMonsterRestrictionTimestampMs) <= NearbyMonsterRestrictionCacheDurationMs
-                && _cachedNearbyMonsterRestrictionSettingsSignature == settingsSignature;
-            if (!cacheFresh)
+            if (!_cachedNearbyMonsterRestrictionCacheState.IsFresh(nowMs, settingsSignature))
             {
-                blocked = false;
-                reason = null;
+                restriction = default;
                 return false;
             }
 
-            blocked = _cachedNearbyMonsterRestrictionResult;
-            reason = _cachedNearbyMonsterRestrictionReason;
+            restriction = _cachedNearbyMonsterRestrictionCacheState.Result;
             return true;
         }
 
-        private void CacheNearbyMonsterRestriction(long nowMs, int settingsSignature, bool blocked, string? reason)
+        private void CacheNearbyMonsterRestriction(long nowMs, int settingsSignature, LazyModeRestrictionResult restriction)
         {
-            _cachedNearbyMonsterRestrictionTimestampMs = nowMs;
-            _cachedNearbyMonsterRestrictionSettingsSignature = settingsSignature;
-            _cachedNearbyMonsterRestrictionResult = blocked;
-            _cachedNearbyMonsterRestrictionReason = reason;
+            _cachedNearbyMonsterRestrictionCacheState = new NearbyMonsterRestrictionCacheState(
+                nowMs,
+                settingsSignature,
+                restriction);
         }
 
         internal static string? TryFindLockedChestRestrictionReason(
@@ -239,8 +259,7 @@ namespace ClickIt.Features.Labels.Application
             if (!restrictionSettings.HasEnabledRestrictions)
                 return (false, null);
 
-            NearbyMonsterCounts counts = CountNearbyMonsters(entities, restrictionSettings);
-            return FinalizeNearbyMonsterRestriction(restrictionSettings, counts);
+            return ToLegacyRestrictionResult(EvaluateNearbyMonsterRestrictionResult(entities, restrictionSettings));
         }
 
         internal static (bool Blocked, string? Reason) EvaluateNearbyMonsterRestriction(
@@ -273,7 +292,29 @@ namespace ClickIt.Features.Labels.Application
             if (!restrictionSettings.HasEnabledRestrictions)
                 return (false, null);
 
+            return ToLegacyRestrictionResult(EvaluateNearbyMonsterRestrictionResult(candidates, restrictionSettings));
+        }
+
+        private static LazyModeRestrictionResult EvaluateNearbyMonsterRestrictionResult(
+            IEnumerable<Entity?> entities,
+            NearbyMonsterRestrictionSettings restrictionSettings)
+        {
+            NearbyMonsterCounts counts = CountNearbyMonsters(entities, restrictionSettings);
+            return EvaluateNearbyMonsterRestrictionResult(restrictionSettings, counts);
+        }
+
+        private static LazyModeRestrictionResult EvaluateNearbyMonsterRestrictionResult(
+            IEnumerable<NearbyMonsterCandidate> candidates,
+            NearbyMonsterRestrictionSettings restrictionSettings)
+        {
             NearbyMonsterCounts counts = CountNearbyMonsters(candidates, restrictionSettings);
+            return EvaluateNearbyMonsterRestrictionResult(restrictionSettings, counts);
+        }
+
+        private static LazyModeRestrictionResult EvaluateNearbyMonsterRestrictionResult(
+            NearbyMonsterRestrictionSettings restrictionSettings,
+            NearbyMonsterCounts counts)
+        {
             return FinalizeNearbyMonsterRestriction(restrictionSettings, counts);
         }
 
@@ -370,33 +411,70 @@ namespace ClickIt.Features.Labels.Application
             NearbyMonsterRestrictionSettings restrictionSettings,
             ref NearbyMonsterCounts counts)
         {
-            if (!candidate.IsValid || candidate.Type != EntityType.Monster)
+            if (!IsEligibleNearbyMonsterCandidate(candidate, restrictionSettings))
                 return;
+
+            if (!TryGetNearbyMonsterBucket(candidate, restrictionSettings, out NearbyMonsterThresholdBucket bucket))
+                return;
+
+            switch (bucket)
+            {
+                case NearbyMonsterThresholdBucket.Normal:
+                    counts = counts with { Normal = counts.Normal + 1 };
+                    break;
+                case NearbyMonsterThresholdBucket.Magic:
+                    counts = counts with { Magic = counts.Magic + 1 };
+                    break;
+                case NearbyMonsterThresholdBucket.Rare:
+                    counts = counts with { Rare = counts.Rare + 1 };
+                    break;
+                case NearbyMonsterThresholdBucket.Unique:
+                    counts = counts with { Unique = counts.Unique + 1 };
+                    break;
+            }
+        }
+
+        private static bool IsEligibleNearbyMonsterCandidate(
+            NearbyMonsterCandidate candidate,
+            NearbyMonsterRestrictionSettings restrictionSettings)
+        {
+            if (!candidate.IsValid || candidate.Type != EntityType.Monster)
+                return false;
 
             float distancePlayer = candidate.DistancePlayer;
             if (distancePlayer < 0f || float.IsNaN(distancePlayer) || float.IsInfinity(distancePlayer))
-                return;
+                return false;
+
             if (distancePlayer > restrictionSettings.MaxRelevantDistance)
-                return;
+                return false;
+
+            return candidate.IsAlive && candidate.IsHostile;
+        }
+
+        private static bool TryGetNearbyMonsterBucket(
+            NearbyMonsterCandidate candidate,
+            NearbyMonsterRestrictionSettings restrictionSettings,
+            out NearbyMonsterThresholdBucket bucket)
+        {
+            float distancePlayer = candidate.DistancePlayer;
 
             switch (candidate.Rarity)
             {
-                case MonsterRarity.White:
-                    if (restrictionSettings.NormalEnabled && distancePlayer <= restrictionSettings.NormalDistance && candidate.IsAlive && candidate.IsHostile)
-                        counts = counts with { Normal = counts.Normal + 1 };
-                    break;
-                case MonsterRarity.Magic:
-                    if (restrictionSettings.MagicEnabled && distancePlayer <= restrictionSettings.MagicDistance && candidate.IsAlive && candidate.IsHostile)
-                        counts = counts with { Magic = counts.Magic + 1 };
-                    break;
-                case MonsterRarity.Rare:
-                    if (restrictionSettings.RareEnabled && distancePlayer <= restrictionSettings.RareDistance && candidate.IsAlive && candidate.IsHostile)
-                        counts = counts with { Rare = counts.Rare + 1 };
-                    break;
-                case MonsterRarity.Unique:
-                    if (restrictionSettings.UniqueEnabled && distancePlayer <= restrictionSettings.UniqueDistance && candidate.IsAlive && candidate.IsHostile)
-                        counts = counts with { Unique = counts.Unique + 1 };
-                    break;
+                case MonsterRarity.White when restrictionSettings.NormalEnabled && distancePlayer <= restrictionSettings.NormalDistance:
+                    bucket = NearbyMonsterThresholdBucket.Normal;
+                    return true;
+                case MonsterRarity.Magic when restrictionSettings.MagicEnabled && distancePlayer <= restrictionSettings.MagicDistance:
+                    bucket = NearbyMonsterThresholdBucket.Magic;
+                    return true;
+                case MonsterRarity.Rare when restrictionSettings.RareEnabled && distancePlayer <= restrictionSettings.RareDistance:
+                    bucket = NearbyMonsterThresholdBucket.Rare;
+                    return true;
+                case MonsterRarity.Unique when restrictionSettings.UniqueEnabled && distancePlayer <= restrictionSettings.UniqueDistance:
+                    bucket = NearbyMonsterThresholdBucket.Unique;
+                    return true;
+                default:
+                    bucket = NearbyMonsterThresholdBucket.None;
+                    return false;
             }
         }
 
@@ -439,36 +517,55 @@ namespace ClickIt.Features.Labels.Application
             return normalTriggered || magicTriggered || rareTriggered || uniqueTriggered;
         }
 
-        private static (bool Blocked, string? Reason) FinalizeNearbyMonsterRestriction(
+        private static LazyModeRestrictionResult FinalizeNearbyMonsterRestriction(
             NearbyMonsterRestrictionSettings restrictionSettings,
             NearbyMonsterCounts counts)
         {
-            bool normalTriggered = restrictionSettings.NormalThreshold > 0 && counts.Normal >= restrictionSettings.NormalThreshold;
-            bool magicTriggered = restrictionSettings.MagicThreshold > 0 && counts.Magic >= restrictionSettings.MagicThreshold;
-            bool rareTriggered = restrictionSettings.RareThreshold > 0 && counts.Rare >= restrictionSettings.RareThreshold;
-            bool uniqueTriggered = restrictionSettings.UniqueThreshold > 0 && counts.Unique >= restrictionSettings.UniqueThreshold;
-            bool blocked = normalTriggered || magicTriggered || rareTriggered || uniqueTriggered;
-            string? reason = blocked
-                ? BuildNearbyMonsterBlockReason(
-                    counts.Normal,
-                    restrictionSettings.NormalThreshold,
-                    restrictionSettings.NormalDistance,
-                    normalTriggered,
-                    counts.Magic,
-                    restrictionSettings.MagicThreshold,
-                    restrictionSettings.MagicDistance,
-                    magicTriggered,
-                    counts.Rare,
-                    restrictionSettings.RareThreshold,
-                    restrictionSettings.RareDistance,
-                    rareTriggered,
-                    counts.Unique,
-                    restrictionSettings.UniqueThreshold,
-                    restrictionSettings.UniqueDistance,
-                    uniqueTriggered)
-                : null;
+            NearbyMonsterThresholdState normalState = BuildThresholdState(
+                "Normal",
+                counts.Normal,
+                restrictionSettings.NormalThreshold,
+                restrictionSettings.NormalDistance);
+            NearbyMonsterThresholdState magicState = BuildThresholdState(
+                "Magic",
+                counts.Magic,
+                restrictionSettings.MagicThreshold,
+                restrictionSettings.MagicDistance);
+            NearbyMonsterThresholdState rareState = BuildThresholdState(
+                "Rare",
+                counts.Rare,
+                restrictionSettings.RareThreshold,
+                restrictionSettings.RareDistance);
+            NearbyMonsterThresholdState uniqueState = BuildThresholdState(
+                "Unique",
+                counts.Unique,
+                restrictionSettings.UniqueThreshold,
+                restrictionSettings.UniqueDistance);
 
-            return (blocked, reason);
+            bool blocked = normalState.Triggered || magicState.Triggered || rareState.Triggered || uniqueState.Triggered;
+            if (!blocked)
+                return default;
+
+            return new LazyModeRestrictionResult(
+                true,
+                BuildNearbyMonsterBlockReason(normalState, magicState, rareState, uniqueState));
+        }
+
+        private static (bool Blocked, string? Reason) ToLegacyRestrictionResult(LazyModeRestrictionResult restriction)
+            => (restriction.Blocked, restriction.Reason);
+
+        private static NearbyMonsterThresholdState BuildThresholdState(
+            string label,
+            int count,
+            int threshold,
+            int distance)
+        {
+            return new NearbyMonsterThresholdState(
+                label,
+                count,
+                threshold,
+                distance,
+                threshold > 0 && count >= threshold);
         }
 
         public static string BuildNearbyMonsterBlockReason(
@@ -489,20 +586,48 @@ namespace ClickIt.Features.Labels.Application
             int uniqueDistance,
             bool uniqueTriggered)
         {
+            return BuildNearbyMonsterBlockReason(
+                new NearbyMonsterThresholdState("Normal", nearbyNormalCount, normalThreshold, normalDistance, normalTriggered),
+                new NearbyMonsterThresholdState("Magic", nearbyMagicCount, magicThreshold, magicDistance, magicTriggered),
+                new NearbyMonsterThresholdState("Rare", nearbyRareCount, rareThreshold, rareDistance, rareTriggered),
+                new NearbyMonsterThresholdState("Unique", nearbyUniqueCount, uniqueThreshold, uniqueDistance, uniqueTriggered));
+        }
+
+        private static string BuildNearbyMonsterBlockReason(
+            NearbyMonsterThresholdState normalState,
+            NearbyMonsterThresholdState magicState,
+            NearbyMonsterThresholdState rareState,
+            NearbyMonsterThresholdState uniqueState)
+        {
             List<string> segments = [];
 
-            if (normalTriggered)
-                segments.Add($"Normal {nearbyNormalCount}/{normalThreshold} within {normalDistance}");
-            if (magicTriggered)
-                segments.Add($"Magic {nearbyMagicCount}/{magicThreshold} within {magicDistance}");
-            if (rareTriggered)
-                segments.Add($"Rare {nearbyRareCount}/{rareThreshold} within {rareDistance}");
-            if (uniqueTriggered)
-                segments.Add($"Unique {nearbyUniqueCount}/{uniqueThreshold} within {uniqueDistance}");
+            AppendTriggeredThresholdSegment(segments, normalState);
+            AppendTriggeredThresholdSegment(segments, magicState);
+            AppendTriggeredThresholdSegment(segments, rareState);
+            AppendTriggeredThresholdSegment(segments, uniqueState);
 
             return segments.Count == 0
                 ? "Nearby monster threshold reached"
                 : string.Join(", ", segments);
+        }
+
+        private static void AppendTriggeredThresholdSegment(
+            List<string> segments,
+            NearbyMonsterThresholdState state)
+        {
+            if (!state.Triggered)
+                return;
+
+            segments.Add($"{state.Label} {state.Count}/{state.Threshold} within {state.Distance}");
+        }
+
+        private enum NearbyMonsterThresholdBucket
+        {
+            None,
+            Normal,
+            Magic,
+            Rare,
+            Unique,
         }
     }
 }
