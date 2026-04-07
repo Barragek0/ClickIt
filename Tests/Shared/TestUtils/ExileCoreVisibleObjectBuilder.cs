@@ -22,6 +22,15 @@ namespace ClickIt.Tests.Shared.TestUtils
             return gameController;
         }
 
+        internal static GameController CreateGameControllerWithWindowAndGame(RectangleF windowRect)
+        {
+            GameController gameController = CreateGameControllerWithWindow(windowRect);
+            object game = RuntimeHelpers.GetUninitializedObject(RuntimeMemberAccessor.ResolveRequiredMemberType(gameController, nameof(GameController.Game)));
+
+            RuntimeMemberAccessor.SetRequiredMember(gameController, nameof(GameController.Game), game);
+            return gameController;
+        }
+
         internal static GameController CreateGameControllerWithRitualBlocker(params string[] ritualPaths)
         {
             GameController gameController = CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));

@@ -37,40 +37,12 @@ namespace ClickIt.Core.Runtime
             if (_freezeState.TryGetFrozenSnapshot(Environment.TickCount64, out DebugTelemetrySnapshot frozenSnapshot))
                 return frozenSnapshot;
 
-            return DebugTelemetryProjection.Build(
-                _getClickAutomationPort(),
-                _getClickAutomationSupport(),
-                _getLabelDebugService(),
-                _getLazyModeBlockerService(),
-                _getInventoryProbeService(),
-                _getPathfindingService(),
-                _getAltarService(),
-                _getWeightCalculator(),
-                _getRenderingState(),
-                _getGameController(),
-                _getInputHandler(),
-                _getSettings(),
-                _getCachedLabels(),
-                _getErrorHandler());
+            return BuildCurrentSnapshot();
         }
 
         internal void FreezeSnapshot(string reason, int holdDurationMs)
         {
-            DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(
-                _getClickAutomationPort(),
-                _getClickAutomationSupport(),
-                _getLabelDebugService(),
-                _getLazyModeBlockerService(),
-                _getInventoryProbeService(),
-                _getPathfindingService(),
-                _getAltarService(),
-                _getWeightCalculator(),
-                _getRenderingState(),
-                _getGameController(),
-                _getInputHandler(),
-                _getSettings(),
-                _getCachedLabels(),
-                _getErrorHandler());
+            DebugTelemetrySnapshot snapshot = BuildCurrentSnapshot();
             _freezeState.Freeze(snapshot, reason, holdDurationMs, Environment.TickCount64);
         }
 
@@ -79,5 +51,22 @@ namespace ClickIt.Core.Runtime
 
         internal void Clear()
             => _freezeState.Clear();
+
+        private DebugTelemetrySnapshot BuildCurrentSnapshot()
+            => DebugTelemetryProjection.Build(
+                _getClickAutomationPort(),
+                _getClickAutomationSupport(),
+                _getLabelDebugService(),
+                _getLazyModeBlockerService(),
+                _getInventoryProbeService(),
+                _getPathfindingService(),
+                _getAltarService(),
+                _getWeightCalculator(),
+                _getRenderingState(),
+                _getGameController(),
+                _getInputHandler(),
+                _getSettings(),
+                _getCachedLabels(),
+                _getErrorHandler());
     }
 }

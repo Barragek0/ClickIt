@@ -85,7 +85,11 @@ namespace ClickIt.Core.Runtime
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null) yield break;
 
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
-            if (PluginClickRuntimeStateEvaluator.ShouldSuppressRegularClickForManualUiHoverMode(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
+            PluginManualUiHoverModeDecision manualUiHoverMode = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
+                _settings.ClickOnManualUiHoverOnly.Value,
+                _settings.LazyMode.Value,
+                hotkeyActive);
+            if (manualUiHoverMode.ShouldSuppressRegularClick)
             {
                 _state.Runtime.WorkFinished = true;
                 yield break;
@@ -93,24 +97,25 @@ namespace ClickIt.Core.Runtime
 
             double avgClickTime = _state.Services.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
 
-            bool lazyModeEnabled = _settings.LazyMode.Value;
-            bool shouldEvaluateRestrictedItems = PluginClickRuntimeStateEvaluator.ShouldEvaluateLazyModeRestrictedItems(lazyModeEnabled);
-            bool shouldEvaluateRitualState = PluginClickRuntimeStateEvaluator.ShouldEvaluateRitualState(lazyModeEnabled, hotkeyActive);
+            PluginLazyModeContextSnapshot lazyModeContext = ResolveRegularClickLazyModeContext(hotkeyActive);
+            PluginClickRuntimeStateSnapshot runtimeState = PluginClickRuntimeStateEvaluator.ResolveSnapshot(
+                _settings,
+                _state.Services.InputHandler,
+                _gameController,
+                lazyModeContext);
 
-            PluginLazyModeContextSnapshot lazyModeContext = LazyModeContextCache.GetContext(shouldEvaluateRitualState, shouldEvaluateRestrictedItems);
-            bool isRitualActive = lazyModeContext.IsRitualActive;
-            bool hasLazyModeRestrictedItemsOnScreen = lazyModeContext.HasLazyModeRestrictedItems;
-            var cached = lazyModeContext.Labels;
-            bool lazyModeActive = lazyModeContext.UseLazyModeTiming;
-
-            double frequencyTarget = lazyModeActive ? _settings.LazyModeClickLimiting.Value : _settings.ClickFrequencyTarget.Value;
+            double frequencyTarget = PluginClickRuntimeStateEvaluator.ResolveFrequencyTarget(_settings, runtimeState);
             double targetTime = GetTargetTime(frequencyTarget, avgClickTime);
-            bool readyByTime = _state.Runtime.Timer.ElapsedMilliseconds >= targetTime;
-            bool canClick = _state.Services.InputHandler?.CanClick(_gameController, hasLazyModeRestrictedItemsOnScreen, isRitualActive) == true;
-            if (!readyByTime || !canClick)
+            PluginClickGateDecision gateDecision = PluginClickRuntimeStateEvaluator.ResolveRegularClickGateDecision(
+                _state.Services.InputHandler,
+                _gameController,
+                runtimeState,
+                hotkeyActive,
+                _state.Runtime.Timer.ElapsedMilliseconds,
+                targetTime);
+            if (gateDecision.IsBlocked)
             {
-                bool hotkeyHeld = _state.Services.InputHandler == null || hotkeyActive;
-                if (PluginClickRuntimeStateEvaluator.ShouldCancelOffscreenPathingForInputRelease(lazyModeEnabled, hotkeyHeld))
+                if (gateDecision.ShouldCancelOffscreenPathing)
                 {
                     runtimeHost.CancelOffscreenPathingState();
                 }
@@ -121,11 +126,8 @@ namespace ClickIt.Core.Runtime
                     if (now - _lastCanClickFailureLogTimestampMs >= 500)
                     {
                         _lastCanClickFailureLogTimestampMs = now;
-                        string canClickReason = canClick
-                            ? "Timer gating"
-                            : (_state.Services.InputHandler?.GetCanClickFailureReason(_gameController) ?? "Unknown click blocker");
-                        int labelCount = cached?.Count ?? 0;
-                        _errorHandler.LogMessage($"[ClickLogic] blocked: reason='{canClickReason}', readyByTime={readyByTime}, hasRestricted={hasLazyModeRestrictedItemsOnScreen}, ritualActive={isRitualActive}, labels={labelCount}", 10);
+                        int labelCount = lazyModeContext.Labels?.Count ?? 0;
+                        _errorHandler.LogMessage($"[ClickLogic] blocked: reason='{gateDecision.FailureReason}', readyByTime={gateDecision.ReadyByTime}, hasRestricted={runtimeState.HasLazyModeRestrictedItems}, ritualActive={runtimeState.IsRitualActive}, labels={labelCount}", 10);
                     }
                 }
 
@@ -167,19 +169,25 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
-            if (!PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(_settings.ClickOnManualUiHoverOnly.Value, _settings.LazyMode.Value, hotkeyActive))
+            PluginManualUiHoverModeDecision manualUiHoverMode = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
+                _settings.ClickOnManualUiHoverOnly.Value,
+                _settings.LazyMode.Value,
+                hotkeyActive);
+            if (!manualUiHoverMode.ShouldRunCoroutine)
                 yield break;
 
-            bool isRitualActive = LazyModeContextCache.GetContext(shouldEvaluateRitualState: true, shouldEvaluateRestrictedItems: false).IsRitualActive;
-            if (isRitualActive)
-                yield break;
-
-            if (!_state.Services.InputHandler.CanClickWithoutInputState(_gameController))
+            PluginClickRuntimeStateSnapshot runtimeState = ResolveRitualAwareRuntimeState();
+            if (runtimeState.IsRitualActive)
                 yield break;
 
             double avgClickTime = _state.Services.PerformanceMonitor.GetAverageTiming(TimingChannel.Click);
             double targetTime = GetTargetTime(_settings.ClickFrequencyTarget.Value, avgClickTime);
-            if (_state.Runtime.Timer.ElapsedMilliseconds < targetTime)
+            PluginClickReadinessDecision gateDecision = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverGateDecision(
+                _state.Services.InputHandler,
+                _gameController,
+                _state.Runtime.Timer.ElapsedMilliseconds,
+                targetTime);
+            if (gateDecision.IsBlocked)
                 yield break;
 
             IReadOnlyList<LabelOnGround>? labels = _state.Services.CachedLabels?.Value;
@@ -230,7 +238,8 @@ namespace ClickIt.Core.Runtime
                 _settings.DelveFlareEnergyShieldThreshold.Value))
                 yield break;
 
-            if (_state.Services.InputHandler?.CanClick(_gameController, false, PluginClickRuntimeStateEvaluator.ResolveIsRitualActive(_gameController)) != true)
+            PluginClickRuntimeStateSnapshot runtimeState = ResolveRitualAwareRuntimeState();
+            if (_state.Services.InputHandler?.CanClick(_gameController, false, runtimeState.IsRitualActive) != true)
                 yield break;
 
             Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);

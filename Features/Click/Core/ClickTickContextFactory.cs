@@ -12,7 +12,7 @@ namespace ClickIt.Features.Click.Core
         MovementSkillCoordinator movementSkills,
         ChestLootSettlementTracker chestLootSettlement,
         Func<IReadOnlyList<LabelOnGround>?> getLabelsForRegularSelection,
-        IVisibleMechanicSelectionSource visibleMechanics,
+        IVisibleMechanicQueryPort visibleMechanics,
         MechanicPriorityContextProvider mechanicPriorityContextProvider,
         Func<bool> groundItemsVisible,
         ClickDebugPublicationService clickDebugPublisher)
@@ -24,7 +24,7 @@ namespace ClickIt.Features.Click.Core
         public MovementSkillCoordinator MovementSkills { get; } = movementSkills;
         public ChestLootSettlementTracker ChestLootSettlement { get; } = chestLootSettlement;
         public Func<IReadOnlyList<LabelOnGround>?> GetLabelsForRegularSelection { get; } = getLabelsForRegularSelection;
-        public IVisibleMechanicSelectionSource VisibleMechanics { get; } = visibleMechanics;
+        public IVisibleMechanicQueryPort VisibleMechanics { get; } = visibleMechanics;
         public MechanicPriorityContextProvider MechanicPriorityContextProvider { get; } = mechanicPriorityContextProvider;
         public Func<bool> GroundItemsVisible { get; } = groundItemsVisible;
         public ClickDebugPublicationService ClickDebugPublisher { get; } = clickDebugPublisher;

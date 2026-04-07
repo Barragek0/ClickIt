@@ -205,7 +205,19 @@ namespace ClickIt.Features.Click.Runtime
         public bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity)
             => ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out _);
 
+        /**
+        Keep this thin runtime wrapper so production still resolves the nearby
+        bypass candidate from the real Entity grid state. The internal overload
+        preserves a narrow seam for distance-decision tests without fabricating
+        ExileCore Entity grid members.
+         */
         public bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity, out string decision)
+        {
+            bool hasCandidateGrid = ChestLootSettlementMath.TryGetEntityGridPosition(entity, out Vector2 entityGridPos);
+            return ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, hasCandidateGrid, entityGridPos, out decision);
+        }
+
+        internal bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, bool hasCandidateGrid, Vector2 entityGridPos, out string decision)
         {
             ClickItSettings settings = _dependencies.Settings;
             ChestLootSettlementState state = _dependencies.State;
@@ -231,7 +243,7 @@ namespace ClickIt.Features.Click.Runtime
                 decision = "mechanic-not-eligible";
                 return false;
             }
-            if (!ChestLootSettlementMath.TryGetEntityGridPosition(entity, out Vector2 entityGridPos))
+            if (!hasCandidateGrid)
             {
                 decision = "candidate-grid-unavailable";
                 return false;

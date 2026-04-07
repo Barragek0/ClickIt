@@ -14,107 +14,31 @@ namespace ClickIt.Features.Click.Runtime
         internal static List<(Element OptionElement, string ModifierName)> GetUltimatumOptions(LabelOnGround label, List<string>? diagnostics = null)
         {
             var results = new List<(Element OptionElement, string ModifierName)>(3);
-            Element? root = label?.Label;
-            if (root == null)
-            {
-                diagnostics?.Add("Tree fail: label.Label is null.");
+            if (!TryGetUltimatumRoot(label, diagnostics, out Element? root) || root == null)
                 return results;
-            }
 
             if (TryGetUltimatumOptionsFromChoicePanelObject(root, diagnostics, out List<(Element OptionElement, string ModifierName)> panelResults))
-            {
                 return panelResults;
-            }
 
-            Element? n0 = root.GetChildAtIndex(0);
-            if (n0 == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0) is null.");
-                return results;
-            }
-
-            Element? n1 = n0.GetChildAtIndex(0);
-            if (n1 == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0)->Child(0) is null.");
-                return results;
-            }
-
-            Element? n2 = n1.GetChildAtIndex(2);
-            if (n2 == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0)->Child(0)->Child(2) is null.");
-                return results;
-            }
-
-            Element? container = n2.GetChildAtIndex(0);
-            if (container == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0)->Child(0)->Child(2)->Child(0) is null.");
-                return results;
-            }
-
-            diagnostics?.Add($"Tree ok: container=0x{container.Address:X}, visible={container.IsVisible}, valid={container.IsValid}");
-
-            for (int i = 0; i < 3; i++)
-            {
-                Element? option = container.GetChildAtIndex(i);
-                if (option == null)
-                {
-                    diagnostics?.Add($"Option[{i}] missing at container->Child({i}).");
-                    continue;
-                }
-
-                string modifierName = GetUltimatumModifierName(option);
-                if (string.IsNullOrWhiteSpace(modifierName))
-                {
-                    modifierName = $"Unknown Option {i + 1}";
-                    diagnostics?.Add($"Option[{i}] text unavailable, using fallback name '{modifierName}'. option=0x{option.Address:X}");
-                }
-
-                diagnostics?.Add($"Option[{i}] modifier='{modifierName}', option=0x{option.Address:X}, visible={option.IsVisible}, valid={option.IsValid}");
-                results.Add((option, modifierName));
-            }
-
-            return results;
+            return CollectTreeOptions(root, diagnostics, results);
         }
 
         internal static Element? GetUltimatumBeginButton(LabelOnGround label, List<string>? diagnostics = null)
         {
-            Element? root = label?.Label;
-            if (root == null)
-            {
-                diagnostics?.Add("Tree fail: label.Label is null.");
+            if (!TryGetUltimatumRoot(label, diagnostics, out Element? root) || root == null)
                 return null;
-            }
 
-            Element? n0 = root.GetChildAtIndex(0);
-            if (n0 == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0) is null.");
+            if (!TryGetTreeNode(root, diagnostics, "Label->Child(0)", 0, out Element? child0) || child0 == null)
                 return null;
-            }
 
-            Element? n1 = n0.GetChildAtIndex(0);
-            if (n1 == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0)->Child(0) is null.");
+            if (!TryGetTreeNode(child0, diagnostics, "Label->Child(0)->Child(0)", 0, out Element? child1) || child1 == null)
                 return null;
-            }
 
-            Element? n2 = n1.GetChildAtIndex(4);
-            if (n2 == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0)->Child(0)->Child(4) is null.");
+            if (!TryGetTreeNode(child1, diagnostics, "Label->Child(0)->Child(0)->Child(4)", 4, out Element? beginNode) || beginNode == null)
                 return null;
-            }
 
-            Element? beginButton = n2.GetChildAtIndex(0);
-            if (beginButton == null)
-            {
-                diagnostics?.Add("Tree fail: Label->Child(0)->Child(0)->Child(4)->Child(0) is null.");
+            if (!TryGetTreeNode(beginNode, diagnostics, "Label->Child(0)->Child(0)->Child(4)->Child(0)", 0, out Element? beginButton) || beginButton == null)
                 return null;
-            }
 
             diagnostics?.Add($"Tree ok: beginButton=0x{beginButton.Address:X}, visible={beginButton.IsVisible}, valid={beginButton.IsValid}");
             return beginButton;
@@ -149,43 +73,19 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static string GetUltimatumModifierName(Element option)
         {
-            string text = NormalizeModifierText(option.GetText(1024) ?? string.Empty);
+            string text = GetNormalizedElementText(option, 1024);
             if (!string.IsNullOrWhiteSpace(text))
-            {
                 return text;
-            }
 
-            // Ultimatum option text can sit in child labels before tooltip hydration.
-            for (int i = 0; i < 8; i++)
-            {
-                Element? child = option.GetChildAtIndex(i);
-                if (child == null)
-                    continue;
-
-                text = NormalizeModifierText(child.GetText(1024) ?? string.Empty);
-                if (!string.IsNullOrWhiteSpace(text))
-                    return text;
-
-                for (int j = 0; j < 8; j++)
-                {
-                    Element? grandChild = child.GetChildAtIndex(j);
-                    if (grandChild == null)
-                        continue;
-
-                    text = NormalizeModifierText(grandChild.GetText(1024) ?? string.Empty);
-                    if (!string.IsNullOrWhiteSpace(text))
-                        return text;
-                }
-            }
+            if (TryGetModifierNameFromChildren(option, out text))
+                return text;
 
             Element? tooltipName = option.Tooltip?.GetChildAtIndex(1)?.GetChildAtIndex(3);
-            text = tooltipName?.GetText(512) ?? string.Empty;
+            text = GetNormalizedElementText(tooltipName, 512);
             if (string.IsNullOrWhiteSpace(text))
-            {
-                text = option.GetText(512) ?? string.Empty;
-            }
+                text = GetNormalizedElementText(option, 512);
 
-            return NormalizeModifierText(text);
+            return text;
         }
 
         private static bool TryGetUltimatumOptionsFromChoicePanelObject(
@@ -195,13 +95,8 @@ namespace ClickIt.Features.Click.Runtime
         {
             results = new List<(Element OptionElement, string ModifierName)>(3);
 
-            Element? panelElement = root.GetChildFromIndices(0, 0, 2)
-                ?? root.GetChildAtIndex(0)?.GetChildAtIndex(0)?.GetChildAtIndex(2);
-            if (panelElement == null)
-            {
-                diagnostics?.Add("ChoicePanel fail: Label->Child(0)->Child(0)->Child(2) is null.");
+            if (!TryGetChoicePanelElement(root, diagnostics, out Element? panelElement) || panelElement == null)
                 return false;
-            }
 
             UltimatumChoicePanel? choicePanel = panelElement.AsObject<UltimatumChoicePanel>();
             if (choicePanel == null)
@@ -249,6 +144,84 @@ namespace ClickIt.Features.Click.Runtime
             return results.Count > 0;
         }
 
+        private static bool TryGetUltimatumRoot(LabelOnGround label, List<string>? diagnostics, out Element? root)
+        {
+            root = label?.Label;
+            if (root != null)
+                return true;
+
+            diagnostics?.Add("Tree fail: label.Label is null.");
+            return false;
+        }
+
+        private static List<(Element OptionElement, string ModifierName)> CollectTreeOptions(
+            Element root,
+            List<string>? diagnostics,
+            List<(Element OptionElement, string ModifierName)> results)
+        {
+            if (!TryGetTreeOptionContainer(root, diagnostics, out Element? container) || container == null)
+                return results;
+
+            diagnostics?.Add($"Tree ok: container=0x{container.Address:X}, visible={container.IsVisible}, valid={container.IsValid}");
+
+            for (int i = 0; i < 3; i++)
+            {
+                Element? option = container.GetChildAtIndex(i);
+                if (option == null)
+                {
+                    diagnostics?.Add($"Option[{i}] missing at container->Child({i}).");
+                    continue;
+                }
+
+                string modifierName = GetUltimatumModifierName(option);
+                if (string.IsNullOrWhiteSpace(modifierName))
+                {
+                    modifierName = $"Unknown Option {i + 1}";
+                    diagnostics?.Add($"Option[{i}] text unavailable, using fallback name '{modifierName}'. option=0x{option.Address:X}");
+                }
+
+                diagnostics?.Add($"Option[{i}] modifier='{modifierName}', option=0x{option.Address:X}, visible={option.IsVisible}, valid={option.IsValid}");
+                results.Add((option, modifierName));
+            }
+
+            return results;
+        }
+
+        private static bool TryGetTreeOptionContainer(Element root, List<string>? diagnostics, out Element? container)
+        {
+            container = null;
+
+            if (!TryGetTreeNode(root, diagnostics, "Label->Child(0)", 0, out Element? child0) || child0 == null)
+                return false;
+            if (!TryGetTreeNode(child0, diagnostics, "Label->Child(0)->Child(0)", 0, out Element? child1) || child1 == null)
+                return false;
+            if (!TryGetTreeNode(child1, diagnostics, "Label->Child(0)->Child(0)->Child(2)", 2, out Element? child2) || child2 == null)
+                return false;
+
+            return TryGetTreeNode(child2, diagnostics, "Label->Child(0)->Child(0)->Child(2)->Child(0)", 0, out container);
+        }
+
+        private static bool TryGetChoicePanelElement(Element root, List<string>? diagnostics, out Element? panelElement)
+        {
+            panelElement = root.GetChildFromIndices(0, 0, 2)
+                ?? root.GetChildAtIndex(0)?.GetChildAtIndex(0)?.GetChildAtIndex(2);
+            if (panelElement != null)
+                return true;
+
+            diagnostics?.Add("ChoicePanel fail: Label->Child(0)->Child(0)->Child(2) is null.");
+            return false;
+        }
+
+        private static bool TryGetTreeNode(Element parent, List<string>? diagnostics, string path, int index, out Element? child)
+        {
+            child = parent.GetChildAtIndex(index);
+            if (child != null)
+                return true;
+
+            diagnostics?.Add($"Tree fail: {path} is null.");
+            return false;
+        }
+
         private static IReadOnlyList<string> GetUltimatumChoicePanelModifierNames(UltimatumChoicePanel choicePanel, List<string>? diagnostics)
         {
             var modifiersObj = choicePanel.Modifiers;
@@ -266,6 +239,40 @@ namespace ClickIt.Features.Click.Runtime
 
             return GetUltimatumModifierName(option);
         }
+
+        private static bool TryGetModifierNameFromChildren(Element option, out string text)
+        {
+            // Ultimatum option text can sit in child labels before tooltip hydration.
+            for (int i = 0; i < 8; i++)
+            {
+                Element? child = option.GetChildAtIndex(i);
+                if (child == null)
+                    continue;
+
+                text = GetNormalizedElementText(child, 1024);
+                if (!string.IsNullOrWhiteSpace(text))
+                    return true;
+
+                for (int j = 0; j < 8; j++)
+                {
+                    Element? grandChild = child.GetChildAtIndex(j);
+                    if (grandChild == null)
+                        continue;
+
+                    text = GetNormalizedElementText(grandChild, 1024);
+                    if (!string.IsNullOrWhiteSpace(text))
+                        return true;
+                }
+            }
+
+            text = string.Empty;
+            return false;
+        }
+
+        private static string GetNormalizedElementText(Element? element, int maxLength)
+            => element == null
+                ? string.Empty
+                : NormalizeModifierText(element.GetText(maxLength) ?? string.Empty);
 
         private static string NormalizeModifierText(string text)
         {

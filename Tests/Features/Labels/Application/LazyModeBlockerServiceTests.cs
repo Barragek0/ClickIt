@@ -177,6 +177,85 @@ namespace ClickIt.Tests.Features.Labels.Application
             reason.Should().BeNull();
         }
 
+        [TestMethod]
+        public void TryGetNearbyMonsterBlockReason_ReturnsTrue_WhenLiveEntitiesReachMultipleThresholds()
+        {
+            var settings = CreateNearbyMonsterSettings();
+            (bool blocked, string? reason) = LazyModeBlockerService.EvaluateNearbyMonsterRestriction(
+            [
+                new NearbyMonsterCandidate(true, EntityType.Monster, 35f, MonsterRarity.White, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 45f, MonsterRarity.Magic, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 50f, MonsterRarity.Magic, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 55f, MonsterRarity.Rare, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 65f, MonsterRarity.Unique, true, true)
+            ],
+                settings.LazyModeNormalMonsterBlockCount,
+                settings.LazyModeNormalMonsterBlockDistance,
+                settings.LazyModeMagicMonsterBlockCount,
+                settings.LazyModeMagicMonsterBlockDistance,
+                settings.LazyModeRareMonsterBlockCount,
+                settings.LazyModeRareMonsterBlockDistance,
+                settings.LazyModeUniqueMonsterBlockCount,
+                settings.LazyModeUniqueMonsterBlockDistance);
+
+            blocked.Should().BeTrue();
+            reason.Should().Be("Normal 1/1 within 40, Magic 2/2 within 50, Rare 1/1 within 60, Unique 1/1 within 70");
+        }
+
+        [TestMethod]
+        public void TryGetNearbyMonsterBlockReason_IgnoresEntities_ThatCannotLegitimatelyBlockLazyMode()
+        {
+            var settings = CreateNearbyMonsterSettings();
+            (bool blocked, string? reason) = LazyModeBlockerService.EvaluateNearbyMonsterRestriction(
+            [
+                new NearbyMonsterCandidate(false, EntityType.Monster, 35f, MonsterRarity.White, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, float.NaN, MonsterRarity.Magic, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, float.PositiveInfinity, MonsterRarity.Rare, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 80f, MonsterRarity.Unique, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 20f, MonsterRarity.White, false, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 20f, MonsterRarity.White, true, false),
+                new NearbyMonsterCandidate(true, EntityType.Chest, 20f, MonsterRarity.White, true, true)
+            ],
+                settings.LazyModeNormalMonsterBlockCount,
+                settings.LazyModeNormalMonsterBlockDistance,
+                settings.LazyModeMagicMonsterBlockCount,
+                settings.LazyModeMagicMonsterBlockDistance,
+                settings.LazyModeRareMonsterBlockCount,
+                settings.LazyModeRareMonsterBlockDistance,
+                settings.LazyModeUniqueMonsterBlockCount,
+                settings.LazyModeUniqueMonsterBlockDistance);
+
+            blocked.Should().BeFalse();
+            reason.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void TryFindLockedChestRestrictionReason_ReturnsReason_ForLockedNonStrongboxWithinDistance()
+        {
+            string? reason = LazyModeBlockerService.TryFindLockedChestRestrictionReason(
+            [
+                new LockedChestCandidate(12f, "Metadata/Chests/Standard", true, false)
+            ],
+                clickDistance: 50);
+
+            reason.Should().Be("Locked chest detected (Metadata/Chests/Standard)");
+        }
+
+        [TestMethod]
+        public void TryFindLockedChestRestrictionReason_IgnoresStrongboxes_EmptyPaths_AndDistantCandidates()
+        {
+            string? reason = LazyModeBlockerService.TryFindLockedChestRestrictionReason(
+            [
+                new LockedChestCandidate(12f, string.Empty, true, false),
+                new LockedChestCandidate(12f, "Metadata/Chests/Strongbox", true, true),
+                new LockedChestCandidate(60f, "Metadata/Chests/Distant", true, false),
+                new LockedChestCandidate(10f, "Metadata/Chests/Unlocked", false, false)
+            ],
+                clickDistance: 50);
+
+            reason.Should().BeNull();
+        }
+
         [DataTestMethod]
         [DataRow(true, 40, false, 50, false, 60, false, 70, 40)]
         [DataRow(false, 40, true, 50, true, 60, false, 70, 60)]

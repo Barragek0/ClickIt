@@ -51,14 +51,14 @@ namespace ClickIt.Features.Click.Selection
         {
             foreach (LabelOnGround label in labels)
             {
-                if (!TryCreateLostShipmentCandidate(label, out LostShipmentCandidate candidate))
+                if (!TryCreateLostShipmentCandidate(label, windowTopLeft, out LostShipmentCandidate candidate))
                     continue;
 
                 _ = MechanicCandidateResolver.TryPromoteLostShipmentCandidate(ref best, candidate, cursorAbsolute, windowTopLeft);
             }
         }
 
-        private bool TryCreateLostShipmentCandidate(LabelOnGround? label, out LostShipmentCandidate candidate)
+        private bool TryCreateLostShipmentCandidate(LabelOnGround? label, Vector2 windowTopLeft, out LostShipmentCandidate candidate)
         {
             candidate = default;
 
@@ -73,24 +73,25 @@ namespace ClickIt.Features.Click.Selection
             if (!VisibleMechanicSelectionPolicy.IsLostShipmentEntity(path, entity.RenderName))
                 return false;
 
-            if (!TryResolveLostShipmentClickPosition(entity, path, out Vector2 clickPos))
+            if (!TryResolveLostShipmentClickPosition(entity, path, windowTopLeft, out Vector2 clickPos))
                 return false;
 
             candidate = new LostShipmentCandidate(entity, clickPos);
             return true;
         }
 
-        private bool TryResolveLostShipmentClickPosition(Entity entity, string path, out Vector2 clickPos)
+        private bool TryResolveLostShipmentClickPosition(Entity entity, string path, Vector2 windowTopLeft, out Vector2 clickPos)
         {
-            var worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-            RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
-            Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowArea.X, worldScreenRaw.Y + windowArea.Y);
-            return ClickableProbeResolver.TryResolveNearbyClickablePoint(
-                worldScreenAbsolute,
+            return VisibleMechanicClickablePointResolver.TryResolveEntityClickablePoint(
+                _dependencies.GameController,
+                entity,
                 path,
+                windowTopLeft,
                 _dependencies.IsInsideWindowInEitherSpace,
                 _dependencies.IsClickableInEitherSpace,
-                out clickPos);
+                out clickPos,
+                out _,
+                out _);
         }
     }
 }

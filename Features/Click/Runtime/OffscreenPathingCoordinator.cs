@@ -26,42 +26,19 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
             if (OffscreenPathingMath.ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(_dependencies.GameController)))
-            {
-                _traversalConfirmationGate.Reset();
-                ClearStickyOffscreenTarget();
-                _dependencies.PathfindingService.ClearLatestPath();
-                _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a RitualBlocker is active.");
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedByRitual", "RitualBlocker active");
-                return false;
-            }
+                return AbortOffscreenPathingForBlocker(
+                    "[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a RitualBlocker is active.",
+                    "OffscreenPathingBlockedByRitual",
+                    "RitualBlocker active");
 
             if (_dependencies.OnscreenMechanicPathingBlocker.ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
-            {
-                _traversalConfirmationGate.Reset();
-                ClearStickyOffscreenTarget();
-                _dependencies.PathfindingService.ClearLatestPath();
-                _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a clickable on-screen mechanic is available.");
-                return false;
-            }
+                return AbortOffscreenPathingForBlocker(
+                    "[TryWalkTowardOffscreenTarget] Skipping offscreen pathfinding because a clickable on-screen mechanic is available.",
+                    null,
+                    null);
 
-            Entity? target = preferredTarget ?? _dependencies.TraversalTargetResolver.ResolveNearestOffscreenWalkTarget();
-            if (target == null)
-            {
-                _traversalConfirmationGate.Reset();
-                if (preferredTarget != null)
-                    ClearStickyOffscreenTarget();
-
-                _dependencies.PathfindingService.ClearLatestPath();
+            if (!TryResolveTraversalTarget(preferredTarget, out Entity? target) || target == null)
                 return false;
-            }
-
-            if (!target.IsValid || target.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
-            {
-                _traversalConfirmationGate.Reset();
-                ClearStickyOffscreenTarget();
-                _dependencies.PathfindingService.ClearLatestPath();
-                return false;
-            }
 
             string targetPath = target.Path ?? string.Empty;
             if (preferredTarget == null && _traversalConfirmationGate.ShouldDelay(target, targetPath, out long remainingDelayMs))
@@ -233,6 +210,45 @@ namespace ClickIt.Features.Click.Runtime
         {
             bool success = _dependencies.MovementSkills.TryUseMovementSkillForOffscreenPathing(targetPath, targetScreen, builtPath, out Vector2 castPoint, out string debugReason);
             return (success, castPoint, debugReason);
+        }
+
+        private bool TryResolveTraversalTarget(Entity? preferredTarget, out Entity? target)
+        {
+            target = preferredTarget ?? _dependencies.TraversalTargetResolver.ResolveNearestOffscreenWalkTarget();
+            if (target == null)
+            {
+                AbortOffscreenPathing(resetConfirmation: true, clearStickyTarget: preferredTarget != null, clearLatestPath: true);
+                return false;
+            }
+
+            if (!target.IsValid || target.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
+            {
+                AbortOffscreenPathing(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
+                target = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool AbortOffscreenPathingForBlocker(string debugMessage, string? debugStage, string? debugDetails)
+        {
+            AbortOffscreenPathing(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
+            _dependencies.DebugLog(debugMessage);
+            if (!string.IsNullOrWhiteSpace(debugStage))
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(debugStage, debugDetails ?? string.Empty);
+
+            return false;
+        }
+
+        private void AbortOffscreenPathing(bool resetConfirmation, bool clearStickyTarget, bool clearLatestPath)
+        {
+            if (resetConfirmation)
+                _traversalConfirmationGate.Reset();
+            if (clearStickyTarget)
+                ClearStickyOffscreenTarget();
+            if (clearLatestPath)
+                _dependencies.PathfindingService.ClearLatestPath();
         }
 
     }

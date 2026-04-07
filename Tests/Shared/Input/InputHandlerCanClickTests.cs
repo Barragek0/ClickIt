@@ -302,6 +302,28 @@ namespace ClickIt.Tests.Shared.Input
             active.Should().BeTrue();
         }
 
+        [TestMethod]
+        public void CanClick_ReturnsFalse_WhenHotkeyInactive_AndGameControllerGraphIsPartial()
+        {
+            var handler = new InputHandler(new ClickItSettings());
+            GameController gameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(new RectangleF(100f, 200f, 1280f, 720f));
+
+            bool canClick = handler.CanClick(gameController);
+
+            canClick.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void GetCanClickFailureReason_ReturnsNotInFocus_WhenWindowForegroundLookupThrows_OnPartialGraph()
+        {
+            var handler = new InputHandler(new ClickItSettings());
+            GameController gameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(new RectangleF(100f, 200f, 1280f, 720f));
+
+            string reason = handler.GetCanClickFailureReason(gameController);
+
+            reason.Should().Be("PoE not in focus.");
+        }
+
         private static bool InvokeIsClickKeyStateActive(InputHandler handler, bool hasLazyModeRestrictedItemsOnScreen)
         {
             MethodInfo method = typeof(InputHandler).GetMethod("IsClickKeyStateActive", BindingFlags.Instance | BindingFlags.NonPublic)!;

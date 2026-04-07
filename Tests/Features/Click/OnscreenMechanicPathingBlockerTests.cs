@@ -62,7 +62,7 @@ namespace ClickIt.Tests.Features.Click
             blocked.Should().BeFalse();
             published.Should().BeFalse();
         }
-        private sealed class StubVisibleMechanicSelectionSource(bool hasClickableShrine, bool hasLostShipment, bool hasSettlers) : IVisibleMechanicSelectionSource
+        private sealed class StubVisibleMechanicSelectionSource(bool hasClickableShrine, bool hasLostShipment, bool hasSettlers) : IVisibleMechanicQueryPort
         {
             public Entity? ResolveNextShrineCandidate()
                 => null;
@@ -85,11 +85,8 @@ namespace ClickIt.Tests.Features.Click
                 settlersOreCandidate = null;
             }
 
-            public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
-                => (null, null);
-
-            public (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability()
-                => (hasLostShipment, hasSettlers);
+            public VisibleMechanicAvailabilitySnapshot GetVisibleMechanicAvailabilitySnapshot()
+                => new(hasLostShipment, hasSettlers);
         }
     }
 }

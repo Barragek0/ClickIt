@@ -12,9 +12,36 @@ namespace ClickIt.Core.Bootstrap
 
     internal static class RenderingDomainAssembler
     {
+        /**
+        Keep this thin runtime entry wrapper so the production bootstrap path stays
+        readable and stable. The injected internal overload preserves direct proof
+        over rendering composition without forcing tests through owner clipboard or
+        graphics setup, so do not collapse this wrapper unless the replacement keeps
+        the same testable separation.
+         */
         public static RenderingDomainServices Assemble(ClickIt owner, ClickItSettings settings, GameController gameController, CoreDomainServices core)
+            => Assemble(
+                owner,
+                settings,
+                gameController,
+                core,
+                owner.Graphics,
+                owner.LogMessage,
+                (snapshot, now) => owner.GetDebugClipboardService().TryAutoCopyInventoryWarningDebugSnapshot(
+                    snapshot,
+                    now,
+                    core.DeferredTextQueue.GetPendingTextSnapshot(0)));
+
+        internal static RenderingDomainServices Assemble(
+            BaseSettingsPlugin<ClickItSettings> plugin,
+            ClickItSettings settings,
+            GameController gameController,
+            CoreDomainServices core,
+            Graphics graphics,
+            Action<string, int> logMessage,
+            Func<InventoryDebugSnapshot, long, bool> tryAutoCopyInventoryWarningTrigger)
         {
-            var debugRenderer = new DebugRenderer(owner, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
+            var debugRenderer = new DebugRenderer(plugin, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
             var strongboxRenderer = new StrongboxRenderer(settings, core.DeferredFrameQueue);
             var lazyModeRenderer = new LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LazyModeBlockerService);
             var clickHotkeyToggleRenderer = new ClickHotkeyToggleRenderer(settings, core.DeferredTextQueue, core.InputHandler);
@@ -22,15 +49,12 @@ namespace ClickIt.Core.Bootstrap
                 core.DeferredTextQueue,
                 core.AreaService,
                 core.InventoryProbeService.GetLatestDebug,
-                (snapshot, now) => owner.GetDebugClipboardService().TryAutoCopyInventoryWarningDebugSnapshot(
-                    snapshot,
-                    now,
-                    core.DeferredTextQueue.GetPendingTextSnapshot(0)));
+                tryAutoCopyInventoryWarningTrigger);
             var pathfindingRenderer = new PathfindingRenderer(core.PathfindingService);
-            var altarChoiceEvaluator = new AltarChoiceEvaluator(settings, owner.LogMessage);
+            var altarChoiceEvaluator = new AltarChoiceEvaluator(settings, logMessage);
 
             var altarDisplayRenderer = new AltarDisplayRenderer(
-                owner.Graphics,
+                graphics,
                 settings,
                 gameController,
                 core.WeightCalculator,
@@ -38,7 +62,7 @@ namespace ClickIt.Core.Bootstrap
                 core.DeferredTextQueue,
                 core.DeferredFrameQueue,
                 core.AltarService,
-                owner.LogMessage);
+                logMessage);
 
             return new RenderingDomainServices(
                 debugRenderer,

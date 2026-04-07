@@ -5,26 +5,35 @@ namespace ClickIt.Features.Click.Interaction
         private readonly ClickItSettings _settings = settings;
         private readonly Random _random = new();
 
+        /**
+        Keep this runtime wrapper so live overlap resolution still reads the real
+        LabelOnGround geometry and Entity metadata. The internal overload keeps a
+        bounded owner-level seam for click-point tests without fabricating
+        brittle ExileCore label, element, and item graphs.
+         */
         internal bool IsLabelFullyOverlapped(LabelOnGround label, IReadOnlyList<LabelOnGround>? allLabels)
         {
-            bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;
-            if (!avoidOverlapsEnabled)
+            if (!ShouldAvoidOverlaps())
                 return false;
 
-            if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
+            if (!TryResolveLabelRect(label, out RectangleF rect))
                 return false;
-
-            Vector2 preferredPoint = WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(
-                rect,
-                label.ItemOnGround.Type,
-                _settings.ChestHeightOffset,
-                label.ItemOnGround.Path,
-                label.ItemOnGround.RenderName);
 
             List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRects(label, rect, allLabels);
+            return IsLabelFullyOverlapped(rect, label.ItemOnGround.Type, label.ItemOnGround.Path, label.ItemOnGround.RenderName, potentialBlockers);
+        }
+
+        internal bool IsLabelFullyOverlapped(
+            RectangleF rect,
+            EntityType itemType,
+            string? itemPath,
+            string? renderName,
+            IReadOnlyList<RectangleF> potentialBlockers)
+        {
             if (potentialBlockers.Count == 0)
                 return false;
 
+            Vector2 preferredPoint = ResolvePreferredPoint(rect, itemType, itemPath, renderName);
             if (LabelClickPointSearch.HasUnblockedOverlapProbePoint(rect, preferredPoint, potentialBlockers))
                 return false;
 
@@ -32,30 +41,58 @@ namespace ClickIt.Features.Click.Interaction
             return !LabelClickPointSearch.TryResolveVisibleClickPoint(rect, preferredPoint, blockedAreas, out _);
         }
 
+        /**
+        Keep this runtime wrapper so live click-position resolution still derives
+        geometry and overlap blockers from the real label. The internal overload
+        preserves direct proof over the resolver's preferred-point, overlap, and
+        jitter handling using already-resolved values.
+         */
         internal Vector2 CalculateClickPosition(LabelOnGround label, Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels = null)
         {
-            if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
+            if (!TryResolveLabelRect(label, out RectangleF rect))
                 throw new InvalidOperationException("Label element is invalid");
 
-            Vector2 preferredPoint = WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(
+            bool avoidOverlapsEnabled = ShouldAvoidOverlaps();
+            IReadOnlyList<RectangleF> blockedAreas = ResolveBlockedAreas(label, rect, allLabels, avoidOverlapsEnabled);
+
+            return CalculateClickPosition(
                 rect,
                 label.ItemOnGround?.Type ?? EntityType.WorldItem,
-                _settings.ChestHeightOffset,
                 label.ItemOnGround?.Path,
-                label.ItemOnGround?.RenderName);
+                label.ItemOnGround?.RenderName,
+                windowTopLeft,
+                blockedAreas,
+                avoidOverlapsEnabled);
+        }
 
-            Vector2 resolvedPoint = preferredPoint;
-            bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;
-            if (avoidOverlapsEnabled)
-            {
-                List<RectangleF> blockedAreas = CollectBlockingOverlaps(label, rect, allLabels);
-                resolvedPoint = LabelClickPointSearch.ResolveVisibleClickPoint(rect, preferredPoint, blockedAreas);
-            }
+        internal Vector2 CalculateClickPosition(
+            RectangleF rect,
+            EntityType itemType,
+            string? itemPath,
+            string? renderName,
+            Vector2 windowTopLeft,
+            IReadOnlyList<RectangleF> blockedAreas,
+            bool avoidOverlapsEnabled = true)
+        {
+            Vector2 preferredPoint = ResolvePreferredPoint(rect, itemType, itemPath, renderName);
+            IReadOnlyList<RectangleF> effectiveBlockedAreas = avoidOverlapsEnabled ? blockedAreas : [];
+            Vector2 resolvedPoint = avoidOverlapsEnabled
+                ? LabelClickPointSearch.ResolveVisibleClickPoint(rect, preferredPoint, effectiveBlockedAreas)
+                : preferredPoint;
 
             Vector2 jitteredPoint = ApplyJitterWithinRect(resolvedPoint, rect);
+            if (effectiveBlockedAreas.Count != 0 && LabelClickPointSearch.IsPointBlocked(jitteredPoint, effectiveBlockedAreas))
+                jitteredPoint = resolvedPoint;
+
             return jitteredPoint + windowTopLeft;
         }
 
+        /**
+        Keep this runtime wrapper so production still resolves label geometry and
+        clickable overlap blockers from the real UI tree. The internal overload
+        isolates the repo-owned visible-point search and jitter fallback logic
+        from third-party label construction requirements.
+         */
         internal bool TryCalculateClickPosition(
             LabelOnGround label,
             Vector2 windowTopLeft,
@@ -65,26 +102,46 @@ namespace ClickIt.Features.Click.Interaction
         {
             clickPosition = default;
 
-            if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
+            if (!TryResolveLabelRect(label, out RectangleF rect))
                 return false;
 
-            Vector2 preferredPoint = WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(
+            bool avoidOverlapsEnabled = ShouldAvoidOverlaps();
+            IReadOnlyList<RectangleF> blockedAreas = ResolveBlockedAreas(label, rect, allLabels, avoidOverlapsEnabled);
+
+            return TryCalculateClickPosition(
                 rect,
                 label.ItemOnGround?.Type ?? EntityType.WorldItem,
-                _settings.ChestHeightOffset,
                 label.ItemOnGround?.Path,
-                label.ItemOnGround?.RenderName);
+                label.ItemOnGround?.RenderName,
+                windowTopLeft,
+                blockedAreas,
+                isClickableArea,
+                out clickPosition,
+                avoidOverlapsEnabled);
+        }
 
-            List<RectangleF> blockedAreas = [];
-            bool avoidOverlapsEnabled = _settings.AvoidOverlappingLabelClickPoints?.Value != false;
-            if (avoidOverlapsEnabled)
-                blockedAreas = CollectBlockingOverlaps(label, rect, allLabels);
+        internal bool TryCalculateClickPosition(
+            RectangleF rect,
+            EntityType itemType,
+            string? itemPath,
+            string? renderName,
+            Vector2 windowTopLeft,
+            IReadOnlyList<RectangleF> blockedAreas,
+            Func<Vector2, bool>? isClickableArea,
+            out Vector2 clickPosition,
+            bool avoidOverlapsEnabled = true)
+        {
+            clickPosition = default;
 
-            if (!LabelClickPointSearch.TryResolveVisibleClickablePoint(rect, preferredPoint, blockedAreas, isClickableArea, out Vector2 resolvedPoint))
+            Vector2 preferredPoint = ResolvePreferredPoint(rect, itemType, itemPath, renderName);
+            IReadOnlyList<RectangleF> effectiveBlockedAreas = avoidOverlapsEnabled ? blockedAreas : [];
+            if (!LabelClickPointSearch.TryResolveVisibleClickablePoint(rect, preferredPoint, effectiveBlockedAreas, isClickableArea, out Vector2 resolvedPoint))
                 return false;
 
             Vector2 jitteredPoint = ApplyJitterWithinRect(resolvedPoint, rect);
-            if (!LabelClickPointSearch.IsPointClickable(jitteredPoint, isClickableArea))
+            bool jitterStayedVisible = effectiveBlockedAreas.Count == 0
+                || !LabelClickPointSearch.IsPointBlocked(jitteredPoint, effectiveBlockedAreas);
+            if (!jitterStayedVisible || !LabelClickPointSearch.IsPointClickable(jitteredPoint, isClickableArea))
                 jitteredPoint = resolvedPoint;
 
             clickPosition = jitteredPoint + windowTopLeft;
@@ -103,6 +160,29 @@ namespace ClickIt.Features.Click.Interaction
 
             return jitteredPoint;
         }
+
+        private Vector2 ResolvePreferredPoint(RectangleF rect, EntityType itemType, string? itemPath, string? renderName)
+            => WorldItemUiHoverPolicy.ResolvePreferredLabelPoint(
+                rect,
+                itemType,
+                _settings.ChestHeightOffset,
+                itemPath,
+                renderName);
+
+        private bool ShouldAvoidOverlaps()
+            => _settings.AvoidOverlappingLabelClickPoints?.Value != false;
+
+        private static bool TryResolveLabelRect(LabelOnGround label, out RectangleF rect)
+            => LabelGeometry.TryGetLabelRect(label, out rect);
+
+        private static IReadOnlyList<RectangleF> ResolveBlockedAreas(
+            LabelOnGround targetLabel,
+            RectangleF targetRect,
+            IReadOnlyList<LabelOnGround>? allLabels,
+            bool avoidOverlapsEnabled)
+            => avoidOverlapsEnabled
+                ? CollectBlockingOverlaps(targetLabel, targetRect, allLabels)
+                : [];
 
         internal static List<RectangleF> CollectPotentialBlockingLabelRects(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
             => LabelClickPointSearch.CollectPotentialBlockingLabelRects(targetLabel, targetRect, allLabels);

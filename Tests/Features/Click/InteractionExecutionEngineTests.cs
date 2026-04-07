@@ -123,7 +123,11 @@ namespace ClickIt.Tests.Features.Click
             int shrineClicks = 0;
             var engine = CreateEngine(
                 visibleMechanics: new StubVisibleMechanicInteractionPort(
-                    tryClickShrine: _ => shrineClicks++));
+                    tryClickShrine: _ =>
+                    {
+                        shrineClicks++;
+                        return true;
+                    }));
 
             ExecutionResult result = engine.Execute(
                 new ClickTickContext(
@@ -184,7 +188,7 @@ namespace ClickIt.Tests.Features.Click
 
         private static InteractionExecutionEngine CreateEngine(
             ILabelInteractionPort? labelInteractionPort = null,
-            IVisibleMechanicManualInteractionPort? visibleMechanics = null,
+            IVisibleMechanicRuntimePort? visibleMechanics = null,
             ClickLabelInteractionService? labelInteraction = null,
             Func<bool>? shouldCaptureClickDebug = null,
             Action<string>? debugLog = null,
@@ -242,8 +246,8 @@ namespace ClickIt.Tests.Features.Click
 
         private sealed class StubVisibleMechanicInteractionPort(
             Func<SettlersOreCandidate, bool>? tryClickSettlersOre = null,
-            Action<LostShipmentCandidate>? tryClickLostShipment = null,
-            Action<Entity>? tryClickShrine = null) : IVisibleMechanicManualInteractionPort
+            Func<LostShipmentCandidate, bool>? tryClickLostShipment = null,
+            Func<Entity, bool>? tryClickShrine = null) : IVisibleMechanicRuntimePort
         {
             public Entity? ResolveNextShrineCandidate()
                 => null;
@@ -266,24 +270,14 @@ namespace ClickIt.Tests.Features.Click
                 settlersOreCandidate = null;
             }
 
-            public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
-                => (null, null);
-
-            public (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability()
-                => (false, false);
-
             public bool TryClickSettlersOre(SettlersOreCandidate candidate)
                 => (tryClickSettlersOre ?? (_ => false))(candidate);
 
-            public void TryClickLostShipment(LostShipmentCandidate candidate)
-            {
-                (tryClickLostShipment ?? (_ => { }))(candidate);
-            }
+            public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate)
+                => (tryClickLostShipment ?? (_ => false))(candidate);
 
-            public void TryClickShrine(Entity shrine)
-            {
-                (tryClickShrine ?? (_ => { }))(shrine);
-            }
+            public bool TryClickShrineInteraction(Entity shrine)
+                => (tryClickShrine ?? (_ => false))(shrine);
 
             public void HandleSuccessfulMechanicEntityClick(Entity? entity)
             {

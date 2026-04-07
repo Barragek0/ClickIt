@@ -58,6 +58,24 @@ namespace ClickIt
         internal void SetSettingsProvider(Func<ClickItSettings?>? provider)
             => _getSettings = provider ?? EmptySettingsProvider;
 
+        internal void PrepareForComposition(Func<GameController?> gameControllerProvider, Func<ClickItSettings?> settingsProvider)
+        {
+            _serviceRegistry.Reset();
+            _runtime.IsShuttingDown = false;
+            _debugTelemetry.Clear();
+            SetGameControllerProvider(gameControllerProvider);
+            SetSettingsProvider(settingsProvider);
+        }
+
+        internal void ClearPublishedCompositionState()
+        {
+            _debugTelemetry.Clear();
+            SetGameControllerProvider(null);
+            SetSettingsProvider(null);
+            _services.Clear();
+            _rendering.Clear();
+        }
+
         internal void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
             => PluginCompositionBootstrapper.InitializeCompositionRoot(this, owner, settings);
 

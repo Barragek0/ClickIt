@@ -25,6 +25,7 @@
   <ItemGroup>
     <Compile Remove="**\obj\**\*.cs" />
     <Compile Remove="**\bin\**\*.cs" />
+    <Compile Remove="..\ThirdParty\Decompiled\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -80,10 +81,23 @@
     </PropertyGroup>
 
   <PropertyGroup>
+    <ThirdPartyDecompileScript>$(MSBuildProjectDirectory)\..\.scripts\decompile-thirdparty.ps1</ThirdPartyDecompileScript>
+    <ThirdPartyDecompilerProject>$(MSBuildProjectDirectory)\..\.scripts\ThirdPartyDecompiler\ThirdPartyDecompiler.csproj</ThirdPartyDecompilerProject>
+    <ThirdPartyDecompileEnabled Condition="'$(ThirdPartyDecompileEnabled)' == '' and Exists('$(ThirdPartyDecompileScript)') and Exists('$(ThirdPartyDecompilerProject)')">true</ThirdPartyDecompileEnabled>
+    <ThirdPartyDecompileEnabled Condition="'$(ThirdPartyDecompileEnabled)' == ''">false</ThirdPartyDecompileEnabled>
+    <SkipThirdPartyDecompile Condition="'$(SkipThirdPartyDecompile)' == ''">false</SkipThirdPartyDecompile>
     <GlobalUsingsGeneratorProject>$(MSBuildProjectDirectory)\..\.scripts\GlobalUsingsGenerator\GlobalUsingsGenerator.csproj</GlobalUsingsGeneratorProject>
     <ClickItGeneratedGlobalUsingsFile>$(TEMP)\ClickIt.Generated\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\GlobalUsings.Generated.g.cs</ClickItGeneratedGlobalUsingsFile>
     <GlobalUsingGeneratorAssemblies>$(MSBuildProjectDirectory)\..\ThirdParty\ExileCore.dll;$(MSBuildProjectDirectory)\..\ThirdParty\GameOffsets.dll;$(MSBuildProjectDirectory)\..\ThirdParty\ProcessMemoryUtilities.dll</GlobalUsingGeneratorAssemblies>
   </PropertyGroup>
+
+  <Target Name="RefreshThirdPartyDecompiledSources" BeforeTargets="CoreCompile" Condition="'$(ThirdPartyDecompileEnabled)' == 'true' and '$(DesignTimeBuild)' != 'true' and '$(SkipThirdPartyDecompile)' != 'true'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ThirdPartyDecompileScript)&quot;"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="High"
+          StandardErrorImportance="High" />
+  </Target>
 
   <Target Name="GenerateClickItGlobalUsings" BeforeTargets="CoreCompile">
     <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)\..&quot; --output &quot;$(ClickItGeneratedGlobalUsingsFile)&quot; --mode tests --assemblies &quot;$(GlobalUsingGeneratorAssemblies)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />

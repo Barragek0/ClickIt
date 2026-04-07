@@ -8,7 +8,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             LazyModeBlockerService? lazyModeBlockerService,
             GameController? gameController,
             InputHandler? inputHandler,
-            ClickItSettings? settings)
+            ClickItSettings? settings,
+            TimeCache<List<LabelOnGround>>? cachedLabels)
         {
             if (clickAutomationPort == null && settings == null)
                 return ClickTelemetrySnapshot.Empty;
@@ -38,7 +39,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 Ultimatum: clickAutomationSupport?.GetLatestUltimatumDebug() ?? UltimatumDebugSnapshot.Empty,
                 UltimatumTrail: clickAutomationSupport?.GetLatestUltimatumDebugTrail() ?? Array.Empty<string>(),
                 UltimatumOptionPreview: ultimatumPreview,
-                FrequencyTarget: BuildClickFrequencyTargetTelemetry(settings, inputHandler, lazyModeBlockerService, gameController),
+                FrequencyTarget: BuildClickFrequencyTargetTelemetry(settings, inputHandler, lazyModeBlockerService, gameController, cachedLabels),
                 Settings: ClickSettingsTelemetrySnapshot.FromSettings(settings));
         }
 
@@ -46,21 +47,18 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             ClickItSettings? settings,
             InputHandler? inputHandler,
             LazyModeBlockerService? lazyModeBlockerService,
-            GameController? gameController)
+            GameController? gameController,
+            TimeCache<List<LabelOnGround>>? cachedLabels)
         {
             if (settings == null)
                 return ClickFrequencyTargetTelemetrySnapshot.Empty;
 
-            IReadOnlyList<LabelOnGround>? visibleLabels = (IReadOnlyList<LabelOnGround>?)gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            bool hasRestrictedItems = PluginClickRuntimeStateEvaluator.ResolveHasLazyModeRestrictedItems(lazyModeBlockerService, visibleLabels);
-            bool lazyModeDisableActive = settings.LazyMode.Value
-                && PluginClickRuntimeStateEvaluator.ResolveLazyModeDisableActive(settings, inputHandler);
-            PluginClickRuntimeStateSnapshot runtimeState = PluginClickRuntimeStateEvaluator.BuildSnapshot(
-                lazyModeEnabled: settings.LazyMode.Value,
-                lazyModeDisableActive: lazyModeDisableActive,
-                hasLazyModeRestrictedItems: hasRestrictedItems,
-                isRitualActive: PluginClickRuntimeStateEvaluator.ResolveIsRitualActive(gameController),
-                poeForeground: PluginClickRuntimeStateEvaluator.ResolvePoeForeground(gameController));
+            PluginClickRuntimeStateSnapshot runtimeState = PluginClickRuntimeStateEvaluator.ResolveSnapshot(
+                settings,
+                inputHandler,
+                lazyModeBlockerService,
+                gameController,
+                cachedLabels?.Value);
 
             return new ClickFrequencyTargetTelemetrySnapshot(
                 SettingsAvailable: true,

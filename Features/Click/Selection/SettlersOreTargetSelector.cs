@@ -166,17 +166,18 @@ namespace ClickIt.Features.Click.Selection
             if (!hasGroundLabel)
                 return false;
 
-            var worldScreenRawVec = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-            Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
-            Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowArea.X, worldScreenRaw.Y + windowArea.Y);
-
             attemptedProbe = true;
-            if (!ClickableProbeResolver.TryResolveNearbyClickablePoint(
-                    worldScreenAbsolute,
-                    path,
-                    _dependencies.IsInsideWindowInEitherSpace,
-                    _dependencies.IsClickableInEitherSpace,
-                    out Vector2 clickPos))
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            if (!global::ClickIt.Features.Click.Selection.VisibleMechanicClickablePointResolver.TryResolveEntityClickablePoint(
+                _dependencies.GameController,
+                entity,
+                path,
+                windowTopLeft,
+                _dependencies.IsInsideWindowInEitherSpace,
+                _dependencies.IsClickableInEitherSpace,
+                out Vector2 clickPos,
+                out Vector2 worldScreenRaw,
+                out Vector2 worldScreenAbsolute))
             {
                 if (captureClickDebug)
                     PublishSettlersProbeFailedDebug(entity, mechanicId, path, worldScreenRaw, worldScreenAbsolute);

@@ -94,5 +94,174 @@ namespace ClickIt.Tests.Core.Runtime
             ctx.Runtime.WorkFinished.Should().BeTrue();
         }
 
+        [TestMethod]
+        public void RunClickLabelStep_SuppressesRegularClick_WhenManualUiHoverModeOwnsTheInput()
+        {
+            var settings = new ClickItSettings();
+            settings.Enable.Value = true;
+            settings.ClickOnManualUiHoverOnly.Value = true;
+            settings.LazyMode.Value = false;
+
+            var ctx = new PluginContext();
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+            ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
+            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => ctx.Services.ClickAutomationPort);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            var enumerator = host.RunClickLabelStep();
+
+            enumerator.MoveNext();
+
+            ctx.Runtime.WorkFinished.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void RunClickLabelStep_StopsImmediately_WhenPerformanceMonitorMissing()
+        {
+            var settings = new ClickItSettings();
+            settings.Enable.Value = true;
+
+            var ctx = new PluginContext();
+            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => new FakeClickAutomationService());
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            var enumerator = host.RunClickLabelStep();
+
+            enumerator.MoveNext().Should().BeFalse();
+            ctx.Runtime.WorkFinished.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void RunClickLabelStep_StopsImmediately_WhenRuntimeHostMissing()
+        {
+            var settings = new ClickItSettings();
+            settings.Enable.Value = true;
+
+            var ctx = new PluginContext();
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            var enumerator = host.RunClickLabelStep();
+
+            enumerator.MoveNext().Should().BeFalse();
+            ctx.Runtime.WorkFinished.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ProcessManualUiHoverClick_SkipsClick_WhenRitualIsActive()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickOnManualUiHoverOnly.Value = true;
+            settings.LazyMode.Value = false;
+
+            var ctx = new PluginContext();
+            var fakeService = new FakeClickAutomationService();
+
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+            ctx.Services.InputHandler = new InputHandler(settings);
+            ctx.Services.CachedLabels = new TimeCache<List<LabelOnGround>>(() => [], 50);
+            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => fakeService);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            RuntimeMemberAccessor.SetRequiredMember(
+                host,
+                "_lazyModeContextCache",
+                new PluginLazyModeContextCache(new PluginLazyModeContextCacheDependencies(
+                    settings,
+                    GetLabels: () => [],
+                    IsRitualActive: static () => true,
+                    HasLazyModeRestrictedItems: static _ => false,
+                    GetTimestampMs: static () => 1000)));
+
+            IEnumerator enumerator = InvokePrivateCoroutine(host, "ProcessManualUiHoverClick");
+
+            enumerator.MoveNext().Should().BeFalse();
+            fakeService.ManualHoverCallCount.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void RunClickLabelStep_CancelsOffscreenPathing_AndLogsBlockReason_WhenCanClickIsFalse()
+        {
+            var settings = new ClickItSettings();
+            settings.Enable.Value = true;
+            settings.DebugMode.Value = true;
+            settings.LogMessages.Value = true;
+            settings.LazyMode.Value = false;
+            settings.ClickFrequencyTarget.Value = -1000;
+
+            var ctx = new PluginContext();
+            var fakeService = new FakeClickAutomationService();
+            var messages = new List<string>();
+
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+            ctx.Services.InputHandler = new InputHandler(settings);
+            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => fakeService);
+
+            GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(new RectangleF(100f, 200f, 1280f, 720f));
+            var eh = new ErrorHandler(settings, (s, f) => { }, (message, _) => messages.Add(message));
+            var host = new PluginLoopHost(ctx, settings, gc, eh);
+
+            var enumerator = host.RunClickLabelStep();
+
+            enumerator.MoveNext().Should().BeFalse();
+            ctx.Runtime.WorkFinished.Should().BeTrue();
+            fakeService.CancelOffscreenPathingCallCount.Should().Be(1);
+            fakeService.ProcessRegularClickCallCount.Should().Be(0);
+            messages.Should().ContainSingle(message => message.Contains("[ClickLogic] blocked:", StringComparison.Ordinal)
+                && message.Contains("reason='", StringComparison.Ordinal));
+        }
+
+        private static IEnumerator InvokePrivateCoroutine(PluginLoopHost host, string methodName)
+        {
+            MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
+            return (IEnumerator)method.Invoke(host, null)!;
+        }
+
+        private sealed class FakeClickAutomationService : IClickAutomationService
+        {
+            public int CancelOffscreenPathingCallCount { get; private set; }
+            public int ProcessRegularClickCallCount { get; private set; }
+            public int ManualHoverCallCount { get; private set; }
+
+            public void CancelOffscreenPathingState()
+            {
+                CancelOffscreenPathingCallCount++;
+            }
+
+            public void CancelPostChestLootSettlementState()
+            {
+            }
+
+            public IEnumerator ProcessRegularClick()
+            {
+                ProcessRegularClickCallCount++;
+                yield break;
+            }
+
+            public bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? labels)
+            {
+                ManualHoverCallCount++;
+                return false;
+            }
+
+            public bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+            {
+                previews = [];
+                return false;
+            }
+        }
+
     }
 }

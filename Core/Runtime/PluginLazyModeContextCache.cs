@@ -3,7 +3,6 @@ namespace ClickIt.Core.Runtime
     internal readonly record struct PluginLazyModeContextSnapshot(
         bool IsRitualActive,
         bool HasLazyModeRestrictedItems,
-        bool UseLazyModeTiming,
         IReadOnlyList<LabelOnGround>? Labels);
 
     internal readonly record struct PluginLazyModeContextCacheDependencies(
@@ -62,10 +61,6 @@ namespace ClickIt.Core.Runtime
             return new PluginLazyModeContextSnapshot(
                 IsRitualActive: isRitualActive,
                 HasLazyModeRestrictedItems: hasLazyModeRestrictedItems,
-                UseLazyModeTiming: PluginClickRuntimeStateEvaluator.ResolveUseLazyModeTiming(
-                    _dependencies.Settings.LazyMode.Value,
-                    hasLazyModeRestrictedItems,
-                    isRitualActive),
                 Labels: labels);
         }
     }

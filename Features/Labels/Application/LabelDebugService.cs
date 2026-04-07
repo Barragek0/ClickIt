@@ -160,5 +160,115 @@ namespace ClickIt.Features.Labels.Application
 
             _errorHandler.LogMessage(true, true, msg, 5);
         }
+
+        internal static SelectionDebugSummary BuildSelectionDebugSummary(
+            IReadOnlyList<LabelDebugCandidate>? candidates,
+            int startIndex,
+            int maxCount,
+            ClickSettings clickSettings)
+        {
+            if (candidates == null || candidates.Count == 0)
+                return default;
+
+            int start = Math.Max(0, startIndex);
+            int end = Math.Min(candidates.Count, start + Math.Max(0, maxCount));
+            if (start >= end)
+                return default;
+
+            int total = 0;
+            int nullLabel = 0;
+            int nullEntity = 0;
+            int outOfDistance = 0;
+            int untargetable = 0;
+            int noMechanic = 0;
+            int worldItem = 0;
+            int worldItemMetadataRejected = 0;
+            int settlersPathSeen = 0;
+            int settlersMechanicMatched = 0;
+            int settlersMechanicDisabled = 0;
+
+            for (int i = start; i < end; i++)
+            {
+                total++;
+
+                LabelDebugCandidate candidate = candidates[i];
+                if (!candidate.HasLabel)
+                {
+                    nullLabel++;
+                    continue;
+                }
+
+                if (!candidate.HasItem)
+                {
+                    nullEntity++;
+                    continue;
+                }
+
+                bool isSettlersPath = MechanicClassifier.TryGetSettlersOreMechanicId(candidate.Path, out _);
+                if (isSettlersPath)
+                    settlersPathSeen++;
+
+                if (candidate.Type == EntityType.WorldItem)
+                {
+                    worldItem++;
+                    if (!candidate.AllowWorldItemByMetadata)
+                        worldItemMetadataRejected++;
+                }
+
+                if (candidate.DistancePlayer > clickSettings.ClickDistance)
+                {
+                    outOfDistance++;
+                    continue;
+                }
+
+                if (!candidate.IsTargetable)
+                {
+                    untargetable++;
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(candidate.MechanicId))
+                {
+                    noMechanic++;
+                    if (isSettlersPath)
+                        settlersMechanicDisabled++;
+                    continue;
+                }
+
+                if (SettlersMechanicPolicy.IsSettlersMechanicId(candidate.MechanicId))
+                    settlersMechanicMatched++;
+            }
+
+            return new SelectionDebugSummary(
+                start,
+                end,
+                total,
+                nullLabel,
+                nullEntity,
+                outOfDistance,
+                untargetable,
+                noMechanic,
+                worldItem,
+                worldItemMetadataRejected,
+                settlersPathSeen,
+                settlersMechanicMatched,
+                settlersMechanicDisabled);
+        }
+
+    }
+
+    internal readonly record struct LabelDebugCandidate(
+        bool HasLabel,
+        bool HasItem,
+        string Path,
+        EntityType Type,
+        float DistancePlayer,
+        bool IsTargetable,
+        string? MechanicId,
+        bool AllowWorldItemByMetadata)
+    {
+        internal static LabelDebugCandidate NullLabel => new(false, false, string.Empty, default, 0f, false, null, true);
+
+        internal static LabelDebugCandidate NullEntity => new(true, false, string.Empty, default, 0f, false, null, true);
     }
 }

@@ -3,7 +3,7 @@ namespace ClickIt.Features.Click.Selection
     internal readonly record struct OnscreenMechanicPathingBlockerDependencies(
         ClickItSettings Settings,
         AltarAutomationService AltarAutomation,
-        IVisibleMechanicSelectionSource VisibleMechanics,
+        IVisibleMechanicQueryPort VisibleMechanics,
         ClickDebugPublicationService ClickDebugPublisher);
 
     internal sealed class OnscreenMechanicPathingBlocker(OnscreenMechanicPathingBlockerDependencies dependencies)
@@ -25,20 +25,20 @@ namespace ClickIt.Features.Click.Selection
 
             bool hasClickableAltars = _dependencies.AltarAutomation.HasClickableAltars();
             bool hasClickableShrine = _dependencies.VisibleMechanics.HasClickableShrine();
-            (bool hasClickableLostShipment, bool hasClickableSettlers) = _dependencies.VisibleMechanics.GetVisibleMechanicAvailability();
+            VisibleMechanicAvailabilitySnapshot visibleMechanicAvailability = _dependencies.VisibleMechanics.GetVisibleMechanicAvailabilitySnapshot();
 
             bool shouldAvoid = OffscreenPathingMath.ShouldPrioritizeOnscreenMechanicsOverOffscreenPathing(
                 prioritizeOnscreen,
                 hasClickableAltars,
                 hasClickableShrine,
-                hasClickableLostShipment,
-                hasClickableSettlers);
+                visibleMechanicAvailability.HasLostShipment,
+                visibleMechanicAvailability.HasSettlers);
 
             if (shouldAvoid)
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                     "OffscreenPathingBlocked",
-                    $"onscreen clickable mechanic detected (altar={hasClickableAltars}, shrine={hasClickableShrine}, lost={hasClickableLostShipment}, settlers={hasClickableSettlers})");
+                    $"onscreen clickable mechanic detected (altar={hasClickableAltars}, shrine={hasClickableShrine}, lost={visibleMechanicAvailability.HasLostShipment}, settlers={visibleMechanicAvailability.HasSettlers})");
             }
 
             return shouldAvoid;

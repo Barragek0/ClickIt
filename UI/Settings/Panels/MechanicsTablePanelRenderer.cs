@@ -259,11 +259,7 @@ namespace ClickIt.UI.Settings.Panels
                 return;
             }
 
-            List<MechanicToggleTableEntry> groupedEntries = entries
-                .Where(entry => string.Equals(entry.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            bool hasSubgroups = groupedEntries.Any(static entry => !string.IsNullOrWhiteSpace(entry.Subgroup));
+            List<MechanicToggleTableEntry> groupedEntries = CollectMechanicGroupEntries(entries, group.Id, out bool hasSubgroups);
             if (hasSubgroups)
             {
                 DrawGroupedMechanicSubmenu(listId, group, groupedEntries);
@@ -294,57 +290,12 @@ namespace ClickIt.UI.Settings.Panels
 
         private void DrawGroupedMechanicSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
         {
-            var subgroupNames = entries
-                .Where(static entry => !string.IsNullOrWhiteSpace(entry.Subgroup))
-                .Select(static entry => entry.Subgroup!)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            bool searchIsEmpty = string.IsNullOrWhiteSpace(_settings.UiState.MechanicsSearchFilter);
-
-            foreach (string subgroupName in subgroupNames)
-            {
-                MechanicToggleTableEntry[] subgroupEntries = entries
-                    .Where(entry => string.Equals(entry.Subgroup, subgroupName, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-                bool subgroupMatchesSearch = SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, subgroupName);
-                bool hasEntryMatch = subgroupEntries.Any(entry => SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName));
-                if (!searchIsEmpty && !subgroupMatchesSearch && !hasEntryMatch)
-                    continue;
-
-                bool isOpen = ImGui.TreeNodeEx($"{subgroupName}##MechanicSubmenu_{listId}_{group.Id}_{subgroupName}", ImGuiTreeNodeFlags.DefaultOpen);
-                if (!isOpen)
-                    continue;
-
-                for (int i = 0; i < subgroupEntries.Length; i++)
-                {
-                    MechanicToggleTableEntry entry = subgroupEntries[i];
-                    if (!searchIsEmpty && !subgroupMatchesSearch && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName))
-                        continue;
-
-                    DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
-                }
-
-                _embeddedSettingsPanelRenderer.DrawMechanicSubgroupExtraSettings(group.Id, subgroupName);
-
-                ImGui.TreePop();
-            }
-
-            MechanicToggleTableEntry[] ungroupedEntries = entries.Where(static entry => string.IsNullOrWhiteSpace(entry.Subgroup)).ToArray();
-            for (int i = 0; i < ungroupedEntries.Length; i++)
-            {
-                MechanicToggleTableEntry entry = ungroupedEntries[i];
-                if (!searchIsEmpty
-                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName)
-                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, group.DisplayName))
-                {
-                    continue;
-                }
-
-                DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
-            }
+            DrawMechanicSubgroups(
+                listId,
+                group.Id,
+                group.DisplayName,
+                entries,
+                subgroupName => _embeddedSettingsPanelRenderer.DrawMechanicSubgroupExtraSettings(group.Id, subgroupName));
         }
 
         private void DrawLeagueChestGroupSubmenu(string listId, MechanicToggleGroupEntry group, IReadOnlyList<MechanicToggleTableEntry> entries)
@@ -354,58 +305,153 @@ namespace ClickIt.UI.Settings.Panels
                 new Vector4(0.65f, 0.65f, 0.65f, 1f));
             ImGui.Spacing();
 
-            List<MechanicToggleTableEntry> leagueEntries = entries
-                .Where(e => string.Equals(e.GroupId, group.Id, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            List<MechanicToggleTableEntry> leagueEntries = CollectMechanicGroupEntries(entries, group.Id, out _);
+            DrawMechanicSubgroups(listId, group.Id, group.DisplayName, leagueEntries);
+        }
 
-            var subgroupNames = leagueEntries
-                .Where(static e => !string.IsNullOrWhiteSpace(e.Subgroup))
-                .Select(static e => e.Subgroup!)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(static x => x, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
+        private void DrawMechanicSubgroups(
+            string listId,
+            string groupId,
+            string groupDisplayName,
+            IReadOnlyList<MechanicToggleTableEntry> entries,
+            Action<string>? drawSubgroupExtraSettings = null)
+        {
+            string[] subgroupNames = GetOrderedSubgroupNames(entries);
             bool searchIsEmpty = string.IsNullOrWhiteSpace(_settings.UiState.MechanicsSearchFilter);
 
             foreach (string subgroupName in subgroupNames)
             {
-                MechanicToggleTableEntry[] subgroupEntries = leagueEntries
-                    .Where(e => string.Equals(e.Subgroup, subgroupName, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-                bool subgroupMatchesSearch = SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, subgroupName);
-                bool hasEntryMatch = subgroupEntries.Any(e => SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, e.DisplayName));
-                if (!searchIsEmpty && !subgroupMatchesSearch && !hasEntryMatch)
+                MechanicToggleTableEntry[] subgroupEntries = GetSubgroupEntries(entries, subgroupName);
+                if (!TryBeginMechanicSubgroupTree(listId, groupId, subgroupName, subgroupEntries, searchIsEmpty, out bool subgroupMatchesSearch))
                     continue;
 
-                bool isOpen = ImGui.TreeNodeEx($"{subgroupName}##MechanicSubmenu_{listId}_{group.Id}_{subgroupName}", ImGuiTreeNodeFlags.DefaultOpen);
-                if (!isOpen)
-                    continue;
-
-                for (int i = 0; i < subgroupEntries.Length; i++)
-                {
-                    MechanicToggleTableEntry entry = subgroupEntries[i];
-                    if (!searchIsEmpty && !subgroupMatchesSearch && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName))
-                        continue;
-
-                    DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
-                }
-
+                DrawMechanicSubgroupEntries(listId, groupId, subgroupEntries, searchIsEmpty, subgroupMatchesSearch);
+                drawSubgroupExtraSettings?.Invoke(subgroupName);
                 ImGui.TreePop();
             }
 
-            MechanicToggleTableEntry[] ungroupedEntries = leagueEntries.Where(static e => string.IsNullOrWhiteSpace(e.Subgroup)).ToArray();
-            for (int i = 0; i < ungroupedEntries.Length; i++)
+            DrawUngroupedMechanicEntries(listId, groupId, groupDisplayName, entries, searchIsEmpty);
+        }
+
+        private static List<MechanicToggleTableEntry> CollectMechanicGroupEntries(
+            IReadOnlyList<MechanicToggleTableEntry> entries,
+            string groupId,
+            out bool hasSubgroups)
+        {
+            var groupedEntries = new List<MechanicToggleTableEntry>();
+            hasSubgroups = false;
+
+            for (int i = 0; i < entries.Count; i++)
             {
-                MechanicToggleTableEntry entry = ungroupedEntries[i];
+                MechanicToggleTableEntry entry = entries[i];
+                if (!string.Equals(entry.GroupId, groupId, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                groupedEntries.Add(entry);
+                if (!hasSubgroups && !string.IsNullOrWhiteSpace(entry.Subgroup))
+                    hasSubgroups = true;
+            }
+
+            return groupedEntries;
+        }
+
+        private static string[] GetOrderedSubgroupNames(IReadOnlyList<MechanicToggleTableEntry> entries)
+        {
+            var subgroupNames = new List<string>();
+            var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                string? subgroupName = entries[i].Subgroup;
+                if (string.IsNullOrWhiteSpace(subgroupName) || !seenNames.Add(subgroupName))
+                    continue;
+
+                subgroupNames.Add(subgroupName);
+            }
+
+            subgroupNames.Sort(StringComparer.OrdinalIgnoreCase);
+            return [.. subgroupNames];
+        }
+
+        private static MechanicToggleTableEntry[] GetSubgroupEntries(IReadOnlyList<MechanicToggleTableEntry> entries, string subgroupName)
+        {
+            var subgroupEntries = new List<MechanicToggleTableEntry>();
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                MechanicToggleTableEntry entry = entries[i];
+                if (string.Equals(entry.Subgroup, subgroupName, StringComparison.OrdinalIgnoreCase))
+                    subgroupEntries.Add(entry);
+            }
+
+            return [.. subgroupEntries];
+        }
+
+        private bool TryBeginMechanicSubgroupTree(
+            string listId,
+            string groupId,
+            string subgroupName,
+            MechanicToggleTableEntry[] subgroupEntries,
+            bool searchIsEmpty,
+            out bool subgroupMatchesSearch)
+        {
+            subgroupMatchesSearch = SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, subgroupName);
+            bool hasEntryMatch = HasMechanicSubgroupEntryMatch(subgroupEntries);
+            if (!searchIsEmpty && !subgroupMatchesSearch && !hasEntryMatch)
+                return false;
+
+            return ImGui.TreeNodeEx($"{subgroupName}##MechanicSubmenu_{listId}_{groupId}_{subgroupName}", ImGuiTreeNodeFlags.DefaultOpen);
+        }
+
+        private bool HasMechanicSubgroupEntryMatch(IReadOnlyList<MechanicToggleTableEntry> subgroupEntries)
+        {
+            for (int i = 0; i < subgroupEntries.Count; i++)
+            {
+                if (SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, subgroupEntries[i].DisplayName))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void DrawMechanicSubgroupEntries(
+            string listId,
+            string groupId,
+            MechanicToggleTableEntry[] subgroupEntries,
+            bool searchIsEmpty,
+            bool subgroupMatchesSearch)
+        {
+            for (int i = 0; i < subgroupEntries.Length; i++)
+            {
+                MechanicToggleTableEntry entry = subgroupEntries[i];
+                if (!searchIsEmpty && !subgroupMatchesSearch && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName))
+                    continue;
+
+                DrawMechanicSubmenuCheckbox(listId, groupId, entry);
+            }
+        }
+
+        private void DrawUngroupedMechanicEntries(
+            string listId,
+            string groupId,
+            string groupDisplayName,
+            IReadOnlyList<MechanicToggleTableEntry> entries,
+            bool searchIsEmpty)
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                MechanicToggleTableEntry entry = entries[i];
+                if (!string.IsNullOrWhiteSpace(entry.Subgroup))
+                    continue;
+
                 if (!searchIsEmpty
                     && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName)
-                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, group.DisplayName))
+                    && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, groupDisplayName))
                 {
                     continue;
                 }
 
-                DrawMechanicSubmenuCheckbox(listId, group.Id, entry);
+                DrawMechanicSubmenuCheckbox(listId, groupId, entry);
             }
         }
 

@@ -1,25 +1,55 @@
 namespace ClickIt.Features.Click.Runtime
 {
-    internal interface IVisibleMechanicSelectionSource
+    internal readonly record struct VisibleMechanicSelectionSnapshot(
+        LostShipmentCandidate? LostShipment,
+        SettlersOreCandidate? Settlers)
+    {
+        internal bool HasLostShipment
+            => LostShipment.HasValue;
+
+        internal bool HasSettlers
+            => Settlers.HasValue;
+    }
+
+    internal readonly record struct VisibleMechanicAvailabilitySnapshot(
+        bool HasLostShipment,
+        bool HasSettlers);
+
+    internal interface IVisibleMechanicQueryPort
     {
         Entity? ResolveNextShrineCandidate();
         bool HasClickableShrine();
+        VisibleMechanicSelectionSnapshot GetVisibleMechanicSelectionSnapshot()
+        {
+            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
+            return new VisibleMechanicSelectionSnapshot(lostShipment, settlers);
+        }
+
+        VisibleMechanicAvailabilitySnapshot GetVisibleMechanicAvailabilitySnapshot()
+        {
+            VisibleMechanicSelectionSnapshot snapshot = GetVisibleMechanicSelectionSnapshot();
+            return new VisibleMechanicAvailabilitySnapshot(snapshot.HasLostShipment, snapshot.HasSettlers);
+        }
+
         void ResolveVisibleMechanicCandidates(
             out LostShipmentCandidate? lostShipmentCandidate,
             out SettlersOreCandidate? settlersOreCandidate,
             IReadOnlyList<LabelOnGround>? labelsOverride = null);
         void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate);
-        (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates();
-        (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability();
     }
 
-    internal interface IVisibleMechanicManualInteractionPort : IVisibleMechanicSelectionSource
+    internal interface IVisibleMechanicInteractionPort
     {
         bool TryClickSettlersOre(SettlersOreCandidate candidate);
-        void TryClickLostShipment(LostShipmentCandidate candidate);
-        void TryClickShrine(Entity shrine);
+        bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate);
+        bool TryClickShrineInteraction(Entity shrine);
+
         void HandleSuccessfulMechanicEntityClick(Entity? entity);
         void HandleSuccessfulShrineClick(Entity? shrine);
+    }
+
+    internal interface IVisibleMechanicRuntimePort : IVisibleMechanicQueryPort, IVisibleMechanicInteractionPort
+    {
     }
 
     internal readonly record struct VisibleMechanicCoordinatorDependencies(
@@ -36,7 +66,7 @@ namespace ClickIt.Features.Click.Runtime
         Action<string> HoldDebugTelemetryAfterSuccess,
         ClickDebugPublicationService ClickDebugPublisher);
 
-    internal sealed class VisibleMechanicCoordinator(VisibleMechanicCoordinatorDependencies dependencies) : IVisibleMechanicManualInteractionPort
+    internal sealed class VisibleMechanicCoordinator(VisibleMechanicCoordinatorDependencies dependencies) : IVisibleMechanicRuntimePort
     {
         private const int HiddenFallbackCandidateCacheWindowMs = 150;
         private const int VisibleMechanicCandidateCacheWindowMs = 80;
@@ -71,106 +101,50 @@ namespace ClickIt.Features.Click.Runtime
             out SettlersOreCandidate? settlersOreCandidate,
             IReadOnlyList<LabelOnGround>? labelsOverride = null)
         {
-            int labelCount = labelsOverride?.Count
-                ?? _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.Count
-                ?? 0;
-
+            int labelCount = GetVisibleMechanicLabelCount(labelsOverride);
             long now = Environment.TickCount64;
 
-            if (cacheState.TryGetVisibleCandidates(
-                    now,
-                    labelCount,
-                    VisibleMechanicCandidateCacheWindowMs,
-                    IsLostShipmentCandidateUsable,
-                    IsSettlersCandidateUsable,
-                    out lostShipmentCandidate,
-                    out settlersOreCandidate))
+            if (TryResolveCachedCandidates(now, labelCount, useHiddenFallbackCache: false, out lostShipmentCandidate, out settlersOreCandidate))
             {
                 return;
             }
 
-            lostShipmentCandidate = _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate(labelsOverride);
-            settlersOreCandidate = _dependencies.SettlersOreTargets.ResolveNextSettlersOreCandidate();
-
-            cacheState.StoreVisibleCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
-        }
-
-        public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
-        {
-            ResolveVisibleMechanicCandidates(out LostShipmentCandidate? lostShipment, out SettlersOreCandidate? settlers);
-            return (lostShipment, settlers);
-        }
-
-        public (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability()
-        {
-            (LostShipmentCandidate? lostShipment, SettlersOreCandidate? settlers) = GetVisibleMechanicCandidates();
-            return (lostShipment.HasValue, settlers.HasValue);
+            ResolveFreshCandidates(now, labelCount, labelsOverride, useHiddenFallbackCache: false, out lostShipmentCandidate, out settlersOreCandidate);
         }
 
         public void ResolveHiddenFallbackCandidates(out LostShipmentCandidate? lostShipmentCandidate, out SettlersOreCandidate? settlersOreCandidate)
         {
-            int labelCount = _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.Count ?? 0;
+            int labelCount = GetVisibleMechanicLabelCount(labelsOverride: null);
             long now = Environment.TickCount64;
 
-            if (cacheState.TryGetHiddenFallbackCandidates(
-                    now,
-                    labelCount,
-                    HiddenFallbackCandidateCacheWindowMs,
-                    out lostShipmentCandidate,
-                    out settlersOreCandidate))
+            if (TryResolveCachedCandidates(now, labelCount, useHiddenFallbackCache: true, out lostShipmentCandidate, out settlersOreCandidate))
             {
                 return;
             }
 
-            lostShipmentCandidate = _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate();
-            settlersOreCandidate = _dependencies.SettlersOreTargets.ResolveNextSettlersOreCandidate();
-
-            cacheState.StoreHiddenFallbackCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
+            ResolveFreshCandidates(now, labelCount, labelsOverride: null, useHiddenFallbackCache: true, out lostShipmentCandidate, out settlersOreCandidate);
         }
 
-        public void TryClickShrine(Entity shrine)
+        public bool TryClickShrineInteraction(Entity shrine)
         {
             var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
             Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-            if (!_dependencies.LabelInteraction.PerformMechanicClick(shrineClickPos))
-                return;
-
-            HandleSuccessfulShrineClick(shrine);
+            return TryExecuteMechanicClick(shrineClickPos, () => HandleSuccessfulShrineClick(shrine));
         }
 
-        public void TryClickLostShipment(LostShipmentCandidate candidate)
+        public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate)
         {
             _dependencies.DebugLog("[ProcessRegularClick] Clicking Lost Shipment candidate via ItemOnGround position.");
-            if (!_dependencies.LabelInteraction.PerformMechanicClick(candidate.ClickPosition))
-                return;
-
-            HandleSuccessfulMechanicEntityClick(candidate.Entity);
+            return TryExecuteMechanicClick(candidate.ClickPosition, () => HandleSuccessfulMechanicEntityClick(candidate.Entity));
         }
 
         public bool TryClickSettlersOre(SettlersOreCandidate candidate)
         {
-            Entity entity = candidate.Entity;
-            if (entity != null && !entity.IsTargetable)
-            {
-                _dependencies.DebugLog($"[ProcessRegularClick] Skipping settlers ore candidate ({candidate.MechanicId}) because entity is not targetable.");
-                return false;
-            }
-
-            _dependencies.DebugLog($"[ProcessRegularClick] Clicking settlers ore candidate ({candidate.MechanicId}) via entity position.");
-
-            bool captureClickDebug = _dependencies.ClickDebugPublisher.ShouldCaptureClickDebug();
-            if (captureClickDebug)
-                PublishSettlersCandidateDebug("ClickAttempt", candidate, "Attempting settlers click");
-
-            bool clicked = _dependencies.LabelInteraction.PerformMechanicInteraction(
-                candidate.ClickPosition,
-                SettlersMechanicPolicy.RequiresHoldClick(candidate.MechanicId));
-
-            if (!clicked)
+            if (!TryPrepareSettlersClick(candidate, out Entity? entity, out bool captureClickDebug))
                 return false;
 
-            if (captureClickDebug)
-                PublishSettlersCandidateDebug("ClickSuccess", candidate, "Settlers click completed");
+            if (!TryExecuteSettlersClick(candidate, captureClickDebug))
+                return false;
 
             HandleSuccessfulMechanicEntityClick(entity);
 
@@ -191,28 +165,158 @@ namespace ClickIt.Features.Click.Runtime
                 notes: notes);
         }
 
+        private bool TryPrepareSettlersClick(
+            SettlersOreCandidate candidate,
+            out Entity? entity,
+            out bool captureClickDebug)
+        {
+            entity = candidate.Entity;
+            captureClickDebug = false;
+
+            if (!IsSettlersCandidateTargetable(candidate, entity))
+                return false;
+
+            _dependencies.DebugLog($"[ProcessRegularClick] Clicking settlers ore candidate ({candidate.MechanicId}) via entity position.");
+            captureClickDebug = _dependencies.ClickDebugPublisher.ShouldCaptureClickDebug();
+            if (captureClickDebug)
+                PublishSettlersCandidateDebug("ClickAttempt", candidate, "Attempting settlers click");
+
+            return true;
+        }
+
+        private bool TryExecuteSettlersClick(SettlersOreCandidate candidate, bool captureClickDebug)
+        {
+            bool clicked = _dependencies.LabelInteraction.PerformMechanicInteraction(
+                candidate.ClickPosition,
+                SettlersMechanicPolicy.RequiresHoldClick(candidate.MechanicId));
+
+            if (!clicked)
+                return false;
+
+            if (captureClickDebug)
+                PublishSettlersCandidateDebug("ClickSuccess", candidate, "Settlers click completed");
+
+            return true;
+        }
+
+        private bool TryExecuteMechanicClick(Vector2 clickPosition, Action onSuccess)
+        {
+            if (!_dependencies.LabelInteraction.PerformMechanicClick(clickPosition))
+                return false;
+
+            onSuccess();
+            return true;
+        }
+
+        private bool IsSettlersCandidateTargetable(SettlersOreCandidate candidate, Entity? entity)
+        {
+            if (entity == null || entity.IsTargetable)
+                return true;
+
+            _dependencies.DebugLog($"[ProcessRegularClick] Skipping settlers ore candidate ({candidate.MechanicId}) because entity is not targetable.");
+            return false;
+        }
+
+        private int GetVisibleMechanicLabelCount(IReadOnlyList<LabelOnGround>? labelsOverride)
+            => labelsOverride?.Count
+                ?? _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.Count
+                ?? 0;
+
+        private bool TryResolveCachedCandidates(
+            long now,
+            int labelCount,
+            bool useHiddenFallbackCache,
+            out LostShipmentCandidate? lostShipmentCandidate,
+            out SettlersOreCandidate? settlersOreCandidate)
+        {
+            if (useHiddenFallbackCache)
+            {
+                return cacheState.TryGetHiddenFallbackCandidates(
+                    now,
+                    labelCount,
+                    HiddenFallbackCandidateCacheWindowMs,
+                    out lostShipmentCandidate,
+                    out settlersOreCandidate);
+            }
+
+            return cacheState.TryGetVisibleCandidates(
+                now,
+                labelCount,
+                VisibleMechanicCandidateCacheWindowMs,
+                IsLostShipmentCandidateUsable,
+                IsSettlersCandidateUsable,
+                out lostShipmentCandidate,
+                out settlersOreCandidate);
+        }
+
+        private void ResolveFreshCandidates(
+            long now,
+            int labelCount,
+            IReadOnlyList<LabelOnGround>? labelsOverride,
+            bool useHiddenFallbackCache,
+            out LostShipmentCandidate? lostShipmentCandidate,
+            out SettlersOreCandidate? settlersOreCandidate)
+        {
+            lostShipmentCandidate = ResolveLostShipmentCandidate(useHiddenFallbackCache, labelsOverride);
+            settlersOreCandidate = _dependencies.SettlersOreTargets.ResolveNextSettlersOreCandidate();
+
+            if (useHiddenFallbackCache)
+            {
+                cacheState.StoreHiddenFallbackCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
+                return;
+            }
+
+            cacheState.StoreVisibleCandidates(now, labelCount, lostShipmentCandidate, settlersOreCandidate);
+        }
+
+        private LostShipmentCandidate? ResolveLostShipmentCandidate(bool useHiddenFallbackCache, IReadOnlyList<LabelOnGround>? labelsOverride)
+            => useHiddenFallbackCache
+                ? _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate()
+                : _dependencies.LostShipmentTargets.ResolveNextLostShipmentCandidate(labelsOverride);
+
+        /**
+        Keep this thin runtime wrapper so normal click success still reads from
+        the real Entity owner at runtime. The internal overload preserves a
+        bounded seam for aftermath tests without fabricating brittle ExileCore
+        Entity state just to prove telemetry, sticky-target cleanup, or path
+        clearing behavior.
+         */
         public void HandleSuccessfulMechanicEntityClick(Entity? entity)
         {
             if (entity == null)
                 return;
 
-            string entityPath = entity.Path ?? string.Empty;
-            string reason = string.IsNullOrWhiteSpace(entityPath)
-                ? "Successful mechanic click"
-                : $"Successful mechanic click: {entityPath}";
-            _dependencies.HoldDebugTelemetryAfterSuccess(reason);
+            HandleSuccessfulMechanicEntityClick(entity.Path, _dependencies.StickyTargets.IsStickyTarget(entity));
+        }
 
-            if (_dependencies.StickyTargets.IsStickyTarget(entity))
-                _dependencies.StickyTargets.ClearStickyOffscreenTarget();
-
-            if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
-                _dependencies.PathfindingService.ClearLatestPath();
+        internal void HandleSuccessfulMechanicEntityClick(string? entityPath, bool isStickyTarget)
+        {
+            ApplySuccessfulMechanicAftermath(BuildSuccessfulMechanicClickReason(entityPath), isStickyTarget);
         }
 
         public void HandleSuccessfulShrineClick(Entity? shrine)
         {
             HandleSuccessfulMechanicEntityClick(shrine);
             _dependencies.ShrineService.InvalidateCache();
+        }
+
+        private static string BuildSuccessfulMechanicClickReason(string? entityPath)
+        {
+            string resolvedEntityPath = entityPath ?? string.Empty;
+            return string.IsNullOrWhiteSpace(resolvedEntityPath)
+                ? "Successful mechanic click"
+                : $"Successful mechanic click: {resolvedEntityPath}";
+        }
+
+        private void ApplySuccessfulMechanicAftermath(string reason, bool isStickyTarget)
+        {
+            _dependencies.HoldDebugTelemetryAfterSuccess(reason);
+
+            if (isStickyTarget)
+                _dependencies.StickyTargets.ClearStickyOffscreenTarget();
+
+            if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
+                _dependencies.PathfindingService.ClearLatestPath();
         }
 
         private bool IsLostShipmentCandidateUsable(LostShipmentCandidate? candidate)

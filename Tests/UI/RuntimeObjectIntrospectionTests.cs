@@ -112,6 +112,22 @@ namespace ClickIt.Tests.UI
         }
 
         [TestMethod]
+        public void FormatValue_ReturnsNullLiteral_StringAndToStringResults()
+        {
+            RuntimeObjectIntrospectionValueFormatter.FormatValue(null).Should().Be("null");
+            RuntimeObjectIntrospectionValueFormatter.FormatValue("hello").Should().Be("hello");
+            RuntimeObjectIntrospectionValueFormatter.FormatValue(new FormatValueNode()).Should().Be("node-value");
+        }
+
+        [TestMethod]
+        public void FormatValue_TruncatesOnlyWhenMaxLengthIsPositive()
+        {
+            RuntimeObjectIntrospectionValueFormatter.FormatValue("abcdef", maxLen: 3).Should().Be("abc...");
+            RuntimeObjectIntrospectionValueFormatter.FormatValue("abcdef", maxLen: 0).Should().Be("abcdef");
+            RuntimeObjectIntrospectionValueFormatter.FormatValue("abcdef", maxLen: -1).Should().Be("abcdef");
+        }
+
+        [TestMethod]
         public void WriteReportToFile_WritesExpectedContent()
         {
             string path = GetTempFilePath();
@@ -264,6 +280,11 @@ namespace ClickIt.Tests.UI
         {
             private string HiddenValue => "secret";
             public string VisibleValue => "visible";
+        }
+
+        private sealed class FormatValueNode
+        {
+            public override string ToString() => "node-value";
         }
     }
 }

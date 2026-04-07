@@ -52,7 +52,11 @@ namespace ClickIt.Core.Runtime
             PluginServices services = state.Services;
             services.ClickAutomationPort?.CancelPostChestLootSettlementState();
 
-            if (PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(settings))
+            PluginManualUiHoverModeDecision manualUiHoverMode = PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(
+                settings,
+                clickHotkeyActive: false);
+
+            if (manualUiHoverMode.ShouldRunCoroutine)
             {
                 runtime.ClickLabelCoroutine?.Pause();
 

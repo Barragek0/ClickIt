@@ -3,6 +3,11 @@ namespace ClickIt.UI.Overlays.Common
     public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+        private readonly record struct StrongboxRenderState(
+            bool ShowFrames,
+            IReadOnlyList<string> ClickMetadata,
+            IReadOnlyList<string> DontClickMetadata);
+
         private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
         private readonly ClickItSettings _settings = settings;
         private IReadOnlyList<string> _cachedClickMetadata = [];
@@ -26,33 +31,60 @@ namespace ClickIt.UI.Overlays.Common
 
             EnsureStrongboxMetadataCache();
 
-            bool showFrames = _settings.ShowStrongboxFrames.Value;
-            IReadOnlyList<string> clickMetadata = _cachedClickMetadata;
-            IReadOnlyList<string> dontClickMetadata = _cachedDontClickMetadata;
-            bool anyTypeEnabled = clickMetadata.Count > 0;
-
-            if (!showFrames && !anyTypeEnabled)
+            StrongboxRenderState renderState = ResolveRenderState();
+            if (!ShouldRenderAnyStrongboxes(renderState))
             {
                 return;
             }
 
             foreach (var label in labels)
             {
-                if (!TryGetVisibleLabelRect(label, windowArea, out var rect, out var itemPathRaw))
+                if (!TryBuildStrongboxFrame(label, windowArea, renderState, out SharpDX.RectangleF rect, out Color color))
                     continue;
 
-                string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
-                bool isUniqueStrongbox = IsUniqueStrongbox(label);
-                bool isClickableBySettings = IsStrongboxClickableBySettings(itemPathRaw!, renderName, clickMetadata, dontClickMetadata, isUniqueStrongbox);
-                if (!isClickableBySettings || !showFrames)
-                    continue;
-
-                var chestComp = label?.ItemOnGround?.GetComponent<Chest>();
-                bool chestLocked = chestComp?.IsLocked == true;
-
-                var color = chestLocked ? Color.Red : Color.LawnGreen;
                 _deferredFrameQueue.Enqueue(rect, color, 2);
             }
+        }
+
+        private StrongboxRenderState ResolveRenderState()
+            => new(
+                _settings.ShowStrongboxFrames.Value,
+                _cachedClickMetadata,
+                _cachedDontClickMetadata);
+
+        private static bool ShouldRenderAnyStrongboxes(StrongboxRenderState renderState)
+            => renderState.ShowFrames || renderState.ClickMetadata.Count > 0;
+
+        private static bool TryBuildStrongboxFrame(
+            LabelOnGround? label,
+            SharpDX.RectangleF windowArea,
+            StrongboxRenderState renderState,
+            out SharpDX.RectangleF rect,
+            out Color color)
+        {
+            rect = default;
+            color = default;
+
+            if (!renderState.ShowFrames)
+                return false;
+
+            if (!TryGetVisibleLabelRect(label, windowArea, out rect, out string? itemPathRaw))
+                return false;
+
+            string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
+            bool isUniqueStrongbox = IsUniqueStrongbox(label);
+            if (!IsStrongboxClickableBySettings(itemPathRaw!, renderName, renderState.ClickMetadata, renderState.DontClickMetadata, isUniqueStrongbox))
+                return false;
+
+            color = ResolveStrongboxFrameColor(label);
+            return true;
+        }
+
+        private static Color ResolveStrongboxFrameColor(LabelOnGround? label)
+        {
+            var chestComp = label?.ItemOnGround?.GetComponent<Chest>();
+            bool chestLocked = chestComp?.IsLocked == true;
+            return chestLocked ? Color.Red : Color.LawnGreen;
         }
 
         private static bool TryGetVisibleLabelRect(LabelOnGround? label, SharpDX.RectangleF windowArea, out SharpDX.RectangleF rect, out string? itemPathRaw)

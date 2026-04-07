@@ -9,6 +9,31 @@ namespace ClickIt.Core.Runtime
         bool UseLazyModeTiming,
         bool ShowLazyModeTarget);
 
+    internal readonly record struct PluginClickGateDecision(
+        bool ReadyByTime,
+        bool CanClick,
+        bool ShouldCancelOffscreenPathing,
+        string FailureReason)
+    {
+        internal bool IsBlocked
+            => !ReadyByTime || !CanClick;
+    }
+
+    internal readonly record struct PluginClickReadinessDecision(
+        bool ReadyByTime,
+        bool CanClick)
+    {
+        internal bool IsBlocked
+            => !ReadyByTime || !CanClick;
+    }
+
+    internal readonly record struct PluginManualUiHoverModeDecision(
+        bool ShouldRunCoroutine)
+    {
+        internal bool ShouldSuppressRegularClick
+            => ShouldRunCoroutine;
+    }
+
     internal static class PluginClickRuntimeStateEvaluator
     {
         internal static bool ResolveHotkeyActive(PluginServices services)
@@ -31,7 +56,61 @@ namespace ClickIt.Core.Runtime
             => EntityHelpers.IsRitualActive(gameController);
 
         internal static bool ResolvePoeForeground(GameController? gameController)
-            => gameController?.Window?.IsForeground() == true;
+        {
+            try
+            {
+                return gameController?.Window?.IsForeground() == true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static PluginClickRuntimeStateSnapshot ResolveSnapshot(
+            ClickItSettings? settings,
+            InputHandler? inputHandler,
+            LazyModeBlockerService? lazyModeBlockerService,
+            GameController? gameController,
+            IReadOnlyList<LabelOnGround>? labels = null)
+        {
+            if (settings == null)
+                return default;
+
+            bool lazyModeEnabled = settings.LazyMode.Value;
+            bool lazyModeDisableActive = lazyModeEnabled
+                && ResolveLazyModeDisableActive(settings, inputHandler);
+            IReadOnlyList<LabelOnGround>? effectiveLabels = labels
+                ?? (IReadOnlyList<LabelOnGround>?)gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+
+            return BuildSnapshot(
+                lazyModeEnabled,
+                lazyModeDisableActive,
+                ResolveHasLazyModeRestrictedItems(lazyModeBlockerService, effectiveLabels),
+                ResolveIsRitualActive(gameController),
+                ResolvePoeForeground(gameController));
+        }
+
+        internal static PluginClickRuntimeStateSnapshot ResolveSnapshot(
+            ClickItSettings? settings,
+            InputHandler? inputHandler,
+            GameController? gameController,
+            PluginLazyModeContextSnapshot lazyModeContext)
+        {
+            if (settings == null)
+                return default;
+
+            bool lazyModeEnabled = settings.LazyMode.Value;
+            bool lazyModeDisableActive = lazyModeEnabled
+                && ResolveLazyModeDisableActive(settings, inputHandler);
+
+            return BuildSnapshot(
+                lazyModeEnabled,
+                lazyModeDisableActive,
+                lazyModeContext.HasLazyModeRestrictedItems,
+                lazyModeContext.IsRitualActive,
+                ResolvePoeForeground(gameController));
+        }
 
         internal static bool ResolveLazyModeDisableActive(ClickItSettings settings, InputHandler? inputHandler)
         {
@@ -63,21 +142,85 @@ namespace ClickIt.Core.Runtime
             => manualUiHoverEnabled && !lazyModeEnabled;
 
         internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
-            => ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled, lazyModeEnabled) && !clickHotkeyActive;
+            => ResolveManualUiHoverMode(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive).ShouldRunCoroutine;
 
         internal static bool ShouldRunManualUiHoverCoroutine(ClickItSettings? settings)
-            => ShouldRunManualUiHoverCoroutine(
-                settings?.ClickOnManualUiHoverOnly?.Value == true,
-                settings?.LazyMode?.Value == true);
+            => ResolveManualUiHoverMode(settings, clickHotkeyActive: false).ShouldRunCoroutine;
 
         internal static bool ShouldSuppressRegularClickForManualUiHoverMode(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
-            => ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive);
+            => ResolveManualUiHoverMode(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive).ShouldSuppressRegularClick;
+
+        internal static PluginManualUiHoverModeDecision ResolveManualUiHoverMode(ClickItSettings? settings, bool clickHotkeyActive)
+            => ResolveManualUiHoverMode(
+                settings?.ClickOnManualUiHoverOnly?.Value == true,
+                settings?.LazyMode?.Value == true,
+                clickHotkeyActive);
+
+        internal static PluginManualUiHoverModeDecision ResolveManualUiHoverMode(
+            bool manualUiHoverEnabled,
+            bool lazyModeEnabled,
+            bool clickHotkeyActive)
+        {
+            bool shouldRunCoroutine = ShouldRunManualUiHoverCoroutine(manualUiHoverEnabled, lazyModeEnabled)
+                && !clickHotkeyActive;
+            return new PluginManualUiHoverModeDecision(shouldRunCoroutine);
+        }
 
         internal static bool ResolveShowLazyModeTarget(
             bool useLazyModeTiming,
             bool lazyModeDisableActive,
             bool poeForeground)
             => useLazyModeTiming && !lazyModeDisableActive && poeForeground;
+
+        internal static double ResolveFrequencyTarget(ClickItSettings settings, PluginClickRuntimeStateSnapshot runtimeState)
+            => runtimeState.UseLazyModeTiming
+                ? settings.LazyModeClickLimiting.Value
+                : settings.ClickFrequencyTarget.Value;
+
+        internal static PluginClickGateDecision ResolveRegularClickGateDecision(
+            InputHandler? inputHandler,
+            GameController? gameController,
+            PluginClickRuntimeStateSnapshot runtimeState,
+            bool hotkeyActive,
+            long elapsedMilliseconds,
+            double targetTime)
+        {
+            bool readyByTime = elapsedMilliseconds >= targetTime;
+            bool canClick = inputHandler != null
+                && gameController != null
+                && inputHandler.CanClick(
+                    gameController,
+                    runtimeState.HasLazyModeRestrictedItems,
+                    runtimeState.IsRitualActive);
+            bool hotkeyHeld = inputHandler == null || hotkeyActive;
+
+            return new PluginClickGateDecision(
+                ReadyByTime: readyByTime,
+                CanClick: canClick,
+                ShouldCancelOffscreenPathing: ShouldCancelOffscreenPathingForInputRelease(runtimeState.LazyModeEnabled, hotkeyHeld),
+                FailureReason: ResolveRegularClickFailureReason(inputHandler, gameController, canClick));
+        }
+
+        internal static PluginClickReadinessDecision ResolveManualUiHoverGateDecision(
+            InputHandler? inputHandler,
+            GameController? gameController,
+            long elapsedMilliseconds,
+            double targetTime)
+            => new(
+                ReadyByTime: elapsedMilliseconds >= targetTime,
+                CanClick: inputHandler != null
+                    && gameController != null
+                    && inputHandler.CanClickWithoutInputState(gameController));
+
+        internal static string ResolveRegularClickFailureReason(
+            InputHandler? inputHandler,
+            GameController? gameController,
+            bool canClick)
+            => canClick
+                ? "Timer gating"
+                : inputHandler != null && gameController != null
+                    ? inputHandler.GetCanClickFailureReason(gameController)
+                    : "Unknown click blocker";
 
         internal static PluginClickRuntimeStateSnapshot BuildSnapshot(
             bool lazyModeEnabled,

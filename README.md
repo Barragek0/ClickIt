@@ -125,6 +125,8 @@ msbuild ClickIt.sln /p:Configuration=Debug /p:exapiPackage="C:\Path\To\PoeHelper
 
 If `exapiPackage` is not set, the project also has a local fallback path for development.
 
+The repo does not require `ThirdParty/Decompiled/` or `.scripts/ThirdPartyDecompiler/` to build. Those are local-only decompile artifacts; the tracked projects skip that refresh path automatically when those files are absent, so a GitHub zip still builds cleanly.
+
 ## Coverage
 
 The workspace coverage flow is:

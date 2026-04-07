@@ -6,7 +6,7 @@ namespace ClickIt.Tests.Features.Click
         private static CandidateAcquisitionEngine CreateEngine(
             ClickItSettings? settings = null,
             ILabelInteractionPort? labelInteractionPort = null,
-            IVisibleMechanicSelectionSource? visibleMechanics = null,
+            IVisibleMechanicQueryPort? visibleMechanics = null,
             LabelSelectionCoordinator? labelSelection = null,
             ClickDebugPublicationService? clickDebugPublisher = null)
         {
@@ -69,7 +69,7 @@ namespace ClickIt.Tests.Features.Click
 
         private sealed class StubVisibleMechanicSelectionSource(
             LostShipmentCandidate? hiddenLostShipment = null,
-            SettlersOreCandidate? hiddenSettlers = null) : IVisibleMechanicSelectionSource
+            SettlersOreCandidate? hiddenSettlers = null) : IVisibleMechanicQueryPort
         {
             public int HiddenFallbackCalls { get; private set; }
             public int VisibleCandidateCalls { get; private set; }
@@ -96,12 +96,6 @@ namespace ClickIt.Tests.Features.Click
                 lostShipmentCandidate = hiddenLostShipment;
                 settlersOreCandidate = hiddenSettlers;
             }
-
-            public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
-                => (null, null);
-
-            public (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability()
-                => (false, false);
         }
     }
 }

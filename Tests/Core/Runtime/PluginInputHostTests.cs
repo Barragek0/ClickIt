@@ -74,6 +74,33 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
+        public void HandleHotkeyReleased_DoesNotReplaceCompletedManualHoverCoroutine_WhenManualHoverModeDisabled()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            var state = plugin.State;
+            var performanceMonitor = new PerformanceMonitor(settings);
+
+            settings.ClickOnManualUiHoverOnly.Value = false;
+            settings.LazyMode.Value = false;
+            performanceMonitor.ClickActivity.ClickCount = 4;
+
+            Coroutine existing = CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: true);
+            state.Services.PerformanceMonitor = performanceMonitor;
+            state.Runtime.ManualUiHoverCoroutine = existing;
+
+            using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
+            [
+                CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: false),
+            ]);
+
+            InputHost.HandleHotkeyReleased(state, settings);
+
+            state.Runtime.ManualUiHoverCoroutine.Should().BeSameAs(existing);
+            performanceMonitor.ClickActivity.ClickCount.Should().Be(0);
+        }
+
+        [TestMethod]
         public void Tick_WhenInputHandlerMissing_ResetsClickCount()
         {
             var plugin = new ClickIt();
@@ -120,6 +147,27 @@ namespace ClickIt.Tests.Core.Runtime
             long before = state.Runtime.SecondTimer.ElapsedMilliseconds;
             InputHost.ResumeAltarScanningIfDue(state);
 
+            state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(before);
+        }
+
+        [TestMethod]
+        public void Tick_WhenShuttingDown_DoesNotMutateClickActivityOrRestartAltarTimer()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            var state = plugin.State;
+            var performanceMonitor = new PerformanceMonitor(settings);
+
+            state.Runtime.IsShuttingDown = true;
+            state.Runtime.SecondTimer.Restart();
+            performanceMonitor.ClickActivity.ClickCount = 6;
+            state.Services.PerformanceMonitor = performanceMonitor;
+
+            long before = state.Runtime.SecondTimer.ElapsedMilliseconds;
+
+            InputHost.Tick(state, settings);
+
+            performanceMonitor.ClickActivity.ClickCount.Should().Be(6);
             state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(before);
         }
 

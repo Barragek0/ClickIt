@@ -33,13 +33,16 @@ namespace ClickIt.Shared.Input
                 return false;
 
             bool keyState = IsClickKeyStateActive(hasLazyModeRestrictedItemsOnScreen);
+            if (!keyState)
+                return false;
+
             bool clickHotkeyHeld = IsClickHotkeyHeld();
             bool blockOnOpenPanels = _settings?.BlockOnOpenLeftRightPanel?.Value == true;
             bool isPoeActive = IsPOEActive(gameController);
             bool isPanelOpen = IsPanelOpen(gameController);
             bool isInTownOrHideout = IsInTownOrHideout(gameController);
             bool isInToggleItemsPostClickBlockWindow = IsInToggleItemsPostClickBlockWindow();
-            bool isEscapeState = gameController.Game.IsEscapeState;
+            bool isEscapeState = IsEscapeState(gameController);
             string? uiBlockingReason = GetUiBlockingReason(gameController);
 
             return keyState
@@ -153,11 +156,11 @@ namespace ClickIt.Shared.Input
         public string GetCanClickFailureReason(GameController gameController)
         {
             return ResolveCanClickFailureReason(
-                isPoeActive: gameController?.Window?.IsForeground() == true,
+                isPoeActive: IsPOEActive(gameController),
                 isPanelOpen: gameController != null && IsPanelOpen(gameController),
                 isInTownOrHideout: gameController != null && IsInTownOrHideout(gameController),
                 isInToggleItemsPostClickBlockWindow: IsInToggleItemsPostClickBlockWindow(),
-                isEscapeState: gameController?.Game?.IsEscapeState == true,
+                isEscapeState: IsEscapeState(gameController),
                 uiBlockingReason: GetUiBlockingReason(gameController),
                 blockOnOpenPanels: _settings.BlockOnOpenLeftRightPanel.Value);
         }
@@ -172,7 +175,7 @@ namespace ClickIt.Shared.Input
                 isPanelOpen: IsPanelOpen(gameController),
                 isInTownOrHideout: IsInTownOrHideout(gameController),
                 isInToggleItemsPostClickBlockWindow: IsInToggleItemsPostClickBlockWindow(),
-                isEscapeState: gameController.Game.IsEscapeState,
+                isEscapeState: IsEscapeState(gameController),
                 uiBlockingReason: GetUiBlockingReason(gameController),
                 blockOnOpenPanels: _settings?.BlockOnOpenLeftRightPanel?.Value == true);
         }
@@ -232,14 +235,13 @@ namespace ClickIt.Shared.Input
             var labels = cachedLabels?.Value;
             bool hasRestricted = hasLazyModeRestrictedItemsOnScreen?.Invoke(labels) ?? false;
             bool disableKeyHeld = IsLazyModeDisableActiveForCurrentInputState();
-            var (_, _, mouseButtonBlocks) = GetMouseButtonBlockingState(_settings, Keyboard.IsKeyDown);
 
             if (hotkeyHeld)
             {
                 return true;
             }
 
-            return !hasRestricted && !disableKeyHeld && !mouseButtonBlocks;
+            return !hasRestricted && !disableKeyHeld;
         }
 
         public bool IsLazyModeDisableActiveForCurrentInputState()
@@ -255,8 +257,33 @@ namespace ClickIt.Shared.Input
             GetMouseButtonBlockingState(ClickItSettings settings, Func<Keys, bool> keyStateProvider)
             => InputHotkeyStateService.GetMouseButtonBlockingState(settings, keyStateProvider);
 
-        private static bool IsPOEActive(GameController gameController)
-            => gameController.Window.IsForeground();
+        private static bool IsPOEActive(GameController? gameController)
+        {
+            try
+            {
+                return gameController?.Window?.IsForeground() == true;
+            }
+            catch (NullReferenceException)
+            {
+                return false;
+            }
+        }
+
+        private static bool IsEscapeState(GameController? gameController)
+        {
+            try
+            {
+                return gameController?.Game?.IsEscapeState == true;
+            }
+            catch (NullReferenceException)
+            {
+                return false;
+            }
+            catch (TypeInitializationException)
+            {
+                return false;
+            }
+        }
 
         private static bool IsPanelOpen(GameController gameController)
         {

@@ -208,7 +208,7 @@ namespace ClickIt.Features.Click.Interaction
         private static Vector2 ClampPointToRect(Vector2 point, RectangleF rect)
             => new(Math.Clamp(point.X, rect.Left, rect.Right), Math.Clamp(point.Y, rect.Top, rect.Bottom));
 
-        private static bool IsPointBlocked(Vector2 point, IReadOnlyList<RectangleF> blockedAreas)
+        internal static bool IsPointBlocked(Vector2 point, IReadOnlyList<RectangleF> blockedAreas)
         {
             for (int i = 0; i < blockedAreas.Count; i++)
             {

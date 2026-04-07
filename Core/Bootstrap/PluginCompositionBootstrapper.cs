@@ -8,16 +8,13 @@ namespace ClickIt.Core.Bootstrap
             ArgumentNullException.ThrowIfNull(owner);
             ArgumentNullException.ThrowIfNull(settings);
 
-            context.ServiceRegistry.Reset();
-            context.Runtime.IsShuttingDown = false;
-            context.DebugTelemetry.Clear();
-            context.SetGameControllerProvider(() => owner.GameController);
-            context.SetSettingsProvider(owner.GetEffectiveSettingsForLifecycle);
+            context.PrepareForComposition(() => owner.GameController, owner.GetEffectiveSettingsForLifecycle);
 
-            CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, owner.GameController
-                ?? throw new InvalidOperationException("GameController is null during plugin initialization."));
-            RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, owner.GameController, core);
-            ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, owner.GameController, core, rendering.AltarChoiceEvaluator);
+            GameController gameController = owner.GameController
+                ?? throw new InvalidOperationException("GameController is null during plugin initialization.");
+            CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, gameController);
+            RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, gameController, core);
+            ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, gameController, core, rendering.AltarChoiceEvaluator);
             UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
 
@@ -56,11 +53,7 @@ namespace ClickIt.Core.Bootstrap
             ArgumentNullException.ThrowIfNull(context);
 
             context.ServiceRegistry.DisposeAll();
-            context.DebugTelemetry.Clear();
-            context.SetGameControllerProvider(null);
-            context.SetSettingsProvider(null);
-            context.Services.Clear();
-            context.Rendering.Clear();
+            context.ClearPublishedCompositionState();
         }
 
         private static void ApplyPorts(
@@ -72,8 +65,14 @@ namespace ClickIt.Core.Bootstrap
             AlertService alertService)
         {
             PluginServices services = context.Services;
-            PluginRenderingState renderingState = context.Rendering;
 
+            PublishCoreServices(services, core);
+            PublishClickServices(services, clickAutomationPort, alertService, core.WeightCalculator);
+            PublishRenderingState(context.Rendering, services, core, rendering, ultimatumRenderer);
+        }
+
+        private static void PublishCoreServices(PluginServices services, CoreDomainServices core)
+        {
             services.PerformanceMonitor = core.PerformanceMonitor;
             services.ErrorHandler = core.ErrorHandler;
             services.AreaService = core.AreaService;
@@ -85,15 +84,31 @@ namespace ClickIt.Core.Bootstrap
             services.LazyModeBlockerService = core.LazyModeBlockerService;
             services.InventoryProbeService = core.InventoryProbeService;
             services.InventoryInteractionPolicy = core.InventoryInteractionPolicy;
-            services.ClickAutomationSupport = clickAutomationPort.ClickAutomationSupport;
-            services.LockedInteractionDispatcher = clickAutomationPort.LockedInteractionDispatcher;
             services.ShrineService = core.ShrineService;
             services.InputHandler = core.InputHandler;
             services.PathfindingService = core.PathfindingService;
-            services.ClickAutomationPort = clickAutomationPort;
-            services.AlertService = alertService;
-            services.WeightCalculator = core.WeightCalculator;
+        }
 
+        private static void PublishClickServices(
+            PluginServices services,
+            ClickAutomationPort clickAutomationPort,
+            AlertService alertService,
+            WeightCalculator weightCalculator)
+        {
+            services.ClickAutomationPort = clickAutomationPort;
+            services.ClickAutomationSupport = clickAutomationPort.ClickAutomationSupport;
+            services.LockedInteractionDispatcher = clickAutomationPort.LockedInteractionDispatcher;
+            services.AlertService = alertService;
+            services.WeightCalculator = weightCalculator;
+        }
+
+        private static void PublishRenderingState(
+            PluginRenderingState renderingState,
+            PluginServices services,
+            CoreDomainServices core,
+            RenderingDomainServices rendering,
+            UltimatumRenderer ultimatumRenderer)
+        {
             renderingState.DeferredTextQueue = core.DeferredTextQueue;
             renderingState.DeferredFrameQueue = core.DeferredFrameQueue;
             renderingState.DebugRenderer = rendering.DebugRenderer;

@@ -121,7 +121,7 @@ namespace ClickIt.Tests.Features.Click
 
         private sealed class StubVisibleMechanicInteractionPort(
             LostShipmentCandidate? hiddenLostShipment = null,
-            SettlersOreCandidate? hiddenSettlers = null) : IVisibleMechanicManualInteractionPort
+            SettlersOreCandidate? hiddenSettlers = null) : IVisibleMechanicRuntimePort
         {
             public int HiddenFallbackCalls { get; private set; }
             public int SettlersClicks { get; private set; }
@@ -149,26 +149,20 @@ namespace ClickIt.Tests.Features.Click
                 settlersOreCandidate = hiddenSettlers;
             }
 
-            public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
-                => (null, null);
-
-            public (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability()
-                => (hiddenLostShipment.HasValue, hiddenSettlers.HasValue);
-
             public bool TryClickSettlersOre(SettlersOreCandidate candidate)
             {
                 SettlersClicks++;
                 return true;
             }
 
-            public void TryClickLostShipment(LostShipmentCandidate candidate)
+            public bool TryClickLostShipmentInteraction(LostShipmentCandidate candidate)
             {
                 LostShipmentClicks++;
+                return true;
             }
 
-            public void TryClickShrine(Entity shrine)
-            {
-            }
+            public bool TryClickShrineInteraction(Entity shrine)
+                => true;
 
             public void HandleSuccessfulMechanicEntityClick(Entity? entity)
             {

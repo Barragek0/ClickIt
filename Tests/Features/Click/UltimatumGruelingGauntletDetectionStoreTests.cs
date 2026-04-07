@@ -3,6 +3,17 @@ namespace ClickIt.Tests.Features.Click
     [TestClass]
     public class UltimatumGruelingGauntletDetectionStoreTests
     {
+        [TestInitialize]
+        public void ResetStore()
+        {
+            typeof(UltimatumGruelingGauntletDetectionStore)
+                .GetField("_isActive", BindingFlags.NonPublic | BindingFlags.Static)!
+                .SetValue(null, false);
+            typeof(UltimatumGruelingGauntletDetectionStore)
+                .GetField("_hasValue", BindingFlags.NonPublic | BindingFlags.Static)!
+                .SetValue(null, false);
+        }
+
         [TestMethod]
         public void TryGet_ReturnsFalseUntilAnyDetectionWasPublished()
         {

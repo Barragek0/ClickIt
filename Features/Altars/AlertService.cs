@@ -6,7 +6,9 @@ namespace ClickIt.Features.Altars
         Func<string> configDirectoryProvider,
         Func<GameController?> gameControllerProvider,
         Action<string, int> logMessage,
-        Action<string, int> logError)
+        Action<string, int> logError,
+        Action<string>? openDirectory = null,
+        Action<string, int>? playSound = null)
     {
         private readonly Func<ClickItSettings?> _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         private readonly Func<ClickItSettings> _effectiveSettingsProvider = effectiveSettingsProvider ?? throw new ArgumentNullException(nameof(effectiveSettingsProvider));
@@ -14,6 +16,8 @@ namespace ClickIt.Features.Altars
         private readonly Func<GameController?> _gameControllerProvider = gameControllerProvider ?? throw new ArgumentNullException(nameof(gameControllerProvider));
         private readonly Action<string, int> _logMessage = logMessage ?? throw new ArgumentNullException(nameof(logMessage));
         private readonly Action<string, int> _logError = logError ?? throw new ArgumentNullException(nameof(logError));
+        private readonly Action<string> _openDirectory = openDirectory ?? (path => Process.Start("explorer.exe", path));
+        private readonly Action<string, int>? _playSound = playSound;
 
         private readonly Dictionary<string, DateTime> _lastAlertTimes = new(StringComparer.OrdinalIgnoreCase);
         private string? _alertSoundPath;
@@ -61,7 +65,7 @@ namespace ClickIt.Features.Altars
 
         public void OpenConfigDirectory()
         {
-            Process.Start("explorer.exe", _configDirectoryProvider());
+            _openDirectory(_configDirectoryProvider());
         }
 
         public void TryTriggerAlertForMatchedMod(string matchedId)
@@ -130,9 +134,16 @@ namespace ClickIt.Features.Altars
         public void PlaySoundFile(string path)
         {
             var gameController = _gameControllerProvider();
+            int volume = _effectiveSettingsProvider().AlertSoundVolume?.Value ?? 5;
+            if (_playSound != null)
+            {
+                _playSound(path, volume);
+                return;
+            }
+
             if (gameController?.SoundController != null)
             {
-                gameController.SoundController.PlaySound(path, _effectiveSettingsProvider().AlertSoundVolume?.Value ?? 5);
+                gameController.SoundController.PlaySound(path, volume);
             }
         }
 

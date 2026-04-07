@@ -38,6 +38,32 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
+        public void DeferredFrameQueue_Enqueue_DoesNotDuplicateConsecutiveIdenticalFrames()
+        {
+            var queue = new DeferredFrameQueue();
+            var rect = new RectangleF(5, 6, 7, 8);
+
+            queue.Enqueue(rect, Color.Blue, 2);
+            queue.Enqueue(rect, Color.Blue, 2);
+
+            queue.GetPendingFrameSnapshot().Should().ContainSingle();
+            queue.GetPendingCount().Should().Be(1);
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_Enqueue_IgnoresInvalidFrameInput()
+        {
+            var queue = new DeferredFrameQueue();
+
+            queue.Enqueue(new RectangleF(0, 0, 0, 10), Color.White, 1);
+            queue.Enqueue(new RectangleF(float.NaN, 0, 10, 10), Color.White, 1);
+            queue.Enqueue(new RectangleF(0, 0, 10, 10), Color.White, 0);
+
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
+            queue.GetPendingCount().Should().Be(0);
+        }
+
+        [TestMethod]
         public void DeferredTextQueue_Enqueue_FlushWithNullGraphics_DoesNotThrow()
         {
             var q = new DeferredTextQueue();
@@ -57,6 +83,18 @@ namespace ClickIt.Tests.Shared.Diagnostics
             q.Enqueue("hello", new Vector2(1, 2), Color.White, 12, FontAlign.Left);
 
             q.GetPendingTextSnapshot().Should().ContainSingle().Which.Should().Be("hello");
+        }
+
+        [TestMethod]
+        public void DeferredTextQueue_Enqueue_IgnoresInvalidTextInput()
+        {
+            var queue = new DeferredTextQueue();
+
+            queue.Enqueue(string.Empty, new Vector2(1, 2), Color.White, 12);
+            queue.Enqueue("valid text but invalid size", new Vector2(1, 2), Color.White, 0);
+
+            queue.GetPendingTextSnapshot().Should().BeEmpty();
+            queue.GetPendingCount().Should().Be(0);
         }
 
         [TestMethod]
@@ -207,6 +245,45 @@ namespace ClickIt.Tests.Shared.Diagnostics
         }
 
         [TestMethod]
+        public void DeferredTextQueue_GetPendingTextSnapshot_StartIndexSlicesBufferedEntries()
+        {
+            var queue = new DeferredTextQueue();
+            queue.Enqueue("line-0", new Vector2(0, 0), Color.White, 12);
+            queue.Enqueue("line-1", new Vector2(1, 1), Color.White, 12);
+            queue.Enqueue("line-2", new Vector2(2, 2), Color.White, 12);
+
+            string[] snapshot = queue.GetPendingTextSnapshot(startIndex: 1);
+
+            snapshot.Should().Equal("line-1", "line-2");
+        }
+
+        [TestMethod]
+        public void DeferredTextQueue_GetPendingTextSnapshot_ReturnsEmpty_WhenStartIndexReachesBufferedCount()
+        {
+            var queue = new DeferredTextQueue();
+            queue.Enqueue("line-0", new Vector2(0, 0), Color.White, 12);
+            queue.Enqueue("line-1", new Vector2(1, 1), Color.White, 12);
+
+            string[] snapshot = queue.GetPendingTextSnapshot(startIndex: 2);
+
+            snapshot.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void DeferredTextQueue_Enqueue_SwallowsInternalBufferFailures()
+        {
+            var queue = new DeferredTextQueue();
+            typeof(DeferredTextQueue)
+                .GetField("_items", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(queue, null);
+
+            Action act = () => queue.Enqueue("line-0", new Vector2(0, 0), Color.White, 12);
+
+            act.Should().NotThrow();
+            queue.GetPendingCount().Should().Be(0);
+        }
+
+        [TestMethod]
         public void DeferredFrameQueue_HardCap_DropsOlderEntries_WhenBufferGrowsTooLarge()
         {
             var queue = new DeferredFrameQueue();
@@ -219,6 +296,32 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var snapshot = queue.GetPendingFrameSnapshot();
             snapshot.Should().NotBeEmpty();
             snapshot[^1].Rectangle.X.Should().Be(11999);
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_Enqueue_SwallowsInternalBufferFailures()
+        {
+            var queue = new DeferredFrameQueue();
+            typeof(DeferredFrameQueue)
+                .GetField("_items", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(queue, null);
+
+            Action act = () => queue.Enqueue(new RectangleF(0, 0, 10, 10), Color.White, 1);
+
+            act.Should().NotThrow();
+            queue.GetPendingCount().Should().Be(0);
+        }
+
+        [TestMethod]
+        public void DeferredFrameQueue_Flush_ReturnsImmediately_WhenGraphicsProvidedButNoFramesAreQueued()
+        {
+            var queue = new DeferredFrameQueue();
+            var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
+
+            Action act = () => queue.Flush(graphics, (message, level) => throw new InvalidOperationException($"Unexpected log {level}: {message}"));
+
+            act.Should().NotThrow();
+            queue.GetPendingCount().Should().Be(0);
         }
     }
 }

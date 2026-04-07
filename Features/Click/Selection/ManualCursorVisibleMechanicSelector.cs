@@ -1,8 +1,14 @@
 namespace ClickIt.Features.Click.Selection
 {
+    internal readonly record struct ManualCursorVisibleMechanicSelection(
+        Vector2 ClickPosition,
+        Entity? Entity,
+        string? SettlersMechanicId,
+        bool IsShrine);
+
     internal readonly record struct ManualCursorVisibleMechanicSelectorDependencies(
         GameController GameController,
-        IVisibleMechanicManualInteractionPort VisibleMechanics,
+        IVisibleMechanicRuntimePort VisibleMechanics,
         ClickLabelInteractionService LabelInteraction);
 
     internal sealed class ManualCursorVisibleMechanicSelector(ManualCursorVisibleMechanicSelectorDependencies dependencies)
@@ -11,84 +17,100 @@ namespace ClickIt.Features.Click.Selection
 
         internal bool TryClick(Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
-            int selectedType = 0;
             float bestDistanceSq = float.MaxValue;
-            Vector2 selectedClickPos = default;
-            Entity? selectedEntity = null;
-            string? selectedSettlersMechanicId = null;
+            ManualCursorVisibleMechanicSelection? selected = null;
 
             Entity? shrine = _dependencies.VisibleMechanics.ResolveNextShrineCandidate();
             if (shrine != null)
             {
                 var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
                 Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-                if (ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft, ManualCursorSelectionMath.TargetSnapDistancePx))
-                {
-                    float d2 = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineClickPos, windowTopLeft);
-                    if (d2 < bestDistanceSq)
-                    {
-                        selectedType = 1;
-                        bestDistanceSq = d2;
-                        selectedClickPos = shrineClickPos;
-                        selectedEntity = shrine;
-                        selectedSettlersMechanicId = null;
-                    }
-                }
+                TrySelectCandidate(
+                    cursorAbsolute,
+                    windowTopLeft,
+                    shrineClickPos,
+                    shrine,
+                    settlersMechanicId: null,
+                    isShrine: true,
+                    ref bestDistanceSq,
+                    ref selected);
             }
 
-            (LostShipmentCandidate? lostShipment, SettlersOreCandidate? settlers) = _dependencies.VisibleMechanics.GetVisibleMechanicCandidates();
-            if (lostShipment.HasValue)
+            VisibleMechanicSelectionSnapshot visibleMechanicSelection = _dependencies.VisibleMechanics.GetVisibleMechanicSelectionSnapshot();
+            if (visibleMechanicSelection.LostShipment.HasValue)
             {
-                LostShipmentCandidate candidate = lostShipment.Value;
-                if (ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorSelectionMath.TargetSnapDistancePx))
-                {
-                    float d2 = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
-                    if (d2 < bestDistanceSq)
-                    {
-                        selectedType = 2;
-                        bestDistanceSq = d2;
-                        selectedClickPos = candidate.ClickPosition;
-                        selectedEntity = candidate.Entity;
-                        selectedSettlersMechanicId = null;
-                    }
-                }
+                LostShipmentCandidate candidate = visibleMechanicSelection.LostShipment.Value;
+                TrySelectCandidate(
+                    cursorAbsolute,
+                    windowTopLeft,
+                    candidate.ClickPosition,
+                    candidate.Entity,
+                    settlersMechanicId: null,
+                    isShrine: false,
+                    ref bestDistanceSq,
+                    ref selected);
             }
 
-            if (settlers.HasValue)
+            if (visibleMechanicSelection.Settlers.HasValue)
             {
-                SettlersOreCandidate candidate = settlers.Value;
-                if (ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft, ManualCursorSelectionMath.TargetSnapDistancePx))
-                {
-                    float d2 = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, candidate.ClickPosition, windowTopLeft);
-                    if (d2 < bestDistanceSq)
-                    {
-                        selectedType = 3;
-                        bestDistanceSq = d2;
-                        selectedClickPos = candidate.ClickPosition;
-                        selectedEntity = candidate.Entity;
-                        selectedSettlersMechanicId = candidate.MechanicId;
-                    }
-                }
+                SettlersOreCandidate candidate = visibleMechanicSelection.Settlers.Value;
+                TrySelectCandidate(
+                    cursorAbsolute,
+                    windowTopLeft,
+                    candidate.ClickPosition,
+                    candidate.Entity,
+                    candidate.MechanicId,
+                    isShrine: false,
+                    ref bestDistanceSq,
+                    ref selected);
             }
 
-            if (selectedType == 0)
+            if (!selected.HasValue)
                 return false;
 
+            ManualCursorVisibleMechanicSelection resolvedSelection = selected.Value;
             bool clicked = _dependencies.LabelInteraction.PerformManualCursorInteraction(
-                selectedClickPos,
-                selectedType == 3 && SettlersMechanicPolicy.RequiresHoldClick(selectedSettlersMechanicId));
+                resolvedSelection.ClickPosition,
+                !resolvedSelection.IsShrine && SettlersMechanicPolicy.RequiresHoldClick(resolvedSelection.SettlersMechanicId));
 
             if (!clicked)
                 return false;
 
-            if (selectedType == 1)
+            if (resolvedSelection.IsShrine)
             {
-                _dependencies.VisibleMechanics.HandleSuccessfulShrineClick(selectedEntity);
+                _dependencies.VisibleMechanics.HandleSuccessfulShrineClick(resolvedSelection.Entity);
                 return true;
             }
 
-            _dependencies.VisibleMechanics.HandleSuccessfulMechanicEntityClick(selectedEntity);
+            _dependencies.VisibleMechanics.HandleSuccessfulMechanicEntityClick(resolvedSelection.Entity);
             return true;
+        }
+
+        private static void TrySelectCandidate(
+            Vector2 cursorAbsolute,
+            Vector2 windowTopLeft,
+            Vector2 clickPosition,
+            Entity? entity,
+            string? settlersMechanicId,
+            bool isShrine,
+            ref float bestDistanceSq,
+            ref ManualCursorVisibleMechanicSelection? selected)
+        {
+            if (!ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(
+                cursorAbsolute,
+                clickPosition,
+                windowTopLeft,
+                ManualCursorSelectionMath.TargetSnapDistancePx))
+            {
+                return;
+            }
+
+            float distanceSquared = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, clickPosition, windowTopLeft);
+            if (distanceSquared >= bestDistanceSq)
+                return;
+
+            bestDistanceSq = distanceSquared;
+            selected = new ManualCursorVisibleMechanicSelection(clickPosition, entity, settlersMechanicId, isShrine);
         }
     }
 }

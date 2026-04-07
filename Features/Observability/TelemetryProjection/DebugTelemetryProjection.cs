@@ -24,7 +24,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 lazyModeBlockerService,
                 gameController,
                 inputHandler,
-                settings);
+                settings,
+                cachedLabels);
             LabelTelemetrySnapshot labelTelemetry = BuildLabelTelemetry(labelDebugService);
             PathfindingTelemetrySnapshot pathfindingTelemetry = BuildPathfindingTelemetry(pathfindingService);
             RenderingTelemetrySnapshot renderingTelemetry = BuildRenderingTelemetry(renderingState);

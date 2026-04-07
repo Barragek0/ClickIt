@@ -4,6 +4,9 @@ namespace ClickIt.Features.Click
 {
     public sealed partial class ClickAutomationPort : IClickAutomationService
     {
+        /**
+        `ClickAutomationPort` is the click-domain entry surface, so keep the constructor eager only for the small set of always-on host dependencies and let the heavier mechanic/runtime owners stay lazy. The lazy members below are intentionally grouped in roughly the same order the runtime reaches them: interaction execution and tick context first, then label/manual-cursor selection, then mechanic/offscreen traversal, and finally Ultimatum handling.
+         */
         internal static void ClearThreadLocalStorageForCurrentThread()
         {
             MovementSkillMath.ClearThreadSkillBarEntriesBuffer();

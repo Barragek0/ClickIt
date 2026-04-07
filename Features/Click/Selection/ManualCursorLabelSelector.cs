@@ -6,6 +6,15 @@ namespace ClickIt.Features.Click.Selection
         PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
         LabelClickPointResolver LabelClickPointResolver);
 
+    internal readonly record struct ManualCursorEvaluatedCandidate(
+        LabelOnGround? Label,
+        string? MechanicId,
+        bool IsSuppressed,
+        bool CursorInsideLabelRect,
+        float LabelRectScore,
+        bool CursorNearGroundProjection,
+        float GroundProjectionScore);
+
     internal sealed class ManualCursorLabelSelector(ManualCursorLabelSelectorDependencies dependencies)
     {
         private readonly ManualCursorLabelSelectorDependencies _dependencies = dependencies;
@@ -26,57 +35,163 @@ namespace ClickIt.Features.Click.Selection
             float bestScore = float.MaxValue;
             for (int i = 0; i < allLabels.Count; i++)
             {
-                LabelOnGround? candidate = allLabels[i];
-                if (candidate == null)
+                if (!TryEvaluateCandidate(allLabels[i], allLabels, cursorAbsolute, windowTopLeft, out ManualCursorEvaluatedCandidate evaluatedCandidate))
                     continue;
 
-                if (_dependencies.PathfindingLabelSuppression.ShouldSuppressLeverClick(candidate)
-                    || UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(candidate)
-                    || _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(candidate, allLabels))
-                {
-                    continue;
-                }
-
-                string? mechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(candidate);
-                if (string.IsNullOrWhiteSpace(mechanicId))
-                    continue;
-
-                Entity? candidateEntity = candidate.ItemOnGround;
-                bool shouldUseGroundProjection = ManualCursorSelectionMath.ShouldUseManualGroundProjectionForCandidate(
-                    hasBackingEntity: candidateEntity != null,
-                    isWorldItem: candidateEntity?.Type == EntityType.WorldItem);
-                Vector2 projectedGroundPoint = default;
-
-                bool hasLabelRect = LabelGeometry.TryGetLabelRect(candidate, out RectangleF rect);
-                bool cursorInsideLabelRect = hasLabelRect && ManualCursorSelectionMath.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
-                bool cursorNearGroundProjection = shouldUseGroundProjection
-                    && TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out projectedGroundPoint)
-                    && ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft, ManualCursorSelectionMath.GroundProjectionSnapDistancePx);
-
-                if (!ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect, cursorNearGroundProjection))
-                    continue;
-
-                float score = float.MaxValue;
-                if (cursorInsideLabelRect)
-                {
-                    score = ManualCursorSelectionMath.GetManualCursorLabelHitScore(rect, cursorAbsolute, windowTopLeft);
-                }
-
-                if (cursorNearGroundProjection)
-                {
-                    float objectScore = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, projectedGroundPoint, windowTopLeft);
-                    score = Math.Min(score, objectScore);
-                }
-
-                if (score >= bestScore)
-                    continue;
-
-                bestScore = score;
-                selectedLabel = candidate;
-                selectedMechanicId = mechanicId;
+                TryPromoteCandidate(
+                    evaluatedCandidate,
+                    ref bestScore,
+                    ref selectedLabel,
+                    ref selectedMechanicId);
             }
 
             return selectedLabel != null && !string.IsNullOrWhiteSpace(selectedMechanicId);
+        }
+
+        /**
+        Keeps the repo-owned manual-cursor ranking rules testable without fabricating brittle ExileCore label geometry, item, and camera graphs just to reach the score and tie-break logic.
+        */
+        internal static bool TryResolveEvaluatedCandidates(
+            IReadOnlyList<ManualCursorEvaluatedCandidate>? candidates,
+            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out LabelOnGround? selectedLabel,
+            out string? selectedMechanicId)
+        {
+            selectedLabel = null;
+            selectedMechanicId = null;
+
+            if (candidates == null || candidates.Count == 0)
+                return false;
+
+            float bestScore = float.MaxValue;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                TryPromoteCandidate(
+                    candidates[i],
+                    ref bestScore,
+                    ref selectedLabel,
+                    ref selectedMechanicId);
+            }
+
+            return selectedLabel != null && !string.IsNullOrWhiteSpace(selectedMechanicId);
+        }
+
+        private static void TryPromoteCandidate(
+            ManualCursorEvaluatedCandidate candidate,
+            ref float bestScore,
+            ref LabelOnGround? selectedLabel,
+            ref string? selectedMechanicId)
+        {
+            if (candidate.Label == null
+                || candidate.IsSuppressed
+                || string.IsNullOrWhiteSpace(candidate.MechanicId)
+                || !ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(candidate.CursorInsideLabelRect, candidate.CursorNearGroundProjection))
+            {
+                return;
+            }
+
+            float score = ResolveCandidateScore(candidate);
+
+            if (score >= bestScore)
+                return;
+
+            bestScore = score;
+            selectedLabel = candidate.Label;
+            selectedMechanicId = candidate.MechanicId;
+        }
+
+        private bool TryEvaluateCandidate(
+            LabelOnGround? candidate,
+            IReadOnlyList<LabelOnGround> allLabels,
+            Vector2 cursorAbsolute,
+            Vector2 windowTopLeft,
+            out ManualCursorEvaluatedCandidate evaluatedCandidate)
+        {
+            evaluatedCandidate = default;
+            if (candidate == null || IsCandidateSuppressed(candidate, allLabels))
+                return false;
+
+            string? mechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(candidate);
+            if (string.IsNullOrWhiteSpace(mechanicId))
+                return false;
+
+            Entity? candidateEntity = candidate.ItemOnGround;
+            bool cursorInsideLabelRect = TryResolveCursorInsideLabelRect(candidate, cursorAbsolute, windowTopLeft, out float labelRectScore);
+            bool cursorNearGroundProjection = TryResolveCursorNearGroundProjection(candidateEntity, cursorAbsolute, windowTopLeft, out float groundProjectionScore);
+            if (!ManualCursorSelectionMath.ShouldTreatManualCursorAsHoveringCandidate(cursorInsideLabelRect, cursorNearGroundProjection))
+                return false;
+
+            evaluatedCandidate = new ManualCursorEvaluatedCandidate(
+                candidate,
+                mechanicId,
+                IsSuppressed: false,
+                cursorInsideLabelRect,
+                labelRectScore,
+                cursorNearGroundProjection,
+                groundProjectionScore);
+            return true;
+        }
+
+        private bool IsCandidateSuppressed(LabelOnGround candidate, IReadOnlyList<LabelOnGround> allLabels)
+            => _dependencies.PathfindingLabelSuppression.ShouldSuppressLeverClick(candidate)
+                || UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel(candidate)
+                || _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(candidate, allLabels);
+
+        private static float ResolveCandidateScore(ManualCursorEvaluatedCandidate candidate)
+        {
+            float score = float.MaxValue;
+            if (candidate.CursorInsideLabelRect)
+                score = candidate.LabelRectScore;
+
+            if (candidate.CursorNearGroundProjection)
+                score = Math.Min(score, candidate.GroundProjectionScore);
+
+            return score;
+        }
+
+        private static bool TryResolveCursorInsideLabelRect(
+            LabelOnGround candidate,
+            Vector2 cursorAbsolute,
+            Vector2 windowTopLeft,
+            out float labelRectScore)
+        {
+            labelRectScore = float.MaxValue;
+            if (!LabelGeometry.TryGetLabelRect(candidate, out RectangleF rect))
+                return false;
+
+            bool cursorInsideLabelRect = ManualCursorSelectionMath.IsPointInsideRectInEitherSpace(rect, cursorAbsolute, windowTopLeft);
+            if (!cursorInsideLabelRect)
+                return false;
+
+            labelRectScore = ManualCursorSelectionMath.GetManualCursorLabelHitScore(rect, cursorAbsolute, windowTopLeft);
+            return true;
+        }
+
+        private bool TryResolveCursorNearGroundProjection(
+            Entity? candidateEntity,
+            Vector2 cursorAbsolute,
+            Vector2 windowTopLeft,
+            out float groundProjectionScore)
+        {
+            groundProjectionScore = float.MaxValue;
+            bool shouldUseGroundProjection = ManualCursorSelectionMath.ShouldUseManualGroundProjectionForCandidate(
+                hasBackingEntity: candidateEntity != null,
+                isWorldItem: candidateEntity?.Type == EntityType.WorldItem);
+            if (!shouldUseGroundProjection || !TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out Vector2 projectedGroundPoint))
+                return false;
+
+            bool cursorNearGroundProjection = ManualCursorSelectionMath.IsWithinManualCursorMatchDistanceInEitherSpace(
+                cursorAbsolute,
+                projectedGroundPoint,
+                windowTopLeft,
+                ManualCursorSelectionMath.GroundProjectionSnapDistancePx);
+            if (!cursorNearGroundProjection)
+                return false;
+
+            groundProjectionScore = ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(
+                cursorAbsolute,
+                projectedGroundPoint,
+                windowTopLeft);
+            return true;
         }
 
         private bool TryGetGroundProjectionPoint(Entity? item, Vector2 windowTopLeft, out Vector2 projectedPoint)

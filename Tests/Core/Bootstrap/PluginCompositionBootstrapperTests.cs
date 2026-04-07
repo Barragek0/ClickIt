@@ -30,7 +30,11 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.ClickAutomationPort.Should().BeSameAs(clickAutomationPort);
             context.Services.ClickAutomationSupport.Should().BeSameAs(clickAutomationPort.ClickAutomationSupport);
             context.Services.LockedInteractionDispatcher.Should().BeSameAs(clickAutomationPort.LockedInteractionDispatcher);
+            context.Services.ShrineService.Should().BeSameAs(core.ShrineService);
+            context.Services.InputHandler.Should().BeSameAs(core.InputHandler);
+            context.Services.PathfindingService.Should().BeSameAs(core.PathfindingService);
             context.Services.AlertService.Should().BeSameAs(alertService);
+            context.Services.WeightCalculator.Should().BeSameAs(core.WeightCalculator);
             context.Rendering.DeferredTextQueue.Should().BeSameAs(core.DeferredTextQueue);
             context.Rendering.DeferredFrameQueue.Should().BeSameAs(core.DeferredFrameQueue);
             context.Rendering.DebugRenderer.Should().BeSameAs(rendering.DebugRenderer);
@@ -50,20 +54,33 @@ namespace ClickIt.Tests.Core.Bootstrap
             var settings = new ClickItSettings();
             var context = new PluginContext();
             GameController gameController = ExileCoreOpaqueFactory.CreateOpaqueGameController();
+            bool registryDisposed = false;
             context.FreezeDebugTelemetrySnapshot("composition-hold", 1000);
             context.SetGameControllerProvider(() => gameController);
             context.SetSettingsProvider(() => settings);
+            context.ServiceRegistry.Register(() => registryDisposed = true);
             context.Services.ErrorHandler = new ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
+            context.Services.PathfindingService = CreateOpaque<PathfindingService>();
+            context.Services.AlertService = CreateOpaque<AlertService>();
+            context.Rendering.DebugRenderer = CreateOpaque<DebugRenderer>();
             context.Rendering.DeferredTextQueue = new DeferredTextQueue();
             context.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
+            context.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => context.Services.ClickAutomationPort);
+            context.Rendering.IsRendering = true;
 
             context.TryGetDebugTelemetryFreezeState(out _, out _).Should().BeTrue();
 
             PluginCompositionBootstrapper.DisposeCompositionRoot(context);
 
+            registryDisposed.Should().BeTrue();
             context.Services.ErrorHandler.Should().BeNull();
+            context.Services.PathfindingService.Should().BeNull();
+            context.Services.AlertService.Should().BeNull();
+            context.Rendering.DebugRenderer.Should().BeNull();
             context.Rendering.DeferredTextQueue.Should().BeNull();
             context.Rendering.DeferredFrameQueue.Should().BeNull();
+            context.Rendering.ClickRuntimeHost.Should().BeNull();
+            context.Rendering.IsRendering.Should().BeFalse();
             context.GetDebugTelemetrySnapshot().Status.GameControllerAvailable.Should().BeFalse();
             context.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeFalse();
             remainingMs.Should().Be(0);

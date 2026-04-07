@@ -8,25 +8,26 @@ namespace ClickIt.Tests.Features.Click
         {
             var settings = new ClickItSettings();
             settings.WalkTowardOffscreenLabels.Value = false;
+            var pathfindingService = new PathfindingService(settings);
+            pathfindingService.RuntimeState.SetLatestPathState(
+            [
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 0)
+            ],
+                screenPath: null,
+                targetPath: "Metadata/TestTarget");
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
 
-            var coordinator = new OffscreenPathingCoordinator(new OffscreenPathingCoordinatorDependencies(
-                Settings: settings,
-                GameController: null!,
-                PathfindingService: null!,
-                OnscreenMechanicPathingBlocker: null!,
-                TraversalTargetResolver: null!,
-                StickyTargetHandler: null!,
-                TargetResolver: null!,
-                MovementSkills: null!,
-                LabelInteraction: null!,
-                DebugLog: static _ => { },
-                HoldDebugTelemetryAfterSuccess: static _ => { },
-                ClickDebugPublisher: null!,
-                PointIsInClickableArea: static (_, _) => false));
+            var coordinator = CreateCoordinator(runtimeState, settings: settings, pathfindingService: pathfindingService);
 
             bool walked = coordinator.TryWalkTowardOffscreenTarget();
 
             walked.Should().BeFalse();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+            pathfindingService.GetLatestGridPath().Should().HaveCount(2);
         }
 
         [TestMethod]
@@ -57,7 +58,10 @@ namespace ClickIt.Tests.Features.Click
                 AltarAutomation: ClickTestServiceFactory.CreateAltarAutomationService(settings),
                 VisibleMechanics: new StubVisibleMechanicSelectionSource(hasClickableShrine: false, hasLostShipment: true, hasSettlers: false),
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(() => true, snapshot => published = snapshot)));
-            var runtimeState = new ClickRuntimeState();
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
             var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(settings, runtimeState));
             var stickyHandler = new OffscreenStickyTargetHandler(new OffscreenStickyTargetHandlerDependencies(
                 GameController: null!,
@@ -88,6 +92,7 @@ namespace ClickIt.Tests.Features.Click
             bool walked = coordinator.TryWalkTowardOffscreenTarget();
 
             walked.Should().BeFalse();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
             pathfindingService.GetLatestGridPath().Should().BeEmpty();
             published.Should().NotBeNull();
             published!.Stage.Should().Be("OffscreenPathingBlocked");
@@ -107,15 +112,45 @@ namespace ClickIt.Tests.Features.Click
             handled.Should().BeFalse();
         }
 
+        [TestMethod]
+        public void TryWalkTowardOffscreenTarget_ReturnsFalse_WhenResolverFindsNoOffscreenTarget()
+        {
+            var settings = new ClickItSettings
+            {
+                WalkTowardOffscreenLabels = new ToggleNode(true)
+            };
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
+            var pathfindingService = new PathfindingService(settings);
+            pathfindingService.RuntimeState.SetLatestPathState(
+            [
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(1, 0)
+            ],
+                screenPath: null,
+                targetPath: "Metadata/TestTarget");
+            var coordinator = CreateCoordinator(runtimeState, settings: settings, pathfindingService: pathfindingService);
+
+            bool walked = coordinator.TryWalkTowardOffscreenTarget();
+
+            walked.Should().BeFalse();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+            pathfindingService.GetLatestGridPath().Should().BeEmpty();
+        }
+
         private static OffscreenPathingCoordinator CreateCoordinator(
             ClickRuntimeState runtimeState,
             ClickItSettings? settings = null,
             GameController? gameController = null,
-            PathfindingService? pathfindingService = null)
+            PathfindingService? pathfindingService = null,
+            ClickDebugPublicationService? clickDebugPublisher = null)
         {
             settings ??= new ClickItSettings();
             gameController ??= ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));
             pathfindingService ??= new PathfindingService(settings);
+            clickDebugPublisher ??= ClickTestDebugPublisherFactory.Create(() => true, _ => { });
 
             var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(settings, runtimeState));
             var stickyHandler = new OffscreenStickyTargetHandler(new OffscreenStickyTargetHandlerDependencies(
@@ -128,6 +163,16 @@ namespace ClickIt.Tests.Features.Click
                 PathfindingLabelSuppression: pathfindingLabelSuppression,
                 LabelInteractionPort: null!,
                 HoldDebugTelemetryAfterSuccess: static _ => { }));
+            var traversalTargetResolver = new OffscreenTraversalTargetResolver(new OffscreenTraversalTargetResolverDependencies(
+                Settings: settings,
+                GameController: gameController,
+                MechanicPriorityContextProvider: new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService()),
+                LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(gameController: gameController),
+                LabelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                VisibleLabelSnapshots: new VisibleLabelSnapshotProvider(gameController, new TimeCache<List<LabelOnGround>>(() => [], 50)),
+                IsClickableInEitherSpace: static (_, _) => false,
+                IsInsideWindowInEitherSpace: static _ => false,
+                PathfindingLabelSuppression: pathfindingLabelSuppression));
 
             return new OffscreenPathingCoordinator(new OffscreenPathingCoordinatorDependencies(
                 Settings: settings,
@@ -137,19 +182,19 @@ namespace ClickIt.Tests.Features.Click
                     Settings: settings,
                     AltarAutomation: ClickTestServiceFactory.CreateAltarAutomationService(settings),
                     VisibleMechanics: new StubVisibleMechanicSelectionSource(hasClickableShrine: false, hasLostShipment: false, hasSettlers: false),
-                    ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(() => true, _ => { }))),
-                TraversalTargetResolver: null!,
+                    ClickDebugPublisher: clickDebugPublisher)),
+                TraversalTargetResolver: traversalTargetResolver,
                 StickyTargetHandler: stickyHandler,
                 TargetResolver: null!,
                 MovementSkills: null!,
                 LabelInteraction: null!,
                 DebugLog: static _ => { },
                 HoldDebugTelemetryAfterSuccess: static _ => { },
-                ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(() => true, _ => { }),
+                ClickDebugPublisher: clickDebugPublisher,
                 PointIsInClickableArea: static (_, _) => true));
         }
 
-        private sealed class StubVisibleMechanicSelectionSource(bool hasClickableShrine, bool hasLostShipment, bool hasSettlers) : IVisibleMechanicSelectionSource
+        private sealed class StubVisibleMechanicSelectionSource(bool hasClickableShrine, bool hasLostShipment, bool hasSettlers) : IVisibleMechanicQueryPort
         {
             public Entity? ResolveNextShrineCandidate()
                 => null;
@@ -172,11 +217,8 @@ namespace ClickIt.Tests.Features.Click
                 settlersOreCandidate = null;
             }
 
-            public (LostShipmentCandidate? LostShipment, SettlersOreCandidate? Settlers) GetVisibleMechanicCandidates()
-                => (null, null);
-
-            public (bool HasLostShipment, bool HasSettlers) GetVisibleMechanicAvailability()
-                => (hasLostShipment, hasSettlers);
+            public VisibleMechanicAvailabilitySnapshot GetVisibleMechanicAvailabilitySnapshot()
+                => new(hasLostShipment, hasSettlers);
         }
     }
 }

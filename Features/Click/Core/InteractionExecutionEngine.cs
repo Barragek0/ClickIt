@@ -28,21 +28,24 @@ namespace ClickIt.Features.Click.Core
 
         private bool TryExecuteSettlersHidden(ClickTickContext context, SettlersOreCandidate candidate)
         {
-            if (!IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
-                && _dependencies.VisibleMechanics.TryClickSettlersOre(candidate))
-            {
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenSettlersFallback", "Using hidden settlers candidate", candidate.MechanicId);
-                return true;
-            }
-
-            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenSettlersFallbackSkipped", "Hidden settlers candidate was not targetable/valid at click time", candidate.MechanicId);
-            return false;
+            return TryExecuteSettlers(context, candidate, hiddenFallback: true);
         }
 
         private bool TryExecuteSettlersVisible(ClickTickContext context, SettlersOreCandidate candidate)
+            => TryExecuteSettlers(context, candidate, hiddenFallback: false);
+
+        private bool TryExecuteSettlers(ClickTickContext context, SettlersOreCandidate candidate, bool hiddenFallback)
         {
-            return !IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
+            bool clicked = !IsBlockedByPostChestLootSettlement(context, candidate.MechanicId, candidate.Entity)
                 && _dependencies.VisibleMechanics.TryClickSettlersOre(candidate);
+            if (!hiddenFallback)
+                return clicked;
+
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                clicked ? "HiddenSettlersFallback" : "HiddenSettlersFallbackSkipped",
+                clicked ? "Using hidden settlers candidate" : "Hidden settlers candidate was not targetable/valid at click time",
+                candidate.MechanicId);
+            return clicked;
         }
 
         private bool TryExecuteLostShipment(ClickTickContext context, LostShipmentCandidate candidate)
@@ -50,8 +53,7 @@ namespace ClickIt.Features.Click.Core
             if (IsBlockedByPostChestLootSettlement(context, MechanicIds.LostShipment, candidate.Entity))
                 return false;
 
-            _dependencies.VisibleMechanics.TryClickLostShipment(candidate);
-            return true;
+            return _dependencies.VisibleMechanics.TryClickLostShipmentInteraction(candidate);
         }
 
         private bool TryExecuteShrine(ClickTickContext context)
@@ -61,8 +63,7 @@ namespace ClickIt.Features.Click.Core
             if (IsBlockedByPostChestLootSettlement(context, MechanicIds.Shrines, context.NextShrine))
                 return false;
 
-            _dependencies.VisibleMechanics.TryClickShrine(context.NextShrine);
-            return true;
+            return _dependencies.VisibleMechanics.TryClickShrineInteraction(context.NextShrine);
         }
 
         private static ExecutionResult StopExecution()
@@ -70,25 +71,36 @@ namespace ClickIt.Features.Click.Core
             return new ExecutionResult(false);
         }
 
-        private ExecutionResult ExecuteHidden(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
+        private bool TryExecuteMechanicSelections(ClickTickContext context, ClickCandidates candidates, DecisionResult decision, bool hiddenFallback)
         {
             if (decision.TrySettlers && candidates.SettlersOre.HasValue)
             {
-                if (TryExecuteSettlersHidden(context, candidates.SettlersOre.Value))
-                    return StopExecution();
+                bool clicked = hiddenFallback
+                    ? TryExecuteSettlersHidden(context, candidates.SettlersOre.Value)
+                    : TryExecuteSettlersVisible(context, candidates.SettlersOre.Value);
+                if (clicked)
+                    return true;
             }
 
             if (decision.TryLostShipment && candidates.LostShipment.HasValue)
             {
                 if (TryExecuteLostShipment(context, candidates.LostShipment.Value))
-                    return StopExecution();
+                    return true;
             }
 
             if (decision.TryShrine && context.NextShrine != null)
             {
                 if (TryExecuteShrine(context))
-                    return StopExecution();
+                    return true;
             }
+
+            return false;
+        }
+
+        private ExecutionResult ExecuteHidden(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
+        {
+            if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: true))
+                return StopExecution();
 
             if (context.IsPostChestLootSettleBlocking)
             {
@@ -110,23 +122,8 @@ namespace ClickIt.Features.Click.Core
 
         private ExecutionResult ExecuteVisible(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
-            if (decision.TrySettlers && candidates.SettlersOre.HasValue)
-            {
-                if (TryExecuteSettlersVisible(context, candidates.SettlersOre.Value))
-                    return StopExecution();
-            }
-
-            if (decision.TryLostShipment && candidates.LostShipment.HasValue)
-            {
-                if (TryExecuteLostShipment(context, candidates.LostShipment.Value))
-                    return StopExecution();
-            }
-
-            if (decision.TryShrine && context.NextShrine != null)
-            {
-                if (TryExecuteShrine(context))
-                    return StopExecution();
-            }
+            if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: false))
+                return StopExecution();
 
             if (candidates.NextLabel == null)
             {

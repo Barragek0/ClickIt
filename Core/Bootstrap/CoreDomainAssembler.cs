@@ -22,21 +22,39 @@ namespace ClickIt.Core.Bootstrap
 
     internal static class CoreDomainAssembler
     {
+        /**
+        Keep this thin runtime entry wrapper so plugin startup continues to use the
+        normal owner-facing API. The injected internal overload remains available
+        for direct bootstrap tests and composition-only validation, and this wrapper
+        should stay unless an equally testable boundary replaces it.
+         */
         public static CoreDomainServices Assemble(ClickIt owner, ClickItSettings settings, GameController gameController)
+            => Assemble(
+                owner,
+                settings,
+                gameController,
+                static (areaService, controller) => areaService.UpdateScreenAreas(controller),
+                static controller => controller.Game?.IngameState?.Camera);
+
+        internal static CoreDomainServices Assemble(
+            ClickIt owner,
+            ClickItSettings settings,
+            GameController gameController,
+            Action<AreaService, GameController> refreshScreenAreas,
+            Func<GameController, Camera?> resolveCamera)
         {
             var performanceMonitor = new PerformanceMonitor(settings);
             var errorHandler = new ErrorHandler(settings, owner.LogError, owner.LogMessage);
+            var camera = resolveCamera(gameController)
+                ?? throw new InvalidOperationException("Camera is null during plugin initialization.");
 
             var areaService = new AreaService(settings);
-            areaService.UpdateScreenAreas(gameController);
+            refreshScreenAreas(areaService, gameController);
 
             var labelReadModelService = new LabelReadModelService(
                 gameController,
                 point => areaService.PointIsInClickableArea(gameController, point));
             var cachedLabels = labelReadModelService.CachedLabels;
-
-            var camera = gameController.Game?.IngameState?.Camera
-                ?? throw new InvalidOperationException("Camera is null during plugin initialization.");
 
             var altarService = new AltarService(owner, settings, cachedLabels);
             var labelFilterPort = new LabelFilterPort(settings, new EssenceService(settings), errorHandler, gameController);

@@ -2,6 +2,9 @@ namespace ClickIt.Features.Labels
 {
     public sealed partial class LabelFilterPort
     {
+        /**
+        Keep `LabelFilterPort` merge-first and lazy: settings and root collaborators arrive eagerly in the constructor, then the composition layer fans out in a stable order from click settings and inventory policy into classification, candidate building, selection, debug, and lazy-mode blocking. This ordering matters for followability because the later owners intentionally reuse the earlier ones instead of each recreating their own view of metadata, mechanics, or inventory rules.
+         */
         private LabelClickSettingsService ClickSettingsService
             => _clickSettingsService ??= new LabelClickSettingsService(
                 _settings,
@@ -36,13 +39,7 @@ namespace ClickIt.Features.Labels
             => _candidateBuilderService ??= new LabelCandidateBuilderService(LabelMechanicResolutionService);
 
         private ILabelSelectionService LabelSelectionService
-            => _labelSelectionService ??= new LabelSelectionService(new LabelSelectionServiceDependencies(
-                _gameController,
-                ClickSettingsService.Create,
-                ShouldCaptureLabelDebug,
-                _labelSelectionDiagnostics.PublishEvent,
-                CandidateBuilderService.TryBuildCandidate,
-                LabelMechanicResolutionService.GetMechanicIdForLabel));
+            => _labelSelectionService ??= new LabelSelectionService(CreateLabelSelectionServiceDependencies());
 
         internal LabelDebugService LabelDebugService
             => _labelDebugService ??= new LabelDebugService(
@@ -76,9 +73,21 @@ namespace ClickIt.Features.Labels
             if (_inventoryDomainServices.HasValue)
                 return;
 
-            _inventoryDomainServices = InventoryDomainFactory.Create(new InventoryDomainFactoryDependencies(
-                _worldItemMetadataPolicy.GetWorldItemBaseName,
-                InventoryMetadataIdentifiers.StoneOfPassage));
+            _inventoryDomainServices = InventoryDomainFactory.Create(CreateInventoryDomainFactoryDependencies());
         }
+
+        private LabelSelectionServiceDependencies CreateLabelSelectionServiceDependencies()
+            => new(
+                _gameController,
+                ClickSettingsService.Create,
+                ShouldCaptureLabelDebug,
+                _labelSelectionDiagnostics.PublishEvent,
+                CandidateBuilderService.TryBuildCandidate,
+                LabelMechanicResolutionService.GetMechanicIdForLabel);
+
+        private InventoryDomainFactoryDependencies CreateInventoryDomainFactoryDependencies()
+            => new(
+                _worldItemMetadataPolicy.GetWorldItemBaseName,
+                InventoryMetadataIdentifiers.StoneOfPassage);
     }
 }

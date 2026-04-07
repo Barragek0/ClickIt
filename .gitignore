@@ -152,6 +152,10 @@ build.log
 # Allow checking in explicit third-party runtime libs used by the tests
 !ThirdParty/
 !ThirdParty/*.dll
+ThirdParty/Decompiled/
+
+# Local third-party decompiler workspace
+.scripts/ThirdPartyDecompiler/
 
 # Copilot
 .github/copilot-instructions.md
