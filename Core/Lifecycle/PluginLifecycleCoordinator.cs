@@ -11,14 +11,14 @@ namespace ClickIt.Core.Lifecycle
             owner.LifecycleButtonBindings.Subscribe(settings);
             owner.State.InitializeCompositionRoot(owner, settings);
 
-            var errorHandler = owner.State.Services.ErrorHandler
+            ErrorHandler errorHandler = owner.State.Services.ErrorHandler
                 ?? throw new InvalidOperationException("ErrorHandler was not initialized by composition root.");
-            var gameController = owner.GameController
+            GameController gameController = owner.GameController
                 ?? throw new InvalidOperationException("GameController is null during coroutine manager initialization.");
 
             errorHandler.RegisterGlobalExceptionHandlers();
 
-            var coroutineManager = new PluginLoopHost(
+            PluginLoopHost coroutineManager = new(
                 owner.State,
                 settings,
                 gameController,
@@ -92,25 +92,21 @@ namespace ClickIt.Core.Lifecycle
             if (coroutine == null)
                 return;
 
-            var stopwatch = Stopwatch.StartNew();
+            Stopwatch stopwatch = Stopwatch.StartNew();
             while (!coroutine.IsDone && stopwatch.ElapsedMilliseconds < timeoutMs)
-            {
                 Thread.Sleep(10);
-            }
+
         }
 
         private static void StopNamedClickItCoroutines()
         {
             try
             {
-                var coroutines = ExileCoreApi.ParallelRunner.Coroutines
-                    .Where(c => c != null && c.Name != null && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
+                Coroutine[] coroutines = [.. ExileCoreApi.ParallelRunner.Coroutines.Where(c => c != null && c.Name != null && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase))];
 
-                foreach (var coroutine in coroutines)
-                {
+                foreach (Coroutine? coroutine in coroutines)
                     coroutine.Done();
-                }
+
             }
             catch
             {
@@ -122,7 +118,7 @@ namespace ClickIt.Core.Lifecycle
         {
             try
             {
-                var stopwatch = Stopwatch.StartNew();
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 while (stopwatch.ElapsedMilliseconds < timeoutMs)
                 {
                     bool anyActive = ExileCoreApi.ParallelRunner.Coroutines

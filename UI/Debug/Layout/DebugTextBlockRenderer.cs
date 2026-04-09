@@ -20,12 +20,11 @@ namespace ClickIt.UI.Debug.Layout
             _deferredTextQueue.Enqueue("Recent Stages:", new Vector2(xPos, yPos), Color.LightBlue, 13);
             yPos += lineHeight;
 
-            int rowsToRender = Math.Min(Math.Max(1, maxRows), trail.Count);
-            int start = Math.Max(0, trail.Count - rowsToRender);
+            int rowsToRender = SystemMath.Min(SystemMath.Max(1, maxRows), trail.Count);
+            int start = SystemMath.Max(0, trail.Count - rowsToRender);
             for (int i = start; i < trail.Count; i++)
-            {
                 yPos = EnqueueWrappedLine(ref xPos, yPos, lineHeight, $"  {trail[i]}", Color.LightGray, 12, wrapWidth);
-            }
+
 
             return yPos;
         }
@@ -44,7 +43,7 @@ namespace ClickIt.UI.Debug.Layout
                 return yPos + lineHeight;
             }
 
-            int safeWrap = Math.Max(20, maxCharsPerLine);
+            int safeWrap = SystemMath.Max(20, maxCharsPerLine);
             foreach (string wrappedLine in DebugTextLayoutEngine.WrapDebugText(text, safeWrap))
             {
                 if (!EnsureLineCapacity(ref xPos, ref yPos, lineHeight))
@@ -81,7 +80,7 @@ namespace ClickIt.UI.Debug.Layout
             if (lineHeight <= 0)
                 return false;
 
-            int usedLines = Math.Max(0, (yPos - _layoutSettings.StartY) / lineHeight);
+            int usedLines = SystemMath.Max(0, (yPos - _layoutSettings.StartY) / lineHeight);
             if (usedLines < _layoutSettings.LinesPerColumn)
                 return true;
 

@@ -73,9 +73,8 @@ namespace ClickIt.Core.Settings.Mechanics
 
                 string[] members = Groups[i].Members;
                 for (int j = 0; j < members.Length; j++)
-                {
                     result.Add(members[j]);
-                }
+
             }
 
             return result;

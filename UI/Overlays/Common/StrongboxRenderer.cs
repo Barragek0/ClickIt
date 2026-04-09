@@ -3,7 +3,7 @@ namespace ClickIt.UI.Overlays.Common
     public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
-        private readonly record struct StrongboxFrame(SharpDX.RectangleF Rect, Color Color);
+        private readonly record struct StrongboxFrame(RectangleF Rect, Color Color);
         private readonly record struct StrongboxRenderState(
             bool ShowFrames,
             IReadOnlyList<string> ClickMetadata,
@@ -26,7 +26,7 @@ namespace ClickIt.UI.Overlays.Common
             RenderFromLabels((IEnumerable<LabelOnGround>)(dynamic)labels, gameController.Window.GetWindowRectangleTimeCache);
         }
 
-        public void RenderFromLabels(IEnumerable<LabelOnGround> labels, SharpDX.RectangleF windowArea)
+        public void RenderFromLabels(IEnumerable<LabelOnGround> labels, RectangleF windowArea)
         {
             if (labels == null) return;
 
@@ -43,7 +43,7 @@ namespace ClickIt.UI.Overlays.Common
 
         private void RenderStrongboxFrames(
             IEnumerable<LabelOnGround> labels,
-            SharpDX.RectangleF windowArea,
+            RectangleF windowArea,
             StrongboxRenderState renderState)
         {
             foreach (var label in labels)
@@ -69,7 +69,7 @@ namespace ClickIt.UI.Overlays.Common
 
         private static bool TryResolveStrongboxFrame(
             LabelOnGround? label,
-            SharpDX.RectangleF windowArea,
+            RectangleF windowArea,
             StrongboxRenderState renderState,
             out StrongboxFrame frame)
         {
@@ -78,7 +78,7 @@ namespace ClickIt.UI.Overlays.Common
             if (!renderState.ShowFrames)
                 return false;
 
-            if (!TryGetVisibleLabelRect(label, windowArea, out SharpDX.RectangleF rect, out string? itemPathRaw))
+            if (!TryGetVisibleLabelRect(label, windowArea, out RectangleF rect, out string? itemPathRaw))
                 return false;
 
             string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
@@ -97,9 +97,9 @@ namespace ClickIt.UI.Overlays.Common
             return chestLocked ? Color.Red : Color.LawnGreen;
         }
 
-        private static bool TryGetVisibleLabelRect(LabelOnGround? label, SharpDX.RectangleF windowArea, out SharpDX.RectangleF rect, out string? itemPathRaw)
+        private static bool TryGetVisibleLabelRect(LabelOnGround? label, RectangleF windowArea, out RectangleF rect, out string? itemPathRaw)
         {
-            rect = new SharpDX.RectangleF();
+            rect = new RectangleF();
             itemPathRaw = label?.ItemOnGround?.Path;
             if (string.IsNullOrEmpty(itemPathRaw)) return false;
             if (itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0) return false;
@@ -111,7 +111,7 @@ namespace ClickIt.UI.Overlays.Common
             object? maybeRectObj = elem.GetClientRect();
             if (maybeRectObj == null) return false;
 
-            if (maybeRectObj is SharpDX.RectangleF rectVal)
+            if (maybeRectObj is RectangleF rectVal)
             {
                 rect = rectVal;
             }
@@ -121,7 +121,7 @@ namespace ClickIt.UI.Overlays.Common
             }
             if (rect.Width <= 0 || rect.Height <= 0) return false;
 
-            var rectAbs = new SharpDX.RectangleF(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
+            var rectAbs = new RectangleF(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
             if (!rectAbs.Intersects(windowArea)) return false;
 
             return true;

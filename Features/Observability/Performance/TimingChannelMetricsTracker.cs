@@ -108,21 +108,21 @@ namespace ClickIt.Features.Observability.Performance
                     _altarCoroutineTimer.Stop();
                     long altarTiming = _altarCoroutineTimer.ElapsedMilliseconds;
                     _lastAltarTiming = altarTiming;
-                    _maxAltarTiming = Math.Max(_maxAltarTiming, altarTiming);
+                    _maxAltarTiming = SystemMath.Max(_maxAltarTiming, altarTiming);
                     EnqueueTiming(_altarCoroutineTimings, altarTiming, 10, _altarTimingsLock);
                     break;
                 case TimingChannel.Click:
                     _clickCoroutineTimer.Stop();
                     long clickTiming = _clickCoroutineTimer.ElapsedMilliseconds;
                     _lastClickTiming = clickTiming;
-                    _maxClickTiming = Math.Max(_maxClickTiming, clickTiming);
+                    _maxClickTiming = SystemMath.Max(_maxClickTiming, clickTiming);
                     EnqueueTiming(_clickCoroutineTimings, clickTiming, 10, _clickTimingsLock);
                     break;
                 case TimingChannel.Flare:
                     _flareCoroutineTimer.Stop();
                     long flareTiming = _flareCoroutineTimer.ElapsedMilliseconds;
                     _lastFlareTiming = flareTiming;
-                    _maxFlareTiming = Math.Max(_maxFlareTiming, flareTiming);
+                    _maxFlareTiming = SystemMath.Max(_maxFlareTiming, flareTiming);
                     EnqueueTiming(_flareCoroutineTimings, flareTiming, 10, _flareTimingsLock);
                     break;
             }

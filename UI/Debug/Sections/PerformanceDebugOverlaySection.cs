@@ -1,6 +1,6 @@
 namespace ClickIt.UI.Debug.Sections
 {
-    internal sealed class PerformanceDebugOverlaySection(Debug.DebugOverlayRenderContext context)
+    internal sealed class PerformanceDebugOverlaySection(DebugOverlayRenderContext context)
     {
         internal readonly record struct ClickFrequencyTargetDebugMetrics(
             double ClickTargetMs,
@@ -21,7 +21,7 @@ namespace ClickIt.UI.Debug.Sections
         private const double TARGET_DEVIATION_MEDIUM = 0.10;
         private const int MEMORY_SAMPLE_INTERVAL_MS = 500;
 
-        private readonly Debug.DebugOverlayRenderContext _context = context;
+        private readonly DebugOverlayRenderContext _context = context;
         private readonly Stopwatch _memorySampleStopwatch = Stopwatch.StartNew();
         private long _cachedMemoryUsageMb;
 
@@ -52,16 +52,15 @@ namespace ClickIt.UI.Debug.Sections
                 : performanceSnapshot.ClickTargetIntervalMs;
             double avgClickProcessing = performanceSnapshot.ClickCoroutine.AverageMs;
             if (avgClickProcessing <= 0)
-            {
                 avgClickProcessing = performanceSnapshot.AverageSuccessfulClickTimingMs;
-            }
+
 
             double observedInterval = performanceSnapshot.AverageClickIntervalMs;
             ClickFrequencyTargetDebugMetrics metrics = BuildClickFrequencyTargetDebugMetrics(clickTarget, avgClickProcessing, observedInterval);
             bool hasObservedInterval = observedInterval > 0;
 
             double targetDeviation = metrics.TargetDeviationRatio;
-            double modeledDeviation = Math.Abs(metrics.ModeledTotalMs - metrics.ClickTargetMs) / Math.Max(1d, metrics.ClickTargetMs);
+            double modeledDeviation = SystemMath.Abs(metrics.ModeledTotalMs - metrics.ClickTargetMs) / SystemMath.Max(1d, metrics.ClickTargetMs);
             string targetStatus = targetDeviation <= TARGET_DEVIATION_MEDIUM
                 ? (hasObservedInterval ? "meeting target" : "estimating")
                 : "not meeting target";
@@ -78,12 +77,12 @@ namespace ClickIt.UI.Debug.Sections
             string observedStr = $"{metrics.ObservedTotalMs:F0}";
             string schedStr = $"{metrics.SchedulerDeltaMs:+0;-0;0}";
             string settingStr = $"{metrics.ClickTargetMs:F0}";
-            int maxLen = Math.Max(
-                Math.Max(delayStr.Length, procStr.Length),
-                Math.Max(Math.Max(modeledTotalStr.Length, observedStr.Length), Math.Max(schedStr.Length, settingStr.Length)));
+            int maxLen = SystemMath.Max(
+                SystemMath.Max(delayStr.Length, procStr.Length),
+                SystemMath.Max(SystemMath.Max(modeledTotalStr.Length, observedStr.Length), SystemMath.Max(schedStr.Length, settingStr.Length)));
 
             Color procColor = metrics.ProcessingMs > metrics.ClickTargetMs ? Color.Red : metrics.ProcessingMs >= metrics.ClickTargetMs * 0.75 ? Color.Yellow : Color.LawnGreen;
-            double absSchedulerDelta = Math.Abs(metrics.SchedulerDeltaMs);
+            double absSchedulerDelta = SystemMath.Abs(metrics.SchedulerDeltaMs);
             Color schedulerColor = absSchedulerDelta <= 5 ? Color.LawnGreen : absSchedulerDelta <= 20 ? Color.Yellow : Color.OrangeRed;
             _context.DeferredTextQueue.Enqueue($"Target:      {settingStr.PadLeft(maxLen)} ms {(frequencyTarget.ShowLazyModeTarget ? "(Lazy)" : string.Empty)}", new Vector2(xPos, yPos), Color.Yellow, 16);
             yPos += lineHeight;
@@ -118,7 +117,7 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue($"Error Count: {recentErrors.Count}", new Vector2(xPos, yPos), Color.White, 16);
             yPos += lineHeight;
 
-            for (int i = Math.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
+            for (int i = SystemMath.Max(0, recentErrors.Count - 3); i < recentErrors.Count; i++)
             {
                 string error = recentErrors[i];
                 yPos = _context.RenderWrappedText($"  {error}", new Vector2(xPos, yPos), Color.Red, 14, lineHeight, 50);
@@ -132,9 +131,9 @@ namespace ClickIt.UI.Debug.Sections
             double processingMs,
             double observedIntervalMs)
         {
-            double safeClickTargetMs = Math.Max(1d, clickTargetMs);
-            double safeProcessingMs = Math.Max(0d, processingMs);
-            double clickDelayMs = Math.Max(0d, safeClickTargetMs - safeProcessingMs);
+            double safeClickTargetMs = SystemMath.Max(1d, clickTargetMs);
+            double safeProcessingMs = SystemMath.Max(0d, processingMs);
+            double clickDelayMs = SystemMath.Max(0d, safeClickTargetMs - safeProcessingMs);
             double modeledTotalMs = clickDelayMs + safeProcessingMs;
             double observedTotalMs = observedIntervalMs > 0d ? observedIntervalMs : modeledTotalMs;
             double schedulerDeltaMs = observedTotalMs - modeledTotalMs;

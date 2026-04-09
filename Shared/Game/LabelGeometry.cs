@@ -23,8 +23,8 @@ namespace ClickIt.Shared.Game
 
         internal static void SortByDistance<T>(List<T> items, Func<T, float> getDistance)
         {
-            if (items == null) throw new ArgumentNullException(nameof(items));
-            if (getDistance == null) throw new ArgumentNullException(nameof(getDistance));
+            ArgumentNullException.ThrowIfNull(items);
+            ArgumentNullException.ThrowIfNull(getDistance);
 
             int count = items.Count;
             if (count <= 1)
@@ -100,13 +100,12 @@ namespace ClickIt.Shared.Game
             int i = low - 1;
 
             for (int j = low; j < high; j++)
-            {
                 if (labels[j].ItemOnGround.DistancePlayer <= pivot.DistancePlayer)
                 {
                     i++;
                     SwapLabels(labels, i, j);
                 }
-            }
+
 
             SwapLabels(labels, i + 1, high);
             return i + 1;
@@ -117,9 +116,7 @@ namespace ClickIt.Shared.Game
             if (i == j)
                 return;
 
-            LabelOnGround temp = labels[i];
-            labels[i] = labels[j];
-            labels[j] = temp;
+            (labels[i], labels[j]) = (labels[j], labels[i]);
         }
 
         private static void QuickSortGeneric<T>(List<T> items, int low, int high, Func<T, float> getDistance)
@@ -137,19 +134,14 @@ namespace ClickIt.Shared.Game
             float pivotValue = getDistance(items[high]);
             int i = low - 1;
             for (int j = low; j < high; j++)
-            {
                 if (getDistance(items[j]) <= pivotValue)
                 {
                     i++;
-                    T tmp = items[i];
-                    items[i] = items[j];
-                    items[j] = tmp;
+                    (items[i], items[j]) = (items[j], items[i]);
                 }
-            }
 
-            T pivot = items[i + 1];
-            items[i + 1] = items[high];
-            items[high] = pivot;
+
+            (items[i + 1], items[high]) = (items[high], items[i + 1]);
             return i + 1;
         }
     }

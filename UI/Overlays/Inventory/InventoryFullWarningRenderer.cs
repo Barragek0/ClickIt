@@ -124,7 +124,7 @@ namespace ClickIt.UI.Overlays.Inventory
             if (snapshot.InventoryFull || !snapshot.UsedCellOccupancy || snapshot.CapacityCells <= 0)
                 return false;
 
-            int freeCells = snapshot.CapacityCells - Math.Max(0, snapshot.OccupiedCells);
+            int freeCells = snapshot.CapacityCells - SystemMath.Max(0, snapshot.OccupiedCells);
             return freeCells >= NotFullNoFitMinFreeCellsToSuppressWarning;
         }
 
@@ -154,11 +154,11 @@ namespace ClickIt.UI.Overlays.Inventory
             if (gameController?.Game?.IngameState?.Camera == null)
                 return null;
 
-            var player = gameController.Player ?? gameController.Game.IngameState.Data?.LocalPlayer;
+            Entity? player = gameController.Player ?? gameController.Game.IngameState.Data?.LocalPlayer;
             if (player == null)
                 return null;
 
-            var screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(player.PosNum);
+            NumVector2 screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(player.PosNum);
             float x = screenRaw.X;
             float y = screenRaw.Y + PlayerFeetWarningOffsetY;
             if (float.IsNaN(x) || float.IsNaN(y) || float.IsInfinity(x) || float.IsInfinity(y))
@@ -181,8 +181,8 @@ namespace ClickIt.UI.Overlays.Inventory
                 return new Vector2(centerX, fallbackY);
 
             float betweenX = (leftTertiary.Width + rightTertiary.X) * 0.5f;
-            float top = Math.Min(leftTertiary.Y, rightTertiary.Y);
-            float bottom = Math.Max(leftTertiary.Height, rightTertiary.Height);
+            float top = SystemMath.Min(leftTertiary.Y, rightTertiary.Y);
+            float bottom = SystemMath.Max(leftTertiary.Height, rightTertiary.Height);
             float y = top + ((bottom - top) * 0.5f);
 
             return new Vector2(betweenX, y);

@@ -2,6 +2,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 var options = Options.Parse(args);
 var discoveredNamespaces = NamespaceCollector.CollectProjectNamespaces(options);
@@ -73,7 +74,7 @@ internal sealed record Options(
         return new Options(projectRoot, outputPath, mode, assemblyPaths);
     }
 
-    private static string GetRequired(IReadOnlyDictionary<string, string> values, string key)
+    private static string GetRequired(Dictionary<string, string> values, string key)
     {
         if (values.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
         {
@@ -93,7 +94,7 @@ internal enum GenerationMode
 
 internal static class NamespaceCollector
 {
-    private static readonly Regex NamespaceRegex = new(@"^\s*namespace\s+([A-Za-z_][A-Za-z0-9_\.]*)", RegexOptions.Compiled | RegexOptions.Multiline);
+    private static readonly Regex NamespaceRegex = GlobalUsingGeneratorRegexes.NamespaceRegex();
 
     private static readonly string[] ExcludedDirectoryNames =
     [
@@ -562,7 +563,7 @@ internal static class GlobalUsingFileBuilder
 
         for (var suffix = 2; ; suffix++)
         {
-            var alias = string.Concat(normalizedSegments) + suffix.ToString();
+            var alias = string.Concat(normalizedSegments) + suffix.ToString(CultureInfo.InvariantCulture);
             if (!usedAliases.Contains(alias))
             {
                 return alias;
@@ -572,7 +573,7 @@ internal static class GlobalUsingFileBuilder
 
     private static string NormalizeIdentifierSegment(string segment)
     {
-        var cleaned = Regex.Replace(segment, "[^A-Za-z0-9_]", string.Empty);
+        var cleaned = GlobalUsingGeneratorRegexes.InvalidIdentifierCharacterRegex().Replace(segment, string.Empty);
         if (string.IsNullOrWhiteSpace(cleaned))
         {
             return string.Empty;
@@ -585,4 +586,13 @@ internal static class GlobalUsingFileBuilder
 
         return cleaned;
     }
+}
+
+internal static partial class GlobalUsingGeneratorRegexes
+{
+    [GeneratedRegex(@"^\s*namespace\s+([A-Za-z_][A-Za-z0-9_\.]*)", RegexOptions.Multiline)]
+    internal static partial Regex NamespaceRegex();
+
+    [GeneratedRegex("[^A-Za-z0-9_]")]
+    internal static partial Regex InvalidIdentifierCharacterRegex();
 }

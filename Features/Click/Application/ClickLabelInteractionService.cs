@@ -48,7 +48,7 @@ namespace ClickIt.Features.Click.Application
 
             try
             {
-                var worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+                NumVector2 worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
                 Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
                 return ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, worldScreenAbsolute, windowTopLeft);
             }
@@ -65,7 +65,7 @@ namespace ClickIt.Features.Click.Application
                 Vector2? corruptionPos = EssenceService.GetCorruptionClickPosition(label, windowTopLeft);
                 if (corruptionPos.HasValue)
                 {
-                    string labelPath = label.ItemOnGround?.Path ?? string.Empty;
+                    string labelPath = ResolveLabelItemPath(label, explicitPath: null);
                     bool corruptionPointInWindow = _dependencies.IsInsideWindowInEitherSpace(corruptionPos.Value);
                     bool corruptionPointClickable = _dependencies.IsClickableInEitherSpace(corruptionPos.Value, labelPath);
                     if (!ClickLabelSelectionMath.ShouldAttemptSpecialEssenceCorruption(corruptionPointInWindow, corruptionPointClickable))
@@ -138,7 +138,8 @@ namespace ClickIt.Features.Click.Application
             out Vector2 clickPos,
             string? explicitPath = null)
         {
-            string path = explicitPath ?? label.ItemOnGround?.Path ?? string.Empty;
+            Entity? item = TryGetLabelItemOnGround(label);
+            string path = ResolveLabelItemPath(label, explicitPath);
 
             (bool clickResolvable, Vector2 resolvedClickPos) = _dependencies.TryResolveClickPosition(
                 label,
@@ -158,8 +159,8 @@ namespace ClickIt.Features.Click.Application
             }
 
             if (!LabelClickPointResolutionPolicy.ShouldAllowSettlersRelaxedFallback(
-                label.ItemOnGround != null,
-                IsItemWorldProjectionInWindow(label.ItemOnGround, windowTopLeft)))
+                item != null,
+                IsItemWorldProjectionInWindow(item, windowTopLeft)))
             {
                 clickPos = default;
                 return false;
@@ -202,21 +203,21 @@ namespace ClickIt.Features.Click.Application
             if (labelCount <= 0)
                 return $"{sourceSummary} | selection:r:0-0 t:0";
 
-            var summary = _dependencies.LabelInteractionPort.GetSelectionDebugSummary(allLabels, 0, labelCount);
+            SelectionDebugSummary summary = _dependencies.LabelInteractionPort.GetSelectionDebugSummary(allLabels, 0, labelCount);
             return $"{sourceSummary} | selection:{summary.ToCompactString()}";
         }
 
         internal string BuildLabelRangeRejectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int start, int endExclusive, int examined)
         {
-            int maxCount = Math.Max(0, endExclusive - start);
-            var summary = _dependencies.LabelInteractionPort.GetSelectionDebugSummary(allLabels, start, maxCount);
+            int maxCount = SystemMath.Max(0, endExclusive - start);
+            SelectionDebugSummary summary = _dependencies.LabelInteractionPort.GetSelectionDebugSummary(allLabels, start, maxCount);
             return $"range:{start}-{endExclusive} examined:{examined} | {summary.ToCompactString()}";
         }
 
         internal string BuildLabelSourceDebugSummary(IReadOnlyList<LabelOnGround>? cachedLabelSnapshot)
         {
             int cachedCount = cachedLabelSnapshot?.Count ?? 0;
-            int visibleCount = 0;
+            int visibleCount;
             try
             {
                 visibleCount = _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible?.Count ?? 0;
@@ -235,9 +236,28 @@ namespace ClickIt.Features.Click.Application
             if (item == null)
                 return false;
 
-            var worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
+            NumVector2 worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
             Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
             return _dependencies.IsInsideWindowInEitherSpace(worldScreenAbsolute);
+        }
+
+        private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+                && rawItem is Entity item
+                ? item
+                : null;
+        }
+
+        private static string ResolveLabelItemPath(LabelOnGround? label, string? explicitPath)
+        {
+            if (!string.IsNullOrWhiteSpace(explicitPath))
+                return explicitPath;
+
+            Entity? item = TryGetLabelItemOnGround(label);
+            return DynamicAccess.TryReadString(item, static i => i.Path, out string path)
+                ? path
+                : string.Empty;
         }
     }
 }

@@ -83,8 +83,8 @@ namespace ClickIt.UI.Debug
 
         private static RectangleF ToDrawRectangleFromLtrb(RectangleF rect)
         {
-            float width = Math.Max(0f, rect.Width - rect.X);
-            float height = Math.Max(0f, rect.Height - rect.Y);
+            float width = SystemMath.Max(0f, rect.Width - rect.X);
+            float height = SystemMath.Max(0f, rect.Height - rect.Y);
             return new RectangleF(rect.X, rect.Y, width, height);
         }
     }

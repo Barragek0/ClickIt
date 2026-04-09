@@ -27,7 +27,7 @@ namespace ClickIt.UI.Settings.Panels
 
             if (_settings.MemoryDumpInProgress)
             {
-                float progress = Math.Clamp(_settings.MemoryDumpProgressPercent, 0, 100) / 100f;
+                float progress = SystemMath.Clamp(_settings.MemoryDumpProgressPercent, 0, 100) / 100f;
                 ImGui.ProgressBar(progress, new NumVector2(-1f, 0f), $"Memory Dump: {_settings.MemoryDumpProgressPercent}%");
                 if (!string.IsNullOrWhiteSpace(_settings.MemoryDumpStatusText))
                     ImGui.TextWrapped(_settings.MemoryDumpStatusText);

@@ -119,6 +119,100 @@ namespace ClickIt.Tests.Features.Click
             mechanicId.Should().Be("first");
         }
 
+        [TestMethod]
+        public void TryResolveEvaluatedCandidates_PrefersLowerProjectionScore_WhenOnlyProjectionMatches()
+        {
+            LabelOnGround farther = ExileCoreOpaqueFactory.CreateOpaqueLabel();
+            LabelOnGround closer = ExileCoreOpaqueFactory.CreateOpaqueLabel();
+
+            bool resolved = ManualCursorLabelSelector.TryResolveEvaluatedCandidates(
+                [
+                    new ManualCursorEvaluatedCandidate(farther, "far", IsSuppressed: false, CursorInsideLabelRect: false, LabelRectScore: float.MaxValue, CursorNearGroundProjection: true, GroundProjectionScore: 36f),
+                    new ManualCursorEvaluatedCandidate(closer, "close", IsSuppressed: false, CursorInsideLabelRect: false, LabelRectScore: float.MaxValue, CursorNearGroundProjection: true, GroundProjectionScore: 4f)
+                ],
+                out LabelOnGround? selectedLabel,
+                out string? mechanicId);
+
+            resolved.Should().BeTrue();
+            selectedLabel.Should().BeSameAs(closer);
+            mechanicId.Should().Be("close");
+        }
+
+        [TestMethod]
+        public void TryResolveEvaluatedCandidates_KeepsFirstCandidate_WhenProjectionScoresTie()
+        {
+            LabelOnGround first = ExileCoreOpaqueFactory.CreateOpaqueLabel();
+            LabelOnGround second = ExileCoreOpaqueFactory.CreateOpaqueLabel();
+
+            bool resolved = ManualCursorLabelSelector.TryResolveEvaluatedCandidates(
+                [
+                    new ManualCursorEvaluatedCandidate(first, "first", IsSuppressed: false, CursorInsideLabelRect: false, LabelRectScore: float.MaxValue, CursorNearGroundProjection: true, GroundProjectionScore: 9f),
+                    new ManualCursorEvaluatedCandidate(second, "second", IsSuppressed: false, CursorInsideLabelRect: false, LabelRectScore: float.MaxValue, CursorNearGroundProjection: true, GroundProjectionScore: 9f)
+                ],
+                out LabelOnGround? selectedLabel,
+                out string? mechanicId);
+
+            resolved.Should().BeTrue();
+            selectedLabel.Should().BeSameAs(first);
+            mechanicId.Should().Be("first");
+        }
+
+        [TestMethod]
+        public void TryResolveEvaluatedCandidates_ReturnsFalse_WhenEveryCandidateIsRejected()
+        {
+            bool resolved = ManualCursorLabelSelector.TryResolveEvaluatedCandidates(
+                [
+                    new ManualCursorEvaluatedCandidate(null, "null-label", IsSuppressed: false, CursorInsideLabelRect: true, LabelRectScore: 1f, CursorNearGroundProjection: false, GroundProjectionScore: float.MaxValue),
+                    new ManualCursorEvaluatedCandidate(ExileCoreOpaqueFactory.CreateOpaqueLabel(), null, IsSuppressed: false, CursorInsideLabelRect: true, LabelRectScore: 1f, CursorNearGroundProjection: false, GroundProjectionScore: float.MaxValue),
+                    new ManualCursorEvaluatedCandidate(ExileCoreOpaqueFactory.CreateOpaqueLabel(), "suppressed", IsSuppressed: true, CursorInsideLabelRect: true, LabelRectScore: 1f, CursorNearGroundProjection: false, GroundProjectionScore: float.MaxValue),
+                    new ManualCursorEvaluatedCandidate(ExileCoreOpaqueFactory.CreateOpaqueLabel(), "not-hovered", IsSuppressed: false, CursorInsideLabelRect: false, LabelRectScore: float.MaxValue, CursorNearGroundProjection: false, GroundProjectionScore: float.MaxValue)
+                ],
+                out LabelOnGround? selectedLabel,
+                out string? mechanicId);
+
+            resolved.Should().BeFalse();
+            selectedLabel.Should().BeNull();
+            mechanicId.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void TryResolveEvaluatedCandidates_PrefersRectScore_WhenProjectionScoreIsWorse()
+        {
+            LabelOnGround rectWinner = ExileCoreOpaqueFactory.CreateOpaqueLabel();
+            LabelOnGround rectOnlyCandidate = ExileCoreOpaqueFactory.CreateOpaqueLabel();
+
+            bool resolved = ManualCursorLabelSelector.TryResolveEvaluatedCandidates(
+                [
+                    new ManualCursorEvaluatedCandidate(rectWinner, "rect-wins", IsSuppressed: false, CursorInsideLabelRect: true, LabelRectScore: 4f, CursorNearGroundProjection: true, GroundProjectionScore: 16f),
+                    new ManualCursorEvaluatedCandidate(rectOnlyCandidate, "rect-only", IsSuppressed: false, CursorInsideLabelRect: true, LabelRectScore: 9f, CursorNearGroundProjection: false, GroundProjectionScore: float.MaxValue)
+                ],
+                out LabelOnGround? selectedLabel,
+                out string? mechanicId);
+
+            resolved.Should().BeTrue();
+            selectedLabel.Should().BeSameAs(rectWinner);
+            mechanicId.Should().Be("rect-wins");
+        }
+
+        [DataTestMethod]
+        [DataRow(false, false, false)]
+        [DataRow(true, false, true)]
+        [DataRow(false, true, true)]
+        [DataRow(true, true, true)]
+        public void ManualCursorCandidateHoverState_IsHovered_ReturnsExpected(
+            bool cursorInsideLabelRect,
+            bool cursorNearGroundProjection,
+            bool expected)
+        {
+            var hoverState = new ManualCursorCandidateHoverState(
+                cursorInsideLabelRect,
+                LabelRectScore: cursorInsideLabelRect ? 4f : float.MaxValue,
+                cursorNearGroundProjection,
+                GroundProjectionScore: cursorNearGroundProjection ? 9f : float.MaxValue);
+
+            hoverState.IsHovered.Should().Be(expected);
+        }
+
         private static ManualCursorLabelSelector CreateSelector(
             Func<LabelOnGround?, string?>? getMechanicIdForLabel = null)
         {

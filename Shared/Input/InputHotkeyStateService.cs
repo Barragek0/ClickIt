@@ -12,9 +12,8 @@ namespace ClickIt.Shared.Input
         {
             Keys clickHotkey = _settings.ClickLabelKeyBinding;
             if (clickHotkey == Keys.None)
-            {
                 return false;
-            }
+
 
             bool toggleMode = _settings.IsClickHotkeyToggleModeEnabled();
             bool keyDown = keyStateProvider(clickHotkey);
@@ -24,9 +23,8 @@ namespace ClickIt.Shared.Input
         internal bool IsLazyModeDisableActive(Func<Keys, bool> keyStateProvider)
         {
             if (!_settings.LazyMode.Value)
-            {
                 _lazyModeDisableToggled = false;
-            }
+
 
             bool toggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
             bool keyDown = keyStateProvider(_settings.LazyModeDisableKeyBinding);
@@ -42,9 +40,8 @@ namespace ClickIt.Shared.Input
             }
 
             if (disableKeyPressed && !wasPressedLastFrame)
-            {
                 toggledState = !toggledState;
-            }
+
 
             wasPressedLastFrame = disableKeyPressed;
             return toggledState;
@@ -60,9 +57,8 @@ namespace ClickIt.Shared.Input
             }
 
             if (hotkeyPressed && !wasPressedLastFrame)
-            {
                 toggledState = !toggledState;
-            }
+
 
             wasPressedLastFrame = hotkeyPressed;
             return toggledState;
@@ -71,9 +67,8 @@ namespace ClickIt.Shared.Input
         internal static (bool leftClickBlocks, bool rightClickBlocks, bool mouseButtonBlocks) GetMouseButtonBlockingState(ClickItSettings settings, Func<Keys, bool> keyStateProvider)
         {
             if (settings == null || keyStateProvider == null)
-            {
                 return (false, false, false);
-            }
+
 
             bool leftClickBlocks = settings.DisableLazyModeLeftClickHeld.Value && keyStateProvider(Keys.LButton);
             bool rightClickBlocks = settings.DisableLazyModeRightClickHeld.Value && keyStateProvider(Keys.RButton);

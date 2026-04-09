@@ -1,4 +1,4 @@
-﻿namespace ClickIt
+namespace ClickIt
 {
     public partial class ClickIt : BaseSettingsPlugin<ClickItSettings>
     {
@@ -30,9 +30,8 @@
             PluginLifecycleCoordinator.Shutdown(this, runtimeSettings);
 
             if (Settings != null)
-            {
                 base.OnClose();
-            }
+
         }
 
         public override bool Initialise()
@@ -76,9 +75,8 @@
             }
 
             foreach (var drawer in Drawers)
-            {
                 drawer.Draw();
-            }
+
         }
 
         public void LogMessage(string message, int frame = 5)
@@ -93,9 +91,8 @@
             // Skip logging during render loop to prevent crashes
             if (State.Rendering.IsRendering) return;
             if (!localDebug || EffectiveSettings.DebugMode)
-            {
                 base.LogMessage(message, frame);
-            }
+
         }
         public void LogError(string message, int frame = 0)
         {

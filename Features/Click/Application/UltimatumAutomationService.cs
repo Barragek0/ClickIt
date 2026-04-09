@@ -1,4 +1,3 @@
-#nullable enable
 
 namespace ClickIt.Features.Click.Application
 {
@@ -52,17 +51,20 @@ namespace ClickIt.Features.Click.Application
                 return PublishInitialFailure("InitialLabelNull", "Label was null");
             }
 
-            string labelPath = label.ItemOnGround?.Path ?? string.Empty;
-            ulong labelAddress = unchecked((ulong)(label.Label?.Address ?? 0));
             bool clickInitialUltimatum = _dependencies.Settings.IsInitialUltimatumClickEnabled();
             bool clickOtherUltimatum = _dependencies.Settings.IsOtherUltimatumClickEnabled();
-            _dependencies.DebugLog(() => $"[TryClickPreferredUltimatumModifier] Entered. ClickInitialUltimatum={clickInitialUltimatum}, ClickUltimatumChoices={clickOtherUltimatum}, Path='{labelPath}', LabelAddr=0x{labelAddress:X}");
 
             if (!clickInitialUltimatum)
             {
                 _dependencies.DebugLog(() => "[TryClickPreferredUltimatumModifier] Disabled by settings.");
                 return PublishInitialFailure("InitialDisabled", "Initial ultimatum click setting disabled");
             }
+
+            string labelPath = UltimatumLabelMath.TryGetLabelItemPath(label, out string resolvedLabelPath)
+                ? resolvedLabelPath
+                : string.Empty;
+            ulong labelAddress = UltimatumLabelMath.GetLabelElementAddress(label);
+            _dependencies.DebugLog(() => $"[TryClickPreferredUltimatumModifier] Entered. ClickInitialUltimatum={clickInitialUltimatum}, ClickUltimatumChoices={clickOtherUltimatum}, Path='{labelPath}', LabelAddr=0x{labelAddress:X}");
 
             if (!UltimatumLabelMath.IsUltimatumLabel(label))
             {
@@ -80,7 +82,7 @@ namespace ClickIt.Features.Click.Application
                 return PublishInitialFailure("InitialNoOptions", "No options discovered from ultimatum label tree");
             }
 
-            var priorities = _dependencies.Settings.GetUltimatumModifierPriority();
+            IReadOnlyList<string> priorities = _dependencies.Settings.GetUltimatumModifierPriority();
 
             if (IsGruelingGauntletPassiveActive())
             {

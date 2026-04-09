@@ -146,9 +146,8 @@ namespace ClickIt.Features.Click.Core
 
             IEnumerator postActions = _postActionsPhase.Run(executionResult);
             while (postActions.MoveNext())
-            {
                 yield return postActions.Current;
-            }
+
         }
 
         private sealed class CandidateGatingPhase

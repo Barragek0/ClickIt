@@ -490,13 +490,13 @@ namespace ClickIt.Features.Labels.Application
         {
             int maxDistance = 0;
             if (normalEnabled)
-                maxDistance = Math.Max(maxDistance, normalDistance);
+                maxDistance = SystemMath.Max(maxDistance, normalDistance);
             if (magicEnabled)
-                maxDistance = Math.Max(maxDistance, magicDistance);
+                maxDistance = SystemMath.Max(maxDistance, magicDistance);
             if (rareEnabled)
-                maxDistance = Math.Max(maxDistance, rareDistance);
+                maxDistance = SystemMath.Max(maxDistance, rareDistance);
             if (uniqueEnabled)
-                maxDistance = Math.Max(maxDistance, uniqueDistance);
+                maxDistance = SystemMath.Max(maxDistance, uniqueDistance);
             return maxDistance;
         }
 

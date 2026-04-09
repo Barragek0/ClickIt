@@ -29,9 +29,9 @@ namespace ClickIt.Core.Settings.Normalization
         }
 
         internal static int SanitizeLazyModeNearbyMonsterCount(int value)
-            => Math.Clamp(value, LazyModeNearbyMonsterCountMin, LazyModeNearbyMonsterCountMax);
+            => SystemMath.Clamp(value, LazyModeNearbyMonsterCountMin, LazyModeNearbyMonsterCountMax);
 
         internal static int SanitizeLazyModeNearbyMonsterDistance(int value)
-            => Math.Clamp(value, LazyModeNearbyMonsterDistanceMin, LazyModeNearbyMonsterDistanceMax);
+            => SystemMath.Clamp(value, LazyModeNearbyMonsterDistanceMin, LazyModeNearbyMonsterDistanceMax);
     }
 }

@@ -43,23 +43,21 @@ namespace ClickIt.Shared.Game
 
             if (identifier.StartsWith("name:", StringComparison.OrdinalIgnoreCase))
             {
-                string nameFragment = identifier.Substring("name:".Length).Trim();
+                string nameFragment = identifier["name:".Length..].Trim();
                 return !string.IsNullOrWhiteSpace(nameFragment)
-                    && itemName.IndexOf(nameFragment, StringComparison.OrdinalIgnoreCase) >= 0;
+                    && itemName.Contains(nameFragment, StringComparison.OrdinalIgnoreCase);
             }
 
-            bool strongboxIdentifier = identifier.IndexOf("StrongBoxes/", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool strongboxIdentifier = identifier.Contains("StrongBoxes/", StringComparison.OrdinalIgnoreCase);
 
-            if (strongboxIdentifier)
-            {
-                if (ContainsWithPathBoundaries(metadataPath, identifier))
-                    return true;
-            }
-            else if (metadataPath.IndexOf(identifier, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (strongboxIdentifier && ContainsWithPathBoundaries(metadataPath, identifier))
+                return true;
+
+            if (!strongboxIdentifier && metadataPath.Contains(identifier, StringComparison.OrdinalIgnoreCase))
                 return true;
 
             return identifier.StartsWith("Items/", StringComparison.OrdinalIgnoreCase)
-                && metadataPath.IndexOf("Metadata/" + identifier, StringComparison.OrdinalIgnoreCase) >= 0;
+                && metadataPath.Contains("Metadata/" + identifier, StringComparison.OrdinalIgnoreCase);
         }
 
         internal static bool ContainsAny(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
@@ -68,10 +66,9 @@ namespace ClickIt.Shared.Game
                 return false;
 
             for (int i = 0; i < identifiers.Count; i++)
-            {
                 if (ContainsSingle(metadataPath, itemName, identifiers[i] ?? string.Empty))
                     return true;
-            }
+
 
             return false;
         }

@@ -45,8 +45,8 @@ namespace ClickIt.Features.Labels.Application
                 return default;
 
             ClickSettings clickSettings = _createClickSettings(allLabels);
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, start + Math.Max(0, maxCount));
+            int start = SystemMath.Max(0, startIndex);
+            int end = SystemMath.Min(allLabels.Count, start + SystemMath.Max(0, maxCount));
             if (start >= end)
                 return default;
 
@@ -144,8 +144,8 @@ namespace ClickIt.Features.Labels.Application
                 return;
             }
 
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, start + Math.Max(0, maxCount));
+            int start = SystemMath.Max(0, startIndex);
+            int end = SystemMath.Min(allLabels.Count, start + SystemMath.Max(0, maxCount));
             if (start >= end)
             {
                 _errorHandler.LogMessage(true, true, $"[LabelFilterDiag] bad-range s:{start} e:{end} c:{allLabels.Count}", 5);
@@ -170,8 +170,8 @@ namespace ClickIt.Features.Labels.Application
             if (candidates == null || candidates.Count == 0)
                 return default;
 
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(candidates.Count, start + Math.Max(0, maxCount));
+            int start = SystemMath.Max(0, startIndex);
+            int end = SystemMath.Min(candidates.Count, start + SystemMath.Max(0, maxCount));
             if (start >= end)
                 return default;
 

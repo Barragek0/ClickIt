@@ -4,7 +4,7 @@ namespace ClickIt
     {
         internal void ResetUltimatumModifierPriorityDefaults()
         {
-            UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
+            UltimatumModifierPriority = [.. UltimatumModifiersConstants.AllModifierNames];
         }
 
         internal void ResetUltimatumTakeRewardModifierDefaults()
@@ -15,18 +15,18 @@ namespace ClickIt
 
         internal void EnsureUltimatumModifiersInitialized()
         {
-            UltimatumModifierPriority ??= new List<string>();
+            UltimatumModifierPriority ??= [];
 
             if (UltimatumModifierPriority.Count == 0)
             {
-                UltimatumModifierPriority = new List<string>(UltimatumModifiersConstants.AllModifierNames);
+                UltimatumModifierPriority = [.. UltimatumModifiersConstants.AllModifierNames];
                 return;
             }
 
             HashSet<string> valid = new(UltimatumModifiersConstants.AllModifierNames, StringComparer.OrdinalIgnoreCase);
             HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
 
-            var sanitized = new List<string>(UltimatumModifierPriority.Count);
+            List<string> sanitized = new(UltimatumModifierPriority.Count);
             foreach (string modifier in UltimatumModifierPriority)
             {
                 if (string.IsNullOrWhiteSpace(modifier))
@@ -40,10 +40,9 @@ namespace ClickIt
             }
 
             foreach (string modifier in UltimatumModifiersConstants.AllModifierNames)
-            {
                 if (seen.Add(modifier))
                     sanitized.Add(modifier);
-            }
+
 
             UltimatumModifierPriority = sanitized;
         }

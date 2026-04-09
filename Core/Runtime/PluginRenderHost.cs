@@ -5,7 +5,7 @@ namespace ClickIt.Core.Runtime
         private static double GetElapsedMs(long startTimestamp)
             => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
-        internal void Render(
+        internal static void Render(
             PluginContext state,
             ClickItSettings effectiveSettings,
             GameController? gameController,
@@ -34,9 +34,8 @@ namespace ClickIt.Core.Runtime
                 }
 
                 if (effectiveSettings.IsClickHotkeyToggleModeEnabled())
-                {
                     rendering.ClickHotkeyToggleRenderer?.Render(gameController ?? throw new InvalidOperationException("GameController is null during render"));
-                }
+
 
                 rendering.InventoryFullWarningRenderer?.Render(gameController ?? throw new InvalidOperationException("GameController is null during render"));
 
@@ -45,18 +44,16 @@ namespace ClickIt.Core.Runtime
                     int debugTextStartCount = 0;
                     bool shouldCopyDebugInfo = debugClipboardService.HasPendingAdditionalDebugInfoCopyRequest;
                     if (shouldCopyDebugInfo)
-                    {
                         debugTextStartCount = rendering.DeferredTextQueue?.GetPendingCount() ?? 0;
-                    }
+
 
                     long sectionStart = Stopwatch.GetTimestamp();
                     rendering.DebugRenderer?.RenderDebugFrames(effectiveSettings);
                     if (rendering.DebugRenderer != null
                         && services.PerformanceMonitor != null
                         && effectiveSettings.IsAnyDetailedDebugSectionEnabled())
-                    {
                         rendering.DebugRenderer.RenderDetailedDebugInfo(effectiveSettings, services.PerformanceMonitor);
-                    }
+
 
                     if (shouldCopyDebugInfo)
                     {

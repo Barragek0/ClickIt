@@ -7,18 +7,12 @@ namespace ClickIt.Shared.Input
             _ = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
-        private sealed class Releaser : IDisposable
+        private sealed class Releaser(object lockObj) : IDisposable
         {
-            private readonly object _lockObj;
-
-            public Releaser(object lockObj)
-            {
-                _lockObj = lockObj;
-            }
-
             public void Dispose()
             {
-                try { Monitor.Exit(_lockObj); } catch { }
+                if (Monitor.IsEntered(lockObj))
+                    Monitor.Exit(lockObj);
             }
         }
 
@@ -29,7 +23,7 @@ namespace ClickIt.Shared.Input
             public void Dispose() { }
         }
 
-        private static IDisposable AcquireEntered(object lockObj)
+        private static Releaser AcquireEntered(object lockObj)
         {
             Monitor.Enter(lockObj);
             return new Releaser(lockObj);

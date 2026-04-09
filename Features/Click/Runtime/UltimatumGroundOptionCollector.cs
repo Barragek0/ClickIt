@@ -19,6 +19,8 @@ namespace ClickIt.Features.Click.Runtime
                 {
                     if (logFailures)
                         debugLog($"[TryClickPreferredUltimatumModifier] Option[{i}] ignored - valid={optionElement?.IsValid ?? false}");
+
+
                     continue;
                 }
 
@@ -34,9 +36,8 @@ namespace ClickIt.Features.Click.Runtime
                 }
 
                 if (logFailures)
-                {
                     debugLog($"[TryClickPreferredUltimatumModifier] Option[{i}] modifier='{modifierName}', priority={priorityIndex}, saturated={isSaturated}, visible={optionElement.IsVisible}, valid={optionElement.IsValid}");
-                }
+
 
                 candidates.Add(new UltimatumGroundOptionCandidate(optionElement, modifierName, priorityIndex, isSaturated));
             }

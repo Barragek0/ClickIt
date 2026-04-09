@@ -2,7 +2,7 @@ namespace ClickIt.Core.Runtime
 {
     internal sealed class DebugTelemetryFreezeState
     {
-        private readonly object _sync = new();
+        private readonly Lock _sync = new();
         private DebugTelemetrySnapshot _frozenSnapshot = DebugTelemetrySnapshot.Empty;
         private long _freezeUntilTimestampMs;
         private string _freezeReason = string.Empty;
@@ -27,7 +27,7 @@ namespace ClickIt.Core.Runtime
 
         internal void Freeze(DebugTelemetrySnapshot snapshot, string? reason, int holdDurationMs, long nowTimestampMs)
         {
-            int durationMs = Math.Max(0, holdDurationMs);
+            int durationMs = SystemMath.Max(0, holdDurationMs);
             if (durationMs <= 0)
                 return;
 

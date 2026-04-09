@@ -4,10 +4,10 @@ namespace ClickIt.Features.Area
     {
         internal static bool RectsDiffer(RectangleF a, RectangleF b, float eps)
         {
-            return Math.Abs(a.Width - b.Width) > eps
-                || Math.Abs(a.Height - b.Height) > eps
-                || Math.Abs(a.X - b.X) > eps
-                || Math.Abs(a.Y - b.Y) > eps;
+            return SystemMath.Abs(a.Width - b.Width) > eps
+                || SystemMath.Abs(a.Height - b.Height) > eps
+                || SystemMath.Abs(a.X - b.X) > eps
+                || SystemMath.Abs(a.Y - b.Y) > eps;
         }
 
         internal static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangle(
@@ -26,9 +26,9 @@ namespace ClickIt.Features.Area
             if (totalWidth <= 0f || totalHeight <= 0f)
                 return (RectangleF.Empty, RectangleF.Empty);
 
-            float squareSize = Math.Min(totalHeight, totalWidth);
-            float companionWidth = Math.Max(0f, totalWidth - squareSize) * secondaryWidthRatio;
-            float companionHeight = totalHeight * Math.Clamp(secondaryHeightRatio, 0f, 1f);
+            float squareSize = SystemMath.Min(totalHeight, totalWidth);
+            float companionWidth = SystemMath.Max(0f, totalWidth - squareSize) * secondaryWidthRatio;
+            float companionHeight = totalHeight * SystemMath.Clamp(secondaryHeightRatio, 0f, 1f);
 
             RectangleF primarySquare = anchorLeft
                 ? new RectangleF(left, bottom - squareSize, left + squareSize, bottom)
@@ -60,8 +60,8 @@ namespace ClickIt.Features.Area
             if (sourceWidth <= 0f || sourceHeight <= 0f)
                 return RectangleF.Empty;
 
-            float linkedWidth = sourceWidth * Math.Max(0f, widthRatio);
-            float linkedHeight = sourceHeight * Math.Clamp(heightRatio, 0f, 1f);
+            float linkedWidth = sourceWidth * SystemMath.Max(0f, widthRatio);
+            float linkedHeight = sourceHeight * SystemMath.Clamp(heightRatio, 0f, 1f);
             if (linkedWidth <= 0f || linkedHeight <= 0f)
                 return RectangleF.Empty;
 

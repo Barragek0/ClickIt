@@ -1,26 +1,18 @@
 namespace ClickIt.Shared.Diagnostics
 {
-    public sealed class DebugSnapshotStore<TSnapshot>
+    public sealed class DebugSnapshotStore<TSnapshot>(
+        TSnapshot emptySnapshot,
+        int trailCapacity,
+        Func<TSnapshot, long, TSnapshot> withSequence,
+        Func<TSnapshot, string> trailFormatter)
     {
         private readonly object _lock = new();
         private readonly Queue<string> _trail = new();
-        private readonly int _trailCapacity;
-        private readonly Func<TSnapshot, long, TSnapshot> _withSequence;
-        private readonly Func<TSnapshot, string> _trailFormatter;
+        private readonly int _trailCapacity = SystemMath.Max(1, trailCapacity);
+        private readonly Func<TSnapshot, long, TSnapshot> _withSequence = withSequence ?? throw new ArgumentNullException(nameof(withSequence));
+        private readonly Func<TSnapshot, string> _trailFormatter = trailFormatter ?? throw new ArgumentNullException(nameof(trailFormatter));
         private long _sequence;
-        private TSnapshot _latest;
-
-        public DebugSnapshotStore(
-            TSnapshot emptySnapshot,
-            int trailCapacity,
-            Func<TSnapshot, long, TSnapshot> withSequence,
-            Func<TSnapshot, string> trailFormatter)
-        {
-            _latest = emptySnapshot;
-            _trailCapacity = SystemMath.Max(1, trailCapacity);
-            _withSequence = withSequence ?? throw new ArgumentNullException(nameof(withSequence));
-            _trailFormatter = trailFormatter ?? throw new ArgumentNullException(nameof(trailFormatter));
-        }
+        private TSnapshot _latest = emptySnapshot;
 
         public TSnapshot GetLatest()
         {

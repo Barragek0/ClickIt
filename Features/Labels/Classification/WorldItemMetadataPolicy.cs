@@ -57,7 +57,7 @@ namespace ClickIt.Features.Labels.Classification
             if (string.IsNullOrWhiteSpace(resolvedMetadata))
                 return componentMetadata;
 
-            if (resolvedMetadata.IndexOf("Metadata/MiscellaneousObjects/", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (resolvedMetadata.Contains("Metadata/MiscellaneousObjects/", StringComparison.OrdinalIgnoreCase))
                 return componentMetadata;
 
             return resolvedMetadata;

@@ -46,6 +46,7 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!TryBuildTraversalPath(context, out bool builtPath))
                 return false;
+
             if (!TryResolveTraversalClick(context, builtPath, out bool resolvedFromPath, out Vector2 targetScreen, out Vector2 walkClick))
                 return false;
 
@@ -145,7 +146,7 @@ namespace ClickIt.Features.Click.Runtime
             string stage,
             string movementSkillDebug = "")
         {
-            var player = _dependencies.GameController.Player;
+            Entity? player = _dependencies.GameController.Player;
             Vector2 playerGrid = player != null
                 ? new Vector2(player.GridPosNum.X, player.GridPosNum.Y)
                 : default;
@@ -205,7 +206,9 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryResolveTraversalTarget(preferredTarget, out Entity? target) || target == null)
                 return false;
 
-            string targetPath = target.Path ?? string.Empty;
+            string targetPath = DynamicAccess.TryReadString(target, static t => t.Path, out string resolvedTargetPath)
+                ? resolvedTargetPath
+                : string.Empty;
             if (preferredTarget == null && _traversalConfirmationGate.ShouldDelay(target, targetPath, out long remainingDelayMs))
             {
                 _dependencies.PathfindingService.ClearLatestPath();
@@ -285,7 +288,11 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            if (!target.IsValid || target.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
+            bool isValid = DynamicAccess.TryReadBool(target, static t => t.IsValid, out bool resolvedIsValid)
+                && resolvedIsValid;
+            bool isHidden = DynamicAccess.TryReadBool(target, static t => t.IsHidden, out bool resolvedIsHidden)
+                && resolvedIsHidden;
+            if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
             {
                 ResetTraversalState(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
                 target = null;

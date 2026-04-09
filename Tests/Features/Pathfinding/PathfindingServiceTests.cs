@@ -4,6 +4,34 @@ namespace ClickIt.Tests.Features.Pathfinding
     public class PathfindingServiceTests
     {
         [TestMethod]
+        public void TryBuildPathToTarget_ReturnsFalse_WhenGameControllerIsNull()
+        {
+            var service = new PathfindingService(new ClickItSettings());
+            Entity target = ExileCoreOpaqueFactory.CreateOpaqueEntity();
+
+            bool result = service.TryBuildPathToTarget(gameController: null, target, maxExpandedNodes: 500);
+
+            result.Should().BeFalse();
+            service.GetDebugSnapshot().LastFailureReason.Should().Be("GameController/target unavailable.");
+            service.GetLatestGridPath().Should().BeEmpty();
+            service.GetLatestScreenPath().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void TryBuildPathToTarget_ReturnsFalse_WhenTargetIsNull()
+        {
+            var service = new PathfindingService(new ClickItSettings());
+            GameController gameController = ExileCoreOpaqueFactory.CreateOpaqueGameController();
+
+            bool result = service.TryBuildPathToTarget(gameController, target: null, maxExpandedNodes: 500);
+
+            result.Should().BeFalse();
+            service.GetDebugSnapshot().LastFailureReason.Should().Be("GameController/target unavailable.");
+            service.GetLatestGridPath().Should().BeEmpty();
+            service.GetLatestScreenPath().Should().BeEmpty();
+        }
+
+        [TestMethod]
         public void FindPathAStar_FindsPath_OnSimpleWalkableGrid()
         {
             bool[][] grid =
@@ -147,6 +175,147 @@ namespace ClickIt.Tests.Features.Pathfinding
         }
 
         [TestMethod]
+        public void TryResolveBestEffortGoal_ReturnsFalse_WhenTerrainDataIsUnavailable()
+        {
+            bool ok = PathGridSearch.TryResolveBestEffortGoal(
+                walkable: [],
+                start: new PathfindingService.GridPoint(0, 0),
+                desiredGoal: new PathfindingService.GridPoint(5, 5),
+                out _,
+                out bool usedFallback,
+                out string failureReason);
+
+            ok.Should().BeFalse();
+            usedFallback.Should().BeFalse();
+            failureReason.Should().Be("Terrain/pathfinding data unavailable.");
+        }
+
+        [TestMethod]
+        public void TryResolveBestEffortGoal_ReturnsFalse_WhenStartIsOutsideGrid()
+        {
+            bool[][] grid =
+            [
+                [true, true, true],
+                [true, true, true],
+                [true, true, true]
+            ];
+
+            bool ok = PathGridSearch.TryResolveBestEffortGoal(
+                grid,
+                start: new PathfindingService.GridPoint(-1, 0),
+                desiredGoal: new PathfindingService.GridPoint(2, 2),
+                out _,
+                out bool usedFallback,
+                out string failureReason);
+
+            ok.Should().BeFalse();
+            usedFallback.Should().BeFalse();
+            failureReason.Should().Be("Player grid position is outside walkable grid bounds.");
+        }
+
+        [TestMethod]
+        public void TryResolveBestEffortGoal_UsesSteppedFallback_WhenClampedGoalHasNoNearbyWalkableTile()
+        {
+            bool[][] grid = CreateGrid(width: 60, height: 60, defaultValue: false);
+            grid[10][10] = true;
+            grid[12][12] = true;
+
+            bool ok = PathGridSearch.TryResolveBestEffortGoal(
+                grid,
+                start: new PathfindingService.GridPoint(10, 10),
+                desiredGoal: new PathfindingService.GridPoint(59, 59),
+                out PathfindingService.GridPoint resolved,
+                out bool usedFallback,
+                out string failureReason);
+
+            ok.Should().BeTrue();
+            usedFallback.Should().BeTrue();
+            failureReason.Should().BeEmpty();
+            resolved.Should().Be(new PathfindingService.GridPoint(12, 12));
+        }
+
+        [TestMethod]
+        public void TryResolveBestEffortGoal_ReturnsFalse_WhenNoReachableWalkableTileExists()
+        {
+            bool[][] grid = CreateGrid(width: 40, height: 40, defaultValue: false);
+
+            bool ok = PathGridSearch.TryResolveBestEffortGoal(
+                grid,
+                start: new PathfindingService.GridPoint(10, 10),
+                desiredGoal: new PathfindingService.GridPoint(39, 39),
+                out _,
+                out bool usedFallback,
+                out string failureReason);
+
+            ok.Should().BeFalse();
+            usedFallback.Should().BeFalse();
+            failureReason.Should().Be("No reachable walkable tile found toward target within current terrain coverage.");
+        }
+
+        [TestMethod]
+        public void TryResolveWalkableSample_ReturnsFalse_WhenSampleIsOutsideGrid()
+        {
+            bool[][] grid =
+            [
+                [true, true],
+                [true, true]
+            ];
+            object?[] args = [grid, new PathfindingService.GridPoint(-1, 0), default(PathfindingService.GridPoint)];
+
+            bool ok = InvokePrivateGridMethod<bool>("TryResolveWalkableSample", args);
+
+            ok.Should().BeFalse();
+            ((PathfindingService.GridPoint)args[2]!).Should().Be(new PathfindingService.GridPoint(-1, 0));
+        }
+
+        [TestMethod]
+        public void TryResolveWalkableSample_UsesNearbyWalkableFallback_WhenSampleIsBlocked()
+        {
+            bool[][] grid =
+            [
+                [true, true, true],
+                [true, false, true],
+                [true, true, true]
+            ];
+            object?[] args = [grid, new PathfindingService.GridPoint(1, 1), default(PathfindingService.GridPoint)];
+
+            bool ok = InvokePrivateGridMethod<bool>("TryResolveWalkableSample", args);
+
+            ok.Should().BeTrue();
+            PathfindingService.GridPoint resolved = (PathfindingService.GridPoint)args[2]!;
+            resolved.Should().NotBe(new PathfindingService.GridPoint(1, 1));
+            grid[resolved.Y][resolved.X].Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void TryFindFurthestReachableGoalTowardTarget_ReturnsFurthestProgressingWalkableCandidate()
+        {
+            bool[][] grid = CreateGrid(width: 10, height: 10, defaultValue: false);
+            grid[0][0] = true;
+            grid[2][2] = true;
+            grid[6][6] = true;
+            object?[] args = [grid, new PathfindingService.GridPoint(0, 0), new PathfindingService.GridPoint(9, 9), default(PathfindingService.GridPoint)];
+
+            bool ok = InvokePrivateGridMethod<bool>("TryFindFurthestReachableGoalTowardTarget", args);
+
+            ok.Should().BeTrue();
+            ((PathfindingService.GridPoint)args[3]!).Should().Be(new PathfindingService.GridPoint(6, 6));
+        }
+
+        [TestMethod]
+        public void TryFindFurthestReachableGoalTowardTarget_ReturnsFalse_WhenNoProgressingCandidateExists()
+        {
+            bool[][] grid = CreateGrid(width: 8, height: 8, defaultValue: false);
+            grid[0][0] = true;
+            object?[] args = [grid, new PathfindingService.GridPoint(0, 0), new PathfindingService.GridPoint(7, 7), default(PathfindingService.GridPoint)];
+
+            bool ok = InvokePrivateGridMethod<bool>("TryFindFurthestReachableGoalTowardTarget", args);
+
+            ok.Should().BeFalse();
+            ((PathfindingService.GridPoint)args[3]!).Should().Be(new PathfindingService.GridPoint(0, 0));
+        }
+
+        [TestMethod]
         public void ClearLatestPath_ResetsPathSnapshot()
         {
             var service = new PathfindingService(new ClickItSettings());
@@ -239,5 +408,25 @@ namespace ClickIt.Tests.Features.Pathfinding
             snapshot.MovementSkillDebug.Should().Be("ShieldCharge");
             service.GetLatestOffscreenMovementDebugTrail().Should().ContainSingle();
         }
+
+        private static bool[][] CreateGrid(int width, int height, bool defaultValue)
+        {
+            bool[][] grid = new bool[height][];
+            for (int y = 0; y < height; y++)
+            {
+                grid[y] = new bool[width];
+                if (!defaultValue)
+                    continue;
+
+                Array.Fill(grid[y], true);
+            }
+
+            return grid;
+        }
+
+        private static T InvokePrivateGridMethod<T>(string methodName, object?[] arguments)
+            => (T)typeof(PathGridSearch)
+                .GetMethod(methodName, System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(null, arguments)!;
     }
 }

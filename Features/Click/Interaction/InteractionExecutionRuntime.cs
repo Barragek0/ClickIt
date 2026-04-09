@@ -40,26 +40,24 @@ namespace ClickIt.Features.Click.Interaction
             }
 
             if (request.UseHoldClick)
-            {
                 _dependencies.PerformLockedHoldClick(
-                    request.ClickPosition,
-                    request.HoldDurationMs,
-                    request.ExpectedElement,
-                    request.Controller,
-                    request.ForceUiHoverVerification,
-                    request.AllowWhenHotkeyInactive,
-                    request.AvoidCursorMove);
-            }
+        request.ClickPosition,
+        request.HoldDurationMs,
+        request.ExpectedElement,
+        request.Controller,
+        request.ForceUiHoverVerification,
+        request.AllowWhenHotkeyInactive,
+        request.AvoidCursorMove);
+
             else
-            {
                 _dependencies.PerformLockedClick(
-                    request.ClickPosition,
-                    request.ExpectedElement,
-                    request.Controller,
-                    request.ForceUiHoverVerification,
-                    request.AllowWhenHotkeyInactive,
-                    request.AvoidCursorMove);
-            }
+        request.ClickPosition,
+        request.ExpectedElement,
+        request.Controller,
+        request.ForceUiHoverVerification,
+        request.AllowWhenHotkeyInactive,
+        request.AvoidCursorMove);
+
 
             _dependencies.RecordClickInterval();
             return true;

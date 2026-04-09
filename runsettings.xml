@@ -7,8 +7,8 @@
           <Format>cobertura,opencover</Format>
           <ResultsDirectory>TestResults</ResultsDirectory>
           <Exclude>[*.Tests]*,[*]*.Program,[ExileCore]*,[ImGui.NET]*,[Newtonsoft.Json]*,[System.*]*,[Microsoft.*]*</Exclude>
-          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
-          <ExcludeByFile>**/Core/ClickItSettings.cs,**/Properties/Settings.Designer.cs,**/Shared/Input/Mouse.cs,**/Shared/Input/Keyboard.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
           <IncludeDirectory>../</IncludeDirectory>
         </Configuration>
       </DataCollector>

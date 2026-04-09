@@ -99,9 +99,8 @@ namespace ClickIt.Tests.Features.Click
         {
             var yielded = new List<object?>();
             while (enumerator.MoveNext())
-            {
                 yielded.Add(enumerator.Current);
-            }
+
 
             return yielded;
         }

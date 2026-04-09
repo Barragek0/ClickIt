@@ -17,6 +17,28 @@ namespace ClickIt.Tests.Shared.TestUtils
         internal static IDisposable ReplaceParallelRunnerCoroutines(IReadOnlyCollection<Coroutine> coroutines)
             => new ParallelRunnerScope(coroutines);
 
+        internal static IDisposable ReplaceParallelRunner(object? parallelRunner)
+            => new ParallelRunnerValueScope(parallelRunner);
+
+        private static void SetStaticProperty(PropertyInfo property, object? value)
+        {
+            MethodInfo? setter = property.GetSetMethod(nonPublic: true);
+            if (setter != null)
+            {
+                setter.Invoke(null, [value]);
+                return;
+            }
+
+            FieldInfo? backingField = typeof(ExileCoreApi).GetField("<ParallelRunner>k__BackingField", Flags)
+                ?? typeof(ExileCoreApi).GetField("parallelRunner", Flags)
+                ?? typeof(ExileCoreApi).GetField("_parallelRunner", Flags);
+
+            if (backingField == null)
+                throw new InvalidOperationException("ExileCoreApi.ParallelRunner is not writable in the current runtime surface.");
+
+            backingField.SetValue(null, value);
+        }
+
         private sealed class ParallelRunnerScope : IDisposable
         {
             private readonly PropertyInfo _parallelRunnerProperty;
@@ -71,24 +93,25 @@ namespace ClickIt.Tests.Shared.TestUtils
 
                 return collection;
             }
+        }
 
-            private static void SetStaticProperty(PropertyInfo property, object? value)
+        private sealed class ParallelRunnerValueScope : IDisposable
+        {
+            private readonly PropertyInfo _parallelRunnerProperty;
+            private readonly object? _originalParallelRunner;
+
+            public ParallelRunnerValueScope(object? parallelRunner)
             {
-                MethodInfo? setter = property.GetSetMethod(nonPublic: true);
-                if (setter != null)
-                {
-                    setter.Invoke(null, [value]);
-                    return;
-                }
+                _parallelRunnerProperty = typeof(ExileCoreApi).GetProperty("ParallelRunner", Flags)
+                    ?? throw new InvalidOperationException("ExileCoreApi.ParallelRunner was not found.");
 
-                FieldInfo? backingField = typeof(ExileCoreApi).GetField("<ParallelRunner>k__BackingField", Flags)
-                    ?? typeof(ExileCoreApi).GetField("parallelRunner", Flags)
-                    ?? typeof(ExileCoreApi).GetField("_parallelRunner", Flags);
+                _originalParallelRunner = _parallelRunnerProperty.GetValue(null);
+                SetStaticProperty(_parallelRunnerProperty, parallelRunner);
+            }
 
-                if (backingField == null)
-                    throw new InvalidOperationException("ExileCoreApi.ParallelRunner is not writable in the current runtime surface.");
-
-                backingField.SetValue(null, value);
+            public void Dispose()
+            {
+                SetStaticProperty(_parallelRunnerProperty, _originalParallelRunner);
             }
         }
     }

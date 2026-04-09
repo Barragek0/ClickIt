@@ -38,7 +38,7 @@ namespace ClickIt.Features.Click.Selection
                 IReadOnlySet<long>? labelEntityAddresses = _dependencies.GroundLabelEntityAddresses.Collect();
                 if (collectDiagnostics)
                 {
-                    labelScanMs = Math.Max(0, Environment.TickCount64 - diagnosticsStartMs);
+                    labelScanMs = SystemMath.Max(0, Environment.TickCount64 - diagnosticsStartMs);
                     diagnosticsStartMs = Environment.TickCount64;
                 }
 
@@ -47,7 +47,12 @@ namespace ClickIt.Features.Click.Selection
                     if (collectDiagnostics)
                         scanned++;
 
-                    if (VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value))
+                    bool isValid = DynamicAccess.TryReadBool(entity, static e => e.IsValid, out bool resolvedIsValid) && resolvedIsValid;
+                    float distance = DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float resolvedDistance)
+                        ? resolvedDistance
+                        : float.MaxValue;
+
+                    if (VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value))
                     {
                         if (collectDiagnostics)
                             prefiltered++;
@@ -83,16 +88,15 @@ namespace ClickIt.Features.Click.Selection
                         labelBacked++;
 
                     if (MechanicCandidateResolver.TryPromoteSettlersCandidate(ref best, candidate, cursorAbsolute, windowTopLeft))
-                    {
                         if (captureClickDebug)
                             PublishSettlersCandidateDebug("CandidateSelected", candidate, "Nearest settlers candidate selected");
-                    }
+
 
                     return false;
                 });
 
                 long entityScanMs = collectDiagnostics
-                    ? Math.Max(0, Environment.TickCount64 - diagnosticsStartMs)
+                    ? SystemMath.Max(0, Environment.TickCount64 - diagnosticsStartMs)
                     : 0;
 
                 if (!best.HasValue && collectDiagnostics)
@@ -161,7 +165,9 @@ namespace ClickIt.Features.Click.Selection
             matchedMechanic = true;
 
             hasGroundLabel = labelEntityAddresses != null
-                && OffscreenPathingMath.IsBackedByGroundLabel(entity.Address, labelEntityAddresses);
+                && DynamicAccess.TryGetDynamicValue(entity, static e => e.Address, out object? rawAddress)
+                && rawAddress is long entityAddress
+                && OffscreenPathingMath.IsBackedByGroundLabel(entityAddress, labelEntityAddresses);
 
             if (!hasGroundLabel)
                 return false;
@@ -194,19 +200,24 @@ namespace ClickIt.Features.Click.Selection
         private bool TryResolveSettlersMechanic(Entity entity, out string mechanicId, out string path)
         {
             mechanicId = string.Empty;
-            path = entity.Path ?? string.Empty;
+            path = DynamicAccess.TryReadString(entity, static e => e.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+
+            bool isValid = DynamicAccess.TryReadBool(entity, static e => e.IsValid, out bool resolvedIsValid) && resolvedIsValid;
+            float distance = DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float resolvedDistance)
+                ? resolvedDistance
+                : float.MaxValue;
 
             if (!MechanicClassifier.TryGetSettlersOreMechanicId(path, out string? resolvedMechanic)
                 || string.IsNullOrWhiteSpace(resolvedMechanic))
-            {
                 return false;
-            }
+
 
             if (!SettlersMechanicPolicy.IsEnabled(_dependencies.Settings, resolvedMechanic)
-                || VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value))
-            {
+                || VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value))
                 return false;
-            }
+
 
             mechanicId = resolvedMechanic;
             return true;
@@ -218,7 +229,9 @@ namespace ClickIt.Features.Click.Selection
                 stage: "ProbeFailed",
                 mechanicId: mechanicId,
                 entityPath: path,
-                distance: entity.DistancePlayer,
+                distance: DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float distance)
+                    ? distance
+                    : float.MaxValue,
                 worldScreenRaw: worldScreenRaw,
                 worldScreenAbsolute: worldScreenAbsolute,
                 resolvedClickPoint: default,

@@ -33,7 +33,7 @@ namespace ClickIt.Features.Click.Selection
             IReadOnlyList<LabelOnGround>? allLabels,
             Vector2 cursorAbsolute,
             Vector2 windowTopLeft,
-            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out LabelOnGround? selectedLabel,
+            [NotNullWhen(true)] out LabelOnGround? selectedLabel,
             out string? selectedMechanicId)
         {
             selectedLabel = null;
@@ -63,7 +63,7 @@ namespace ClickIt.Features.Click.Selection
         */
         internal static bool TryResolveEvaluatedCandidates(
             IReadOnlyList<ManualCursorEvaluatedCandidate>? candidates,
-            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out LabelOnGround? selectedLabel,
+            [NotNullWhen(true)] out LabelOnGround? selectedLabel,
             out string? selectedMechanicId)
         {
             selectedLabel = null;
@@ -139,7 +139,7 @@ namespace ClickIt.Features.Click.Selection
         private bool TryResolveCandidateMechanicId(
             LabelOnGround? candidate,
             IReadOnlyList<LabelOnGround> allLabels,
-            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? mechanicId)
+            [NotNullWhen(true)] out string? mechanicId)
         {
             mechanicId = null;
             if (candidate == null || IsCandidateSuppressed(candidate, allLabels))
@@ -176,7 +176,7 @@ namespace ClickIt.Features.Click.Selection
                 score = candidate.LabelRectScore;
 
             if (candidate.CursorNearGroundProjection)
-                score = Math.Min(score, candidate.GroundProjectionScore);
+                score = SystemMath.Min(score, candidate.GroundProjectionScore);
 
             return score;
         }

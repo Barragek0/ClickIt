@@ -4,7 +4,7 @@ namespace ClickIt.Features.Altars
     {
         private static readonly Regex RgbRegex = new(@"<[^>]*>", RegexOptions.Compiled);
 
-        public static string CleanAltarModsText_NoCache(string text)
+        public static string CleanAltarModsTextNoCache(string text)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
@@ -19,9 +19,9 @@ namespace ClickIt.Features.Altars
         public static (string negativeModType, List<string> mods) ExtractModsFromText(string text)
         {
             string negativeModType = string.Empty;
-            var mods = new List<string>();
+            List<string> mods = [];
 
-            string cleaned = CleanAltarModsText_NoCache(text);
+            string cleaned = CleanAltarModsTextNoCache(text);
             int lines = TextHelpers.CountLines(cleaned);
             for (int i = 0; i < lines; i++)
             {
@@ -40,15 +40,15 @@ namespace ClickIt.Features.Altars
             string negativeModType,
             Func<string, string, (bool matched, bool isUpside, string matchedId)> matcher)
         {
-            var upsides = new List<string>();
-            var downsides = new List<string>();
-            var unmatched = new List<string>();
+            List<string> upsides = [];
+            List<string> downsides = [];
+            List<string> unmatched = [];
 
             if (mods == null || mods.Count == 0) return (upsides, downsides, unmatched);
 
-            foreach (var mod in mods)
+            foreach (string mod in mods)
             {
-                var (matched, isUpside, matchedId) = matcher(mod, negativeModType);
+                (bool matched, bool isUpside, string? matchedId) = matcher(mod, negativeModType);
                 if (!matched)
                 {
                     unmatched.Add(mod);

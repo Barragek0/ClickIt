@@ -192,6 +192,37 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
+        public void ProcessManualUiHoverClick_SkipsClick_WhenManualHoverGateIsBlockedByTimer()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickOnManualUiHoverOnly.Value = true;
+            settings.LazyMode.Value = false;
+            settings.ClickFrequencyTarget.Value = 1000;
+
+            var ctx = new PluginContext();
+            var perf = new PerformanceMonitor(settings);
+            var labels = new List<LabelOnGround> { ExileCoreOpaqueFactory.CreateOpaqueLabel() };
+            var fakeService = new FakeClickAutomationService();
+
+            ctx.Services.PerformanceMonitor = perf;
+            ctx.Services.InputHandler = new InputHandler(settings);
+            ctx.Services.CachedLabels = new TimeCache<List<LabelOnGround>>(() => labels, 50);
+            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => fakeService);
+
+            GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(new RectangleF(100f, 200f, 1280f, 720f));
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc, eh);
+            SetSafeLazyModeContextCache(host, settings, labels);
+
+            ctx.Runtime.Timer.Reset();
+
+            IEnumerator enumerator = InvokePrivateCoroutine(host, "ProcessManualUiHoverClick");
+
+            enumerator.MoveNext().Should().BeFalse();
+            fakeService.ManualHoverCallCount.Should().Be(0);
+        }
+
+        [TestMethod]
         public void RunClickLabelStep_CancelsOffscreenPathing_AndLogsBlockReason_WhenCanClickIsFalse()
         {
             var settings = new ClickItSettings();
@@ -223,10 +254,117 @@ namespace ClickIt.Tests.Core.Runtime
                 && message.Contains("reason='", StringComparison.Ordinal));
         }
 
+        [TestMethod]
+        public void PrivateGetSuccessfulClickSequence_ReturnsDispatcherSequence_WhenDispatcherPresent()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
+            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 7L);
+            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            long result = InvokePrivate<long>(host, "GetSuccessfulClickSequence");
+
+            result.Should().Be(7L);
+        }
+
+        [TestMethod]
+        public void RestartClickTimerAfterSuccessfulInteraction_RestartsTimer_WhenSequenceAdvances()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
+            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 4L);
+            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            ctx.Runtime.Timer.Start();
+            Thread.Sleep(20);
+            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 3L, true);
+
+            ctx.Runtime.Timer.ElapsedMilliseconds.Should().BeLessThan(20L);
+        }
+
+        [TestMethod]
+        public void RestartClickTimerAfterSuccessfulInteraction_DoesNotRestartTimer_WhenSequenceDoesNotAdvance()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
+            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 3L);
+            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            ctx.Runtime.Timer.Start();
+            Thread.Sleep(20);
+            long elapsedBefore = ctx.Runtime.Timer.ElapsedMilliseconds;
+
+            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 3L, true);
+
+            ctx.Runtime.Timer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(elapsedBefore);
+        }
+
+        [TestMethod]
+        public void RestartClickTimerAfterSuccessfulInteraction_DoesNotRestartTimer_WhenInteractionDidNotSucceed()
+        {
+            var settings = new ClickItSettings();
+            var ctx = new PluginContext();
+            var executor = new InteractionExecutor(settings, new PerformanceMonitor(settings), () => true);
+            RuntimeMemberAccessor.SetRequiredMember(executor, "_successfulClickSequence", 8L);
+            ctx.Services.LockedInteractionDispatcher = new LockedInteractionDispatcher(executor);
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            ctx.Runtime.Timer.Start();
+            Thread.Sleep(20);
+            long elapsedBefore = ctx.Runtime.Timer.ElapsedMilliseconds;
+
+            InvokePrivate(host, "RestartClickTimerAfterSuccessfulInteraction", 3L, false);
+
+            ctx.Runtime.Timer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(elapsedBefore);
+        }
+
         private static IEnumerator InvokePrivateCoroutine(PluginLoopHost host, string methodName)
         {
             MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
             return (IEnumerator)method.Invoke(host, null)!;
+        }
+
+        private static void InvokePrivate(PluginLoopHost host, string methodName, params object[] arguments)
+        {
+            MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
+            method.Invoke(host, arguments);
+        }
+
+        private static T InvokePrivate<T>(PluginLoopHost host, string methodName, params object[] arguments)
+        {
+            MethodInfo method = typeof(PluginLoopHost).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)!;
+            return (T)method.Invoke(host, arguments)!;
+        }
+
+        private static void SetSafeLazyModeContextCache(PluginLoopHost host, ClickItSettings settings, IReadOnlyList<LabelOnGround> labels)
+        {
+            RuntimeMemberAccessor.SetRequiredMember(
+                host,
+                "_lazyModeContextCache",
+                new PluginLazyModeContextCache(new PluginLazyModeContextCacheDependencies(
+                    settings,
+                    GetLabels: () => labels,
+                    IsRitualActive: static () => false,
+                    HasLazyModeRestrictedItems: static _ => false,
+                    GetTimestampMs: static () => 1000)));
         }
 
         private sealed class FakeClickAutomationService : IClickAutomationService

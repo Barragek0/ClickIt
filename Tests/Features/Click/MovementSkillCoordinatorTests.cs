@@ -227,6 +227,36 @@ namespace ClickIt.Tests.Features.Click
             debugReason.Should().Contain("local recast delay active");
         }
 
+        [TestMethod]
+        public void TryGetMovementSkillPostCastBlockState_ReturnsFalse_WhenTrackedRuntimeEntryCannotBeRead()
+        {
+            var runtimeState = new ClickRuntimeState
+            {
+                MovementSkillStatusPollUntilTimestampMs = 2_000,
+                LastUsedMovementSkillEntry = new object()
+            };
+            var coordinator = CreateCoordinator(runtimeState);
+
+            bool blocked = coordinator.TryGetMovementSkillPostCastBlockState(now: 1_500, out string reason);
+
+            blocked.Should().BeFalse();
+            reason.Should().BeEmpty();
+            runtimeState.MovementSkillStatusPollUntilTimestampMs.Should().Be(2_000);
+            runtimeState.LastUsedMovementSkillEntry.Should().NotBeNull();
+        }
+
+        [TestMethod]
+        public void ResolveMovementSkillPostCastClickBlockMsForCast_ClampsNegativeShieldChargeOverrideToZero()
+        {
+            var settings = new ClickItSettings();
+            settings.OffscreenShieldChargePostCastClickDelayMs.Value = -50;
+            var coordinator = CreateCoordinator(new ClickRuntimeState(), settings);
+
+            int delay = coordinator.ResolveMovementSkillPostCastClickBlockMsForCast("shield_charge");
+
+            delay.Should().Be(0);
+        }
+
         private static MovementSkillCoordinator CreateCoordinator(
             ClickRuntimeState runtimeState,
             ClickItSettings? settings = null,

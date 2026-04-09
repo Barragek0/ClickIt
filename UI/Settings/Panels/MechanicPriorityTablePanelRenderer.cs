@@ -22,7 +22,7 @@ namespace ClickIt.UI.Settings.Panels
 
             DrawMechanicPrioritySectionDescription();
 
-            float tableWidth = Math.Min(700f, Math.Max(160f, ImGui.GetContentRegionAvail().X));
+            float tableWidth = SystemMath.Min(700f, SystemMath.Max(160f, ImGui.GetContentRegionAvail().X));
             if (!SettingsUiRenderHelpers.BeginSingleColumnPriorityTable("MechanicPriorityTable", "Mechanics", tableWidth))
                 return;
 

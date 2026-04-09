@@ -256,6 +256,111 @@ namespace ClickIt.Tests.Features.Labels.Application
             reason.Should().BeNull();
         }
 
+        [TestMethod]
+        public void EvaluateNearbyMonsterRestriction_ReturnsFalse_WhenAllThresholdsAreDisabled()
+        {
+            (bool blocked, string? reason) = LazyModeBlockerService.EvaluateNearbyMonsterRestriction(
+            [
+                new NearbyMonsterCandidate(true, EntityType.Monster, 10f, MonsterRarity.White, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 10f, MonsterRarity.Magic, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 10f, MonsterRarity.Rare, true, true),
+                new NearbyMonsterCandidate(true, EntityType.Monster, 10f, MonsterRarity.Unique, true, true)
+            ],
+                normalThreshold: 0,
+                normalDistance: 40,
+                magicThreshold: 0,
+                magicDistance: 50,
+                rareThreshold: 0,
+                rareDistance: 60,
+                uniqueThreshold: 0,
+                uniqueDistance: 70);
+
+            blocked.Should().BeFalse();
+            reason.Should().BeNull();
+        }
+
+        [DataTestMethod]
+        [DataRow(MonsterRarity.White, 10f, 1, 20, 0, 0, 0, 0, "Normal 1/1 within 20")]
+        [DataRow(MonsterRarity.Magic, 30f, 0, 0, 1, 30, 0, 0, "Magic 1/1 within 30")]
+        [DataRow(MonsterRarity.Rare, 40f, 0, 0, 0, 0, 1, 40, "Rare 1/1 within 40")]
+        [DataRow(MonsterRarity.Unique, 50f, 0, 0, 0, 0, 0, 0, "Unique 1/1 within 50")]
+        public void EvaluateNearbyMonsterRestriction_BlocksWhenCandidateIsExactlyOnEnabledThreshold(
+            MonsterRarity rarity,
+            float distance,
+            int normalThreshold,
+            int normalDistance,
+            int magicThreshold,
+            int magicDistance,
+            int rareThreshold,
+            int rareDistance,
+            string expectedReason)
+        {
+            int uniqueThreshold = rarity == MonsterRarity.Unique ? 1 : 0;
+            int uniqueDistance = rarity == MonsterRarity.Unique ? (int)distance : 0;
+
+            (bool blocked, string? reason) = LazyModeBlockerService.EvaluateNearbyMonsterRestriction(
+            [
+                new NearbyMonsterCandidate(true, EntityType.Monster, distance, rarity, true, true)
+            ],
+                normalThreshold,
+                normalDistance,
+                magicThreshold,
+                magicDistance,
+                rareThreshold,
+                rareDistance,
+                uniqueThreshold,
+                uniqueDistance);
+
+            blocked.Should().BeTrue();
+            reason.Should().Be(expectedReason);
+        }
+
+        [TestMethod]
+        public void ShouldBlockLazyModeForNearbyMonsters_RequiresEnabledThresholds()
+        {
+            bool blocked = LazyModeBlockerService.ShouldBlockLazyModeForNearbyMonsters(
+                nearbyNormalCount: 10,
+                normalThreshold: 0,
+                nearbyMagicCount: 10,
+                magicThreshold: 0,
+                nearbyRareCount: 10,
+                rareThreshold: 0,
+                nearbyUniqueCount: 10,
+                uniqueThreshold: 0);
+
+            blocked.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ShouldBlockLazyModeForNearbyMonsters_ReturnsTrue_WhenAnyEnabledThresholdIsMet()
+        {
+            bool blocked = LazyModeBlockerService.ShouldBlockLazyModeForNearbyMonsters(
+                nearbyNormalCount: 0,
+                normalThreshold: 1,
+                nearbyMagicCount: 2,
+                magicThreshold: 2,
+                nearbyRareCount: 0,
+                rareThreshold: 1,
+                nearbyUniqueCount: 0,
+                uniqueThreshold: 1);
+
+            blocked.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void NearbyMonsterRestrictionCacheState_IsFresh_RequiresRecentMatchingSignature()
+        {
+            var fresh = new NearbyMonsterRestrictionCacheState(
+                TimestampMs: 1_000,
+                SettingsSignature: 7,
+                Result: new LazyModeRestrictionResult(true, "cached"));
+
+            fresh.IsFresh(nowMs: 1_040, settingsSignature: 7).Should().BeTrue();
+            fresh.IsFresh(nowMs: 1_051, settingsSignature: 7).Should().BeFalse();
+            fresh.IsFresh(nowMs: 1_040, settingsSignature: 8).Should().BeFalse();
+            NearbyMonsterRestrictionCacheState.Empty.IsFresh(nowMs: 1_000, settingsSignature: 7).Should().BeFalse();
+        }
+
         [DataTestMethod]
         [DataRow(true, 40, false, 50, false, 60, false, 70, 40)]
         [DataRow(false, 40, true, 50, true, 60, false, 70, 60)]

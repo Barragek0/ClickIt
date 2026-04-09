@@ -13,16 +13,39 @@ namespace ClickIt.Features.Click.Selection
             out Vector2 worldScreenRaw,
             out Vector2 worldScreenAbsolute)
         {
-            var worldScreenRawVector = gameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-            worldScreenRaw = new(worldScreenRawVector.X, worldScreenRawVector.Y);
-            worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
+            clickPos = default;
+            worldScreenRaw = default;
+            worldScreenAbsolute = default;
 
-            return ClickableProbeResolver.TryResolveNearbyClickablePoint(
-                worldScreenAbsolute,
-                path,
-                isInsideWindowInEitherSpace,
-                isClickableInEitherSpace,
-                out clickPos);
+            if (gameController == null || entity == null)
+                return false;
+
+            try
+            {
+                if (!DynamicAccess.TryGetDynamicValue(entity, static e => e.PosNum, out object? rawPosition)
+                    || rawPosition is not System.Numerics.Vector3 position)
+                {
+                    return false;
+                }
+
+                var worldScreenRawVector = gameController.Game.IngameState.Camera.WorldToScreen(position);
+                worldScreenRaw = new(worldScreenRawVector.X, worldScreenRawVector.Y);
+                worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
+
+                return ClickableProbeResolver.TryResolveNearbyClickablePoint(
+                    worldScreenAbsolute,
+                    path,
+                    isInsideWindowInEitherSpace,
+                    isClickableInEitherSpace,
+                    out clickPos);
+            }
+            catch
+            {
+                clickPos = default;
+                worldScreenRaw = default;
+                worldScreenAbsolute = default;
+                return false;
+            }
         }
     }
 }

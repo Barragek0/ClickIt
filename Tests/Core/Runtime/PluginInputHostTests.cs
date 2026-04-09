@@ -4,15 +4,13 @@ namespace ClickIt.Tests.Core.Runtime
     [DoNotParallelize]
     public class PluginInputHostTests
     {
-        private static readonly PluginInputHost InputHost = new();
-
         [TestMethod]
         public void IsClickHotkeyPressed_ReturnsFalse_WhenInputHandlerMissing()
         {
             var plugin = new ClickIt();
             plugin.State.Services.InputHandler = null;
 
-            InputHost.IsClickHotkeyPressed(plugin.State).Should().BeFalse();
+            PluginInputHost.IsClickHotkeyPressed(plugin.State).Should().BeFalse();
         }
 
         [TestMethod]
@@ -23,7 +21,7 @@ namespace ClickIt.Tests.Core.Runtime
 
             state.Runtime.WorkFinished = true;
 
-            InputHost.HandleHotkeyPressed(plugin.State);
+            PluginInputHost.HandleHotkeyPressed(plugin.State);
 
             state.Runtime.WorkFinished.Should().BeFalse();
         }
@@ -41,7 +39,7 @@ namespace ClickIt.Tests.Core.Runtime
                 CoroutineTestHarness.CreateCoroutine("Other.Coroutine", isDone: false),
             ]);
 
-            InputHost.HandleHotkeyPressed(state);
+            PluginInputHost.HandleHotkeyPressed(state);
 
             state.Runtime.ClickLabelCoroutine.Should().BeNull();
             state.Runtime.WorkFinished.Should().BeFalse();
@@ -67,7 +65,7 @@ namespace ClickIt.Tests.Core.Runtime
                 CoroutineTestHarness.CreateCoroutine("Other.Coroutine", isDone: false),
             ]);
 
-            InputHost.HandleHotkeyReleased(state, settings);
+            PluginInputHost.HandleHotkeyReleased(state, settings);
 
             state.Runtime.ManualUiHoverCoroutine.Should().BeNull();
             performanceMonitor.ClickActivity.ClickCount.Should().Be(0);
@@ -94,7 +92,7 @@ namespace ClickIt.Tests.Core.Runtime
                 CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: false),
             ]);
 
-            InputHost.HandleHotkeyReleased(state, settings);
+            PluginInputHost.HandleHotkeyReleased(state, settings);
 
             state.Runtime.ManualUiHoverCoroutine.Should().BeSameAs(existing);
             performanceMonitor.ClickActivity.ClickCount.Should().Be(0);
@@ -115,7 +113,7 @@ namespace ClickIt.Tests.Core.Runtime
 
             performanceMonitor.ClickActivity.ClickCount.Should().BeGreaterThan(0);
 
-            InputHost.Tick(state, settings);
+            PluginInputHost.Tick(state, settings);
 
             performanceMonitor.ClickActivity.ClickCount.Should().Be(0);
         }
@@ -130,7 +128,7 @@ namespace ClickIt.Tests.Core.Runtime
             Thread.Sleep(220);
             state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThan(200);
 
-            InputHost.ResumeAltarScanningIfDue(state);
+            PluginInputHost.ResumeAltarScanningIfDue(state);
 
             state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeLessThan(50);
         }
@@ -145,7 +143,7 @@ namespace ClickIt.Tests.Core.Runtime
             Thread.Sleep(20);
 
             long before = state.Runtime.SecondTimer.ElapsedMilliseconds;
-            InputHost.ResumeAltarScanningIfDue(state);
+            PluginInputHost.ResumeAltarScanningIfDue(state);
 
             state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(before);
         }
@@ -165,7 +163,7 @@ namespace ClickIt.Tests.Core.Runtime
 
             long before = state.Runtime.SecondTimer.ElapsedMilliseconds;
 
-            InputHost.Tick(state, settings);
+            PluginInputHost.Tick(state, settings);
 
             performanceMonitor.ClickActivity.ClickCount.Should().Be(6);
             state.Runtime.SecondTimer.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(before);

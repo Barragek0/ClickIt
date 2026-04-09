@@ -1,8 +1,8 @@
 namespace ClickIt.UI.Debug.Sections
 {
-    internal sealed class LabelDebugOverlaySection(Debug.DebugOverlayRenderContext context)
+    internal sealed class LabelDebugOverlaySection(DebugOverlayRenderContext context)
     {
-        private readonly Debug.DebugOverlayRenderContext _context = context;
+        private readonly DebugOverlayRenderContext _context = context;
 
         public int RenderAltarDebug(int xPos, int yPos, int lineHeight)
         {
@@ -99,7 +99,7 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredTextQueue.Enqueue($"Valid Labels: {telemetry.Label.ValidVisibleLabels}", new Vector2(xPos, yPos), Color.White, 14);
             yPos += lineHeight;
 
-            var snap = telemetry.Label.Label;
+            LabelDebugSnapshot snap = telemetry.Label.Label;
             if (!snap.HasData)
             {
                 _context.DeferredTextQueue.Enqueue("No label debug data yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -135,7 +135,7 @@ namespace ClickIt.UI.Debug.Sections
 
             yPos = _context.EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Note: {snap.Notes}", Color.LightGray, 13, 72);
 
-            var trail = telemetry.Label.LabelTrail;
+            IReadOnlyList<string> trail = telemetry.Label.LabelTrail;
             yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 80);
 
             return yPos;
@@ -147,7 +147,7 @@ namespace ClickIt.UI.Debug.Sections
             yPos += lineHeight;
 
             DebugTelemetrySnapshot telemetry = _context.DebugTelemetrySource.GetSnapshot();
-            var snap = telemetry.Inventory.Inventory;
+            InventoryDebugSnapshot snap = telemetry.Inventory.Inventory;
             if (!snap.HasData)
             {
                 _context.DeferredTextQueue.Enqueue("No inventory pickup debug data yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -196,7 +196,7 @@ namespace ClickIt.UI.Debug.Sections
 
             yPos = _context.EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Note: {snap.Notes}", Color.LightGray, 13, 72);
 
-            var trail = telemetry.Inventory.InventoryTrail;
+            IReadOnlyList<string> trail = telemetry.Inventory.InventoryTrail;
             yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 4, wrapWidth: 80);
 
             return yPos;

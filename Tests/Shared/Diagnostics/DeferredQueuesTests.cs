@@ -148,9 +148,8 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var q = new DeferredTextQueue();
 
             for (int i = 0; i < 1000; i++)
-            {
                 q.Enqueue($"item-{i}", new Vector2(i, i + 1), Color.White, 12);
-            }
+
 
             q.GetPendingCount().Should().Be(1000);
 
@@ -168,9 +167,8 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var q = new DeferredFrameQueue();
 
             for (int i = 0; i < 1000; i++)
-            {
                 q.Enqueue(new RectangleF(i, i + 1, 10, 10), Color.Blue, 1);
-            }
+
 
             q.GetPendingCount().Should().Be(1000);
 
@@ -234,9 +232,8 @@ namespace ClickIt.Tests.Shared.Diagnostics
         {
             var queue = new DeferredTextQueue();
             for (int i = 0; i < 12000; i++)
-            {
                 queue.Enqueue($"line-{i}", new Vector2(i, i), Color.White, 12);
-            }
+
 
             queue.GetPendingCount().Should().BeLessOrEqualTo(8192);
             var snapshot = queue.GetPendingTextSnapshot();
@@ -288,9 +285,8 @@ namespace ClickIt.Tests.Shared.Diagnostics
         {
             var queue = new DeferredFrameQueue();
             for (int i = 0; i < 12000; i++)
-            {
                 queue.Enqueue(new RectangleF(i, i, 10, 10), Color.White, 1);
-            }
+
 
             queue.GetPendingCount().Should().BeLessOrEqualTo(8192);
             var snapshot = queue.GetPendingFrameSnapshot();

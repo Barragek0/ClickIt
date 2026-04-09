@@ -16,9 +16,8 @@ namespace ClickIt.UI.Settings.Panels
 
             SettingsUiRenderHelpers.DrawSearchBar("##ItemTypeSearch", "Clear##ItemTypeClear", ref _settings.UiState.ItemTypeSearchFilter);
             if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##ItemTypeDefaults"))
-            {
                 SettingsDefaultsService.ResetItemTypeFilterDefaults(_settings);
-            }
+
 
             ImGui.Spacing();
 
@@ -53,16 +52,14 @@ namespace ClickIt.UI.Settings.Panels
                 }
 
                 if (rowState.RowClicked)
-                {
                     ToggleExpandedRow(id, category.Id);
-                }
+
 
                 DrawItemTypeExamplesIfHovered(category, rowState.RowHovered);
 
                 if (IsExpandedRow(id, category.Id))
-                {
                     DrawItemTypeSubtypePanel(id, category, isSourceWhitelist: !moveToWhitelist);
-                }
+
             }
 
             SettingsUiRenderHelpers.DrawNoEntriesPlaceholder(hasEntries);
@@ -96,9 +93,8 @@ namespace ClickIt.UI.Settings.Panels
         private static void DrawItemTypeExamplesIfHovered(ItemCategoryDefinition category, bool rowHovered)
         {
             if (!rowHovered || category.ExampleItems.Count == 0)
-            {
                 return;
-            }
+
 
             string examples = string.Join(", ", category.ExampleItems);
             SettingsUiRenderHelpers.DrawWrappedText($"Examples: {examples}", new Vector4(0.65f, 0.65f, 0.65f, 1f), 1f);
@@ -107,9 +103,8 @@ namespace ClickIt.UI.Settings.Panels
         private void DrawItemTypeSubtypePanel(string listId, ItemCategoryDefinition category, bool isSourceWhitelist)
         {
             if (!ClickItSettings.TryGetSubtypeDefinitions(category.Id, out ClickItSettings.ItemSubtypeDefinition[] subtypeDefinitions))
-            {
                 return;
-            }
+
 
             HashSet<string> selectedSubtypeIds = GetOrCreateSubtypeSelection(isSourceWhitelist, category.Id);
 
@@ -120,9 +115,8 @@ namespace ClickIt.UI.Settings.Panels
 
             bool hasActiveSelection = selectedSubtypeIds.Count > 0;
             foreach (ClickItSettings.ItemSubtypeDefinition subtype in subtypeDefinitions)
-            {
                 DrawSubtypeCheckboxRow(listId, category.Id, isSourceWhitelist, hasActiveSelection, selectedSubtypeIds, subtype);
-            }
+
 
             ImGui.Unindent();
         }
@@ -142,16 +136,13 @@ namespace ClickIt.UI.Settings.Panels
             Vector4 subtypeTextColor = subtypeIsWhitelistSide ? SettingsUiPalette.WhitelistTextColor : SettingsUiPalette.BlacklistTextColor;
 
             if (SettingsUiRenderHelpers.DrawCheckbox($"{subtype.DisplayName}##Subtype_{listId}_{categoryId}_{subtype.Id}", ref isSelected, subtypeTextColor))
-            {
                 if (isSelected)
-                {
                     selectedSubtypeIds.Add(subtype.Id);
-                }
+
                 else
-                {
                     selectedSubtypeIds.Remove(subtype.Id);
-                }
-            }
+
+
 
             if (ImGui.IsItemHovered())
             {
@@ -198,9 +189,8 @@ namespace ClickIt.UI.Settings.Panels
                 targetSubtypeDict[categoryId] = new HashSet<string>(subtypeSelection, StringComparer.OrdinalIgnoreCase);
             }
             else
-            {
                 targetSubtypeDict.Remove(categoryId);
-            }
+
         }
 
         private static bool MatchesItemTypeSearch(ItemCategoryDefinition category, string filter)

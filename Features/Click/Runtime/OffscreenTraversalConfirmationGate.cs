@@ -11,7 +11,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal bool ShouldDelay(Entity target, string? targetPath, out long remainingDelayMs)
         {
-            var confirmation = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
+            (bool ShouldDelay, long NextAddress, string NextPath, long NextFirstSeenTimestampMs, long RemainingDelayMs) confirmation = OffscreenPathingMath.EvaluateOffscreenTraversalTargetConfirmation(
                 target.Address,
                 targetPath,
                 _pendingTargetAddress,

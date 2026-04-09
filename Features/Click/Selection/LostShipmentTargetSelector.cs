@@ -62,21 +62,34 @@ namespace ClickIt.Features.Click.Selection
         {
             candidate = default;
 
-            Entity? entity = label?.ItemOnGround;
+            Entity? entity = DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+                ? rawItem as Entity
+                : null;
             if (label == null || entity == null)
                 return false;
 
-            if (VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(entity.IsValid, entity.DistancePlayer, _dependencies.Settings.ClickDistance.Value, entity.IsOpened))
+            bool isValid = DynamicAccess.TryReadBool(entity, static e => e.IsValid, out bool resolvedIsValid) && resolvedIsValid;
+            float distance = DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float resolvedDistance)
+                ? resolvedDistance
+                : float.MaxValue;
+            bool isOpened = DynamicAccess.TryReadBool(entity, static e => e.IsOpened, out bool resolvedIsOpened) && resolvedIsOpened;
+
+            if (VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value, isOpened))
                 return false;
 
-            string path = entity.Path ?? string.Empty;
-            if (!VisibleMechanicSelectionPolicy.IsLostShipmentEntity(path, entity.RenderName))
+            string path = DynamicAccess.TryReadString(entity, static e => e.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            string renderName = DynamicAccess.TryReadString(entity, static e => e.RenderName, out string resolvedRenderName)
+                ? resolvedRenderName
+                : string.Empty;
+            if (!VisibleMechanicSelectionPolicy.IsLostShipmentEntity(path, renderName))
                 return false;
 
             if (!TryResolveLostShipmentClickPosition(entity, path, windowTopLeft, out Vector2 clickPos))
                 return false;
 
-            candidate = new LostShipmentCandidate(entity, clickPos);
+            candidate = new LostShipmentCandidate(entity, clickPos, distance);
             return true;
         }
 

@@ -72,14 +72,13 @@ namespace ClickIt.UI.Settings.Panels
         private void DrawRuleRows(IReadOnlyList<LazyModeNearbyMonsterRuleDescriptor> rows)
         {
             foreach (LazyModeNearbyMonsterRuleDescriptor row in rows)
-            {
                 DrawRuleRow(
-                    row.RowId,
-                    row.RarityLabel,
-                    row.GetCount(),
-                    row.GetDistance(),
-                    row.Apply);
-            }
+        row.RowId,
+        row.RarityLabel,
+        row.GetCount(),
+        row.GetDistance(),
+        row.Apply);
+
         }
 
         private static void DrawRuleRow(string rowId, string rarityLabel, int currentCount, int currentDistance, Action<int, int> apply)
@@ -109,9 +108,8 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.TextUnformatted("Distance");
 
             if (changed || count != currentCount || distance != currentDistance)
-            {
                 apply(count, distance);
-            }
+
         }
     }
 }

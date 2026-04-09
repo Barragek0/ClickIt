@@ -35,11 +35,10 @@ namespace ClickIt.Features.Click.Selection
                 visibleMechanicAvailability.HasSettlers);
 
             if (shouldAvoid)
-            {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
-                    "OffscreenPathingBlocked",
-                    $"onscreen clickable mechanic detected (altar={hasClickableAltars}, shrine={hasClickableShrine}, lost={visibleMechanicAvailability.HasLostShipment}, settlers={visibleMechanicAvailability.HasSettlers})");
-            }
+        "OffscreenPathingBlocked",
+        $"onscreen clickable mechanic detected (altar={hasClickableAltars}, shrine={hasClickableShrine}, lost={visibleMechanicAvailability.HasLostShipment}, settlers={visibleMechanicAvailability.HasSettlers})");
+
 
             return shouldAvoid;
         }

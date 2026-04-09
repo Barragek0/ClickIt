@@ -1,8 +1,8 @@
 namespace ClickIt.UI.Debug.Sections
 {
-    internal sealed class ClickingDebugOverlaySection(Debug.DebugOverlayRenderContext context)
+    internal sealed class ClickingDebugOverlaySection(DebugOverlayRenderContext context)
     {
-        private readonly Debug.DebugOverlayRenderContext _context = context;
+        private readonly DebugOverlayRenderContext _context = context;
 
         public int RenderRuntimeDebugLogOverlay(ref int xPos, int yPos, int lineHeight)
         {
@@ -22,7 +22,7 @@ namespace ClickIt.UI.Debug.Sections
                 return yPos + lineHeight;
             }
 
-            var latest = telemetry.Click.RuntimeLog;
+            RuntimeDebugLogSnapshot latest = telemetry.Click.RuntimeLog;
             if (!latest.HasData)
             {
                 _context.DeferredTextQueue.Enqueue("No debug log messages yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -31,7 +31,7 @@ namespace ClickIt.UI.Debug.Sections
 
             yPos = _context.EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Latest: {latest.Message}", Color.LightGray, 13, 80);
 
-            var trail = telemetry.Click.RuntimeLogTrail;
+            IReadOnlyList<string> trail = telemetry.Click.RuntimeLogTrail;
             yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 10, wrapWidth: 80);
             return yPos;
         }
@@ -67,11 +67,10 @@ namespace ClickIt.UI.Debug.Sections
 
             IReadOnlyList<string> clickSettingsLines = telemetry.Click.Settings.SummaryLines;
             for (int i = 0; i < clickSettingsLines.Count; i++)
-            {
                 yPos = _context.EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, clickSettingsLines[i], Color.LightGray, 13, 86);
-            }
 
-            var snap = telemetry.Click.Click;
+
+            ClickDebugSnapshot snap = telemetry.Click.Click;
             if (!snap.HasData)
             {
                 _context.DeferredTextQueue.Enqueue("No click data yet", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -107,7 +106,7 @@ namespace ClickIt.UI.Debug.Sections
 
             yPos = _context.EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Resolved: {snap.Resolved}  Note: {snap.Notes}", Color.LightGray, 13, 72);
 
-            var trail = telemetry.Click.ClickTrail;
+            IReadOnlyList<string> trail = telemetry.Click.ClickTrail;
             yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 78);
 
             return yPos;

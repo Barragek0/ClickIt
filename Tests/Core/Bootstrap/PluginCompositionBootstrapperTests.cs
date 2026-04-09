@@ -165,6 +165,89 @@ namespace ClickIt.Tests.Core.Bootstrap
             }
         }
 
+        [TestMethod]
+        public void FinalizeCompositionRootForStartup_StartsTimers_WhenAlertServiceAndPerformanceMonitorAreMissing()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            var context = new PluginContext();
+
+            PluginCompositionBootstrapper.FinalizeCompositionRootForStartup(context, plugin, settings);
+
+            context.Runtime.LastRenderTimer.IsRunning.Should().BeTrue();
+            context.Runtime.LastTickTimer.IsRunning.Should().BeTrue();
+            context.Runtime.Timer.IsRunning.Should().BeTrue();
+            context.Runtime.SecondTimer.IsRunning.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void PublishCompositionState_PublishesPorts_AndRegistersSettingsHandlers()
+        {
+            var settings = new ClickItSettings();
+            var effectiveSettings = new ClickItSettings();
+            var context = new PluginContext();
+            CoreDomainServices core = CreateCoreDomainServices(settings);
+            RenderingDomainServices rendering = CreateRenderingDomainServices();
+            ClickAutomationPort clickAutomationPort = CreateClickAutomationPort(settings, core);
+            UltimatumRenderer ultimatumRenderer = CreateOpaque<UltimatumRenderer>();
+            AlertService alertService = CreateAlertService(effectiveSettings);
+            object parts = CreateCompositionRootParts(core, rendering, clickAutomationPort, ultimatumRenderer, alertService, effectiveSettings);
+            int runtimeOpenHandlersBefore = GetHandlerCount(settings.OpenConfigDirectory);
+            int runtimeReloadHandlersBefore = GetHandlerCount(settings.ReloadAlertSound);
+            int effectiveOpenHandlersBefore = GetHandlerCount(effectiveSettings.OpenConfigDirectory);
+            int effectiveReloadHandlersBefore = GetHandlerCount(effectiveSettings.ReloadAlertSound);
+
+            InvokePublishCompositionState(context, settings, parts);
+
+            context.Services.ClickAutomationPort.Should().BeSameAs(clickAutomationPort);
+            context.Services.AlertService.Should().BeSameAs(alertService);
+            context.Rendering.UltimatumRenderer.Should().BeSameAs(ultimatumRenderer);
+            context.Rendering.ClickRuntimeHost.Should().NotBeNull();
+            GetHandlerCount(settings.OpenConfigDirectory).Should().Be(runtimeOpenHandlersBefore + 1);
+            GetHandlerCount(settings.ReloadAlertSound).Should().Be(runtimeReloadHandlersBefore + 1);
+            GetHandlerCount(effectiveSettings.OpenConfigDirectory).Should().Be(effectiveOpenHandlersBefore + 1);
+            GetHandlerCount(effectiveSettings.ReloadAlertSound).Should().Be(effectiveReloadHandlersBefore + 1);
+
+            context.ServiceRegistry.DisposeAll();
+
+            GetHandlerCount(settings.OpenConfigDirectory).Should().Be(runtimeOpenHandlersBefore);
+            GetHandlerCount(settings.ReloadAlertSound).Should().Be(runtimeReloadHandlersBefore);
+            GetHandlerCount(effectiveSettings.OpenConfigDirectory).Should().Be(effectiveOpenHandlersBefore);
+            GetHandlerCount(effectiveSettings.ReloadAlertSound).Should().Be(effectiveReloadHandlersBefore);
+        }
+
+        [TestMethod]
+        public void RegisterCompositionShutdownActions_DisposalStopsTimers_AndShutsDownRuntimeServices()
+        {
+            var settings = new ClickItSettings();
+            var context = new PluginContext();
+            var performanceMonitor = new PerformanceMonitor(settings);
+            var errorHandler = new ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
+
+            context.Services.PerformanceMonitor = performanceMonitor;
+            context.Services.ErrorHandler = errorHandler;
+            performanceMonitor.Start();
+            performanceMonitor.StartHotkeyReleaseTimer();
+            errorHandler.RegisterGlobalExceptionHandlers();
+            PluginRuntimeTimerCoordinator.StartAll(
+                context.Runtime.LastRenderTimer,
+                context.Runtime.LastTickTimer,
+                context.Runtime.Timer,
+                context.Runtime.SecondTimer);
+
+            InvokeRegisterCompositionShutdownActions(context);
+            context.ServiceRegistry.DisposeAll();
+
+            context.Runtime.LastRenderTimer.IsRunning.Should().BeFalse();
+            context.Runtime.LastTickTimer.IsRunning.Should().BeFalse();
+            context.Runtime.Timer.IsRunning.Should().BeFalse();
+            context.Runtime.SecondTimer.IsRunning.Should().BeFalse();
+            ReadPrivateStopwatch(performanceMonitor, "_mainTimer").IsRunning.Should().BeFalse();
+            ReadPrivateStopwatch(performanceMonitor, "_secondTimer").IsRunning.Should().BeFalse();
+            ReadPrivateStopwatch(performanceMonitor, "_lastHotkeyReleaseTimer").IsRunning.Should().BeFalse();
+            ReadPrivateField<bool>(errorHandler, "_globalHandlersRegistered").Should().BeFalse();
+        }
+
         private static void InvokeApplyPorts(
             PluginContext context,
             CoreDomainServices core,
@@ -176,6 +259,52 @@ namespace ClickIt.Tests.Core.Bootstrap
             MethodInfo method = typeof(PluginCompositionBootstrapper).GetMethod("ApplyPorts", BindingFlags.NonPublic | BindingFlags.Static)!;
             method.Invoke(null, [context, core, rendering, clickAutomationPort, ultimatumRenderer, alertService]);
         }
+
+        private static void InvokePublishCompositionState(PluginContext context, ClickItSettings settings, object parts)
+        {
+            MethodInfo method = typeof(PluginCompositionBootstrapper).GetMethod("PublishCompositionState", BindingFlags.NonPublic | BindingFlags.Static)!;
+            method.Invoke(null, [context, settings, parts]);
+        }
+
+        private static void InvokeRegisterCompositionShutdownActions(PluginContext context)
+        {
+            MethodInfo method = typeof(PluginCompositionBootstrapper).GetMethod("RegisterCompositionShutdownActions", BindingFlags.NonPublic | BindingFlags.Static)!;
+            method.Invoke(null, [context]);
+        }
+
+        private static object CreateCompositionRootParts(
+            CoreDomainServices core,
+            RenderingDomainServices rendering,
+            ClickAutomationPort clickAutomationPort,
+            UltimatumRenderer ultimatumRenderer,
+            AlertService alertService,
+            ClickItSettings effectiveSettings)
+        {
+            SettingsDomainServices settingsDomain = new(alertService, effectiveSettings);
+            Type partsType = typeof(PluginCompositionBootstrapper).GetNestedType("CompositionRootParts", BindingFlags.NonPublic)!;
+            return Activator.CreateInstance(partsType, core, rendering, clickAutomationPort, ultimatumRenderer, settingsDomain)!;
+        }
+
+        private static AlertService CreateAlertService(ClickItSettings settings)
+        {
+            return new AlertService(
+                () => settings,
+                () => settings,
+                () => Path.GetTempPath(),
+                () => null,
+                static (_, _) => { },
+                static (_, _) => { });
+        }
+
+        private static int GetHandlerCount(ButtonNode buttonNode)
+            => buttonNode.OnPressed?.GetInvocationList().Length ?? 0;
+
+        private static Stopwatch ReadPrivateStopwatch(object instance, string fieldName)
+            => ReadPrivateField<Stopwatch>(instance, fieldName);
+
+        private static T ReadPrivateField<T>(object instance, string fieldName)
+            => (T)(instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(instance)
+                ?? throw new InvalidOperationException($"Field '{fieldName}' was null."));
 
         private static CoreDomainServices CreateCoreDomainServices(ClickItSettings settings)
         {

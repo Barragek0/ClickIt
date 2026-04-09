@@ -83,16 +83,14 @@ namespace ClickIt.Features.Click.Core
             }
 
             if (decision.TryLostShipment && candidates.LostShipment.HasValue)
-            {
                 if (TryExecuteLostShipment(context, candidates.LostShipment.Value))
                     return true;
-            }
+
 
             if (decision.TryShrine && context.NextShrine != null)
-            {
                 if (TryExecuteShrine(context))
                     return true;
-            }
+
 
             return false;
         }
@@ -111,9 +109,8 @@ namespace ClickIt.Features.Click.Core
             }
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
-            {
                 _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget();
-            }
+
 
             _dependencies.DebugLog("[ProcessRegularClick] Ground items not visible, breaking");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHiddenExit", "No clickable hidden fallback selected", null);
@@ -126,9 +123,8 @@ namespace ClickIt.Features.Click.Core
                 return StopExecution();
 
             if (candidates.NextLabel == null)
-            {
                 return HandleNoVisibleLabel(context);
-            }
+
 
             return HandleVisibleLabel(context, candidates);
         }
@@ -145,20 +141,17 @@ namespace ClickIt.Features.Click.Core
 
             _dependencies.LabelInteractionPort.LogSelectionDiagnostics(context.AllLabels, 0, context.AllLabels?.Count ?? 0);
             if (_dependencies.ShouldCaptureClickDebug())
-            {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("NoLabelCandidate", _dependencies.LabelInteraction.BuildNoLabelDebugSummary(context.AllLabels), null);
-            }
+
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value
                 && _dependencies.OffscreenPathing.TryHandleStickyOffscreenTarget(context.WindowTopLeft, context.AllLabels))
-            {
                 return StopExecution();
-            }
+
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
-            {
                 _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget();
-            }
+
 
             _dependencies.DebugLog("[ProcessRegularClick] No label to click found, breaking");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("NoLabelExit", "No label click attempted", null);
@@ -168,8 +161,9 @@ namespace ClickIt.Features.Click.Core
         private ExecutionResult HandleVisibleLabel(ClickTickContext context, ClickCandidates candidates)
         {
             LabelOnGround nextLabel = candidates.NextLabel!;
+            Entity? nextLabelItem = TryGetLabelItemOnGround(nextLabel);
 
-            if (IsBlockedByPostChestLootSettlement(context, candidates.NextLabelMechanicId, nextLabel.ItemOnGround))
+            if (IsBlockedByPostChestLootSettlement(context, candidates.NextLabelMechanicId, nextLabelItem))
             {
                 string chestLootSettleReason = context.ChestLootSettleReason;
                 _dependencies.DebugLog($"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
@@ -188,9 +182,8 @@ namespace ClickIt.Features.Click.Core
                 context.WindowTopLeft,
                 context.AllLabels);
             if (!resolved)
-            {
                 return HandleVisibleLabelResolveFailure(context, candidates, nextLabel);
-            }
+
 
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", candidates.NextLabelMechanicId);
 
@@ -222,16 +215,16 @@ namespace ClickIt.Features.Click.Core
                 SuccessfulInteractionAftermathApplier.Apply(
                     new SuccessfulInteractionAftermath(
                         Reason: $"Successful automated click: {mechanicDisplay}",
-                        ShouldClearStickyTarget: _dependencies.OffscreenPathing.IsStickyTarget(nextLabel.ItemOnGround),
+                        ShouldClearStickyTarget: _dependencies.OffscreenPathing.IsStickyTarget(nextLabelItem),
                         ShouldClearPath: _dependencies.Settings.WalkTowardOffscreenLabels.Value,
                         PendingChestMechanicId: candidates.NextLabelMechanicId,
                         PendingChestLabel: nextLabel,
                         ShouldRecordLeverClick: true),
                     _dependencies.HoldDebugTelemetryAfterSuccess,
-                        clearStickyTarget: () => _dependencies.OffscreenPathing.ClearStickyOffscreenTarget(),
-                        clearPath: () => _dependencies.PathfindingService.ClearLatestPath(),
-                        markPendingChestOpenConfirmation: (mechanicId, label) => _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(mechanicId, label),
-                        recordLeverClick: label => _dependencies.PathfindingLabelSuppression.RecordLeverClick(label));
+                        clearStickyTarget: _dependencies.OffscreenPathing.ClearStickyOffscreenTarget,
+                        clearPath: _dependencies.PathfindingService.ClearLatestPath,
+                        markPendingChestOpenConfirmation: _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation,
+                        recordLeverClick: _dependencies.PathfindingLabelSuppression.RecordLeverClick);
             }
 
             return new ExecutionResult(true);
@@ -239,6 +232,8 @@ namespace ClickIt.Features.Click.Core
 
         private ExecutionResult HandleVisibleLabelResolveFailure(ClickTickContext context, ClickCandidates candidates, LabelOnGround nextLabel)
         {
+            Entity? nextLabelItem = TryGetLabelItemOnGround(nextLabel);
+
             _dependencies.DebugLog("[ProcessRegularClick] Skipping label: no clickable point inside label bounds.");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ClickPointResolveFailed", "TryCalculateClickPosition returned false", candidates.NextLabelMechanicId);
 
@@ -256,15 +251,23 @@ namespace ClickIt.Features.Click.Core
 
             bool shouldContinueEntityPathing = OffscreenPathingMath.ShouldPathfindToEntityAfterClickPointResolveFailure(
                 _dependencies.Settings.WalkTowardOffscreenLabels.Value,
-                nextLabel.ItemOnGround != null,
+                nextLabelItem != null,
                 candidates.NextLabelMechanicId);
             if (shouldContinueEntityPathing)
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("EntityPathingFallback", "Label visible but unresolved click point; continuing pathing", candidates.NextLabelMechanicId);
-                _ = _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(nextLabel.ItemOnGround);
+                _ = _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(nextLabelItem);
             }
 
             return StopExecution();
+        }
+
+        private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+                && rawItem is Entity item
+                ? item
+                : null;
         }
     }
 }

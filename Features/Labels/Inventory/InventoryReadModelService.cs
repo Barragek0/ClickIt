@@ -31,14 +31,15 @@ namespace ClickIt.Features.Labels.Inventory
             if (!hasDimensions)
                 return false;
 
-            var layoutResolution = _dependencies.TryResolveInventoryLayoutEntries(primaryInventory, inventoryWidth, inventoryHeight);
-            if (!layoutResolution.Success)
+            (bool hasLayout, IReadOnlyList<InventoryLayoutEntry> layoutEntries, string layoutSource, string layoutDebugDetails, bool isLayoutReliable, int rawEntryCount)
+                = _dependencies.TryResolveInventoryLayoutEntries(primaryInventory, inventoryWidth, inventoryHeight);
+            if (!hasLayout)
             {
                 InventoryFullProbe layoutFailureProbe = InventoryFullProbe.Empty with
                 {
                     HasPrimaryInventory = true,
                     CapacityCells = totalCellCapacity,
-                    Notes = $"Unable to resolve inventory layout entries from {layoutResolution.Source} ({layoutResolution.DebugDetails})"
+                    Notes = $"Unable to resolve inventory layout entries from {layoutSource} ({layoutDebugDetails})"
                 };
 
                 snapshot = InventorySnapshot.Empty with
@@ -54,11 +55,11 @@ namespace ClickIt.Features.Labels.Inventory
             }
 
             InventoryLayoutSnapshot layoutSnapshot = new(
-                Entries: layoutResolution.Entries,
-                Source: layoutResolution.Source,
-                DebugDetails: layoutResolution.DebugDetails,
-                IsReliable: layoutResolution.IsReliable,
-                RawEntryCount: layoutResolution.RawEntryCount);
+                Entries: layoutEntries,
+                Source: layoutSource,
+                DebugDetails: layoutDebugDetails,
+                IsReliable: isLayoutReliable,
+                RawEntryCount: rawEntryCount);
 
             (bool hasFullFlag, bool fullFlagValue, string fullFlagSource) = _dependencies.TryReadInventoryFullFlag(primaryInventory);
             if (hasFullFlag)
@@ -77,15 +78,15 @@ namespace ClickIt.Features.Labels.Inventory
                 return true;
             }
 
-            if (!layoutResolution.IsReliable)
+            if (!isLayoutReliable)
             {
                 InventoryFullProbe unreliableProbe = InventoryFullProbe.Empty with
                 {
                     HasPrimaryInventory = true,
                     CapacityCells = totalCellCapacity,
-                    InventoryEntityCount = layoutResolution.RawEntryCount,
-                    LayoutEntryCount = layoutResolution.Entries.Count,
-                    Notes = $"Inventory layout unreliable from {layoutResolution.Source} ({layoutResolution.DebugDetails})"
+                    InventoryEntityCount = rawEntryCount,
+                    LayoutEntryCount = layoutEntries.Count,
+                    Notes = $"Inventory layout unreliable from {layoutSource} ({layoutDebugDetails})"
                 };
 
                 snapshot = new InventorySnapshot(
@@ -101,16 +102,16 @@ namespace ClickIt.Features.Labels.Inventory
                 return true;
             }
 
-            (bool hasOccupiedCellCount, int occupiedCellCount) = _dependencies.TryResolveOccupiedInventoryCellsFromLayout(layoutResolution.Entries, inventoryWidth, inventoryHeight);
+            (bool hasOccupiedCellCount, int occupiedCellCount) = _dependencies.TryResolveOccupiedInventoryCellsFromLayout(layoutEntries, inventoryWidth, inventoryHeight);
             if (!hasOccupiedCellCount)
             {
                 InventoryFullProbe occupiedCellFailureProbe = InventoryFullProbe.Empty with
                 {
                     HasPrimaryInventory = true,
                     CapacityCells = totalCellCapacity,
-                    InventoryEntityCount = layoutResolution.RawEntryCount,
-                    LayoutEntryCount = layoutResolution.Entries.Count,
-                    Notes = $"Unable to resolve occupied cells from {layoutResolution.Source}"
+                    InventoryEntityCount = rawEntryCount,
+                    LayoutEntryCount = layoutEntries.Count,
+                    Notes = $"Unable to resolve occupied cells from {layoutSource}"
                 };
 
                 snapshot = new InventorySnapshot(
@@ -134,11 +135,11 @@ namespace ClickIt.Features.Labels.Inventory
                 UsedCellOccupancy: true,
                 CapacityCells: totalCellCapacity,
                 OccupiedCells: occupiedCellCount,
-                InventoryEntityCount: layoutResolution.RawEntryCount,
-                LayoutEntryCount: layoutResolution.Entries.Count,
+                InventoryEntityCount: rawEntryCount,
+                LayoutEntryCount: layoutEntries.Count,
                 IsFull: isFull,
                 Source: "CellOccupancy",
-                Notes: $"Inventory fullness from {layoutResolution.Source} footprint ({layoutResolution.DebugDetails})");
+                Notes: $"Inventory fullness from {layoutSource} footprint ({layoutDebugDetails})");
 
             snapshot = new InventorySnapshot(
                 HasPrimaryInventory: true,

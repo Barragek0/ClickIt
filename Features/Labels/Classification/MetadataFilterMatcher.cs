@@ -32,9 +32,8 @@ namespace ClickIt.Features.Labels.Classification
             bool whitelistPass = whitelist.Count == 0
                 || MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(safeMetadataPath, safeItemName, item: null, safeLabelText, whitelist);
             if (!whitelistPass)
-            {
                 return false;
-            }
+
 
             bool blacklistMatch = blacklist.Count > 0
                 && MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(safeMetadataPath, safeItemName, item: null, safeLabelText, blacklist);

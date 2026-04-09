@@ -11,6 +11,7 @@
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -26,6 +27,7 @@
     <Compile Remove="**\obj\**\*.cs" />
     <Compile Remove="**\bin\**\*.cs" />
     <Compile Remove="..\ThirdParty\Decompiled\**\*.cs" />
+    <Compile Remove="Harness\GameOffsetsShim\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +43,7 @@
     <PackageReference Include="coverlet.msbuild" Version="6.0.0" />
   
     <ProjectReference Include="..\ClickIt.csproj" />
+    <ProjectReference Include="Harness\GameOffsetsShim\GameOffsetsShim.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,10 +53,6 @@
     <!-- Reference the third-party ExileCore DLLs provided at repo root ThirdParty/ -->
     <Reference Include="ExileCore">
       <HintPath>..\ThirdParty\ExileCore.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
-    <Reference Include="GameOffsets">
-      <HintPath>..\ThirdParty\GameOffsets.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="ProcessMemoryUtilities">
@@ -73,11 +72,8 @@
         <CoverletOutput>TestResults/lcov.info</CoverletOutput>
   </PropertyGroup>
     <PropertyGroup>
-      <!-- Exclude the same files and folders from coverlet's lcov output that we exclude from XPlat coverage.
-           This keeps LCOV output consistent with runsettings.xml and avoids under-reporting caused by UI/rendering files. -->
-       <!-- coverlet expects forward-slash globs (unix style) when matching source file paths in the generated LCOV.
-         Use forward slashes and double-star patterns so exclusions reliably match absolute or relative source paths. -->
-      <ExcludeByFile>**/Core/ClickItSettings.cs,**/Properties/Settings.Designer.cs,**/Shared/Input/Mouse.cs,**/Shared/Input/Keyboard.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
+      <!-- Keep LCOV file exclusions aligned with runsettings.xml so every coverage surface uses the same file set. -->
+      <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
     </PropertyGroup>
 
   <PropertyGroup>

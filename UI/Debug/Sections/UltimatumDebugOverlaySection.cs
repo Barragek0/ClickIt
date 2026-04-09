@@ -1,8 +1,8 @@
 namespace ClickIt.UI.Debug.Sections
 {
-    internal sealed class UltimatumDebugOverlaySection(Debug.DebugOverlayRenderContext context)
+    internal sealed class UltimatumDebugOverlaySection(DebugOverlayRenderContext context)
     {
-        private readonly Debug.DebugOverlayRenderContext _context = context;
+        private readonly DebugOverlayRenderContext _context = context;
 
         public int RenderUltimatumDebug(ref int xPos, int yPos, int lineHeight)
         {
@@ -32,7 +32,7 @@ namespace ClickIt.UI.Debug.Sections
             IReadOnlyList<UltimatumOptionPreviewSnapshot> previews = telemetry.Click.UltimatumOptionPreview;
             bool hasPreview = previews.Count > 0;
 
-            var snap = telemetry.Click.Ultimatum;
+            UltimatumDebugSnapshot snap = telemetry.Click.Ultimatum;
             if (!snap.HasData)
             {
                 EnqueueLine(
@@ -116,10 +116,10 @@ namespace ClickIt.UI.Debug.Sections
             {
                 EnqueueLine(xPos, ref yPos, lineHeight, $"Visible Options: {previews.Count}", Color.LightBlue, 13);
 
-                int maxOptions = Math.Min(3, previews.Count);
+                int maxOptions = SystemMath.Min(3, previews.Count);
                 for (int i = 0; i < maxOptions; i++)
                 {
-                    var option = previews[i];
+                    UltimatumOptionPreviewSnapshot option = previews[i];
                     string selected = option.IsSelected ? "*" : "-";
                     yPos = _context.EnqueueWrappedDebugLine(
                         ref xPos,
@@ -132,7 +132,7 @@ namespace ClickIt.UI.Debug.Sections
                 }
             }
 
-            var trail = telemetry.Click.UltimatumTrail;
+            IReadOnlyList<string> trail = telemetry.Click.UltimatumTrail;
             yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 10, wrapWidth: 80);
 
             return yPos;

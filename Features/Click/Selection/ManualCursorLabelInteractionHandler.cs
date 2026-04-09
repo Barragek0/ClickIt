@@ -48,7 +48,7 @@ namespace ClickIt.Features.Click.Selection
                 return false;
 
             ClickCore.SuccessfulInteractionAftermathApplier.Apply(
-                new ClickCore.SuccessfulInteractionAftermath(
+                new SuccessfulInteractionAftermath(
                     Reason: "Successful manual cursor interaction",
                     ShouldClearPath: _dependencies.Settings.WalkTowardOffscreenLabels.Value,
                     PendingChestMechanicId: mechanicId,

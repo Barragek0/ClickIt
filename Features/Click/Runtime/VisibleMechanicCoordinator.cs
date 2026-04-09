@@ -340,7 +340,7 @@ namespace ClickIt.Features.Click.Runtime
             bool isStickyTarget,
             bool invalidateShrineCache)
         {
-            ApplySuccessfulMechanicAftermath(new ClickCore.SuccessfulInteractionAftermath(
+            ApplySuccessfulMechanicAftermath(new SuccessfulInteractionAftermath(
                 Reason: BuildSuccessfulMechanicClickReason(entityPath),
                 ShouldClearStickyTarget: isStickyTarget,
                 ShouldClearPath: _dependencies.Settings.WalkTowardOffscreenLabels.Value,
@@ -355,7 +355,7 @@ namespace ClickIt.Features.Click.Runtime
                 : $"Successful mechanic click: {resolvedEntityPath}";
         }
 
-        private void ApplySuccessfulMechanicAftermath(ClickCore.SuccessfulInteractionAftermath aftermath)
+        private void ApplySuccessfulMechanicAftermath(SuccessfulInteractionAftermath aftermath)
             => ClickCore.SuccessfulInteractionAftermathApplier.Apply(
                 aftermath,
                 _dependencies.HoldDebugTelemetryAfterSuccess,

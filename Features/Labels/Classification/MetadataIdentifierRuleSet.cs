@@ -40,7 +40,7 @@ namespace ClickIt.Features.Labels.Classification
             if (!identifier.StartsWith("special:", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            specialRule = identifier.Substring("special:".Length).Trim();
+            specialRule = identifier["special:".Length..].Trim();
             return specialRule.Length > 0;
         }
 
@@ -53,7 +53,7 @@ namespace ClickIt.Features.Labels.Classification
             if (specialRule.Equals("heist-non-quest-contract", StringComparison.OrdinalIgnoreCase))
                 return IsHeistNonQuestContract(itemName);
             if (specialRule.Equals("inscribed-ultimatum", StringComparison.OrdinalIgnoreCase))
-                return (item != null && IsInscribedUltimatum(item)) || metadataPath.IndexOf("ItemisedTrial", StringComparison.OrdinalIgnoreCase) >= 0;
+                return (item != null && IsInscribedUltimatum(item)) || metadataPath.Contains("ItemisedTrial", StringComparison.OrdinalIgnoreCase);
             if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase))
                 return IsRegularJewelsMetadataPath(metadataPath);
             if (specialRule.Equals("mysterious-wombgift-label", StringComparison.OrdinalIgnoreCase))
@@ -64,9 +64,9 @@ namespace ClickIt.Features.Labels.Classification
 
         private static bool IsRegularJewelsMetadataPath(string metadataPath)
         {
-            return metadataPath.IndexOf("Items/Jewels/", StringComparison.OrdinalIgnoreCase) >= 0
-                && metadataPath.IndexOf("Items/Jewels/JewelAbyss", StringComparison.OrdinalIgnoreCase) < 0
-                && metadataPath.IndexOf("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase) < 0;
+            return metadataPath.Contains("Items/Jewels/", StringComparison.OrdinalIgnoreCase)
+                && !metadataPath.Contains("Items/Jewels/JewelAbyss", StringComparison.OrdinalIgnoreCase)
+                && !metadataPath.Contains("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsUniqueItem(Entity item)

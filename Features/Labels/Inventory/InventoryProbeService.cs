@@ -6,28 +6,25 @@ namespace ClickIt.Features.Labels.Inventory
         Func<GameController?, (bool Success, InventorySnapshot Snapshot)> TryBuildInventorySnapshot,
         InventoryLayoutCache LayoutCache);
 
-    internal sealed class InventoryProbeService
+    internal sealed class InventoryProbeService(InventoryProbeServiceDependencies dependencies)
     {
-        private readonly InventoryProbeServiceDependencies _dependencies;
-        private readonly object _cacheLock = new();
-        private InventoryDiagnosticsChannel _diagnosticsChannel;
+        private readonly InventoryProbeServiceDependencies _dependencies = dependencies;
+        private readonly Lock _cacheLock = new();
+        private readonly InventoryDiagnosticsChannel _diagnosticsChannel = new(dependencies.DebugTrailCapacity);
 
         private long _inventoryProbeCacheTimestampMs;
         private GameController? _inventoryProbeCacheController;
         private InventoryFullProbe _inventoryProbeCacheValue = InventoryFullProbe.Empty;
         private bool _inventoryProbeCacheHasValue;
 
-        public InventoryProbeService(InventoryProbeServiceDependencies dependencies)
-        {
-            _dependencies = dependencies;
-            _diagnosticsChannel = new InventoryDiagnosticsChannel(dependencies.DebugTrailCapacity);
-        }
+        public InventoryDebugSnapshot GetLatestDebug()
+            => _diagnosticsChannel.GetLatest();
 
-        public InventoryDebugSnapshot GetLatestDebug() => _diagnosticsChannel.GetLatest();
+        public IReadOnlyList<string> GetLatestDebugTrail()
+            => _diagnosticsChannel.GetTrail();
 
-        public IReadOnlyList<string> GetLatestDebugTrail() => _diagnosticsChannel.GetTrail();
-
-        public void PublishDebug(InventoryDebugSnapshot snapshot) => _diagnosticsChannel.Publish(snapshot);
+        public void PublishDebug(InventoryDebugSnapshot snapshot)
+            => _diagnosticsChannel.Publish(snapshot);
 
         public bool IsInventoryFull(GameController? gameController, out InventoryFullProbe probe)
         {

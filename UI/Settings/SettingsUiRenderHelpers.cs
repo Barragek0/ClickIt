@@ -16,9 +16,9 @@ namespace ClickIt.UI.Settings
 
         internal static float CalculateTransferRowWidth()
         {
-            float availableWidth = Math.Max(80f, ImGui.GetContentRegionAvail().X);
+            float availableWidth = SystemMath.Max(80f, ImGui.GetContentRegionAvail().X);
             const float arrowWidth = 28f;
-            return Math.Max(40f, availableWidth - arrowWidth - 6f);
+            return SystemMath.Max(40f, availableWidth - arrowWidth - 6f);
         }
 
         internal static Vector4 GetUltimatumPriorityRowColor(int index, int totalCount)

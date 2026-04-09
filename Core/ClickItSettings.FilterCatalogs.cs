@@ -73,12 +73,12 @@ namespace ClickIt
         };
 
         internal static readonly string[] EssenceAllTableNames =
-            EssenceSuffixes.SelectMany(suffix => new[]
+            [.. EssenceSuffixes.SelectMany(suffix => new[]
             {
                 $"Screaming Essence of {suffix}",
                 $"Shrieking Essence of {suffix}",
                 $"Deafening Essence of {suffix}"
-            }).ToArray();
+            })];
 
         internal sealed record StrongboxFilterEntry(string Id, string DisplayName, string[] MetadataIdentifiers);
 

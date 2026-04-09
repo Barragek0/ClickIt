@@ -138,9 +138,8 @@ namespace ClickIt.Features.Click.Selection
                         _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
                     }
                     if (examined > 0)
-                    {
                         _dependencies.DebugLog($"[LabelSelectDiag] range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
-                    }
+
                     return null;
                 }
 

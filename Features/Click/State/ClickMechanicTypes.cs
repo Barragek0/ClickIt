@@ -1,20 +1,30 @@
 namespace ClickIt.Features.Click.State
 {
-    internal readonly struct LostShipmentCandidate
+    internal readonly struct LostShipmentCandidate(Entity entity, Vector2 clickPosition, float distance)
     {
         public LostShipmentCandidate(Entity entity, Vector2 clickPosition)
+            : this(
+                entity,
+                clickPosition,
+                DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float distance)
+                    ? distance
+                    : float.MaxValue)
         {
-            Entity = entity;
-            ClickPosition = clickPosition;
-            Distance = entity.DistancePlayer;
         }
 
-        public Entity Entity { get; }
-        public Vector2 ClickPosition { get; }
-        public float Distance { get; }
+        public Entity Entity { get; } = entity;
+        public Vector2 ClickPosition { get; } = clickPosition;
+        public float Distance { get; } = distance;
     }
 
-    internal readonly struct SettlersOreCandidate
+    internal readonly struct SettlersOreCandidate(
+        Entity entity,
+        Vector2 clickPosition,
+        string mechanicId,
+        string entityPath,
+        Vector2 worldScreenRaw,
+        Vector2 worldScreenAbsolute,
+        float distance)
     {
         public SettlersOreCandidate(
             Entity entity,
@@ -23,75 +33,54 @@ namespace ClickIt.Features.Click.State
             string entityPath,
             Vector2 worldScreenRaw,
             Vector2 worldScreenAbsolute)
+            : this(
+                entity,
+                clickPosition,
+                mechanicId,
+                entityPath,
+                worldScreenRaw,
+                worldScreenAbsolute,
+                DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float distance)
+                    ? distance
+                    : float.MaxValue)
         {
-            Entity = entity;
-            ClickPosition = clickPosition;
-            MechanicId = mechanicId;
-            EntityPath = entityPath;
-            WorldScreenRaw = worldScreenRaw;
-            WorldScreenAbsolute = worldScreenAbsolute;
-            Distance = entity.DistancePlayer;
         }
 
-        public Entity Entity { get; }
-        public Vector2 ClickPosition { get; }
-        public string MechanicId { get; }
-        public string EntityPath { get; }
-        public Vector2 WorldScreenRaw { get; }
-        public Vector2 WorldScreenAbsolute { get; }
-        public float Distance { get; }
+        public Entity Entity { get; } = entity;
+        public Vector2 ClickPosition { get; } = clickPosition;
+        public string MechanicId { get; } = mechanicId;
+        public string EntityPath { get; } = entityPath;
+        public Vector2 WorldScreenRaw { get; } = worldScreenRaw;
+        public Vector2 WorldScreenAbsolute { get; } = worldScreenAbsolute;
+        public float Distance { get; } = distance;
     }
 
-    internal readonly struct MechanicRank
+    internal readonly struct MechanicRank(bool ignored, int priorityIndex, float weightedDistance, float rawDistance, float cursorDistance)
     {
-        public MechanicRank(bool ignored, int priorityIndex, float weightedDistance, float rawDistance, float cursorDistance)
-        {
-            Ignored = ignored;
-            PriorityIndex = priorityIndex;
-            WeightedDistance = weightedDistance;
-            RawDistance = rawDistance;
-            CursorDistance = cursorDistance;
-        }
-
-        public bool Ignored { get; }
-        public int PriorityIndex { get; }
-        public float WeightedDistance { get; }
-        public float RawDistance { get; }
-        public float CursorDistance { get; }
+        public bool Ignored { get; } = ignored;
+        public int PriorityIndex { get; } = priorityIndex;
+        public float WeightedDistance { get; } = weightedDistance;
+        public float RawDistance { get; } = rawDistance;
+        public float CursorDistance { get; } = cursorDistance;
     }
 
-    internal readonly struct MechanicPriorityContext
+    internal readonly struct MechanicPriorityContext(
+        IReadOnlyDictionary<string, int> priorityIndexMap,
+        IReadOnlySet<string> ignoreDistanceSet,
+        IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
+        int priorityDistancePenalty)
     {
-        public MechanicPriorityContext(
-            IReadOnlyDictionary<string, int> priorityIndexMap,
-            IReadOnlySet<string> ignoreDistanceSet,
-            IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId,
-            int priorityDistancePenalty)
-        {
-            PriorityIndexMap = priorityIndexMap;
-            IgnoreDistanceSet = ignoreDistanceSet;
-            IgnoreDistanceWithinByMechanicId = ignoreDistanceWithinByMechanicId;
-            PriorityDistancePenalty = priorityDistancePenalty;
-        }
-
-        public IReadOnlyDictionary<string, int> PriorityIndexMap { get; }
-        public IReadOnlySet<string> IgnoreDistanceSet { get; }
-        public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; }
-        public int PriorityDistancePenalty { get; }
+        public IReadOnlyDictionary<string, int> PriorityIndexMap { get; } = priorityIndexMap;
+        public IReadOnlySet<string> IgnoreDistanceSet { get; } = ignoreDistanceSet;
+        public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; } = ignoreDistanceWithinByMechanicId;
+        public int PriorityDistancePenalty { get; } = priorityDistancePenalty;
     }
 
-    internal readonly struct MechanicCandidateSignal
+    internal readonly struct MechanicCandidateSignal(string? mechanicId, float? distance, float? cursorDistance)
     {
-        public MechanicCandidateSignal(string? mechanicId, float? distance, float? cursorDistance)
-        {
-            MechanicId = mechanicId;
-            Distance = distance;
-            CursorDistance = cursorDistance;
-        }
-
-        public string? MechanicId { get; }
-        public float? Distance { get; }
-        public float? CursorDistance { get; }
+        public string? MechanicId { get; } = mechanicId;
+        public float? Distance { get; } = distance;
+        public float? CursorDistance { get; } = cursorDistance;
         public bool Exists => Distance.HasValue;
 
         public static MechanicCandidateSignal None => new(null, null, null);

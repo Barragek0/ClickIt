@@ -41,7 +41,7 @@ namespace ClickIt.UI.Settings.Panels
 
         private void DrawModifierPriorityTable()
         {
-            float tableWidth = Math.Min(600f, Math.Max(100f, ImGui.GetContentRegionAvail().X));
+            float tableWidth = SystemMath.Min(600f, SystemMath.Max(100f, ImGui.GetContentRegionAvail().X));
             if (!SettingsUiRenderHelpers.BeginSingleColumnPriorityTable("UltimatumModifierPriorityTable", "Modifiers", tableWidth))
                 return;
 
@@ -148,9 +148,8 @@ namespace ClickIt.UI.Settings.Panels
 
             SettingsUiRenderHelpers.DrawSearchBar("##UltimatumTakeRewardSearch", "Clear##UltimatumTakeRewardSearchClear", ref _settings.UiState.UltimatumTakeRewardSearchFilter);
             if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##UltimatumTakeRewardResetDefaults"))
-            {
                 _settings.ResetUltimatumTakeRewardModifierDefaults();
-            }
+
 
             ImGui.Spacing();
 
@@ -347,9 +346,8 @@ namespace ClickIt.UI.Settings.Panels
         private void SetUltimatumModifierGroupState(UltimatumModifierGroupEntry group, bool moveToTakeReward)
         {
             for (int i = 0; i < group.Members.Length; i++)
-            {
                 MoveUltimatumTakeRewardModifier(group.Members[i], moveToTakeReward);
-            }
+
         }
 
         private void MoveUltimatumTakeRewardModifier(string modifierName, bool moveToTakeReward)

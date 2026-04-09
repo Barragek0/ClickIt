@@ -31,13 +31,13 @@ namespace ClickIt.UI.Overlays.Altars
             if (_graphics == null) return;
             if (mods == null || mods.Length == 0) return;
 
-            var modsText = new System.Text.StringBuilder();
+            var modsText = new StringBuilder();
             bool first = true;
             for (int i = 0; i < mods.Length; i++)
             {
                 if (!string.IsNullOrEmpty(mods[i]))
                 {
-                    if (!first) modsText.Append("\n");
+                    if (!first) modsText.Append('\n');
                     modsText.Append($"{i + 1}:{mods[i]}");
                     first = false;
                 }

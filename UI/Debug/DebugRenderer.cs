@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace ClickIt.UI
+namespace ClickIt.UI.Debug
 {
     public class DebugRenderer
     {
@@ -18,14 +18,14 @@ namespace ClickIt.UI
         private readonly DeferredTextQueue _deferredTextQueue;
         private readonly DeferredFrameQueue _deferredFrameQueue;
         private readonly IDebugTelemetrySource _debugTelemetrySource;
-        private readonly Debug.DebugOverlayRenderContext _overlayContext;
-        private readonly Debug.Sections.StatusDebugOverlaySection _statusDebugOverlaySection;
-        private readonly Debug.Sections.ClickingDebugOverlaySection _clickingDebugOverlaySection;
-        private readonly Debug.Sections.LabelDebugOverlaySection _labelDebugOverlaySection;
-        private readonly Debug.Sections.PathfindingDebugOverlaySection _pathfindingDebugOverlaySection;
-        private readonly Debug.Sections.UltimatumDebugOverlaySection _ultimatumDebugOverlaySection;
-        private readonly Debug.Sections.PerformanceDebugOverlaySection _performanceDebugOverlaySection;
-        private readonly Debug.Sections.FrameDebugOverlaySection _frameDebugOverlaySection;
+        private readonly DebugOverlayRenderContext _overlayContext;
+        private readonly StatusDebugOverlaySection _statusDebugOverlaySection;
+        private readonly ClickingDebugOverlaySection _clickingDebugOverlaySection;
+        private readonly LabelDebugOverlaySection _labelDebugOverlaySection;
+        private readonly PathfindingDebugOverlaySection _pathfindingDebugOverlaySection;
+        private readonly UltimatumDebugOverlaySection _ultimatumDebugOverlaySection;
+        private readonly PerformanceDebugOverlaySection _performanceDebugOverlaySection;
+        private readonly FrameDebugOverlaySection _frameDebugOverlaySection;
         private readonly IDebugLayoutEngine _layoutEngine = new DebugLayoutEngine();
         private readonly DebugOverlayComposer _overlayComposer;
         private readonly DebugOverlaySectionFactory _sectionFactory;
@@ -52,7 +52,7 @@ namespace ClickIt.UI
             _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
             _deferredFrameQueue = deferredFrameQueue ?? new DeferredFrameQueue();
             _debugTelemetrySource = new PluginDebugTelemetrySource(_plugin);
-            _overlayContext = new Debug.DebugOverlayRenderContext(
+            _overlayContext = new DebugOverlayRenderContext(
                 _plugin,
                 _altarService,
                 _areaService,
@@ -60,13 +60,13 @@ namespace ClickIt.UI
                 _deferredTextQueue,
                 _deferredFrameQueue,
                 _debugTelemetrySource);
-            _statusDebugOverlaySection = new Debug.Sections.StatusDebugOverlaySection(_overlayContext);
-            _clickingDebugOverlaySection = new Debug.Sections.ClickingDebugOverlaySection(_overlayContext);
-            _labelDebugOverlaySection = new Debug.Sections.LabelDebugOverlaySection(_overlayContext);
-            _pathfindingDebugOverlaySection = new Debug.Sections.PathfindingDebugOverlaySection(_overlayContext);
-            _ultimatumDebugOverlaySection = new Debug.Sections.UltimatumDebugOverlaySection(_overlayContext);
-            _performanceDebugOverlaySection = new Debug.Sections.PerformanceDebugOverlaySection(_overlayContext);
-            _frameDebugOverlaySection = new Debug.Sections.FrameDebugOverlaySection(_overlayContext);
+            _statusDebugOverlaySection = new StatusDebugOverlaySection(_overlayContext);
+            _clickingDebugOverlaySection = new ClickingDebugOverlaySection(_overlayContext);
+            _labelDebugOverlaySection = new LabelDebugOverlaySection(_overlayContext);
+            _pathfindingDebugOverlaySection = new PathfindingDebugOverlaySection(_overlayContext);
+            _ultimatumDebugOverlaySection = new UltimatumDebugOverlaySection(_overlayContext);
+            _performanceDebugOverlaySection = new PerformanceDebugOverlaySection(_overlayContext);
+            _frameDebugOverlaySection = new FrameDebugOverlaySection(_overlayContext);
             _overlayComposer = new DebugOverlayComposer(_layoutEngine, LayoutSettings);
             _sectionFactory = new DebugOverlaySectionFactory(new DebugOverlaySectionFactoryDependencies(
                 _clickingDebugOverlaySection,
@@ -151,7 +151,7 @@ namespace ClickIt.UI
             double processingMs,
             double observedIntervalMs)
         {
-            var metrics = Debug.Sections.PerformanceDebugOverlaySection.BuildClickFrequencyTargetDebugMetrics(
+            var metrics = PerformanceDebugOverlaySection.BuildClickFrequencyTargetDebugMetrics(
                 clickTargetMs,
                 processingMs,
                 observedIntervalMs);

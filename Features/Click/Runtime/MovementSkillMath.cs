@@ -115,7 +115,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!movementSkillsEnabled || !builtPath)
                 return false;
 
-            if (remainingPathNodes < Math.Max(1, minPathNodes))
+            if (remainingPathNodes < SystemMath.Max(1, minPathNodes))
                 return false;
 
             if (lastSkillUseTimestampMs <= 0 || recastDelayMs <= 0)
@@ -177,7 +177,7 @@ namespace ClickIt.Features.Click.Runtime
             string normalized = skillInternalName.Trim();
             for (int i = 0; i < MovementSkillInternalNameMarkers.Length; i++)
             {
-                if (normalized.IndexOf(MovementSkillInternalNameMarkers[i], StringComparison.OrdinalIgnoreCase) >= 0)
+                if (normalized.Contains(MovementSkillInternalNameMarkers[i], StringComparison.OrdinalIgnoreCase))
                     return true;
             }
 
@@ -216,7 +216,7 @@ namespace ClickIt.Features.Click.Runtime
                 }
             }
 
-            if (normalized.StartsWith("F", StringComparison.Ordinal) && int.TryParse(normalized[1..], out int fNum) && fNum >= 1 && fNum <= 24)
+            if (normalized.StartsWith('F') && int.TryParse(normalized[1..], out int fNum) && fNum >= 1 && fNum <= 24)
             {
                 key = Keys.F1 + (fNum - 1);
                 return true;
@@ -226,7 +226,7 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         internal static List<object?> GetThreadSkillBarEntriesBuffer(int capacity)
-            => _threadSkillBarEntriesBuffer ??= new List<object?>(Math.Max(1, capacity));
+            => _threadSkillBarEntriesBuffer ??= new List<object?>(SystemMath.Max(1, capacity));
 
         internal static void ClearThreadSkillBarEntriesBuffer()
         {
@@ -251,6 +251,6 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         private static bool ContainsSkillMarker(string skillName, string marker)
-            => skillName.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0;
+            => skillName.Contains(marker, StringComparison.OrdinalIgnoreCase);
     }
 }

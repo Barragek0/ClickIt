@@ -4,8 +4,7 @@ namespace ClickIt.Shared.Game
     {
         internal static bool VisitValidEntities(GameController? gameController, Func<Entity, bool> visitor)
         {
-            if (visitor == null)
-                throw new ArgumentNullException(nameof(visitor));
+            ArgumentNullException.ThrowIfNull(visitor);
 
             var entitiesByType = gameController?.EntityListWrapper?.ValidEntitiesByType;
             if (entitiesByType == null)

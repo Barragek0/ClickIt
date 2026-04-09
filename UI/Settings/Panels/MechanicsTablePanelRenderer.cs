@@ -26,12 +26,6 @@ namespace ClickIt.UI.Settings.Panels
             new("altars", "Altars")
         ];
 
-        private const string LeagueChestSubgroupMirage = "Mirage";
-        private const string LeagueChestSubgroupHeist = "Heist";
-        private const string LeagueChestSubgroupBlight = "Blight";
-        private const string LeagueChestSubgroupBreach = "Breach";
-        private const string LeagueChestSubgroupSynthesis = "Synthesis";
-
         private static readonly HashSet<string> ComplexMechanicRowIds = new(StringComparer.OrdinalIgnoreCase)
         {
             MechanicIds.Items,
@@ -111,26 +105,24 @@ namespace ClickIt.UI.Settings.Panels
                 return null;
 
             if (string.Equals(listId, ClickMechanicsListId, StringComparison.Ordinal))
-            {
                 return new FocusedMechanicsColumn(
-                    "MechanicsFilterLists",
-                    "Click",
-                    new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
-                    ClickMechanicsListId,
-                    MoveToClick: false,
-                    SettingsUiPalette.WhitelistTextColor);
-            }
+        "MechanicsFilterLists",
+        "Click",
+        new Vector4(0.2f, 0.6f, 0.2f, 0.3f),
+        ClickMechanicsListId,
+        MoveToClick: false,
+        SettingsUiPalette.WhitelistTextColor);
+
 
             if (string.Equals(listId, DontClickMechanicsListId, StringComparison.Ordinal))
-            {
                 return new FocusedMechanicsColumn(
-                    "MechanicsFilterLists",
-                    "Don't Click",
-                    new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
-                    DontClickMechanicsListId,
-                    MoveToClick: true,
-                    SettingsUiPalette.BlacklistTextColor);
-            }
+        "MechanicsFilterLists",
+        "Don't Click",
+        new Vector4(0.6f, 0.2f, 0.2f, 0.3f),
+        DontClickMechanicsListId,
+        MoveToClick: true,
+        SettingsUiPalette.BlacklistTextColor);
+
 
             return null;
         }
@@ -244,14 +236,12 @@ namespace ClickIt.UI.Settings.Panels
             }
 
             if (rowState.RowClicked)
-            {
                 ToggleExpandedMechanicTableRow(listId, entry.Id);
-            }
+
 
             if (IsExpandedMechanicTableRow(listId, entry.Id))
-            {
                 DrawMechanicEntrySubmenu(entry.Id);
-            }
+
 
             return true;
         }
@@ -309,9 +299,8 @@ namespace ClickIt.UI.Settings.Panels
                 bool enabled = entry.Node.Value;
                 Vector4 rowColor = enabled ? SettingsUiPalette.WhitelistTextColor : SettingsUiPalette.BlacklistTextColor;
                 if (SettingsUiRenderHelpers.DrawCheckbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{group.Id}_{entry.Id}", ref enabled, rowColor))
-                {
                     entry.Node.Value = enabled;
-                }
+
             }
 
             _embeddedSettingsPanelRenderer.DrawMechanicGroupExtraSettings(group.Id);
@@ -369,7 +358,7 @@ namespace ClickIt.UI.Settings.Panels
             string groupId,
             out bool hasSubgroups)
         {
-            var groupedEntries = new List<MechanicToggleTableEntry>();
+            List<MechanicToggleTableEntry> groupedEntries = [];
             hasSubgroups = false;
 
             for (int i = 0; i < entries.Count; i++)
@@ -388,8 +377,8 @@ namespace ClickIt.UI.Settings.Panels
 
         private static string[] GetOrderedSubgroupNames(IReadOnlyList<MechanicToggleTableEntry> entries)
         {
-            var subgroupNames = new List<string>();
-            var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            List<string> subgroupNames = [];
+            HashSet<string> seenNames = new(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < entries.Count; i++)
             {
@@ -406,7 +395,7 @@ namespace ClickIt.UI.Settings.Panels
 
         private static MechanicToggleTableEntry[] GetSubgroupEntries(IReadOnlyList<MechanicToggleTableEntry> entries, string subgroupName)
         {
-            var subgroupEntries = new List<MechanicToggleTableEntry>();
+            List<MechanicToggleTableEntry> subgroupEntries = [];
 
             for (int i = 0; i < entries.Count; i++)
             {
@@ -434,13 +423,12 @@ namespace ClickIt.UI.Settings.Panels
             return ImGui.TreeNodeEx($"{subgroupName}##MechanicSubmenu_{listId}_{groupId}_{subgroupName}", ImGuiTreeNodeFlags.DefaultOpen);
         }
 
-        private bool HasMechanicSubgroupEntryMatch(IReadOnlyList<MechanicToggleTableEntry> subgroupEntries)
+        private bool HasMechanicSubgroupEntryMatch(MechanicToggleTableEntry[] subgroupEntries)
         {
-            for (int i = 0; i < subgroupEntries.Count; i++)
-            {
+            for (int i = 0; i < subgroupEntries.Length; i++)
                 if (SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, subgroupEntries[i].DisplayName))
                     return true;
-            }
+
 
             return false;
         }
@@ -478,38 +466,34 @@ namespace ClickIt.UI.Settings.Panels
                 if (!searchIsEmpty
                     && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, entry.DisplayName)
                     && !SettingsUiRenderHelpers.MatchesSearch(_settings.UiState.MechanicsSearchFilter, groupDisplayName))
-                {
                     continue;
-                }
+
 
                 DrawMechanicSubmenuCheckbox(listId, groupId, entry);
             }
         }
 
-        private void DrawMechanicSubmenuCheckbox(string listId, string groupId, MechanicToggleTableEntry entry)
+        private static void DrawMechanicSubmenuCheckbox(string listId, string groupId, MechanicToggleTableEntry entry)
         {
             bool enabled = entry.Node.Value;
             Vector4 rowColor = enabled ? SettingsUiPalette.WhitelistTextColor : SettingsUiPalette.BlacklistTextColor;
             if (SettingsUiRenderHelpers.DrawCheckbox($"{entry.DisplayName}##MechanicSubmenu_{listId}_{groupId}_{entry.Id}", ref enabled, rowColor))
-            {
                 entry.Node.Value = enabled;
-            }
+
 
             if (string.Equals(entry.Id, MechanicIds.HeistHazards, StringComparison.OrdinalIgnoreCase))
-            {
                 SettingsUiRenderHelpers.DrawInlineTooltip("Hazards are objects that block your path and must be destroyed to get past.");
-            }
+
         }
 
         private void ResetMechanicsTableDefaults()
         {
             foreach (MechanicToggleTableEntry entry in _settings.GetMechanicTableEntries())
-            {
                 entry.Node.Value = entry.DefaultEnabled;
-            }
+
         }
 
-        private bool HasMechanicEntrySubmenu(string entryId)
+        private static bool HasMechanicEntrySubmenu(string entryId)
             => string.Equals(entryId, MechanicIds.Items, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(entryId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase);

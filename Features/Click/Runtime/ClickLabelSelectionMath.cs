@@ -26,7 +26,7 @@ namespace ClickIt.Features.Click.Runtime
             => corruptionPointInWindow && corruptionPointClickable;
 
         internal static int GetGroundLabelSearchLimit(int totalVisibleLabels)
-            => Math.Max(0, totalVisibleLabels);
+            => SystemMath.Max(0, totalVisibleLabels);
 
         internal static LabelOnGround? FindLabelByAddress(IReadOnlyList<LabelOnGround> labels, long address)
         {
@@ -88,8 +88,13 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static bool IsAltarLabel(LabelOnGround label)
         {
-            var item = label.ItemOnGround;
-            string path = item.Path ?? string.Empty;
+            if (!DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+                || rawItem == null
+                || !DynamicAccess.TryReadString(rawItem, static i => i.Path, out string path))
+            {
+                return false;
+            }
+
             return path.Contains("CleansingFireAltar") || path.Contains("TangleAltar");
         }
 

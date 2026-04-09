@@ -78,10 +78,9 @@ namespace ClickIt.Features.Labels.Classification
                 return false;
 
             for (int i = 0; i < metadataIdentifiers.Count; i++)
-            {
                 if (string.Equals(metadataIdentifiers[i], "special:strongbox-unique", StringComparison.OrdinalIgnoreCase))
                     return true;
-            }
+
 
             return false;
         }

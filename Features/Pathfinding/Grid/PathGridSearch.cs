@@ -1,3 +1,5 @@
+
+
 namespace ClickIt.Features.Pathfinding.Grid
 {
     internal static class PathGridSearch
@@ -25,18 +27,18 @@ namespace ClickIt.Features.Pathfinding.Grid
             if (!TryGetGridDimensions(walkable, out int width, out int height))
                 return null;
 
-            var dims = new PathfindingService.GridPoint(width, height);
+            PathfindingService.GridPoint dims = new(width, height);
             if (!IsInside(start, dims) || !IsInside(goal, dims))
                 return null;
             if (!walkable[start.Y][start.X] || !walkable[goal.Y][goal.X])
                 return null;
 
             int nodeCount = width * height;
-            int budget = Math.Max(1, maxExpandedNodes);
-            var open = new PriorityQueue<int, float>();
-            var closed = new bool[nodeCount];
-            var gScore = new float[nodeCount];
-            var parent = new int[nodeCount];
+            int budget = SystemMath.Max(1, maxExpandedNodes);
+            PriorityQueue<int, float> open = new();
+            bool[] closed = new bool[nodeCount];
+            float[] gScore = new float[nodeCount];
+            int[] parent = new int[nodeCount];
 
             for (int i = 0; i < nodeCount; i++)
             {
@@ -60,12 +62,12 @@ namespace ClickIt.Features.Pathfinding.Grid
                 if (currentKey == goalKey)
                     return BuildPathFromParents(parent, currentKey, width);
 
-                var current = FromKey(currentKey, width);
+                PathfindingService.GridPoint current = FromKey(currentKey, width);
                 float currentCost = gScore[currentKey];
 
                 for (int i = 0; i < NeighborOffsets.Length; i++)
                 {
-                    var offset = NeighborOffsets[i];
+                    PathfindingService.GridPoint offset = NeighborOffsets[i];
                     int nx = current.X + offset.X;
                     int ny = current.Y + offset.Y;
 
@@ -83,7 +85,7 @@ namespace ClickIt.Features.Pathfinding.Grid
 
                     parent[neighborKey] = currentKey;
                     gScore[neighborKey] = tentative;
-                    var neighbor = new PathfindingService.GridPoint(nx, ny);
+                    PathfindingService.GridPoint neighbor = new(nx, ny);
                     open.Enqueue(neighborKey, tentative + EstimateCost(neighbor, goal));
                 }
             }
@@ -102,22 +104,21 @@ namespace ClickIt.Features.Pathfinding.Grid
             if (walkable[desiredGoal.Y][desiredGoal.X])
                 return true;
 
-            int radiusLimit = Math.Max(1, maxRadius);
+            int radiusLimit = SystemMath.Max(1, maxRadius);
             int bestDistanceSquared = int.MaxValue;
 
             for (int radius = 1; radius <= radiusLimit; radius++)
             {
-                int minX = Math.Max(0, desiredGoal.X - radius);
-                int maxX = Math.Min(width - 1, desiredGoal.X + radius);
-                int minY = Math.Max(0, desiredGoal.Y - radius);
-                int maxY = Math.Min(height - 1, desiredGoal.Y + radius);
+                int minX = SystemMath.Max(0, desiredGoal.X - radius);
+                int maxX = SystemMath.Min(width - 1, desiredGoal.X + radius);
+                int minY = SystemMath.Max(0, desiredGoal.Y - radius);
+                int maxY = SystemMath.Min(height - 1, desiredGoal.Y + radius);
                 bool foundAnyInRing = false;
 
                 for (int y = minY; y <= maxY; y++)
-                {
                     for (int x = minX; x <= maxX; x++)
                     {
-                        if (Math.Max(Math.Abs(x - desiredGoal.X), Math.Abs(y - desiredGoal.Y)) != radius || !walkable[y][x])
+                        if (SystemMath.Max(SystemMath.Abs(x - desiredGoal.X), SystemMath.Abs(y - desiredGoal.Y)) != radius || !walkable[y][x])
                             continue;
 
                         foundAnyInRing = true;
@@ -130,7 +131,7 @@ namespace ClickIt.Features.Pathfinding.Grid
                         bestDistanceSquared = distanceSquared;
                         resolvedGoal = new PathfindingService.GridPoint(x, y);
                     }
-                }
+
 
                 if (foundAnyInRing)
                     return true;
@@ -157,28 +158,28 @@ namespace ClickIt.Features.Pathfinding.Grid
                 return false;
             }
 
-            var dims = new PathfindingService.GridPoint(width, height);
+            PathfindingService.GridPoint dims = new(width, height);
             if (!IsInside(start, dims))
             {
                 failureReason = "Player grid position is outside walkable grid bounds.";
                 return false;
             }
 
-            if (IsInside(desiredGoal, dims) && TryResolveWalkableGoal(walkable, desiredGoal, 18, out var directGoal))
+            if (IsInside(desiredGoal, dims) && TryResolveWalkableGoal(walkable, desiredGoal, 18, out PathfindingService.GridPoint directGoal))
             {
                 resolvedGoal = directGoal;
                 return true;
             }
 
-            var clampedGoal = ClampToGrid(desiredGoal, width, height);
-            if (TryResolveWalkableGoal(walkable, clampedGoal, 24, out var clampedResolvedGoal))
+            PathfindingService.GridPoint clampedGoal = ClampToGrid(desiredGoal, width, height);
+            if (TryResolveWalkableGoal(walkable, clampedGoal, 24, out PathfindingService.GridPoint clampedResolvedGoal))
             {
                 resolvedGoal = clampedResolvedGoal;
                 usedFallback = true;
                 return true;
             }
 
-            if (TryFindFurthestReachableGoalTowardTarget(walkable, start, clampedGoal, out var steppedGoal))
+            if (TryFindFurthestReachableGoalTowardTarget(walkable, start, clampedGoal, out PathfindingService.GridPoint steppedGoal))
             {
                 resolvedGoal = steppedGoal;
                 usedFallback = true;
@@ -195,13 +196,13 @@ namespace ClickIt.Features.Pathfinding.Grid
             if (entity == null)
                 return false;
 
-            var grid = entity.GridPosNum;
+            NumVector2 grid = entity.GridPosNum;
             point = new PathfindingService.GridPoint((int)grid.X, (int)grid.Y);
             return true;
         }
 
         private static PathfindingService.GridPoint ClampToGrid(PathfindingService.GridPoint point, int width, int height)
-            => new(Math.Clamp(point.X, 0, width - 1), Math.Clamp(point.Y, 0, height - 1));
+            => new(SystemMath.Clamp(point.X, 0, width - 1), SystemMath.Clamp(point.Y, 0, height - 1));
 
         private static bool TryFindFurthestReachableGoalTowardTarget(bool[][] walkable, PathfindingService.GridPoint start, PathfindingService.GridPoint clampedGoal, out PathfindingService.GridPoint resolvedGoal)
         {
@@ -211,10 +212,10 @@ namespace ClickIt.Features.Pathfinding.Grid
 
             foreach (PathfindingService.GridPoint sample in EnumerateLinePoints(start, clampedGoal))
             {
-                if (!TryResolveWalkableSample(walkable, sample, out var candidate))
+                if (!TryResolveWalkableSample(walkable, sample, out PathfindingService.GridPoint candidate))
                     continue;
 
-                int progress = Math.Abs(candidate.X - start.X) + Math.Abs(candidate.Y - start.Y);
+                int progress = SystemMath.Abs(candidate.X - start.X) + SystemMath.Abs(candidate.Y - start.Y);
                 if (progress <= bestProgress)
                     continue;
 
@@ -243,7 +244,7 @@ namespace ClickIt.Features.Pathfinding.Grid
         {
             int dx = goal.X - start.X;
             int dy = goal.Y - start.Y;
-            int steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+            int steps = SystemMath.Max(SystemMath.Abs(dx), SystemMath.Abs(dy));
 
             if (steps <= 0)
             {
@@ -291,16 +292,16 @@ namespace ClickIt.Features.Pathfinding.Grid
 
         private static float EstimateCost(PathfindingService.GridPoint a, PathfindingService.GridPoint b)
         {
-            int dx = Math.Abs(a.X - b.X);
-            int dy = Math.Abs(a.Y - b.Y);
-            int diagonal = Math.Min(dx, dy);
-            int straight = Math.Max(dx, dy) - diagonal;
+            int dx = SystemMath.Abs(a.X - b.X);
+            int dy = SystemMath.Abs(a.Y - b.Y);
+            int diagonal = SystemMath.Min(dx, dy);
+            int straight = SystemMath.Max(dx, dy) - diagonal;
             return (diagonal * (StraightCost + DiagonalHeuristicWeight)) + (straight * StraightCost);
         }
 
         private static List<PathfindingService.GridPoint> BuildPathFromParents(int[] parent, int goalKey, int width)
         {
-            var result = new List<PathfindingService.GridPoint>(128);
+            List<PathfindingService.GridPoint> result = new(128);
             for (int trace = goalKey; trace >= 0; trace = parent[trace])
                 result.Add(FromKey(trace, width));
 

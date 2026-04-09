@@ -34,8 +34,8 @@ namespace ClickIt.UI.Debug
             DeferredTextQueue.Enqueue("Recent Stages:", new Vector2(xPos, yPos), Color.LightBlue, 13);
             yPos += lineHeight;
 
-            int rowsToRender = Math.Min(Math.Max(1, maxRows), trail.Count);
-            int start = Math.Max(0, trail.Count - rowsToRender);
+            int rowsToRender = SystemMath.Min(SystemMath.Max(1, maxRows), trail.Count);
+            int start = SystemMath.Max(0, trail.Count - rowsToRender);
             for (int i = start; i < trail.Count; i++)
             {
                 yPos = EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"  {trail[i]}", Color.LightGray, 12, wrapWidth);
@@ -65,7 +65,7 @@ namespace ClickIt.UI.Debug
                 return yPos + lineHeight;
             }
 
-            int safeWrap = Math.Max(20, maxCharsPerLine);
+            int safeWrap = SystemMath.Max(20, maxCharsPerLine);
             foreach (string wrappedLine in WrapTextForDebug(text, safeWrap))
             {
                 if (!EnsureDebugLineCapacity(ref xPos, ref yPos, lineHeight))
@@ -98,7 +98,7 @@ namespace ClickIt.UI.Debug
 
             while (startIndex < contentLength)
             {
-                int endIndex = Math.Min(startIndex + maxCharsPerLine, contentLength);
+                int endIndex = SystemMath.Min(startIndex + maxCharsPerLine, contentLength);
                 if (endIndex < contentLength)
                 {
                     ReadOnlySpan<char> segment = content.Slice(startIndex, endIndex - startIndex);
@@ -141,18 +141,11 @@ namespace ClickIt.UI.Debug
 
         public static string ResolveHoveredItemMetadataPath(LabelOnGround label)
         {
-            try
-            {
-                return EntityHelpers.ResolveWorldItemMetadataPath(
-                    label.ItemOnGround,
-                    missingItemFallback: "<missing item>",
-                    missingItemEntityFallback: "<missing WorldItem.ItemEntity>",
-                    missingMetadataFallback: "<missing metadata/path>");
-            }
-            catch (Exception ex)
-            {
-                return $"<error: {ex.GetType().Name}>";
-            }
+            return EntityHelpers.ResolveWorldItemMetadataPath(
+                label.ItemOnGround,
+                missingItemFallback: "<missing item>",
+                missingItemEntityFallback: "<missing WorldItem.ItemEntity>",
+                missingMetadataFallback: "<missing metadata/path>");
         }
 
         public static string TrimPath(string path)
@@ -171,7 +164,7 @@ namespace ClickIt.UI.Debug
             if (lineHeight <= 0)
                 return false;
 
-            int usedLines = Math.Max(0, (yPos - DetailedDebugStartY) / lineHeight);
+            int usedLines = SystemMath.Max(0, (yPos - DetailedDebugStartY) / lineHeight);
             if (usedLines < DetailedDebugLinesPerColumn)
                 return true;
 
@@ -191,7 +184,7 @@ namespace ClickIt.UI.Debug
                 return 0;
 
             int raw = (xPos - baseX) / columnShiftPx;
-            return Math.Clamp(raw, 0, maxColumns - 1);
+            return SystemMath.Clamp(raw, 0, maxColumns - 1);
         }
 
         private static List<string> WrapTextForDebug(string text, int maxCharsPerLine)
@@ -203,7 +196,7 @@ namespace ClickIt.UI.Debug
                 return lines;
             }
 
-            int safeWrap = Math.Max(20, maxCharsPerLine);
+            int safeWrap = SystemMath.Max(20, maxCharsPerLine);
             int leadingSpaces = 0;
             while (leadingSpaces < text.Length && text[leadingSpaces] == ' ')
             {
@@ -217,7 +210,7 @@ namespace ClickIt.UI.Debug
 
             while (startIndex < contentLength)
             {
-                int endIndex = Math.Min(startIndex + safeWrap, contentLength);
+                int endIndex = SystemMath.Min(startIndex + safeWrap, contentLength);
                 if (endIndex < contentLength)
                 {
                     string segment = content.Substring(startIndex, endIndex - startIndex);

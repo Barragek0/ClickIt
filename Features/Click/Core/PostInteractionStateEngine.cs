@@ -13,9 +13,8 @@ namespace ClickIt.Features.Click.Core
             {
                 int blockMs = _dependencies.InputHandler.GetToggleItemsPostClickBlockMs();
                 if (blockMs > 0)
-                {
                     yield return new WaitTime(blockMs);
-                }
+
             }
         }
     }

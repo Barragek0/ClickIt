@@ -124,13 +124,11 @@ namespace ClickIt.Tests.Core.Settings
             {
                 bool defaultIsWhitelist = ItemCategoryCatalog.DefaultWhitelistIds.Contains(category.Id);
                 if (defaultIsWhitelist)
-                {
                     expectedBlacklist.Add(category.Id);
-                }
+
                 else
-                {
                     expectedWhitelist.Add(category.Id);
-                }
+
             }
 
             settings.ItemTypeWhitelistIds = expectedWhitelist;

@@ -4,11 +4,11 @@ namespace ClickIt.Shared.Diagnostics
     {
         private const int MaxBufferedItems = 8192;
         private readonly object _queueLock = new();
-        private List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _items = [];
-        private List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> _spare = [];
+        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> _items = [];
+        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> _spare = [];
         private int _pendingCount;
 
-        public void Enqueue(string text, Vector2 pos, SharpDX.Color color, int size, FontAlign align = FontAlign.Left)
+        public void Enqueue(string text, Vector2 pos, Color color, int size, FontAlign align = FontAlign.Left)
         {
             if (string.IsNullOrEmpty(text) || size <= 0)
                 return;
@@ -43,7 +43,7 @@ namespace ClickIt.Shared.Diagnostics
                 if (_items.Count == 0)
                     return;
 
-                List<(string Text, Vector2 Position, SharpDX.Color Color, int Size, FontAlign Align)> pending = _items;
+                List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> pending = _items;
                 _items = _spare;
                 _spare = pending;
                 _items.Clear();
@@ -95,9 +95,8 @@ namespace ClickIt.Shared.Diagnostics
 
                 string[] result = new string[count];
                 for (int i = 0; i < count; i++)
-                {
                     result[i] = _items[from + i].Text;
-                }
+
 
                 return result;
             }

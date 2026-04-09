@@ -1,4 +1,6 @@
-﻿namespace ClickIt.Shared.Game
+﻿using ExileCore.PoEMemory;
+
+namespace ClickIt.Shared.Game
 {
     public interface IElementAdapter
     {
@@ -7,6 +9,6 @@
         IElementAdapter? GetChildFromIndices(int a, int b);
         string GetText(int maxChars);
         bool IsValid { get; }
-        SharpDX.RectangleF GetClientRect();
+        RectangleF GetClientRect();
     }
 }

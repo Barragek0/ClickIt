@@ -1,8 +1,8 @@
 namespace ClickIt.UI.Debug.Sections
 {
-    internal sealed class FrameDebugOverlaySection(Debug.DebugOverlayRenderContext context)
+    internal sealed class FrameDebugOverlaySection(DebugOverlayRenderContext context)
     {
-        private readonly Debug.DebugOverlayRenderContext _context = context;
+        private readonly DebugOverlayRenderContext _context = context;
 
         public void RenderDebugFrames(ClickItSettings settings)
         {
@@ -12,30 +12,28 @@ namespace ClickIt.UI.Debug.Sections
             if (!settings.DebugShowFrames)
                 return;
 
-            var healthSquare = _context.AreaService.HealthSquareRectangle;
-            var flaskRect = _context.AreaService.FlaskRectangle;
-            var flaskTertiaryRect = _context.AreaService.FlaskTertiaryRectangle;
-            var manaSquare = _context.AreaService.ManaSquareRectangle;
-            var skillsRect = _context.AreaService.SkillsRectangle;
-            var skillsTertiaryRect = _context.AreaService.SkillsTertiaryRectangle;
+            RectangleF healthSquare = _context.AreaService.HealthSquareRectangle;
+            RectangleF flaskRect = _context.AreaService.FlaskRectangle;
+            RectangleF flaskTertiaryRect = _context.AreaService.FlaskTertiaryRectangle;
+            RectangleF manaSquare = _context.AreaService.ManaSquareRectangle;
+            RectangleF skillsRect = _context.AreaService.SkillsRectangle;
+            RectangleF skillsTertiaryRect = _context.AreaService.SkillsTertiaryRectangle;
 
             if (IsEmptyRect(healthSquare) || IsEmptyRect(flaskRect) || IsEmptyRect(flaskTertiaryRect))
-            {
                 (healthSquare, flaskRect, flaskTertiaryRect) = AreaService.SplitBottomAnchoredThreeRectanglesFromLeft(
-                    _context.AreaService.HealthAndFlaskRectangle,
-                    0.6f,
-                    0.85f,
-                    1f);
-            }
+        _context.AreaService.HealthAndFlaskRectangle,
+        0.6f,
+        0.85f,
+        1f);
+
 
             if (IsEmptyRect(manaSquare) || IsEmptyRect(skillsRect) || IsEmptyRect(skillsTertiaryRect))
-            {
                 (manaSquare, skillsRect, skillsTertiaryRect) = AreaService.SplitBottomAnchoredThreeRectanglesFromRight(
-                    _context.AreaService.ManaAndSkillsRectangle,
-                    0.6f,
-                    0.85f,
-                    1f);
-            }
+        _context.AreaService.ManaAndSkillsRectangle,
+        0.6f,
+        0.85f,
+        1f);
+
 
             RectangleF healthSquareDraw = ToDrawRectangleFromLtrb(healthSquare);
             RectangleF flaskRectDraw = ToDrawRectangleFromLtrb(flaskRect);
@@ -52,18 +50,15 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredFrameQueue.Enqueue(skillsTertiaryRectDraw, Color.DeepSkyBlue, 1);
             _context.DeferredFrameQueue.Enqueue(manaSquareDraw, Color.DeepSkyBlue, 1);
 
-            var buffsAndDebuffsRects = _context.AreaService.BuffsAndDebuffsRectangles;
+            IReadOnlyList<RectangleF> buffsAndDebuffsRects = _context.AreaService.BuffsAndDebuffsRectangles;
             if (buffsAndDebuffsRects.Count > 0)
-            {
                 for (int i = 0; i < buffsAndDebuffsRects.Count; i++)
-                {
                     _context.DeferredFrameQueue.Enqueue(buffsAndDebuffsRects[i], Color.Plum, 1);
-                }
-            }
+
+
             else
-            {
                 _context.DeferredFrameQueue.Enqueue(_context.AreaService.BuffsAndDebuffsRectangle, Color.Plum, 1);
-            }
+
 
             _context.DeferredFrameQueue.Enqueue(_context.AreaService.ChatPanelBlockedRectangle, Color.Green, 1);
             _context.DeferredFrameQueue.Enqueue(_context.AreaService.MapPanelBlockedRectangle, Color.Pink, 1);
@@ -73,11 +68,10 @@ namespace ClickIt.UI.Debug.Sections
             _context.DeferredFrameQueue.Enqueue(_context.AreaService.RitualBlockedRectangle, Color.LawnGreen, 1);
             _context.DeferredFrameQueue.Enqueue(_context.AreaService.SentinelBlockedRectangle, Color.LightCoral, 1);
 
-            var questTrackerRects = _context.AreaService.QuestTrackerBlockedRectangles;
+            IReadOnlyList<RectangleF> questTrackerRects = _context.AreaService.QuestTrackerBlockedRectangles;
             for (int i = 0; i < questTrackerRects.Count; i++)
-            {
                 _context.DeferredFrameQueue.Enqueue(questTrackerRects[i], Color.MediumPurple, 1);
-            }
+
         }
 
         private static bool IsEmptyRect(RectangleF rect)
@@ -85,8 +79,8 @@ namespace ClickIt.UI.Debug.Sections
 
         private static RectangleF ToDrawRectangleFromLtrb(RectangleF rect)
         {
-            float width = Math.Max(0f, rect.Width - rect.X);
-            float height = Math.Max(0f, rect.Height - rect.Y);
+            float width = SystemMath.Max(0f, rect.Width - rect.X);
+            float height = SystemMath.Max(0f, rect.Height - rect.Y);
             return new RectangleF(rect.X, rect.Y, width, height);
         }
     }

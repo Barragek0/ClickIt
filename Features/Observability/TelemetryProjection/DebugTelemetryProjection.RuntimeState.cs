@@ -144,18 +144,11 @@ namespace ClickIt.Features.Observability.TelemetryProjection
 
         private static string ResolveHoveredItemMetadataPath(LabelOnGround label)
         {
-            try
-            {
-                return EntityHelpers.ResolveWorldItemMetadataPath(
-                    label.ItemOnGround,
-                    missingItemFallback: "<missing item>",
-                    missingItemEntityFallback: "<missing WorldItem.ItemEntity>",
-                    missingMetadataFallback: "<missing metadata/path>");
-            }
-            catch (Exception ex)
-            {
-                return $"<error: {ex.GetType().Name}>";
-            }
+            return EntityHelpers.ResolveWorldItemMetadataPath(
+                label.ItemOnGround,
+                missingItemFallback: "<missing item>",
+                missingItemEntityFallback: "<missing WorldItem.ItemEntity>",
+                missingMetadataFallback: "<missing metadata/path>");
         }
     }
 }

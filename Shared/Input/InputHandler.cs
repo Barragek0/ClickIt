@@ -259,30 +259,14 @@ namespace ClickIt.Shared.Input
 
         private static bool IsPOEActive(GameController? gameController)
         {
-            try
-            {
-                return gameController?.Window?.IsForeground() == true;
-            }
-            catch (NullReferenceException)
-            {
-                return false;
-            }
+            return DynamicAccess.TryReadBool(gameController?.Window, static window => window.IsForeground(), out bool isForeground)
+                && isForeground;
         }
 
         private static bool IsEscapeState(GameController? gameController)
         {
-            try
-            {
-                return gameController?.Game?.IsEscapeState == true;
-            }
-            catch (NullReferenceException)
-            {
-                return false;
-            }
-            catch (TypeInitializationException)
-            {
-                return false;
-            }
+            return DynamicAccess.TryReadBool(gameController?.Game, static game => game.IsEscapeState, out bool isEscapeState)
+                && isEscapeState;
         }
 
         private static bool IsPanelOpen(GameController gameController)

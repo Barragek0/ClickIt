@@ -7,10 +7,11 @@ namespace ClickIt.Features.Click.Runtime
 
         internal int GetRemainingOffscreenPathNodeCount()
         {
-            var path = _pathfindingService.GetLatestGridPath();
-            var player = _gameController.Player;
+            IReadOnlyList<PathfindingService.GridPoint> path = _pathfindingService.GetLatestGridPath();
+            Entity? player = _gameController.Player;
             if (player == null)
                 return 0;
+
 
             int nearest = FindClosestPathIndexToPlayer(
                 path,
@@ -23,13 +24,15 @@ namespace ClickIt.Features.Click.Runtime
         {
             targetScreen = default;
 
-            var player = _gameController.Player;
+            Entity? player = _gameController.Player;
             if (player == null)
                 return false;
 
-            var path = _pathfindingService.GetLatestGridPath();
+
+            IReadOnlyList<PathfindingService.GridPoint> path = _pathfindingService.GetLatestGridPath();
             if (path.Count < 2)
                 return false;
+
 
             PathfindingService.GridPoint playerGrid = new((int)player.GridPosNum.X, (int)player.GridPosNum.Y);
             int nearestIndex = FindClosestPathIndexToPlayer(path, playerGrid);
@@ -39,9 +42,10 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryGetSmoothedPathDirection(path, playerGrid, nearestIndex, out float deltaX, out float deltaY))
                 return false;
 
+
             RectangleF window = _gameController.Window.GetWindowRectangleTimeCache;
             Vector2 center = GetWindowCenter(window);
-            float radius = Math.Min(window.Width, window.Height) * 0.30f;
+            float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
             return TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
 
@@ -51,16 +55,15 @@ namespace ClickIt.Features.Click.Runtime
 
             RectangleF window = _gameController.Window.GetWindowRectangleTimeCache;
             Vector2 center = GetWindowCenter(window);
-            float radius = Math.Min(window.Width, window.Height) * 0.30f;
+            float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
             TryGetGridDelta(target, out float deltaX, out float deltaY);
 
             if (target.Type == EntityType.WorldItem
                 && TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen))
-            {
                 return true;
-            }
 
-            var raw = _gameController.Game.IngameState.Camera.WorldToScreen(target.PosNum);
+
+            NumVector2 raw = _gameController.Game.IngameState.Camera.WorldToScreen(target.PosNum);
             Vector2 projected = new(raw.X, raw.Y);
             if (IsFinite(projected) && !IsNearCorner(projected, window))
             {
@@ -76,8 +79,9 @@ namespace ClickIt.Features.Click.Runtime
             if (path == null || path.Count == 0 || nearestIndex < 0)
                 return 0;
 
-            int index = Math.Min(path.Count - 1, nearestIndex);
-            return Math.Max(0, path.Count - (index + 1));
+
+            int index = SystemMath.Min(path.Count - 1, nearestIndex);
+            return SystemMath.Max(0, path.Count - (index + 1));
         }
 
         internal static bool TryGetSmoothedPathDirection(
@@ -93,10 +97,12 @@ namespace ClickIt.Features.Click.Runtime
             if (path == null || path.Count < 2 || nearestIndex < 0)
                 return false;
 
-            int start = Math.Min(path.Count - 1, nearestIndex + 1);
-            int end = Math.Min(path.Count - 1, nearestIndex + 8);
+
+            int start = SystemMath.Min(path.Count - 1, nearestIndex + 1);
+            int end = SystemMath.Min(path.Count - 1, nearestIndex + 8);
             if (end < start)
                 return false;
+
 
             float weightedX = 0f;
             float weightedY = 0f;
@@ -107,10 +113,11 @@ namespace ClickIt.Features.Click.Runtime
                 PathfindingService.GridPoint node = path[i];
                 float dx = node.X - playerGrid.X;
                 float dy = node.Y - playerGrid.Y;
-                if (Math.Abs(dx) + Math.Abs(dy) < 0.001f)
+                if (SystemMath.Abs(dx) + SystemMath.Abs(dy) < 0.001f)
                     continue;
 
-                float weight = (i - start) + 1f;
+
+                float weight = i - start + 1f;
                 weightedX += dx * weight;
                 weightedY += dy * weight;
                 weightTotal += weight;
@@ -119,9 +126,10 @@ namespace ClickIt.Features.Click.Runtime
             if (weightTotal <= 0f)
                 return false;
 
+
             deltaX = weightedX / weightTotal;
             deltaY = weightedY / weightTotal;
-            return Math.Abs(deltaX) + Math.Abs(deltaY) >= 0.001f;
+            return SystemMath.Abs(deltaX) + SystemMath.Abs(deltaY) >= 0.001f;
         }
 
         internal static bool TryComputeGridDirectionPoint(Vector2 center, float deltaGridX, float deltaGridY, float radius, out Vector2 point)
@@ -130,10 +138,12 @@ namespace ClickIt.Features.Click.Runtime
             if (radius <= 0f)
                 return false;
 
+
             Vector2 axis = new(deltaGridX - deltaGridY, -(deltaGridX + deltaGridY) * 0.65f);
             float lengthSquared = (axis.X * axis.X) + (axis.Y * axis.Y);
             if (lengthSquared < 0.001f)
                 return false;
+
 
             float invLength = 1f / MathF.Sqrt(lengthSquared);
             point = center + new Vector2(axis.X * invLength * radius, axis.Y * invLength * radius);
@@ -145,13 +155,15 @@ namespace ClickIt.Features.Click.Runtime
             if (path == null || path.Count == 0)
                 return -1;
 
+
             int bestIndex = -1;
             int bestDistance = int.MaxValue;
             for (int i = 0; i < path.Count; i++)
             {
-                int distance = Math.Abs(path[i].X - playerGrid.X) + Math.Abs(path[i].Y - playerGrid.Y);
+                int distance = SystemMath.Abs(path[i].X - playerGrid.X) + SystemMath.Abs(path[i].Y - playerGrid.Y);
                 if (distance >= bestDistance)
                     continue;
+
 
                 bestDistance = distance;
                 bestIndex = i;
@@ -168,7 +180,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private void TryGetGridDelta(Entity target, out float deltaX, out float deltaY)
         {
-            var player = _gameController.Player;
+            Entity? player = _gameController.Player;
             if (player == null)
             {
                 deltaX = 0f;

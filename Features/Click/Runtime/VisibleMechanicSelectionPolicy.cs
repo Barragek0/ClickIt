@@ -25,7 +25,7 @@ namespace ClickIt.Features.Click.Runtime
             => !isValid || distance > clickDistance;
 
         internal static bool ArePlayerDistancesEquivalent(float left, float right)
-            => Math.Abs(left - right) <= 0.001f;
+            => SystemMath.Abs(left - right) <= 0.001f;
 
         internal static bool IsFirstCandidateCloserToCursor(Vector2 firstClickPoint, Vector2 secondClickPoint, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {

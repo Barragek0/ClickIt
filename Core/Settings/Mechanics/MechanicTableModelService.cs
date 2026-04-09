@@ -40,12 +40,10 @@ namespace ClickIt.Core.Settings.Mechanics
         internal static void SetGroupState(string groupId, IReadOnlyList<MechanicToggleTableEntry> entries, bool enabled)
         {
             foreach (MechanicToggleTableEntry entry in entries)
-            {
                 if (string.Equals(entry.GroupId, groupId, StringComparison.OrdinalIgnoreCase))
-                {
                     entry.Node.Value = enabled;
-                }
-            }
+
+
         }
 
         internal static IReadOnlyList<MechanicToggleTableEntry> GetTableEntries(ClickItSettings settings)
@@ -64,9 +62,8 @@ namespace ClickIt.Core.Settings.Mechanics
         {
             Dictionary<string, ToggleNode> nodesById = new(StringComparer.OrdinalIgnoreCase);
             foreach (MechanicToggleTableEntry entry in entries)
-            {
                 nodesById[entry.Id] = entry.Node;
-            }
+
 
             return nodesById;
         }

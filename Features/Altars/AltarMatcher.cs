@@ -4,14 +4,14 @@ namespace ClickIt.Features.Altars
     {
         private readonly Dictionary<string, (bool isUpside, string matchedId)> _modMatchCache = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> _textCleanCache = new(StringComparer.Ordinal);
-        private readonly object _modMatchCacheLock = new();
-        private readonly object _textCleanCacheLock = new();
+        private readonly Lock _modMatchCacheLock = new();
+        private readonly Lock _textCleanCacheLock = new();
 
         public bool TryMatchModCached(string mod, string negativeModType, out bool isUpside, out string matchedId)
         {
             string cacheKey = $"{mod}|{negativeModType}";
 
-            if (TryGetCachedEntry(cacheKey, out var cached))
+            if (TryGetCachedEntry(cacheKey, out (bool isUpside, string matchedId) cached))
             {
                 isUpside = cached.isUpside;
                 matchedId = cached.matchedId;
@@ -39,7 +39,6 @@ namespace ClickIt.Features.Altars
 
             bool TryGetCachedEntry(string key, out (bool isUpside, string matchedId) value)
             {
-                value = (false, string.Empty);
                 lock (_modMatchCacheLock)
                 {
                     return _modMatchCache.TryGetValue(key, out value);
@@ -54,11 +53,10 @@ namespace ClickIt.Features.Altars
             lock (_textCleanCacheLock)
             {
                 if (_textCleanCache.TryGetValue(text, out string? cached))
-                {
                     return cached;
-                }
 
-                string cleaned = AltarParser.CleanAltarModsText_NoCache(text);
+
+                string cleaned = AltarParser.CleanAltarModsTextNoCache(text);
 
                 if (_textCleanCache.Count < 1000)
                     _textCleanCache[text] = cleaned;

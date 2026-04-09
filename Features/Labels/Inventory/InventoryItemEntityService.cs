@@ -8,21 +8,16 @@ namespace ClickIt.Features.Labels.Inventory
         Func<object, Entity?> TryGetInventoryItemEntityFromEntry,
         Func<Entity?, (bool IsInventoryItem, string Reason)> ClassifyInventoryItemEntity);
 
-    internal sealed class InventoryItemEntityService
+    internal sealed class InventoryItemEntityService(InventoryItemEntityServiceDependencies dependencies) : IDisposable
     {
-        private readonly InventoryItemEntityServiceDependencies _dependencies;
-        private readonly object _cacheLock = new();
-        private readonly ThreadLocal<HashSet<long>> _uniqueEntityAddresses = new(static () => new HashSet<long>());
+        private readonly InventoryItemEntityServiceDependencies _dependencies = dependencies;
+        private readonly Lock _cacheLock = new();
+        private readonly ThreadLocal<HashSet<long>> _uniqueEntityAddresses = new(static () => []);
 
         private long _inventoryItemsCacheTimestampMs;
         private GameController? _inventoryItemsCacheController;
         private IReadOnlyList<Entity> _inventoryItemsCacheValue = Array.Empty<Entity>();
         private bool _inventoryItemsCacheHasValue;
-
-        public InventoryItemEntityService(InventoryItemEntityServiceDependencies dependencies)
-        {
-            _dependencies = dependencies;
-        }
 
         public bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
         {
@@ -60,28 +55,33 @@ namespace ClickIt.Features.Labels.Inventory
             if (!hasSlotItems || collectionObj == null)
                 return false;
 
-            HashSet<long> uniqueAddresses = _uniqueEntityAddresses.Value ?? new HashSet<long>();
+
+            HashSet<long> uniqueAddresses = _uniqueEntityAddresses.Value ?? [];
             uniqueAddresses.Clear();
 
-            var uniqueEntities = new List<Entity>(32);
+            List<Entity> uniqueEntities = new(32);
             foreach (object? entry in _dependencies.EnumerateObjects(collectionObj))
             {
                 if (entry == null)
                     continue;
 
+
                 Entity? entity = _dependencies.TryGetInventoryItemEntityFromEntry(entry);
                 if (entity == null || !_dependencies.ClassifyInventoryItemEntity(entity).IsInventoryItem)
                     continue;
 
+
                 long address = entity.Address;
                 if (address == 0 || !uniqueAddresses.Add(address))
                     continue;
+
 
                 uniqueEntities.Add(entity);
             }
 
             if (uniqueEntities.Count == 0)
                 return false;
+
 
             items = uniqueEntities;
             return true;
@@ -99,6 +99,13 @@ namespace ClickIt.Features.Labels.Inventory
 
             if (_uniqueEntityAddresses.IsValueCreated)
                 _uniqueEntityAddresses.Value?.Clear();
+
+        }
+
+        public void Dispose()
+        {
+            ClearForShutdown();
+            _uniqueEntityAddresses.Dispose();
         }
 
         private bool TryGetCachedInventoryItems(GameController? gameController, long now, out IReadOnlyList<Entity> items)

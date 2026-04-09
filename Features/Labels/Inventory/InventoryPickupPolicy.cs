@@ -43,12 +43,11 @@ namespace ClickIt.Features.Labels.Inventory
             int partialMatchingStackCount = 0;
             bool hasPartialMatchingStack = isStackable;
             if (isStackable)
-            {
                 (hasPartialMatchingStack, matchingPathCount, partialMatchingStackCount) = _dependencies.HasMatchingPartialStackInInventory(
-                    groundItemPath,
-                    groundItemEntity,
-                    gameController);
-            }
+        groundItemPath,
+        groundItemEntity,
+        gameController);
+
 
             bool hasSpaceForGroundItem = _dependencies.HasInventorySpaceForGroundItem(groundItemEntity, gameController);
 
@@ -66,16 +65,10 @@ namespace ClickIt.Features.Labels.Inventory
         }
     }
 
-    internal sealed class InventoryPickupPolicyEngine
+    internal sealed class InventoryPickupPolicyEngine(InventoryPickupPolicyDependencies dependencies)
     {
-        private readonly InventoryPickupPolicyDependencies _dependencies;
-        private readonly InventoryPickupSnapshotBuilder _snapshotBuilder;
-
-        public InventoryPickupPolicyEngine(InventoryPickupPolicyDependencies dependencies)
-        {
-            _dependencies = dependencies;
-            _snapshotBuilder = new InventoryPickupSnapshotBuilder(dependencies);
-        }
+        private readonly InventoryPickupPolicyDependencies _dependencies = dependencies;
+        private readonly InventoryPickupSnapshotBuilder _snapshotBuilder = new(dependencies);
 
         public bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
         {

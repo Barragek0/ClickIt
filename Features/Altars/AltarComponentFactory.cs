@@ -63,7 +63,7 @@ namespace ClickIt.Features.Altars
             List<string> downsides,
             bool hasUnmatchedMods)
         {
-            if (element == null) throw new ArgumentNullException(nameof(element));
+            ArgumentNullException.ThrowIfNull(element);
 
             if (top)
             {

@@ -26,18 +26,16 @@ namespace ClickIt.Features.Click.Runtime
             if (cacheHasValue
                 && now - cacheTimestampMs >= 0
                 && now - cacheTimestampMs <= cacheWindowMs)
-            {
                 return cachedValue;
-            }
+
 
             bool isActive = false;
             if (DynamicObjectAdapter.TryGetValue(ingameData, s => s.ServerData, out object? serverData)
                 && serverData != null
                 && DynamicObjectAdapter.TryGetValue(serverData, s => s.AtlasPassiveSkillIds, out object? atlasPassiveIds)
                 && atlasPassiveIds != null)
-            {
                 isActive = UltimatumGruelingGauntletPolicy.ContainsAtlasPassiveSkillId(atlasPassiveIds, atlasPassiveSkillId);
-            }
+
 
             cacheTimestampMs = now;
             cachedValue = isActive;

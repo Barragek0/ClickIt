@@ -5,10 +5,9 @@ namespace ClickIt.UI.Debug.Introspection
         public static bool TryWriteTraversalEvents(StreamWriter writer, IReadOnlyList<RuntimeObjectTraversalEvent> events, int maxValueChars, out string? error)
         {
             for (int i = 0; i < events.Count; i++)
-            {
                 if (!TryWriteLine(writer, RuntimeObjectIntrospectionEventFormatter.FormatTraversalEvent(events[i], maxValueChars), out error))
                     return false;
-            }
+
 
             error = null;
             return true;

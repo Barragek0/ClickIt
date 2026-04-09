@@ -14,9 +14,8 @@ namespace ClickIt.Tests.Harness
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
 
                 if (method != null)
-                {
                     return (T)method.Invoke(owner, args ?? Array.Empty<object?>())!;
-                }
+
 
                 currentType = currentType.BaseType;
             }

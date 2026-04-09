@@ -30,8 +30,8 @@ namespace ClickIt.Features.Labels.Application
                 return null;
             }
 
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, startIndex + Math.Max(0, maxCount));
+            int start = SystemMath.Max(0, startIndex);
+            int end = SystemMath.Min(allLabels.Count, startIndex + SystemMath.Max(0, maxCount));
             ClickSettings clickSettings = _dependencies.CreateClickSettings(allLabels);
 
             if (captureDebug)
@@ -90,8 +90,8 @@ namespace ClickIt.Features.Labels.Application
 
         private LabelOnGround? SelectNextLabelByPriority(IReadOnlyList<LabelOnGround> allLabels, int startIndex, int endExclusive, ClickSettings clickSettings)
         {
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, endExclusive);
+            int start = SystemMath.Max(0, startIndex);
+            int end = SystemMath.Min(allLabels.Count, endExclusive);
             LabelSelectionResult selection = LabelSelectionEngine.SelectNextLabelByPriority(
                 allLabels,
                 start,
@@ -153,7 +153,7 @@ namespace ClickIt.Features.Labels.Application
             float clientDy = cursorClient.Y - center.Y;
             float clientDistanceSq = (clientDx * clientDx) + (clientDy * clientDy);
 
-            return Math.Min(absoluteDistanceSq, clientDistanceSq);
+            return SystemMath.Min(absoluteDistanceSq, clientDistanceSq);
         }
 
         private static bool TryGetClickableLabelRectCenter(LabelOnGround? label, out Vector2 center)

@@ -6,6 +6,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AssemblyName>ClickIt</AssemblyName>
     <RootNamespace>ClickIt</RootNamespace>
     <PlatformTarget>x64</PlatformTarget>
@@ -72,6 +73,7 @@
   <ItemGroup>
     <Compile Remove="GlobalUsings.Generated.g.cs" />
     <Compile Remove="global-usings-preview.g.cs" />
+    <Compile Remove="artifacts\**\*.cs" />
     <Compile Remove="ThirdParty\Decompiled\**\*.cs" />
     <Compile Remove="Tests\**\*.cs" />
     <Compile Remove=".scripts\**\*.cs" />

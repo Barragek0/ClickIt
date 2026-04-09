@@ -9,8 +9,8 @@ namespace ClickIt.Features.Click.Label
         {
             try
             {
-                var raw = _gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-                var visible = ClickLabelSelectionMath.ResolveVisibleLabelsWithoutForcedCopy(raw);
+                IList<LabelOnGround>? raw = _gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+                IReadOnlyList<LabelOnGround>? visible = ClickLabelSelectionMath.ResolveVisibleLabelsWithoutForcedCopy(raw);
                 if (visible != null)
                     return visible;
             }

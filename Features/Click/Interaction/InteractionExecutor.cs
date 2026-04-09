@@ -35,10 +35,9 @@ namespace ClickIt.Features.Click.Interaction
                 "InteractionExecutor: UIHover verification failed for current mode. Skipping click.",
                 logExpectedElementMissing: true,
                 out Stopwatch swTotal,
-                out System.Drawing.Point before))
-            {
+                out SystemDrawingPoint before))
                 return;
-            }
+
 
             if (_settings?.LeftHanded?.Value == true)
                 Mouse.RightClick();
@@ -81,10 +80,9 @@ namespace ClickIt.Features.Click.Interaction
                 "InteractionExecutor: UIHover verification failed for hold-click. Skipping.",
                 logExpectedElementMissing: false,
                 out Stopwatch swTotal,
-                out System.Drawing.Point before))
-            {
+                out SystemDrawingPoint before))
                 return;
-            }
+
 
             try
             {
@@ -180,7 +178,7 @@ namespace ClickIt.Features.Click.Interaction
             string hoverMismatchMessage,
             bool logExpectedElementMissing,
             out Stopwatch swTotal,
-            out System.Drawing.Point before)
+            out SystemDrawingPoint before)
         {
             swTotal = Stopwatch.StartNew();
             before = Mouse.GetCursorPosition();
@@ -256,10 +254,9 @@ namespace ClickIt.Features.Click.Interaction
                 _lastClickTimestampMs = Environment.TickCount64;
         }
 
-        private void RestoreCursorIfLazyMode(System.Drawing.Point before, GameController? gameController)
+        private void RestoreCursorIfLazyMode(SystemDrawingPoint before, GameController? gameController)
         {
             if (_settings?.LazyMode?.Value == true && _settings.RestoreCursorInLazyMode?.Value == true)
-            {
                 try
                 {
                     int restoreDelayMs = _settings?.LazyModeRestoreCursorDelayMs?.Value ?? 10;
@@ -278,7 +275,7 @@ namespace ClickIt.Features.Click.Interaction
                 {
                     _errorHandler?.LogMessage(true, true, $"InteractionExecutor: Failed to restore cursor position: {ex.Message}", 10);
                 }
-            }
+
         }
     }
 }

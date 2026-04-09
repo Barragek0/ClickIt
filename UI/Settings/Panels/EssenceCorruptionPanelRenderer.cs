@@ -10,9 +10,8 @@ namespace ClickIt.UI.Settings.Panels
 
             SettingsUiRenderHelpers.DrawSearchBar("##EssenceSearch", "Clear##EssenceSearchClear", ref _settings.UiState.EssenceSearchFilter);
             if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##EssenceResetDefaults"))
-            {
                 SettingsDefaultsService.ResetEssenceCorruptionDefaults(_settings);
-            }
+
 
             ImGui.Spacing();
 

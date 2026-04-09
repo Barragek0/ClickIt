@@ -5,6 +5,10 @@ namespace ClickIt.Shared.Game
         internal static readonly IDynamicMemberReaderProfile CurrentAreaHash = new DynamicMemberReaderProfile(static source => source.CurrentAreaHash);
         internal static readonly Func<dynamic, object?> CurrentAreaHashAccessor = CurrentAreaHash.Read;
 
+        internal static readonly IDynamicMemberReaderProfile GameControllerIngameState = new DynamicMemberReaderProfile(static controller => controller.IngameState);
+        internal static readonly IDynamicMemberReaderProfile IngameStateIngameUi = new DynamicMemberReaderProfile(static state => state.IngameUi);
+        internal static readonly IDynamicMemberReaderProfile IngameUiUltimatumPanel = new DynamicMemberReaderProfile(static ui => ui.UltimatumPanel);
+
         internal static readonly IDynamicMemberReaderProfile IngameUiQuestTracker = new DynamicMemberReaderProfile(static ui => ui.QuestTracker);
         internal static readonly IDynamicMemberReaderProfile IngameUiChatPanel = new DynamicMemberReaderProfile(static ui => ui.ChatPanel);
         internal static readonly IDynamicMemberReaderProfile IngameUiMap = new DynamicMemberReaderProfile(static ui => ui.Map);
@@ -16,6 +20,9 @@ namespace ClickIt.Shared.Game
         internal static readonly Func<dynamic, object?> IngameUiMapAccessor = IngameUiMap.Read;
         internal static readonly Func<dynamic, object?> IngameUiGameUiAccessor = IngameUiGameUi.Read;
         internal static readonly Func<dynamic, object?> IngameUiRootAccessor = IngameUiRoot.Read;
+        internal static readonly Func<dynamic, object?> GameControllerIngameStateAccessor = GameControllerIngameState.Read;
+        internal static readonly Func<dynamic, object?> IngameStateIngameUiAccessor = IngameStateIngameUi.Read;
+        internal static readonly Func<dynamic, object?> IngameUiUltimatumPanelAccessor = IngameUiUltimatumPanel.Read;
 
         internal static readonly IDynamicMemberReaderProfile ServerData = new DynamicMemberReaderProfile(static source => source.ServerData);
         internal static readonly IDynamicMemberReaderProfile PlayerInventories = new DynamicMemberReaderProfile(static source => source.PlayerInventories);

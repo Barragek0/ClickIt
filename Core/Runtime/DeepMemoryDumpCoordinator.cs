@@ -4,10 +4,10 @@ namespace ClickIt.Core.Runtime
     {
         private const IntrospectionProfile ActiveMemoryDumpProfile = IntrospectionProfile.Default;
         private const int DeepMemoryDumpNodeBudgetPerYield = 8;
-        private static readonly bool EnableDeepMemoryDumpOnCopyAdditionalDebugInfo = false;
+        private static readonly bool EnableDeepMemoryDumpOnCopyAdditionalDebugInfo;
 
         private readonly DebugClipboardServiceDependencies _dependencies = dependencies;
-        private readonly object _stateLock = new();
+        private readonly Lock _stateLock = new();
         private bool _deepMemoryDumpInProgress;
         private string? _lastDeepMemoryDumpPath;
         private string? _lastDeepMemoryDumpError;
@@ -90,7 +90,7 @@ namespace ClickIt.Core.Runtime
         {
             SetMemoryDumpUiState(
                 inProgress: true,
-                progressPercent: Math.Clamp(progressPercent, 0, 100),
+                progressPercent: SystemMath.Clamp(progressPercent, 0, 100),
                 succeeded: false,
                 statusText: $"Writing {_activeMemoryDumpFileName}...",
                 outputPath: null);
@@ -125,7 +125,7 @@ namespace ClickIt.Core.Runtime
                 return;
 
             settings.MemoryDumpInProgress = inProgress;
-            settings.MemoryDumpProgressPercent = Math.Clamp(progressPercent, 0, 100);
+            settings.MemoryDumpProgressPercent = SystemMath.Clamp(progressPercent, 0, 100);
             settings.MemoryDumpLastRunSucceeded = succeeded;
             settings.MemoryDumpStatusText = statusText ?? string.Empty;
             settings.MemoryDumpOutputPath = outputPath ?? string.Empty;

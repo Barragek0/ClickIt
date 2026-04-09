@@ -5,7 +5,7 @@ namespace ClickIt.Features.Pathfinding.Runtime
         private static readonly IReadOnlyList<PathfindingService.GridPoint> EmptyGridPath = Array.Empty<PathfindingService.GridPoint>();
         private static readonly IReadOnlyList<Vector2> EmptyScreenPath = Array.Empty<Vector2>();
 
-        private readonly object _stateLock = new();
+        private readonly Lock _stateLock = new();
         private bool[][]? _walkableGrid;
         private PathfindingService.GridPoint _areaDimensions;
         private string _lastFailureReason = string.Empty;
@@ -73,27 +73,24 @@ namespace ClickIt.Features.Pathfinding.Runtime
                 _lastPathLength = _lastGridPath.Count;
                 _lastTargetPath = targetPath ?? string.Empty;
                 if (lastPathBuildAttemptTickMs.HasValue)
-                {
                     _lastPathBuildAttemptTickMs = lastPathBuildAttemptTickMs.Value;
-                }
+
             });
         }
 
         internal bool ClearPathIfStale(int staleTimeoutMs)
         {
-            int timeoutMs = Math.Max(250, staleTimeoutMs);
+            int timeoutMs = SystemMath.Max(250, staleTimeoutMs);
             return UpdateState(() =>
             {
                 if (_lastGridPath.Count == 0 && _lastScreenPath.Count == 0)
-                {
                     return false;
-                }
+
 
                 long elapsedMs = Environment.TickCount64 - _lastPathBuildAttemptTickMs;
                 if (elapsedMs < timeoutMs)
-                {
                     return false;
-                }
+
 
                 ClearPathDataUnsafe(clearFailureReason: true);
                 _lastOffscreenMovementDebug = OffscreenMovementDebugSnapshot.Empty;
@@ -185,9 +182,8 @@ namespace ClickIt.Features.Pathfinding.Runtime
             _lastGoalResolutionNote = string.Empty;
 
             if (clearFailureReason)
-            {
                 _lastFailureReason = string.Empty;
-            }
+
         }
 
         private T ReadState<T>(Func<T> action)

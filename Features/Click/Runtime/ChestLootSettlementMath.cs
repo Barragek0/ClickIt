@@ -23,9 +23,8 @@ namespace ClickIt.Features.Click.Runtime
                 long currentLabelAddress = label.Label?.Address ?? 0;
                 if ((itemAddress != 0 && currentItemAddress == itemAddress)
                     || (labelAddress != 0 && currentLabelAddress == labelAddress))
-                {
                     return label;
-                }
+
             }
 
             return null;
@@ -114,19 +113,16 @@ namespace ClickIt.Features.Click.Runtime
             in ChestLootSettlementTimingOptions options)
         {
             if (string.Equals(mechanicId, MechanicIds.BasicChests, StringComparison.OrdinalIgnoreCase))
-            {
                 return NormalizeChestLootSettlementTiming(options.Shared);
-            }
+
 
             if (string.Equals(mechanicId, HeistChestSettleMechanicId, StringComparison.OrdinalIgnoreCase))
-            {
                 return NormalizeChestLootSettlementTiming(options.Shared);
-            }
+
 
             if (string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
-            {
                 return NormalizeChestLootSettlementTiming(options.Shared);
-            }
+
 
             return new ChestLootSettlementTiming(
                 DefaultInitialDelayMs,
@@ -158,7 +154,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            long elapsed = Math.Max(0, now - lastNewGroundItemTimestampMs);
+            long elapsed = SystemMath.Max(0, now - lastNewGroundItemTimestampMs);
             if (elapsed >= quietWindowMs)
             {
                 remainingMs = 0;
@@ -191,8 +187,8 @@ namespace ClickIt.Features.Click.Runtime
 
         private static ChestLootSettlementTiming NormalizeChestLootSettlementTiming(in ChestLootSettlementTiming timing)
             => new(
-                Math.Max(0, timing.InitialDelayMs),
-                Math.Max(1, timing.PollIntervalMs),
-                Math.Max(0, timing.QuietWindowMs));
+                SystemMath.Max(0, timing.InitialDelayMs),
+                SystemMath.Max(1, timing.PollIntervalMs),
+                SystemMath.Max(0, timing.QuietWindowMs));
     }
 }

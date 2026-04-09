@@ -1,13 +1,8 @@
 namespace ClickIt.Core.Runtime
 {
-    public sealed class ClickRuntimeHost
+    public sealed class ClickRuntimeHost(Func<IClickAutomationService?> resolveClickService)
     {
-        private readonly Func<IClickAutomationService?> _resolveClickService;
-
-        public ClickRuntimeHost(Func<IClickAutomationService?> resolveClickService)
-        {
-            _resolveClickService = resolveClickService ?? throw new ArgumentNullException(nameof(resolveClickService));
-        }
+        private readonly Func<IClickAutomationService?> _resolveClickService = resolveClickService ?? throw new ArgumentNullException(nameof(resolveClickService));
 
         public IEnumerator ProcessRegularClick()
         {

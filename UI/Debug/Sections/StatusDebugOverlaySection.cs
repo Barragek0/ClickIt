@@ -1,8 +1,8 @@
 namespace ClickIt.UI.Debug.Sections
 {
-    internal sealed class StatusDebugOverlaySection(Debug.DebugOverlayRenderContext context)
+    internal sealed class StatusDebugOverlaySection(DebugOverlayRenderContext context)
     {
-        private readonly Debug.DebugOverlayRenderContext _context = context;
+        private readonly DebugOverlayRenderContext _context = context;
 
         public int RenderPluginStatusDebug(int xPos, int yPos, int lineHeight)
         {
@@ -98,7 +98,7 @@ namespace ClickIt.UI.Debug.Sections
             if (!ageMs.HasValue)
                 return Color.Gray;
 
-            long safeInterval = Math.Max(1, refreshIntervalMs);
+            long safeInterval = SystemMath.Max(1, refreshIntervalMs);
             if (ageMs.Value <= safeInterval)
                 return Color.LightGreen;
 

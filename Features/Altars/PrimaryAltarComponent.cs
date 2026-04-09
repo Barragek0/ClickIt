@@ -51,9 +51,8 @@ namespace ClickIt.Features.Altars
             {
                 long currentTime = _cacheTimer.ElapsedMilliseconds;
                 if (_isValidCache.HasValue && (currentTime - _lastValidationTime) < CACHE_DURATION_MS)
-                {
                     return _isValidCache.Value;
-                }
+
 
                 bool isValid = TopMods?.Element?.IsValid == true && BottomMods?.Element?.IsValid == true &&
                               !TopMods.HasUnmatchedMods && !BottomMods.HasUnmatchedMods;
@@ -70,11 +69,10 @@ namespace ClickIt.Features.Altars
             {
                 long currentTime = _cacheTimer.ElapsedMilliseconds;
                 if (_cachedWeights.HasValue && (currentTime - _lastWeightCalculationTime) < WEIGHT_CACHE_DURATION_MS)
-                {
                     return _cachedWeights.Value;
-                }
 
-                var weights = weightCalculator(this);
+
+                AltarWeights weights = weightCalculator(this);
                 _cachedWeights = weights;
                 _lastWeightCalculationTime = currentTime;
                 return weights;
@@ -84,14 +82,12 @@ namespace ClickIt.Features.Altars
         private static RectangleF GetModsRect(SecondaryAltarComponent? mods, string name)
         {
             if (mods?.Element == null)
-            {
                 throw new InvalidOperationException($"Cannot get {name} mods rect - element is null");
-            }
+
 
             if (!mods.Element.IsValid)
-            {
                 throw new InvalidOperationException($"Cannot get {name} mods rect - element is not valid");
-            }
+
 
             return mods.Element.GetClientRect();
         }

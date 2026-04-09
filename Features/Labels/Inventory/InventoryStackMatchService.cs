@@ -44,9 +44,8 @@ namespace ClickIt.Features.Labels.Inventory
                     groundIncubatorLevel,
                     hasInventoryIncubatorLevel,
                     inventoryIncubatorLevel))
-                {
                     continue;
-                }
+
 
                 if (TryResolveServerStackState(inventoryItem, out bool fullStack, out int stackSize)
                     && InventoryStackingEngine.IsPartialServerStack(fullStack, stackSize))
@@ -64,7 +63,7 @@ namespace ClickIt.Features.Labels.Inventory
 
         private static bool IsIncubatorPath(string? metadataPath)
             => !string.IsNullOrWhiteSpace(metadataPath)
-               && metadataPath.IndexOf("Incubation", StringComparison.OrdinalIgnoreCase) >= 0;
+               && metadataPath.Contains("Incubation", StringComparison.OrdinalIgnoreCase);
 
         private static bool TryResolveCurrencyItemLevel(Entity? itemEntity, out int currencyItemLevel)
         {

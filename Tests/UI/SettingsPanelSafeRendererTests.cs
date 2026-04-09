@@ -1,4 +1,4 @@
-namespace ClickIt.Tests.UserInterface
+namespace ClickIt.Tests.UI
 {
     [TestClass]
     public class SettingsPanelSafeRendererTests

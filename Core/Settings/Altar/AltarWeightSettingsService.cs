@@ -23,9 +23,8 @@ namespace ClickIt.Core.Settings.Altar
                     || (type == ClickItSettings.AltarTypeBoss && id == "Final Boss drops # additional Divine Orbs");
 
                 if (settings.ModAlerts.TryAdd(compositeKey, false) && isDivineOrbAlert)
-                {
                     settings.ModAlerts[compositeKey] = true;
-                }
+
             }
         }
 

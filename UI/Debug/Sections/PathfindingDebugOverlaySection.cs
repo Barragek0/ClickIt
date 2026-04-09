@@ -1,8 +1,8 @@
 namespace ClickIt.UI.Debug.Sections
 {
-    internal sealed class PathfindingDebugOverlaySection(Debug.DebugOverlayRenderContext context)
+    internal sealed class PathfindingDebugOverlaySection(DebugOverlayRenderContext context)
     {
-        private readonly Debug.DebugOverlayRenderContext _context = context;
+        private readonly DebugOverlayRenderContext _context = context;
 
         public int RenderPathfindingDebug(int xPos, int yPos, int lineHeight)
         {
@@ -24,7 +24,7 @@ namespace ClickIt.UI.Debug.Sections
                 yPos = _context.RenderWrappedText(freezeSummary, new Vector2(xPos, yPos), Color.Orange, 14, lineHeight, 46);
             }
 
-            var snap = telemetry.Pathfinding.Pathfinding;
+            PathfindingDebugSnapshot snap = telemetry.Pathfinding.Pathfinding;
             Color terrainColor = snap.TerrainLoaded ? Color.LightGreen : Color.Red;
             _context.DeferredTextQueue.Enqueue($"Terrain Loaded: {snap.TerrainLoaded}", new Vector2(xPos, yPos), terrainColor, 14);
             yPos += lineHeight;
@@ -52,25 +52,23 @@ namespace ClickIt.UI.Debug.Sections
             yPos += lineHeight;
 
             if (!string.IsNullOrWhiteSpace(snap.LastGoalResolutionNote))
-            {
                 yPos = _context.RenderWrappedText(
-                    $"Goal Note: {snap.LastGoalResolutionNote}",
-                    new Vector2(xPos, yPos),
-                    Color.Yellow,
-                    14,
-                    lineHeight,
-                    46);
-            }
+        $"Goal Note: {snap.LastGoalResolutionNote}",
+        new Vector2(xPos, yPos),
+        Color.Yellow,
+        14,
+        lineHeight,
+        46);
+
 
             string targetPath = string.IsNullOrWhiteSpace(snap.LastTargetPath) ? "<none>" : snap.LastTargetPath;
             yPos = _context.RenderWrappedText($"Target Path: {targetPath}", new Vector2(xPos, yPos), Color.LightBlue, 14, lineHeight, 46);
 
             if (!string.IsNullOrWhiteSpace(snap.LastFailureReason))
-            {
                 yPos = _context.RenderWrappedText($"Failure: {snap.LastFailureReason}", new Vector2(xPos, yPos), Color.OrangeRed, 14, lineHeight, 46);
-            }
 
-            var movement = telemetry.Pathfinding.OffscreenMovement;
+
+            OffscreenMovementDebugSnapshot movement = telemetry.Pathfinding.OffscreenMovement;
             if (!movement.HasData)
             {
                 _context.DeferredTextQueue.Enqueue("Offscreen Movement: <no data>", new Vector2(xPos, yPos), Color.Gray, 14);
@@ -89,15 +87,14 @@ namespace ClickIt.UI.Debug.Sections
             yPos += lineHeight;
 
             if (!string.IsNullOrWhiteSpace(movement.MovementSkillDebug))
-            {
                 yPos = _context.RenderWrappedText(
-                    $"Movement Skill Debug: {movement.MovementSkillDebug}",
-                    new Vector2(xPos, yPos),
-                    Color.Yellow,
-                    14,
-                    lineHeight,
-                    46);
-            }
+        $"Movement Skill Debug: {movement.MovementSkillDebug}",
+        new Vector2(xPos, yPos),
+        Color.Yellow,
+        14,
+        lineHeight,
+        46);
+
 
             yPos = _context.RenderWrappedText(
                 $"Offscreen Target: {DebugOverlayRenderContext.TrimPath(movement.TargetPath)}",

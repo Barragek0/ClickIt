@@ -4,6 +4,8 @@ namespace ClickIt.Tests.Core.Lifecycle
     [DoNotParallelize]
     public class PluginLifecycleCoordinatorTests
     {
+        private static readonly BindingFlags PrivateStaticFlags = BindingFlags.Static | BindingFlags.NonPublic;
+
         [TestInitialize]
         public void TestInitialize()
         {
@@ -122,6 +124,48 @@ namespace ClickIt.Tests.Core.Lifecycle
         }
 
         [TestMethod]
+        public void Shutdown_StopsTrackedCoroutines_ClearsRuntimeReferences_AndOnlyStopsNamedClickItCoroutines()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            var altarCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.AltarLogic", isDone: false);
+            var clickLabelCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.ClickLogic", isDone: false);
+            var manualUiHoverCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: false);
+            var delveFlareCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.DelveFlareLogic", isDone: false);
+            var deepMemoryDumpCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.DeepMemoryDump", isDone: false);
+            var namedClickItCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.NamedCleanup", isDone: false);
+            var namedForeignCoroutine = CoroutineTestHarness.CreateCoroutine("Other.Coroutine", isDone: false);
+
+            plugin.State.Runtime.AltarCoroutine = altarCoroutine;
+            plugin.State.Runtime.ClickLabelCoroutine = clickLabelCoroutine;
+            plugin.State.Runtime.ManualUiHoverCoroutine = manualUiHoverCoroutine;
+            plugin.State.Runtime.DelveFlareCoroutine = delveFlareCoroutine;
+            plugin.State.Runtime.DeepMemoryDumpCoroutine = deepMemoryDumpCoroutine;
+
+            using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
+            [
+                namedClickItCoroutine,
+                namedForeignCoroutine,
+            ]);
+
+            PluginLifecycleCoordinator.Shutdown(plugin, settings);
+
+            altarCoroutine.IsDone.Should().BeTrue();
+            clickLabelCoroutine.IsDone.Should().BeTrue();
+            manualUiHoverCoroutine.IsDone.Should().BeTrue();
+            delveFlareCoroutine.IsDone.Should().BeTrue();
+            deepMemoryDumpCoroutine.IsDone.Should().BeTrue();
+            namedClickItCoroutine.IsDone.Should().BeTrue();
+            namedForeignCoroutine.IsDone.Should().BeFalse();
+
+            plugin.State.Runtime.AltarCoroutine.Should().BeNull();
+            plugin.State.Runtime.ClickLabelCoroutine.Should().BeNull();
+            plugin.State.Runtime.ManualUiHoverCoroutine.Should().BeNull();
+            plugin.State.Runtime.DelveFlareCoroutine.Should().BeNull();
+            plugin.State.Runtime.DeepMemoryDumpCoroutine.Should().BeNull();
+        }
+
+        [TestMethod]
         public void Initialise_WhenGameControllerMissing_ThrowsAfterPrimingLifecycleState()
         {
             var plugin = new ClickIt();
@@ -132,6 +176,62 @@ namespace ClickIt.Tests.Core.Lifecycle
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("*GameController is null during plugin initialization.*");
             plugin.State.Runtime.IsShuttingDown.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void WaitForCoroutineShutdown_ReturnsImmediately_WhenCoroutineIsNull()
+        {
+            Action act = () => InvokePrivateLifecycleMethod("WaitForCoroutineShutdown", null, 0);
+
+            act.Should().NotThrow();
+        }
+
+        [TestMethod]
+        public void WaitForCoroutineShutdown_ReturnsImmediately_WhenCoroutineAlreadyDone()
+        {
+            var coroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Done", isDone: true);
+
+            Action act = () => InvokePrivateLifecycleMethod("WaitForCoroutineShutdown", coroutine, 0);
+
+            act.Should().NotThrow();
+            coroutine.IsDone.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void WaitForCoroutineShutdown_StopsWaiting_WhenTimeoutExpires()
+        {
+            var coroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Active", isDone: false);
+
+            Action act = () => InvokePrivateLifecycleMethod("WaitForCoroutineShutdown", coroutine, 0);
+
+            act.Should().NotThrow();
+            coroutine.IsDone.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void StopNamedClickItCoroutines_DoesNotThrow_WhenParallelRunnerIsUnavailable()
+        {
+            using var scope = CoroutineTestHarness.ReplaceParallelRunner(null);
+
+            Action act = () => InvokePrivateLifecycleMethod("StopNamedClickItCoroutines");
+
+            act.Should().NotThrow();
+        }
+
+        [TestMethod]
+        public void WaitForNamedClickItCoroutinesShutdown_DoesNotThrow_WhenParallelRunnerIsUnavailable()
+        {
+            using var scope = CoroutineTestHarness.ReplaceParallelRunner(null);
+
+            Action act = () => InvokePrivateLifecycleMethod("WaitForNamedClickItCoroutinesShutdown", 0);
+
+            act.Should().NotThrow();
+        }
+
+        private static void InvokePrivateLifecycleMethod(string methodName, params object?[] arguments)
+        {
+            MethodInfo method = typeof(PluginLifecycleCoordinator).GetMethod(methodName, PrivateStaticFlags)!;
+            method.Invoke(null, arguments);
         }
     }
 }

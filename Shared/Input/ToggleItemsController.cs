@@ -9,9 +9,8 @@ namespace ClickIt.Shared.Input
         internal bool TriggerToggleItems()
         {
             if (!_settings.ToggleItems.Value)
-            {
                 return false;
-            }
+
 
             int intervalMs = SystemMath.Max(100, _settings.ToggleItemsIntervalMs.Value);
             long now = Environment.TickCount64;
@@ -20,9 +19,8 @@ namespace ClickIt.Shared.Input
             {
                 long elapsed = now - _lastToggleItemsTimestampMs;
                 if (elapsed >= 0 && elapsed < intervalMs)
-                {
                     return false;
-                }
+
             }
 
             _keyPress(_settings.ToggleItemsHotkeyBinding, 20);
@@ -38,9 +36,8 @@ namespace ClickIt.Shared.Input
         {
             int blockMs = GetToggleItemsPostClickBlockMs();
             if (blockMs <= 0 || _lastToggleItemsTimestampMs <= 0)
-            {
                 return false;
-            }
+
 
             long elapsed = Environment.TickCount64 - _lastToggleItemsTimestampMs;
             return elapsed >= 0 && elapsed < blockMs;

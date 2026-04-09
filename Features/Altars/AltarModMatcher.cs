@@ -19,7 +19,7 @@ namespace ClickIt.Features.Altars
             if (modTarget.Length == 0)
                 return false;
 
-            if (!ModLookup.TryGetValue(BuildLookupKey(cleanedMod, modTarget), out var match))
+            if (!ModLookup.TryGetValue(BuildLookupKey(cleanedMod, modTarget), out (bool IsUpside, string MatchedId) match))
                 return false;
 
             isUpside = match.IsUpside;
@@ -29,7 +29,7 @@ namespace ClickIt.Features.Altars
 
         private static Dictionary<string, (bool IsUpside, string MatchedId)> BuildModLookup()
         {
-            var lookup = new Dictionary<string, (bool IsUpside, string MatchedId)>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, (bool IsUpside, string MatchedId)> lookup = new(StringComparer.OrdinalIgnoreCase);
             AddMods(lookup, AltarModsConstants.UpsideMods, isUpside: true);
             AddMods(lookup, AltarModsConstants.DownsideMods, isUpside: false);
             return lookup;
@@ -37,7 +37,7 @@ namespace ClickIt.Features.Altars
 
         private static void AddMods(Dictionary<string, (bool IsUpside, string MatchedId)> lookup, IReadOnlyList<(string Id, string Name, string Type, int DefaultValue)> mods, bool isUpside)
         {
-            foreach (var (id, _, type, _) in mods)
+            foreach ((string? id, string _, string? type, int _) in mods)
             {
                 string cleanedId = NormalizeLetters(id);
                 if (cleanedId.Length == 0 || string.IsNullOrWhiteSpace(type))
@@ -45,9 +45,8 @@ namespace ClickIt.Features.Altars
 
                 string key = BuildLookupKey(cleanedId, type);
                 if (!lookup.ContainsKey(key))
-                {
                     lookup[key] = (isUpside, $"{type}|{id}");
-                }
+
             }
         }
 
@@ -67,9 +66,8 @@ namespace ClickIt.Features.Altars
             {
                 char c = value[i];
                 if (char.IsLetter(c))
-                {
                     buffer[length++] = c;
-                }
+
             }
 
             if (length == 0)

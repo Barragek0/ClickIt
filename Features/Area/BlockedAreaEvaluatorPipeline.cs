@@ -7,10 +7,9 @@ namespace ClickIt.Features.Area
         internal bool IsBlocked(AreaBlockedSnapshot snapshot, Vector2 point)
         {
             for (int i = 0; i < _evaluators.Count; i++)
-            {
                 if (_evaluators[i](snapshot, point))
                     return true;
-            }
+
 
             return false;
         }

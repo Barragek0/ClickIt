@@ -55,12 +55,12 @@ namespace ClickIt.UI.Settings
             if (!isOpen)
                 return false;
 
-            float availableWidth = Math.Max(220f, ImGui.GetContentRegionAvail().X);
+            float availableWidth = SystemMath.Max(220f, ImGui.GetContentRegionAvail().X);
 
             ImGui.Spacing();
             ImGui.Spacing();
             ImGui.TextWrapped(descriptor.ScaleHeading);
-            DrawWeightScale(descriptor.BestAtHigh, Math.Min(400f, availableWidth));
+            DrawWeightScale(descriptor.BestAtHigh, SystemMath.Min(400f, availableWidth));
             ImGui.Spacing();
             ImGui.Spacing();
             DrawSearchBar(descriptor.SearchId, descriptor.ClearId, ref searchFilter);
@@ -139,9 +139,9 @@ namespace ClickIt.UI.Settings
 
         private static void SetupAltarModTableColumns(bool showAlertColumn)
         {
-            float availableWidth = Math.Max(320f, ImGui.GetContentRegionAvail().X);
+            float availableWidth = SystemMath.Max(320f, ImGui.GetContentRegionAvail().X);
             float reservedWidth = showAlertColumn ? 285f : 225f;
-            float modColumnWeight = Math.Max(1f, availableWidth - reservedWidth);
+            float modColumnWeight = SystemMath.Max(1f, availableWidth - reservedWidth);
 
             if (showAlertColumn)
             {

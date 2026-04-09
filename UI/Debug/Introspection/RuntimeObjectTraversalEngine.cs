@@ -1,3 +1,8 @@
+using System.Collections;
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+
 namespace ClickIt.UI.Debug.Introspection
 {
     internal sealed class RuntimeObjectTraversalEngine

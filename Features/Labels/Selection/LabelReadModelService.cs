@@ -28,7 +28,7 @@ namespace ClickIt.Features.Labels.Selection
                 return [];
             }
 
-            List<LabelOnGround> validLabels = new(Math.Min(groundLabels.Count, 1000));
+            List<LabelOnGround> validLabels = new(SystemMath.Min(groundLabels.Count, 1000));
             var win = _gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(win.X, win.Y);
 

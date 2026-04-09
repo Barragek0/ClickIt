@@ -20,7 +20,7 @@ namespace ClickIt.Features.Click.Runtime
             debugReason = string.Empty;
 
             int remainingNodes = _dependencies.GetRemainingOffscreenPathNodeCount();
-            int minimumNodes = Math.Max(1, _dependencies.Settings.OffscreenMovementSkillMinPathSubsectionLength?.Value ?? 8);
+            int minimumNodes = SystemMath.Max(1, _dependencies.Settings.OffscreenMovementSkillMinPathSubsectionLength?.Value ?? 8);
             long now = Environment.TickCount64;
             bool movementSkillsEnabled = _dependencies.Settings.UseMovementSkillsForOffscreenPathfinding?.Value == true;
             long lastSkillUseTimestampMs = _dependencies.RuntimeState.LastMovementSkillUseTimestampMs;
@@ -154,7 +154,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!MovementSkillMath.IsShieldChargeMovementSkill(movementSkillInternalName))
                 return resolved;
 
-            return Math.Max(0, _dependencies.Settings.OffscreenShieldChargePostCastClickDelayMs?.Value ?? MovementSkillMath.ShieldChargePostCastClickBlockMs);
+            return SystemMath.Max(0, _dependencies.Settings.OffscreenShieldChargePostCastClickDelayMs?.Value ?? MovementSkillMath.ShieldChargePostCastClickBlockMs);
         }
 
         private bool TryResolveMovementSkillCastPosition(Vector2 targetScreen, string targetPath, out Vector2 castPoint)

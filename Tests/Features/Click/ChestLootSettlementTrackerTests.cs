@@ -24,6 +24,83 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void StartPostChestLootSettlementWatch_DoesNothing_WhenMechanicIsNotConfiguredToWait()
+        {
+            var settings = new ClickItSettings();
+            settings.PauseAfterOpeningBasicChests.Value = false;
+
+            var state = new ChestLootSettlementState();
+            var tracker = CreateTracker(settings, state);
+
+            tracker.StartPostChestLootSettlementWatch(MechanicIds.BasicChests);
+
+            state.IsWatcherActive.Should().BeFalse();
+            state.InitialDelayUntilTimestampMs.Should().Be(0);
+            state.NextPollTimestampMs.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void MarkPendingChestOpenConfirmation_SetsPendingState_ForConfiguredBasicChestEvenWithoutLabel()
+        {
+            var settings = new ClickItSettings();
+            settings.PauseAfterOpeningBasicChests.Value = true;
+
+            var state = new ChestLootSettlementState();
+            var tracker = CreateTracker(settings, state);
+
+            tracker.MarkPendingChestOpenConfirmation(MechanicIds.BasicChests, chestLabel: null);
+
+            state.PendingOpenConfirmationActive.Should().BeTrue();
+            state.PendingOpenMechanicId.Should().Be(MechanicIds.BasicChests);
+            state.PendingOpenItemAddress.Should().Be(0);
+            state.PendingOpenLabelAddress.Should().Be(0);
+            state.SourceGridValid.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void ClearPendingChestOpenConfirmation_ResetsPendingState()
+        {
+            var settings = new ClickItSettings();
+            var state = new ChestLootSettlementState
+            {
+                PendingOpenConfirmationActive = true,
+                PendingOpenMechanicId = MechanicIds.BasicChests,
+                PendingOpenItemAddress = 11,
+                PendingOpenLabelAddress = 22
+            };
+            var tracker = CreateTracker(settings, state);
+
+            tracker.ClearPendingChestOpenConfirmation();
+
+            state.PendingOpenConfirmationActive.Should().BeFalse();
+            state.PendingOpenMechanicId.Should().BeNull();
+            state.PendingOpenItemAddress.Should().Be(0);
+            state.PendingOpenLabelAddress.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void IsPostChestLootSettlementBlocking_ReturnsTrue_DuringInitialDelay()
+        {
+            var settings = new ClickItSettings();
+            var state = new ChestLootSettlementState
+            {
+                IsWatcherActive = true,
+                InitialDelayUntilTimestampMs = 300,
+                NextPollTimestampMs = 300,
+                LastNewItemTimestampMs = 300,
+                PollIntervalMs = 50,
+                QuietWindowMs = 100
+            };
+            var tracker = CreateTracker(settings, state);
+
+            bool blocking = tracker.IsPostChestLootSettlementBlocking(now: 200, out string reason);
+
+            blocking.Should().BeTrue();
+            reason.Should().Be("waiting 100ms before monitoring chest drops");
+            state.IsWatcherActive.Should().BeTrue();
+        }
+
+        [TestMethod]
         public void IsPostChestLootSettlementBlocking_ClearsWatcher_WhenQuietWindowHasElapsed()
         {
             var settings = new ClickItSettings();
@@ -110,6 +187,30 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void ShouldAllowMechanicInteractionDuringPostChestLootSettlement_ReturnsFalse_WhenCandidateGridUnavailable()
+        {
+            var settings = new ClickItSettings();
+            settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value = true;
+
+            var state = new ChestLootSettlementState
+            {
+                IsWatcherActive = true,
+                SourceGridValid = true,
+                SourceGrid = new Vector2(5f, 5f)
+            };
+            var tracker = CreateTracker(settings, state);
+
+            bool allowed = tracker.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(
+                MechanicIds.LeagueChests,
+                hasCandidateGrid: false,
+                entityGridPos: default,
+                out string decision);
+
+            allowed.Should().BeFalse();
+            decision.Should().Be("candidate-grid-unavailable");
+        }
+
+        [TestMethod]
         public void ShouldAllowMechanicInteractionDuringPostChestLootSettlement_ReturnsFalse_WhenWatcherInactive()
         {
             var settings = new ClickItSettings();
@@ -180,10 +281,11 @@ namespace ClickIt.Tests.Features.Click
             ChestLootSettlementState state,
             Func<IReadOnlySet<long>>? snapshotProvider = null)
         {
+            _ = snapshotProvider;
             return new ChestLootSettlementTracker(new ChestLootSettlementTrackerDependencies(
                 Settings: settings,
                 State: state,
-                GroundLabelEntityAddresses: new GroundLabelEntityAddressProvider(() => null),
+                GroundLabelEntityAddresses: new GroundLabelEntityAddressProvider(static () => null),
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(),
                 LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService()));
         }

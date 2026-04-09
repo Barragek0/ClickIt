@@ -27,26 +27,103 @@ namespace ClickIt.Tests.Features.Click
             engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
         }
 
+        [TestMethod]
+        public void ResolveNextLabelCandidate_PublishesFindLabelNull_WhenPortReturnsNullImmediately()
+        {
+            ClickDebugSnapshot? latestSnapshot = null;
+            IReadOnlyList<LabelOnGround> labels =
+            [
+                (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround))
+            ];
+            var engine = CreateEngine(
+                labelInteractionPort: new FakeLabelInteractionPort(
+                    getNextLabelToClick: static (_, _, _) => null),
+                clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
+                    shouldCaptureClickDebug: static () => true,
+                    setLatestClickDebug: snapshot => latestSnapshot = snapshot));
+
+            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels);
+
+            Assert.IsNull(result);
+
+            latestSnapshot.Should().NotBeNull();
+            latestSnapshot!.Stage.Should().Be("FindLabelNull");
+            latestSnapshot.Notes.Should().Contain("range:0-");
+        }
+
+        [TestMethod]
+        public void ResolveNextLabelCandidate_PublishesFindLabelExhausted_WhenEveryCandidateIsSuppressed()
+        {
+            ClickDebugSnapshot? latestSnapshot = null;
+            LabelOnGround first = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            LabelOnGround second = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            IReadOnlyList<LabelOnGround> labels = [first, second];
+            var engine = CreateEngine(
+                labelInteractionPort: new FakeLabelInteractionPort(
+                    getNextLabelToClick: (allLabels, startIndex, _) => allLabels?[startIndex]),
+                shouldSuppressInactiveUltimatumLabel: static _ => true,
+                clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
+                    shouldCaptureClickDebug: static () => true,
+                    setLatestClickDebug: snapshot => latestSnapshot = snapshot));
+
+            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels);
+
+            Assert.IsNull(result);
+
+            latestSnapshot.Should().NotBeNull();
+            latestSnapshot!.Stage.Should().Be("FindLabelExhausted");
+            latestSnapshot.Notes.Should().Contain("examined:2");
+        }
+
+        [TestMethod]
+        public void ResolveNextLabelCandidate_ReturnsNull_WhenPortReturnsLabelOutsideRequestedRange()
+        {
+            ClickDebugSnapshot? latestSnapshot = null;
+            LabelOnGround inRange = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            LabelOnGround foreign = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            IReadOnlyList<LabelOnGround> labels = [inRange];
+            var engine = CreateEngine(
+                labelInteractionPort: new FakeLabelInteractionPort(
+                    getNextLabelToClick: (_, _, _) => foreign),
+                shouldSuppressLeverClick: static _ => true,
+                clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
+                    shouldCaptureClickDebug: static () => true,
+                    setLatestClickDebug: snapshot => latestSnapshot = snapshot));
+
+            LabelOnGround? result = engine.ResolveNextLabelCandidate(labels);
+
+            Assert.IsNull(result);
+
+            latestSnapshot.Should().NotBeNull();
+            latestSnapshot!.Stage.Should().Be("FindLabelIndexMiss");
+            latestSnapshot.Notes.Should().Contain("misses:1");
+        }
+
         private static LabelSelectionScanEngine CreateEngine(
             ILabelInteractionPort? labelInteractionPort = null,
-            Func<LabelOnGround, bool>? shouldSuppressLeverClick = null)
+            Func<LabelOnGround, bool>? shouldSuppressLeverClick = null,
+            Func<LabelOnGround, bool>? shouldSuppressInactiveUltimatumLabel = null,
+            ClickDebugPublicationService? clickDebugPublisher = null)
         {
             GameController gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
+            ILabelInteractionPort safeLabelInteractionPort = labelInteractionPort ?? new FakeLabelInteractionPort();
             var settings = new ClickItSettings();
             settings.AvoidOverlappingLabelClickPoints.Value = false;
             var labelClickPointResolver = new LabelClickPointResolver(settings);
             var mechanicPriorityContextProvider = new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService());
-            var labelInteraction = ClickTestServiceFactory.CreateLabelInteractionService(gameController: gameController);
+            var labelInteraction = ClickTestServiceFactory.CreateLabelInteractionService(
+                gameController: gameController,
+                labelInteractionPort: safeLabelInteractionPort);
 
             return new LabelSelectionScanEngine(new LabelSelectionScanEngineDependencies(
                 gameController,
-                labelInteractionPort ?? new FakeLabelInteractionPort(),
+                safeLabelInteractionPort,
                 labelClickPointResolver,
                 ShouldSuppressLeverClick: shouldSuppressLeverClick ?? (_ => false),
-                ShouldSuppressInactiveUltimatumLabel: static _ => false,
+                ShouldSuppressInactiveUltimatumLabel: shouldSuppressInactiveUltimatumLabel ?? (_ => false),
                 labelInteraction,
                 mechanicPriorityContextProvider,
-                ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(),
+                ClickDebugPublisher: clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create(),
                 DebugLog: static _ => { }));
         }
 

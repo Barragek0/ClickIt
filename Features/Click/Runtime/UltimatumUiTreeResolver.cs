@@ -8,7 +8,22 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool TryExtractElement(object? source, out Element? element)
         {
             element = source as Element;
-            return element != null;
+            if (element != null)
+                return true;
+
+            if (TryGetDynamicValue(source, static s => s.Element, out object? wrappedElement) && wrappedElement is Element directElement)
+            {
+                element = directElement;
+                return true;
+            }
+
+            if (TryGetDynamicValue(source, static s => s.OptionElement, out object? optionElement) && optionElement is Element wrappedOptionElement)
+            {
+                element = wrappedOptionElement;
+                return true;
+            }
+
+            return false;
         }
 
         internal static List<(Element OptionElement, string ModifierName)> GetUltimatumOptions(LabelOnGround label, List<string>? diagnostics = null)
@@ -28,16 +43,16 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryGetUltimatumRoot(label, diagnostics, out Element? root) || root == null)
                 return null;
 
-            if (!TryGetPrimaryTreeBranch(root, diagnostics, out Element? branch) || branch == null)
+            if (!TryGetPrimaryTreeBranch(root, diagnostics, out object? branch) || branch == null)
                 return null;
 
-            if (!TryGetTreeNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(4)", 4, out Element? beginNode) || beginNode == null)
+            if (!TryGetElementChildNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(4)", 4, out Element? beginNode) || beginNode == null)
                 return null;
 
-            if (!TryGetTreeNode(beginNode, diagnostics, "Label->Child(0)->Child(0)->Child(4)->Child(0)", 0, out Element? beginButton) || beginButton == null)
+            if (!TryGetElementChildNode(beginNode, diagnostics, "Label->Child(0)->Child(0)->Child(4)->Child(0)", 0, out Element? beginButton) || beginButton == null)
                 return null;
 
-            diagnostics?.Add($"Tree ok: beginButton=0x{beginButton.Address:X}, visible={beginButton.IsVisible}, valid={beginButton.IsValid}");
+            diagnostics?.Add($"Tree ok: beginButton={DescribeElement(beginButton)}");
             return beginButton;
         }
 
@@ -69,18 +84,24 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         internal static string GetUltimatumModifierName(Element option)
+            => ResolveModifierNameFromNode(option, option);
+
+        private static string ResolveModifierNameFromNode(object? optionSource, Element? optionElement)
         {
-            string text = GetNormalizedElementText(option, 1024);
+            string text = GetNormalizedNodeText(optionSource, 1024);
             if (!string.IsNullOrWhiteSpace(text))
                 return text;
 
-            if (TryGetModifierNameFromChildren(option, out text))
+            if (TryGetModifierNameFromChildren(optionSource, out text))
                 return text;
 
-            Element? tooltipName = option.Tooltip?.GetChildAtIndex(1)?.GetChildAtIndex(3);
-            text = GetNormalizedElementText(tooltipName, 512);
+            object? tooltipName = ResolveTooltipNameNode(optionSource);
+            text = GetNormalizedNodeText(tooltipName, 512);
             if (string.IsNullOrWhiteSpace(text))
-                text = GetNormalizedElementText(option, 512);
+                text = GetNormalizedNodeText(optionSource, 512);
+
+            if (string.IsNullOrWhiteSpace(text) && optionElement != null && !ReferenceEquals(optionSource, optionElement))
+                text = GetNormalizedNodeText(optionElement, 512);
 
             return text;
         }
@@ -99,19 +120,19 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         private static bool TryGetUltimatumOptionsFromChoicePanelObject(
-            Element root,
+            object root,
             List<string>? diagnostics,
             out List<(Element OptionElement, string ModifierName)> results)
         {
             results = new List<(Element OptionElement, string ModifierName)>(3);
 
-            if (!TryGetVisibleChoicePanel(root, diagnostics, out UltimatumChoicePanel? choicePanel, out Element? panelElement)
+            if (!TryGetVisibleChoicePanel(root, diagnostics, out object? choicePanel, out object? panelElement)
                 || choicePanel == null
                 || panelElement == null)
                 return false;
 
-            var choiceElements = choicePanel.ChoiceElements;
-            if (choiceElements == null)
+            if (!TryGetDynamicValue(choicePanel, static s => s.ChoiceElements, out object? choiceElements)
+                || choiceElements == null)
             {
                 diagnostics?.Add("ChoicePanel fail: ChoiceElements missing.");
                 return false;
@@ -135,65 +156,70 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         private static List<(Element OptionElement, string ModifierName)> CollectTreeOptions(
-            Element root,
+            object root,
             List<string>? diagnostics,
             List<(Element OptionElement, string ModifierName)> results)
         {
-            if (!TryGetTreeOptionContainer(root, diagnostics, out Element? container) || container == null)
+            if (!TryGetTreeOptionContainer(root, diagnostics, out object? container) || container == null)
                 return results;
 
-            diagnostics?.Add($"Tree ok: container=0x{container.Address:X}, visible={container.IsVisible}, valid={container.IsValid}");
+            diagnostics?.Add($"Tree ok: container={DescribeNode(container)}");
 
             for (int i = 0; i < 3; i++)
             {
-                Element? option = container.GetChildAtIndex(i);
-                if (option == null)
+                if (!TryGetTreeNode(container, diagnostics, $"container->Child({i})", i, out object? optionNode) || optionNode == null)
+                    continue;
+
+                if (!TryExtractElement(optionNode, out Element? option) || option == null)
                 {
-                    diagnostics?.Add($"Option[{i}] missing at container->Child({i}).");
+                    diagnostics?.Add($"Tree fail: container->Child({i}) is not an Element.");
                     continue;
                 }
 
-                string modifierName = GetUltimatumModifierName(option);
+                string modifierName = ResolveModifierNameFromNode(optionNode, option);
                 if (string.IsNullOrWhiteSpace(modifierName))
                 {
                     modifierName = $"Unknown Option {i + 1}";
-                    diagnostics?.Add($"Option[{i}] text unavailable, using fallback name '{modifierName}'. option=0x{option.Address:X}");
+                    diagnostics?.Add($"Option[{i}] text unavailable, using fallback name '{modifierName}'. option={DescribeElement(option)}");
                 }
 
-                diagnostics?.Add($"Option[{i}] modifier='{modifierName}', option=0x{option.Address:X}, visible={option.IsVisible}, valid={option.IsValid}");
+                diagnostics?.Add($"Option[{i}] modifier='{modifierName}', option={DescribeElement(option)}");
                 results.Add((option, modifierName));
             }
 
             return results;
         }
 
-        private static bool TryGetTreeOptionContainer(Element root, List<string>? diagnostics, out Element? container)
+        private static bool TryGetTreeOptionContainer(object root, List<string>? diagnostics, out object? container)
         {
             container = null;
 
-            if (!TryGetPrimaryTreeBranch(root, diagnostics, out Element? branch) || branch == null)
+            if (!TryGetPrimaryTreeBranch(root, diagnostics, out object? branch) || branch == null)
                 return false;
 
-            if (!TryGetTreeNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(2)", 2, out Element? child2) || child2 == null)
+            if (!TryGetTreeNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(2)", 2, out object? child2) || child2 == null)
                 return false;
 
             return TryGetTreeNode(child2, diagnostics, "Label->Child(0)->Child(0)->Child(2)->Child(0)", 0, out container);
         }
 
-        private static bool TryGetPrimaryTreeBranch(Element root, List<string>? diagnostics, out Element? branch)
+        private static bool TryGetPrimaryTreeBranch(object root, List<string>? diagnostics, out object? branch)
         {
             branch = null;
 
-            if (!TryGetTreeNode(root, diagnostics, "Label->Child(0)", 0, out Element? child0) || child0 == null)
+            if (!TryGetTreeNode(root, diagnostics, "Label->Child(0)", 0, out object? child0) || child0 == null)
                 return false;
 
             return TryGetTreeNode(child0, diagnostics, "Label->Child(0)->Child(0)", 0, out branch);
         }
 
-        private static bool TryGetChoicePanelElement(Element root, List<string>? diagnostics, out Element? panelElement)
+        private static bool TryGetChoicePanelElement(object root, List<string>? diagnostics, out object? panelElement)
         {
-            panelElement = root.GetChildFromIndices(0, 0, 2)
-                ?? root.GetChildAtIndex(0)?.GetChildAtIndex(0)?.GetChildAtIndex(2);
+            panelElement = null;
+
+            if (TryGetNodeFromIndices(root, [0, 0, 2], out panelElement) && panelElement != null)
+                return true;
+
             if (panelElement != null)
                 return true;
 
@@ -202,10 +228,10 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         private static bool TryGetVisibleChoicePanel(
-            Element root,
+            object root,
             List<string>? diagnostics,
-            out UltimatumChoicePanel? choicePanel,
-            out Element? panelElement)
+            out object? choicePanel,
+            out object? panelElement)
         {
             choicePanel = null;
             panelElement = null;
@@ -213,15 +239,44 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryGetChoicePanelElement(root, diagnostics, out panelElement) || panelElement == null)
                 return false;
 
-            choicePanel = panelElement.AsObject<UltimatumChoicePanel>();
+            return TryResolveChoicePanelObject(panelElement, diagnostics, out choicePanel);
+        }
+
+        private static bool TryResolveChoicePanelObject(object? panelElement, List<string>? diagnostics, out object? choicePanel)
+        {
+            choicePanel = null;
+            if (panelElement == null)
+                return false;
+
+            if (panelElement is UltimatumChoicePanel directChoicePanel)
+            {
+                choicePanel = directChoicePanel;
+            }
+            else if (panelElement is Element element)
+            {
+                choicePanel = element.AsObject<UltimatumChoicePanel>();
+            }
+            else
+            {
+                choicePanel = panelElement;
+            }
+
             if (choicePanel == null)
             {
-                diagnostics?.Add($"ChoicePanel fail: AsObject<UltimatumChoicePanel> returned null for 0x{panelElement.Address:X}.");
+                diagnostics?.Add($"ChoicePanel fail: AsObject<UltimatumChoicePanel> returned null for 0x{ResolveElementAddress(panelElement):X}.");
                 return false;
             }
 
-            if (!choicePanel.IsVisible)
+            if (!TryReadBoolFromEither(choicePanel, panelElement, static s => s.IsVisible, out bool isVisible))
             {
+                choicePanel = null;
+                diagnostics?.Add("ChoicePanel fail: panel visibility unavailable.");
+                return false;
+            }
+
+            if (!isVisible)
+            {
+                choicePanel = null;
                 diagnostics?.Add("ChoicePanel fail: panel object exists but is not visible.");
                 return false;
             }
@@ -245,51 +300,72 @@ namespace ClickIt.Features.Click.Runtime
                     continue;
                 }
 
-                string modifierName = ResolveUltimatumModifierName(option, seen, modifierNamesByIndex);
+                string modifierName = ResolveUltimatumModifierNameFromChoiceObject(choiceObj, option, seen, modifierNamesByIndex);
                 if (string.IsNullOrWhiteSpace(modifierName))
                     modifierName = $"Unknown Option {seen + 1}";
 
-                diagnostics?.Add($"ChoicePanel option[{seen}] modifier='{modifierName}', option=0x{option.Address:X}, visible={option.IsVisible}, valid={option.IsValid}");
+                diagnostics?.Add($"ChoicePanel option[{seen}] modifier='{modifierName}', option={DescribeElement(option)}");
                 results.Add((option, modifierName));
                 seen++;
             }
         }
 
-        private static bool TryGetTreeNode(Element parent, List<string>? diagnostics, string path, int index, out Element? child)
+        private static bool TryGetTreeNode(object? parent, List<string>? diagnostics, string path, int index, out object? child)
         {
-            child = parent.GetChildAtIndex(index);
-            if (child != null)
+            if (TryGetChildNode(parent, index, out child) && child != null)
                 return true;
 
             diagnostics?.Add($"Tree fail: {path} is null.");
             return false;
         }
 
-        private static IReadOnlyList<string> GetUltimatumChoicePanelModifierNames(UltimatumChoicePanel choicePanel, List<string>? diagnostics)
+        private static bool TryGetElementChildNode(object? parent, List<string>? diagnostics, string path, int index, out Element? child)
         {
-            var modifiersObj = choicePanel.Modifiers;
+            child = null;
+
+            if (!TryGetTreeNode(parent, diagnostics, path, index, out object? childNode) || childNode == null)
+                return false;
+
+            if (TryExtractElement(childNode, out child) && child != null)
+                return true;
+
+            diagnostics?.Add($"Tree fail: {path} is not an Element.");
+            child = null;
+            return false;
+        }
+
+        private static IReadOnlyList<string> GetUltimatumChoicePanelModifierNames(object? choicePanel, List<string>? diagnostics)
+        {
+            object? modifiersObj = null;
+            TryGetDynamicValue(choicePanel, static s => s.Modifiers, out modifiersObj);
             return ExtractUltimatumModifierNames(modifiersObj, diagnostics, "ChoicePanel: Modifiers missing.");
         }
 
-        private static bool TryGetModifierNameFromChildren(Element option, out string text)
+        private static string ResolveUltimatumModifierNameFromChoiceObject(object? choiceObject, Element option, int seen, IReadOnlyList<string> modifierNamesByIndex)
+        {
+            if (seen >= 0 && seen < modifierNamesByIndex.Count)
+                return ResolveUltimatumModifierName(option, modifierNamesByIndex[seen]);
+
+            return ResolveModifierNameFromNode(choiceObject, option);
+        }
+
+        private static bool TryGetModifierNameFromChildren(object? option, out string text)
         {
             for (int i = 0; i < 8; i++)
             {
-                Element? child = option.GetChildAtIndex(i);
-                if (child == null)
+                if (!TryGetChildNode(option, i, out object? child) || child == null)
                     continue;
 
-                text = GetNormalizedElementText(child, 1024);
+                text = GetNormalizedNodeText(child, 1024);
                 if (!string.IsNullOrWhiteSpace(text))
                     return true;
 
                 for (int j = 0; j < 8; j++)
                 {
-                    Element? grandChild = child.GetChildAtIndex(j);
-                    if (grandChild == null)
+                    if (!TryGetChildNode(child, j, out object? grandChild) || grandChild == null)
                         continue;
 
-                    text = GetNormalizedElementText(grandChild, 1024);
+                    text = GetNormalizedNodeText(grandChild, 1024);
                     if (!string.IsNullOrWhiteSpace(text))
                         return true;
                 }
@@ -299,10 +375,139 @@ namespace ClickIt.Features.Click.Runtime
             return false;
         }
 
-        private static string GetNormalizedElementText(Element? element, int maxLength)
-            => element == null
-                ? string.Empty
-                : NormalizeModifierText(element.GetText(maxLength) ?? string.Empty);
+        private static object? ResolveTooltipNameNode(object? optionSource)
+        {
+            if (!TryGetDynamicValue(optionSource, static s => s.Tooltip, out object? tooltip) || tooltip == null)
+                return null;
+
+            if (!TryGetChildNode(tooltip, 1, out object? tooltipSection) || tooltipSection == null)
+                return null;
+
+            if (!TryGetChildNode(tooltipSection, 3, out object? tooltipName) || tooltipName == null)
+                return null;
+
+            return tooltipName;
+        }
+
+        private static string GetNormalizedNodeText(object? node, int maxLength)
+        {
+            if (node == null)
+                return string.Empty;
+
+            if (TryReadString(n => n.GetText(maxLength), node, out string text)
+                || TryReadString(n => n.Text, node, out text)
+                || TryReadString(n => n.Label, node, out text)
+                || TryReadString(n => n.KeyText, node, out text)
+                || TryReadString(n => n.ModifierName, node, out text)
+                || TryReadString(n => n.Name, node, out text))
+            {
+                return NormalizeModifierText(text);
+            }
+
+            return string.Empty;
+        }
+
+        private static string DescribeElement(Element? element)
+        {
+            if (element == null)
+                return "0x0, visible=False, valid=False";
+
+            long address = ResolveElementAddress(element);
+            bool visible = TryReadBool(element, static s => s.IsVisible, out bool rawVisible) && rawVisible;
+            bool valid = TryReadBool(element, static s => s.IsValid, out bool rawValid) && rawValid;
+            return $"0x{address:X}, visible={visible}, valid={valid}";
+        }
+
+        private static string DescribeNode(object? node)
+            => node is Element element ? DescribeElement(element) : $"0x{ResolveElementAddress(node):X}";
+
+        private static bool TryGetNodeFromIndices(object? source, int[] indices, out object? value)
+        {
+            value = null;
+            if (source == null)
+                return false;
+
+            if (source is Element element)
+            {
+                try
+                {
+                    value = element.GetChildFromIndices(indices);
+                    if (value != null)
+                        return true;
+                }
+                catch
+                {
+                }
+            }
+
+            object? current = source;
+            for (int i = 0; i < indices.Length; i++)
+            {
+                if (!TryGetChildNode(current, indices[i], out current) || current == null)
+                    return false;
+            }
+
+            value = current;
+            return value != null;
+        }
+
+        private static bool TryGetChildNode(object? node, int index, out object? child)
+        {
+            child = null;
+            if (node == null || index < 0)
+                return false;
+
+            if (TryGetDynamicValue(node, n => n.GetChildAtIndex(index), out object? directChild) && directChild != null)
+            {
+                child = directChild;
+                return true;
+            }
+
+            if (TryGetDynamicValue(node, n => n.Child(index), out object? dynamicChild) && dynamicChild != null)
+            {
+                child = dynamicChild;
+                return true;
+            }
+
+            if (TryGetDynamicValue(node, n => n.Children, out object? childrenObj) && childrenObj is IList list && index < list.Count)
+            {
+                child = list[index];
+                return child != null;
+            }
+
+            return false;
+        }
+
+        private static long ResolveElementAddress(object? source)
+        {
+            if (source == null)
+                return 0L;
+
+            if (TryGetDynamicValue(source, static s => s.Address, out object? rawAddress) && rawAddress != null)
+            {
+                try
+                {
+                    return Convert.ToInt64(rawAddress);
+                }
+                catch
+                {
+                }
+            }
+
+            return 0L;
+        }
+
+        private static bool TryReadBool(object? source, Func<dynamic, object?> accessor, out bool value)
+            => DynamicObjectAdapter.TryReadBool(source, accessor, out value);
+
+        private static bool TryReadString(Func<dynamic, object?> accessor, object? source, out string value)
+            => DynamicObjectAdapter.TryReadString(source, accessor, out value);
+
+        private static bool TryReadBoolFromEither(object? primarySource, object? secondarySource, Func<dynamic, object?> accessor, out bool value)
+            => DynamicObjectAdapter.TryReadBoolFromEither(primarySource, secondarySource, accessor, out value);
+
+        private static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
+            => DynamicObjectAdapter.TryGetValue(source, accessor, out value);
 
         private static string NormalizeModifierText(string text)
         {

@@ -17,7 +17,7 @@ namespace ClickIt.UI.Overlays.Ultimatum
             if (!_clickAutomationService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) || previews.Count == 0)
                 return;
 
-            int totalPriorities = Math.Max(1, _settings.GetUltimatumModifierPriority().Count);
+            int totalPriorities = SystemMath.Max(1, _settings.GetUltimatumModifierPriority().Count);
             for (int i = 0; i < previews.Count; i++)
             {
                 UltimatumPanelOptionPreview preview = previews[i];
@@ -31,12 +31,12 @@ namespace ClickIt.UI.Overlays.Ultimatum
             }
         }
 
-        private static Color ToSharpDxColor(System.Numerics.Vector4 color)
+        private static Color ToSharpDxColor(Vector4 color)
         {
-            byte r = (byte)Math.Clamp((int)(color.X * 255f), 0, 255);
-            byte g = (byte)Math.Clamp((int)(color.Y * 255f), 0, 255);
-            byte b = (byte)Math.Clamp((int)(color.Z * 255f), 0, 255);
-            byte a = (byte)Math.Clamp((int)(color.W * 255f), 0, 255);
+            byte r = (byte)SystemMath.Clamp((int)(color.X * 255f), 0, 255);
+            byte g = (byte)SystemMath.Clamp((int)(color.Y * 255f), 0, 255);
+            byte b = (byte)SystemMath.Clamp((int)(color.Z * 255f), 0, 255);
+            byte a = (byte)SystemMath.Clamp((int)(color.W * 255f), 0, 255);
             return new Color(r, g, b, a);
         }
     }

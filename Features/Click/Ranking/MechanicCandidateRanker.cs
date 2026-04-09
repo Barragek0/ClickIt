@@ -77,7 +77,7 @@ namespace ClickIt.Features.Click.Ranking
         internal static float CalculateWeightedDistance(float distance, int priorityIndex, int penalty)
             => priorityIndex == int.MaxValue
                 ? float.MaxValue
-                : distance + (priorityIndex * Math.Max(0, penalty));
+                : distance + (priorityIndex * SystemMath.Max(0, penalty));
 
         internal static int Compare(CandidateRank left, CandidateRank right)
         {
@@ -95,11 +95,10 @@ namespace ClickIt.Features.Click.Ranking
             }
 
             if (left.Ignored != right.Ignored)
-            {
                 return left.Ignored
-                    ? (left.PriorityIndex <= right.PriorityIndex ? -1 : 1)
-                    : (right.PriorityIndex <= left.PriorityIndex ? 1 : -1);
-            }
+        ? (left.PriorityIndex <= right.PriorityIndex ? -1 : 1)
+        : (right.PriorityIndex <= left.PriorityIndex ? 1 : -1);
+
 
             int byWeightedDistance = left.WeightedDistance.CompareTo(right.WeightedDistance);
             if (byWeightedDistance != 0)

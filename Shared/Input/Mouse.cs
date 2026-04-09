@@ -74,8 +74,8 @@ namespace ClickIt.Shared.Input
         public static void SetCursorPosAndLeftClick(Vector2 pos, int extraDelay, Vector2 offset)
         {
             if (DisableNativeInput) return;
-            var posX = (int)(pos.X + offset.X);
-            var posY = (int)(pos.Y + offset.Y);
+            int posX = (int)(pos.X + offset.X);
+            int posY = (int)(pos.Y + offset.Y);
             SetCursorPos(posX, posY);
             Thread.Sleep(MOVEMENT_DELAY + extraDelay);
             LeftClick();
@@ -83,8 +83,8 @@ namespace ClickIt.Shared.Input
         public static void SetCursorPosAndRightClick(Vector2 pos, int extraDelay, Vector2 offset)
         {
             if (DisableNativeInput) return;
-            var posX = (int)(pos.X + offset.X);
-            var posY = (int)(pos.Y + offset.Y);
+            int posX = (int)(pos.X + offset.X);
+            int posY = (int)(pos.Y + offset.Y);
             SetCursorPos(posX, posY);
             Thread.Sleep(MOVEMENT_DELAY + extraDelay);
             RightClick();
@@ -93,13 +93,11 @@ namespace ClickIt.Shared.Input
         {
             if (DisableNativeInput) return;
             if (forward)
-            {
                 mouse_event(MOUSE_EVENT_WHEEL, 0, 0, clicks * 120, 0);
-            }
+
             else
-            {
                 mouse_event(MOUSE_EVENT_WHEEL, 0, 0, -(clicks * 120), 0);
-            }
+
         }
         public static void LeftClick()
         {

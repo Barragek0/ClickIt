@@ -20,15 +20,15 @@ namespace ClickIt.UI.Overlays.Common
             float topY = ResolveTopY(_settings.LazyMode.Value);
 
             bool clicking = _inputHandler.IsClickHotkeyActiveForCurrentInputState();
-            (SharpDX.Color color, string statusText) = BuildStatus(clicking);
+            (Color color, string statusText) = BuildStatus(clicking);
 
-            _deferredTextQueue.Enqueue(statusText, new SharpDX.Vector2(centerX, topY + (36f * 1.2f)), color, 24, FontAlign.Center);
+            _deferredTextQueue.Enqueue(statusText, new Vector2(centerX, topY + (36f * 1.2f)), color, 24, FontAlign.Center);
         }
 
         internal static float ResolveTopY(bool lazyModeEnabled)
             => lazyModeEnabled ? 130f : TitleY;
 
-        internal static (SharpDX.Color Color, string StatusText) BuildStatus(bool clicking)
+        internal static (Color Color, string StatusText) BuildStatus(bool clicking)
             => clicking
                 ? (SharpDX.Color.LawnGreen, ClickingText)
                 : (SharpDX.Color.Red, NotClickingText);

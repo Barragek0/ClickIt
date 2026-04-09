@@ -11,7 +11,7 @@ namespace ClickIt.UI.Debug.Layout
             if (layoutSettings.LineHeight <= 0 || layoutSettings.LinesPerColumn <= 0 || layoutSettings.MaxColumns <= 0)
                 return (currentColumn, currentX, currentY);
 
-            int usedLines = Math.Max(0, (currentY - layoutSettings.StartY) / layoutSettings.LineHeight);
+            int usedLines = SystemMath.Max(0, (currentY - layoutSettings.StartY) / layoutSettings.LineHeight);
             if (usedLines < layoutSettings.LinesPerColumn || currentColumn >= layoutSettings.MaxColumns - 1)
                 return (currentColumn, currentX, currentY);
 
@@ -26,7 +26,7 @@ namespace ClickIt.UI.Debug.Layout
                 return 0;
 
             int raw = (xPos - layoutSettings.BaseX) / layoutSettings.ColumnShiftPx;
-            return Math.Clamp(raw, 0, layoutSettings.MaxColumns - 1);
+            return SystemMath.Clamp(raw, 0, layoutSettings.MaxColumns - 1);
         }
     }
 }

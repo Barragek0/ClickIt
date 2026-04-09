@@ -17,9 +17,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         public void TryGetPrimaryServerInventorySlotItems_ReturnsSlotItemsCollection_WhenInventoryPathResolves()
         {
             object expectedCollection = new object[] { new object(), new object() };
-            var adapter = new InventoryDynamicAdapter(new InventoryDynamicAdapterDependencies(
-                _ => (false, null)));
-            var primaryInventory = new FakePrimaryInventory
+            FakePrimaryInventory primaryInventory = new()
             {
                 Inventory = new FakeInventoryWrapper
                 {
@@ -27,7 +25,7 @@ namespace ClickIt.Tests.Features.Labels.Inventory
                 }
             };
 
-            bool success = adapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
+            bool success = InventoryDynamicAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
 
             success.Should().BeTrue();
             slotItemsCollection.Should().BeSameAs(expectedCollection);
@@ -36,14 +34,12 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         [TestMethod]
         public void TryGetPrimaryServerInventorySlotItems_ReturnsFalse_WhenInventorySlotItemsMissing()
         {
-            var adapter = new InventoryDynamicAdapter(new InventoryDynamicAdapterDependencies(
-                _ => (false, null)));
-            var primaryInventory = new FakePrimaryInventory
+            FakePrimaryInventory primaryInventory = new()
             {
                 Inventory = new FakeInventoryWrapper()
             };
 
-            bool success = adapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
+            bool success = InventoryDynamicAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
 
             success.Should().BeFalse();
             slotItemsCollection.Should().BeNull();

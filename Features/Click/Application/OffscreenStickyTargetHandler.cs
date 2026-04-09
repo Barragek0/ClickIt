@@ -33,26 +33,56 @@ namespace ClickIt.Features.Click.Application
                 return false;
 
             target = EntityQueryService.FindEntityByAddress(_dependencies.GameController, stickyAddress);
-            if (target == null || !target.IsValid || target.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
+            if (target == null)
             {
                 ClearStickyOffscreenTarget();
+                return false;
+            }
+
+            if (!TryIsActiveStickyTarget(target, out string stickyPath, out bool isTargetable))
+            {
+                ClearStickyOffscreenTarget();
+                target = null;
                 return false;
             }
 
             if (ShrineService.IsShrine(target) && !ShrineService.IsClickableShrineCandidate(target))
             {
                 ClearStickyOffscreenTarget();
+                target = null;
                 return false;
             }
 
-            string stickyPath = target.Path ?? string.Empty;
             bool isEldritchAltar = OffscreenPathingMath.IsEldritchAltarPath(stickyPath);
-            if (OffscreenPathingMath.ShouldDropStickyTargetForUntargetableEldritchAltar(isEldritchAltar, target.IsTargetable))
+            if (OffscreenPathingMath.ShouldDropStickyTargetForUntargetableEldritchAltar(isEldritchAltar, isTargetable))
             {
                 ClearStickyOffscreenTarget();
+                target = null;
                 return false;
             }
 
+            return true;
+        }
+
+        private static bool TryIsActiveStickyTarget(Entity target, out string path, out bool isTargetable)
+        {
+            path = string.Empty;
+            isTargetable = false;
+
+            if (!DynamicAccess.TryReadBool(target, static t => t.IsValid, out bool isValid) || !isValid)
+                return false;
+
+            if (!DynamicAccess.TryReadBool(target, static t => t.IsHidden, out bool isHidden) || isHidden)
+                return false;
+
+            if (OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
+                return false;
+
+            path = DynamicAccess.TryReadString(target, static t => t.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            isTargetable = DynamicAccess.TryReadBool(target, static t => t.IsTargetable, out bool resolvedIsTargetable)
+                && resolvedIsTargetable;
             return true;
         }
 

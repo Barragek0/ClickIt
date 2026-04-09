@@ -5,12 +5,47 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool IsUltimatumPath(string? path)
             => Constants.IsUltimatumInteractablePath(path);
 
-        internal static bool IsUltimatumLabel(LabelOnGround? label)
+        internal static bool TryGetLabelItemPath(LabelOnGround? label, out string path)
         {
-            if (!IsUltimatumPath(label?.ItemOnGround?.Path))
+            path = string.Empty;
+
+            if (!DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+                || rawItem == null)
                 return false;
 
-            Element? child0 = label?.Label?.GetChildAtIndex(0);
+
+            return DynamicAccess.TryReadString(rawItem, static i => i.Path, out path);
+        }
+
+        internal static Element? TryGetLabelElement(LabelOnGround? label)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, static l => l.Label, out object? rawLabel)
+                && rawLabel is Element element
+                ? element
+                : null;
+        }
+
+        internal static ulong GetLabelElementAddress(LabelOnGround? label)
+        {
+            Element? element = TryGetLabelElement(label);
+            if (element == null)
+                return 0;
+
+            return DynamicAccess.TryGetDynamicValue(element, static e => e.Address, out object? rawAddress)
+                && rawAddress != null
+                ? unchecked((ulong)Convert.ToInt64(rawAddress))
+                : 0;
+        }
+
+        internal static bool IsLabelElementValid(LabelOnGround? label)
+            => TryGetLabelElement(label)?.IsValid == true;
+
+        internal static bool IsUltimatumLabel(LabelOnGround? label)
+        {
+            if (!TryGetLabelItemPath(label, out string path) || !IsUltimatumPath(path))
+                return false;
+
+            Element? child0 = TryGetLabelElement(label)?.GetChildAtIndex(0);
             return child0?.IsVisible == true;
         }
 
@@ -18,6 +53,8 @@ namespace ClickIt.Features.Click.Runtime
             => isUltimatumPath && !isUltimatumLabel;
 
         internal static bool ShouldSuppressInactiveUltimatumLabel(LabelOnGround? label)
-            => ShouldSuppressInactiveUltimatumLabel(IsUltimatumPath(label?.ItemOnGround?.Path), IsUltimatumLabel(label));
+            => ShouldSuppressInactiveUltimatumLabel(
+                TryGetLabelItemPath(label, out string path) && IsUltimatumPath(path),
+                IsUltimatumLabel(label));
     }
 }

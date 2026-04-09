@@ -51,7 +51,7 @@ namespace ClickIt.Tests.Features.Altars
             var matcher = new AltarMatcher();
 
             string fromMatcher = matcher.CleanAltarModsText(input!);
-            string fromParser = AltarParser.CleanAltarModsText_NoCache(input!);
+            string fromParser = AltarParser.CleanAltarModsTextNoCache(input!);
 
             fromMatcher.Should().Be(fromParser);
         }

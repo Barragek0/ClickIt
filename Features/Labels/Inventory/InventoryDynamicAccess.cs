@@ -4,21 +4,18 @@ namespace ClickIt.Features.Labels.Inventory
     {
         internal static (bool Success, object? First) TryGetFirstCollectionObject(object collection)
         {
-            object? first = null;
-
-            if (collection is System.Collections.IList list)
+            if (collection is IList list)
             {
                 if (list.Count <= 0)
                     return (false, null);
 
-                first = list[0];
+                object? first = list[0];
                 return (first != null, first);
             }
 
             foreach (object? entry in DynamicObjectAdapter.EnumerateObjects(collection))
             {
-                first = entry;
-                return (first != null, first);
+                return (entry != null, entry);
             }
 
             return (false, null);
@@ -53,7 +50,7 @@ namespace ClickIt.Features.Labels.Inventory
             if (path.Length == 0)
                 return (false, "path-empty");
 
-            bool isItem = path.IndexOf("Metadata/Items/", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isItem = path.Contains("Metadata/Items/", StringComparison.OrdinalIgnoreCase);
             return (isItem, isItem ? "path-item" : "path-non-item");
         }
 

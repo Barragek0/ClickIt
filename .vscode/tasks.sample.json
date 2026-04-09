@@ -7,11 +7,26 @@
       "command": "powershell",
       "args": [
         "-NoProfile",
-        "-Command",
-        "& { $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86'); $vswhere = $null; if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) { $vswhere = Join-Path $programFilesX86 'Microsoft Visual Studio\\Installer\\vswhere.exe' }; $msbuild = $null; if ($vswhere -and (Test-Path $vswhere)) { $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\\**\\Bin\\MSBuild.exe' | Select-Object -First 1 }; if ([string]::IsNullOrWhiteSpace($msbuild)) { $msbuildCommand = Get-Command msbuild.exe -ErrorAction SilentlyContinue; if ($null -ne $msbuildCommand) { $msbuild = $msbuildCommand.Source } }; if ([string]::IsNullOrWhiteSpace($msbuild)) { Write-Error 'MSBuild.exe could not be resolved. Install Visual Studio Build Tools or ensure MSBuild is on PATH.'; exit 1 }; & $msbuild 'ClickIt.sln' '/p:Configuration=Debug' '/p:IncludeIntegrationTests=true' '/p:exapiPackage=..\\..\\PoeHelper\\net48\\'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & dotnet test 'Tests\\ClickIt.Tests.csproj' -c Debug -p:IncludeIntegrationTests=true; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $src = Join-Path $pwd 'bin\\Debug\\net10.0-windows\\win-x64\\ClickIt.dll'; if (-not (Test-Path $src)) { Write-Error \"Compiled DLL not found at $src\"; exit 1 }; $dest = 'C:\\Path\\To\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt'; if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; Copy-Item -Path $src -Destination $dest -Force; Write-Output \"Copied $src to $dest\" }"
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "Tests\\Scripts\\invoke-build-and-test.ps1",
+        "-SolutionPath",
+        "ClickIt.sln",
+        "-TestProjectPath",
+        "Tests\\ClickIt.Tests.csproj",
+        "-Configuration",
+        "Debug",
+        "-ExapiPackagePath",
+        "..\\..\\PoeHelper\\net48\\",
+        "-PluginOutputPath",
+        "C:\\Path\\To\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt",
+        "-BuildTool",
+        "msbuild-auto",
+        "-IncludeIntegrationTests"
       ],
       "presentation": {
-        "reveal": "always"
+        "reveal": "never"
       },
       "problemMatcher": [],
       "group": {
@@ -22,16 +37,22 @@
     {
       "label": "Test",
       "type": "process",
-      "command": "dotnet",
+      "command": "powershell",
       "args": [
-        "test",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "Tests\\Scripts\\invoke-dotnet-test-with-memory-guard.ps1",
+        "-ProjectPath",
         "Tests\\ClickIt.Tests.csproj",
-        "-c",
+        "-Configuration",
         "Debug",
+        "-AdditionalArgs",
         "-p:IncludeIntegrationTests=true"
       ],
       "presentation": {
-        "reveal": "always"
+        "reveal": "never"
       },
       "problemMatcher": [],
       "group": {
@@ -46,10 +67,10 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { & dotnet test 'Tests\\ClickIt.Tests.csproj' --collect 'XPlat Code Coverage' --settings 'runsettings.xml' -c Debug '/p:CollectCoverage=false' '/p:IncludeIntegrationTests=true' '/p:BuildProjectReferences=false'; $testExitCode = $LASTEXITCODE; $latestCoverage = Get-ChildItem -Path '.' -Recurse -Filter 'coverage.cobertura.xml' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($null -eq $latestCoverage) { if ($testExitCode -ne 0) { Write-Warning 'No coverage.cobertura.xml file was found after the failing test run.'; exit $testExitCode }; Write-Error 'No coverage.cobertura.xml file was produced.'; exit 1 }; $destFile = 'Tests\\TestResults\\coverage.cobertura.xml'; $destDir = Split-Path $destFile -Parent; if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }; Copy-Item $latestCoverage.FullName $destFile -Force; if ((Test-Path $latestCoverage.Directory.FullName) -and $latestCoverage.Directory.Name -match '^[0-9a-f-]+$') { Remove-Item $latestCoverage.Directory.FullName -Recurse -Force }; & reportgenerator '-reports:${workspaceFolder}/Tests/TestResults/coverage.cobertura.xml' '-targetdir:${workspaceFolder}/Tests/TestResults/covstats-xplat'; $reportExitCode = $LASTEXITCODE; if ($reportExitCode -ne 0) { exit $reportExitCode }; exit $testExitCode }"
+        "& { & powershell -NoProfile -ExecutionPolicy Bypass -File 'Tests\\Scripts\\generate-coverage.ps1' -configuration 'Debug'; exit $LASTEXITCODE }"
       ],
       "presentation": {
-        "reveal": "always",
+        "reveal": "never",
         "panel": "new"
       },
       "problemMatcher": [],

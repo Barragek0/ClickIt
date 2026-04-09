@@ -1,3 +1,4 @@
+using SharpDX;
 namespace ClickIt.Features.Essence
 {
     public class EssenceService(ClickItSettings settings)

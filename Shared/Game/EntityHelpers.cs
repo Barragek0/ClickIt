@@ -7,11 +7,12 @@ namespace ClickIt.Shared.Game
             if (paths == null)
                 return false;
 
-            foreach (var p in paths)
-            {
-                if (p?.Contains("RitualBlocker") == true)
+
+            foreach (string? p in paths)
+                if (p?.Contains("RitualBlocker", StringComparison.Ordinal) == true)
                     return true;
-            }
+
+
 
             return false;
         }
@@ -25,19 +26,16 @@ namespace ClickIt.Shared.Game
             if (gameController?.EntityListWrapper?.OnlyValidEntities == null)
                 return false;
 
-            foreach (var entity in gameController.EntityListWrapper.OnlyValidEntities)
-            {
-                string? path = null;
-                try
-                {
-                    path = entity?.Path;
-                }
-                catch
-                {
-                }
 
-                if (path?.Contains("RitualBlocker") == true)
+            foreach (Entity entity in gameController.EntityListWrapper.OnlyValidEntities)
+            {
+                string path = DynamicAccess.TryReadString(entity, static e => e.Path, out string resolvedPath)
+                    ? resolvedPath
+                    : string.Empty;
+
+                if (path.Contains("RitualBlocker", StringComparison.Ordinal))
                     return true;
+
             }
 
             return false;
@@ -52,32 +50,23 @@ namespace ClickIt.Shared.Game
             if (item == null)
                 return missingItemFallback;
 
-            WorldItem? world = item.GetComponent<WorldItem>();
-            Entity? itemEntity = world?.ItemEntity;
+
+            Entity? itemEntity = TryGetWorldItemEntity(item);
             if (itemEntity == null)
                 return missingItemEntityFallback;
 
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(itemEntity.Metadata))
-                    return itemEntity.Metadata;
-            }
-            catch
-            {
-                // Some memory-backed entities can throw transiently; fall through to safer fallbacks.
-            }
+
+            if (DynamicAccess.TryReadString(itemEntity, static e => e.Metadata, out string metadata))
+                return metadata;
+
 
             if (TryResolveMapKeyMetadata(item, out string mapKeyMetadata) && !string.IsNullOrWhiteSpace(mapKeyMetadata))
                 return mapKeyMetadata;
 
-            try
-            {
-                return itemEntity.Path ?? missingMetadataFallback;
-            }
-            catch
-            {
-                return missingMetadataFallback;
-            }
+
+            return DynamicAccess.TryReadString(itemEntity, static e => e.Path, out string path)
+                ? path
+                : missingMetadataFallback;
         }
 
         public static bool TryResolveMapKeyMetadata(Entity? item, out string metadata)
@@ -87,40 +76,36 @@ namespace ClickIt.Shared.Game
             if (item == null)
                 return false;
 
-            WorldItem? world = item.GetComponent<WorldItem>();
-            Entity? itemEntity = world?.ItemEntity;
+
+            Entity? itemEntity = TryGetWorldItemEntity(item);
             if (itemEntity == null)
                 return false;
 
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(itemEntity.Metadata))
-                {
-                    metadata = itemEntity.Metadata;
-                    return true;
-                }
-            }
-            catch
-            {
-                // Fall through to path fallback below.
-            }
 
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(itemEntity.Path))
-                {
-                    metadata = itemEntity.Path;
-                    return true;
-                }
-            }
-            catch
-            {
-            }
+            if (DynamicAccess.TryReadString(itemEntity, static e => e.Metadata, out metadata))
+                return true;
+
+
+            if (DynamicAccess.TryReadString(itemEntity, static e => e.Path, out metadata))
+                return true;
+
 
             return false;
         }
 
-        public static bool TryResolveMapKeyDisplayName(Entity? item, out string displayName)
+        private static Entity? TryGetWorldItemEntity(Entity item)
+        {
+            if (!DynamicAccess.TryGetDynamicValue(item, static e => e.GetComponent<WorldItem>(), out object? rawWorld)
+                || rawWorld is not WorldItem world)
+                return null;
+
+
+            return DynamicAccess.TryGetDynamicValue(world, static w => w.ItemEntity, out object? rawItemEntity)
+                ? rawItemEntity as Entity
+                : null;
+        }
+
+        public static bool TryResolveMapKeyDisplayName(Entity? _, out string displayName)
         {
             displayName = string.Empty;
             return false;

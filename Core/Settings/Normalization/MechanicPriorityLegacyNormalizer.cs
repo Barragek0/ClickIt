@@ -8,13 +8,11 @@ namespace ClickIt.Core.Settings.Normalization
 
             HashSet<string> normalizedIgnoreDistance = new(StringComparer.OrdinalIgnoreCase);
             foreach (string id in settings.MechanicPriorityIgnoreDistanceIds)
-            {
                 foreach (string expandedId in ExpandLegacyMechanicId(id))
-                {
                     if (!string.IsNullOrWhiteSpace(expandedId))
                         normalizedIgnoreDistance.Add(expandedId);
-                }
-            }
+
+
 
             if (normalizedIgnoreDistance.Count > 0)
                 settings.MechanicPriorityIgnoreDistanceIds = normalizedIgnoreDistance;

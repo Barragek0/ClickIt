@@ -90,6 +90,61 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
+        public void ApplyQuestTrackerRectangles_ReplacesRectangles_AndUpdatesTimestamp_OnSuccessfulRead()
+        {
+            var blockedState = new AreaBlockedState
+            {
+                LastQuestTrackerRectanglesSuccessTimestampMs = 1_000
+            };
+            blockedState.QuestTrackerBlockedRectangles.Add(new RectangleF(10, 10, 20, 20));
+
+            AreaBlockedSnapshotProvider.ApplyQuestTrackerRectangles(
+                blockedState,
+                [new RectangleF(30, 30, 40, 40), new RectangleF(50, 50, 60, 60)],
+                now: 2_000);
+
+            blockedState.QuestTrackerBlockedRectangles.Should().HaveCount(2);
+            blockedState.QuestTrackerBlockedRectangles[0].Should().Be(new RectangleF(30, 30, 40, 40));
+            blockedState.QuestTrackerBlockedRectangles[1].Should().Be(new RectangleF(50, 50, 60, 60));
+            blockedState.LastQuestTrackerRectanglesSuccessTimestampMs.Should().Be(2_000);
+        }
+
+        [TestMethod]
+        public void ApplyBuffAndDebuffRectangles_StoresAllRectangles_AndUsesFirstAsAggregate()
+        {
+            var blockedState = new AreaBlockedState();
+
+            AreaBlockedSnapshotProvider.ApplyBuffAndDebuffRectangles(
+                blockedState,
+                [new RectangleF(1, 2, 3, 4), new RectangleF(5, 6, 7, 8)]);
+
+            blockedState.BuffsAndDebuffsRectangles.Should().HaveCount(2);
+            blockedState.BuffsAndDebuffsRectangles[0].Should().Be(new RectangleF(1, 2, 3, 4));
+            blockedState.BuffsAndDebuffsRectangles[1].Should().Be(new RectangleF(5, 6, 7, 8));
+            blockedState.BuffsAndDebuffsRectangle.Should().Be(new RectangleF(1, 2, 3, 4));
+        }
+
+        [TestMethod]
+        public void ApplyBuffAndDebuffRectangles_ClearsAggregateRectangle_WhenInputIsEmpty()
+        {
+            var blockedState = new AreaBlockedState();
+            blockedState.BuffsAndDebuffsRectangles.Add(new RectangleF(1, 2, 3, 4));
+            blockedState.BuffsAndDebuffsRectangle = new RectangleF(1, 2, 3, 4);
+
+            AreaBlockedSnapshotProvider.ApplyBuffAndDebuffRectangles(blockedState, []);
+
+            blockedState.BuffsAndDebuffsRectangles.Should().BeEmpty();
+            blockedState.BuffsAndDebuffsRectangle.Should().Be(RectangleF.Empty);
+        }
+
+        [TestMethod]
+        public void ShouldUpdateMapPanelBlockedRectangle_ReturnsFalse_OnlyInTownOrHideout()
+        {
+            AreaBlockedSnapshotProvider.ShouldUpdateMapPanelBlockedRectangle(isInTownOrHideout: false).Should().BeTrue();
+            AreaBlockedSnapshotProvider.ShouldUpdateMapPanelBlockedRectangle(isInTownOrHideout: true).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void SplitBottomAnchoredRectangleFromLeft_ReturnsExpectedPrimaryAndSecondaryRectangles()
         {
             (RectangleF primary, RectangleF secondary) = AreaBlockedSnapshotProvider.SplitBottomAnchoredRectangleFromLeft(

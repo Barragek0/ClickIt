@@ -1,15 +1,11 @@
 namespace ClickIt.Features.Area
 {
-    public class AreaService
+    public class AreaService(ClickItSettings? settings = null)
     {
-        private readonly ClickItSettings? _settings;
+        private readonly ClickItSettings? _settings = settings;
         private readonly AreaBlockedSnapshotProvider _blockedSnapshotProvider = new();
-        private readonly BlockedAreaEvaluatorPipeline _blockedAreaEvaluatorPipeline;
 
-        public AreaService(ClickItSettings? settings = null)
-        {
-            _settings = settings;
-            _blockedAreaEvaluatorPipeline = new BlockedAreaEvaluatorPipeline(
+        private readonly BlockedAreaEvaluatorPipeline _blockedAreaEvaluatorPipeline = new(
             [
                 (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.HealthSquareRectangle, snapshot.FullScreenRectangle),
                 (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.FlaskRectangle, snapshot.FullScreenRectangle),
@@ -28,7 +24,6 @@ namespace ClickIt.Features.Area
                 (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.RitualBlockedRectangle, snapshot.FullScreenRectangle),
                 (snapshot, point) => BlockedAreaHitTestEngine.PointInBlockedUiRectangle(point, snapshot.SentinelBlockedRectangle, snapshot.FullScreenRectangle)
             ]);
-        }
 
         public RectangleF FullScreenRectangle => _blockedSnapshotProvider.CurrentSnapshot.FullScreenRectangle;
         public RectangleF HealthAndFlaskRectangle => _blockedSnapshotProvider.CurrentSnapshot.HealthAndFlaskRectangle;
@@ -123,6 +118,6 @@ namespace ClickIt.Features.Area
         }
 
         private int ResolveBlockedUiRefreshIntervalMs()
-            => Math.Max(50, _settings?.BlockedUiRefreshIntervalMs?.Value ?? AreaBlockedSnapshotProvider.DefaultBlockedUiRectanglesRefreshIntervalMs);
+            => SystemMath.Max(50, _settings?.BlockedUiRefreshIntervalMs?.Value ?? AreaBlockedSnapshotProvider.DefaultBlockedUiRectanglesRefreshIntervalMs);
     }
 }

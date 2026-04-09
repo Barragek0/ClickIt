@@ -35,6 +35,8 @@ Run unit and integration tests in Debug:
 dotnet test Tests\ClickIt.Tests.csproj -c Debug -p:IncludeIntegrationTests=true
 ```
 
+The normal `Test`, `Build and Test`, coverage, and CI entry points start a hidden sidecar monitor from `Tests/Scripts/memory-guard.ps1`. That sidecar watches combined `testhost*` memory, writes a temporary trip file if the threshold is exceeded, and the caller prints a memory-guard failure after `dotnet test` completes. Set `CLICKIT_TEST_MEMORY_THRESHOLD_MB` if you need to override the default `2048` MB threshold locally.
+
 If you want the same workflow the repo expects in VS Code, use the default `Build and Test` task from `.vscode/tasks.json`.
 
 ## Coverage
@@ -46,9 +48,13 @@ The repo has one common workspace coverage flow:
 
 The script runs XPlat coverage, generates a ReportGenerator XML summary, and writes the usual outputs under `Tests/TestResults/`:
 
+- `lcov.info`
 - `coverage.cobertura.xml`
 - `cov/Summary.xml`
 - `missing-files.csv`
+- `uncovered-lines.csv`
+
+`uncovered-lines.csv` is the repo-local replacement for the transient VS Code Problems list produced by the Code Coverage extension. It is generated directly from `Tests/TestResults/lcov.info` and records one row per uncovered line with the same owner and message shape the Problems pane uses.
 
 Run it like this:
 
@@ -64,6 +70,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ./Tests/Scripts/generate-coverage.
 - When replacing a legacy wrapper API, move the test to the real owning domain instead of preserving the wrapper assertion.
 - If a test needs special access, prefer test-side reflection or test-project build configuration over adding a production seam.
 - If coverage is missing, target the most meaningful uncovered branches first instead of adding lots of narrow tests.
+- When you are using the uncovered-lines list to plan or continue coverage work, refresh coverage first so `Tests/TestResults/uncovered-lines.csv` reflects the current run.
 
 ## ExileCore Notes
 

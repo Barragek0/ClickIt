@@ -5,9 +5,9 @@ namespace ClickIt.UI.Overlays.Pathfinding
         private const int TileToGridConversion = 23;
         private const int TileToWorldConversion = 250;
         private static readonly float GridToWorldMultiplier = TileToWorldConversion / (float)TileToGridConversion;
-        private const double CameraAngle = 38.7 * Math.PI / 180;
-        private static readonly float CameraAngleCos = (float)Math.Cos(CameraAngle);
-        private static readonly float CameraAngleSin = (float)Math.Sin(CameraAngle);
+        private const double CameraAngle = 38.7 * SystemMath.PI / 180;
+        private static readonly float CameraAngleCos = (float)SystemMath.Cos(CameraAngle);
+        private static readonly float CameraAngleSin = (float)SystemMath.Sin(CameraAngle);
 
         private readonly PathfindingService _pathfindingService = pathfindingService;
 
@@ -33,8 +33,8 @@ namespace ClickIt.UI.Overlays.Pathfinding
 
         internal static string ToCompass(Vector2 delta)
         {
-            float absX = Math.Abs(delta.X);
-            float absY = Math.Abs(delta.Y);
+            float absX = SystemMath.Abs(delta.X);
+            float absY = SystemMath.Abs(delta.Y);
             if (absX < 6f && absY < 6f)
                 return "Center";
 
@@ -72,7 +72,7 @@ namespace ClickIt.UI.Overlays.Pathfinding
 
             for (int i = 0; i < path.Count; i++)
             {
-                int distance = Math.Abs(path[i].X - player.X) + Math.Abs(path[i].Y - player.Y);
+                int distance = SystemMath.Abs(path[i].X - player.X) + SystemMath.Abs(path[i].Y - player.Y);
                 if (distance >= bestDistance)
                     continue;
 
@@ -140,9 +140,8 @@ namespace ClickIt.UI.Overlays.Pathfinding
                 && point.Y < heightData.Length
                 && point.X >= 0
                 && point.X < heightData[point.Y].Length)
-            {
                 tileHeight = heightData[point.Y][point.X];
-            }
+
 
             float dx = point.X - playerGrid.X;
             float dy = point.Y - playerGrid.Y;

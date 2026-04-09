@@ -16,7 +16,8 @@ namespace ClickIt.Tests.Shared.TestUtils
                     SafePatterns:
                     [
                         "Treat Entity as an opaque token when the test only needs reference identity.",
-                        "Use uninitialized Entity instances only when collaborators are stubbed so no remote-memory-backed getters run."
+                        "Use uninitialized Entity instances only when collaborators are stubbed so no remote-memory-backed getters run.",
+                        "Prefer a dedicated Entity probe subclass when the test needs Path, DistancePlayer, PosNum, GridPosNum, or component reads."
                     ],
                     UnsafeMembers:
                     [
@@ -82,8 +83,7 @@ namespace ClickIt.Tests.Shared.TestUtils
 
         internal static ExileCoreOpaqueUsageNote GetUsageNote(Type type)
         {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
+            ArgumentNullException.ThrowIfNull(type);
 
             if (!NotesByTypeName.TryGetValue(type.FullName ?? type.Name, out ExileCoreOpaqueUsageNote? note))
                 throw new InvalidOperationException($"No ExileCore opaque-usage note registered for {type.FullName ?? type.Name}.");

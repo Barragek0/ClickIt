@@ -16,10 +16,12 @@ namespace ClickIt.Shared.Game
             if (label == null)
                 return elementsList;
 
+
             AddIfTextContains(label, str, elementsList);
 
             for (int containerIndex = 0; containerIndex <= 1; containerIndex++)
                 AddMatchingChildrenFromContainer(label.GetChildAtIndex(containerIndex), str, elementsList);
+
 
             return elementsList;
         }
@@ -29,14 +31,16 @@ namespace ClickIt.Shared.Game
             if (root == null)
                 return null;
 
+
             Stack<Element> stack = new();
             stack.Push(root);
             while (stack.Count > 0)
             {
                 Element element = stack.Pop();
                 string text = element.GetText(512);
-                if (text != null && text.Equals(str))
+                if (text != null && text.Equals(str, StringComparison.Ordinal))
                     return element;
+
 
                 PushChildren(element, stack);
             }
@@ -49,9 +53,11 @@ namespace ClickIt.Shared.Game
             if (root == null)
                 return false;
 
-            string[] patList = patterns as string[] ?? patterns.ToArray();
+
+            string[] patList = patterns as string[] ?? [.. patterns];
             if (patList.Length == 0)
                 return false;
+
 
             Stack<Element> stack = new();
             stack.Push(root);
@@ -60,6 +66,7 @@ namespace ClickIt.Shared.Game
                 Element element = stack.Pop();
                 if (ElementTextContainsAnyPattern(element, patList))
                     return true;
+
 
                 PushChildren(element, stack);
             }
@@ -78,9 +85,11 @@ namespace ClickIt.Shared.Game
             if (root == null)
                 return false;
 
-            string[] patList = patterns as string[] ?? patterns.ToArray();
+
+            string[] patList = patterns as string[] ?? [.. patterns];
             if (patList.Length == 0)
                 return false;
+
 
             Stack<IElementAdapter> stack = new();
             stack.Push(root);
@@ -89,16 +98,16 @@ namespace ClickIt.Shared.Game
                 IElementAdapter element = stack.Pop();
                 string text = element.GetText(512);
                 if (!string.IsNullOrEmpty(text))
-                {
                     for (int i = 0; i < patList.Length; i++)
-                    {
-                        if (text.Contains(patList[i]))
+                        if (text.Contains(patList[i], StringComparison.Ordinal))
                             return true;
-                    }
-                }
+
+
+
 
                 foreach (IElementAdapter child in EnumerateAdapterChildren(element))
                     stack.Push(child);
+
             }
 
             return false;
@@ -110,15 +119,18 @@ namespace ClickIt.Shared.Game
             if (label == null)
                 return list;
 
+
             string rootText = label.GetText(512);
-            if (!string.IsNullOrEmpty(rootText) && rootText.Contains(str))
+            if (!string.IsNullOrEmpty(rootText) && rootText.Contains(str, StringComparison.Ordinal))
                 list.Add(label);
+
 
             foreach (IElementAdapter child in EnumerateAdapterChildren(label))
             {
                 string childText = child.GetText(512);
-                if (!string.IsNullOrEmpty(childText) && childText.Contains(str))
+                if (!string.IsNullOrEmpty(childText) && childText.Contains(str, StringComparison.Ordinal))
                     list.Add(child);
+
             }
 
             return list;
@@ -129,17 +141,20 @@ namespace ClickIt.Shared.Game
             if (root == null)
                 return null;
 
+
             Stack<IElementAdapter> stack = new();
             stack.Push(root);
             while (stack.Count > 0)
             {
                 IElementAdapter element = stack.Pop();
                 string text = element.GetText(512);
-                if (text != null && text.Equals(str))
+                if (text != null && text.Equals(str, StringComparison.Ordinal))
                     return element;
+
 
                 foreach (IElementAdapter child in EnumerateAdapterChildren(element))
                     stack.Push(child);
+
             }
 
             return null;
@@ -153,12 +168,15 @@ namespace ClickIt.Shared.Game
             if (container == null)
                 return;
 
+
             IList<Element> children = container.Children;
             if (children == null)
                 return;
 
+
             for (int i = 0; i < children.Count; i++)
                 AddIfTextContains(children[i], str, elementsList);
+
         }
 
         private static void AddIfTextContains(Element? element, string str, List<Element> elements)
@@ -166,9 +184,11 @@ namespace ClickIt.Shared.Game
             if (element == null)
                 return;
 
+
             string text = element.GetText(512);
-            if (!string.IsNullOrEmpty(text) && text.Contains(str))
+            if (!string.IsNullOrEmpty(text) && text.Contains(str, StringComparison.Ordinal))
                 elements.Add(element);
+
         }
 
         private static bool ElementTextContainsAnyPattern(Element element, string[] patterns)
@@ -177,11 +197,12 @@ namespace ClickIt.Shared.Game
             if (string.IsNullOrEmpty(text))
                 return false;
 
+
             for (int i = 0; i < patterns.Length; i++)
-            {
-                if (text.Contains(patterns[i]))
+                if (text.Contains(patterns[i], StringComparison.Ordinal))
                     return true;
-            }
+
+
 
             return false;
         }
@@ -192,11 +213,12 @@ namespace ClickIt.Shared.Game
             if (children == null)
                 return;
 
+
             foreach (Element child in children)
-            {
                 if (child != null)
                     stack.Push(child);
-            }
+
+
         }
 
         private static IEnumerable<IElementAdapter> EnumerateAdapterChildren(IElementAdapter parent)
@@ -211,8 +233,10 @@ namespace ClickIt.Shared.Game
                     if (child == null)
                         break;
 
+
                     if (seen.Add(child))
                         yield return child;
+
 
                     childIndex++;
                 }

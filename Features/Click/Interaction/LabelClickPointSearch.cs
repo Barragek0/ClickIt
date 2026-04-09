@@ -206,7 +206,7 @@ namespace ClickIt.Features.Click.Interaction
         }
 
         private static Vector2 ClampPointToRect(Vector2 point, RectangleF rect)
-            => new(Math.Clamp(point.X, rect.Left, rect.Right), Math.Clamp(point.Y, rect.Top, rect.Bottom));
+            => new(SystemMath.Clamp(point.X, rect.Left, rect.Right), SystemMath.Clamp(point.Y, rect.Top, rect.Bottom));
 
         internal static bool IsPointBlocked(Vector2 point, IReadOnlyList<RectangleF> blockedAreas)
         {
@@ -223,10 +223,10 @@ namespace ClickIt.Features.Click.Interaction
         {
             intersection = default;
 
-            float left = Math.Max(a.Left, b.Left);
-            float top = Math.Max(a.Top, b.Top);
-            float right = Math.Min(a.Right, b.Right);
-            float bottom = Math.Min(a.Bottom, b.Bottom);
+            float left = SystemMath.Max(a.Left, b.Left);
+            float top = SystemMath.Max(a.Top, b.Top);
+            float right = SystemMath.Min(a.Right, b.Right);
+            float bottom = SystemMath.Min(a.Bottom, b.Bottom);
 
             if (right <= left || bottom <= top)
                 return false;

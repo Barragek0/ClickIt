@@ -7,19 +7,17 @@ namespace ClickIt.Features.Altars
         public AltarWeights CalculateAltarWeights(PrimaryAltarComponent altar)
         {
             if (altar?.TopMods == null || altar.BottomMods == null)
-            {
                 throw new ArgumentException("Cannot calculate weights - altar components are null");
-            }
+
 
             if (altar.TopMods.Element == null || altar.BottomMods.Element == null)
-            {
                 throw new ArgumentException("Cannot calculate weights - altar elements are null");
-            }
 
-            var topUpsideWeights = new decimal[8];
-            var topDownsideWeights = new decimal[8];
-            var bottomUpsideWeights = new decimal[8];
-            var bottomDownsideWeights = new decimal[8];
+
+            decimal[] topUpsideWeights = new decimal[8];
+            decimal[] topDownsideWeights = new decimal[8];
+            decimal[] bottomUpsideWeights = new decimal[8];
+            decimal[] bottomDownsideWeights = new decimal[8];
 
             for (int i = 0; i < 8; i++)
             {
@@ -39,7 +37,7 @@ namespace ClickIt.Features.Altars
             decimal bottomUpsideWeight = SumFixed8(bottomUpsideWeights);
             decimal bottomDownsideWeight = SumFixed8(bottomDownsideWeights);
 
-            var result = new AltarWeights();
+            AltarWeights result = new();
             result.InitializeFromArrays(topDownsideWeights, bottomDownsideWeights, topUpsideWeights, bottomUpsideWeights);
             result.TopUpsideWeight = topUpsideWeight;
             result.TopDownsideWeight = topDownsideWeight;
@@ -47,8 +45,8 @@ namespace ClickIt.Features.Altars
             result.BottomDownsideWeight = bottomDownsideWeight;
 
             // Safe division: avoid divide-by-zero
-            result.TopWeight = (int)Math.Round(topDownsideWeight == 0 ? 0 : (topUpsideWeight / topDownsideWeight) * 100, 2);
-            result.BottomWeight = (int)Math.Round(bottomDownsideWeight == 0 ? 0 : (bottomUpsideWeight / bottomDownsideWeight) * 100, 2);
+            result.TopWeight = (int)SystemMath.Round(topDownsideWeight == 0 ? 0 : topUpsideWeight / topDownsideWeight * 100, 2);
+            result.BottomWeight = (int)SystemMath.Round(bottomDownsideWeight == 0 ? 0 : bottomUpsideWeight / bottomDownsideWeight * 100, 2);
             return result;
         }
 
@@ -64,9 +62,8 @@ namespace ClickIt.Features.Altars
         {
             decimal total = 0m;
             for (int i = 0; i < values.Length; i++)
-            {
                 total += values[i];
-            }
+
 
             return total;
         }
@@ -84,7 +81,7 @@ namespace ClickIt.Features.Altars
         {
             if (mods == null || mods.Count == 0) return isDownside ? 1m : 0m;
             decimal total = 0m;
-            foreach (var mod in mods)
+            foreach (string mod in mods)
             {
                 if (string.IsNullOrWhiteSpace(mod)) continue;
                 total += GetModWeightFromString(mod);
@@ -99,9 +96,9 @@ namespace ClickIt.Features.Altars
             int separatorIndex = mod.IndexOf('|');
             if (separatorIndex >= 0)
             {
-                string type = mod.Substring(0, separatorIndex);
+                string type = mod[..separatorIndex];
                 string id = separatorIndex + 1 < mod.Length
-                    ? mod.Substring(separatorIndex + 1)
+                    ? mod[(separatorIndex + 1)..]
                     : string.Empty;
                 return _settings.GetModTier(id, type);
             }
@@ -137,7 +134,7 @@ namespace ClickIt.Features.Altars
 
         public decimal this[string weightType, int index]
         {
-            get
+            readonly get
             {
                 using (LockManager.AcquireStatic(_weightsLock))
                 {

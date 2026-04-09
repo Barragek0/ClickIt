@@ -117,6 +117,8 @@ Run tests:
 dotnet test Tests\ClickIt.Tests.csproj -c Debug -p:IncludeIntegrationTests=true
 ```
 
+The VS Code tasks, coverage flow, and CI now start `Tests/Scripts/memory-guard.ps1` as a hidden sidecar monitor. The tests still run as normal `dotnet test`, but if combined `testhost*` memory crosses the configured ceiling the sidecar kills the host, writes a temporary trip file, and the caller reports that memory failure after the test command returns. Override the default `2048` MB limit with `CLICKIT_TEST_MEMORY_THRESHOLD_MB` when you need a different local threshold.
+
 Build the solution with an explicit ExileCore package path:
 
 ```powershell

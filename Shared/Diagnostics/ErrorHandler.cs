@@ -54,7 +54,7 @@ namespace ClickIt.Shared.Diagnostics
 
         private void HandleUnhandledException(object? sender, UnhandledExceptionEventArgs e)
         {
-            var exception = e.ExceptionObject as Exception;
+            Exception? exception = e.ExceptionObject as Exception;
             string message = exception?.Message ?? "Unknown exception";
             string fullMessage = $"[Global] Unhandled exception: {message}";
 
@@ -99,9 +99,8 @@ namespace ClickIt.Shared.Diagnostics
             TrackError(message);
 
             if (_settings.DebugMode)
-            {
                 _logError(message, frame);
-            }
+
         }
 
         /// <summary>
@@ -125,20 +124,12 @@ namespace ClickIt.Shared.Diagnostics
         /// </summary>
         public void LogMessage(bool requireLocalDebug, bool localDebugFlag, string message, int frame)
         {
-            if (requireLocalDebug)
-            {
-                if (localDebugFlag && _settings.DebugMode && _settings.LogMessages)
-                {
-                    _logMessage(message, frame);
-                }
-            }
-            else
-            {
-                if (_settings.DebugMode && _settings.LogMessages)
-                {
-                    _logMessage(message, frame);
-                }
-            }
+            if (requireLocalDebug && localDebugFlag && _settings.DebugMode && _settings.LogMessages)
+                _logMessage(message, frame);
+
+            else if (!requireLocalDebug && _settings.DebugMode && _settings.LogMessages)
+                _logMessage(message, frame);
+
         }
 
         /// <summary>

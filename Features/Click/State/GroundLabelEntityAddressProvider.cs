@@ -41,9 +41,8 @@ namespace ClickIt.Features.Click.State
                         _cachedGroundLabelEntityLabelCount,
                         labelCount,
                         CacheWindowMs))
-                {
                     return _cachedGroundLabelEntityAddresses;
-                }
+
 
                 _cachedGroundLabelEntityAddresses.Clear();
                 _cachedGroundLabelEntityAddresses.EnsureCapacity(labelCount);

@@ -4,13 +4,11 @@ namespace ClickIt.Tests.Shared.TestUtils
     {
         internal static bool TryGetMemberValue(object instance, string memberName, out object? value)
         {
-            if (instance == null)
-                throw new ArgumentNullException(nameof(instance));
+            ArgumentNullException.ThrowIfNull(instance);
             if (string.IsNullOrWhiteSpace(memberName))
                 throw new ArgumentException("Member name is required.", nameof(memberName));
 
             foreach (string candidateName in GetCandidateNames(memberName))
-            {
                 foreach (Type currentType in EnumerateTypeHierarchy(instance.GetType()))
                 {
                     FieldInfo? field = currentType.GetField(candidateName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
@@ -23,7 +21,6 @@ namespace ClickIt.Tests.Shared.TestUtils
                     PropertyInfo? property = currentType.GetProperty(candidateName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
                     MethodInfo? getMethod = property?.GetGetMethod(nonPublic: true);
                     if (getMethod != null)
-                    {
                         try
                         {
                             value = getMethod.Invoke(instance, null);
@@ -34,9 +31,7 @@ namespace ClickIt.Tests.Shared.TestUtils
                             // Some third-party getters dereference deeper runtime state than the field we want to seed.
                             // Keep probing backing fields rather than failing the whole lookup.
                         }
-                    }
                 }
-            }
 
             value = null;
             return false;
@@ -52,13 +47,11 @@ namespace ClickIt.Tests.Shared.TestUtils
 
         internal static Type ResolveRequiredMemberType(object instance, string memberName)
         {
-            if (instance == null)
-                throw new ArgumentNullException(nameof(instance));
+            ArgumentNullException.ThrowIfNull(instance);
             if (string.IsNullOrWhiteSpace(memberName))
                 throw new ArgumentException("Member name is required.", nameof(memberName));
 
             foreach (string candidateName in GetCandidateNames(memberName))
-            {
                 foreach (Type currentType in EnumerateTypeHierarchy(instance.GetType()))
                 {
                     FieldInfo? field = currentType.GetField(candidateName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
@@ -69,15 +62,14 @@ namespace ClickIt.Tests.Shared.TestUtils
                     if (property != null)
                         return property.PropertyType;
                 }
-            }
+
 
             throw new InvalidOperationException($"Unable to resolve member type for '{memberName}' on {instance.GetType().FullName}.");
         }
 
         internal static bool TrySetMember(object instance, string memberName, object? value)
         {
-            if (instance == null)
-                throw new ArgumentNullException(nameof(instance));
+            ArgumentNullException.ThrowIfNull(instance);
             if (string.IsNullOrWhiteSpace(memberName))
                 throw new ArgumentException("Member name is required.", nameof(memberName));
 
@@ -89,8 +81,7 @@ namespace ClickIt.Tests.Shared.TestUtils
 
         internal static void SetRequiredMember(object instance, string memberName, object? value)
         {
-            if (instance == null)
-                throw new ArgumentNullException(nameof(instance));
+            ArgumentNullException.ThrowIfNull(instance);
             if (string.IsNullOrWhiteSpace(memberName))
                 throw new ArgumentException("Member name is required.", nameof(memberName));
 
@@ -110,7 +101,6 @@ namespace ClickIt.Tests.Shared.TestUtils
         private static bool TrySetNamedMember(object instance, string memberName, object? value)
         {
             foreach (string candidateName in GetCandidateNames(memberName))
-            {
                 foreach (Type currentType in EnumerateTypeHierarchy(instance.GetType()))
                 {
                     FieldInfo? field = currentType.GetField(candidateName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
@@ -128,7 +118,7 @@ namespace ClickIt.Tests.Shared.TestUtils
                         return true;
                     }
                 }
-            }
+
 
             return false;
         }
@@ -211,10 +201,9 @@ namespace ClickIt.Tests.Shared.TestUtils
 
             int tokenMatches = 0;
             for (int i = 0; i < targetTokens.Length; i++)
-            {
                 if (normalizedCandidate.Contains(targetTokens[i], StringComparison.Ordinal))
                     tokenMatches++;
-            }
+
 
             return tokenMatches * 10;
         }

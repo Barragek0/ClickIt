@@ -59,8 +59,8 @@ namespace ClickIt.Features.Labels.Selection
             if (allLabels.Count == 0)
                 return default;
 
-            int start = Math.Max(0, startIndex);
-            int end = Math.Min(allLabels.Count, endExclusive);
+            int start = SystemMath.Max(0, startIndex);
+            int end = SystemMath.Min(allLabels.Count, endExclusive);
             if (start >= end)
                 return default;
 

@@ -373,11 +373,10 @@ namespace ClickIt.Features.Labels.Classification
                 return null;
 
             if (TryGetSettlersOreMechanicId(path, out string? settlersMechanicId) && !string.IsNullOrWhiteSpace(settlersMechanicId))
-            {
                 return SettlersMechanicPolicy.IsEnabled(settings, settlersMechanicId)
-                    ? settlersMechanicId
-                    : null;
-            }
+        ? settlersMechanicId
+        : null;
+
 
             return ResolveSpecialNonSettlersMechanic(settings, path, label, gameController, dependencies);
         }
@@ -397,15 +396,13 @@ namespace ClickIt.Features.Labels.Classification
 
             if ((settings.HighlightExarch || settings.ClickExarch)
                 && path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase))
-            {
                 return MechanicIds.AltarsSearingExarch;
-            }
+
 
             if ((settings.HighlightEater || settings.ClickEater)
                 && path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase))
-            {
                 return MechanicIds.AltarsEaterOfWorlds;
-            }
+
 
             return null;
         }

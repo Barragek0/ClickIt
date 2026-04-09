@@ -81,10 +81,10 @@ namespace ClickIt.Features.Labels.Inventory
                 if (!TryResolveInventoryEntrySize(entry, itemEntity, out int width, out int height))
                     continue;
 
-                int clampedX = Math.Clamp(x, 0, Math.Max(0, inventoryWidth - 1));
-                int clampedY = Math.Clamp(y, 0, Math.Max(0, inventoryHeight - 1));
-                int clampedWidth = Math.Max(1, Math.Min(width, inventoryWidth - clampedX));
-                int clampedHeight = Math.Max(1, Math.Min(height, inventoryHeight - clampedY));
+                int clampedX = SystemMath.Clamp(x, 0, SystemMath.Max(0, inventoryWidth - 1));
+                int clampedY = SystemMath.Clamp(y, 0, SystemMath.Max(0, inventoryHeight - 1));
+                int clampedWidth = SystemMath.Max(1, SystemMath.Min(width, inventoryWidth - clampedX));
+                int clampedHeight = SystemMath.Max(1, SystemMath.Min(height, inventoryHeight - clampedY));
 
                 entries.Add(new InventoryLayoutEntry(clampedX, clampedY, clampedWidth, clampedHeight));
             }
@@ -111,8 +111,8 @@ namespace ClickIt.Features.Labels.Inventory
                 && width > 0
                 && height > 0)
             {
-                width = Math.Max(1, width);
-                height = Math.Max(1, height);
+                width = SystemMath.Max(1, width);
+                height = SystemMath.Max(1, height);
                 return true;
             }
 

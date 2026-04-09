@@ -44,6 +44,20 @@ namespace ClickIt.Tests.Features.Click
             snapshotProvider.RefreshCalls.Should().Be(0);
         }
 
+        [TestMethod]
+        public void ResolveNearestOffscreenWalkTarget_ReturnsNull_WhenEldritchAltarsEnabledButEntityGraphIsUnavailable()
+        {
+            var settings = new ClickItSettings();
+            settings.ClickExarchAltars.Value = true;
+            var snapshotProvider = new CountingMechanicPrioritySnapshotProvider();
+            var resolver = CreateResolver(settings, snapshotProvider);
+
+            Entity? result = resolver.ResolveNearestOffscreenWalkTarget();
+
+            result.Should().BeNull();
+            snapshotProvider.RefreshCalls.Should().Be(0);
+        }
+
         private static OffscreenTraversalTargetResolver CreateResolver(ClickItSettings settings, CountingMechanicPrioritySnapshotProvider snapshotProvider)
         {
             GameController gameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));

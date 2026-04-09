@@ -1,6 +1,6 @@
 namespace ClickIt.Tests.Shared.TestUtils
 {
-    internal class ElementAdapterStub : IElementAdapter
+    internal sealed class ElementAdapterStub : IElementAdapter
     {
         private readonly List<IElementAdapter> _children = [];
         public ElementAdapterStub(string text)

@@ -22,12 +22,12 @@ namespace ClickIt.UI.Debug.Layout
                     int remaining = segment.Length - start;
                     if (remaining <= maxLength)
                     {
-                        lines.Add(segment.Substring(start));
+                        lines.Add(segment[start..]);
                         break;
                     }
 
                     int wrapAt = FindWrapIndex(segment, start, maxLength);
-                    int length = Math.Max(1, wrapAt - start);
+                    int length = SystemMath.Max(1, wrapAt - start);
                     string chunk = segment.Substring(start, length).TrimEnd();
                     if (chunk.Length > 0)
                         lines.Add(chunk);
@@ -43,35 +43,35 @@ namespace ClickIt.UI.Debug.Layout
 
         internal static List<string> WrapDebugText(string text, int maxCharsPerLine)
         {
-            var lines = new List<string>(8);
+            List<string> lines = new(8);
             if (string.IsNullOrEmpty(text))
             {
                 lines.Add(string.Empty);
                 return lines;
             }
 
-            int safeWrap = Math.Max(20, maxCharsPerLine);
+            int safeWrap = SystemMath.Max(20, maxCharsPerLine);
             int leadingSpaces = 0;
             while (leadingSpaces < text.Length && text[leadingSpaces] == ' ')
                 leadingSpaces++;
 
             string indentation = new(' ', leadingSpaces);
-            string content = text.Substring(leadingSpaces);
+            string content = text[leadingSpaces..];
             int contentLength = content.Length;
             int startIndex = 0;
 
             while (startIndex < contentLength)
             {
-                int endIndex = Math.Min(startIndex + safeWrap, contentLength);
+                int endIndex = SystemMath.Min(startIndex + safeWrap, contentLength);
                 if (endIndex < contentLength)
                 {
-                    string segment = content.Substring(startIndex, endIndex - startIndex);
+                    string segment = content[startIndex..endIndex];
                     int lastSpaceOffset = segment.LastIndexOf(' ');
                     if (lastSpaceOffset > 0)
                         endIndex = startIndex + lastSpaceOffset;
                 }
 
-                string line = content.Substring(startIndex, endIndex - startIndex).TrimEnd();
+                string line = content[startIndex..endIndex].TrimEnd();
                 lines.Add(indentation + line);
 
                 startIndex = endIndex;
@@ -84,7 +84,7 @@ namespace ClickIt.UI.Debug.Layout
 
         private static int FindWrapIndex(string value, int start, int maxLength)
         {
-            int hardStop = Math.Min(start + maxLength, value.Length);
+            int hardStop = SystemMath.Min(start + maxLength, value.Length);
             if (hardStop >= value.Length)
                 return value.Length;
 

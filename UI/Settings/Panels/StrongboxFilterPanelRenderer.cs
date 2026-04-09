@@ -10,9 +10,8 @@ namespace ClickIt.UI.Settings.Panels
 
             SettingsUiRenderHelpers.DrawSearchBar("##StrongboxSearch", "Clear##StrongboxSearchClear", ref _settings.UiState.StrongboxSearchFilter);
             if (SettingsUiRenderHelpers.DrawResetDefaultsButton("Reset Defaults##StrongboxResetDefaults"))
-            {
                 SettingsDefaultsService.ResetStrongboxFilterDefaults(_settings);
-            }
+
 
             ImGui.Spacing();
 

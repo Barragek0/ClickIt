@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace ClickIt.Shared.Game
 {
     internal readonly record struct DynamicAccessStats(
@@ -7,6 +9,7 @@ namespace ClickIt.Shared.Game
         long RuntimeBinderFailures,
         long OtherFailures,
         long BoolConversionFailures,
+        long FloatConversionFailures,
         long IntConversionFailures,
         long EmptyStringFailures);
 
@@ -18,6 +21,7 @@ namespace ClickIt.Shared.Game
         private static long _runtimeBinderFailures;
         private static long _otherFailures;
         private static long _boolConversionFailures;
+        private static long _floatConversionFailures;
         private static long _intConversionFailures;
         private static long _emptyStringFailures;
 
@@ -30,20 +34,22 @@ namespace ClickIt.Shared.Game
                 Interlocked.Read(ref _runtimeBinderFailures),
                 Interlocked.Read(ref _otherFailures),
                 Interlocked.Read(ref _boolConversionFailures),
+                Interlocked.Read(ref _floatConversionFailures),
                 Interlocked.Read(ref _intConversionFailures),
                 Interlocked.Read(ref _emptyStringFailures));
         }
 
         internal static void ResetStats()
         {
-            Interlocked.Exchange(ref _tryGetCalls, 0);
-            Interlocked.Exchange(ref _tryGetSuccesses, 0);
-            Interlocked.Exchange(ref _nullSourceFailures, 0);
-            Interlocked.Exchange(ref _runtimeBinderFailures, 0);
-            Interlocked.Exchange(ref _otherFailures, 0);
-            Interlocked.Exchange(ref _boolConversionFailures, 0);
-            Interlocked.Exchange(ref _intConversionFailures, 0);
-            Interlocked.Exchange(ref _emptyStringFailures, 0);
+            _ = Interlocked.Exchange(ref _tryGetCalls, 0);
+            _ = Interlocked.Exchange(ref _tryGetSuccesses, 0);
+            _ = Interlocked.Exchange(ref _nullSourceFailures, 0);
+            _ = Interlocked.Exchange(ref _runtimeBinderFailures, 0);
+            _ = Interlocked.Exchange(ref _otherFailures, 0);
+            _ = Interlocked.Exchange(ref _boolConversionFailures, 0);
+            _ = Interlocked.Exchange(ref _floatConversionFailures, 0);
+            _ = Interlocked.Exchange(ref _intConversionFailures, 0);
+            _ = Interlocked.Exchange(ref _emptyStringFailures, 0);
         }
 
         public static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
@@ -86,6 +92,7 @@ namespace ClickIt.Shared.Game
             if (!TryGetDynamicValue(source, accessor, out object? raw))
                 return false;
 
+
             if (raw is bool boolValue)
             {
                 value = boolValue;
@@ -95,14 +102,15 @@ namespace ClickIt.Shared.Game
             if (raw == null)
                 return false;
 
+
             try
             {
-                value = Convert.ToBoolean(raw);
+                value = Convert.ToBoolean(raw, CultureInfo.InvariantCulture);
                 return true;
             }
             catch
             {
-                Interlocked.Increment(ref _boolConversionFailures);
+                _ = Interlocked.Increment(ref _boolConversionFailures);
                 return false;
             }
         }
@@ -113,6 +121,7 @@ namespace ClickIt.Shared.Game
             if (!TryGetDynamicValue(source, accessor, out object? raw))
                 return false;
 
+
             if (raw is int intValue)
             {
                 value = intValue;
@@ -122,14 +131,44 @@ namespace ClickIt.Shared.Game
             if (raw == null)
                 return false;
 
+
             try
             {
-                value = Convert.ToInt32(raw);
+                value = Convert.ToInt32(raw, CultureInfo.InvariantCulture);
                 return true;
             }
             catch
             {
-                Interlocked.Increment(ref _intConversionFailures);
+                _ = Interlocked.Increment(ref _intConversionFailures);
+                return false;
+            }
+        }
+
+        public static bool TryReadFloat(object? source, Func<dynamic, object?> accessor, out float value)
+        {
+            value = 0;
+            if (!TryGetDynamicValue(source, accessor, out object? raw))
+                return false;
+
+
+            if (raw is float floatValue)
+            {
+                value = floatValue;
+                return true;
+            }
+
+            if (raw == null)
+                return false;
+
+
+            try
+            {
+                value = Convert.ToSingle(raw, CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                _ = Interlocked.Increment(ref _floatConversionFailures);
                 return false;
             }
         }
@@ -140,10 +179,11 @@ namespace ClickIt.Shared.Game
             if (!TryGetDynamicValue(source, accessor, out object? raw) || raw == null)
                 return false;
 
+
             string? text = raw.ToString();
             if (string.IsNullOrWhiteSpace(text))
             {
-                Interlocked.Increment(ref _emptyStringFailures);
+                _ = Interlocked.Increment(ref _emptyStringFailures);
                 return false;
             }
 

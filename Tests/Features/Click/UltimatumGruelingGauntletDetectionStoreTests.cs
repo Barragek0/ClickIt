@@ -1,6 +1,7 @@
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
+    [DoNotParallelize]
     public class UltimatumGruelingGauntletDetectionStoreTests
     {
         [TestInitialize]

@@ -30,7 +30,7 @@ namespace ClickIt.Shared.Game
 
         public bool IsValid => Underlying?.IsValid ?? false;
 
-        public SharpDX.RectangleF GetClientRect()
+        public RectangleF GetClientRect()
         {
             return Underlying?.GetClientRect() ?? SharpDX.RectangleF.Empty;
         }

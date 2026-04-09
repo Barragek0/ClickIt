@@ -15,9 +15,8 @@ namespace ClickIt.UI.Settings.Panels
             DrawAlertSoundSection();
 
             if (embedded)
-            {
                 _settings.UiState.MechanicsAltarWeightTablesExpanded = weightTablesExpanded;
-            }
+
         }
 
         public void DrawAltarModWeights()

@@ -102,7 +102,7 @@ namespace ClickIt.Features.Click
             if (_dependencies.Settings.DebugMode?.Value != true || _dependencies.Settings.RenderDebug?.Value != true)
                 return;
 
-            int holdDurationMs = Math.Max(0, _dependencies.Settings.DebugFreezeSuccessfulInteractionMs?.Value ?? 0);
+            int holdDurationMs = SystemMath.Max(0, _dependencies.Settings.DebugFreezeSuccessfulInteractionMs?.Value ?? 0);
             if (holdDurationMs <= 0)
                 return;
 

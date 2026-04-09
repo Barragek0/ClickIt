@@ -10,7 +10,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             IReadOnlyList<PrimaryAltarComponent> altarComponents = altarService.GetAltarComponentsReadOnly();
             List<AltarComponentTelemetrySnapshot> projectedComponents = [];
 
-            for (int i = 0; i < Math.Min(altarComponents.Count, 2); i++)
+            for (int i = 0; i < SystemMath.Min(altarComponents.Count, 2); i++)
             {
                 PrimaryAltarComponent altar = altarComponents[i];
                 AltarWeights? weights = weightCalculator != null
@@ -63,7 +63,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             IReadOnlyList<string>? mods,
             decimal[]? weights)
         {
-            int count = Math.Min(mods?.Count ?? 0, 8);
+            int count = SystemMath.Min(mods?.Count ?? 0, 8);
             if (count <= 0)
                 return Array.Empty<AltarWeightedModTelemetrySnapshot>();
 

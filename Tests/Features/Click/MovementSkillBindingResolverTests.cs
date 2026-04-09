@@ -119,7 +119,7 @@ namespace ClickIt.Tests.Features.Click
             canBeUsed.Should().BeFalse();
         }
 
-        private static IList BuildKeyPath(string keyText)
+        private static ArrayList BuildKeyPath(string keyText)
         {
             var level3 = new FakeNode
             {

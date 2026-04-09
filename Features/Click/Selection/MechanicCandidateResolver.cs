@@ -25,9 +25,8 @@ namespace ClickIt.Features.Click.Selection
                     clickPositionSelector(bestValue),
                     cursorAbsolute,
                     windowTopLeft))
-            {
                 return false;
-            }
+
 
             best = candidate;
             return true;

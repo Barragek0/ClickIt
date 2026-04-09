@@ -36,28 +36,27 @@ namespace ClickIt.Features.Altars
 
         public static List<(Element element, string path)> CollectElementsFromLabels(List<LabelOnGround>? altarLabels)
         {
-            var elementsToProcess = new List<(Element element, string path)>((altarLabels?.Count ?? 0) * 2);
+            List<(Element element, string path)> elementsToProcess = new((altarLabels?.Count ?? 0) * 2);
 
             if (altarLabels == null) return elementsToProcess;
 
-            foreach (var label in altarLabels)
+            foreach (LabelOnGround label in altarLabels)
             {
                 if (label == null) continue;
-                var elements = LabelElementSearch.GetElementsByStringContains(label.Label, "valuedefault");
+                List<Element> elements = LabelElementSearch.GetElementsByStringContains(label.Label, "valuedefault");
                 if (elements == null || elements.Count == 0) continue;
                 string path = label.ItemOnGround?.Path ?? string.Empty;
 
-                foreach (var el in elements)
-                {
+                foreach (Element el in elements)
                     if (el != null && el.IsVisible)
                         elementsToProcess.Add((el, path));
-                }
+
             }
 
             return elementsToProcess;
         }
 
-        private static List<LabelOnGround> GetAltarLabels(IReadOnlyList<LabelOnGround> labels, string altarPathToken)
+        private static List<LabelOnGround> GetAltarLabels(List<LabelOnGround> labels, string altarPathToken)
         {
             List<LabelOnGround> result = [];
             for (int i = 0; i < labels.Count; i++)

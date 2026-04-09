@@ -1,11 +1,11 @@
 using System;
 using System.Runtime.InteropServices;
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct StringPtr
-    {
-        public long Ptr;
-    }
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct StringPtr
+{
+    public long Ptr;
+}
 
 namespace GameOffsets
 {
@@ -464,13 +464,18 @@ namespace GameOffsets
         Valid = 0,
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct EntityOffsets
     {
+        [FieldOffset(0)]
         public global::GameOffsets.ObjectHeaderOffsets Head;
+        [FieldOffset(24)]
         public long EntityDetailsPtr;
+        [FieldOffset(32)]
         public global::GameOffsets.Native.StdVector ComponentList;
+        [FieldOffset(56)]
         public uint Id;
+        [FieldOffset(60)]
         public global::GameOffsets.EntityFlags Flags;
     }
 
@@ -1087,11 +1092,14 @@ namespace GameOffsets
         public int Height;
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct ObjectHeaderOffsets
     {
+        [FieldOffset(0)]
         public long MainObject;
+        [FieldOffset(8)]
         public long Name;
+        [FieldOffset(16)]
         public long ComponentLookUpPtr;
     }
 
@@ -1102,10 +1110,12 @@ namespace GameOffsets
         public global::GameOffsets.Native.NativePtrArray Mods;
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct PathEntityOffsets
     {
+        [FieldOffset(0)]
         public global::StringPtr Path;
+        [FieldOffset(8)]
         public long Length;
     }
 
@@ -1130,21 +1140,34 @@ namespace GameOffsets
         public global::GameOffsets.Native.StdVector Flags;
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct PositionedComponentOffsets
     {
+        [FieldOffset(0)]
         public long OwnerAddress;
+        [FieldOffset(8)]
         public byte Reaction;
+        [FieldOffset(9)]
         public int Size;
+        [FieldOffset(13)]
         public global::GameOffsets.Native.Vector2i RawVelocity;
+        [FieldOffset(21)]
         public float SpeedReverseFactor;
+        [FieldOffset(25)]
         public global::System.Numerics.Vector2 PrevPosition;
+        [FieldOffset(33)]
         public global::System.Numerics.Vector2 TravelStart;
+        [FieldOffset(41)]
         public global::System.Numerics.Vector2 TravelOffset;
+        [FieldOffset(49)]
         public float TravelProgress;
+        [FieldOffset(53)]
         public global::GameOffsets.Native.Vector2i GridPosition;
+        [FieldOffset(61)]
         public float Rotation;
+        [FieldOffset(65)]
         public float Scale;
+        [FieldOffset(69)]
         public global::System.Numerics.Vector2 WorldPosition;
     }
 
@@ -1164,13 +1187,18 @@ namespace GameOffsets
         public long QuestProgressTextAddress;
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    [StructLayout(LayoutKind.Explicit, Pack = 1)]
     public struct RenderComponentOffsets
     {
+        [FieldOffset(0)]
         public global::System.Numerics.Vector3 Pos;
+        [FieldOffset(12)]
         public global::System.Numerics.Vector3 Bounds;
+        [FieldOffset(24)]
         public global::GameOffsets.Native.NativeUtf16Text Name;
+        [FieldOffset(56)]
         public global::System.Numerics.Vector3 Rotation;
+        [FieldOffset(68)]
         public float Height;
     }
 

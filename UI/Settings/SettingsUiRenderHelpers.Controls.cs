@@ -29,9 +29,8 @@ namespace ClickIt.UI.Settings
         {
             bool value = node.Value;
             if (ImGui.Checkbox(label, ref value))
-            {
                 node.Value = value;
-            }
+
 
             DrawInlineTooltip(tooltip);
         }
@@ -39,9 +38,8 @@ namespace ClickIt.UI.Settings
         internal static void DrawButtonNodeControl(string label, ButtonNode? node, string tooltip)
         {
             if (ImGui.Button(label))
-            {
                 TriggerButtonNode(node);
-            }
+
 
             DrawInlineTooltip(tooltip);
         }
@@ -65,14 +63,12 @@ namespace ClickIt.UI.Settings
         {
             int value = node.Value;
             if (useStandardWidth)
-            {
                 ImGui.SetNextItemWidth(widthOverride ?? 400f);
-            }
+
 
             if (ImGui.SliderInt(label, ref value, min, max))
-            {
                 node.Value = value;
-            }
+
 
             DrawInlineTooltip(tooltip);
         }
@@ -98,9 +94,8 @@ namespace ClickIt.UI.Settings
             ImGui.SameLine();
             ImGui.TextDisabled("(?)");
             if (ImGui.IsItemHovered())
-            {
                 ImGui.SetTooltip(tooltip);
-            }
+
         }
 
         internal static void TriggerButtonNode(ButtonNode? buttonNode)

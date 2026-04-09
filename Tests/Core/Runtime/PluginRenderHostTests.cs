@@ -6,11 +6,10 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void Render_DoesNotThrow_WhenOptionalRenderersAreUnavailable()
         {
-            var host = new PluginRenderHost();
             var state = new PluginContext();
             var settings = new ClickItSettings();
 
-            FluentActions.Invoking(() => host.Render(
+            FluentActions.Invoking(() => PluginRenderHost.Render(
                     state,
                     settings,
                     gameController: null,
@@ -22,7 +21,6 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void Render_ClearsDeferredQueues_WhenLazyModeRequiresGameControllerButMissing()
         {
-            var host = new PluginRenderHost();
             var state = new PluginContext();
             var settings = new ClickItSettings();
             settings.LazyMode.Value = true;
@@ -33,14 +31,14 @@ namespace ClickIt.Tests.Core.Runtime
             state.Rendering.DeferredTextQueue.Enqueue("queued text", new Vector2(1, 2), Color.White, 14);
             state.Rendering.DeferredFrameQueue.Enqueue(new RectangleF(1, 2, 3, 4), Color.White, 1);
 
-            FluentActions.Invoking(() => host.Render(
-                    state,
-                    settings,
-                    gameController: null,
-                    graphics: null,
-                    debugClipboardService: CreateOpaqueDebugClipboardService()))
-                .Should().Throw<InvalidOperationException>()
-                .WithMessage("GameController is null during render");
+            FluentActions.Invoking(() => PluginRenderHost.Render(
+                state,
+                settings,
+                gameController: null,
+                graphics: null,
+                debugClipboardService: CreateOpaqueDebugClipboardService()))
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("GameController is null during render");
 
             state.Rendering.DeferredTextQueue.GetPendingCount().Should().Be(0);
             state.Rendering.DeferredFrameQueue.GetPendingCount().Should().Be(0);
@@ -49,7 +47,6 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void Render_ClearsDeferredQueues_WhenInventoryWarningRendererRequiresGameControllerButMissing()
         {
-            var host = new PluginRenderHost();
             var state = new PluginContext();
             var settings = new ClickItSettings();
 
@@ -59,14 +56,14 @@ namespace ClickIt.Tests.Core.Runtime
             state.Rendering.DeferredTextQueue.Enqueue("queued text", new Vector2(1, 2), Color.White, 14);
             state.Rendering.DeferredFrameQueue.Enqueue(new RectangleF(1, 2, 3, 4), Color.White, 1);
 
-            FluentActions.Invoking(() => host.Render(
-                    state,
-                    settings,
-                    gameController: null,
-                    graphics: null,
-                    debugClipboardService: CreateOpaqueDebugClipboardService()))
-                .Should().Throw<InvalidOperationException>()
-                .WithMessage("GameController is null during render");
+            FluentActions.Invoking(() => PluginRenderHost.Render(
+                state,
+                settings,
+                gameController: null,
+                graphics: null,
+                debugClipboardService: CreateOpaqueDebugClipboardService()))
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("GameController is null during render");
 
             state.Rendering.DeferredTextQueue.GetPendingCount().Should().Be(0);
             state.Rendering.DeferredFrameQueue.GetPendingCount().Should().Be(0);
@@ -75,7 +72,6 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void Render_CompletesPendingDebugCopy_WhenDebugRenderingIsEnabled()
         {
-            var host = new PluginRenderHost();
             var plugin = new ClickIt();
             var state = plugin.State;
             var settings = new ClickItSettings();
@@ -86,7 +82,7 @@ namespace ClickIt.Tests.Core.Runtime
             state.Rendering.DeferredTextQueue = new DeferredTextQueue();
             debugClipboardService.RequestAdditionalDebugInfoCopy();
 
-            host.Render(
+            PluginRenderHost.Render(
                 state,
                 settings,
                 gameController: null,
@@ -99,7 +95,6 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void Render_LeavesPendingDebugCopy_WhenDebugRenderingIsDisabled()
         {
-            var host = new PluginRenderHost();
             var plugin = new ClickIt();
             var state = plugin.State;
             var settings = new ClickItSettings();
@@ -109,7 +104,7 @@ namespace ClickIt.Tests.Core.Runtime
             settings.RenderDebug.Value = false;
             debugClipboardService.RequestAdditionalDebugInfoCopy();
 
-            host.Render(
+            PluginRenderHost.Render(
                 state,
                 settings,
                 gameController: null,

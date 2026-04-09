@@ -45,9 +45,8 @@ namespace ClickIt.UI.Settings
                 _hooks.TextWrapped(_settings.UiState.LastSettingsUiError);
 
                 if (_hooks.Button($"Throw Last UI Error##{panelName}"))
-                {
                     throw new InvalidOperationException(_settings.UiState.LastSettingsUiError, ex);
-                }
+
             }
         }
     }

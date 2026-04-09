@@ -4,14 +4,13 @@ namespace ClickIt.Core.Runtime
     {
         internal static string BuildDebugClipboardPayload(string[] lines)
         {
-            var sb = new StringBuilder(lines.Length * 32);
+            StringBuilder sb = new(lines.Length * 32);
             sb.AppendLine("=== ClickIt Additional Debug Information ===");
             sb.AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             for (int i = 0; i < lines.Length; i++)
-            {
                 if (!string.IsNullOrWhiteSpace(lines[i]))
                     sb.AppendLine(lines[i]);
-            }
+
 
             return sb.ToString().TrimEnd();
         }
@@ -24,7 +23,7 @@ namespace ClickIt.Core.Runtime
         {
             string payload = BuildDebugClipboardPayload(debugLines);
 
-            var sb = new StringBuilder(payload.Length + 512);
+            StringBuilder sb = new(payload.Length + 512);
             if (!string.IsNullOrWhiteSpace(payload))
             {
                 sb.AppendLine(payload);

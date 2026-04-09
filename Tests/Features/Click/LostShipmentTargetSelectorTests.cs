@@ -20,5 +20,27 @@ namespace ClickIt.Tests.Features.Click
 
             selector.ResolveNextLostShipmentCandidate().Should().BeNull();
         }
+
+        [TestMethod]
+        public void ResolveNextLostShipmentCandidate_ReturnsNull_AndLogsFailure_WhenWindowReadThrows()
+        {
+            List<string> logs = [];
+
+            var selector = new LostShipmentTargetSelector(new LostShipmentTargetSelectorDependencies(
+                Settings: new ClickItSettings
+                {
+                    ClickLostShipmentCrates = new ToggleNode(true),
+                    ClickSettlersOre = new ToggleNode(true),
+                    ClickDistance = new RangeNode<int>(600, 0, 1000)
+                },
+                GameController: null!,
+                DebugLog: logs.Add,
+                IsInsideWindowInEitherSpace: static _ => true,
+                IsClickableInEitherSpace: static (_, _) => true));
+
+            selector.ResolveNextLostShipmentCandidate().Should().BeNull();
+            logs.Should().ContainSingle();
+            logs[0].Should().Contain("[ResolveNextLostShipmentCandidate] Failed to scan hidden labels:");
+        }
     }
 }

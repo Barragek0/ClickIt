@@ -13,7 +13,7 @@ namespace ClickIt.Features.Click.Interaction
         internal static bool IsHeistContractWorldItem(string? itemPath, string? renderName)
         {
             bool byPath = !string.IsNullOrWhiteSpace(itemPath)
-                && itemPath.IndexOf(HeistContractPathMarker, StringComparison.OrdinalIgnoreCase) >= 0;
+                && itemPath.Contains(HeistContractPathMarker, StringComparison.OrdinalIgnoreCase);
             if (byPath)
                 return true;
 
@@ -24,8 +24,8 @@ namespace ClickIt.Features.Click.Interaction
         internal static bool IsHeistBlueprintWorldItem(string? itemPath, string? renderName)
         {
             bool byPath = !string.IsNullOrWhiteSpace(itemPath)
-                && (itemPath.IndexOf(HeistBlueprintPathMarker, StringComparison.OrdinalIgnoreCase) >= 0
-                    || itemPath.IndexOf(HeistBlueprintCurrencyPathMarker, StringComparison.OrdinalIgnoreCase) >= 0);
+                && (itemPath.Contains(HeistBlueprintPathMarker, StringComparison.OrdinalIgnoreCase)
+                    || itemPath.Contains(HeistBlueprintCurrencyPathMarker, StringComparison.OrdinalIgnoreCase));
             if (byPath)
                 return true;
 
@@ -36,7 +36,7 @@ namespace ClickIt.Features.Click.Interaction
         internal static bool IsRoguesMarkerWorldItem(string? itemPath, string? renderName)
         {
             bool byPath = !string.IsNullOrWhiteSpace(itemPath)
-                && itemPath.IndexOf(RoguesMarkerPathMarker, StringComparison.OrdinalIgnoreCase) >= 0;
+                && itemPath.Contains(RoguesMarkerPathMarker, StringComparison.OrdinalIgnoreCase);
             if (byPath)
                 return true;
 
@@ -59,7 +59,7 @@ namespace ClickIt.Features.Click.Interaction
             if (itemType == EntityType.WorldItem && IsHeistContractWorldItem(itemPath, renderName))
             {
                 float safeLowerY = rect.Top + (rect.Height * 0.84f);
-                preferredPoint.Y = Math.Clamp(safeLowerY, rect.Top + 1f, rect.Bottom - 1f);
+                preferredPoint.Y = SystemMath.Clamp(safeLowerY, rect.Top + 1f, rect.Bottom - 1f);
             }
 
             return preferredPoint;

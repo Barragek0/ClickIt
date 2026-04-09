@@ -2,7 +2,7 @@ namespace ClickIt.Features.Labels.Inventory
 {
     internal sealed class InventoryLayoutCache(int cacheWindowMs)
     {
-        private readonly object _cacheLock = new();
+        private readonly Lock _cacheLock = new();
         private readonly int _cacheWindowMs = cacheWindowMs;
 
         private long _timestampMs;
@@ -88,6 +88,7 @@ namespace ClickIt.Features.Labels.Inventory
         {
             if (cachedAtMs <= 0 || windowMs <= 0)
                 return false;
+
 
             long age = now - cachedAtMs;
             return age >= 0 && age <= windowMs;

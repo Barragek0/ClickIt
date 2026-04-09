@@ -14,7 +14,7 @@ namespace ClickIt.Core.Runtime
 
         private double GetTargetTime(double frequencyTarget, double averageTiming)
         {
-            return (frequencyTarget - averageTiming) + _state.Random.Next(0, 6);
+            return frequencyTarget - averageTiming + _state.Random.Next(0, 6);
         }
 
         private double ResolveClickTargetTime(double frequencyTarget)
@@ -33,9 +33,8 @@ namespace ClickIt.Core.Runtime
 
             long clickSequenceAfter = GetSuccessfulClickSequence();
             if (PluginClickRuntimeStateEvaluator.ShouldRestartClickTimerAfterSuccessfulClick(clickSequenceBefore, clickSequenceAfter))
-            {
                 _state.Runtime.Timer.Restart();
-            }
+
         }
 
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
@@ -64,9 +63,8 @@ namespace ClickIt.Core.Runtime
         private IEnumerator MainScanForAltarsLogic()
         {
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
-            {
                 yield return ScanForAltarsLogic();
-            }
+
         }
 
         private IEnumerator MainAreaBlockedUiRefreshCoroutine()
@@ -75,7 +73,7 @@ namespace ClickIt.Core.Runtime
             {
                 _state.Services.AreaService?.UpdateScreenAreas(_gameController, forceBlockedUiRefresh: true);
 
-                int waitMs = Math.Max(50, _settings.BlockedUiRefreshIntervalMs?.Value ?? AreaBlockedSnapshotProvider.DefaultBlockedUiRectanglesRefreshIntervalMs);
+                int waitMs = SystemMath.Max(50, _settings.BlockedUiRefreshIntervalMs?.Value ?? AreaBlockedSnapshotProvider.DefaultBlockedUiRectanglesRefreshIntervalMs);
                 yield return new WaitTime(waitMs);
             }
         }
@@ -94,14 +92,13 @@ namespace ClickIt.Core.Runtime
         private IEnumerator MainClickLabelCoroutine()
         {
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
-            {
                 yield return ClickLabel();
-            }
+
         }
 
         private IEnumerator ClickLabel()
         {
-            var runtimeHost = _state.Rendering.ClickRuntimeHost;
+            ClickRuntimeHost? runtimeHost = _state.Rendering.ClickRuntimeHost;
 
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null) yield break;
 
@@ -127,9 +124,8 @@ namespace ClickIt.Core.Runtime
             if (gateDecision.IsBlocked)
             {
                 if (gateDecision.ShouldCancelOffscreenPathing)
-                {
                     runtimeHost.CancelOffscreenPathingState();
-                }
+
 
                 if (_settings.DebugMode?.Value == true)
                 {
@@ -170,7 +166,7 @@ namespace ClickIt.Core.Runtime
 
         private IEnumerator ProcessManualUiHoverClick()
         {
-            var runtimeHost = _state.Rendering.ClickRuntimeHost;
+            ClickRuntimeHost? runtimeHost = _state.Rendering.ClickRuntimeHost;
 
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null || _state.Services.InputHandler == null)
                 yield break;
@@ -251,11 +247,11 @@ namespace ClickIt.Core.Runtime
 #if RUNTIME_EXILECORE
             try
             {
-                var player = _gameController?.Player;
+                Entity? player = _gameController?.Player;
                 if (player == null)
                     return 100f;
 
-                var life = player.GetComponent<Life>();
+                Life life = player.GetComponent<Life>();
                 if (life == null || life.Health.Max == 0)
                     return 100f;
 
@@ -275,11 +271,11 @@ namespace ClickIt.Core.Runtime
 #if RUNTIME_EXILECORE
             try
             {
-                var player = _gameController?.Player;
+                Entity? player = _gameController?.Player;
                 if (player == null)
                     return 100f;
 
-                var life = player.GetComponent<Life>();
+                Life life = player.GetComponent<Life>();
                 if (life == null || life.EnergyShield.Max == 0)
                     return 100f;
 

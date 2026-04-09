@@ -7,7 +7,7 @@ namespace ClickIt.Tests.Features.Altars
         public void CleanAltarModsText_RemovesFormattingAndRgb()
         {
             string input = "<rgb(255,0,0)>{Gain: Test}\n<valuedefault> {mod} ";
-            var cleaned = AltarParser.CleanAltarModsText_NoCache(input);
+            var cleaned = AltarParser.CleanAltarModsTextNoCache(input);
             cleaned.Should().NotBeNullOrEmpty();
             cleaned.Should().NotContain("<rgb");
             cleaned.Should().NotContain("<valuedefault>");
@@ -32,8 +32,9 @@ namespace ClickIt.Tests.Features.Altars
 
             (List<string> ups, List<string> downs, List<string> unmatched) = AltarParser.ProcessMods(mods, negativeType, (mod, negType) =>
             {
-                if (mod.StartsWith("up")) return (true, true, mod + "_id");
-                if (mod.StartsWith("down")) return (true, false, mod + "_id");
+                if (mod.StartsWith("up", StringComparison.Ordinal)) return (true, true, mod + "_id");
+                if (mod.StartsWith("down", StringComparison.Ordinal)) return (true, false, mod + "_id");
+
                 return (false, false, string.Empty);
             });
 

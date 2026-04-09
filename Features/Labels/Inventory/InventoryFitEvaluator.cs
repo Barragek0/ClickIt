@@ -28,12 +28,11 @@ namespace ClickIt.Features.Labels.Inventory
                 for (int i = 0; i < layoutEntries.Count; i++)
                 {
                     InventoryLayoutEntry entry = layoutEntries[i];
-                    int maxX = Math.Min(inventoryWidth, entry.X + entry.Width);
-                    int maxY = Math.Min(inventoryHeight, entry.Y + entry.Height);
+                    int maxX = SystemMath.Min(inventoryWidth, entry.X + entry.Width);
+                    int maxY = SystemMath.Min(inventoryHeight, entry.Y + entry.Height);
 
-                    for (int y = Math.Max(0, entry.Y); y < maxY; y++)
-                    {
-                        for (int x = Math.Max(0, entry.X); x < maxX; x++)
+                    for (int y = SystemMath.Max(0, entry.Y); y < maxY; y++)
+                        for (int x = SystemMath.Max(0, entry.X); x < maxX; x++)
                         {
                             int index = (y * inventoryWidth) + x;
                             if (occupied[index] != 0)
@@ -42,7 +41,7 @@ namespace ClickIt.Features.Labels.Inventory
                             occupied[index] = 1;
                             occupiedCellCount++;
                         }
-                    }
+
                 }
 
                 return true;
@@ -83,25 +82,22 @@ namespace ClickIt.Features.Labels.Inventory
                 for (int i = 0; i < occupiedEntries.Count; i++)
                 {
                     InventoryLayoutEntry entry = occupiedEntries[i];
-                    int maxX = Math.Min(inventoryWidth, entry.X + entry.Width);
-                    int maxY = Math.Min(inventoryHeight, entry.Y + entry.Height);
-                    for (int y = Math.Max(0, entry.Y); y < maxY; y++)
-                    {
-                        for (int x = Math.Max(0, entry.X); x < maxX; x++)
+                    int maxX = SystemMath.Min(inventoryWidth, entry.X + entry.Width);
+                    int maxY = SystemMath.Min(inventoryHeight, entry.Y + entry.Height);
+                    for (int y = SystemMath.Max(0, entry.Y); y < maxY; y++)
+                        for (int x = SystemMath.Max(0, entry.X); x < maxX; x++)
                             occupied[(y * inventoryWidth) + x] = 1;
-                    }
+
                 }
 
                 int maxStartX = inventoryWidth - requiredWidth;
                 int maxStartY = inventoryHeight - requiredHeight;
                 for (int startY = 0; startY <= maxStartY; startY++)
-                {
                     for (int startX = 0; startX <= maxStartX; startX++)
-                    {
                         if (CanPlaceAt(occupied, inventoryWidth, startX, startY, requiredWidth, requiredHeight))
                             return true;
-                    }
-                }
+
+
 
                 return false;
             }
@@ -115,13 +111,11 @@ namespace ClickIt.Features.Labels.Inventory
         private static bool CanPlaceAt(Span<byte> occupied, int inventoryWidth, int startX, int startY, int width, int height)
         {
             for (int y = startY; y < startY + height; y++)
-            {
                 for (int x = startX; x < startX + width; x++)
-                {
                     if (occupied[(y * inventoryWidth) + x] != 0)
                         return false;
-                }
-            }
+
+
 
             return true;
         }

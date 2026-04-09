@@ -116,7 +116,7 @@ namespace ClickIt.Features.Pathfinding
             SetGoalResolutionDebugSnapshot(start, goal, walkableGoal, usedGoalFallback, goalResolutionNote);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            List<GridPoint>? gridPath = PathGridSearch.FindPathAStar(walkable, start, walkableGoal, Math.Max(100, maxExpandedNodes), out int expandedNodes);
+            List<GridPoint>? gridPath = PathGridSearch.FindPathAStar(walkable, start, walkableGoal, SystemMath.Max(100, maxExpandedNodes), out int expandedNodes);
             sw.Stop();
 
             if (gridPath == null || gridPath.Count == 0)

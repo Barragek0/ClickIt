@@ -29,9 +29,8 @@ namespace ClickIt.Features.Area
             areaHash = long.MinValue;
             if (!DynamicAccess.TryGetDynamicValue(game, DynamicAccessProfiles.CurrentAreaHash, out object? rawAreaHash)
                 || rawAreaHash == null)
-            {
                 return false;
-            }
+
 
             return TryConvertAreaHash(rawAreaHash, out areaHash);
         }

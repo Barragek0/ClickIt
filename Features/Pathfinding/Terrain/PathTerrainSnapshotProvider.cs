@@ -7,7 +7,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
             walkable = [];
             dims = default;
 
-            var data = gameController.IngameState?.Data ?? gameController.Game?.IngameState?.Data;
+            IngameData? data = gameController.IngameState?.Data ?? gameController.Game?.IngameState?.Data;
             if (data == null)
                 return false;
 
@@ -20,7 +20,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
                 return false;
 
             bool[][] converted = ConvertRawGridToWalkable(rawGrid);
-            var areaDims = data.AreaDimensions;
+            Vector2i areaDims = data.AreaDimensions;
             dims = new PathfindingService.GridPoint(
                 areaDims.X > 0 ? areaDims.X : gridWidth,
                 areaDims.Y > 0 ? areaDims.Y : gridHeight);
@@ -43,7 +43,7 @@ namespace ClickIt.Features.Pathfinding.Terrain
             if (rawPathData is not Array rows || rows.Length == 0)
                 return false;
 
-            var converted = new List<int[]>(rows.Length);
+            List<int[]> converted = new(rows.Length);
             foreach (object? row in rows)
             {
                 if (!TryConvertRow(row, out int[]? parsed) || parsed == null || parsed.Length == 0)
@@ -56,12 +56,11 @@ namespace ClickIt.Features.Pathfinding.Terrain
 
             int expectedWidth = converted[0].Length;
             for (int i = 1; i < converted.Count; i++)
-            {
                 if (converted[i].Length != expectedWidth)
                     return false;
-            }
 
-            grid = converted.ToArray();
+
+            grid = [.. converted];
             return true;
         }
 

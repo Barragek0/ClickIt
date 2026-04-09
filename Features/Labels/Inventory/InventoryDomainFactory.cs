@@ -19,7 +19,7 @@ namespace ClickIt.Features.Labels.Inventory
         private const int InventoryDebugTrailCapacity = 32;
 
         internal static InventoryDomainServices Create(InventoryDomainFactoryDependencies dependencies)
-            => new Composition.InventoryDomainCompositionContext(
+            => new InventoryDomainCompositionContext(
                 dependencies,
                 InventoryProbeCacheWindowMs,
                 InventoryDebugTrailCapacity)

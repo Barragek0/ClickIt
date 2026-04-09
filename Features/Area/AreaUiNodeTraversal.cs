@@ -24,10 +24,9 @@ namespace ClickIt.Features.Area
 
             object? current = root;
             for (int i = 0; i < childPath.Length; i++)
-            {
                 if (!TryGetChildNode(current, childPath[i], out current) || current == null)
                     return false;
-            }
+
 
             if (requireVisibleElement)
             {
@@ -50,7 +49,6 @@ namespace ClickIt.Features.Area
 
         internal static bool TryReadVisibility(object? source, out bool isValid, out bool isVisible)
         {
-            isValid = false;
             isVisible = false;
 
             if (source is Element element)
@@ -68,7 +66,7 @@ namespace ClickIt.Features.Area
 
         internal static List<object?> ResolveChildNodes(object source)
         {
-            var children = new List<object?>();
+            List<object?> children = [];
             for (int i = 0; i < 256; i++)
             {
                 if (!TryGetChildNode(source, i, out object? child) || child == null)

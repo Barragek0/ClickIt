@@ -103,7 +103,7 @@ namespace ClickIt.Features.Labels.Inventory.Composition
 
         private (bool Success, object? SlotItemsCollection) TryGetPrimaryServerInventorySlotItems(object primaryInventory)
         {
-            bool success = _dynamicAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
+            bool success = InventoryDynamicAdapter.TryGetPrimaryServerInventorySlotItems(primaryInventory, out object? slotItemsCollection);
             return (success, slotItemsCollection);
         }
 

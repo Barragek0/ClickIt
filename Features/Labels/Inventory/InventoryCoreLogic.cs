@@ -60,19 +60,18 @@ namespace ClickIt.Features.Labels.Inventory
 
             if (TryResolveInventoryItemCellSizeFromInfo(baseComponent, out width, out height))
             {
-                width = Math.Max(1, width);
-                height = Math.Max(1, height);
+                width = SystemMath.Max(1, width);
+                height = SystemMath.Max(1, height);
                 return true;
             }
 
             if (!DynamicAccess.TryReadInt(baseComponent, static s => s.ItemCellsSizeX, out width)
                 || !DynamicAccess.TryReadInt(baseComponent, static s => s.ItemCellsSizeY, out height))
-            {
                 return false;
-            }
 
-            width = Math.Max(1, width);
-            height = Math.Max(1, height);
+
+            width = SystemMath.Max(1, width);
+            height = SystemMath.Max(1, height);
             return true;
         }
 
@@ -87,9 +86,8 @@ namespace ClickIt.Features.Labels.Inventory
             if (metadataPath.StartsWith("Metadata/Items/Currency/", StringComparison.OrdinalIgnoreCase)
                 || metadataPath.StartsWith("Metadata/Items/DivinationCards/", StringComparison.OrdinalIgnoreCase)
                 || metadataPath.StartsWith("Metadata/Items/Maps/", StringComparison.OrdinalIgnoreCase))
-            {
                 return true;
-            }
+
 
             return false;
         }
@@ -104,9 +102,8 @@ namespace ClickIt.Features.Labels.Inventory
 
             if (!DynamicAccess.TryReadInt(info, static s => s.ItemCellsSizeX, out width)
                 || !DynamicAccess.TryReadInt(info, static s => s.ItemCellsSizeY, out height))
-            {
                 return false;
-            }
+
 
             return width > 0 && height > 0;
         }

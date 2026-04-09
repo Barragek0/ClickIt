@@ -15,9 +15,8 @@ namespace ClickIt.Features.Click.Core
 
             VisibleMechanicSelectionSnapshot visibleMechanicSelection = _dependencies.VisibleMechanics.GetVisibleMechanicSelectionSnapshotForLabels(context.AllLabels);
             if (_dependencies.ShouldCaptureClickDebug())
-            {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", _dependencies.LabelInteraction.BuildLabelSourceDebugSummary(context.AllLabels), null);
-            }
+
 
             LabelOnGround? nextLabel = _dependencies.LabelSelection.ResolveNextLabelCandidate(context.AllLabels);
             string? nextLabelMechanicId = nextLabel != null

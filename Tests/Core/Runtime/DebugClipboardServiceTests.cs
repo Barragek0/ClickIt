@@ -79,6 +79,73 @@ namespace ClickIt.Tests.Core.Runtime
             status.Should().BeEmpty();
         }
 
+        [TestMethod]
+        public void DeepMemoryDumpCoordinator_OnDeepMemoryDumpProgress_ClampsAndPublishesUiState()
+        {
+            var settings = new ClickItSettings();
+            DebugClipboardService service = CreateService(getSettings: () => settings);
+            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
+
+            InvokePrivateVoid(coordinator, "OnDeepMemoryDumpProgress", 250);
+
+            settings.MemoryDumpInProgress.Should().BeTrue();
+            settings.MemoryDumpProgressPercent.Should().Be(100);
+            settings.MemoryDumpLastRunSucceeded.Should().BeFalse();
+            settings.MemoryDumpStatusText.Should().Contain("Writing ");
+            settings.MemoryDumpStatusText.Should().EndWith("...");
+            settings.MemoryDumpOutputPath.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void DeepMemoryDumpCoordinator_OnDeepMemoryDumpCompleted_PublishesSuccessState()
+        {
+            var settings = new ClickItSettings();
+            DebugClipboardService service = CreateService(getSettings: () => settings);
+            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
+
+            InvokePrivateVoid(coordinator, "OnDeepMemoryDumpCompleted", @"C:\temp\memory.dat", null);
+
+            settings.MemoryDumpInProgress.Should().BeFalse();
+            settings.MemoryDumpProgressPercent.Should().Be(100);
+            settings.MemoryDumpLastRunSucceeded.Should().BeTrue();
+            settings.MemoryDumpStatusText.Should().Contain("written successfully");
+            settings.MemoryDumpOutputPath.Should().Be(@"C:\temp\memory.dat");
+        }
+
+        [TestMethod]
+        public void DeepMemoryDumpCoordinator_OnDeepMemoryDumpCompleted_PublishesFailureState()
+        {
+            var settings = new ClickItSettings();
+            DebugClipboardService service = CreateService(getSettings: () => settings);
+            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
+
+            InvokePrivateVoid(coordinator, "OnDeepMemoryDumpCompleted", null, "disk full");
+
+            settings.MemoryDumpInProgress.Should().BeFalse();
+            settings.MemoryDumpProgressPercent.Should().Be(0);
+            settings.MemoryDumpLastRunSucceeded.Should().BeFalse();
+            settings.MemoryDumpStatusText.Should().Contain("Memory dump failed: disk full");
+            settings.MemoryDumpOutputPath.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void DeepMemoryDumpCoordinator_SetMemoryDumpUiState_Returns_WhenSettingsUnavailable()
+        {
+            DebugClipboardService service = CreateService(getSettings: static () => null);
+            DeepMemoryDumpCoordinator coordinator = GetDeepMemoryDumpCoordinator(service);
+
+            Action act = () => InvokePrivateVoid(
+                coordinator,
+                "SetMemoryDumpUiState",
+                true,
+                42,
+                false,
+                "status",
+                "path");
+
+            act.Should().NotThrow();
+        }
+
         private static DebugClipboardService CreateService(
             PluginContext? state = null,
             ClickIt? owner = null,
@@ -90,6 +157,16 @@ namespace ClickIt.Tests.Core.Runtime
                 owner ?? new ClickIt(),
                 getSettings ?? (() => new ClickItSettings()),
                 getGameController ?? (() => null)));
+        }
+
+        private static DeepMemoryDumpCoordinator GetDeepMemoryDumpCoordinator(DebugClipboardService service)
+            => (DeepMemoryDumpCoordinator)RuntimeMemberAccessor.GetRequiredMemberValue(service, "_deepMemoryDumpCoordinator")!;
+
+        private static void InvokePrivateVoid(object instance, string methodName, params object?[] args)
+        {
+            MethodInfo? method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            method.Should().NotBeNull($"Expected private method {methodName} to exist.");
+            method!.Invoke(instance, args);
         }
 
         private static InventoryDebugSnapshot CreateInventorySnapshot()

@@ -61,7 +61,7 @@ namespace ClickIt.UI.Overlays.Common
             RenderLazyModeText(centerX, topY, textColor, line1, line2, line3);
         }
 
-        private (SharpDX.Color color, string line1, string line2, string line3) ComposeLazyModeStatus(
+        private (Color color, string line1, string line2, string line3) ComposeLazyModeStatus(
             bool hasRestrictedItems,
             string restrictionReason,
             bool hotkeyHeld,
@@ -111,7 +111,7 @@ namespace ClickIt.UI.Overlays.Common
             return (SharpDX.Color.LawnGreen, string.Empty, string.Empty, string.Empty);
         }
 
-        private static (SharpDX.Color color, string line1, string line2, string line3) BuildBlockedOverrideStatus()
+        private static (Color color, string line1, string line2, string line3) BuildBlockedOverrideStatus()
         {
             return (SharpDX.Color.LawnGreen, BlockingOverriddenByHotkeyText, string.Empty, string.Empty);
         }
@@ -158,9 +158,9 @@ namespace ClickIt.UI.Overlays.Common
             return leftClickBlocks ? "Left mouse button" : "Right mouse button";
         }
 
-        private void RenderLazyModeText(float centerX, float topY, SharpDX.Color color, string line1, string line2, string line3)
+        private void RenderLazyModeText(float centerX, float topY, Color color, string line1, string line2, string line3)
         {
-            _deferredTextQueue.Enqueue(LazyModeTitle, new SharpDX.Vector2(centerX, topY), color, 36, FontAlign.Center);
+            _deferredTextQueue.Enqueue(LazyModeTitle, new Vector2(centerX, topY), color, 36, FontAlign.Center);
 
             List<string> wrappedLines = [];
             wrappedLines.AddRange(WrapOverlayText(line1, OverlayLineLengthLimit));
@@ -174,7 +174,7 @@ namespace ClickIt.UI.Overlays.Common
             for (int i = 0; i < wrappedLines.Count; i++)
             {
                 float y = topY + ((i + 1) * lineHeight);
-                _deferredTextQueue.Enqueue(wrappedLines[i], new SharpDX.Vector2(centerX, y), color, BodyFontSize, FontAlign.Center);
+                _deferredTextQueue.Enqueue(wrappedLines[i], new Vector2(centerX, y), color, BodyFontSize, FontAlign.Center);
             }
         }
     }

@@ -6,14 +6,9 @@ namespace ClickIt.Features.Labels.Inventory
         InventoryLayoutEntryResolver EntryResolver,
         Func<object?, Func<dynamic, object?>, (bool Success, int Value)> TryReadInt);
 
-    internal sealed class InventoryLayoutParser
+    internal sealed class InventoryLayoutParser(InventoryLayoutParserDependencies dependencies)
     {
-        private readonly InventoryLayoutParserDependencies _dependencies;
-
-        public InventoryLayoutParser(InventoryLayoutParserDependencies dependencies)
-        {
-            _dependencies = dependencies;
-        }
+        private readonly InventoryLayoutParserDependencies _dependencies = dependencies;
 
         public bool TryResolveInventoryCapacity(object primaryInventory, out int totalCellCapacity)
         {
@@ -62,14 +57,14 @@ namespace ClickIt.Features.Labels.Inventory
             if (TryReadInt(primaryInventory, static s => s.TotalBoxes, out int totalBoxes) && totalBoxes > 0)
             {
                 width = 12;
-                height = Math.Max(1, totalBoxes / 12);
+                height = SystemMath.Max(1, totalBoxes / 12);
                 return true;
             }
 
             if (TryReadInt(primaryInventory, static s => s.Capacity, out int capacity) && capacity > 0)
             {
                 width = 12;
-                height = Math.Max(1, capacity / 12);
+                height = SystemMath.Max(1, capacity / 12);
                 return true;
             }
 

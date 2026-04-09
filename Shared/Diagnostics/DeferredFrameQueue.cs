@@ -3,7 +3,7 @@ namespace ClickIt.Shared.Diagnostics
     public class DeferredFrameQueue
     {
         private const int MaxBufferedItems = 8192;
-        private readonly object _queueLock = new();
+        private readonly Lock _queueLock = new();
         private List<(RectangleF Rectangle, Color Color, int Thickness)> _items = [];
         private List<(RectangleF Rectangle, Color Color, int Thickness)> _spare = [];
         private int _pendingCount;
@@ -39,7 +39,7 @@ namespace ClickIt.Shared.Diagnostics
                         _items.RemoveRange(0, removeCount);
                     }
 
-                    var frame = (rectangle, color, thickness);
+                    (RectangleF rectangle, Color color, int thickness) frame = (rectangle, color, thickness);
                     if (_items.Count > 0 && IsSameFrame(_items[_items.Count - 1], frame))
                         return;
 
@@ -70,7 +70,7 @@ namespace ClickIt.Shared.Diagnostics
 
             for (int i = 0; i < _spare.Count; i++)
             {
-                var entry = _spare[i];
+                (RectangleF Rectangle, Color Color, int Thickness) entry = _spare[i];
                 try
                 {
                     graphics.DrawFrame(entry.Rectangle, entry.Color, entry.Thickness);
@@ -93,7 +93,7 @@ namespace ClickIt.Shared.Diagnostics
         {
             lock (_queueLock)
             {
-                return _items.ToArray();
+                return [.. _items];
             }
         }
 

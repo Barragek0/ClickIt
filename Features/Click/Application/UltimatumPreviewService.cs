@@ -135,7 +135,7 @@ namespace ClickIt.Features.Click.Application
                     continue;
                 if (!UltimatumLabelMath.IsUltimatumLabel(label))
                     continue;
-                if (label.Label == null || !label.Label.IsValid)
+                if (!UltimatumLabelMath.IsLabelElementValid(label))
                     continue;
 
                 ultimatumLabel = label;

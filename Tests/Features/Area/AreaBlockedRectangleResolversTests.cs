@@ -91,13 +91,12 @@ namespace ClickIt.Tests.Features.Area
             return root;
         }
 
-        private static AreaUiNodeTraversalTests.FakeNode EnsurePath(AreaUiNodeTraversalTests.FakeNode root, IReadOnlyList<int> path)
+        private static AreaUiNodeTraversalTests.FakeNode EnsurePath(AreaUiNodeTraversalTests.FakeNode root, int[] path)
         {
             AreaUiNodeTraversalTests.FakeNode current = root;
-            for (int i = 0; i < path.Count; i++)
-            {
+            for (int i = 0; i < path.Length; i++)
                 current = EnsureIndexedChild(current, path[i]);
-            }
+
 
             return current;
         }
@@ -105,9 +104,8 @@ namespace ClickIt.Tests.Features.Area
         private static AreaUiNodeTraversalTests.FakeNode EnsureIndexedChild(AreaUiNodeTraversalTests.FakeNode parent, int index)
         {
             while (parent.Children.Count <= index)
-            {
                 parent.Children.Add(new AreaUiNodeTraversalTests.FakeNode());
-            }
+
 
             return parent.Children[index];
         }

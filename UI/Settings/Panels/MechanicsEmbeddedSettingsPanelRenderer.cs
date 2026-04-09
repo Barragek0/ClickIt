@@ -36,9 +36,8 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.Indent();
 
             if (string.Equals(entryId, MechanicIds.Items, StringComparison.OrdinalIgnoreCase))
-            {
                 _itemTypeFiltersPanelRenderer.DrawPanel(embedded: true);
-            }
+
             else if (string.Equals(entryId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase))
             {
                 SettingsUiRenderHelpers.DrawToggleNodeControl(
@@ -47,14 +46,12 @@ namespace ClickIt.UI.Settings.Panels
                     "Overrides the essence table and attempts to corrupt every eligible essence encounter.");
 
                 if (_settings.ShowEssenceCorruptionTablePanel)
-                {
                     _essenceCorruptionPanelRenderer.DrawPanel(embedded: true);
-                }
+
             }
             else if (string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase))
-            {
                 DrawStrongboxSettings();
-            }
+
 
             ImGui.Unindent();
         }
@@ -86,18 +83,16 @@ namespace ClickIt.UI.Settings.Panels
             }
 
             if (string.Equals(groupId, "altars", StringComparison.OrdinalIgnoreCase))
-            {
                 DrawAltarsSettings();
-            }
+
         }
 
         internal void DrawMechanicSubgroupExtraSettings(string groupId, string subgroupName)
         {
             if (string.Equals(groupId, "heist", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(subgroupName, "Chests", StringComparison.OrdinalIgnoreCase))
-            {
                 DrawChestDropSettleSettings(new ChestDropSettleSettingsDescriptor("Heist Chest", "HeistChests", _settings.PauseAfterOpeningHeistChests, _settings.PauseAfterOpeningBasicChestsInitialDelayMs, _settings.PauseAfterOpeningBasicChestsPollIntervalMs, _settings.PauseAfterOpeningBasicChestsQuietWindowMs));
-            }
+
         }
 
         private void DrawChestDropSettleSettings(ChestDropSettleSettingsDescriptor descriptor)

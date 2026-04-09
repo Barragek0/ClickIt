@@ -24,14 +24,12 @@ namespace ClickIt.UI.Settings
                 SetupTwoColumnFilterTableHeader(leftHeader, rightHeader, leftBackground, rightBackground, leftColumnWeight, rightColumnWeight, hideLeftColumn, hideRightColumn);
                 ImGui.TableNextRow();
                 if (ImGui.TableSetColumnIndex(0))
-                {
                     drawLeft();
-                }
+
 
                 if (ImGui.TableSetColumnIndex(1))
-                {
                     drawRight();
-                }
+
             }
             finally
             {
@@ -61,9 +59,8 @@ namespace ClickIt.UI.Settings
 
                 ImGui.TableNextRow();
                 if (ImGui.TableSetColumnIndex(0))
-                {
                     drawContent();
-                }
+
             }
             finally
             {
@@ -135,8 +132,8 @@ namespace ClickIt.UI.Settings
             bool hideLeftColumn,
             bool hideRightColumn)
         {
-            float normalizedLeftWeight = Math.Max(0.15f, leftColumnWeight);
-            float normalizedRightWeight = Math.Max(0.15f, rightColumnWeight);
+            float normalizedLeftWeight = SystemMath.Max(0.15f, leftColumnWeight);
+            float normalizedRightWeight = SystemMath.Max(0.15f, rightColumnWeight);
 
             ImGui.TableSetupColumn(leftHeader, ImGuiTableColumnFlags.WidthStretch, normalizedLeftWeight);
             ImGui.TableSetupColumn(rightHeader, ImGuiTableColumnFlags.WidthStretch, normalizedRightWeight);

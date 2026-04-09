@@ -38,5 +38,21 @@ namespace ClickIt.Tests.Features.Click
             delayedAfterReset.Should().BeTrue();
             remainingDelayMs.Should().Be(120);
         }
+
+        [TestMethod]
+        public void ShouldDelay_RestartsConfirmationWindow_WhenTargetPathChanges()
+        {
+            long now = 1000;
+            var gate = new OffscreenTraversalConfirmationGate(() => now);
+            Entity target = (Entity)RuntimeHelpers.GetUninitializedObject(typeof(Entity));
+
+            gate.ShouldDelay(target, "Metadata/Chests/Chest9", out _).Should().BeTrue();
+
+            now = 1010;
+            bool delayed = gate.ShouldDelay(target, "Metadata/Chests/Chest10", out long remainingDelayMs);
+
+            delayed.Should().BeTrue();
+            remainingDelayMs.Should().Be(120);
+        }
     }
 }

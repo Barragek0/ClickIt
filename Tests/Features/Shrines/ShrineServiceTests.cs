@@ -73,6 +73,22 @@ namespace ClickIt.Tests.Features.Shrines
             nearest.Should().BeNull();
         }
 
+        [TestMethod]
+        public void IsShrine_ReturnsFalse_WhenEntityPathCannotBeRead()
+        {
+            Entity shrine = ExileCoreOpaqueFactory.CreateOpaqueEntity();
+
+            ShrineService.IsShrine(shrine).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsClickableShrineCandidate_ReturnsFalse_WhenEntityStateCannotBeRead()
+        {
+            Entity shrine = ExileCoreOpaqueFactory.CreateOpaqueEntity();
+
+            ShrineService.IsClickableShrineCandidate(shrine).Should().BeFalse();
+        }
+
         private static ShrineService CreateService()
         {
             var gc = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));

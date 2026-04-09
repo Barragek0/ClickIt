@@ -10,10 +10,9 @@ namespace ClickIt.Core.Runtime
                 return -1;
 
             foreach (Buff? buff in buffs)
-            {
                 if (buff != null && string.Equals(buff.Name, DarknessBuffName, StringComparison.Ordinal))
                     return buff.BuffCharges;
-            }
+
 
             return -1;
         }

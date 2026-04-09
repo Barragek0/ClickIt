@@ -5,6 +5,13 @@ namespace ClickIt.Tests.Shared.TestUtils
         internal static LabelOnGround CreateSelectableLabel()
             => new LabelOnGround();
 
+        internal static LabelOnGround CreateSelectableLabel(Entity? itemOnGround)
+        {
+            LabelOnGround label = CreateSelectableLabel();
+            RuntimeMemberAccessor.SetRequiredMember(label, nameof(LabelOnGround.ItemOnGround), itemOnGround);
+            return label;
+        }
+
         internal static GameController CreateGameControllerWithWindow(RectangleF windowRect)
         {
             GameController gameController = ExileCoreOpaqueFactory.CreateOpaqueGameController();
@@ -65,6 +72,7 @@ namespace ClickIt.Tests.Shared.TestUtils
 
         internal static Entity CreateEntity(
             string path = "",
+            string renderName = "",
             bool isValid = true,
             bool isHidden = false,
             long address = 0,
@@ -75,15 +83,16 @@ namespace ClickIt.Tests.Shared.TestUtils
         {
             Entity entity = ExileCoreOpaqueFactory.CreateOpaqueEntity();
             SetEntityMember(entity, nameof(Entity.Path), path, "_path", "path", "<Path>k__BackingField");
+            if (!string.IsNullOrWhiteSpace(renderName))
+                SetEntityMember(entity, nameof(Entity.RenderName), renderName, "_renderName", "renderName", "<RenderName>k__BackingField");
             SetEntityMember(entity, nameof(Entity.IsValid), isValid, "_isValid", "isValid", "<IsValid>k__BackingField");
             SetEntityMember(entity, nameof(Entity.IsHidden), isHidden, "_isHidden", "isHidden", "<IsHidden>k__BackingField");
 
             if (!RuntimeMemberAccessor.TrySetMember(entity, "_address", address)
                 && !RuntimeMemberAccessor.TrySetMember(entity, "address", address)
                 && !RuntimeMemberAccessor.TrySetMember(entity, "<Address>k__BackingField", address))
-            {
                 throw new InvalidOperationException($"Unable to seed an address backing field for {typeof(Entity).FullName}.");
-            }
+
 
             SetEntityMember(entity, nameof(Entity.IsTargetable), isTargetable, "_isTargetable", "isTargetable", "<IsTargetable>k__BackingField");
             SetEntityMember(entity, nameof(Entity.Type), type, "_type", "type", "<Type>k__BackingField");
@@ -105,10 +114,9 @@ namespace ClickIt.Tests.Shared.TestUtils
         private static void SetEntityMember<T>(Entity entity, string memberName, T value, params string[] backingFieldCandidates)
         {
             for (int i = 0; i < backingFieldCandidates.Length; i++)
-            {
                 if (RuntimeMemberAccessor.TrySetMember(entity, backingFieldCandidates[i], value))
                     return;
-            }
+
 
             RuntimeMemberAccessor.SetRequiredMember(entity, memberName, value);
         }

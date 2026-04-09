@@ -13,8 +13,8 @@ namespace ClickIt.Features.Click.Core
             if (windowRect.Width <= 0 || windowRect.Height <= 0)
                 return false;
 
-            float insetX = Math.Max(28f, windowRect.Width * 0.10f);
-            float insetY = Math.Max(28f, windowRect.Height * 0.10f);
+            float insetX = SystemMath.Max(28f, windowRect.Width * 0.10f);
+            float insetY = SystemMath.Max(28f, windowRect.Height * 0.10f);
             float safeLeft = windowRect.Left + insetX;
             float safeRight = windowRect.Right - insetX;
             float safeTop = windowRect.Top + insetY;
@@ -41,8 +41,8 @@ namespace ClickIt.Features.Click.Core
             }
 
             Vector2 clamped = new(
-                Math.Clamp(targetScreen.X, safeLeft, safeRight),
-                Math.Clamp(targetScreen.Y, safeTop, safeBottom));
+                SystemMath.Clamp(targetScreen.X, safeLeft, safeRight),
+                SystemMath.Clamp(targetScreen.Y, safeTop, safeBottom));
 
             if (!pointIsInClickableArea(clamped, targetPath))
                 return false;

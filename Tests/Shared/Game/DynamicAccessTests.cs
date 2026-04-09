@@ -44,6 +44,14 @@ namespace ClickIt.Tests.Shared.Game
         }
 
         [TestMethod]
+        public void TryReadFloat_TracksConversionFailures()
+        {
+            DynamicAccess.TryReadFloat(new { Value = "not-a-float" }, static s => s.Value, out _).Should().BeFalse();
+
+            DynamicAccess.GetStats().FloatConversionFailures.Should().Be(1);
+        }
+
+        [TestMethod]
         public void TryReadString_TracksEmptyStringFailures()
         {
             DynamicAccess.TryReadString(new { Value = "   " }, static s => s.Value, out _).Should().BeFalse();

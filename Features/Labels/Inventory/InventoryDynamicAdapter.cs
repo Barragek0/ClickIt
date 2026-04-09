@@ -7,13 +7,13 @@ namespace ClickIt.Features.Labels.Inventory
     {
         private readonly InventoryDynamicAdapterDependencies _dependencies = dependencies;
 
-        public bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
+        public static bool TryReadBool(object? source, out bool value, Func<dynamic, object?> accessor)
             => DynamicAccess.TryReadBool(source, accessor, out value);
 
-        public bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
+        public static bool TryReadInt(object? source, out int value, Func<dynamic, object?> accessor)
             => DynamicAccess.TryReadInt(source, accessor, out value);
 
-        public bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
+        public static bool TryGetDynamicValue(object? source, Func<dynamic, object?> accessor, out object? value)
             => DynamicAccess.TryGetDynamicValue(source, accessor, out value);
 
         public bool TryGetPrimaryServerInventory(GameController? gameController, out object? primaryInventory)
@@ -38,7 +38,7 @@ namespace ClickIt.Features.Labels.Inventory
             return true;
         }
 
-        public bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection)
+        public static bool TryGetPrimaryServerInventorySlotItems(object primaryInventory, out object? slotItemsCollection)
         {
             slotItemsCollection = null;
 

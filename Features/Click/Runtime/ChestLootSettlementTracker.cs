@@ -171,7 +171,7 @@ namespace ClickIt.Features.Click.Runtime
                     state.LastNewItemTimestampMs = now;
                 }
 
-                state.NextPollTimestampMs = now + Math.Max(1, state.PollIntervalMs);
+                state.NextPollTimestampMs = now + SystemMath.Max(1, state.PollIntervalMs);
             }
 
             if (ChestLootSettlementMath.IsChestLootSettlementQuietPeriodElapsed(
@@ -249,7 +249,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            int maxDistance = Math.Max(0, settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance?.Value ?? 10);
+            int maxDistance = SystemMath.Max(0, settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance?.Value ?? 10);
             float distanceSq = CalculateDistanceSquared(state.SourceGrid, entityGridPos);
             float distance = MathF.Sqrt(distanceSq);
             bool allowed = ChestLootSettlementMath.IsWithinNearbyChestLootSettlementBypassDistance(state.SourceGrid, entityGridPos, maxDistance);

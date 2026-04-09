@@ -22,10 +22,12 @@ namespace ClickIt.Features.Shrines
             if (item == null)
                 return false;
 
-            if (item.HasComponent<Shrine>())
+            if (DynamicAccess.TryReadBool(item, static i => i.HasComponent<Shrine>(), out bool hasShrineComponent) && hasShrineComponent)
                 return true;
 
-            string path = item.Path ?? string.Empty;
+            string path = DynamicAccess.TryReadString(item, static i => i.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
             return path.Contains("DarkShrine", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -34,11 +36,19 @@ namespace ClickIt.Features.Shrines
             if (item == null)
                 return false;
 
+            if (!DynamicAccess.TryReadBool(item, static i => i.IsOpened, out bool isOpened)
+                || !DynamicAccess.TryReadBool(item, static i => i.IsTargetable, out bool isTargetable)
+                || !DynamicAccess.TryReadBool(item, static i => i.IsHidden, out bool isHidden)
+                || !DynamicAccess.TryReadBool(item, static i => i.IsValid, out bool isValid))
+            {
+                return false;
+            }
+
             return IsShrine(item)
-                && !item.IsOpened
-                && item.IsTargetable
-                && !item.IsHidden
-                && item.IsValid;
+                && !isOpened
+                && isTargetable
+                && !isHidden
+                && isValid;
         }
 
         /// <summary>
@@ -149,7 +159,7 @@ namespace ClickIt.Features.Shrines
 
                 float cursorDistance = cursorDistanceResolver?.Invoke(shrine) ?? float.MaxValue;
                 bool isCloserByDistance = distance < minDistance;
-                bool isDistanceTieButCursorCloser = Math.Abs(distance - minDistance) <= 0.001f
+                bool isDistanceTieButCursorCloser = SystemMath.Abs(distance - minDistance) <= 0.001f
                     && cursorDistance < minCursorDistance;
                 if (!isCloserByDistance && !isDistanceTieButCursorCloser)
                     continue;

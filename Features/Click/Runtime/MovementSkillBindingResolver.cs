@@ -141,9 +141,8 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!TryReadString(accessor, skillObject, out string candidate)
                 && !TryReadString(accessor, entry, out candidate))
-            {
                 return false;
-            }
+
 
             if (!MovementSkillMath.IsMovementSkillInternalName(candidate))
                 return false;
@@ -174,9 +173,8 @@ namespace ClickIt.Features.Click.Runtime
                 || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.Hotkey)
                 || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.InputText)
                 || TryReadStringSkillMember(skillObject, entry, out keyText, s => s.SlotText))
-            {
                 return true;
-            }
+
 
             if (TryResolveSkillKeyTextFromKnownChildPath(entry, out string childPathText))
             {
@@ -194,10 +192,9 @@ namespace ClickIt.Features.Click.Runtime
             object? node = entry;
             int[] childIndices = [0, 0, 0, 1];
             for (int i = 0; i < childIndices.Length; i++)
-            {
                 if (!TryGetChildNode(node, childIndices[i], out node) || node == null)
                     return false;
-            }
+
 
             return TryReadNodeText(node, out keyText);
         }

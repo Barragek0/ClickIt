@@ -52,11 +52,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path (Join-Path $PWD 'Tests\TestResults') | Out-Null
 
           # Use XPlat collector here — this reliably produces a cobertura xml under Tests/TestResults/<guid>/coverage.cobertura.xml
-          dotnet test Tests/ClickIt.Tests.csproj -c Debug --collect:"XPlat Code Coverage" /p:CollectCoverage=false /p:IncludeIntegrationTests=false
+          & ./Tests/Scripts/invoke-dotnet-test-with-memory-guard.ps1 -ProjectPath 'Tests/ClickIt.Tests.csproj' -Configuration 'Debug' -AdditionalArgs @('--collect:XPlat Code Coverage', '/p:CollectCoverage=false', '/p:IncludeIntegrationTests=false')
 
           # Also generate an lcov report via coverlet so reportgenerator has a canonical lcov file
           # (place it in Tests/TestResults/lcov.info relative to repo root)
-          dotnet test Tests/ClickIt.Tests.csproj -c Debug /p:CollectCoverage=true /p:CoverletOutputFormat=lcov /p:CoverletOutput=TestResults/lcov.info /p:BuildProjectReferences=false /p:IncludeIntegrationTests=false --no-build
+          & ./Tests/Scripts/invoke-dotnet-test-with-memory-guard.ps1 -ProjectPath 'Tests/ClickIt.Tests.csproj' -Configuration 'Debug' -AdditionalArgs @('/p:CollectCoverage=true', '/p:CoverletOutputFormat=lcov', '/p:CoverletOutput=TestResults/lcov.info', '/p:BuildProjectReferences=false', '/p:IncludeIntegrationTests=false', '--no-build')
 
           # Diagnostic listing so CI logs show files that were produced
           Get-ChildItem -Path (Join-Path $PWD 'Tests\TestResults') -Recurse -File | ForEach-Object { Write-Host $_.FullName }

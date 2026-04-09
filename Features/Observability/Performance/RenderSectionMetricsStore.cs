@@ -95,9 +95,8 @@ namespace ClickIt.Features.Observability.Performance
             samples++;
             avg += (ms - avg) / samples;
             if (ms > max)
-            {
                 max = ms;
-            }
+
         }
     }
 }

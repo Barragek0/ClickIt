@@ -20,7 +20,7 @@ namespace ClickIt.Features.Click.Application
 
         public IEnumerator ProcessAltarClicking()
         {
-            var altarSnapshot = _dependencies.GetAltarSnapshot();
+            IReadOnlyList<PrimaryAltarComponent> altarSnapshot = _dependencies.GetAltarSnapshot();
             if (altarSnapshot.Count == 0)
                 yield break;
 
@@ -32,7 +32,7 @@ namespace ClickIt.Features.Click.Application
                 if (!TryGetClickableAltarElement(altar, clickEater, clickExarch, out Element? boxToClick))
                     continue;
 
-                foreach (var step in ClickAltarElement(boxToClick!))
+                foreach (object? step in ClickAltarElement(boxToClick!))
                     yield return step;
             }
         }
@@ -44,22 +44,21 @@ namespace ClickIt.Features.Click.Application
             if (!AltarClickPolicy.ShouldEvaluateAltarScan(clickEater, clickExarch))
                 return false;
 
-            var altarSnapshot = _dependencies.GetAltarSnapshot();
+            IReadOnlyList<PrimaryAltarComponent> altarSnapshot = _dependencies.GetAltarSnapshot();
             if (altarSnapshot.Count == 0)
                 return false;
 
             for (int i = 0; i < altarSnapshot.Count; i++)
-            {
                 if (TryGetClickableAltarElement(altarSnapshot[i], clickEater, clickExarch, out _))
                     return true;
-            }
+
 
             return false;
         }
 
         public bool TryClickManualCursorPreferredAltarOption(Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
-            var altarSnapshot = _dependencies.GetAltarSnapshot();
+            IReadOnlyList<PrimaryAltarComponent> altarSnapshot = _dependencies.GetAltarSnapshot();
             if (altarSnapshot.Count == 0)
                 return false;
 
@@ -120,7 +119,7 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            var altarWeights = altar.GetCachedWeights(component => _dependencies.CalculateAltarWeights(component));
+            AltarWeights? altarWeights = altar.GetCachedWeights(component => _dependencies.CalculateAltarWeights(component));
             if (!altarWeights.HasValue)
             {
                 _dependencies.DebugLog("Skipping altar - Weight calculation failed");
@@ -181,9 +180,8 @@ namespace ClickIt.Features.Click.Application
                 _dependencies.DebugLog("[ClickAltarElement] Removed clicked altar from tracking (no longer visible)");
             }
             else
-            {
                 _dependencies.DebugLog("[ClickAltarElement] Altar still visible after click; not removing (possible missclick)");
-            }
+
         }
 
         private static bool IsValidVisible(Element el)

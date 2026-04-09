@@ -18,7 +18,6 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             if (clickAutomationPort != null
                 && clickAutomationPort.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
                 && previews.Count > 0)
-            {
                 for (int i = 0; i < previews.Count; i++)
                 {
                     UltimatumPanelOptionPreview preview = previews[i];
@@ -28,7 +27,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                         PriorityIndex: preview.PriorityIndex,
                         IsSelected: preview.IsSelected));
                 }
-            }
+
 
             return new ClickTelemetrySnapshot(
                 ServiceAvailable: clickAutomationPort != null,

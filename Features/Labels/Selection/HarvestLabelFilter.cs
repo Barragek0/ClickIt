@@ -19,9 +19,8 @@ namespace ClickIt.Features.Labels.Selection
                 string path = label.ItemOnGround?.Path ?? string.Empty;
                 if (path.Contains("Harvest/Irrigator", StringComparison.OrdinalIgnoreCase)
                     || path.Contains("Harvest/Extractor", StringComparison.OrdinalIgnoreCase))
-                {
                     result.Add(label);
-                }
+
             }
 
             if (result.Count > 1)
@@ -33,7 +32,7 @@ namespace ClickIt.Features.Labels.Selection
         private static bool TryGetClickableLabelRectCenter(LabelOnGround? label, out Vector2 center)
         {
             center = default;
-            var element = label?.Label;
+            Element? element = label?.Label;
             if (element == null || !element.IsValid)
                 return false;
 
