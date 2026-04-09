@@ -4,39 +4,33 @@ namespace ClickIt
     {
         private static readonly Func<GameController?> EmptyGameControllerProvider = static () => null;
         private static readonly Func<ClickItSettings?> EmptySettingsProvider = static () => null;
-
-        private readonly PluginServiceRegistry _serviceRegistry = new();
-        private readonly PluginServices _services;
-        private readonly PluginRuntimeState _runtime = new();
-        private readonly PluginRenderingState _rendering;
-        private readonly PluginDebugTelemetryService _debugTelemetry;
         private Func<GameController?> _getGameController = EmptyGameControllerProvider;
         private Func<ClickItSettings?> _getSettings = EmptySettingsProvider;
 
         public PluginContext()
         {
-            _services = new PluginServices();
-            _rendering = new PluginRenderingState();
-            _debugTelemetry = CreateDebugTelemetryService();
+            Services = new PluginServices();
+            Rendering = new PluginRenderingState();
+            DebugTelemetry = CreateDebugTelemetryService();
         }
 
-        internal PluginServiceRegistry ServiceRegistry => _serviceRegistry;
-        internal PluginDebugTelemetryService DebugTelemetry => _debugTelemetry;
+        internal PluginServiceRegistry ServiceRegistry { get; } = new();
+        internal PluginDebugTelemetryService DebugTelemetry { get; }
 
-        public PluginServices Services => _services;
-        public PluginRuntimeState Runtime => _runtime;
-        public PluginRenderingState Rendering => _rendering;
+        public PluginServices Services { get; }
+        public PluginRuntimeState Runtime { get; } = new();
+        public PluginRenderingState Rendering { get; }
 
         public Random Random { get; } = new Random();
 
         internal DebugTelemetrySnapshot GetDebugTelemetrySnapshot()
-            => _debugTelemetry.GetSnapshot();
+            => DebugTelemetry.GetSnapshot();
 
         internal void FreezeDebugTelemetrySnapshot(string reason, int holdDurationMs)
-            => _debugTelemetry.FreezeSnapshot(reason, holdDurationMs);
+            => DebugTelemetry.FreezeSnapshot(reason, holdDurationMs);
 
         internal bool TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason)
-            => _debugTelemetry.TryGetFreezeState(out remainingMs, out reason);
+            => DebugTelemetry.TryGetFreezeState(out remainingMs, out reason);
 
         internal void SetGameControllerProvider(Func<GameController?>? provider)
             => _getGameController = provider ?? EmptyGameControllerProvider;
@@ -60,13 +54,13 @@ namespace ClickIt
 
         private void ResetWarmCompositionState()
         {
-            _serviceRegistry.Reset();
-            _runtime.IsShuttingDown = false;
-            _debugTelemetry.Clear();
+            ServiceRegistry.Reset();
+            Runtime.IsShuttingDown = false;
+            DebugTelemetry.Clear();
         }
 
         private void ClearPublishedRuntimeState()
-            => _debugTelemetry.Clear();
+            => DebugTelemetry.Clear();
 
         private void ClearCompositionProviders()
         {
@@ -76,26 +70,26 @@ namespace ClickIt
 
         private void ClearPublishedServiceState()
         {
-            _services.Clear();
-            _rendering.Clear();
+            Services.Clear();
+            Rendering.Clear();
         }
 
         private PluginDebugTelemetryService CreateDebugTelemetryService()
             => new(
-                () => _services.ClickAutomationPort,
-                () => _services.ClickAutomationSupport,
-                () => _services.LabelDebugService,
-                () => _services.LazyModeBlockerService,
-                () => _services.InventoryProbeService,
-                () => _services.PathfindingService,
-                () => _services.AltarService,
-                () => _services.WeightCalculator,
-                () => _rendering,
+                () => Services.ClickAutomationPort,
+                () => Services.ClickAutomationSupport,
+                () => Services.LabelDebugService,
+                () => Services.LazyModeBlockerService,
+                () => Services.InventoryProbeService,
+                () => Services.PathfindingService,
+                () => Services.AltarService,
+                () => Services.WeightCalculator,
+                () => Rendering,
                 () => _getGameController(),
-                () => _services.InputHandler,
+                () => Services.InputHandler,
                 () => _getSettings(),
-                () => _services.CachedLabels,
-                () => _services.ErrorHandler);
+                () => Services.CachedLabels,
+                () => Services.ErrorHandler);
 
         internal void InitializeCompositionRoot(ClickIt owner, ClickItSettings settings)
             => PluginCompositionBootstrapper.InitializeCompositionRoot(this, owner, settings);

@@ -3,7 +3,7 @@ namespace ClickIt.Features.Labels.Inventory.Composition
     internal sealed class InventoryDomainCompositionContext(
         InventoryDomainFactoryDependencies dependencies,
         int inventoryProbeCacheWindowMs,
-        int inventoryDebugTrailCapacity)
+        int inventoryDebugTrailCapacity) : IDisposable
     {
         private readonly InventoryDomainFactoryDependencies _dependencies = dependencies;
         private readonly int _inventoryProbeCacheWindowMs = inventoryProbeCacheWindowMs;
@@ -71,7 +71,7 @@ namespace ClickIt.Features.Labels.Inventory.Composition
                 InventoryCoreLogic.ShouldAllowPickupWhenGroundItemIdentityMissing,
                 InventoryCoreLogic.ShouldPickupWhenInventoryFull,
                 InventoryDomainFactory.CreateInventoryDebugSnapshot,
-                snapshot => _probeService!.PublishDebug(snapshot)));
+                snapshot => _probeService.PublishDebug(snapshot)));
 
             InventoryInteractionPolicy interactionPolicy = new(
                 _probeService,
@@ -189,6 +189,11 @@ namespace ClickIt.Features.Labels.Inventory.Composition
                 snapshot.Layout.Entries,
                 requiredWidth,
                 requiredHeight);
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -18,8 +18,8 @@ namespace ClickIt.Features.Observability
         ClickFrequencyTargetTelemetrySnapshot FrequencyTarget,
         ClickSettingsTelemetrySnapshot Settings)
     {
-        private static readonly IReadOnlyList<string> EmptyTrail = Array.Empty<string>();
-        private static readonly IReadOnlyList<UltimatumOptionPreviewSnapshot> EmptyPreview = Array.Empty<UltimatumOptionPreviewSnapshot>();
+        private static readonly IReadOnlyList<string> EmptyTrail = [];
+        private static readonly IReadOnlyList<UltimatumOptionPreviewSnapshot> EmptyPreview = [];
 
         public static readonly ClickTelemetrySnapshot Empty = new(
             ServiceAvailable: false,

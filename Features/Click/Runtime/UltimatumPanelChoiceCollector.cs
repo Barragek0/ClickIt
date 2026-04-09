@@ -67,7 +67,7 @@ namespace ClickIt.Features.Click.Runtime
         {
             choiceElementsObj = null;
 
-            var choicesPanelObj = panelObj.ChoicesPanel;
+            UltimatumChoicePanel choicesPanelObj = panelObj.ChoicesPanel;
             if (choicesPanelObj == null)
             {
                 if (logFailures)

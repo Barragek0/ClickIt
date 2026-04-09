@@ -6,7 +6,7 @@ namespace ClickIt.Features.Observability
         IReadOnlyList<AltarComponentTelemetrySnapshot> Components,
         AltarServiceDebugTelemetrySnapshot ServiceDebug)
     {
-        private static readonly IReadOnlyList<AltarComponentTelemetrySnapshot> EmptyComponents = Array.Empty<AltarComponentTelemetrySnapshot>();
+        private static readonly IReadOnlyList<AltarComponentTelemetrySnapshot> EmptyComponents = [];
 
         public static readonly AltarTelemetrySnapshot Empty = new(
             ServiceAvailable: false,
@@ -26,7 +26,7 @@ namespace ClickIt.Features.Observability
         IReadOnlyList<AltarWeightedModTelemetrySnapshot> Upsides,
         IReadOnlyList<AltarWeightedModTelemetrySnapshot> Downsides)
     {
-        private static readonly IReadOnlyList<AltarWeightedModTelemetrySnapshot> EmptyMods = Array.Empty<AltarWeightedModTelemetrySnapshot>();
+        private static readonly IReadOnlyList<AltarWeightedModTelemetrySnapshot> EmptyMods = [];
 
         public static AltarModSectionTelemetrySnapshot Empty(string sectionName)
             => new(

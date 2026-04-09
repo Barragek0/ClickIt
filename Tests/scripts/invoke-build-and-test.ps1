@@ -6,14 +6,17 @@ configured plugin directory.
 [CmdletBinding()]
 param(
     [string] $SolutionPath = 'ClickIt.sln',
+    [string] $ProductProjectPath = 'ClickIt.csproj',
     [string] $TestProjectPath = 'Tests/ClickIt.Tests.csproj',
+    [string] $TestHarnessProjectPath = 'Tests/Harness/GameOffsetsShim/GameOffsetsShim.csproj',
     [string] $Configuration = 'Debug',
     [string] $ExapiPackagePath = '',
     [string] $PluginOutputPath = '',
     [string] $BuildTool = 'dotnet',
     [string] $DecompileScriptPath = '',
     [switch] $IncludeIntegrationTests,
-    [switch] $SkipThirdPartyDecompile
+    [switch] $SkipThirdPartyDecompile,
+    [switch] $NoIncrementalBuild
 )
 
 Set-StrictMode -Version Latest
@@ -56,42 +59,54 @@ function Get-MsBuildPath {
     throw 'MSBuild.exe could not be resolved. Install Visual Studio Build Tools or ensure MSBuild is on PATH.'
 }
 
-$resolvedSolutionPath = Resolve-FullPath $SolutionPath
-$resolvedTestProjectPath = Resolve-FullPath $TestProjectPath
-$resolvedPluginOutputPath = Resolve-FullPath $PluginOutputPath
-$resolvedDecompileScriptPath = Resolve-FullPath $DecompileScriptPath
-
-if (-not [string]::IsNullOrWhiteSpace($resolvedDecompileScriptPath)) {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $resolvedDecompileScriptPath
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-}
-
-if ($BuildTool -eq 'msbuild-auto') {
-    $msbuildPath = Get-MsBuildPath
-    $buildArgs = @(
-        $resolvedSolutionPath,
-        "/p:Configuration=$Configuration"
+function Invoke-Build {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ProjectPath,
+        [switch] $BuildProjectReferences
     )
 
-    if ($IncludeIntegrationTests) {
-        $buildArgs += '/p:IncludeIntegrationTests=true'
+    if ($BuildTool -eq 'msbuild-auto') {
+        $msbuildPath = Get-MsBuildPath
+        $buildArgs = @(
+            $ProjectPath,
+            "/p:Configuration=$Configuration"
+        )
+
+        if ($NoIncrementalBuild) {
+            $buildArgs += '/t:Rebuild'
+        }
+
+        if ($IncludeIntegrationTests) {
+            $buildArgs += '/p:IncludeIntegrationTests=true'
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($ExapiPackagePath)) {
+            $buildArgs += "/p:exapiPackage=$ExapiPackagePath"
+        }
+
+        if ($SkipThirdPartyDecompile) {
+            $buildArgs += '/p:SkipThirdPartyDecompile=true'
+        }
+
+        if (-not $BuildProjectReferences) {
+            $buildArgs += '/p:BuildProjectReferences=false'
+        }
+
+        & $msbuildPath @buildArgs
+        return
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($ExapiPackagePath)) {
-        $buildArgs += "/p:exapiPackage=$ExapiPackagePath"
-    }
-
-    & $msbuildPath @buildArgs
-}
-else {
     $buildArgs = @(
         'build',
-        $resolvedSolutionPath,
+        $ProjectPath,
         '-c',
         $Configuration
     )
+
+    if ($NoIncrementalBuild) {
+        $buildArgs += '--no-incremental'
+    }
 
     if ($IncludeIntegrationTests) {
         $buildArgs += '/p:IncludeIntegrationTests=true'
@@ -105,8 +120,42 @@ else {
         $buildArgs += '/p:SkipThirdPartyDecompile=true'
     }
 
+    if (-not $BuildProjectReferences) {
+        $buildArgs += '/p:BuildProjectReferences=false'
+    }
+
     & dotnet @buildArgs
 }
+
+$resolvedSolutionPath = Resolve-FullPath $SolutionPath
+$resolvedProductProjectPath = Resolve-FullPath $ProductProjectPath
+$resolvedTestProjectPath = Resolve-FullPath $TestProjectPath
+$resolvedTestHarnessProjectPath = Resolve-FullPath $TestHarnessProjectPath
+$resolvedPluginOutputPath = Resolve-FullPath $PluginOutputPath
+$resolvedDecompileScriptPath = Resolve-FullPath $DecompileScriptPath
+
+if (-not [string]::IsNullOrWhiteSpace($resolvedDecompileScriptPath)) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $resolvedDecompileScriptPath
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+Invoke-Build -ProjectPath $resolvedProductProjectPath -BuildProjectReferences
+
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+if (-not [string]::IsNullOrWhiteSpace($resolvedTestHarnessProjectPath) -and (Test-Path $resolvedTestHarnessProjectPath)) {
+    Invoke-Build -ProjectPath $resolvedTestHarnessProjectPath
+
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+Invoke-Build -ProjectPath $resolvedTestProjectPath
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE

@@ -109,7 +109,7 @@ namespace ClickIt
                 }
             }
 
-            return metadataIdentifiers.ToArray();
+            return [.. metadataIdentifiers];
         }
 
         private void RefreshItemTypeMetadataSnapshotsIfNeeded()
@@ -184,7 +184,7 @@ namespace ClickIt
             AddEffectiveMetadataIdentifiers(metadataIdentifiers, primaryIds, primaryIsWhitelist, includeOppositeSubtypeSelections: false);
             AddEffectiveMetadataIdentifiers(metadataIdentifiers, oppositeIds, oppositeIsWhitelist, includeOppositeSubtypeSelections: true);
 
-            return metadataIdentifiers.ToArray();
+            return [.. metadataIdentifiers];
         }
 
         private void AddEffectiveMetadataIdentifiers(

@@ -19,12 +19,9 @@ namespace ClickIt.Features.Altars
         private readonly Action<string> _openDirectory = openDirectory ?? (path => Process.Start("explorer.exe", path));
         private readonly Action<string, int>? _playSound = playSound;
 
-        private readonly Dictionary<string, DateTime> _lastAlertTimes = new(StringComparer.OrdinalIgnoreCase);
-        private string? _alertSoundPath;
-
-        internal Dictionary<string, DateTime> LastAlertTimes => _lastAlertTimes;
-        internal string? CurrentAlertSoundPath => _alertSoundPath;
-        internal void SetAlertSoundPathOverride(string? path) => _alertSoundPath = path;
+        internal Dictionary<string, DateTime> LastAlertTimes { get; } = new(StringComparer.OrdinalIgnoreCase);
+        internal string? CurrentAlertSoundPath { get; private set; }
+        internal void SetAlertSoundPathOverride(string? path) => CurrentAlertSoundPath = path;
 
         private const string AlertFileName = "alert.wav";
         private const string AlertDownloadUrl = "https://raw.githubusercontent.com/Barragek0/ClickIt/main/alert.wav";
@@ -33,8 +30,8 @@ namespace ClickIt.Features.Altars
         {
             try
             {
-                var configDir = _configDirectoryProvider();
-                var file = Path.Join(configDir, AlertFileName);
+                string configDir = _configDirectoryProvider();
+                string file = Path.Join(configDir, AlertFileName);
                 if (!File.Exists(file))
                 {
                     _logMessage("Alert sound not found in config directory.", 5);
@@ -44,17 +41,17 @@ namespace ClickIt.Features.Altars
                     if (tryDownload)
                     {
                         TryDownloadDefaultAlert(file);
-                        if (!string.IsNullOrEmpty(_alertSoundPath))
+                        if (!string.IsNullOrEmpty(CurrentAlertSoundPath))
                         {
                             return;
                         }
                     }
 
-                    _alertSoundPath = null;
+                    CurrentAlertSoundPath = null;
                     return;
                 }
 
-                _alertSoundPath = file;
+                CurrentAlertSoundPath = file;
                 _logMessage($"Alert sound loaded: {file}", 5);
             }
             catch (Exception ex)
@@ -80,7 +77,7 @@ namespace ClickIt.Features.Altars
             if (!CanTriggerForKey(key)) return;
 
             EnsureAlertLoaded();
-            string? path = _alertSoundPath;
+            string? path = CurrentAlertSoundPath;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
                 _logError($"No alert sound loaded (expected '{AlertFileName}' in the config directory or plugin folder).", 20);
@@ -88,13 +85,13 @@ namespace ClickIt.Features.Altars
             }
 
             PlaySoundFile(path);
-            _lastAlertTimes[key] = DateTime.UtcNow;
+            LastAlertTimes[key] = DateTime.UtcNow;
         }
 
         public string? ResolveCompositeKey(string matchedId)
         {
             string key = matchedId;
-            var effectiveSettings = _effectiveSettingsProvider();
+            ClickItSettings effectiveSettings = _effectiveSettingsProvider();
             if (!effectiveSettings.ModAlerts.ContainsKey(key))
             {
                 string suffix = "|" + matchedId;
@@ -118,22 +115,22 @@ namespace ClickIt.Features.Altars
 
         public bool CanTriggerForKey(string key)
         {
-            var now = DateTime.UtcNow;
-            if (_lastAlertTimes.TryGetValue(key, out DateTime last) && (now - last).TotalSeconds < 30)
+            DateTime now = DateTime.UtcNow;
+            if (LastAlertTimes.TryGetValue(key, out DateTime last) && (now - last).TotalSeconds < 30)
                 return false;
             return true;
         }
 
         public void EnsureAlertLoaded()
         {
-            string? path = _alertSoundPath;
+            string? path = CurrentAlertSoundPath;
             if (!string.IsNullOrEmpty(path) && File.Exists(path)) return;
             ReloadAlertSound();
         }
 
         public void PlaySoundFile(string path)
         {
-            var gameController = _gameControllerProvider();
+            GameController? gameController = _gameControllerProvider();
             int volume = _effectiveSettingsProvider().AlertSoundVolume?.Value ?? 5;
             if (_playSound != null)
             {
@@ -152,21 +149,19 @@ namespace ClickIt.Features.Altars
             try
             {
                 _logMessage("Attempting to download default alert sound from GitHub...", 10);
-                using (var http = new HttpClient())
+                using HttpClient http = new();
+                http.Timeout = TimeSpan.FromSeconds(5);
+                HttpResponseMessage resp = http.GetAsync(AlertDownloadUrl).GetAwaiter().GetResult();
+                if (resp.IsSuccessStatusCode)
                 {
-                    http.Timeout = TimeSpan.FromSeconds(5);
-                    var resp = http.GetAsync(AlertDownloadUrl).GetAwaiter().GetResult();
-                    if (resp.IsSuccessStatusCode)
-                    {
-                        var bytes = resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
-                        File.WriteAllBytes(file, bytes);
-                        _logMessage($"Downloaded default alert sound to {file}", 20);
-                        _alertSoundPath = file;
-                        return;
-                    }
-
-                    _logError($"Failed to download alert sound: server returned {(int)resp.StatusCode}", 20);
+                    byte[] bytes = resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+                    File.WriteAllBytes(file, bytes);
+                    _logMessage($"Downloaded default alert sound to {file}", 20);
+                    CurrentAlertSoundPath = file;
+                    return;
                 }
+
+                _logError($"Failed to download alert sound: server returned {(int)resp.StatusCode}", 20);
             }
             catch (Exception ex)
             {

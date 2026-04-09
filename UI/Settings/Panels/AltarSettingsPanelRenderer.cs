@@ -6,12 +6,9 @@ namespace ClickIt.UI.Settings.Panels
 
         public void DrawAltarsPanel(bool embedded = false)
         {
-            bool weightTablesExpanded = false;
-
             DrawExarchSection();
             DrawEaterSection();
-            weightTablesExpanded = DrawAltarWeightingSection();
-
+            bool weightTablesExpanded = DrawAltarWeightingSection();
             DrawAlertSoundSection();
 
             if (embedded)

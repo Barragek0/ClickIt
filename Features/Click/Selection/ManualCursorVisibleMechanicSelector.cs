@@ -23,7 +23,7 @@ namespace ClickIt.Features.Click.Selection
             Entity? shrine = _dependencies.VisibleMechanics.ResolveNextShrineCandidate();
             if (shrine != null)
             {
-                var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
+                NumVector2 shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
                 Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
                 TrySelectCandidate(
                     cursorAbsolute,

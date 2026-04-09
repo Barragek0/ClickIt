@@ -28,7 +28,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static List<(Element OptionElement, string ModifierName)> GetUltimatumOptions(LabelOnGround label, List<string>? diagnostics = null)
         {
-            var results = new List<(Element OptionElement, string ModifierName)>(3);
+            List<(Element OptionElement, string ModifierName)> results = new(3);
             if (!TryGetUltimatumRoot(label, diagnostics, out Element? root) || root == null)
                 return results;
 
@@ -215,8 +215,6 @@ namespace ClickIt.Features.Click.Runtime
 
         private static bool TryGetChoicePanelElement(object root, List<string>? diagnostics, out object? panelElement)
         {
-            panelElement = null;
-
             if (TryGetNodeFromIndices(root, [0, 0, 2], out panelElement) && panelElement != null)
                 return true;
 
@@ -234,7 +232,6 @@ namespace ClickIt.Features.Click.Runtime
             out object? panelElement)
         {
             choicePanel = null;
-            panelElement = null;
 
             if (!TryGetChoicePanelElement(root, diagnostics, out panelElement) || panelElement == null)
                 return false;
@@ -248,18 +245,9 @@ namespace ClickIt.Features.Click.Runtime
             if (panelElement == null)
                 return false;
 
-            if (panelElement is UltimatumChoicePanel directChoicePanel)
-            {
-                choicePanel = directChoicePanel;
-            }
-            else if (panelElement is Element element)
-            {
-                choicePanel = element.AsObject<UltimatumChoicePanel>();
-            }
-            else
-            {
-                choicePanel = panelElement;
-            }
+            choicePanel = panelElement is UltimatumChoicePanel directChoicePanel
+                ? directChoicePanel
+                : panelElement is Element element ? element.AsObject<UltimatumChoicePanel>() : panelElement;
 
             if (choicePanel == null)
             {
@@ -336,8 +324,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private static IReadOnlyList<string> GetUltimatumChoicePanelModifierNames(object? choicePanel, List<string>? diagnostics)
         {
-            object? modifiersObj = null;
-            TryGetDynamicValue(choicePanel, static s => s.Modifiers, out modifiersObj);
+            TryGetDynamicValue(choicePanel, static s => s.Modifiers, out object? modifiersObj);
             return ExtractUltimatumModifierNames(modifiersObj, diagnostics, "ChoicePanel: Modifiers missing.");
         }
 

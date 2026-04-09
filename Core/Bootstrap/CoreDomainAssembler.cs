@@ -43,28 +43,28 @@ namespace ClickIt.Core.Bootstrap
             Action<AreaService, GameController> refreshScreenAreas,
             Func<GameController, Camera?> resolveCamera)
         {
-            var performanceMonitor = new PerformanceMonitor(settings);
-            var errorHandler = new ErrorHandler(settings, owner.LogError, owner.LogMessage);
-            var camera = resolveCamera(gameController)
+            PerformanceMonitor performanceMonitor = new(settings);
+            ErrorHandler errorHandler = new(settings, owner.LogError, owner.LogMessage);
+            Camera camera = resolveCamera(gameController)
                 ?? throw new InvalidOperationException("Camera is null during plugin initialization.");
 
-            var areaService = new AreaService(settings);
+            AreaService areaService = new(settings);
             refreshScreenAreas(areaService, gameController);
 
-            var labelReadModelService = new LabelReadModelService(
+            LabelReadModelService labelReadModelService = new(
                 gameController,
                 point => areaService.PointIsInClickableArea(gameController, point));
-            var cachedLabels = labelReadModelService.CachedLabels;
+            TimeCache<List<LabelOnGround>> cachedLabels = labelReadModelService.CachedLabels;
 
-            var altarService = new AltarService(owner, settings, cachedLabels);
-            var labelFilterPort = new LabelFilterPort(settings, new EssenceService(settings), errorHandler, gameController);
-            var shrineService = new ShrineService(gameController, camera);
-            var inputHandler = new InputHandler(settings);
-            var pathfindingService = new PathfindingService(settings, errorHandler);
-            var weightCalculator = new WeightCalculator(settings);
+            AltarService altarService = new(owner, settings, cachedLabels);
+            LabelFilterPort labelFilterPort = new(settings, new EssenceService(settings), errorHandler, gameController);
+            ShrineService shrineService = new(gameController, camera);
+            InputHandler inputHandler = new(settings);
+            PathfindingService pathfindingService = new(errorHandler);
+            WeightCalculator weightCalculator = new(settings);
 
-            var deferredTextQueue = new DeferredTextQueue();
-            var deferredFrameQueue = new DeferredFrameQueue();
+            DeferredTextQueue deferredTextQueue = new();
+            DeferredFrameQueue deferredFrameQueue = new();
 
             return new CoreDomainServices(
                 performanceMonitor,

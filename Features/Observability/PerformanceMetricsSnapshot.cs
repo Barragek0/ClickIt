@@ -40,6 +40,7 @@ namespace ClickIt.Features.Observability
                 RenderSection.PathfindingOverlay => PathfindingOverlay,
                 RenderSection.TextFlush => TextFlush,
                 RenderSection.FrameFlush => FrameFlush,
+                RenderSection.Unknown => default,
                 _ => default,
             };
 
@@ -50,6 +51,7 @@ namespace ClickIt.Features.Observability
                 TimingChannel.Click => ClickCoroutine,
                 TimingChannel.Flare => FlareCoroutine,
                 TimingChannel.Render => Render,
+                TimingChannel.Unknown => default,
                 _ => default,
             };
     }

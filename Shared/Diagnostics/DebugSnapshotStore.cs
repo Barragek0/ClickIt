@@ -6,7 +6,7 @@ namespace ClickIt.Shared.Diagnostics
         Func<TSnapshot, long, TSnapshot> withSequence,
         Func<TSnapshot, string> trailFormatter)
     {
-        private readonly object _lock = new();
+        private readonly Lock _lock = new();
         private readonly Queue<string> _trail = new();
         private readonly int _trailCapacity = SystemMath.Max(1, trailCapacity);
         private readonly Func<TSnapshot, long, TSnapshot> _withSequence = withSequence ?? throw new ArgumentNullException(nameof(withSequence));
@@ -26,7 +26,7 @@ namespace ClickIt.Shared.Diagnostics
         {
             lock (_lock)
             {
-                return _trail.ToArray();
+                return [.. _trail];
             }
         }
 

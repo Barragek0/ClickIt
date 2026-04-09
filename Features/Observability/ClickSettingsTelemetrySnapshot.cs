@@ -5,7 +5,7 @@ namespace ClickIt.Features.Observability
         bool InitialUltimatumClickEnabled,
         bool OtherUltimatumClickEnabled)
     {
-        private static readonly IReadOnlyList<string> EmptySummary = Array.Empty<string>();
+        private static readonly IReadOnlyList<string> EmptySummary = [];
 
         public static readonly ClickSettingsTelemetrySnapshot Empty = new(
             SummaryLines: EmptySummary,

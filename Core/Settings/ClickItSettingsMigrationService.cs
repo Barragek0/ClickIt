@@ -3,8 +3,8 @@ namespace ClickIt
     internal static class ClickItSettingsMigrationService
     {
         internal const int CurrentVersion = 1;
-        private static readonly ISettingsDefaultsService DefaultsService = new SettingsDefaultsService();
-        private static readonly ISettingsNormalizationService NormalizationService = new SettingsNormalizationService();
+        private static readonly SettingsDefaultsService DefaultsService = new();
+        private static readonly SettingsNormalizationService NormalizationService = new();
 
         internal static void Apply(ClickItSettings settings)
         {

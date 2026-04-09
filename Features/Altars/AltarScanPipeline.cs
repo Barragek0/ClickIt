@@ -32,7 +32,7 @@ namespace ClickIt.Features.Altars
 
         internal void ProcessLabels(List<LabelOnGround> altarLabels)
         {
-            var elementsToProcess = AltarScanner.CollectElementsFromLabels(altarLabels);
+            List<(Element element, string path)> elementsToProcess = AltarScanner.CollectElementsFromLabels(altarLabels);
             _debugInfo.ElementsFound = elementsToProcess.Count;
 
             _altarStore.RemoveWhere(AltarComponentValidation.ShouldRemoveInvalidCachedComponent);

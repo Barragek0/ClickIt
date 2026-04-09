@@ -3,7 +3,7 @@ namespace ClickIt.Shared.Diagnostics
     public class DeferredTextQueue
     {
         private const int MaxBufferedItems = 8192;
-        private readonly object _queueLock = new();
+        private readonly Lock _queueLock = new();
         private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> _items = [];
         private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> _spare = [];
         private int _pendingCount;
@@ -34,7 +34,7 @@ namespace ClickIt.Shared.Diagnostics
             }
         }
 
-        public void Flush(Graphics graphics, Action<string, int> logMessage)
+        public void Flush(Graphics graphics)
         {
             if (graphics == null) return;
 
@@ -43,16 +43,14 @@ namespace ClickIt.Shared.Diagnostics
                 if (_items.Count == 0)
                     return;
 
-                List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> pending = _items;
-                _items = _spare;
-                _spare = pending;
+                (_items, _spare) = (_spare, _items);
                 _items.Clear();
                 _pendingCount = 0;
             }
 
             for (int i = 0; i < _spare.Count; i++)
             {
-                var entry = _spare[i];
+                (string Text, Vector2 Position, Color Color, int Size, FontAlign Align) entry = _spare[i];
                 try
                 {
                     graphics.DrawText(entry.Text, new NumVector2(entry.Position.X, entry.Position.Y), entry.Color, entry.Align);

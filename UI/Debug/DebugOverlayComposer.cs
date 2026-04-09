@@ -2,16 +2,10 @@ namespace ClickIt.UI.Debug
 {
     internal readonly record struct DebugOverlaySection(bool Enabled, Func<int, int, int, (int NextX, int NextY)> Render);
 
-    internal sealed class DebugOverlayComposer
+    internal sealed class DebugOverlayComposer(IDebugLayoutEngine layoutEngine, DebugLayoutSettings settings)
     {
-        private readonly IDebugLayoutEngine _layoutEngine;
-        private readonly DebugLayoutSettings _settings;
-
-        public DebugOverlayComposer(IDebugLayoutEngine layoutEngine, DebugLayoutSettings settings)
-        {
-            _layoutEngine = layoutEngine;
-            _settings = settings;
-        }
+        private readonly IDebugLayoutEngine _layoutEngine = layoutEngine;
+        private readonly DebugLayoutSettings _settings = settings;
 
         public (int FinalX, int FinalY) RenderSections(IReadOnlyList<DebugOverlaySection> sections)
         {

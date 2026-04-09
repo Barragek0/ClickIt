@@ -232,7 +232,7 @@ namespace ClickIt.Shared.Input
                 return hotkeyHeld;
             }
 
-            var labels = cachedLabels?.Value;
+            List<LabelOnGround>? labels = cachedLabels?.Value;
             bool hasRestricted = hasLazyModeRestrictedItemsOnScreen?.Invoke(labels) ?? false;
             bool disableKeyHeld = IsLazyModeDisableActiveForCurrentInputState();
 
@@ -274,7 +274,7 @@ namespace ClickIt.Shared.Input
             if (gameController == null)
                 return false;
 
-            var ui = gameController.IngameState?.IngameUi;
+            IngameUIElements? ui = gameController.IngameState?.IngameUi;
             if (ui == null)
                 return false;
 
@@ -286,7 +286,7 @@ namespace ClickIt.Shared.Input
             if (gameController == null)
                 return false;
 
-            var area = gameController.Area?.CurrentArea;
+            AreaInstance? area = gameController.Area?.CurrentArea;
             if (area == null)
                 return false;
 

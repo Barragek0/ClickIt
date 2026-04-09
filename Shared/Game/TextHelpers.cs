@@ -5,7 +5,7 @@ namespace ClickIt.Shared.Game
         public static string GetLine(string text, int lineNo)
         {
             if (text == null) return string.Empty;
-            var lines = text.Replace("\r", string.Empty).Split('\n');
+            string[] lines = text.Replace("\r", string.Empty).Split('\n');
             if (lineNo >= 0 && lineNo < lines.Length) return lines[lineNo];
             return string.Empty;
         }

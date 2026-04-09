@@ -141,7 +141,7 @@ namespace ClickIt.Features.Labels.Application
 
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            var cursor = Mouse.GetCursorPosition();
+            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
             Vector2 cursorClient = cursorAbsolute - windowTopLeft;
 
@@ -159,7 +159,7 @@ namespace ClickIt.Features.Labels.Application
         private static bool TryGetClickableLabelRectCenter(LabelOnGround? label, out Vector2 center)
         {
             center = default;
-            var element = label?.Label;
+            Element? element = label?.Label;
             if (element == null || !element.IsValid)
                 return false;
 

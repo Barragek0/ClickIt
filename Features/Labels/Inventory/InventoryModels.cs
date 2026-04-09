@@ -35,7 +35,7 @@ namespace ClickIt.Features.Labels.Inventory
         int RawEntryCount)
     {
         public static readonly InventoryLayoutSnapshot Empty = new(
-            Entries: Array.Empty<InventoryLayoutEntry>(),
+            Entries: [],
             Source: string.Empty,
             DebugDetails: string.Empty,
             IsReliable: false,
@@ -62,6 +62,6 @@ namespace ClickIt.Features.Labels.Inventory
             Layout: InventoryLayoutSnapshot.Empty,
             OccupiedCells: 0,
             FullProbe: InventoryFullProbe.Empty,
-            InventoryItems: Array.Empty<Entity>());
+            InventoryItems: []);
     }
 }

@@ -8,7 +8,7 @@ namespace ClickIt.Tests.Features.Click
         {
             var settings = new ClickItSettings();
             settings.WalkTowardOffscreenLabels.Value = false;
-            var pathfindingService = new PathfindingService(settings);
+            var pathfindingService = new PathfindingService();
             pathfindingService.RuntimeState.SetLatestPathState(
             [
                 new PathfindingService.GridPoint(0, 0),
@@ -43,7 +43,7 @@ namespace ClickIt.Tests.Features.Click
                 ClickEaterAltars = new ToggleNode(false),
                 ClickExarchAltars = new ToggleNode(false)
             };
-            var pathfindingService = new PathfindingService(settings);
+            var pathfindingService = new PathfindingService();
             pathfindingService.RuntimeState.SetLatestPathState(
             [
                 new PathfindingService.GridPoint(0, 0),
@@ -143,7 +143,7 @@ namespace ClickIt.Tests.Features.Click
             {
                 StickyOffscreenTargetAddress = 42
             };
-            var pathfindingService = new PathfindingService(settings);
+            var pathfindingService = new PathfindingService();
             pathfindingService.RuntimeState.SetLatestPathState(
             [
                 new PathfindingService.GridPoint(0, 0),
@@ -171,7 +171,7 @@ namespace ClickIt.Tests.Features.Click
             {
                 StickyOffscreenTargetAddress = 42
             };
-            var pathfindingService = new PathfindingService(settings);
+            var pathfindingService = new PathfindingService();
             pathfindingService.RuntimeState.SetLatestPathState(
             [
                 new PathfindingService.GridPoint(0, 0),
@@ -198,7 +198,7 @@ namespace ClickIt.Tests.Features.Click
             {
                 StickyOffscreenTargetAddress = 42
             };
-            var pathfindingService = new PathfindingService(settings);
+            var pathfindingService = new PathfindingService();
             pathfindingService.RuntimeState.SetLatestPathState(
             [
                 new PathfindingService.GridPoint(0, 0),
@@ -230,7 +230,7 @@ namespace ClickIt.Tests.Features.Click
         {
             settings ??= new ClickItSettings();
             gameController ??= ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));
-            pathfindingService ??= new PathfindingService(settings);
+            pathfindingService ??= new PathfindingService();
             clickDebugPublisher ??= ClickTestDebugPublisherFactory.Create(() => true, _ => { });
             pointIsInClickableArea ??= static (_, _) => true;
             debugLog ??= static _ => { };

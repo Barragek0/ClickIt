@@ -156,7 +156,7 @@ namespace ClickIt.Features.Labels.Application
             if (TryGetCachedNearbyMonsterRestriction(nowMs, restrictionSettings.Signature, out LazyModeRestrictionResult cachedRestriction))
                 return cachedRestriction;
 
-            var entities = _gameController?.EntityListWrapper?.OnlyValidEntities;
+            List<Entity>? entities = _gameController?.EntityListWrapper?.OnlyValidEntities;
             if (entities == null)
                 return default;
 
@@ -431,6 +431,10 @@ namespace ClickIt.Features.Labels.Application
                 case NearbyMonsterThresholdBucket.Unique:
                     counts = counts with { Unique = counts.Unique + 1 };
                     break;
+                case NearbyMonsterThresholdBucket.None:
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -472,6 +476,11 @@ namespace ClickIt.Features.Labels.Application
                 case MonsterRarity.Unique when restrictionSettings.UniqueEnabled && distancePlayer <= restrictionSettings.UniqueDistance:
                     bucket = NearbyMonsterThresholdBucket.Unique;
                     return true;
+                case MonsterRarity.White:
+                case MonsterRarity.Magic:
+                case MonsterRarity.Rare:
+                case MonsterRarity.Unique:
+                case MonsterRarity.Error:
                 default:
                     bucket = NearbyMonsterThresholdBucket.None;
                     return false;
@@ -623,11 +632,11 @@ namespace ClickIt.Features.Labels.Application
 
         private enum NearbyMonsterThresholdBucket
         {
-            None,
             Normal,
             Magic,
             Rare,
             Unique,
+            None,
         }
     }
 }

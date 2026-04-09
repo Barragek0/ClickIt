@@ -83,7 +83,7 @@ namespace ClickIt.UI.Overlays.Inventory
                 _deferredTextQueue.Enqueue(
                     InventoryFullWarningText,
                     offsetPosition,
-                    SharpDX.Color.Black,
+                    Color.Black,
                     InventoryFullWarningTextSize,
                     FontAlign.Center);
             }
@@ -91,7 +91,7 @@ namespace ClickIt.UI.Overlays.Inventory
             _deferredTextQueue.Enqueue(
                 InventoryFullWarningText,
                 centerPosition,
-                SharpDX.Color.OrangeRed,
+                Color.OrangeRed,
                 InventoryFullWarningTextSize,
                 FontAlign.Center);
         }
@@ -137,7 +137,7 @@ namespace ClickIt.UI.Overlays.Inventory
                 return false;
 
             long elapsed = now - lastTriggeredTimestampMs;
-            return elapsed >= 0 && elapsed <= InventoryFullWarningHoldMs;
+            return elapsed is >= 0 and <= InventoryFullWarningHoldMs;
         }
 
         internal static bool ShouldAutoCopyInventoryWarning(long now, long lastAutoCopyAttemptTimestampMs)
@@ -146,7 +146,7 @@ namespace ClickIt.UI.Overlays.Inventory
                 return true;
 
             long elapsed = now - lastAutoCopyAttemptTimestampMs;
-            return elapsed < 0 || elapsed >= InventoryWarningAutoCopyThrottleMs;
+            return elapsed is < 0 or >= InventoryWarningAutoCopyThrottleMs;
         }
 
         internal static Vector2? TryResolvePlayerFeetWarningPosition(GameController gameController)

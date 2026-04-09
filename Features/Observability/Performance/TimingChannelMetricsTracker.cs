@@ -92,6 +92,10 @@ namespace ClickIt.Features.Observability.Performance
                 case TimingChannel.Flare:
                     _flareCoroutineTimer.Restart();
                     break;
+                case TimingChannel.Unknown:
+                case TimingChannel.Render:
+                default:
+                    break;
             }
         }
 
@@ -125,6 +129,10 @@ namespace ClickIt.Features.Observability.Performance
                     _maxFlareTiming = SystemMath.Max(_maxFlareTiming, flareTiming);
                     EnqueueTiming(_flareCoroutineTimings, flareTiming, 10, _flareTimingsLock);
                     break;
+                case TimingChannel.Unknown:
+                case TimingChannel.Render:
+                default:
+                    break;
             }
         }
 
@@ -141,6 +149,7 @@ namespace ClickIt.Features.Observability.Performance
                 TimingChannel.Altar => _lastAltarTiming,
                 TimingChannel.Flare => _lastFlareTiming,
                 TimingChannel.Render => _lastRenderTiming,
+                TimingChannel.Unknown => 0,
                 _ => 0,
             };
         }
@@ -173,6 +182,7 @@ namespace ClickIt.Features.Observability.Performance
                     queue = _renderTimings;
                     lockObject = _renderTimingsLock;
                     break;
+                case TimingChannel.Unknown:
                 default:
                     return 0;
             }
@@ -208,6 +218,8 @@ namespace ClickIt.Features.Observability.Performance
                 TimingChannel.Click => _maxClickTiming,
                 TimingChannel.Altar => _maxAltarTiming,
                 TimingChannel.Flare => _maxFlareTiming,
+                TimingChannel.Unknown => 0,
+                TimingChannel.Render => 0,
                 _ => 0,
             };
         }
@@ -225,6 +237,7 @@ namespace ClickIt.Features.Observability.Performance
                 TimingChannel.Altar => GetQueueCount(_altarCoroutineTimings, _altarTimingsLock),
                 TimingChannel.Flare => GetQueueCount(_flareCoroutineTimings, _flareTimingsLock),
                 TimingChannel.Render => GetQueueCount(_renderTimings, _renderTimingsLock),
+                TimingChannel.Unknown => 0,
                 _ => 0,
             };
         }

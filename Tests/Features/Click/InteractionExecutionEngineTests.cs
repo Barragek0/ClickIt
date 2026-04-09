@@ -470,7 +470,7 @@ namespace ClickIt.Tests.Features.Click
             ILabelInteractionPort resolvedLabelInteractionPort = labelInteractionPort ?? ClickTestServiceFactory.CreateNoOpLabelInteractionPort();
             ClickDebugPublicationService resolvedClickDebugPublisher = clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create();
             ClickLabelInteractionService resolvedLabelInteraction = labelInteraction ?? ClickTestServiceFactory.CreateLabelInteractionService(labelInteractionPort: resolvedLabelInteractionPort);
-            PathfindingService pathfindingService = new(settings);
+            PathfindingService pathfindingService = new();
             PathfindingLabelSuppressionEvaluator pathfindingLabelSuppression = new(new PathfindingLabelSuppressionEvaluatorDependencies(settings, runtimeState));
             ChestLootSettlementTracker chestLootSettlement = CreateChestLootSettlementTracker(settings, resolvedClickDebugPublisher, resolvedLabelInteraction);
             OffscreenPathingCoordinator offscreenPathing = CreateOffscreenPathingCoordinator(settings, runtimeState, pathfindingService, resolvedClickDebugPublisher);

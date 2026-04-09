@@ -151,8 +151,8 @@ namespace ClickIt.Features.Click.Interaction
         private Vector2 ApplyJitterWithinRect(Vector2 resolvedPoint, RectangleF rect)
         {
             float jitterRange = 2f;
-            float jitterX = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
-            float jitterY = (float)(_random.NextDouble() * (jitterRange * 2) - jitterRange);
+            float jitterX = (float)((_random.NextDouble() * (jitterRange * 2)) - jitterRange);
+            float jitterY = (float)((_random.NextDouble() * (jitterRange * 2)) - jitterRange);
             Vector2 jitteredPoint = resolvedPoint + new Vector2(jitterX, jitterY);
 
             if (!LabelClickPointSearch.IsPointInsideRect(jitteredPoint, rect))
@@ -175,7 +175,7 @@ namespace ClickIt.Features.Click.Interaction
         private static bool TryResolveLabelRect(LabelOnGround label, out RectangleF rect)
             => LabelGeometry.TryGetLabelRect(label, out rect);
 
-        private static IReadOnlyList<RectangleF> ResolveBlockedAreas(
+        private static List<RectangleF> ResolveBlockedAreas(
             LabelOnGround targetLabel,
             RectangleF targetRect,
             IReadOnlyList<LabelOnGround>? allLabels,

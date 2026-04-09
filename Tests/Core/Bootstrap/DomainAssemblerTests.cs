@@ -70,7 +70,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(
                 owner,
                 settings,
-                gameController,
                 core,
                 graphics,
                 owner.LogMessage,

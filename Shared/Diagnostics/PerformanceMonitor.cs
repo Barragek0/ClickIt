@@ -31,7 +31,6 @@ namespace ClickIt.Shared.Diagnostics
         private readonly ClickItSettings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly FpsTracker _fpsTracker = new();
         private readonly RenderSectionMetricsStore _renderSectionMetrics = new();
-        private readonly ClickActivityTracker _clickActivity = new();
         private readonly TimingChannelMetricsTracker _timingTracker = new();
 
         private readonly Stopwatch _mainTimer = new();
@@ -42,7 +41,7 @@ namespace ClickIt.Shared.Diagnostics
         private readonly Stopwatch _lastRenderTimer = new();
         private readonly Stopwatch _lastTickTimer = new();
 
-        internal ClickActivityTracker ClickActivity => _clickActivity;
+        internal ClickActivityTracker ClickActivity { get; } = new();
 
         public double CurrentFPS => _fpsTracker.CurrentFps;
 
@@ -95,18 +94,18 @@ namespace ClickIt.Shared.Diagnostics
         {
             TimingMetricsSnapshot MapRenderSection(RenderSection section)
             {
-                var stats = GetRenderSectionStats(section);
-                return new TimingMetricsSnapshot(stats.LastMs, stats.AverageMs, stats.MaxMs, stats.SampleCount);
+                (double LastMs, double AverageMs, double MaxMs, long SampleCount) = GetRenderSectionStats(section);
+                return new TimingMetricsSnapshot(LastMs, AverageMs, MaxMs, SampleCount);
             }
 
             TimingMetricsSnapshot MapTimingChannel(TimingChannel channel)
                 => new(GetLastTiming(channel), GetAverageTiming(channel), GetMaxTiming(channel), GetTimingSampleCount(channel));
 
-            var renderStats = GetRenderTimingStats();
-            var fpsStats = GetFpsStats();
+            (long LastMs, double AverageMs, long MaxMs, int SampleCount) renderStats = GetRenderTimingStats();
+            (double Current, double Average, double Max) = GetFpsStats();
 
             return new PerformanceMetricsSnapshot(
-                new FpsMetricsSnapshot(fpsStats.Current, fpsStats.Average, fpsStats.Max),
+                new FpsMetricsSnapshot(Current, Average, Max),
                 new TimingMetricsSnapshot(renderStats.LastMs, renderStats.AverageMs, renderStats.MaxMs, renderStats.SampleCount),
                 MapRenderSection(RenderSection.LazyMode),
                 MapRenderSection(RenderSection.DebugOverlay),
@@ -186,13 +185,13 @@ namespace ClickIt.Shared.Diagnostics
         }
 
         public void RecordClickInterval()
-            => _clickActivity.RecordClickInterval(_mainTimer.ElapsedMilliseconds);
+            => ClickActivity.RecordClickInterval(_mainTimer.ElapsedMilliseconds);
 
         public double GetAverageClickInterval()
-            => _clickActivity.GetAverageClickInterval();
+            => ClickActivity.GetAverageClickInterval();
 
         public void ResetClickCount()
-            => _clickActivity.ResetClickCount();
+            => ClickActivity.ResetClickCount();
 
         public void ShutdownForHotReload()
         {
@@ -203,7 +202,7 @@ namespace ClickIt.Shared.Diagnostics
             _lastRenderTimer.Stop();
             _lastTickTimer.Stop();
             _timingTracker.Clear();
-            _clickActivity.Clear();
+            ClickActivity.Clear();
         }
 
         public void RecordSuccessfulClickTiming(long duration)

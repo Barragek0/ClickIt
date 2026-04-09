@@ -10,12 +10,12 @@ namespace ClickIt.UI.Debug
             if (_areaService == null || !settings.DebugShowFrames)
                 return;
 
-            var healthSquare = _areaService.HealthSquareRectangle;
-            var flaskRect = _areaService.FlaskRectangle;
-            var flaskTertiaryRect = _areaService.FlaskTertiaryRectangle;
-            var manaSquare = _areaService.ManaSquareRectangle;
-            var skillsRect = _areaService.SkillsRectangle;
-            var skillsTertiaryRect = _areaService.SkillsTertiaryRectangle;
+            RectangleF healthSquare = _areaService.HealthSquareRectangle;
+            RectangleF flaskRect = _areaService.FlaskRectangle;
+            RectangleF flaskTertiaryRect = _areaService.FlaskTertiaryRectangle;
+            RectangleF manaSquare = _areaService.ManaSquareRectangle;
+            RectangleF skillsRect = _areaService.SkillsRectangle;
+            RectangleF skillsTertiaryRect = _areaService.SkillsTertiaryRectangle;
 
             if (IsEmptyRect(healthSquare) || IsEmptyRect(flaskRect) || IsEmptyRect(flaskTertiaryRect))
             {
@@ -50,7 +50,7 @@ namespace ClickIt.UI.Debug
             _deferredFrameQueue.Enqueue(skillsTertiaryRectDraw, Color.DeepSkyBlue, 1);
             _deferredFrameQueue.Enqueue(manaSquareDraw, Color.DeepSkyBlue, 1);
 
-            var buffsAndDebuffsRects = _areaService.BuffsAndDebuffsRectangles;
+            IReadOnlyList<RectangleF> buffsAndDebuffsRects = _areaService.BuffsAndDebuffsRectangles;
             if (buffsAndDebuffsRects.Count > 0)
             {
                 for (int i = 0; i < buffsAndDebuffsRects.Count; i++)
@@ -71,7 +71,7 @@ namespace ClickIt.UI.Debug
             _deferredFrameQueue.Enqueue(_areaService.RitualBlockedRectangle, Color.LawnGreen, 1);
             _deferredFrameQueue.Enqueue(_areaService.SentinelBlockedRectangle, Color.LightCoral, 1);
 
-            var questTrackerRects = _areaService.QuestTrackerBlockedRectangles;
+            IReadOnlyList<RectangleF> questTrackerRects = _areaService.QuestTrackerBlockedRectangles;
             for (int i = 0; i < questTrackerRects.Count; i++)
             {
                 _deferredFrameQueue.Enqueue(questTrackerRects[i], Color.MediumPurple, 1);

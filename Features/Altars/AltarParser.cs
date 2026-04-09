@@ -1,8 +1,10 @@
 namespace ClickIt.Features.Altars
 {
-    public static class AltarParser
+    public static partial class AltarParser
     {
-        private static readonly Regex RgbRegex = new(@"<[^>]*>", RegexOptions.Compiled);
+
+        [GeneratedRegex(@"<[^>]*>", RegexOptions.Compiled)]
+        private static partial Regex RgbRegex();
 
         public static string CleanAltarModsTextNoCache(string text)
         {
@@ -12,7 +14,7 @@ namespace ClickIt.Features.Altars
                 .Replace("}", "").Replace("<enchanted>", "").Replace(" ", "")
                 .Replace("gain:", "").Replace("gains:", "");
 
-            cleaned = RgbRegex.Replace(cleaned, "");
+            cleaned = RgbRegex().Replace(cleaned, "");
             return cleaned;
         }
 

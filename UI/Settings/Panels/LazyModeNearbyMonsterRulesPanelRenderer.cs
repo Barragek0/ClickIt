@@ -69,7 +69,7 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.TextDisabled("Set count to 0 to disable a specific rarity rule.");
         }
 
-        private void DrawRuleRows(IReadOnlyList<LazyModeNearbyMonsterRuleDescriptor> rows)
+        private static void DrawRuleRows(IReadOnlyList<LazyModeNearbyMonsterRuleDescriptor> rows)
         {
             foreach (LazyModeNearbyMonsterRuleDescriptor row in rows)
                 DrawRuleRow(

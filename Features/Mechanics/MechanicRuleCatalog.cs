@@ -20,16 +20,16 @@ namespace ClickIt.Features.Mechanics
 
             for (int i = 0; i < SettlersOreRules.Length; i++)
             {
-                (string MechanicId, string Marker, bool ExcludeVerisiumBossTransition) rule = SettlersOreRules[i];
-                if (!MatchesSettlersOrePathMarker(path, rule.Marker))
+                (string MechanicId, string Marker, bool ExcludeVerisiumBossTransition) = SettlersOreRules[i];
+                if (!MatchesSettlersOrePathMarker(path, Marker))
                     continue;
 
-                if (rule.ExcludeVerisiumBossTransition
+                if (ExcludeVerisiumBossTransition
                     && path.Contains(MechanicIds.VerisiumBossSubAreaTransitionPathMarker, StringComparison.OrdinalIgnoreCase))
                     continue;
 
 
-                mechanicId = rule.MechanicId;
+                mechanicId = MechanicId;
                 return true;
             }
 

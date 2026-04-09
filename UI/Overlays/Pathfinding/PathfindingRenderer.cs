@@ -21,7 +21,7 @@ namespace ClickIt.UI.Overlays.Pathfinding
 
             _pathfindingService.ClearPathIfStale(settings.OffscreenPathfindingLineTimeoutMs.Value);
 
-            var gridPath = _pathfindingService.GetLatestGridPath();
+            IReadOnlyList<PathfindingService.GridPoint> gridPath = _pathfindingService.GetLatestGridPath();
             if (gridPath.Count < 2)
                 return;
 
@@ -56,11 +56,11 @@ namespace ClickIt.UI.Overlays.Pathfinding
         private static bool TryGetPlayerGrid(GameController gameController, out PathfindingService.GridPoint playerGrid)
         {
             playerGrid = default;
-            var player = gameController.Player ?? gameController.Game?.IngameState?.Data?.LocalPlayer;
+            Entity? player = gameController.Player ?? gameController.Game?.IngameState?.Data?.LocalPlayer;
             if (player == null)
                 return false;
 
-            var grid = player.GridPosNum;
+            NumVector2 grid = player.GridPosNum;
             playerGrid = new PathfindingService.GridPoint((int)grid.X, (int)grid.Y);
             return true;
         }
@@ -88,13 +88,13 @@ namespace ClickIt.UI.Overlays.Pathfinding
             graphics.DrawLine(new NumVector2(start.X, start.Y), new NumVector2(end.X, end.Y), thickness, color);
         }
 
-        private bool TryRenderMapPath(GameController gameController, Graphics graphics, IReadOnlyList<PathfindingService.GridPoint> gridPath)
+        private static bool TryRenderMapPath(GameController gameController, Graphics graphics, IReadOnlyList<PathfindingService.GridPoint> gridPath)
         {
-            var mapElement = gameController.IngameState?.IngameUi?.Map?.LargeMap;
+            SubMap? mapElement = gameController.IngameState?.IngameUi?.Map?.LargeMap;
             if (mapElement == null)
                 return false;
 
-            var largeMap = mapElement.AsObject<SubMap>();
+            SubMap largeMap = mapElement.AsObject<SubMap>();
             if (largeMap == null || !largeMap.IsVisible)
                 return false;
 
@@ -156,11 +156,11 @@ namespace ClickIt.UI.Overlays.Pathfinding
 
         private static float GetPlayerHeightEstimate(GameController gameController)
         {
-            var player = gameController.Game?.IngameState?.Data?.LocalPlayer;
+            Entity? player = gameController.Game?.IngameState?.Data?.LocalPlayer;
             if (player == null)
                 return 0f;
 
-            var render = player.GetComponent<Render>();
+            Render render = player.GetComponent<Render>();
             return render == null ? 0f : -render.RenderStruct.Height;
         }
     }

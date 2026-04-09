@@ -6,13 +6,13 @@ namespace ClickIt.Shared.Game
         {
             ArgumentNullException.ThrowIfNull(visitor);
 
-            var entitiesByType = gameController?.EntityListWrapper?.ValidEntitiesByType;
+            Dictionary<EntityType, List<Entity>>? entitiesByType = gameController?.EntityListWrapper?.ValidEntitiesByType;
             if (entitiesByType == null)
                 return false;
 
-            foreach (var kv in entitiesByType)
+            foreach (KeyValuePair<EntityType, List<Entity>> kv in entitiesByType)
             {
-                var entities = kv.Value;
+                List<Entity> entities = kv.Value;
                 if (entities == null)
                     continue;
 

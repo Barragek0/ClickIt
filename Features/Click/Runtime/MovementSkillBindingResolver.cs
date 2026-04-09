@@ -7,7 +7,6 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool TryFindReadyMovementSkillBinding(object? skillBar, out MovementSkillBinding binding, out string diagnostic)
         {
             binding = default;
-            diagnostic = string.Empty;
 
             if (!TryGetSkillBarEntries(skillBar, out IReadOnlyList<object?> skillEntries))
             {

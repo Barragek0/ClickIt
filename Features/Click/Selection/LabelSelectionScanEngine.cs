@@ -57,7 +57,7 @@ namespace ClickIt.Features.Click.Selection
             if (allLabels == null)
                 return nextLabel;
 
-            Element? uiHover = null;
+            Element? uiHover;
             try
             {
                 uiHover = _dependencies.GameController?.IngameState?.UIHoverElement;

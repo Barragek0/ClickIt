@@ -16,7 +16,7 @@ namespace ClickIt.Features.Labels.Inventory
 
         private long _inventoryItemsCacheTimestampMs;
         private GameController? _inventoryItemsCacheController;
-        private IReadOnlyList<Entity> _inventoryItemsCacheValue = Array.Empty<Entity>();
+        private IReadOnlyList<Entity> _inventoryItemsCacheValue = [];
         private bool _inventoryItemsCacheHasValue;
 
         public bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
@@ -28,7 +28,7 @@ namespace ClickIt.Features.Labels.Inventory
                 return items.Count > 0;
             }
 
-            items = Array.Empty<Entity>();
+            items = [];
             (bool hasPrimaryInventory, object? primaryInventory) = _dependencies.TryGetPrimaryServerInventory(gameController);
             if (!hasPrimaryInventory || primaryInventory == null)
             {
@@ -49,7 +49,7 @@ namespace ClickIt.Features.Labels.Inventory
 
         public bool TryEnumeratePrimaryInventoryItemEntitiesFast(object primaryInventory, out IReadOnlyList<Entity> items)
         {
-            items = Array.Empty<Entity>();
+            items = [];
 
             (bool hasSlotItems, object? collectionObj) = _dependencies.TryGetPrimaryServerInventorySlotItems(primaryInventory);
             if (!hasSlotItems || collectionObj == null)
@@ -93,7 +93,7 @@ namespace ClickIt.Features.Labels.Inventory
             {
                 _inventoryItemsCacheTimestampMs = 0;
                 _inventoryItemsCacheController = null;
-                _inventoryItemsCacheValue = Array.Empty<Entity>();
+                _inventoryItemsCacheValue = [];
                 _inventoryItemsCacheHasValue = false;
             }
 
@@ -121,7 +121,7 @@ namespace ClickIt.Features.Labels.Inventory
                 }
             }
 
-            items = Array.Empty<Entity>();
+            items = [];
             return false;
         }
 

@@ -96,7 +96,7 @@ namespace ClickIt.Features.Click.Application
 
         private bool TryClickStickyShrine(Entity stickyTarget)
         {
-            var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(stickyTarget.PosNum);
+            NumVector2 shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(stickyTarget.PosNum);
             Vector2 shrinePos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
             string path = stickyTarget.Path ?? string.Empty;
             if (!_dependencies.IsClickableInEitherSpace(shrinePos, path))
@@ -155,8 +155,8 @@ namespace ClickIt.Features.Click.Application
                     PendingChestMechanicId: mechanicId,
                     PendingChestLabel: stickyLabel),
                 _dependencies.HoldDebugTelemetryAfterSuccess,
-                clearStickyTarget: () => ClearStickyOffscreenTarget(),
-                markPendingChestOpenConfirmation: (resolvedMechanicId, label) => _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation(resolvedMechanicId, label));
+                clearStickyTarget: ClearStickyOffscreenTarget,
+                markPendingChestOpenConfirmation: _dependencies.ChestLootSettlement.MarkPendingChestOpenConfirmation);
 
         private static string BuildStickyClickSuccessReason(string? stickyTargetPath)
             => string.IsNullOrWhiteSpace(stickyTargetPath)

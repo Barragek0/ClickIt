@@ -32,11 +32,11 @@ namespace ClickIt.Features.Observability.TelemetryProjection
             return new ClickTelemetrySnapshot(
                 ServiceAvailable: clickAutomationPort != null,
                 Click: clickAutomationSupport?.GetLatestClickDebug() ?? ClickDebugSnapshot.Empty,
-                ClickTrail: clickAutomationSupport?.GetLatestClickDebugTrail() ?? Array.Empty<string>(),
+                ClickTrail: clickAutomationSupport?.GetLatestClickDebugTrail() ?? [],
                 RuntimeLog: clickAutomationSupport?.GetLatestRuntimeDebugLog() ?? RuntimeDebugLogSnapshot.Empty,
-                RuntimeLogTrail: clickAutomationSupport?.GetLatestRuntimeDebugLogTrail() ?? Array.Empty<string>(),
+                RuntimeLogTrail: clickAutomationSupport?.GetLatestRuntimeDebugLogTrail() ?? [],
                 Ultimatum: clickAutomationSupport?.GetLatestUltimatumDebug() ?? UltimatumDebugSnapshot.Empty,
-                UltimatumTrail: clickAutomationSupport?.GetLatestUltimatumDebugTrail() ?? Array.Empty<string>(),
+                UltimatumTrail: clickAutomationSupport?.GetLatestUltimatumDebugTrail() ?? [],
                 UltimatumOptionPreview: ultimatumPreview,
                 FrequencyTarget: BuildClickFrequencyTargetTelemetry(settings, inputHandler, lazyModeBlockerService, gameController, cachedLabels),
                 Settings: ClickSettingsTelemetrySnapshot.FromSettings(settings));

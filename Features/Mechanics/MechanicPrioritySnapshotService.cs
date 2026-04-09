@@ -61,9 +61,9 @@ namespace ClickIt.Features.Mechanics
         MechanicPrioritySnapshot IMechanicPrioritySnapshotProvider.Snapshot
             => Snapshot;
 
-        private static IReadOnlyDictionary<string, int> BuildPriorityIndexMap(IReadOnlyList<string> priorities)
+        private static Dictionary<string, int> BuildPriorityIndexMap(IReadOnlyList<string> priorities)
         {
-            var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, int> map = new(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < priorities.Count; i++)
             {
                 string id = priorities[i] ?? string.Empty;

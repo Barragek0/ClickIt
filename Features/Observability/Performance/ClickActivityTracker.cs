@@ -14,7 +14,7 @@ namespace ClickIt.Features.Observability.Performance
             if (_lastClickTime != 0 && ClickCount > 3)
             {
                 long interval = currentTimeMs - _lastClickTime;
-                if (interval > 0 && interval < 10000)
+                if (interval is > 0 and < 10000)
                     lock (_clickIntervalsLock)
                     {
                         _clickIntervals.Enqueue(interval);

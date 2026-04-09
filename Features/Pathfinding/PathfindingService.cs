@@ -1,44 +1,42 @@
 namespace ClickIt.Features.Pathfinding
 {
-    public sealed class PathfindingService(ClickItSettings settings, ErrorHandler? errorHandler = null)
+    public sealed class PathfindingService(ErrorHandler? errorHandler = null)
     {
         public const string AStarNoRouteFailureReason = "A* did not find a route.";
 
-        private readonly ClickItSettings _settings = settings;
         private readonly ErrorHandler? _errorHandler = errorHandler;
-        private readonly PathfindingRuntimeState _runtimeState = new();
         private readonly OffscreenMovementDiagnosticsChannel _offscreenMovementDiagnostics = new();
 
-        internal PathfindingRuntimeState RuntimeState => _runtimeState;
+        internal PathfindingRuntimeState RuntimeState { get; } = new();
 
         public readonly record struct GridPoint(int X, int Y);
 
         public PathfindingDebugSnapshot GetDebugSnapshot()
-            => _runtimeState.GetDebugSnapshot();
+            => RuntimeState.GetDebugSnapshot();
 
         public IReadOnlyList<Vector2> GetLatestScreenPath()
-            => _runtimeState.GetLatestScreenPath();
+            => RuntimeState.GetLatestScreenPath();
 
         public IReadOnlyList<GridPoint> GetLatestGridPath()
-            => _runtimeState.GetLatestGridPath();
+            => RuntimeState.GetLatestGridPath();
 
         public OffscreenMovementDebugSnapshot GetLatestOffscreenMovementDebug()
-            => _runtimeState.GetLatestOffscreenMovementDebug();
+            => RuntimeState.GetLatestOffscreenMovementDebug();
 
         public void SetLatestOffscreenMovementDebug(OffscreenMovementDebugSnapshot snapshot)
-            => _runtimeState.SetLatestOffscreenMovementDebug(snapshot);
+            => RuntimeState.SetLatestOffscreenMovementDebug(snapshot);
 
         public void ClearLatestPath()
-            => _runtimeState.ClearLatestPath();
+            => RuntimeState.ClearLatestPath();
 
         internal bool ClearPathIfStale(int staleTimeoutMs)
-            => _runtimeState.ClearPathIfStale(staleTimeoutMs);
+            => RuntimeState.ClearPathIfStale(staleTimeoutMs);
 
         private void MarkPathBuildAttempt()
-            => _runtimeState.MarkPathBuildAttempt();
+            => RuntimeState.MarkPathBuildAttempt();
 
         private void SetFailedPathBuildSnapshot(int expandedNodes, long computeMs, string targetPath, string failureReason)
-            => _runtimeState.SetFailedPathBuildSnapshot(expandedNodes, computeMs, targetPath, failureReason);
+            => RuntimeState.SetFailedPathBuildSnapshot(expandedNodes, computeMs, targetPath, failureReason);
 
         private void SetSuccessfulPathBuildSnapshot(
             bool[][] walkable,
@@ -48,7 +46,7 @@ namespace ClickIt.Features.Pathfinding
             string targetPath,
             IReadOnlyList<GridPoint> gridPath,
             IReadOnlyList<Vector2> screenPath)
-            => _runtimeState.SetSuccessfulPathBuildSnapshot(walkable, dims, expandedNodes, computeMs, targetPath, gridPath, screenPath);
+            => RuntimeState.SetSuccessfulPathBuildSnapshot(walkable, dims, expandedNodes, computeMs, targetPath, gridPath, screenPath);
 
         private void SetGoalResolutionDebugSnapshot(
             GridPoint start,
@@ -56,11 +54,11 @@ namespace ClickIt.Features.Pathfinding
             GridPoint resolvedGoal,
             bool usedFallback,
             string note)
-            => _runtimeState.SetGoalResolutionDebugSnapshot(start, requestedGoal, resolvedGoal, usedFallback, note);
+            => RuntimeState.SetGoalResolutionDebugSnapshot(start, requestedGoal, resolvedGoal, usedFallback, note);
 
         private bool Fail(string reason)
         {
-            _runtimeState.Fail(reason);
+            RuntimeState.Fail(reason);
 
             _errorHandler?.LogMessage(localDebug: true, message: $"PathfindingService: {reason}", frame: 10);
             return false;
@@ -85,7 +83,7 @@ namespace ClickIt.Features.Pathfinding
             if (!PathTerrainSnapshotProvider.TryRefreshTerrainData(gameController, out bool[][] walkable, out GridPoint dims))
                 return Fail("Terrain/pathfinding data unavailable.");
 
-            _runtimeState.SetTerrainSnapshot(walkable, dims);
+            RuntimeState.SetTerrainSnapshot(walkable, dims);
 
             if (!PathGridSearch.TryGetGridPos(gameController.Player, out GridPoint start))
                 return Fail("Unable to resolve player grid position.");
@@ -115,7 +113,7 @@ namespace ClickIt.Features.Pathfinding
                 : "Using direct walkable goal near target.";
             SetGoalResolutionDebugSnapshot(start, goal, walkableGoal, usedGoalFallback, goalResolutionNote);
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Stopwatch sw = Stopwatch.StartNew();
             List<GridPoint>? gridPath = PathGridSearch.FindPathAStar(walkable, start, walkableGoal, SystemMath.Max(100, maxExpandedNodes), out int expandedNodes);
             sw.Stop();
 

@@ -4,7 +4,7 @@ namespace ClickIt.Features.Observability
         InventoryDebugSnapshot Inventory,
         IReadOnlyList<string> InventoryTrail)
     {
-        private static readonly IReadOnlyList<string> EmptyTrail = Array.Empty<string>();
+        private static readonly IReadOnlyList<string> EmptyTrail = [];
 
         public static readonly InventoryTelemetrySnapshot Empty = new(
             Inventory: InventoryDebugSnapshot.Empty,

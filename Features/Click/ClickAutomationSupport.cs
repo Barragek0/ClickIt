@@ -12,7 +12,7 @@ namespace ClickIt.Features.Click
     internal sealed class ClickAutomationSupport(ClickAutomationSupportDependencies dependencies)
     {
         private readonly ClickAutomationSupportDependencies _dependencies = dependencies;
-        private readonly IClickSafetyPolicy _clickSafetyPolicy = new ClickSafetyPolicy();
+        private readonly ClickSafetyPolicy _clickSafetyPolicy = new();
 
         internal ClickDebugSnapshot GetLatestClickDebug()
             => _dependencies.TelemetryStore.GetLatestClickDebug();

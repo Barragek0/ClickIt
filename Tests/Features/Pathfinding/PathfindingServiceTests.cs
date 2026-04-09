@@ -6,7 +6,7 @@ namespace ClickIt.Tests.Features.Pathfinding
         [TestMethod]
         public void TryBuildPathToTarget_ReturnsFalse_WhenGameControllerIsNull()
         {
-            var service = new PathfindingService(new ClickItSettings());
+            var service = new PathfindingService();
             Entity target = ExileCoreOpaqueFactory.CreateOpaqueEntity();
 
             bool result = service.TryBuildPathToTarget(gameController: null, target, maxExpandedNodes: 500);
@@ -20,7 +20,7 @@ namespace ClickIt.Tests.Features.Pathfinding
         [TestMethod]
         public void TryBuildPathToTarget_ReturnsFalse_WhenTargetIsNull()
         {
-            var service = new PathfindingService(new ClickItSettings());
+            var service = new PathfindingService();
             GameController gameController = ExileCoreOpaqueFactory.CreateOpaqueGameController();
 
             bool result = service.TryBuildPathToTarget(gameController, target: null, maxExpandedNodes: 500);
@@ -318,7 +318,7 @@ namespace ClickIt.Tests.Features.Pathfinding
         [TestMethod]
         public void ClearLatestPath_ResetsPathSnapshot()
         {
-            var service = new PathfindingService(new ClickItSettings());
+            var service = new PathfindingService();
 
             service.RuntimeState.SetLatestPathState(
                 new System.Collections.Generic.List<PathfindingService.GridPoint>
@@ -343,7 +343,7 @@ namespace ClickIt.Tests.Features.Pathfinding
         [TestMethod]
         public void ClearPathIfStale_ClearsStoredPath_WhenTimeoutExceeded()
         {
-            var service = new PathfindingService(new ClickItSettings());
+            var service = new PathfindingService();
 
             service.RuntimeState.SetLatestPathState(
                 new System.Collections.Generic.List<PathfindingService.GridPoint>
@@ -364,7 +364,7 @@ namespace ClickIt.Tests.Features.Pathfinding
         [TestMethod]
         public void ClearPathIfStale_DoesNotClearStoredPath_WhenStillRecent()
         {
-            var service = new PathfindingService(new ClickItSettings());
+            var service = new PathfindingService();
 
             service.RuntimeState.SetLatestPathState(
                 new System.Collections.Generic.List<PathfindingService.GridPoint>
@@ -385,7 +385,7 @@ namespace ClickIt.Tests.Features.Pathfinding
         [TestMethod]
         public void PublishOffscreenMovementDebugEvent_UpdatesLatestSnapshotAndTrail()
         {
-            var service = new PathfindingService(new ClickItSettings());
+            var service = new PathfindingService();
 
             service.PublishOffscreenMovementDebugEvent(new OffscreenMovementDebugEvent(
                 Stage: "Traverse",

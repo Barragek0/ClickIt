@@ -101,7 +101,7 @@ namespace ClickIt.UI.Debug
                 int endIndex = SystemMath.Min(startIndex + maxCharsPerLine, contentLength);
                 if (endIndex < contentLength)
                 {
-                    ReadOnlySpan<char> segment = content.Slice(startIndex, endIndex - startIndex);
+                    ReadOnlySpan<char> segment = content[startIndex..endIndex];
                     int lastSpaceOffset = segment.LastIndexOf(' ');
                     if (lastSpaceOffset > 0)
                     {
@@ -109,7 +109,7 @@ namespace ClickIt.UI.Debug
                     }
                 }
 
-                ReadOnlySpan<char> lineSpan = content.Slice(startIndex, endIndex - startIndex).TrimEnd();
+                ReadOnlySpan<char> lineSpan = content[startIndex..endIndex].TrimEnd();
                 string line = lineSpan.ToString();
                 DeferredTextQueue.Enqueue(indentation + line, new Vector2(position.X, currentY), color, fontSize);
                 currentY += lineHeight;
@@ -189,7 +189,7 @@ namespace ClickIt.UI.Debug
 
         private static List<string> WrapTextForDebug(string text, int maxCharsPerLine)
         {
-            var lines = new List<string>(8);
+            List<string> lines = new(8);
             if (string.IsNullOrEmpty(text))
             {
                 lines.Add(string.Empty);
@@ -204,7 +204,7 @@ namespace ClickIt.UI.Debug
             }
 
             string indentation = new(' ', leadingSpaces);
-            string content = text.Substring(leadingSpaces);
+            string content = text[leadingSpaces..];
             int contentLength = content.Length;
             int startIndex = 0;
 
@@ -213,13 +213,13 @@ namespace ClickIt.UI.Debug
                 int endIndex = SystemMath.Min(startIndex + safeWrap, contentLength);
                 if (endIndex < contentLength)
                 {
-                    string segment = content.Substring(startIndex, endIndex - startIndex);
+                    string segment = content[startIndex..endIndex];
                     int lastSpaceOffset = segment.LastIndexOf(' ');
                     if (lastSpaceOffset > 0)
                         endIndex = startIndex + lastSpaceOffset;
                 }
 
-                string line = content.Substring(startIndex, endIndex - startIndex).TrimEnd();
+                string line = content[startIndex..endIndex].TrimEnd();
                 lines.Add(indentation + line);
 
                 startIndex = endIndex;

@@ -27,6 +27,7 @@ namespace ClickIt.Features.Labels.Selection
                 LabelCandidateRejectReason.Untargetable => this with { UntargetableRejected = UntargetableRejected + 1 },
                 LabelCandidateRejectReason.NotVisible => this with { UntargetableRejected = UntargetableRejected + 1 },
                 LabelCandidateRejectReason.NoMechanic => this with { NoMechanicRejected = NoMechanicRejected + 1 },
+                LabelCandidateRejectReason.None => this,
                 _ => this,
             };
     }
@@ -64,7 +65,7 @@ namespace ClickIt.Features.Labels.Selection
             if (start >= end)
                 return default;
 
-            var scoreContext = new MechanicCandidateRanker.RankContext(
+            MechanicCandidateRanker.RankContext scoreContext = new(
                 clickSettings.MechanicPriorityIndexMap,
                 clickSettings.IgnoreDistanceMechanicIds,
                 clickSettings.IgnoreDistanceWithinByMechanicId,

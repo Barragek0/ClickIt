@@ -4,7 +4,7 @@ namespace ClickIt.Core.Runtime
     {
         private const IntrospectionProfile ActiveMemoryDumpProfile = IntrospectionProfile.Default;
         private const int DeepMemoryDumpNodeBudgetPerYield = 8;
-        private static readonly bool EnableDeepMemoryDumpOnCopyAdditionalDebugInfo;
+        private static readonly bool EnableDeepMemoryDumpOnCopyAdditionalDebugInfo = false;
 
         private readonly DebugClipboardServiceDependencies _dependencies = dependencies;
         private readonly Lock _stateLock = new();

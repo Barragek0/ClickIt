@@ -56,8 +56,8 @@ namespace ClickIt.Core.Runtime
                 _cachedRestrictedItemsEvaluated = true;
             }
 
-            bool isRitualActive = shouldEvaluateRitualState ? _cachedRitualActive : false;
-            bool hasLazyModeRestrictedItems = shouldEvaluateRestrictedItems ? _cachedHasLazyModeRestrictedItems : false;
+            bool isRitualActive = shouldEvaluateRitualState && _cachedRitualActive;
+            bool hasLazyModeRestrictedItems = shouldEvaluateRestrictedItems && _cachedHasLazyModeRestrictedItems;
             return new PluginLazyModeContextSnapshot(
                 IsRitualActive: isRitualActive,
                 HasLazyModeRestrictedItems: hasLazyModeRestrictedItems,

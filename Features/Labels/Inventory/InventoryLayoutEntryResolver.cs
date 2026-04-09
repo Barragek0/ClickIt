@@ -61,7 +61,7 @@ namespace ClickIt.Features.Labels.Inventory
             out List<InventoryLayoutEntry> entries,
             out int rawEntryCount)
         {
-            entries = new List<InventoryLayoutEntry>();
+            entries = [];
             rawEntryCount = 0;
             if (inventoryWidth <= 0 || inventoryHeight <= 0)
                 return false;
@@ -174,7 +174,6 @@ namespace ClickIt.Features.Labels.Inventory
 
         public bool TryReadCoordinatePair(object source, string xFieldName, string yFieldName, out int x, out int y)
         {
-            x = 0;
             y = 0;
 
             if (!TryReadIntByName(source, xFieldName, out x))
@@ -201,10 +200,10 @@ namespace ClickIt.Features.Labels.Inventory
             return false;
         }
 
-        private static IInventoryIntMemberReadStrategy CreateIntReadStrategy(
+        private static InventoryIntMemberReadStrategy CreateIntReadStrategy(
             string name,
             Func<object, (bool Success, int Value)> reader)
-            => new InventoryIntMemberReadStrategy(name, reader);
+            => new(name, reader);
 
         private (bool Success, int Value) ReadIntDynamic(object source, Func<dynamic, object?> accessor)
         {

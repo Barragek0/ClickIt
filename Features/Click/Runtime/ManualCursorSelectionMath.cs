@@ -45,7 +45,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static Vector2 GetCursorAbsolutePosition()
         {
-            var cursor = Mouse.GetCursorPosition();
+            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             return new Vector2(cursor.X, cursor.Y);
         }
 

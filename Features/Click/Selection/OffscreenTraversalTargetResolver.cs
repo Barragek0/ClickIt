@@ -179,7 +179,7 @@ namespace ClickIt.Features.Click.Selection
 
             path = entity.Path ?? string.Empty;
 
-            var screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+            NumVector2 screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
             Vector2 screen = new(screenRaw.X, screenRaw.Y);
             if (_dependencies.IsClickableInEitherSpace(screen, path))
                 return false;

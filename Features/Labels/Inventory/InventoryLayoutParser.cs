@@ -83,7 +83,7 @@ namespace ClickIt.Features.Labels.Inventory
             out bool isReliable,
             out int rawEntryCount)
         {
-            entries = Array.Empty<InventoryLayoutEntry>();
+            entries = [];
             source = string.Empty;
             debugDetails = string.Empty;
             isReliable = false;

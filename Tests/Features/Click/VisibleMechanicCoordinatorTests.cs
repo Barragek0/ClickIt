@@ -371,7 +371,7 @@ namespace ClickIt.Tests.Features.Click
             Func<bool>? shouldCaptureClickDebug = null,
             Action<ClickDebugSnapshot>? setLatestClickDebug = null)
         {
-            var pathfindingService = new PathfindingService(settings);
+            var pathfindingService = new PathfindingService();
             var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(
                 settings,
                 runtimeState));

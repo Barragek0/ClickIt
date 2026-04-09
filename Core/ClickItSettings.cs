@@ -15,7 +15,7 @@ namespace ClickIt
         public int SettingsVersion { get; set; } = ClickItSettingsMigrationService.CurrentVersion;
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
-        public List<string> MechanicPriorityOrder { get; set; } = new();
+        public List<string> MechanicPriorityOrder { get; set; } = [];
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> MechanicPriorityIgnoreDistanceIds { get; set; } = new(PriorityComparer);
@@ -29,7 +29,7 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode MechanicsTablePanel { get; internal set; } = new();
         [JsonIgnore]
-        public bool ShowLegacySettingsTreeNodes => false;
+        public static bool ShowLegacySettingsTreeNodes => false;
         [Menu("Basic Chests", "Click normal (non-league related) chests.", 1, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
@@ -248,7 +248,7 @@ namespace ClickIt
         public CustomNode UltimatumTakeRewardModifierTablePanel { get; internal set; } = new();
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
-        public List<string> UltimatumModifierPriority { get; set; } = new();
+        public List<string> UltimatumModifierPriority { get; set; } = [];
 
         [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
         public HashSet<string> UltimatumTakeRewardModifierNames { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -347,28 +347,16 @@ namespace ClickIt
         public CustomNode DelveSliderWidthEnd { get; internal set; } = new();
 
         [JsonIgnore]
-        internal Keys ClickLabelKeyBinding
-        {
-            get => ClickLabelKey is null ? Keys.None : ClickLabelKey.Value.Key;
-        }
+        internal Keys ClickLabelKeyBinding => ClickLabelKey is null ? Keys.None : ClickLabelKey.Value.Key;
 
         [JsonIgnore]
-        internal Keys ToggleItemsHotkeyBinding
-        {
-            get => ToggleItemsHotkey is null ? Keys.None : ToggleItemsHotkey.Value.Key;
-        }
+        internal Keys ToggleItemsHotkeyBinding => ToggleItemsHotkey is null ? Keys.None : ToggleItemsHotkey.Value.Key;
 
         [JsonIgnore]
-        internal Keys LazyModeDisableKeyBinding
-        {
-            get => LazyModeDisableKey is null ? Keys.None : LazyModeDisableKey.Value.Key;
-        }
+        internal Keys LazyModeDisableKeyBinding => LazyModeDisableKey is null ? Keys.None : LazyModeDisableKey.Value.Key;
 
         [JsonIgnore]
-        internal Keys DelveFlareHotkeyBinding
-        {
-            get => DelveFlareHotkey is null ? Keys.None : DelveFlareHotkey.Value.Key;
-        }
+        internal Keys DelveFlareHotkeyBinding => DelveFlareHotkey is null ? Keys.None : DelveFlareHotkey.Value.Key;
 
         public ClickItSettings()
         {

@@ -44,7 +44,7 @@ namespace ClickIt.Features.Click.Interaction
 
         internal static RectangleF GetVirtualScreenBounds()
         {
-            var vs = SystemInformation.VirtualScreen;
+            System.Drawing.Rectangle vs = SystemInformation.VirtualScreen;
             return new RectangleF(vs.Left, vs.Top, vs.Width, vs.Height);
         }
 
@@ -186,7 +186,7 @@ namespace ClickIt.Features.Click.Interaction
 
                     float dx = candidate.X - clampedPreferred.X;
                     float dy = candidate.Y - clampedPreferred.Y;
-                    float distanceSq = dx * dx + dy * dy;
+                    float distanceSq = (dx * dx) + (dy * dy);
                     if (distanceSq < bestDistanceSq)
                     {
                         bestDistanceSq = distanceSq;

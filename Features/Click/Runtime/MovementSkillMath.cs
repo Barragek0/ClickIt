@@ -193,7 +193,7 @@ namespace ClickIt.Features.Click.Runtime
             string normalized = keyText.Trim().ToUpperInvariant();
             string[] modifierSplit = normalized.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modifierSplit.Length > 0)
-                normalized = modifierSplit[modifierSplit.Length - 1];
+                normalized = modifierSplit[^1];
 
             normalized = normalized.Replace(" ", string.Empty);
 
@@ -203,13 +203,13 @@ namespace ClickIt.Features.Click.Runtime
             if (normalized.Length == 1)
             {
                 char c = normalized[0];
-                if (c >= 'A' && c <= 'Z')
+                if (c is >= 'A' and <= 'Z')
                 {
                     key = Keys.A + (c - 'A');
                     return true;
                 }
 
-                if (c >= '0' && c <= '9')
+                if (c is >= '0' and <= '9')
                 {
                     key = Keys.D0 + (c - '0');
                     return true;

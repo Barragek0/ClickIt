@@ -59,9 +59,9 @@ namespace ClickIt.UI.Debug.Introspection
                     yield break;
                 }
 
-                var engine = new RuntimeObjectTraversalEngine(root, normalized, enforceElapsedBudget: true);
+                RuntimeObjectTraversalEngine engine = new(root, normalized, enforceElapsedBudget: true);
                 const int maxSliceMs = 1;
-                var sliceStopwatch = Stopwatch.StartNew();
+                Stopwatch sliceStopwatch = Stopwatch.StartNew();
 
                 int processedSinceYield = 0;
                 int previousProcessedNodes = 0;

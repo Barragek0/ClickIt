@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Numerics;
-
-namespace ClickIt.Features.Mechanics
+﻿namespace ClickIt.Features.Mechanics
 {
     internal static class UltimatumModifiersConstants
     {
@@ -146,8 +142,8 @@ namespace ClickIt.Features.Mechanics
 
         private static string[] BuildAllModifierNamesWithStages()
         {
-            var ordered = new List<string>(AllModifierNames.Length + 64);
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            List<string> ordered = new(AllModifierNames.Length + 64);
+            HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < AllModifierNames.Length; i++)
             {
@@ -162,7 +158,7 @@ namespace ClickIt.Features.Mechanics
             for (int i = 0; i < TieredModifierMaxTiers.Length; i++)
             {
                 string baseName = TieredModifierMaxTiers[i].Key;
-                int maxTier = Math.Clamp(TieredModifierMaxTiers[i].Value, 1, TierSuffixes.Length);
+                int maxTier = SystemMath.Clamp(TieredModifierMaxTiers[i].Value, 1, TierSuffixes.Length);
                 for (int t = 0; t < maxTier; t++)
                 {
                     string stagedName = $"{baseName} {TierSuffixes[t]}";
@@ -204,11 +200,11 @@ namespace ClickIt.Features.Mechanics
 
         public static Vector4 GetPriorityGradientColor(int index, int totalCount, float alpha = 1f)
         {
-            alpha = Math.Clamp(alpha, 0f, 1f);
+            alpha = SystemMath.Clamp(alpha, 0f, 1f);
             if (totalCount <= 1)
                 return new Vector4(0.95f, 0.95f, 0.25f, alpha);
 
-            float t = Math.Clamp(index / (float)(totalCount - 1), 0f, 1f);
+            float t = SystemMath.Clamp(index / (float)(totalCount - 1), 0f, 1f);
 
             float r = 0.25f + (0.70f * t);
             float g = 1.00f - (0.72f * t);

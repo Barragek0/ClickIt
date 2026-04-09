@@ -6,7 +6,7 @@ namespace ClickIt.Features.Observability
         OffscreenMovementDebugSnapshot OffscreenMovement,
         IReadOnlyList<string> OffscreenMovementTrail)
     {
-        private static readonly IReadOnlyList<string> EmptyTrail = Array.Empty<string>();
+        private static readonly IReadOnlyList<string> EmptyTrail = [];
 
         public static readonly PathfindingTelemetrySnapshot Empty = new(
             ServiceAvailable: false,

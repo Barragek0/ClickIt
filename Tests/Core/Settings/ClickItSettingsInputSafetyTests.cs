@@ -69,7 +69,7 @@ namespace ClickIt.Tests.Core.Settings
         {
             var settings = new ClickItSettings();
 
-            settings.ShowLegacySettingsTreeNodes.Should().BeFalse();
+            ClickItSettings.ShowLegacySettingsTreeNodes.Should().BeFalse();
         }
 
         [TestMethod]

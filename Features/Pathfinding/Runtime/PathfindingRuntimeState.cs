@@ -2,8 +2,8 @@ namespace ClickIt.Features.Pathfinding.Runtime
 {
     internal sealed class PathfindingRuntimeState
     {
-        private static readonly IReadOnlyList<PathfindingService.GridPoint> EmptyGridPath = Array.Empty<PathfindingService.GridPoint>();
-        private static readonly IReadOnlyList<Vector2> EmptyScreenPath = Array.Empty<Vector2>();
+        private static readonly IReadOnlyList<PathfindingService.GridPoint> EmptyGridPath = [];
+        private static readonly IReadOnlyList<Vector2> EmptyScreenPath = [];
 
         private readonly Lock _stateLock = new();
         private bool[][]? _walkableGrid;

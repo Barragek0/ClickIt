@@ -29,7 +29,7 @@ namespace ClickIt.Features.Click.Selection
                     return best;
                 }
 
-                var labels = _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
+                IList<LabelOnGround>? labels = _dependencies.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels;
                 if (labels == null || labels.Count == 0)
                     return null;
 

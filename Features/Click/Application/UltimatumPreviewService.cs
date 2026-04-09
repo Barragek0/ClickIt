@@ -1,4 +1,3 @@
-#nullable enable
 
 namespace ClickIt.Features.Click.Application
 {
@@ -12,8 +11,6 @@ namespace ClickIt.Features.Click.Application
 
         public bool TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews)
         {
-            previews = [];
-
             if (TryGetPanelOptionPreview(out previews) && previews.Count > 0)
                 return true;
 
@@ -87,7 +84,7 @@ namespace ClickIt.Features.Click.Application
             if (options.Count == 0)
                 return false;
 
-            var priorities = _dependencies.Automation.Settings.GetUltimatumModifierPriority();
+            IReadOnlyList<string> priorities = _dependencies.Automation.Settings.GetUltimatumModifierPriority();
             if (!UltimatumGroundOptionCollector.TryCollectCandidates(
                     options,
                     priorities,
@@ -124,7 +121,7 @@ namespace ClickIt.Features.Click.Application
         {
             ultimatumLabel = null;
 
-            var labels = _dependencies.Automation.CachedLabels?.Value;
+            List<LabelOnGround>? labels = _dependencies.Automation.CachedLabels?.Value;
             if (labels == null || labels.Count == 0)
                 return false;
 

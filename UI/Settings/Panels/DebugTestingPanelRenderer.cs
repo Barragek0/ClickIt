@@ -70,8 +70,8 @@ namespace ClickIt.UI.Settings.Panels
 
         private void DrawDebugSectionToggles()
         {
-            var toggles = new[]
-            {
+            DebugSectionToggleDescriptor[] toggles =
+            [
                 new DebugSectionToggleDescriptor("Status", _settings.DebugShowStatus, "Show/hide the status debug section"),
                 new DebugSectionToggleDescriptor("Game State", _settings.DebugShowGameState, "Show/hide the Game State debug section"),
                 new DebugSectionToggleDescriptor("Performance", _settings.DebugShowPerformance, "Show/hide the performance debug section"),
@@ -87,7 +87,7 @@ namespace ClickIt.UI.Settings.Panels
                 new DebugSectionToggleDescriptor("Debug Log Overlay", _settings.DebugShowRuntimeDebugLogOverlay, "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail"),
                 new DebugSectionToggleDescriptor("Recent Errors", _settings.DebugShowRecentErrors, "Show/hide the Recent Errors debug section"),
                 new DebugSectionToggleDescriptor("Debug Frames", _settings.DebugShowFrames, "Show/hide the debug screen area frames")
-            };
+            ];
 
             foreach (DebugSectionToggleDescriptor toggle in toggles)
             {

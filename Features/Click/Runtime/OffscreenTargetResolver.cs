@@ -51,8 +51,6 @@ namespace ClickIt.Features.Click.Runtime
 
         internal bool TryResolveOffscreenTargetScreenPoint(Entity target, out Vector2 targetScreen)
         {
-            targetScreen = default;
-
             RectangleF window = _gameController.Window.GetWindowRectangleTimeCache;
             Vector2 center = GetWindowCenter(window);
             float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;

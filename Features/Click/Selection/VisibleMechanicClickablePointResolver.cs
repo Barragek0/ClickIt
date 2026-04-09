@@ -28,7 +28,7 @@ namespace ClickIt.Features.Click.Selection
                     return false;
                 }
 
-                var worldScreenRawVector = gameController.Game.IngameState.Camera.WorldToScreen(position);
+                NumVector2 worldScreenRawVector = gameController.Game.IngameState.Camera.WorldToScreen(position);
                 worldScreenRaw = new(worldScreenRawVector.X, worldScreenRawVector.Y);
                 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
 

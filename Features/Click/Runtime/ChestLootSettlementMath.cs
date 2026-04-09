@@ -72,7 +72,7 @@ namespace ClickIt.Features.Click.Runtime
             if (entity == null || !entity.IsValid)
                 return false;
 
-            var grid = entity.GridPosNum;
+            NumVector2 grid = entity.GridPosNum;
             gridPos = new Vector2(grid.X, grid.Y);
             return true;
         }

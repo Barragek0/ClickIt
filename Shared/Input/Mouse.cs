@@ -2,7 +2,7 @@ namespace ClickIt.Shared.Input
 {
     internal class Mouse
     {
-        public static bool DisableNativeInput = false;
+        public static bool DisableNativeInput;
 
         [DllImport("user32.dll")]
         private static extern bool NativeSetCursorPos(int x, int y);
@@ -47,8 +47,7 @@ namespace ClickIt.Shared.Input
         public static extern bool GetCursorPos(out POINT lpPoint);
         public static SystemDrawingPoint GetCursorPosition()
         {
-            POINT lpPoint;
-            GetCursorPos(out lpPoint);
+            GetCursorPos(out POINT lpPoint);
             return lpPoint;
         }
         public static void LeftMouseDown()

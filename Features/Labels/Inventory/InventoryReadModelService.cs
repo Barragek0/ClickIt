@@ -157,7 +157,7 @@ namespace ClickIt.Features.Labels.Inventory
         private IReadOnlyList<Entity> ResolveInventoryItems(object primaryInventory)
         {
             (bool success, IReadOnlyList<Entity> entities) = _dependencies.TryEnumeratePrimaryInventoryItemEntitiesFast(primaryInventory);
-            return success ? entities : Array.Empty<Entity>();
+            return success ? entities : [];
         }
     }
 }

@@ -25,7 +25,7 @@ namespace ClickIt.Features.Click.Selection
 
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            var cursor = Mouse.GetCursorPosition();
+            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
 
             if (_dependencies.ManualCursorLabelInteractionHandler.TryClickPreferredAltarOption(cursorAbsolute, windowTopLeft))

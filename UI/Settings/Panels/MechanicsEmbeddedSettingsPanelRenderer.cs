@@ -36,7 +36,7 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.Indent();
 
             if (string.Equals(entryId, MechanicIds.Items, StringComparison.OrdinalIgnoreCase))
-                _itemTypeFiltersPanelRenderer.DrawPanel(embedded: true);
+                _itemTypeFiltersPanelRenderer.DrawPanel();
 
             else if (string.Equals(entryId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase))
             {
@@ -46,7 +46,7 @@ namespace ClickIt.UI.Settings.Panels
                     "Overrides the essence table and attempts to corrupt every eligible essence encounter.");
 
                 if (_settings.ShowEssenceCorruptionTablePanel)
-                    _essenceCorruptionPanelRenderer.DrawPanel(embedded: true);
+                    _essenceCorruptionPanelRenderer.DrawPanel();
 
             }
             else if (string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase))
@@ -120,7 +120,7 @@ namespace ClickIt.UI.Settings.Panels
                 "Show Strongbox Overlay##MechanicsStrongboxesOverlay",
                 _settings.ShowStrongboxFrames,
                 "When enabled, draws a visual frame around strongboxes indicating whether or not they are locked.");
-            _strongboxFilterPanelRenderer.DrawPanel(embedded: true);
+            _strongboxFilterPanelRenderer.DrawPanel();
         }
 
         private void DrawDelveSettings()

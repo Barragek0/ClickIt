@@ -9,13 +9,6 @@ namespace ClickIt.Features.Labels
         private readonly IWorldItemMetadataPolicy _worldItemMetadataPolicy = new WorldItemMetadataPolicy();
         private readonly IMechanicPrioritySnapshotProvider _mechanicPrioritySnapshotService = new MechanicPrioritySnapshotService();
         private readonly LabelSelectionDiagnostics _labelSelectionDiagnostics = new(24);
-        private LabelClickSettingsService? _clickSettingsService;
-        private ILabelSelectionService? _labelSelectionService;
-        private LabelDebugService? _labelDebugService;
-        private LabelMechanicResolutionService? _labelMechanicResolutionService;
-        private LazyModeBlockerService? _lazyModeBlockerService;
-        private LabelCandidateBuilderService? _candidateBuilderService;
-        private LabelInteractionRuleService? _interactionRuleService;
         private MechanicClassifierDependencies? _classificationDependencies;
         private InventoryDomainServices? _inventoryDomainServices;
 

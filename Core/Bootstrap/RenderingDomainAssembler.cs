@@ -19,11 +19,10 @@ namespace ClickIt.Core.Bootstrap
         graphics setup, so do not collapse this wrapper unless the replacement keeps
         the same testable separation.
          */
-        public static RenderingDomainServices Assemble(ClickIt owner, ClickItSettings settings, GameController gameController, CoreDomainServices core)
+        public static RenderingDomainServices Assemble(ClickIt owner, ClickItSettings settings, CoreDomainServices core)
             => Assemble(
                 owner,
                 settings,
-                gameController,
                 core,
                 owner.Graphics,
                 owner.LogMessage,
@@ -35,28 +34,25 @@ namespace ClickIt.Core.Bootstrap
         internal static RenderingDomainServices Assemble(
             BaseSettingsPlugin<ClickItSettings> plugin,
             ClickItSettings settings,
-            GameController gameController,
             CoreDomainServices core,
             Graphics graphics,
             Action<string, int> logMessage,
             Func<InventoryDebugSnapshot, long, bool> tryAutoCopyInventoryWarningTrigger)
         {
-            var debugRenderer = new DebugRenderer(plugin, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
-            var strongboxRenderer = new StrongboxRenderer(settings, core.DeferredFrameQueue);
-            var lazyModeRenderer = new LazyModeRenderer(settings, core.DeferredTextQueue, core.InputHandler, core.LazyModeBlockerService);
-            var clickHotkeyToggleRenderer = new ClickHotkeyToggleRenderer(settings, core.DeferredTextQueue, core.InputHandler);
-            var inventoryFullWarningRenderer = new InventoryFullWarningRenderer(
+            DebugRenderer debugRenderer = new(plugin, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
+            StrongboxRenderer strongboxRenderer = new(settings, core.DeferredFrameQueue);
+            LazyModeRenderer lazyModeRenderer = new(settings, core.DeferredTextQueue, core.InputHandler, core.LazyModeBlockerService);
+            ClickHotkeyToggleRenderer clickHotkeyToggleRenderer = new(settings, core.DeferredTextQueue, core.InputHandler);
+            InventoryFullWarningRenderer inventoryFullWarningRenderer = new(
                 core.DeferredTextQueue,
                 core.AreaService,
                 core.InventoryProbeService.GetLatestDebug,
                 tryAutoCopyInventoryWarningTrigger);
-            var pathfindingRenderer = new PathfindingRenderer(core.PathfindingService);
-            var altarChoiceEvaluator = new AltarChoiceEvaluator(settings, logMessage);
+            PathfindingRenderer pathfindingRenderer = new(core.PathfindingService);
+            AltarChoiceEvaluator altarChoiceEvaluator = new(settings, logMessage);
 
-            var altarDisplayRenderer = new AltarDisplayRenderer(
+            AltarDisplayRenderer altarDisplayRenderer = new(
                 graphics,
-                settings,
-                gameController,
                 core.WeightCalculator,
                 altarChoiceEvaluator,
                 core.DeferredTextQueue,

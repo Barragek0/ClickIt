@@ -1,4 +1,3 @@
-#nullable enable
 
 namespace ClickIt.Features.Labels.Classification
 {
@@ -12,7 +11,6 @@ namespace ClickIt.Features.Labels.Classification
 
     internal static class MechanicClassifier
     {
-        private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
         private const string BlightCystPathMarker = "Chests/Blight";
         private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
         private const string SynthesisSynthesisedStashPathMarker = "SynthesisChests/SynthesisChest";
@@ -60,7 +58,7 @@ namespace ClickIt.Features.Labels.Classification
                     return MechanicIds.Items;
             }
 
-            return ResolveFallbackMechanicId(settings, type, path, label, item);
+            return ResolveFallbackMechanicId(settings, type, path, label);
         }
 
         internal static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
@@ -183,7 +181,7 @@ namespace ClickIt.Features.Labels.Classification
             return dependencies.GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
         }
 
-        private static string? ResolveFallbackMechanicId(ClickSettings settings, EntityType type, string path, LabelOnGround label, Entity item)
+        private static string? ResolveFallbackMechanicId(ClickSettings settings, EntityType type, string path, LabelOnGround label)
         {
             string? chest = GetChestMechanicId(
                 settings.ClickBasicChests,
@@ -195,7 +193,12 @@ namespace ClickIt.Features.Labels.Classification
             if (!string.IsNullOrWhiteSpace(chest))
                 return chest;
 
-            string? named = GetNamedInteractableMechanicId(settings.ClickDoors, settings.ClickHeistDoors, settings.ClickLevers, item.RenderName, path);
+            string? named = GetNamedInteractableMechanicId(
+                settings.ClickDoors,
+                settings.ClickHeistDoors,
+                settings.ClickLevers,
+                label.ItemOnGround?.RenderName,
+                path);
             if (!string.IsNullOrWhiteSpace(named))
                 return named;
 
@@ -228,8 +231,6 @@ namespace ClickIt.Features.Labels.Classification
             IReadOnlySet<string>? enabledSpecificLeagueChestIds,
             out string? mechanicId)
         {
-            mechanicId = null;
-
             if (TryResolveHeistSecureChestMechanicId(renderName, path, enabledSpecificLeagueChestIds, out mechanicId))
                 return true;
 
@@ -334,8 +335,14 @@ namespace ClickIt.Features.Labels.Classification
                 || name.Equals($"{tier} djinns cache", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string? GetNamedInteractableMechanicId(bool clickDoors, bool clickHeistDoors, bool clickLevers, string? renderName, string? metadataPath)
+        private static string? GetNamedInteractableMechanicId(
+            bool clickDoors,
+            bool clickHeistDoors,
+            bool clickLevers,
+            string? renderName,
+            string? metadataPath)
         {
+            _ = renderName;
             string path = metadataPath?.Trim() ?? string.Empty;
             bool isHeistDoor = IsHeistDoorPath(path);
 

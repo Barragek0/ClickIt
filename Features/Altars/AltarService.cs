@@ -8,18 +8,16 @@ namespace ClickIt.Features.Altars
         private readonly AltarComponentStore _altarStore = new();
         public AltarServiceDebugInfo DebugInfo { get; private set; } = new();
         private readonly AltarMatcher _altarMatcher = new();
-        private AltarComponentFactory? _componentFactory;
-        private AltarScanPipeline? _scanPipeline;
 
         private AltarComponentFactory ComponentFactory
-            => _componentFactory ??= new AltarComponentFactory(
+            => field ??= new AltarComponentFactory(
                 _altarMatcher,
                 matchedId => _clickIt.GetAlertService().TryTriggerAlertForMatchedMod(matchedId),
                 matchedCount => DebugInfo.ModsMatched += matchedCount,
                 RecordUnmatchedMod);
 
         private AltarScanPipeline ScanPipeline
-            => _scanPipeline ??= new AltarScanPipeline(_altarStore, DebugInfo, ComponentFactory);
+            => field ??= new AltarScanPipeline(_altarStore, DebugInfo, ComponentFactory);
 
         public List<PrimaryAltarComponent> GetAltarComponents() => _altarStore.GetComponents();
         public IReadOnlyList<PrimaryAltarComponent> GetAltarComponentsReadOnly() => _altarStore.GetComponentsReadOnly();

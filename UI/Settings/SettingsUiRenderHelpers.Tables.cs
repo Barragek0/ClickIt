@@ -16,7 +16,7 @@ namespace ClickIt.UI.Settings
         {
             updatedValue = currentValue;
             _ = ImGui.TableNextColumn();
-            var available = ImGui.GetContentRegionAvail();
+            NumVector2 available = ImGui.GetContentRegionAvail();
             const float checkboxSize = 18f;
             float currentX = ImGui.GetCursorPosX();
             float offset = (available.X - checkboxSize) * 0.5f;

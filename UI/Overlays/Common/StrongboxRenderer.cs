@@ -16,10 +16,10 @@ namespace ClickIt.UI.Overlays.Common
         private HashSet<string>? _clickIdsSnapshot;
         private HashSet<string>? _dontClickIdsSnapshot;
 
-        public void Render(GameController? gameController, object? state)
+        public void Render(GameController? gameController)
         {
             if (gameController == null) return;
-            var labels = gameController.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+            IList<LabelOnGround>? labels = gameController.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
             if (labels == null) return;
 
             // Cast via dynamic to avoid assembly type conflicts when the test project
@@ -46,7 +46,7 @@ namespace ClickIt.UI.Overlays.Common
             RectangleF windowArea,
             StrongboxRenderState renderState)
         {
-            foreach (var label in labels)
+            foreach (LabelOnGround label in labels)
             {
                 if (!TryResolveStrongboxFrame(label, windowArea, renderState, out StrongboxFrame frame))
                     continue;
@@ -92,7 +92,7 @@ namespace ClickIt.UI.Overlays.Common
 
         private static Color ResolveStrongboxFrameColor(LabelOnGround? label)
         {
-            var chestComp = label?.ItemOnGround?.GetComponent<Chest>();
+            Chest? chestComp = label?.ItemOnGround?.GetComponent<Chest>();
             bool chestLocked = chestComp?.IsLocked == true;
             return chestLocked ? Color.Red : Color.LawnGreen;
         }
@@ -104,7 +104,7 @@ namespace ClickIt.UI.Overlays.Common
             if (string.IsNullOrEmpty(itemPathRaw)) return false;
             if (itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0) return false;
 
-            var elem = label?.Label;
+            Element? elem = label?.Label;
             if (elem == null || !elem.IsValid) return false;
 
             // Tests can surface a non-RectangleF return here through assembly-shim boundaries.
@@ -121,7 +121,7 @@ namespace ClickIt.UI.Overlays.Common
             }
             if (rect.Width <= 0 || rect.Height <= 0) return false;
 
-            var rectAbs = new RectangleF(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
+            RectangleF rectAbs = new(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
             if (!rectAbs.Intersects(windowArea)) return false;
 
             return true;
@@ -189,8 +189,8 @@ namespace ClickIt.UI.Overlays.Common
             _cachedClickMetadata = _settings.GetStrongboxClickMetadataIdentifiers();
             _cachedDontClickMetadata = _settings.GetStrongboxDontClickMetadataIdentifiers();
 
-            var currentClickIds = _settings.StrongboxClickIds ?? [];
-            var currentDontClickIds = _settings.StrongboxDontClickIds ?? [];
+            HashSet<string> currentClickIds = _settings.StrongboxClickIds ?? [];
+            HashSet<string> currentDontClickIds = _settings.StrongboxDontClickIds ?? [];
             _clickIdsSnapshot = new HashSet<string>(currentClickIds, StringComparer.OrdinalIgnoreCase);
             _dontClickIdsSnapshot = new HashSet<string>(currentDontClickIds, StringComparer.OrdinalIgnoreCase);
         }

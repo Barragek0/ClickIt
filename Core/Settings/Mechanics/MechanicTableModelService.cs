@@ -10,7 +10,6 @@ namespace ClickIt.Core.Settings.Mechanics
         private const string LeagueChestSubgroupBreach = "Breach";
         private const string LeagueChestSubgroupSynthesis = "Synthesis";
         private const string DoorsSubgroupRegular = "Regular";
-        private const string DoorsSubgroupHeist = "Heist";
         private const string DoorsSubgroupAlvaTemple = "Alva Temple";
 
         internal static bool ShouldRenderEntry(MechanicToggleTableEntry entry, bool moveToClick, string filter)

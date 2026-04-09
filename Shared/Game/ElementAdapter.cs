@@ -4,21 +4,20 @@ namespace ClickIt.Shared.Game
     {
         public Element? Underlying { get; } = element;
 
-        private IElementAdapter? _parent;
         public IElementAdapter? Parent
         {
             get
             {
-                if (_parent == null && Underlying?.Parent != null)
-                    _parent = new ElementAdapter(Underlying.Parent);
-                return _parent;
+                if (field == null && Underlying?.Parent != null)
+                    field = new ElementAdapter(Underlying.Parent);
+                return field;
             }
         }
 
         public IElementAdapter? GetChildFromIndices(int a, int b)
         {
             if (Underlying == null) return null;
-            var child = Underlying.GetChildFromIndices(a, b);
+            Element child = Underlying.GetChildFromIndices(a, b);
             if (child == null) return null;
             return new ElementAdapter(child);
         }
@@ -32,7 +31,7 @@ namespace ClickIt.Shared.Game
 
         public RectangleF GetClientRect()
         {
-            return Underlying?.GetClientRect() ?? SharpDX.RectangleF.Empty;
+            return Underlying?.GetClientRect() ?? RectangleF.Empty;
         }
     }
 }

@@ -76,7 +76,7 @@ namespace ClickIt.Core.Runtime
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.UltimatumOverlay, GetElapsedMs(ultimatumStart));
 
                 long strongboxStart = Stopwatch.GetTimestamp();
-                rendering.StrongboxRenderer?.Render(gameController, state);
+                rendering.StrongboxRenderer?.Render(gameController);
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.StrongboxOverlay, GetElapsedMs(strongboxStart));
 
                 long pathfindingStart = Stopwatch.GetTimestamp();
@@ -92,11 +92,11 @@ namespace ClickIt.Core.Runtime
             finally
             {
                 long textFlushStart = Stopwatch.GetTimestamp();
-                rendering.DeferredTextQueue?.Flush(graphics!, static (_, _) => { });
+                rendering.DeferredTextQueue?.Flush(graphics!);
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.TextFlush, GetElapsedMs(textFlushStart));
 
                 long frameFlushStart = Stopwatch.GetTimestamp();
-                rendering.DeferredFrameQueue?.Flush(graphics!, static (_, _) => { });
+                rendering.DeferredFrameQueue?.Flush(graphics!);
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.FrameFlush, GetElapsedMs(frameFlushStart));
 
                 services.PerformanceMonitor?.StopRenderTiming();

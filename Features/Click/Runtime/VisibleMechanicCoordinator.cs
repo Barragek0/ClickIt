@@ -101,7 +101,7 @@ namespace ClickIt.Features.Click.Runtime
                 isInClickableArea: pos => _dependencies.PointIsInClickableArea(pos, MechanicIds.Shrines),
                 cursorDistanceResolver: shrine =>
                 {
-                    var screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
+                    NumVector2 screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
                     Vector2 shrineScreenAbsolute = new(screenRaw.X + windowTopLeft.X, screenRaw.Y + windowTopLeft.Y);
                     return ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineScreenAbsolute, windowTopLeft);
                 });
@@ -131,7 +131,7 @@ namespace ClickIt.Features.Click.Runtime
 
         public bool TryClickShrineInteraction(Entity shrine)
         {
-            var shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
+            NumVector2 shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
             Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
             return TryClickDirectMechanic(shrineClickPos, onSuccess: () => TryHandleSuccessfulMechanicAftermath(shrine, invalidateShrineCache: true));
         }
@@ -356,11 +356,11 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         private void ApplySuccessfulMechanicAftermath(SuccessfulInteractionAftermath aftermath)
-            => ClickCore.SuccessfulInteractionAftermathApplier.Apply(
+            => SuccessfulInteractionAftermathApplier.Apply(
                 aftermath,
                 _dependencies.HoldDebugTelemetryAfterSuccess,
-                clearStickyTarget: () => _dependencies.StickyTargets.ClearStickyOffscreenTarget(),
-                clearPath: () => _dependencies.PathfindingService.ClearLatestPath(),
+                clearStickyTarget: _dependencies.StickyTargets.ClearStickyOffscreenTarget,
+                clearPath: _dependencies.PathfindingService.ClearLatestPath,
                 invalidateShrineCache: () => _dependencies.ShrineService.InvalidateCache());
 
         private bool IsLostShipmentCandidateUsable(LostShipmentCandidate? candidate)

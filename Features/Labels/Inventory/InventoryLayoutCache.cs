@@ -9,7 +9,7 @@ namespace ClickIt.Features.Labels.Inventory
         private object? _primaryInventory;
         private int _width;
         private int _height;
-        private IReadOnlyList<InventoryLayoutEntry> _entries = Array.Empty<InventoryLayoutEntry>();
+        private IReadOnlyList<InventoryLayoutEntry> _entries = [];
         private string _source = string.Empty;
         private string _debugDetails = string.Empty;
         private bool _isReliable;
@@ -58,7 +58,7 @@ namespace ClickIt.Features.Labels.Inventory
                 _timestampMs = now;
                 _width = inventoryWidth;
                 _height = inventoryHeight;
-                _entries = snapshot.Entries ?? Array.Empty<InventoryLayoutEntry>();
+                _entries = snapshot.Entries ?? [];
                 _source = snapshot.Source ?? string.Empty;
                 _debugDetails = snapshot.DebugDetails ?? string.Empty;
                 _isReliable = snapshot.IsReliable;
@@ -75,7 +75,7 @@ namespace ClickIt.Features.Labels.Inventory
                 _primaryInventory = null;
                 _width = 0;
                 _height = 0;
-                _entries = Array.Empty<InventoryLayoutEntry>();
+                _entries = [];
                 _source = string.Empty;
                 _debugDetails = string.Empty;
                 _isReliable = false;

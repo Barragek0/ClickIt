@@ -15,7 +15,7 @@ namespace ClickIt.UI.Overlays.Common
             if (!_settings.IsClickHotkeyToggleModeEnabled())
                 return;
 
-            var windowRect = gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowRect = gameController.Window.GetWindowRectangleTimeCache;
             float centerX = windowRect.Width / 2f;
             float topY = ResolveTopY(_settings.LazyMode.Value);
 
@@ -30,7 +30,7 @@ namespace ClickIt.UI.Overlays.Common
 
         internal static (Color Color, string StatusText) BuildStatus(bool clicking)
             => clicking
-                ? (SharpDX.Color.LawnGreen, ClickingText)
-                : (SharpDX.Color.Red, NotClickingText);
+                ? (Color.LawnGreen, ClickingText)
+                : (Color.Red, NotClickingText);
     }
 }

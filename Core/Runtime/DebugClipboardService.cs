@@ -11,13 +11,12 @@ namespace ClickIt.Core.Runtime
         private readonly DebugClipboardServiceDependencies _dependencies = dependencies;
         private readonly DeepMemoryDumpCoordinator _deepMemoryDumpCoordinator = new(dependencies);
         private long _lastInventoryWarningAutoCopySuccessTimestampMs;
-        private bool _copyAdditionalDebugInfoRequested;
 
-        public bool HasPendingAdditionalDebugInfoCopyRequest => _copyAdditionalDebugInfoRequested;
+        public bool HasPendingAdditionalDebugInfoCopyRequest { get; private set; }
 
         public void RequestAdditionalDebugInfoCopy()
         {
-            _copyAdditionalDebugInfoRequested = true;
+            HasPendingAdditionalDebugInfoCopyRequest = true;
         }
 
         public void CompleteAdditionalDebugInfoCopy(string[] debugLines)
@@ -28,7 +27,7 @@ namespace ClickIt.Core.Runtime
             }
             finally
             {
-                _copyAdditionalDebugInfoRequested = false;
+                HasPendingAdditionalDebugInfoCopyRequest = false;
             }
         }
 
@@ -90,7 +89,7 @@ namespace ClickIt.Core.Runtime
                     return true;
                 }
 
-                using var process = new Process();
+                using Process process = new();
                 process.StartInfo = new ProcessStartInfo
                 {
                     FileName = "clip.exe",

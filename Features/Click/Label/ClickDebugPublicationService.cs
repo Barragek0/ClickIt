@@ -89,7 +89,7 @@ namespace ClickIt.Features.Click.Label
                 return;
 
             string entityPath = entity.Path ?? string.Empty;
-            var worldScreenRawVec = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
+            NumVector2 worldScreenRawVec = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
             Vector2 worldScreenRaw = new(worldScreenRawVec.X, worldScreenRawVec.Y);
 
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;

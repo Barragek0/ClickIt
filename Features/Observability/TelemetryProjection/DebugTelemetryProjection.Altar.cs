@@ -59,13 +59,13 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 Downsides: BuildWeightedMods(mods.Downsides, downsideWeights));
         }
 
-        private static IReadOnlyList<AltarWeightedModTelemetrySnapshot> BuildWeightedMods(
-            IReadOnlyList<string>? mods,
+        private static List<AltarWeightedModTelemetrySnapshot> BuildWeightedMods(
+            List<string>? mods,
             decimal[]? weights)
         {
             int count = SystemMath.Min(mods?.Count ?? 0, 8);
             if (count <= 0)
-                return Array.Empty<AltarWeightedModTelemetrySnapshot>();
+                return [];
 
             List<AltarWeightedModTelemetrySnapshot> projectedMods = [];
             for (int i = 0; i < count; i++)

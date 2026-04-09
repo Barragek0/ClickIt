@@ -174,7 +174,7 @@ namespace ClickIt.Features.Click.Selection
 
             attemptedProbe = true;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            if (!global::ClickIt.Features.Click.Selection.VisibleMechanicClickablePointResolver.TryResolveEntityClickablePoint(
+            if (!VisibleMechanicClickablePointResolver.TryResolveEntityClickablePoint(
                 _dependencies.GameController,
                 entity,
                 path,

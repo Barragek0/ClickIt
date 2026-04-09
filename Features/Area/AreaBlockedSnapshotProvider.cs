@@ -117,13 +117,13 @@ namespace ClickIt.Features.Area
             RectangleF winRect = gameController.Window.GetWindowRectangleTimeCache;
             _blockedState.FullScreenRectangle = new RectangleF(winRect.X, winRect.Y, winRect.Width, winRect.Height);
 
-            RectangleF leftCombined = new RectangleF(
+            RectangleF leftCombined = new(
                 winRect.BottomLeft.X / 3f,
                 winRect.BottomLeft.Y / 5f * 3.92f,
                 winRect.BottomLeft.X + (winRect.BottomRight.X / 3.4f),
                 winRect.BottomLeft.Y);
 
-            RectangleF rightCombined = new RectangleF(
+            RectangleF rightCombined = new(
                 winRect.BottomRight.X / 3f * 2.12f,
                 winRect.BottomLeft.Y / 5f * 3.92f,
                 winRect.BottomRight.X,
@@ -212,7 +212,7 @@ namespace ClickIt.Features.Area
 
         private static bool IsInTownOrHideout(GameController? gameController)
         {
-            var area = gameController?.Area?.CurrentArea;
+            AreaInstance? area = gameController?.Area?.CurrentArea;
             return area != null && (area.IsHideout || area.IsTown);
         }
 

@@ -1,4 +1,3 @@
-#nullable enable
 
 namespace ClickIt.Features.Click.Application
 {

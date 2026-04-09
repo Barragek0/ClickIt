@@ -4,7 +4,7 @@ namespace ClickIt.Features.Altars
     {
         private readonly List<PrimaryAltarComponent> _altarComponents = [];
         private readonly HashSet<string> _altarKeys = new(StringComparer.Ordinal);
-        private readonly object _altarComponentsLock = new();
+        private readonly Lock _altarComponentsLock = new();
         private volatile PrimaryAltarComponent[] _altarSnapshot = [];
         private volatile ReadOnlyCollection<PrimaryAltarComponent> _altarReadOnlySnapshot = Array.AsReadOnly(Array.Empty<PrimaryAltarComponent>());
 
@@ -18,7 +18,7 @@ namespace ClickIt.Features.Altars
         {
             lock (_altarComponentsLock)
             {
-                foreach (var component in _altarComponents)
+                foreach (PrimaryAltarComponent component in _altarComponents)
                     component.InvalidateCache();
 
                 _altarComponents.Clear();
@@ -108,12 +108,12 @@ namespace ClickIt.Features.Altars
 
         private static string BuildAltarKey(PrimaryAltarComponent component)
         {
-            var topUpside = GetAltarModStrings(component.TopMods, false);
-            var topDownside = GetAltarModStrings(component.TopMods, true);
-            var bottomUpside = GetAltarModStrings(component.BottomMods, false);
-            var bottomDownside = GetAltarModStrings(component.BottomMods, true);
+            string[] topUpside = GetAltarModStrings(component.TopMods, false);
+            string[] topDownside = GetAltarModStrings(component.TopMods, true);
+            string[] bottomUpside = GetAltarModStrings(component.BottomMods, false);
+            string[] bottomDownside = GetAltarModStrings(component.BottomMods, true);
 
-            var allMods = topUpside.Concat(topDownside)
+            IEnumerable<string> allMods = topUpside.Concat(topDownside)
                 .Concat(bottomUpside)
                 .Concat(bottomDownside);
 

@@ -15,7 +15,7 @@ namespace ClickIt.Features.Altars
 
         internal PrimaryAltarComponent CreateFromElement(Element element, AltarType altarType)
         {
-            var adapter = new ElementAdapter(element);
+            ElementAdapter adapter = new(element);
             return CreateFromAdapter(adapter, altarType);
         }
 
@@ -28,10 +28,10 @@ namespace ClickIt.Features.Altars
             IElementAdapter? topAltarAdapter = altarParentAdapter.GetChildFromIndices(0, 1);
             IElementAdapter? bottomAltarAdapter = altarParentAdapter.GetChildFromIndices(1, 1);
 
-            var topMods = topAltarAdapter != null ? new SecondaryAltarComponent(topAltarAdapter.Underlying, [], []) : null;
-            var bottomMods = bottomAltarAdapter != null ? new SecondaryAltarComponent(bottomAltarAdapter.Underlying, [], []) : null;
-            var topButton = topAltarAdapter != null ? new AltarButton(topAltarAdapter.Parent?.Underlying) : null;
-            var bottomButton = bottomAltarAdapter != null ? new AltarButton(bottomAltarAdapter.Parent?.Underlying) : null;
+            SecondaryAltarComponent? topMods = topAltarAdapter != null ? new SecondaryAltarComponent(topAltarAdapter.Underlying, [], []) : null;
+            SecondaryAltarComponent? bottomMods = bottomAltarAdapter != null ? new SecondaryAltarComponent(bottomAltarAdapter.Underlying, [], []) : null;
+            AltarButton? topButton = topAltarAdapter != null ? new AltarButton(topAltarAdapter.Parent?.Underlying) : null;
+            AltarButton? bottomButton = bottomAltarAdapter != null ? new AltarButton(bottomAltarAdapter.Parent?.Underlying) : null;
 
             if (topMods == null || bottomMods == null || topButton == null || bottomButton == null)
                 throw new InvalidOperationException("Failed to create valid altar component - missing required elements");
@@ -88,7 +88,7 @@ namespace ClickIt.Features.Altars
 
         private (List<string> Upsides, List<string> Downsides, bool HasUnmatchedMods) ProcessMods(List<string> mods, string negativeModType)
         {
-            var (upsides, downsides, unmatched) = AltarParser.ProcessMods(mods, negativeModType, (mod, neg) =>
+            (List<string>? upsides, List<string>? downsides, List<string>? unmatched) = AltarParser.ProcessMods(mods, negativeModType, (mod, neg) =>
             {
                 if (_altarMatcher.TryMatchModCached(mod, neg, out bool isUpside, out string matchedId))
                     return (true, isUpside, matchedId);

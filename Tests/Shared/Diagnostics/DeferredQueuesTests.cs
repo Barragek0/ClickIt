@@ -69,7 +69,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var q = new DeferredTextQueue();
             q.Enqueue("hello", new Vector2(5, 5), Color.White, 12);
 
-            q.Flush(null!, (s, f) => { });
+            q.Flush(null!);
             true.Should().BeTrue();
         }
 
@@ -107,11 +107,11 @@ namespace ClickIt.Tests.Shared.Diagnostics
             q.Enqueue("b", new Vector2(2, 3), Color.White, 12);
             q.GetPendingCount().Should().Be(2);
 
-            q.Flush(null!, (s, f) => { });
+            q.Flush(null!);
             q.GetPendingCount().Should().Be(2);
 
             var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
-            q.Flush(gfx, (s, f) => { });
+            q.Flush(gfx);
             q.GetPendingCount().Should().Be(0);
         }
 
@@ -120,7 +120,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
         {
             var q = new DeferredFrameQueue();
             q.Enqueue(new RectangleF(1, 2, 3, 4), Color.Blue, 1);
-            q.Flush(null!, (s, f) => { });
+            q.Flush(null!);
             true.Should().BeTrue();
         }
 
@@ -134,11 +134,11 @@ namespace ClickIt.Tests.Shared.Diagnostics
             q.Enqueue(new RectangleF(5, 6, 7, 8), Color.Blue, 1);
             q.GetPendingCount().Should().Be(2);
 
-            q.Flush(null!, (s, f) => { });
+            q.Flush(null!);
             q.GetPendingCount().Should().Be(2);
 
             var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
-            q.Flush(gfx, (s, f) => { });
+            q.Flush(gfx);
             q.GetPendingCount().Should().Be(0);
         }
 
@@ -153,11 +153,11 @@ namespace ClickIt.Tests.Shared.Diagnostics
 
             q.GetPendingCount().Should().Be(1000);
 
-            q.Flush(null!, (s, f) => { });
+            q.Flush(null!);
             q.GetPendingCount().Should().Be(1000);
 
             var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
-            q.Flush(gfx, (s, f) => { });
+            q.Flush(gfx);
             q.GetPendingCount().Should().Be(0);
         }
 
@@ -172,11 +172,11 @@ namespace ClickIt.Tests.Shared.Diagnostics
 
             q.GetPendingCount().Should().Be(1000);
 
-            q.Flush(null!, (s, f) => { });
+            q.Flush(null!);
             q.GetPendingCount().Should().Be(1000);
 
             var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
-            q.Flush(gfx, (s, f) => { });
+            q.Flush(gfx);
             q.GetPendingCount().Should().Be(0);
         }
 
@@ -192,8 +192,8 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var gfxType = typeof(Graphics);
             var gfx = (Graphics)RuntimeHelpers.GetUninitializedObject(gfxType);
 
-            tf.Flush(gfx, (s, f) => { });
-            tt.Flush(gfx, (s, f) => { });
+            tf.Flush(gfx);
+            tt.Flush(gfx);
 
             tf.GetPendingFrameSnapshot().Should().BeEmpty();
             tt.GetPendingTextSnapshot().Should().BeEmpty();
@@ -314,7 +314,7 @@ namespace ClickIt.Tests.Shared.Diagnostics
             var queue = new DeferredFrameQueue();
             var graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
 
-            Action act = () => queue.Flush(graphics, (message, level) => throw new InvalidOperationException($"Unexpected log {level}: {message}"));
+            Action act = () => queue.Flush(graphics);
 
             act.Should().NotThrow();
             queue.GetPendingCount().Should().Be(0);

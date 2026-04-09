@@ -68,24 +68,13 @@ namespace ClickIt.Features.Click.Core
 
     internal readonly record struct ExecutionResult(bool ShouldRunPostActions);
 
-    internal sealed class ClickRuntimeEngine
+    internal sealed class ClickRuntimeEngine(ClickRuntimeEngineDependencies dependencies)
     {
-        private readonly ClickRuntimeEngineDependencies _dependencies;
-        private readonly CandidateAcquisitionEngine _acquisitionPhase;
-        private readonly CandidateRankingEngine _rankingPhase;
-        private readonly CandidateGatingPhase _gatingPhase;
-        private readonly InteractionExecutionEngine _executionPhase;
-        private readonly PostInteractionStateEngine _postActionsPhase;
-
-        public ClickRuntimeEngine(ClickRuntimeEngineDependencies dependencies)
-        {
-            _dependencies = dependencies;
-            _acquisitionPhase = new CandidateAcquisitionEngine(CreateCandidateAcquisitionDependencies(dependencies));
-            _rankingPhase = new CandidateRankingEngine(CreateCandidateRankingDependencies(dependencies));
-            _gatingPhase = new CandidateGatingPhase();
-            _executionPhase = new InteractionExecutionEngine(CreateInteractionExecutionDependencies(dependencies));
-            _postActionsPhase = new PostInteractionStateEngine(CreatePostInteractionStateDependencies(dependencies));
-        }
+        private readonly ClickRuntimeEngineDependencies _dependencies = dependencies;
+        private readonly CandidateAcquisitionEngine _acquisitionPhase = new(CreateCandidateAcquisitionDependencies(dependencies));
+        private readonly CandidateRankingEngine _rankingPhase = new(CreateCandidateRankingDependencies(dependencies));
+        private readonly InteractionExecutionEngine _executionPhase = new(CreateInteractionExecutionDependencies(dependencies));
+        private readonly PostInteractionStateEngine _postActionsPhase = new(CreatePostInteractionStateDependencies(dependencies));
 
         private static CandidateAcquisitionEngineDependencies CreateCandidateAcquisitionDependencies(ClickRuntimeEngineDependencies dependencies)
             => new(
@@ -141,7 +130,7 @@ namespace ClickIt.Features.Click.Core
 
             ClickCandidates candidates = _acquisitionPhase.Collect(context);
             RankingResult ranking = _rankingPhase.Rank(context, candidates);
-            DecisionResult decision = _gatingPhase.Gate(candidates, ranking);
+            DecisionResult decision = CandidateGatingPhase.Gate(candidates, ranking);
             ExecutionResult executionResult = _executionPhase.Execute(context, candidates, decision);
 
             IEnumerator postActions = _postActionsPhase.Run(executionResult);
@@ -152,7 +141,7 @@ namespace ClickIt.Features.Click.Core
 
         private sealed class CandidateGatingPhase
         {
-            public DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)
+            public static DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)
             {
                 return new DecisionResult(
                     TrySettlers: ranking.PreferSettlers && candidates.SettlersOre.HasValue,

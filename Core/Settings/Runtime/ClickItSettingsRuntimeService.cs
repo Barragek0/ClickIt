@@ -66,7 +66,7 @@ namespace ClickIt.Core.Settings.Runtime
                 return runtimeCache.MechanicPrioritySnapshot;
             }
 
-            runtimeCache.MechanicPrioritySnapshot = settings.MechanicPriorityOrder.ToArray();
+            runtimeCache.MechanicPrioritySnapshot = [.. settings.MechanicPriorityOrder];
             return runtimeCache.MechanicPrioritySnapshot;
         }
 
@@ -80,9 +80,7 @@ namespace ClickIt.Core.Settings.Runtime
                 return runtimeCache.MechanicIgnoreDistanceSnapshot;
             }
 
-            runtimeCache.MechanicIgnoreDistanceSnapshot = settings.MechanicPriorityIgnoreDistanceIds
-                .OrderBy(static x => x, ClickItSettings.PriorityComparer)
-                .ToArray();
+            runtimeCache.MechanicIgnoreDistanceSnapshot = [.. settings.MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, ClickItSettings.PriorityComparer)];
             return runtimeCache.MechanicIgnoreDistanceSnapshot;
         }
 
@@ -96,9 +94,7 @@ namespace ClickIt.Core.Settings.Runtime
                 return runtimeCache.MechanicIgnoreDistanceWithinMapSnapshot;
             }
 
-            runtimeCache.MechanicIgnoreDistanceWithinSnapshot = settings.MechanicPriorityIgnoreDistanceWithinById
-                .OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)
-                .ToArray();
+            runtimeCache.MechanicIgnoreDistanceWithinSnapshot = [.. settings.MechanicPriorityIgnoreDistanceWithinById.OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)];
             runtimeCache.MechanicIgnoreDistanceWithinMapSnapshot = new Dictionary<string, int>(
                 runtimeCache.MechanicIgnoreDistanceWithinSnapshot.ToDictionary(static x => x.Key, static x => x.Value, ClickItSettings.PriorityComparer),
                 ClickItSettings.PriorityComparer);
@@ -126,9 +122,7 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceIds.Count)
                 return false;
 
-            string[] current = settings.MechanicPriorityIgnoreDistanceIds
-                .OrderBy(static x => x, ClickItSettings.PriorityComparer)
-                .ToArray();
+            string[] current = [.. settings.MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, ClickItSettings.PriorityComparer)];
             for (int i = 0; i < current.Length; i++)
             {
                 if (!string.Equals(current[i], snapshot[i], StringComparison.OrdinalIgnoreCase))
@@ -144,9 +138,7 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceWithinById.Count)
                 return false;
 
-            KeyValuePair<string, int>[] current = settings.MechanicPriorityIgnoreDistanceWithinById
-                .OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)
-                .ToArray();
+            KeyValuePair<string, int>[] current = [.. settings.MechanicPriorityIgnoreDistanceWithinById.OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)];
             for (int i = 0; i < current.Length; i++)
             {
                 if (!string.Equals(current[i].Key, snapshot[i].Key, StringComparison.OrdinalIgnoreCase))

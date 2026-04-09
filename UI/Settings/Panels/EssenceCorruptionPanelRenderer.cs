@@ -4,7 +4,7 @@ namespace ClickIt.UI.Settings.Panels
     {
         private readonly ClickItSettings _settings = settings;
 
-        public void DrawPanel(bool embedded = false)
+        public void DrawPanel()
         {
             SettingsDefaultsService.EnsureEssenceCorruptionFiltersInitialized(_settings);
 

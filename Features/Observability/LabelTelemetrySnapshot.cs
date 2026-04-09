@@ -8,7 +8,7 @@ namespace ClickIt.Features.Observability
         int TotalVisibleLabels,
         int ValidVisibleLabels)
     {
-        private static readonly IReadOnlyList<string> EmptyTrail = Array.Empty<string>();
+        private static readonly IReadOnlyList<string> EmptyTrail = [];
 
         public static readonly LabelTelemetrySnapshot Empty = new(
             ServiceAvailable: false,

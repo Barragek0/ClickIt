@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace ClickIt.UI.Debug.Introspection
 {
     internal static class RuntimeObjectIntrospectionReportBuilder
@@ -8,7 +6,7 @@ namespace ClickIt.UI.Debug.Introspection
         {
             RuntimeObjectTraversalOptions normalized = NormalizeOptions(options);
 
-            var sb = new StringBuilder(1024);
+            StringBuilder sb = new(1024);
             sb.AppendLine($"--- {normalized.Title} ---");
 
             if (root == null)
@@ -17,7 +15,7 @@ namespace ClickIt.UI.Debug.Introspection
                 return sb.ToString().TrimEnd();
             }
 
-            var engine = new RuntimeObjectTraversalEngine(root, normalized, enforceElapsedBudget: false);
+            RuntimeObjectTraversalEngine engine = new(root, normalized, enforceElapsedBudget: false);
             while (!engine.IsFinished)
             {
                 IReadOnlyList<RuntimeObjectTraversalEvent> events = engine.ProcessNext();

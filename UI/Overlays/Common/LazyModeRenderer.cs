@@ -26,15 +26,15 @@ namespace ClickIt.UI.Overlays.Common
         public void Render(GameController gameController, PluginContext state)
         {
             if (!_settings.LazyMode.Value) return;
-            var windowRect = gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowRect = gameController.Window.GetWindowRectangleTimeCache;
             float centerX = windowRect.Width / 2f;
             float topY = LazyModeTitleY;
 
-            var allLabels = state.Services.CachedLabels?.Value;
+            List<LabelOnGround>? allLabels = state.Services.CachedLabels?.Value;
             bool hasRestrictedItems = _lazyModeBlockerService?.HasRestrictedItemsOnScreen(allLabels) ?? false;
             string restrictionReason = GetLazyModeRestrictionDisplayReason(_lazyModeBlockerService?.LastRestrictionReason);
 
-            var (leftClickBlocks, rightClickBlocks, mouseButtonBlocks) =
+            (bool leftClickBlocks, bool rightClickBlocks, bool mouseButtonBlocks) =
                 InputHandler.GetMouseButtonBlockingState(_settings, Input.GetKeyState);
 
             Keys clickLabelKey = _settings.ClickLabelKeyBinding;
@@ -44,7 +44,7 @@ namespace ClickIt.UI.Overlays.Common
             bool isRitualActive = EntityHelpers.IsRitualActive(gameController);
             bool canActuallyClick = _inputHandler?.CanClick(gameController, false, isRitualActive) ?? false;
 
-            var (textColor, line1, line2, line3) = ComposeLazyModeStatus(
+            (Color textColor, string? line1, string? line2, string? line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,
                 restrictionReason,
                 hotkeyHeld,
@@ -79,7 +79,7 @@ namespace ClickIt.UI.Overlays.Common
             {
                 return hotkeyHeld
                     ? BuildBlockedOverrideStatus()
-                    : (SharpDX.Color.Red, restrictionReason, GetHoldClickLabelHint(clickLabelKey), string.Empty);
+                    : (Color.Red, restrictionReason, GetHoldClickLabelHint(clickLabelKey), string.Empty);
             }
 
             if (lazyModeDisableHeld)
@@ -88,32 +88,32 @@ namespace ClickIt.UI.Overlays.Common
                     ? GetToggleDisableHint(_settings.LazyModeDisableKeyBinding)
                     : ReleaseToResumeLazyClickingText;
 
-                return (SharpDX.Color.Red, LazyModeDisabledByHotkeyText, resumeHint, string.Empty);
+                return (Color.Red, LazyModeDisabledByHotkeyText, resumeHint, string.Empty);
             }
 
             if (mouseButtonBlocks)
             {
-                return (SharpDX.Color.Red, $"{GetBlockingMouseButtonName(leftClickBlocks, rightClickBlocks)} held.", "Release to resume lazy clicking.", string.Empty);
+                return (Color.Red, $"{GetBlockingMouseButtonName(leftClickBlocks, rightClickBlocks)} held.", "Release to resume lazy clicking.", string.Empty);
             }
 
             if (isRitualActive)
             {
                 return hotkeyHeld
                     ? BuildBlockedOverrideStatus()
-                    : (SharpDX.Color.Red, RitualInProgressText, CompleteRitualToResumeText, string.Empty);
+                    : (Color.Red, RitualInProgressText, CompleteRitualToResumeText, string.Empty);
             }
 
             if (!canActuallyClick)
             {
-                return (SharpDX.Color.Red, _inputHandler?.GetCanClickFailureReason(gameController) ?? "Clicking disabled.", string.Empty, string.Empty);
+                return (Color.Red, _inputHandler?.GetCanClickFailureReason(gameController) ?? "Clicking disabled.", string.Empty, string.Empty);
             }
 
-            return (SharpDX.Color.LawnGreen, string.Empty, string.Empty, string.Empty);
+            return (Color.LawnGreen, string.Empty, string.Empty, string.Empty);
         }
 
         private static (Color color, string line1, string line2, string line3) BuildBlockedOverrideStatus()
         {
-            return (SharpDX.Color.LawnGreen, BlockingOverriddenByHotkeyText, string.Empty, string.Empty);
+            return (Color.LawnGreen, BlockingOverriddenByHotkeyText, string.Empty, string.Empty);
         }
 
         internal static string GetLazyModeRestrictionDisplayReason(string? rawReason)

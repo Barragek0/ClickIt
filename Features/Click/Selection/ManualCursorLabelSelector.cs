@@ -235,7 +235,7 @@ namespace ClickIt.Features.Click.Selection
 
             try
             {
-                var worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
+                NumVector2 worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
                 projectedPoint = new Vector2(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
                 return float.IsFinite(projectedPoint.X) && float.IsFinite(projectedPoint.Y);
             }

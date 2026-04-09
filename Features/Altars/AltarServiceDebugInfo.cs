@@ -2,14 +2,14 @@ namespace ClickIt.Features.Altars
 {
     public class AltarServiceDebugInfo
     {
-        public int LastScanExarchLabels { get; set; } = 0;
-        public int LastScanEaterLabels { get; set; } = 0;
-        public int ElementsFound { get; set; } = 0;
-        public int ComponentsProcessed { get; set; } = 0;
-        public int ComponentsAdded { get; set; } = 0;
-        public int ComponentsDuplicated { get; set; } = 0;
-        public int ModsMatched { get; set; } = 0;
-        public int ModsUnmatched { get; set; } = 0;
+        public int LastScanExarchLabels { get; set; }
+        public int LastScanEaterLabels { get; set; }
+        public int ElementsFound { get; set; }
+        public int ComponentsProcessed { get; set; }
+        public int ComponentsAdded { get; set; }
+        public int ComponentsDuplicated { get; set; }
+        public int ModsMatched { get; set; }
+        public int ModsUnmatched { get; set; }
         public string LastProcessedAltarType { get; set; } = "";
         public string LastError { get; set; } = "";
         public DateTime LastScanTime { get; set; } = DateTime.MinValue;

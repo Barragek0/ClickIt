@@ -40,7 +40,7 @@ namespace ClickIt.Shared.Diagnostics
                     }
 
                     (RectangleF rectangle, Color color, int thickness) frame = (rectangle, color, thickness);
-                    if (_items.Count > 0 && IsSameFrame(_items[_items.Count - 1], frame))
+                    if (_items.Count > 0 && IsSameFrame(_items[^1], frame))
                         return;
 
                     _items.Add(frame);
@@ -52,7 +52,7 @@ namespace ClickIt.Shared.Diagnostics
             }
         }
 
-        public void Flush(Graphics graphics, Action<string, int> logMessage)
+        public void Flush(Graphics graphics)
         {
             if (graphics == null) return;
 
@@ -61,9 +61,7 @@ namespace ClickIt.Shared.Diagnostics
                 if (_items.Count == 0)
                     return;
 
-                List<(RectangleF Rectangle, Color Color, int Thickness)> pending = _items;
-                _items = _spare;
-                _spare = pending;
+                (_items, _spare) = (_spare, _items);
                 _items.Clear();
                 _pendingCount = 0;
             }

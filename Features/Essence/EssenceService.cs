@@ -1,4 +1,3 @@
-using SharpDX;
 namespace ClickIt.Features.Essence
 {
     public class EssenceService(ClickItSettings settings)
@@ -27,7 +26,7 @@ namespace ClickIt.Features.Essence
             Element? corruptElement = label.Label?.GetChildAtIndex(2)?.GetChildAtIndex(0)?.GetChildAtIndex(0);
             if (corruptElement == null)
                 return null;
-            var random = new Random();
+            Random random = new();
             Vector2 offset = new(random.Next(0, 2), random.Next(0, 2));
             return corruptElement.GetClientRect().Center + windowTopLeft + offset;
         }

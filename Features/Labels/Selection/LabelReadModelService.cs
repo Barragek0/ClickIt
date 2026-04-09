@@ -29,7 +29,7 @@ namespace ClickIt.Features.Labels.Selection
             }
 
             List<LabelOnGround> validLabels = new(SystemMath.Min(groundLabels.Count, 1000));
-            var win = _gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF win = _gameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(win.X, win.Y);
 
             bool IsClickableInEitherSpace(Vector2 point)

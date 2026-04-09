@@ -81,20 +81,20 @@ namespace ClickIt.Features.Shrines
         /// </summary>
         private List<Entity> GetShrineEntitiesUncached()
         {
-            var shrines = GetThreadLocalShrineList();
+            List<Entity> shrines = GetThreadLocalShrineList();
             shrines.Clear();
 
-            var validEntities = _gameController.EntityListWrapper?.ValidEntitiesByType;
+            Dictionary<EntityType, List<Entity>>? validEntities = _gameController.EntityListWrapper?.ValidEntitiesByType;
             if (validEntities == null)
                 return shrines;
 
-            foreach (var entityType in validEntities)
+            foreach (KeyValuePair<EntityType, List<Entity>> entityType in validEntities)
             {
-                var entities = entityType.Value;
+                List<Entity> entities = entityType.Value;
                 if (entities == null)
                     continue;
 
-                foreach (var entity in entities)
+                foreach (Entity? entity in entities)
                 {
                     if (IsClickableShrineCandidate(entity))
                         shrines.Add(entity);
@@ -111,14 +111,14 @@ namespace ClickIt.Features.Shrines
 
         public bool AreShrinesPresentInClickableArea(Func<Vector2, bool> isInClickableArea)
         {
-            var shrines = GetCachedShrineEntities();
+            List<Entity> shrines = GetCachedShrineEntities();
 
-            foreach (var shrine in shrines)
+            foreach (Entity shrine in shrines)
             {
                 if (shrine == null)
                     continue;
 
-                var screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
+                NumVector2 screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
                 Vector2 clickPos = new(screenPosRaw.X, screenPosRaw.Y);
                 if (isInClickableArea(clickPos))
                     return true;
@@ -136,9 +136,9 @@ namespace ClickIt.Features.Shrines
             float minDistance = float.MaxValue;
             float minCursorDistance = float.MaxValue;
 
-            var shrines = GetCachedShrineEntities();
+            List<Entity> shrines = GetCachedShrineEntities();
 
-            foreach (var shrine in shrines)
+            foreach (Entity shrine in shrines)
             {
                 if (shrine == null)
                     continue;
@@ -151,7 +151,7 @@ namespace ClickIt.Features.Shrines
 
                 if (isInClickableArea != null)
                 {
-                    var screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
+                    NumVector2 screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
                     Vector2 screenPos = new(screenPosRaw.X, screenPosRaw.Y);
                     if (!isInClickableArea(screenPos))
                         continue;

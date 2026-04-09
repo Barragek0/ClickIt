@@ -7,7 +7,7 @@ namespace ClickIt.Features.Area
 
         internal static List<RectangleF> ResolveBuffsAndDebuffsBlockedRectanglesFromRoot(object? root)
         {
-            var blocked = new List<RectangleF>(2);
+            List<RectangleF> blocked = new(2);
             if (!AreaUiNodeTraversal.TryGetChildNode(root, 1, out object? child1) || child1 == null)
                 return blocked;
 
@@ -21,7 +21,7 @@ namespace ClickIt.Features.Area
 
         internal static List<RectangleF> ResolveQuestTrackerBlockedRectanglesFromRoot(object? root)
         {
-            var blocked = new List<RectangleF>();
+            List<RectangleF> blocked = [];
             if (!AreaUiNodeTraversal.TryGetChildNode(root, 0, out object? child0) || child0 == null)
                 return blocked;
             if (!AreaUiNodeTraversal.TryGetChildNode(child0, 0, out object? rowsRoot) || rowsRoot == null)

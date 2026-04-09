@@ -12,11 +12,11 @@ namespace ClickIt.Shared.Input
         private static extern short GetKeyState(int nVirtKey);
         public static void KeyDown(Keys key)
         {
-            keybd_event((byte)key, 0, KEYEVENTF_EXTENDEDKEY, 0);
+            _ = keybd_event((byte)key, 0, KEYEVENTF_EXTENDEDKEY, 0);
         }
         public static void KeyUp(Keys key)
         {
-            keybd_event((byte)key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
+            _ = keybd_event((byte)key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
         }
         public static void KeyPress(Keys key)
         {

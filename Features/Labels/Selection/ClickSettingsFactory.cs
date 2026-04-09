@@ -23,7 +23,7 @@ namespace ClickIt.Features.Labels.Selection
             IReadOnlyList<string> mechanicPriorities = _settings.GetMechanicPriorityOrder();
             IReadOnlyCollection<string> ignoreDistance = _settings.GetMechanicPriorityIgnoreDistanceIds();
             IReadOnlyDictionary<string, int> ignoreDistanceWithinByMechanicId = _settings.GetMechanicPriorityIgnoreDistanceWithinById();
-            var mechanicPrioritySnapshot = _mechanicPrioritySnapshotProvider.Refresh(
+            MechanicPrioritySnapshot mechanicPrioritySnapshot = _mechanicPrioritySnapshotProvider.Refresh(
                 mechanicPriorities,
                 ignoreDistance,
                 ignoreDistanceWithinByMechanicId);

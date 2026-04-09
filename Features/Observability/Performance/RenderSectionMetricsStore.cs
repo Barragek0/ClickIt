@@ -70,6 +70,9 @@ namespace ClickIt.Features.Observability.Performance
                 case RenderSection.FrameFlush:
                     RecordSample(ref _lastFrameFlushMs, ref _avgFrameFlushMs, ref _maxFrameFlushMs, ref _frameFlushSamples, ms);
                     break;
+                case RenderSection.Unknown:
+                default:
+                    break;
             }
         }
 
@@ -85,6 +88,7 @@ namespace ClickIt.Features.Observability.Performance
                 RenderSection.PathfindingOverlay => (_lastPathfindingOverlayMs, _avgPathfindingOverlayMs, _maxPathfindingOverlayMs, _pathfindingOverlaySamples),
                 RenderSection.TextFlush => (_lastTextFlushMs, _avgTextFlushMs, _maxTextFlushMs, _textFlushSamples),
                 RenderSection.FrameFlush => (_lastFrameFlushMs, _avgFrameFlushMs, _maxFrameFlushMs, _frameFlushSamples),
+                RenderSection.Unknown => (0, 0, 0, 0),
                 _ => (0, 0, 0, 0)
             };
         }

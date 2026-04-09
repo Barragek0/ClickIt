@@ -1,13 +1,10 @@
-#nullable enable
 
 namespace ClickIt.UI.Overlays.Altars
 {
-    public class AltarDisplayRenderer(Graphics graphics, ClickItSettings settings, GameController gameController, WeightCalculator weightCalculator, AltarChoiceEvaluator altarChoiceEvaluator, DeferredTextQueue deferredTextQueue, DeferredFrameQueue deferredFrameQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
+    public class AltarDisplayRenderer(Graphics graphics, WeightCalculator weightCalculator, AltarChoiceEvaluator altarChoiceEvaluator, DeferredTextQueue deferredTextQueue, DeferredFrameQueue deferredFrameQueue, AltarService? altarService = null, Action<string, int>? logMessage = null)
     {
         private readonly Graphics _graphics = graphics;
-        private readonly ClickItSettings _settings = settings;
         private readonly AltarService? _altarService = altarService;
-        private readonly GameController _gameController = gameController;
         private readonly WeightCalculator _weightCalculator = weightCalculator;
         private readonly AltarChoiceEvaluator _altarChoiceEvaluator = altarChoiceEvaluator;
         private readonly Action<string, int> _logMessage = logMessage ?? ((msg, frame) => { });
@@ -31,7 +28,7 @@ namespace ClickIt.UI.Overlays.Altars
             if (_graphics == null) return;
             if (mods == null || mods.Length == 0) return;
 
-            var modsText = new StringBuilder();
+            StringBuilder modsText = new();
             bool first = true;
             for (int i = 0; i < mods.Length; i++)
             {
@@ -80,7 +77,7 @@ namespace ClickIt.UI.Overlays.Altars
 
         public void RenderAltarComponents()
         {
-            var altarSnapshot = _altarService?.GetAltarComponentsReadOnly();
+            IReadOnlyList<PrimaryAltarComponent>? altarSnapshot = _altarService?.GetAltarComponentsReadOnly();
             if (altarSnapshot == null || altarSnapshot.Count == 0) return;
 
             foreach (PrimaryAltarComponent altar in altarSnapshot)
@@ -96,7 +93,7 @@ namespace ClickIt.UI.Overlays.Altars
                 return;
             }
 
-            var altarWeights = altar.GetCachedWeights(pc => _weightCalculator.CalculateAltarWeights(pc));
+            AltarWeights? altarWeights = altar.GetCachedWeights(_weightCalculator.CalculateAltarWeights);
 
             if (!altarWeights.HasValue)
             {

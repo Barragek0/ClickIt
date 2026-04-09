@@ -1,4 +1,3 @@
-#nullable enable
 
 namespace ClickIt.UI.Debug
 {
@@ -151,7 +150,7 @@ namespace ClickIt.UI.Debug
             double processingMs,
             double observedIntervalMs)
         {
-            var metrics = PerformanceDebugOverlaySection.BuildClickFrequencyTargetDebugMetrics(
+            PerformanceDebugOverlaySection.ClickFrequencyTargetDebugMetrics metrics = PerformanceDebugOverlaySection.BuildClickFrequencyTargetDebugMetrics(
                 clickTargetMs,
                 processingMs,
                 observedIntervalMs);
@@ -168,9 +167,6 @@ namespace ClickIt.UI.Debug
         public int RenderErrorsDebug(int xPos, int yPos, int lineHeight)
             => _performanceDebugOverlaySection.RenderErrorsDebug(xPos, yPos, lineHeight);
 
-        private int RenderDebugTrailBlock(ref int xPos, int yPos, int lineHeight, IReadOnlyList<string> trail, int maxRows, int wrapWidth)
-            => _textBlockRenderer.RenderTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows, wrapWidth);
-
         protected int EnqueueWrappedDebugLine(
             ref int xPos,
             int yPos,
@@ -180,9 +176,6 @@ namespace ClickIt.UI.Debug
             int fontSize,
             int maxCharsPerLine = 72)
             => _textBlockRenderer.EnqueueWrappedLine(ref xPos, yPos, lineHeight, text, color, fontSize, maxCharsPerLine);
-
-        private bool EnsureDebugLineCapacity(ref int xPos, ref int yPos, int lineHeight)
-            => _textBlockRenderer.EnsureLineCapacity(ref xPos, ref yPos, lineHeight);
 
         public int RenderWrappedText(string text, Vector2 position, Color color, int fontSize, int lineHeight, int maxCharsPerLine)
             => _textBlockRenderer.RenderWrappedText(text, position, color, fontSize, lineHeight, maxCharsPerLine);

@@ -6,7 +6,7 @@ namespace ClickIt.Features.Labels
         Keep `LabelFilterPort` merge-first and lazy: settings and root collaborators arrive eagerly in the constructor, then the composition layer fans out in a stable order from click settings and inventory policy into classification, candidate building, selection, debug, and lazy-mode blocking. This ordering matters for followability because the later owners intentionally reuse the earlier ones instead of each recreating their own view of metadata, mechanics, or inventory rules.
          */
         private LabelClickSettingsService ClickSettingsService
-            => _clickSettingsService ??= new LabelClickSettingsService(
+            => field ??= new LabelClickSettingsService(
                 _settings,
                 _mechanicPrioritySnapshotService,
                 LazyModeBlockerService.HasRestrictedItemsOnScreen,
@@ -31,18 +31,18 @@ namespace ClickIt.Features.Labels
         }
 
         private LabelInteractionRuleService InteractionRuleService
-            => _interactionRuleService ??= new LabelInteractionRuleService(
+            => field ??= new LabelInteractionRuleService(
                 _worldItemMetadataPolicy,
                 InventoryInteractionPolicy);
 
         private LabelCandidateBuilderService CandidateBuilderService
-            => _candidateBuilderService ??= new LabelCandidateBuilderService(LabelMechanicResolutionService);
+            => field ??= new LabelCandidateBuilderService(LabelMechanicResolutionService);
 
         private ILabelSelectionService LabelSelectionService
-            => _labelSelectionService ??= new LabelSelectionService(CreateLabelSelectionServiceDependencies());
+            => field ??= new LabelSelectionService(CreateLabelSelectionServiceDependencies());
 
         internal LabelDebugService LabelDebugService
-            => _labelDebugService ??= new LabelDebugService(
+            => field ??= new LabelDebugService(
                 _settings,
                 _errorHandler,
                 _gameController,
@@ -52,13 +52,13 @@ namespace ClickIt.Features.Labels
                 _labelSelectionDiagnostics);
 
         private LabelMechanicResolutionService LabelMechanicResolutionService
-            => _labelMechanicResolutionService ??= new LabelMechanicResolutionService(
+            => field ??= new LabelMechanicResolutionService(
                 _gameController,
                 ClickSettingsService.Create,
                 () => ClassificationDependencies);
 
         internal LazyModeBlockerService LazyModeBlockerService
-            => _lazyModeBlockerService ??= new LazyModeBlockerService(
+            => field ??= new LazyModeBlockerService(
                 _settings,
                 _gameController,
                 reason => _errorHandler.LogMessage(true, true, reason, 5));

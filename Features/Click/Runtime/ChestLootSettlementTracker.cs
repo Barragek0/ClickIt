@@ -7,28 +7,16 @@ namespace ClickIt.Features.Click.Runtime
         ClickDebugPublicationService ClickDebugPublisher,
         ClickLabelInteractionService LabelInteraction);
 
-    internal readonly struct ChestLootSettlementTiming
+    internal readonly struct ChestLootSettlementTiming(int initialDelayMs, int pollIntervalMs, int quietWindowMs)
     {
-        public ChestLootSettlementTiming(int initialDelayMs, int pollIntervalMs, int quietWindowMs)
-        {
-            InitialDelayMs = initialDelayMs;
-            PollIntervalMs = pollIntervalMs;
-            QuietWindowMs = quietWindowMs;
-        }
-
-        public int InitialDelayMs { get; }
-        public int PollIntervalMs { get; }
-        public int QuietWindowMs { get; }
+        public int InitialDelayMs { get; } = initialDelayMs;
+        public int PollIntervalMs { get; } = pollIntervalMs;
+        public int QuietWindowMs { get; } = quietWindowMs;
     }
 
-    internal readonly struct ChestLootSettlementTimingOptions
+    internal readonly struct ChestLootSettlementTimingOptions(ChestLootSettlementTiming shared)
     {
-        public ChestLootSettlementTimingOptions(ChestLootSettlementTiming shared)
-        {
-            Shared = shared;
-        }
-
-        public ChestLootSettlementTiming Shared { get; }
+        public ChestLootSettlementTiming Shared { get; } = shared;
     }
 
     internal sealed class ChestLootSettlementTracker(ChestLootSettlementTrackerDependencies dependencies)
@@ -222,7 +210,6 @@ namespace ClickIt.Features.Click.Runtime
             ClickItSettings settings = _dependencies.Settings;
             ChestLootSettlementState state = _dependencies.State;
 
-            decision = string.Empty;
             if (!state.IsWatcherActive)
             {
                 decision = "watcher-inactive";

@@ -121,7 +121,7 @@ namespace ClickIt.UI.Settings.Panels
             ImGui.Unindent();
         }
 
-        private void DrawSubtypeCheckboxRow(
+        private static void DrawSubtypeCheckboxRow(
             string listId,
             string categoryId,
             bool isSourceWhitelist,

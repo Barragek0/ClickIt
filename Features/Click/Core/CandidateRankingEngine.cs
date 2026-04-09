@@ -168,7 +168,7 @@ namespace ClickIt.Features.Click.Core
             float distance = candidate.Distance ?? float.MaxValue;
             float cursorDistance = candidate.CursorDistance ?? float.MaxValue;
 
-            var scoreContext = new MechanicCandidateRanker.RankContext(
+            MechanicCandidateRanker.RankContext scoreContext = new(
                 context.PriorityIndexMap,
                 context.IgnoreDistanceSet,
                 context.IgnoreDistanceWithinByMechanicId,

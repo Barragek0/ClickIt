@@ -21,7 +21,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 return HoveredItemMetadataTelemetrySnapshot.Empty;
 
             RectangleF windowRect = gameController?.Window.GetWindowRectangleTimeCache ?? RectangleF.Empty;
-            var cursorPosition = Mouse.GetCursorPosition();
+            SystemDrawingPoint cursorPosition = Mouse.GetCursorPosition();
             bool cursorInsideWindow = IsCursorInsideWindow(windowRect, cursorPosition.X, cursorPosition.Y);
             if (!cursorInsideWindow)
             {
@@ -63,7 +63,7 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 return StatusTelemetrySnapshot.Empty;
 
             IList<LabelOnGround>? visibleLabels = gameController?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            var player = gameController?.Player;
+            Entity? player = gameController?.Player;
 
             return new StatusTelemetrySnapshot(
                 GameControllerAvailable: gameController != null,

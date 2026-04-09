@@ -1,8 +1,3 @@
-using System.Collections;
-using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-
 namespace ClickIt.UI.Debug.Introspection
 {
     internal sealed class RuntimeObjectTraversalEngine
@@ -49,7 +44,7 @@ namespace ClickIt.UI.Debug.Introspection
             RuntimeObjectTraversalPendingNode pending = _stack.Pop();
             TotalProcessedNodes++;
 
-            var events = new List<RuntimeObjectTraversalEvent>();
+            List<RuntimeObjectTraversalEvent> events = [];
             try
             {
                 object? value = pending.Value;
@@ -72,11 +67,11 @@ namespace ClickIt.UI.Debug.Introspection
                     return events;
                 }
 
-                if (value is IEnumerable enumerable && value is not string)
+                if (value is IEnumerable enumerable and not string)
                 {
                     events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.EnumerableType, pending.Path, RuntimeType: type));
 
-                    var stagedEntries = new List<RuntimeObjectTraversalPendingNode>();
+                    List<RuntimeObjectTraversalPendingNode> stagedEntries = [];
                     int previewCount = 0;
                     bool hasMore = false;
                     foreach (object? entry in enumerable)
@@ -120,7 +115,7 @@ namespace ClickIt.UI.Debug.Introspection
                 if (members.Count > Options.MaxMembersPerObject)
                     events.Add(new RuntimeObjectTraversalEvent(RuntimeObjectTraversalEventKind.MemberOutputTruncated, pending.Path, Count: members.Count - Options.MaxMembersPerObject));
 
-                var stagedMembers = new List<RuntimeObjectTraversalPendingNode>();
+                List<RuntimeObjectTraversalPendingNode> stagedMembers = [];
                 for (int i = 0; i < memberCount; i++)
                 {
                     MemberInfo member = members[i];
@@ -191,14 +186,14 @@ namespace ClickIt.UI.Debug.Introspection
     {
         private readonly record struct MemberCacheKey(Type Type, bool IncludeNonPublicMembers, string PriorityKey);
         private static readonly Dictionary<MemberCacheKey, MemberInfo[]> ReadableMembersCache = [];
-        private static readonly object CacheLock = new();
+        private static readonly Lock CacheLock = new();
 
         public static IReadOnlyList<MemberInfo> GetReadableMembers(Type type, IReadOnlyList<string> priorityMembers, bool includeNonPublicMembers)
         {
             string priorityKey = priorityMembers.Count == 0
                 ? string.Empty
                 : string.Join("|", priorityMembers);
-            var cacheKey = new MemberCacheKey(type, includeNonPublicMembers, priorityKey);
+            MemberCacheKey cacheKey = new(type, includeNonPublicMembers, priorityKey);
 
             lock (CacheLock)
             {
@@ -206,7 +201,7 @@ namespace ClickIt.UI.Debug.Introspection
                     return cachedMembers;
             }
 
-            var members = new List<MemberInfo>();
+            List<MemberInfo> members = [];
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public;
             if (includeNonPublicMembers)
                 flags |= BindingFlags.NonPublic;
@@ -231,7 +226,7 @@ namespace ClickIt.UI.Debug.Introspection
 
             if (members.Count > 1)
             {
-                var priorityIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, int> priorityIndex = new(StringComparer.OrdinalIgnoreCase);
                 for (int i = 0; i < priorityMembers.Count; i++)
                 {
                     if (!priorityIndex.ContainsKey(priorityMembers[i]))

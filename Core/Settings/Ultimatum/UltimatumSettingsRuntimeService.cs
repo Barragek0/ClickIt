@@ -12,7 +12,7 @@ namespace ClickIt.Core.Settings.Ultimatum
                 return runtimeCache.UltimatumPrioritySnapshot;
             }
 
-            runtimeCache.UltimatumPrioritySnapshot = settings.UltimatumModifierPriority.ToArray();
+            runtimeCache.UltimatumPrioritySnapshot = [.. settings.UltimatumModifierPriority];
             return runtimeCache.UltimatumPrioritySnapshot;
         }
 

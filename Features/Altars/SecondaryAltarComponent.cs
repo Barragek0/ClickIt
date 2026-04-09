@@ -4,10 +4,10 @@
     {
         public SecondaryAltarComponent(Element? element, List<string> upsides, List<string> downsides, bool hasUnmatchedMods = false)
         {
-            this.Element = element;
-            this.Upsides = upsides ?? [];
-            this.Downsides = downsides ?? [];
-            this.HasUnmatchedMods = hasUnmatchedMods;
+            Element = element;
+            Upsides = upsides ?? [];
+            Downsides = downsides ?? [];
+            HasUnmatchedMods = hasUnmatchedMods;
 
             _upsides = new string[8];
             _downsides = new string[8];
@@ -31,19 +31,19 @@
 
         public string GetModByIndex(int index)
         {
-            if (index < 0 || index >= 8) return "";
+            if (index is < 0 or >= 8) return "";
             return index < 4 ? _upsides[index] : _downsides[index - 4];
         }
 
         public string GetUpsideByIndex(int index)
         {
-            if (index < 0 || index >= 8) return "";
+            if (index is < 0 or >= 8) return "";
             return _upsides[index];
         }
 
         public string GetDownsideByIndex(int index)
         {
-            if (index < 0 || index >= 8) return "";
+            if (index is < 0 or >= 8) return "";
             return _downsides[index];
         }
 

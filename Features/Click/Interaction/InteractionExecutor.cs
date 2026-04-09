@@ -149,7 +149,7 @@ namespace ClickIt.Features.Click.Interaction
             if (!avoidCursorMove)
                 return requestedPosition;
 
-            var cursor = Mouse.GetCursorPosition();
+            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
             return new Vector2(cursor.X, cursor.Y);
         }
 
@@ -211,7 +211,7 @@ namespace ClickIt.Features.Click.Interaction
 
             Thread.Sleep(_settings?.LazyMode?.Value == true ? _settings.LazyModeUIHoverSleep.Value : 10);
 
-            var uiHover = gameController?.IngameState?.UIHoverElement;
+            Element? uiHover = gameController?.IngameState?.UIHoverElement;
             bool lazyModeEnabled = _settings?.LazyMode?.Value == true;
             bool verifyUiHoverWhenNotLazy = _settings?.VerifyUIHoverWhenNotLazy?.Value != false;
             ulong expectedAddress = unchecked((ulong)(expectedElement?.Address ?? 0));

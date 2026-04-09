@@ -4,20 +4,17 @@ namespace ClickIt
     {
         public PluginContext State { get; } = new PluginContext();
 
-        private DebugClipboardService? _debugClipboardService;
-        private PluginLifecycleButtonBindings? _lifecycleButtonBindings;
-
         private ClickItSettings EffectiveSettings => Settings ?? new ClickItSettings();
 
         private DebugClipboardService DebugClipboardService
-            => _debugClipboardService ??= new DebugClipboardService(new DebugClipboardServiceDependencies(
+            => field ??= new DebugClipboardService(new DebugClipboardServiceDependencies(
                 State,
                 this,
                 GetEffectiveSettingsForLifecycle,
                 () => GameController));
 
         internal PluginLifecycleButtonBindings LifecycleButtonBindings
-            => _lifecycleButtonBindings ??= new PluginLifecycleButtonBindings(this, DebugClipboardService);
+            => field ??= new PluginLifecycleButtonBindings(this, DebugClipboardService);
 
         public override void OnLoad()
         {
@@ -36,7 +33,7 @@ namespace ClickIt
 
         public override bool Initialise()
         {
-            var settings = Settings
+            ClickItSettings settings = Settings
                 ?? throw new InvalidOperationException("Settings is null during plugin initialization.");
 
             return PluginLifecycleCoordinator.Initialise(this, settings);
@@ -60,7 +57,7 @@ namespace ClickIt
 
         public override void DrawSettings()
         {
-            var settings = EffectiveSettings;
+            ClickItSettings settings = EffectiveSettings;
 
             if (ImGui.TreeNodeEx("Debug/Testing##ClickItDebugTesting", ImGuiTreeNodeFlags.DefaultOpen))
             {
@@ -74,7 +71,7 @@ namespace ClickIt
                 ImGui.TreePop();
             }
 
-            foreach (var drawer in Drawers)
+            foreach (ISettingsHolder? drawer in Drawers)
                 drawer.Draw();
 
         }

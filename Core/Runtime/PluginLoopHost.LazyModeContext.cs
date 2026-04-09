@@ -2,8 +2,6 @@ namespace ClickIt.Core.Runtime
 {
     public partial class PluginLoopHost
     {
-        private PluginLazyModeContextCache? _lazyModeContextCache;
-
         private PluginManualUiHoverModeDecision ResolveManualUiHoverMode(bool hotkeyActive)
             => PluginClickRuntimeStateEvaluator.ResolveManualUiHoverModeFromSettings(_settings, hotkeyActive);
 
@@ -36,7 +34,7 @@ namespace ClickIt.Core.Runtime
                     shouldEvaluateRestrictedItems: false));
 
         private PluginLazyModeContextCache LazyModeContextCache
-            => _lazyModeContextCache ??= new(new PluginLazyModeContextCacheDependencies(
+            => field ??= new(new PluginLazyModeContextCacheDependencies(
                 _settings,
                 GetLabels: () => _state.Services.CachedLabels?.Value,
                 IsRitualActive: () => PluginClickRuntimeStateEvaluator.ResolveIsRitualActive(_gameController),
