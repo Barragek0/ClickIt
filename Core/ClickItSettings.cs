@@ -29,7 +29,7 @@ namespace ClickIt
         [JsonIgnore]
         public CustomNode MechanicsTablePanel { get; internal set; } = new();
         [JsonIgnore]
-        public static bool ShowLegacySettingsTreeNodes => false;
+        public bool ShowLegacySettingsTreeNodes => false;
         [Menu("Basic Chests", "Click normal (non-league related) chests.", 1, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBasicChests { get; set; } = new ToggleNode(false);
