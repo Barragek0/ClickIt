@@ -74,6 +74,7 @@ namespace ClickIt.UI.Settings.Panels
             [
                 new DebugSectionToggleDescriptor("Status", _settings.DebugShowStatus, "Show/hide the status debug section"),
                 new DebugSectionToggleDescriptor("Game State", _settings.DebugShowGameState, "Show/hide the Game State debug section"),
+                new DebugSectionToggleDescriptor("Window", _settings.DebugShowWindowDebug, "Show/hide the Window debug section"),
                 new DebugSectionToggleDescriptor("Performance", _settings.DebugShowPerformance, "Show/hide the performance debug section"),
                 new DebugSectionToggleDescriptor("Click Frequency Target", _settings.DebugShowClickFrequencyTarget, "Show/hide the Click Frequency Target debug section"),
                 new DebugSectionToggleDescriptor("Altar Detection", _settings.DebugShowAltarDetection, "Show/hide the Altar Detection debug section"),

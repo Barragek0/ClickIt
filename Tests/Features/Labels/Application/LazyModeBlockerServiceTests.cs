@@ -347,20 +347,6 @@ namespace ClickIt.Tests.Features.Labels.Application
             blocked.Should().BeTrue();
         }
 
-        [TestMethod]
-        public void NearbyMonsterRestrictionCacheState_IsFresh_RequiresRecentMatchingSignature()
-        {
-            var fresh = new NearbyMonsterRestrictionCacheState(
-                TimestampMs: 1_000,
-                SettingsSignature: 7,
-                Result: new LazyModeRestrictionResult(true, "cached"));
-
-            fresh.IsFresh(nowMs: 1_040, settingsSignature: 7).Should().BeTrue();
-            fresh.IsFresh(nowMs: 1_051, settingsSignature: 7).Should().BeFalse();
-            fresh.IsFresh(nowMs: 1_040, settingsSignature: 8).Should().BeFalse();
-            NearbyMonsterRestrictionCacheState.Empty.IsFresh(nowMs: 1_000, settingsSignature: 7).Should().BeFalse();
-        }
-
         [DataTestMethod]
         [DataRow(true, 40, false, 50, false, 60, false, 70, 40)]
         [DataRow(false, 40, true, 50, true, 60, false, 70, 60)]
@@ -425,13 +411,13 @@ namespace ClickIt.Tests.Features.Labels.Application
                 settings.LazyModeUniqueMonsterBlockCount,
                 settings.LazyModeUniqueMonsterBlockDistance);
 
-            RuntimeMemberAccessor.SetRequiredMember(
+            var cache = (TimedValueCache<int, LazyModeRestrictionResult>)RuntimeMemberAccessor.GetRequiredMemberValue(
                 service,
-                "_cachedNearbyMonsterRestrictionCacheState",
-                new NearbyMonsterRestrictionCacheState(
-                    now - 10,
-                    settingsSignature,
-                    new LazyModeRestrictionResult(cachedResult, cachedReason)));
+                "_cachedNearbyMonsterRestrictionCacheState")!;
+            cache.SetValue(
+                settingsSignature,
+                now - 10,
+                new LazyModeRestrictionResult(cachedResult, cachedReason));
         }
 
         private static (bool Blocked, string? Reason) InvokeResolveNearbyMonsterRestriction(LazyModeBlockerService service)

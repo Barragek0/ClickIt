@@ -6,8 +6,9 @@ namespace ClickIt.Features.Shrines
         private readonly Camera _camera = camera ?? throw new ArgumentNullException(nameof(camera));
 
         private const int SHRINE_CACHE_DURATION_MS = 200; // 200ms cache for shrines
+        private const int ShrineCacheKey = 0;
         private readonly Stopwatch _shrineCacheTimer = new();
-        private List<Entity>? _cachedShrines;
+        private readonly TimedValueCache<int, List<Entity>> _shrineCache = new(SHRINE_CACHE_DURATION_MS);
         private long _lastShrineCacheTime;
 
         // Thread safety for multi-threading
@@ -61,19 +62,18 @@ namespace ClickIt.Features.Shrines
 
             long currentTime = _shrineCacheTimer.ElapsedMilliseconds;
 
-            if (!HasUsableShrineCache(currentTime))
-                RefreshShrineCache(currentTime);
+            if (_shrineCache.TryGetValue(ShrineCacheKey, currentTime, out List<Entity> cachedShrines))
+                return cachedShrines;
 
-            return _cachedShrines!;
+            return RefreshShrineCache(currentTime);
         }
 
-        private bool HasUsableShrineCache(long currentTime)
-            => _cachedShrines != null && (currentTime - _lastShrineCacheTime) <= SHRINE_CACHE_DURATION_MS;
-
-        private void RefreshShrineCache(long currentTime)
+        private List<Entity> RefreshShrineCache(long currentTime)
         {
-            _cachedShrines = GetShrineEntitiesUncached();
+            List<Entity> shrines = GetShrineEntitiesUncached();
+            _shrineCache.SetValue(ShrineCacheKey, currentTime, shrines);
             _lastShrineCacheTime = currentTime;
+            return shrines;
         }
 
         /// <summary>
@@ -180,7 +180,7 @@ namespace ClickIt.Features.Shrines
         /// </summary>
         public void InvalidateCache()
         {
-            _cachedShrines = null;
+            _shrineCache.Invalidate();
             _lastShrineCacheTime = 0;
         }
 
@@ -201,7 +201,7 @@ namespace ClickIt.Features.Shrines
 
         internal void SeedCacheWithSingleNullEntry(long lastShrineCacheTime)
         {
-            _cachedShrines = [null!];
+            _shrineCache.SetValue(ShrineCacheKey, lastShrineCacheTime, [null!]);
             _lastShrineCacheTime = lastShrineCacheTime;
         }
 
@@ -220,7 +220,7 @@ namespace ClickIt.Features.Shrines
 
         internal bool HasCachedShrines()
         {
-            return _cachedShrines != null;
+            return _shrineCache.HasCachedValue;
         }
 
         internal long GetLastShrineCacheTime()

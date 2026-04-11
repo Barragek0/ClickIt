@@ -22,6 +22,7 @@ namespace ClickIt.UI.Debug
             [
                 new(settings.DebugShowStatus, (x, y, h) => (x, _dependencies.StatusSection.RenderPluginStatusDebug(x, y, h))),
                 new(settings.DebugShowGameState, (x, y, h) => (x, _dependencies.StatusSection.RenderGameStateDebug(x, y, h))),
+                new(settings.DebugShowWindowDebug, (x, y, h) => (x, _dependencies.StatusSection.RenderWindowDebug(x, y, h))),
                 new(settings.DebugShowPerformance, (x, y, h) => (x, _dependencies.PerformanceSection.RenderPerformanceDebug(x, y, h, performanceSnapshot))),
                 new(settings.DebugShowClickFrequencyTarget, (x, y, h) => (x, _dependencies.PerformanceSection.RenderClickFrequencyTargetDebug(x, y, h, performanceSnapshot))),
                 new(settings.DebugShowAltarDetection, (x, y, h) => (x, _dependencies.RenderAltarDebug(x, y, h))),

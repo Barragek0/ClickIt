@@ -270,6 +270,74 @@ namespace ClickIt.Tests.Features.Area
             InvokeIsInTownOrHideout(null).Should().BeFalse();
         }
 
+        [TestMethod]
+        public void ResolveMainUiRegions_UsesClientCoordinates_ForMainAndFlaskRegions()
+        {
+            RectangleF windowRect = new(100, 200, 1200, 800);
+            (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) = AreaBlockedSnapshotProvider.ResolveMainUiRegions(windowRect);
+
+            fullScreen.Should().Be(new RectangleF(0f, 0f, windowRect.Width, windowRect.Height));
+
+            RectangleF expectedLeftCombined = new(
+                0f,
+                windowRect.Height / 5f * 3.92f,
+                windowRect.Width / 3.4f,
+                windowRect.Height);
+            RectangleF expectedRightCombined = new(
+                windowRect.Width / 3f * 2.12f,
+                windowRect.Height / 5f * 3.92f,
+                windowRect.Width,
+                windowRect.Height);
+
+            leftCombined.Should().Be(expectedLeftCombined);
+            rightCombined.Should().Be(expectedRightCombined);
+        }
+
+        [DataTestMethod]
+        [DataRow(800f, 600f)]
+        [DataRow(1280f, 720f)]
+        [DataRow(1920f, 1080f)]
+        [DataRow(2560f, 1440f)]
+        [DataRow(3440f, 1440f)]
+        public void ResolveMainUiRegions_ScalesAcrossClientResolutions_AndStaysWithinFullscreen(float width, float height)
+        {
+            RectangleF windowRect = new(333f, 777f, width, height);
+            (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) = AreaBlockedSnapshotProvider.ResolveMainUiRegions(windowRect);
+
+            fullScreen.Should().Be(new RectangleF(0f, 0f, width, height));
+
+            leftCombined.X.Should().BeGreaterOrEqualTo(0f);
+            leftCombined.Y.Should().BeGreaterOrEqualTo(0f);
+            leftCombined.Width.Should().BeLessOrEqualTo(width);
+            leftCombined.Height.Should().BeLessOrEqualTo(height);
+
+            rightCombined.X.Should().BeGreaterOrEqualTo(0f);
+            rightCombined.Y.Should().BeGreaterOrEqualTo(0f);
+            rightCombined.Width.Should().BeLessOrEqualTo(width);
+            rightCombined.Height.Should().BeLessOrEqualTo(height);
+
+            leftCombined.Height.Should().BeApproximately(height, 0.001f);
+            rightCombined.Height.Should().BeApproximately(height, 0.001f);
+            rightCombined.Width.Should().BeApproximately(width, 0.001f);
+        }
+
+        [DataTestMethod]
+        [DataRow(1280f, 720f)]
+        [DataRow(1920f, 1080f)]
+        [DataRow(2560f, 1440f)]
+        public void ResolveMainUiRegions_IsInvariantToWindowTopLeftOffset(float width, float height)
+        {
+            RectangleF rectNearOrigin = new(2f, 35f, width, height);
+            RectangleF rectFarFromOrigin = new(649f, 401f, width, height);
+
+            (RectangleF fullA, RectangleF leftA, RectangleF rightA) = AreaBlockedSnapshotProvider.ResolveMainUiRegions(rectNearOrigin);
+            (RectangleF fullB, RectangleF leftB, RectangleF rightB) = AreaBlockedSnapshotProvider.ResolveMainUiRegions(rectFarFromOrigin);
+
+            fullA.Should().Be(fullB);
+            leftA.Should().Be(leftB);
+            rightA.Should().Be(rightB);
+        }
+
         private static void AssertRectangle(RectangleF actual, float x, float y, float width, float height)
         {
             actual.X.Should().BeApproximately(x, 0.0001f);

@@ -17,51 +17,68 @@ namespace ClickIt.Core.Runtime
         private const int CacheWindowMs = 50;
 
         private readonly PluginLazyModeContextCacheDependencies _dependencies = dependencies;
-        private long _lastRefreshTimestampMs = long.MinValue;
-        private bool _cachedRitualActive;
-        private bool _cachedHasLazyModeRestrictedItems;
-        private bool _cachedRitualEvaluated;
-        private bool _cachedRestrictedItemsEvaluated;
-        private IReadOnlyList<LabelOnGround>? _cachedLabelsReference;
-        private int _cachedLabelCount = -1;
+        private readonly TimedValueCache<LazyModeContextCacheKey, LazyModeContextCacheState> _contextCache = new(
+            CacheWindowMs,
+            keyComparer: LazyModeContextCacheKeyComparer.Instance,
+            settings: new TimedValueCacheSettings(RequireNonNegativeAge: true));
 
         internal PluginLazyModeContextSnapshot GetContext(bool shouldEvaluateRitualState, bool shouldEvaluateRestrictedItems)
         {
             IReadOnlyList<LabelOnGround>? labels = _dependencies.GetLabels();
             int labelCount = labels?.Count ?? 0;
             long now = _dependencies.GetTimestampMs();
+            LazyModeContextCacheKey key = new(labels, labelCount);
 
-            bool cacheStillFresh = (now - _lastRefreshTimestampMs) < CacheWindowMs
-                && ReferenceEquals(labels, _cachedLabelsReference)
-                && labelCount == _cachedLabelCount;
+            _contextCache.TryGetValue(key, now, out LazyModeContextCacheState cacheState);
 
-            if (!cacheStillFresh)
+            if (shouldEvaluateRitualState && !cacheState.RitualEvaluated)
             {
-                _cachedLabelsReference = labels;
-                _cachedLabelCount = labelCount;
-                _lastRefreshTimestampMs = now;
-                _cachedRitualEvaluated = false;
-                _cachedRestrictedItemsEvaluated = false;
+                cacheState = cacheState with
+                {
+                    RitualActive = _dependencies.IsRitualActive(),
+                    RitualEvaluated = true
+                };
             }
 
-            if (shouldEvaluateRitualState && !_cachedRitualEvaluated)
+            if (shouldEvaluateRestrictedItems && !cacheState.RestrictedItemsEvaluated)
             {
-                _cachedRitualActive = _dependencies.IsRitualActive();
-                _cachedRitualEvaluated = true;
+                cacheState = cacheState with
+                {
+                    HasLazyModeRestrictedItems = _dependencies.HasLazyModeRestrictedItems(labels),
+                    RestrictedItemsEvaluated = true
+                };
             }
 
-            if (shouldEvaluateRestrictedItems && !_cachedRestrictedItemsEvaluated)
-            {
-                _cachedHasLazyModeRestrictedItems = _dependencies.HasLazyModeRestrictedItems(labels);
-                _cachedRestrictedItemsEvaluated = true;
-            }
+            _contextCache.SetValue(key, now, cacheState);
 
-            bool isRitualActive = shouldEvaluateRitualState && _cachedRitualActive;
-            bool hasLazyModeRestrictedItems = shouldEvaluateRestrictedItems && _cachedHasLazyModeRestrictedItems;
+            bool isRitualActive = shouldEvaluateRitualState && cacheState.RitualActive;
+            bool hasLazyModeRestrictedItems = shouldEvaluateRestrictedItems && cacheState.HasLazyModeRestrictedItems;
             return new PluginLazyModeContextSnapshot(
                 IsRitualActive: isRitualActive,
                 HasLazyModeRestrictedItems: hasLazyModeRestrictedItems,
                 Labels: labels);
+        }
+
+        private readonly record struct LazyModeContextCacheKey(
+            IReadOnlyList<LabelOnGround>? Labels,
+            int LabelCount);
+
+        private readonly record struct LazyModeContextCacheState(
+            bool RitualActive,
+            bool HasLazyModeRestrictedItems,
+            bool RitualEvaluated,
+            bool RestrictedItemsEvaluated);
+
+        private sealed class LazyModeContextCacheKeyComparer : IEqualityComparer<LazyModeContextCacheKey>
+        {
+            public static readonly LazyModeContextCacheKeyComparer Instance = new();
+
+            public bool Equals(LazyModeContextCacheKey x, LazyModeContextCacheKey y)
+                => ReferenceEquals(x.Labels, y.Labels)
+                    && x.LabelCount == y.LabelCount;
+
+            public int GetHashCode(LazyModeContextCacheKey obj)
+                => HashCode.Combine(obj.Labels == null ? 0 : RuntimeHelpers.GetHashCode(obj.Labels), obj.LabelCount);
         }
     }
 }

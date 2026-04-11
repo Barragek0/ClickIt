@@ -72,6 +72,72 @@ namespace ClickIt.UI.Debug.Sections
             return yPos;
         }
 
+        public int RenderWindowDebug(int xPos, int yPos, int lineHeight)
+        {
+            GameWindowRectResolver.WindowRectDebugInfo debug = GameWindowRectResolver.ResolveDebugInfo(_context.Plugin?.GameController);
+
+            _context.DeferredTextQueue.Enqueue("--- Window ---", new Vector2(xPos, yPos), Color.Orange, 16);
+            yPos += lineHeight;
+
+            Color modeColor = debug.WindowMode == "Windowed" ? Color.LightGreen : Color.LightBlue;
+            if (debug.WindowMode.StartsWith("Unknown", StringComparison.Ordinal))
+                modeColor = Color.Gray;
+
+            _context.DeferredTextQueue.Enqueue($"Window Mode: {debug.WindowMode}", new Vector2(xPos, yPos), modeColor, 16);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"Handle Available: {debug.HandleAvailable}", new Vector2(xPos, yPos), debug.HandleAvailable ? Color.LightGreen : Color.Gray, 14);
+            yPos += lineHeight;
+
+            Color overrideColor = debug.OverrideApplied ? Color.LightGreen : (debug.OverrideEligible ? Color.Yellow : Color.Gray);
+            _context.DeferredTextQueue.Enqueue($"Override Eligible/Applied: {debug.OverrideEligible}/{debug.OverrideApplied}", new Vector2(xPos, yPos), overrideColor, 14);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"ClientRect Read Succeeded: {debug.ClientRectReadSucceeded}", new Vector2(xPos, yPos), debug.ClientRectReadSucceeded ? Color.LightGreen : Color.Gray, 14);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"Resolved == Normalized Fallback: {debug.ResolvedMatchesNormalizedFallback}", new Vector2(xPos, yPos), debug.ResolvedMatchesNormalizedFallback ? Color.Yellow : Color.LightGreen, 14);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"Fallback Normalized: {debug.NormalizationAdjustedFallback}", new Vector2(xPos, yPos), debug.NormalizationAdjustedFallback ? Color.Yellow : Color.Gray, 14);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"Raw Cache Rect: {FormatRect(debug.RawCacheRect)}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"Normalized Cache Rect: {FormatRect(debug.NormalizedCacheRect)}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            _context.DeferredTextQueue.Enqueue($"Resolved Rect: {FormatRect(debug.ResolvedRect)}", new Vector2(xPos, yPos), Color.White, 13);
+            yPos += lineHeight;
+
+            Vector2 rawToResolvedDelta = new(debug.ResolvedRect.X - debug.RawCacheRect.X, debug.ResolvedRect.Y - debug.RawCacheRect.Y);
+            _context.DeferredTextQueue.Enqueue($"Resolved-raw top-left delta: ({rawToResolvedDelta.X:F1}, {rawToResolvedDelta.Y:F1})", new Vector2(xPos, yPos), Color.LightBlue, 13);
+            yPos += lineHeight;
+
+            if (_context.AreaService != null)
+            {
+                RectangleF areaFullScreen = _context.AreaService.FullScreenRectangle;
+                RectangleF areaHealthFlask = _context.AreaService.HealthAndFlaskRectangle;
+                RectangleF areaManaSkills = _context.AreaService.ManaAndSkillsRectangle;
+
+                _context.DeferredTextQueue.Enqueue($"Area FullScreen Rect (client): {FormatRect(areaFullScreen)}", new Vector2(xPos, yPos), Color.White, 13);
+                yPos += lineHeight;
+
+                Vector2 areaVsResolvedDelta = new(areaFullScreen.X - debug.ResolvedRect.X, areaFullScreen.Y - debug.ResolvedRect.Y);
+                _context.DeferredTextQueue.Enqueue($"AreaFullScreen-resolved top-left delta (client-resolved): ({areaVsResolvedDelta.X:F1}, {areaVsResolvedDelta.Y:F1})", new Vector2(xPos, yPos), Color.LightBlue, 13);
+                yPos += lineHeight;
+
+                _context.DeferredTextQueue.Enqueue($"Area Health+Flask (LTRB): {FormatRect(areaHealthFlask)}", new Vector2(xPos, yPos), Color.White, 13);
+                yPos += lineHeight;
+
+                _context.DeferredTextQueue.Enqueue($"Area Mana+Skills (LTRB): {FormatRect(areaManaSkills)}", new Vector2(xPos, yPos), Color.White, 13);
+                yPos += lineHeight;
+            }
+
+            return yPos;
+        }
+
         private int RenderAreaRefreshDebug(int xPos, int yPos, int lineHeight)
         {
             if (_context.AreaService == null)
@@ -107,5 +173,8 @@ namespace ClickIt.UI.Debug.Sections
 
             return Color.OrangeRed;
         }
+
+        private static string FormatRect(RectangleF rect)
+            => $"x={rect.X:F1} y={rect.Y:F1} w={rect.Width:F1} h={rect.Height:F1}";
     }
 }

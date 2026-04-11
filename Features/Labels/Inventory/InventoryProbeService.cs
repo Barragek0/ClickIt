@@ -9,13 +9,12 @@ namespace ClickIt.Features.Labels.Inventory
     internal sealed class InventoryProbeService(InventoryProbeServiceDependencies dependencies)
     {
         private readonly InventoryProbeServiceDependencies _dependencies = dependencies;
-        private readonly Lock _cacheLock = new();
         private readonly InventoryDiagnosticsChannel _diagnosticsChannel = new(dependencies.DebugTrailCapacity);
-
-        private long _inventoryProbeCacheTimestampMs;
-        private GameController? _inventoryProbeCacheController;
-        private InventoryFullProbe _inventoryProbeCacheValue = InventoryFullProbe.Empty;
-        private bool _inventoryProbeCacheHasValue;
+        private readonly TimedValueCache<GameController?, InventoryFullProbe> _inventoryProbeCache = new(
+            dependencies.CacheWindowMs,
+            settings: new TimedValueCacheSettings(
+                RequireNonNegativeAge: true,
+                RequirePositiveCachedTimestamp: true));
 
         public InventoryDebugSnapshot GetLatestDebug()
             => _diagnosticsChannel.GetLatest();
@@ -50,43 +49,19 @@ namespace ClickIt.Features.Labels.Inventory
 
         public void ClearForShutdown()
         {
-            lock (_cacheLock)
-            {
-                _inventoryProbeCacheTimestampMs = 0;
-                _inventoryProbeCacheController = null;
-                _inventoryProbeCacheValue = InventoryFullProbe.Empty;
-                _inventoryProbeCacheHasValue = false;
-            }
+            _inventoryProbeCache.Invalidate();
 
             _dependencies.LayoutCache.Clear();
         }
 
         private bool TryGetCachedInventoryProbe(GameController? gameController, long now, out InventoryFullProbe probe)
         {
-            lock (_cacheLock)
-            {
-                if (_inventoryProbeCacheHasValue
-                    && ReferenceEquals(_inventoryProbeCacheController, gameController)
-                    && InventoryCacheWindowPolicy.IsFresh(now, _inventoryProbeCacheTimestampMs, _dependencies.CacheWindowMs))
-                {
-                    probe = _inventoryProbeCacheValue;
-                    return true;
-                }
-            }
-
-            probe = InventoryFullProbe.Empty;
-            return false;
+            return _inventoryProbeCache.TryGetValue(gameController, now, out probe);
         }
 
         private void SetCachedInventoryProbe(GameController? gameController, long now, InventoryFullProbe probe)
         {
-            lock (_cacheLock)
-            {
-                _inventoryProbeCacheController = gameController;
-                _inventoryProbeCacheTimestampMs = now;
-                _inventoryProbeCacheValue = probe;
-                _inventoryProbeCacheHasValue = true;
-            }
+            _inventoryProbeCache.SetValue(gameController, now, probe);
         }
 
     }

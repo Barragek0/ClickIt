@@ -209,13 +209,13 @@ namespace ClickIt.Tests.Core.Runtime
                 settings.LazyModeUniqueMonsterBlockCount,
                 settings.LazyModeUniqueMonsterBlockDistance);
 
-            RuntimeMemberAccessor.SetRequiredMember(
+            var cache = (TimedValueCache<int, LazyModeRestrictionResult>)RuntimeMemberAccessor.GetRequiredMemberValue(
                 service,
-                "_cachedNearbyMonsterRestrictionCacheState",
-                new NearbyMonsterRestrictionCacheState(
-                    now - 10,
-                    settingsSignature,
-                    new LazyModeRestrictionResult(cachedResult, cachedReason)));
+                "_cachedNearbyMonsterRestrictionCacheState")!;
+            cache.SetValue(
+                settingsSignature,
+                now - 10,
+                new LazyModeRestrictionResult(cachedResult, cachedReason));
         }
 
         private static void SeedInputHotkeyState(

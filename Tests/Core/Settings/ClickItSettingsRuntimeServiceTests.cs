@@ -28,6 +28,7 @@ namespace ClickIt.Tests.Core.Settings
             var settings = new ClickItSettings();
             settings.DebugShowStatus.Value = false;
             settings.DebugShowGameState.Value = false;
+            settings.DebugShowWindowDebug.Value = false;
             settings.DebugShowPerformance.Value = false;
             settings.DebugShowClickFrequencyTarget.Value = false;
             settings.DebugShowAltarDetection.Value = false;
@@ -44,6 +45,52 @@ namespace ClickIt.Tests.Core.Settings
             ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(settings).Should().BeTrue();
 
             settings.DebugShowLabels.Value = true;
+            ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(settings).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void IsAnyDetailedDebugSectionEnabled_ReturnsTrue_WhenOnlyWindowDebugIsEnabled()
+        {
+            var settings = new ClickItSettings();
+            settings.DebugShowStatus.Value = false;
+            settings.DebugShowGameState.Value = false;
+            settings.DebugShowWindowDebug.Value = true;
+            settings.DebugShowPerformance.Value = false;
+            settings.DebugShowClickFrequencyTarget.Value = false;
+            settings.DebugShowAltarDetection.Value = false;
+            settings.DebugShowAltarService.Value = false;
+            settings.DebugShowLabels.Value = false;
+            settings.DebugShowInventoryPickup.Value = false;
+            settings.DebugShowHoveredItemMetadata.Value = false;
+            settings.DebugShowPathfinding.Value = false;
+            settings.DebugShowUltimatum.Value = false;
+            settings.DebugShowClicking.Value = false;
+            settings.DebugShowRuntimeDebugLogOverlay.Value = false;
+            settings.DebugShowRecentErrors.Value = false;
+
+            ClickItSettingsRuntimeService.IsAnyDetailedDebugSectionEnabled(settings).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void IsOnlyPathfindingDetailedDebugSectionEnabled_ReturnsFalse_WhenWindowDebugAlsoEnabled()
+        {
+            var settings = new ClickItSettings();
+            settings.DebugShowStatus.Value = false;
+            settings.DebugShowGameState.Value = false;
+            settings.DebugShowWindowDebug.Value = true;
+            settings.DebugShowPerformance.Value = false;
+            settings.DebugShowClickFrequencyTarget.Value = false;
+            settings.DebugShowAltarDetection.Value = false;
+            settings.DebugShowAltarService.Value = false;
+            settings.DebugShowLabels.Value = false;
+            settings.DebugShowInventoryPickup.Value = false;
+            settings.DebugShowHoveredItemMetadata.Value = false;
+            settings.DebugShowPathfinding.Value = true;
+            settings.DebugShowUltimatum.Value = false;
+            settings.DebugShowClicking.Value = false;
+            settings.DebugShowRuntimeDebugLogOverlay.Value = false;
+            settings.DebugShowRecentErrors.Value = false;
+
             ClickItSettingsRuntimeService.IsOnlyPathfindingDetailedDebugSectionEnabled(settings).Should().BeFalse();
         }
     }

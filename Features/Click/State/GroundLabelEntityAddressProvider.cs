@@ -3,12 +3,14 @@ namespace ClickIt.Features.Click.State
     internal sealed class GroundLabelEntityAddressProvider
     {
         private const int CacheWindowMs = 150;
-        private const int UninitializedLabelCount = -1;
 
         private readonly Func<IList<LabelOnGround>?> _getLabels;
         private readonly HashSet<long> _cachedGroundLabelEntityAddresses = [];
-        private long _cachedGroundLabelEntityAddressesTimestampMs;
-        private int _cachedGroundLabelEntityLabelCount = UninitializedLabelCount;
+        private readonly TimedValueCache<int, IReadOnlySet<long>> _cachedGroundLabelEntityAddressesCache = new(
+            CacheWindowMs,
+            settings: new TimedValueCacheSettings(
+                RequireNonNegativeAge: true,
+                RequirePositiveCachedTimestamp: true));
 
         internal GroundLabelEntityAddressProvider(GameController gameController)
             : this(() => gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels)
@@ -29,19 +31,21 @@ namespace ClickIt.Features.Click.State
                 if (labels == null || labelCount == 0)
                 {
                     _cachedGroundLabelEntityAddresses.Clear();
-                    _cachedGroundLabelEntityLabelCount = 0;
-                    _cachedGroundLabelEntityAddressesTimestampMs = Environment.TickCount64;
+                    _cachedGroundLabelEntityAddressesCache.SetValue(0, Environment.TickCount64, _cachedGroundLabelEntityAddresses);
                     return _cachedGroundLabelEntityAddresses;
                 }
 
                 long now = Environment.TickCount64;
-                if (VisibleMechanicCachePolicy.ShouldReuseTimedLabelCountCache(
-                        now,
-                        _cachedGroundLabelEntityAddressesTimestampMs,
-                        _cachedGroundLabelEntityLabelCount,
-                        labelCount,
-                        CacheWindowMs))
+                if (_cachedGroundLabelEntityAddressesCache.TryGetValue(labelCount, now, out IReadOnlySet<long> cachedAddresses))
+                {
+                    if (!ReferenceEquals(cachedAddresses, _cachedGroundLabelEntityAddresses))
+                    {
+                        _cachedGroundLabelEntityAddresses.Clear();
+                        _cachedGroundLabelEntityAddresses.UnionWith(cachedAddresses);
+                    }
+
                     return _cachedGroundLabelEntityAddresses;
+                }
 
 
                 _cachedGroundLabelEntityAddresses.Clear();
@@ -54,8 +58,7 @@ namespace ClickIt.Features.Click.State
                         _cachedGroundLabelEntityAddresses.Add(address);
                 }
 
-                _cachedGroundLabelEntityAddressesTimestampMs = now;
-                _cachedGroundLabelEntityLabelCount = labelCount;
+                _cachedGroundLabelEntityAddressesCache.SetValue(labelCount, now, _cachedGroundLabelEntityAddresses);
             }
             catch
             {

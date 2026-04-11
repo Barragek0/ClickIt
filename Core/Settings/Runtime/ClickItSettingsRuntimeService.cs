@@ -24,6 +24,7 @@ namespace ClickIt.Core.Settings.Runtime
         {
             return settings.DebugShowStatus
                 || settings.DebugShowGameState
+                || settings.DebugShowWindowDebug
                 || settings.DebugShowPerformance
                 || settings.DebugShowClickFrequencyTarget
                 || settings.DebugShowAltarDetection
@@ -43,6 +44,7 @@ namespace ClickIt.Core.Settings.Runtime
             return settings.DebugShowPathfinding
                 && !settings.DebugShowStatus
                 && !settings.DebugShowGameState
+                && !settings.DebugShowWindowDebug
                 && !settings.DebugShowPerformance
                 && !settings.DebugShowClickFrequencyTarget
                 && !settings.DebugShowAltarDetection

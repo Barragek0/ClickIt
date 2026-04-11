@@ -18,13 +18,13 @@ namespace ClickIt.Features.Altars
         public SecondaryAltarComponent BottomMods { get; set; }
         public AltarButton BottomButton { get; set; }
 
-        private bool? _isValidCache;
-        private long _lastValidationTime;
-        private AltarWeights? _cachedWeights;
-        private long _lastWeightCalculationTime;
+        private const int ValidationCacheKey = 0;
+        private const int WeightCacheKey = 0;
         private readonly Stopwatch _cacheTimer;
         private const long CACHE_DURATION_MS = 1000;
         private const long WEIGHT_CACHE_DURATION_MS = 5000;
+        private readonly TimedValueCache<int, bool> _validityCache = new(CACHE_DURATION_MS);
+        private readonly TimedValueCache<int, AltarWeights> _weightsCache = new(WEIGHT_CACHE_DURATION_MS);
 
         // Thread safety lock for cache operations
         private readonly object _cacheLock = new();
@@ -50,15 +50,14 @@ namespace ClickIt.Features.Altars
             return WithCacheLock(() =>
             {
                 long currentTime = _cacheTimer.ElapsedMilliseconds;
-                if (_isValidCache.HasValue && (currentTime - _lastValidationTime) < CACHE_DURATION_MS)
-                    return _isValidCache.Value;
+                if (_validityCache.TryGetValue(ValidationCacheKey, currentTime, out bool cachedValidity))
+                    return cachedValidity;
 
 
                 bool isValid = TopMods?.Element?.IsValid == true && BottomMods?.Element?.IsValid == true &&
                               !TopMods.HasUnmatchedMods && !BottomMods.HasUnmatchedMods;
 
-                _isValidCache = isValid;
-                _lastValidationTime = currentTime;
+                _validityCache.SetValue(ValidationCacheKey, currentTime, isValid);
                 return isValid;
             });
         }
@@ -68,13 +67,12 @@ namespace ClickIt.Features.Altars
             return WithCacheLock(() =>
             {
                 long currentTime = _cacheTimer.ElapsedMilliseconds;
-                if (_cachedWeights.HasValue && (currentTime - _lastWeightCalculationTime) < WEIGHT_CACHE_DURATION_MS)
-                    return _cachedWeights.Value;
+                if (_weightsCache.TryGetValue(WeightCacheKey, currentTime, out AltarWeights cachedWeights))
+                    return cachedWeights;
 
 
                 AltarWeights weights = weightCalculator(this);
-                _cachedWeights = weights;
-                _lastWeightCalculationTime = currentTime;
+                _weightsCache.SetValue(WeightCacheKey, currentTime, weights);
                 return weights;
             });
         }
@@ -100,8 +98,8 @@ namespace ClickIt.Features.Altars
         {
             WithCacheLock(() =>
             {
-                _isValidCache = null;
-                _cachedWeights = null;
+                _validityCache.Invalidate();
+                _weightsCache.Invalidate();
             });
         }
     }

@@ -2,19 +2,13 @@ namespace ClickIt.Features.Labels.Inventory
 {
     internal sealed class InventoryLayoutCache(int cacheWindowMs)
     {
-        private readonly Lock _cacheLock = new();
-        private readonly int _cacheWindowMs = cacheWindowMs;
-
-        private long _timestampMs;
-        private object? _primaryInventory;
-        private int _width;
-        private int _height;
-        private IReadOnlyList<InventoryLayoutEntry> _entries = [];
-        private string _source = string.Empty;
-        private string _debugDetails = string.Empty;
-        private bool _isReliable;
-        private int _rawEntryCount;
-        private bool _hasValue;
+        private readonly TimedValueCache<InventoryLayoutCacheKey, InventoryLayoutSnapshot> _cache
+            = new(
+                cacheWindowMs,
+                keyComparer: InventoryLayoutCacheKeyComparer.Instance,
+                settings: new TimedValueCacheSettings(
+                    RequireNonNegativeAge: true,
+                    RequirePositiveCachedTimestamp: true));
 
         public bool TryGet(
             object primaryInventory,
@@ -23,23 +17,9 @@ namespace ClickIt.Features.Labels.Inventory
             int inventoryHeight,
             out InventoryLayoutSnapshot snapshot)
         {
-            lock (_cacheLock)
-            {
-                if (_hasValue
-                    && ReferenceEquals(_primaryInventory, primaryInventory)
-                    && _width == inventoryWidth
-                    && _height == inventoryHeight
-                    && IsCacheFresh(now, _timestampMs, _cacheWindowMs))
-                {
-                    snapshot = new InventoryLayoutSnapshot(
-                        Entries: _entries,
-                        Source: _source,
-                        DebugDetails: _debugDetails,
-                        IsReliable: _isReliable,
-                        RawEntryCount: _rawEntryCount);
-                    return true;
-                }
-            }
+            bool hit = _cache.TryGetValue(new InventoryLayoutCacheKey(primaryInventory, inventoryWidth, inventoryHeight), now, out snapshot);
+            if (hit)
+                return true;
 
             snapshot = InventoryLayoutSnapshot.Empty;
             return false;
@@ -52,46 +32,37 @@ namespace ClickIt.Features.Labels.Inventory
             int inventoryHeight,
             InventoryLayoutSnapshot snapshot)
         {
-            lock (_cacheLock)
-            {
-                _primaryInventory = primaryInventory;
-                _timestampMs = now;
-                _width = inventoryWidth;
-                _height = inventoryHeight;
-                _entries = snapshot.Entries ?? [];
-                _source = snapshot.Source ?? string.Empty;
-                _debugDetails = snapshot.DebugDetails ?? string.Empty;
-                _isReliable = snapshot.IsReliable;
-                _rawEntryCount = snapshot.RawEntryCount;
-                _hasValue = true;
-            }
+            InventoryLayoutSnapshot normalized = new(
+                Entries: snapshot.Entries ?? [],
+                Source: snapshot.Source ?? string.Empty,
+                DebugDetails: snapshot.DebugDetails ?? string.Empty,
+                IsReliable: snapshot.IsReliable,
+                RawEntryCount: snapshot.RawEntryCount);
+
+            _cache.SetValue(new InventoryLayoutCacheKey(primaryInventory, inventoryWidth, inventoryHeight), now, normalized);
         }
 
         public void Clear()
         {
-            lock (_cacheLock)
-            {
-                _timestampMs = 0;
-                _primaryInventory = null;
-                _width = 0;
-                _height = 0;
-                _entries = [];
-                _source = string.Empty;
-                _debugDetails = string.Empty;
-                _isReliable = false;
-                _rawEntryCount = 0;
-                _hasValue = false;
-            }
+            _cache.Invalidate();
         }
 
-        private static bool IsCacheFresh(long now, long cachedAtMs, int windowMs)
+        private readonly record struct InventoryLayoutCacheKey(
+            object PrimaryInventory,
+            int Width,
+            int Height);
+
+        private sealed class InventoryLayoutCacheKeyComparer : IEqualityComparer<InventoryLayoutCacheKey>
         {
-            if (cachedAtMs <= 0 || windowMs <= 0)
-                return false;
+            public static readonly InventoryLayoutCacheKeyComparer Instance = new();
 
+            public bool Equals(InventoryLayoutCacheKey x, InventoryLayoutCacheKey y)
+                => ReferenceEquals(x.PrimaryInventory, y.PrimaryInventory)
+                    && x.Width == y.Width
+                    && x.Height == y.Height;
 
-            long age = now - cachedAtMs;
-            return age >= 0 && age <= windowMs;
+            public int GetHashCode(InventoryLayoutCacheKey obj)
+                => HashCode.Combine(RuntimeHelpers.GetHashCode(obj.PrimaryInventory), obj.Width, obj.Height);
         }
     }
 }

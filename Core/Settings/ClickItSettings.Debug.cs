@@ -40,6 +40,9 @@ namespace ClickIt
         public ToggleNode DebugShowGameState { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
+        public ToggleNode DebugShowWindowDebug { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
         public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]

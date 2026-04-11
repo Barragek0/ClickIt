@@ -57,20 +57,6 @@ namespace ClickIt.Features.Labels.Application
                 : Reason;
     }
 
-    internal readonly record struct NearbyMonsterRestrictionCacheState(
-        long TimestampMs,
-        int SettingsSignature,
-        LazyModeRestrictionResult Result)
-    {
-        internal static NearbyMonsterRestrictionCacheState Empty
-            => new(long.MinValue, 0, default);
-
-        internal bool IsFresh(long nowMs, int settingsSignature)
-            => TimestampMs != long.MinValue
-                && (nowMs - TimestampMs) <= LazyModeBlockerService.NearbyMonsterRestrictionCacheDurationMs
-                && SettingsSignature == settingsSignature;
-    }
-
     public sealed class LazyModeBlockerService(
         ClickItSettings settings,
         GameController? gameController,
@@ -84,7 +70,10 @@ namespace ClickIt.Features.Labels.Application
         private readonly GameController? _gameController = gameController;
         private readonly Action<string> _logRestriction = logRestriction;
         private readonly Func<long> _nowProvider = nowProvider ?? (() => Environment.TickCount64);
-        private NearbyMonsterRestrictionCacheState _cachedNearbyMonsterRestrictionCacheState = NearbyMonsterRestrictionCacheState.Empty;
+        private readonly TimedValueCache<int, LazyModeRestrictionResult> _cachedNearbyMonsterRestrictionCacheState
+            = new(
+                NearbyMonsterRestrictionCacheDurationMs,
+                settings: new TimedValueCacheSettings(RequireNonNegativeAge: true));
         private long _lastLazyModeRestrictionLogTimestampMs = long.MinValue;
         private string _lastLazyModeRestrictionLogReason = string.Empty;
         public string? LastRestrictionReason { get; private set; }
@@ -170,22 +159,12 @@ namespace ClickIt.Features.Labels.Application
             int settingsSignature,
             out LazyModeRestrictionResult restriction)
         {
-            if (!_cachedNearbyMonsterRestrictionCacheState.IsFresh(nowMs, settingsSignature))
-            {
-                restriction = default;
-                return false;
-            }
-
-            restriction = _cachedNearbyMonsterRestrictionCacheState.Result;
-            return true;
+            return _cachedNearbyMonsterRestrictionCacheState.TryGetValue(settingsSignature, nowMs, out restriction);
         }
 
         private void CacheNearbyMonsterRestriction(long nowMs, int settingsSignature, LazyModeRestrictionResult restriction)
         {
-            _cachedNearbyMonsterRestrictionCacheState = new NearbyMonsterRestrictionCacheState(
-                nowMs,
-                settingsSignature,
-                restriction);
+            _cachedNearbyMonsterRestrictionCacheState.SetValue(settingsSignature, nowMs, restriction);
         }
 
         internal static string? TryFindLockedChestRestrictionReason(

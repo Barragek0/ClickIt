@@ -115,19 +115,9 @@ namespace ClickIt.Features.Area
         private void RefreshMainBlockedAreas(GameController gameController, long now)
         {
             RectangleF winRect = gameController.Window.GetWindowRectangleTimeCache;
-            _blockedState.FullScreenRectangle = new RectangleF(winRect.X, winRect.Y, winRect.Width, winRect.Height);
+            (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) = ResolveMainUiRegions(winRect);
 
-            RectangleF leftCombined = new(
-                winRect.BottomLeft.X / 3f,
-                winRect.BottomLeft.Y / 5f * 3.92f,
-                winRect.BottomLeft.X + (winRect.BottomRight.X / 3.4f),
-                winRect.BottomLeft.Y);
-
-            RectangleF rightCombined = new(
-                winRect.BottomRight.X / 3f * 2.12f,
-                winRect.BottomLeft.Y / 5f * 3.92f,
-                winRect.BottomRight.X,
-                winRect.BottomRight.Y);
+            _blockedState.FullScreenRectangle = fullScreen;
 
             _blockedState.HealthAndFlaskRectangle = leftCombined;
             _blockedState.ManaAndSkillsRectangle = rightCombined;
@@ -154,6 +144,24 @@ namespace ClickIt.Features.Area
             _blockedState.AltarBlockedRectangle = AreaBlockedRectangleResolver.ResolveAltarBlockedRectangle(gameController);
             _blockedState.RitualBlockedRectangle = AreaBlockedRectangleResolver.ResolveRitualBlockedRectangle(gameController);
             _blockedState.SentinelBlockedRectangle = AreaBlockedRectangleResolver.ResolveSentinelBlockedRectangle(gameController);
+        }
+
+        internal static (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) ResolveMainUiRegions(RectangleF winRect)
+        {
+            // Keep blocked regions in client-space to match other UI snapshots and frame rendering.
+            RectangleF fullScreen = new(0f, 0f, winRect.Width, winRect.Height);
+            RectangleF leftCombined = new(
+                0f,
+                winRect.Height / 5f * 3.92f,
+                winRect.Width / 3.4f,
+                winRect.Height);
+            RectangleF rightCombined = new(
+                winRect.Width / 3f * 2.12f,
+                winRect.Height / 5f * 3.92f,
+                winRect.Width,
+                winRect.Height);
+
+            return (fullScreen, leftCombined, rightCombined);
         }
 
         private void RefreshQuestTrackerAreas(GameController gameController, long now)

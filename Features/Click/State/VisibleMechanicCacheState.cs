@@ -2,18 +2,17 @@ namespace ClickIt.Features.Click.State
 {
     internal sealed class VisibleMechanicCacheState
     {
-        private const int UninitializedLabelCount = -1;
+        private readonly TimedValueCache<int, CandidateCacheSnapshot> _hiddenFallbackCandidates = new(
+            int.MaxValue,
+            settings: new TimedValueCacheSettings(
+                RequireNonNegativeAge: true,
+                RequirePositiveCachedTimestamp: true));
 
-        private long hiddenFallbackCandidateCacheTimestampMs;
-        private int hiddenFallbackCandidateLabelCount = UninitializedLabelCount;
-        private bool hiddenFallbackCandidateCacheHasValue;
-        private LostShipmentCandidate? hiddenFallbackCachedLostShipmentCandidate;
-        private SettlersOreCandidate? hiddenFallbackCachedSettlersCandidate;
-        private long visibleMechanicCandidateCacheTimestampMs;
-        private int visibleMechanicCandidateLabelCount = UninitializedLabelCount;
-        private bool visibleMechanicCandidateCacheHasValue;
-        private LostShipmentCandidate? visibleMechanicCachedLostShipmentCandidate;
-        private SettlersOreCandidate? visibleMechanicCachedSettlersCandidate;
+        private readonly TimedValueCache<int, CandidateCacheSnapshot> _visibleCandidates = new(
+            int.MaxValue,
+            settings: new TimedValueCacheSettings(
+                RequireNonNegativeAge: true,
+                RequirePositiveCachedTimestamp: true));
 
         public bool TryGetVisibleCandidates(
             long now,
@@ -24,18 +23,13 @@ namespace ClickIt.Features.Click.State
             out LostShipmentCandidate? lostShipmentCandidate,
             out SettlersOreCandidate? settlersOreCandidate)
         {
-            if (visibleMechanicCandidateCacheHasValue
-                && VisibleMechanicCachePolicy.ShouldReuseTimedLabelCountCache(
-                    now,
-                    visibleMechanicCandidateCacheTimestampMs,
-                    visibleMechanicCandidateLabelCount,
-                    labelCount,
-                    cacheWindowMs)
-                && isLostShipmentUsable(visibleMechanicCachedLostShipmentCandidate)
-                && isSettlersUsable(visibleMechanicCachedSettlersCandidate))
+            if (_visibleCandidates.TryGetValue(labelCount, now, out CandidateCacheSnapshot cached)
+                && IsWithinWindow(now, cached.TimestampMs, cacheWindowMs)
+                && isLostShipmentUsable(cached.LostShipmentCandidate)
+                && isSettlersUsable(cached.SettlersOreCandidate))
             {
-                lostShipmentCandidate = visibleMechanicCachedLostShipmentCandidate;
-                settlersOreCandidate = visibleMechanicCachedSettlersCandidate;
+                lostShipmentCandidate = cached.LostShipmentCandidate;
+                settlersOreCandidate = cached.SettlersOreCandidate;
                 return true;
             }
 
@@ -46,11 +40,10 @@ namespace ClickIt.Features.Click.State
 
         public void StoreVisibleCandidates(long now, int labelCount, LostShipmentCandidate? lostShipmentCandidate, SettlersOreCandidate? settlersOreCandidate)
         {
-            visibleMechanicCachedLostShipmentCandidate = lostShipmentCandidate;
-            visibleMechanicCachedSettlersCandidate = settlersOreCandidate;
-            visibleMechanicCandidateCacheTimestampMs = now;
-            visibleMechanicCandidateLabelCount = labelCount;
-            visibleMechanicCandidateCacheHasValue = true;
+            _visibleCandidates.SetValue(
+                labelCount,
+                now,
+                new CandidateCacheSnapshot(now, lostShipmentCandidate, settlersOreCandidate));
         }
 
         public bool TryGetHiddenFallbackCandidates(
@@ -60,16 +53,11 @@ namespace ClickIt.Features.Click.State
             out LostShipmentCandidate? lostShipmentCandidate,
             out SettlersOreCandidate? settlersOreCandidate)
         {
-            if (hiddenFallbackCandidateCacheHasValue
-                && VisibleMechanicCachePolicy.ShouldReuseTimedLabelCountCache(
-                    now,
-                    hiddenFallbackCandidateCacheTimestampMs,
-                    hiddenFallbackCandidateLabelCount,
-                    labelCount,
-                    cacheWindowMs))
+            if (_hiddenFallbackCandidates.TryGetValue(labelCount, now, out CandidateCacheSnapshot cached)
+                && IsWithinWindow(now, cached.TimestampMs, cacheWindowMs))
             {
-                lostShipmentCandidate = hiddenFallbackCachedLostShipmentCandidate;
-                settlersOreCandidate = hiddenFallbackCachedSettlersCandidate;
+                lostShipmentCandidate = cached.LostShipmentCandidate;
+                settlersOreCandidate = cached.SettlersOreCandidate;
                 return true;
             }
 
@@ -80,11 +68,24 @@ namespace ClickIt.Features.Click.State
 
         public void StoreHiddenFallbackCandidates(long now, int labelCount, LostShipmentCandidate? lostShipmentCandidate, SettlersOreCandidate? settlersOreCandidate)
         {
-            hiddenFallbackCachedLostShipmentCandidate = lostShipmentCandidate;
-            hiddenFallbackCachedSettlersCandidate = settlersOreCandidate;
-            hiddenFallbackCandidateCacheTimestampMs = now;
-            hiddenFallbackCandidateLabelCount = labelCount;
-            hiddenFallbackCandidateCacheHasValue = true;
+            _hiddenFallbackCandidates.SetValue(
+                labelCount,
+                now,
+                new CandidateCacheSnapshot(now, lostShipmentCandidate, settlersOreCandidate));
         }
+
+        private static bool IsWithinWindow(long nowMs, long cachedAtMs, int cacheWindowMs)
+        {
+            if (cacheWindowMs <= 0 || cachedAtMs <= 0)
+                return false;
+
+            long ageMs = nowMs - cachedAtMs;
+            return ageMs >= 0 && ageMs <= cacheWindowMs;
+        }
+
+        private readonly record struct CandidateCacheSnapshot(
+            long TimestampMs,
+            LostShipmentCandidate? LostShipmentCandidate,
+            SettlersOreCandidate? SettlersOreCandidate);
     }
 }

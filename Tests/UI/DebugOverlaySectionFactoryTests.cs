@@ -10,6 +10,7 @@ namespace ClickIt.Tests.UI
             {
                 DebugShowStatus = new ToggleNode(true),
                 DebugShowGameState = new ToggleNode(false),
+                DebugShowWindowDebug = new ToggleNode(true),
                 DebugShowPerformance = new ToggleNode(true),
                 DebugShowClickFrequencyTarget = new ToggleNode(false),
                 DebugShowAltarDetection = new ToggleNode(false),
@@ -38,11 +39,11 @@ namespace ClickIt.Tests.UI
 
             DebugOverlaySection[] sections = factory.CreateSections(settings, default(PerformanceMetricsSnapshot));
 
-            sections.Should().HaveCount(14);
+            sections.Should().HaveCount(15);
             sections[0].Enabled.Should().BeTrue();
             sections[1].Enabled.Should().BeFalse();
             sections[2].Enabled.Should().BeTrue();
-            sections[13].Enabled.Should().BeTrue();
+            sections[14].Enabled.Should().BeTrue();
         }
     }
 }

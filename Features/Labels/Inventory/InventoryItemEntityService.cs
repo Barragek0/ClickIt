@@ -11,13 +11,12 @@ namespace ClickIt.Features.Labels.Inventory
     internal sealed class InventoryItemEntityService(InventoryItemEntityServiceDependencies dependencies) : IDisposable
     {
         private readonly InventoryItemEntityServiceDependencies _dependencies = dependencies;
-        private readonly Lock _cacheLock = new();
         private readonly ThreadLocal<HashSet<long>> _uniqueEntityAddresses = new(static () => []);
-
-        private long _inventoryItemsCacheTimestampMs;
-        private GameController? _inventoryItemsCacheController;
-        private IReadOnlyList<Entity> _inventoryItemsCacheValue = [];
-        private bool _inventoryItemsCacheHasValue;
+        private readonly TimedValueCache<GameController?, IReadOnlyList<Entity>> _inventoryItemsCache = new(
+            dependencies.CacheWindowMs,
+            settings: new TimedValueCacheSettings(
+                RequireNonNegativeAge: true,
+                RequirePositiveCachedTimestamp: true));
 
         public bool TryEnumerateInventoryItemEntities(GameController? gameController, out IReadOnlyList<Entity> items)
         {
@@ -89,13 +88,7 @@ namespace ClickIt.Features.Labels.Inventory
 
         public void ClearForShutdown()
         {
-            lock (_cacheLock)
-            {
-                _inventoryItemsCacheTimestampMs = 0;
-                _inventoryItemsCacheController = null;
-                _inventoryItemsCacheValue = [];
-                _inventoryItemsCacheHasValue = false;
-            }
+            _inventoryItemsCache.Invalidate();
 
             if (_uniqueEntityAddresses.IsValueCreated)
                 _uniqueEntityAddresses.Value?.Clear();
@@ -110,30 +103,12 @@ namespace ClickIt.Features.Labels.Inventory
 
         private bool TryGetCachedInventoryItems(GameController? gameController, long now, out IReadOnlyList<Entity> items)
         {
-            lock (_cacheLock)
-            {
-                if (_inventoryItemsCacheHasValue
-                    && ReferenceEquals(_inventoryItemsCacheController, gameController)
-                    && InventoryCacheWindowPolicy.IsFresh(now, _inventoryItemsCacheTimestampMs, _dependencies.CacheWindowMs))
-                {
-                    items = _inventoryItemsCacheValue;
-                    return true;
-                }
-            }
-
-            items = [];
-            return false;
+            return _inventoryItemsCache.TryGetValue(gameController, now, out items);
         }
 
         private void SetCachedInventoryItems(GameController? gameController, long now, IReadOnlyList<Entity> items)
         {
-            lock (_cacheLock)
-            {
-                _inventoryItemsCacheController = gameController;
-                _inventoryItemsCacheTimestampMs = now;
-                _inventoryItemsCacheValue = items;
-                _inventoryItemsCacheHasValue = true;
-            }
+            _inventoryItemsCache.SetValue(gameController, now, items);
         }
     }
 }
