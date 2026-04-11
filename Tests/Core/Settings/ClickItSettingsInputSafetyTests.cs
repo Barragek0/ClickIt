@@ -65,14 +65,6 @@ namespace ClickIt.Tests.Core.Settings
         }
 
         [TestMethod]
-        public void LegacySettingsTreeGate_DefaultsToHidden()
-        {
-            var settings = new ClickItSettings();
-
-            ClickItSettings.ShowLegacySettingsTreeNodes.Should().BeFalse();
-        }
-
-        [TestMethod]
         public void ShowEssenceCorruptionTablePanel_DisabledWhenCorruptAllEnabled()
         {
             var settings = new ClickItSettings();
