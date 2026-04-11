@@ -29,7 +29,7 @@ namespace ClickIt.Features.Click.Runtime
         internal static List<(Element OptionElement, string ModifierName)> GetUltimatumOptions(LabelOnGround label, List<string>? diagnostics = null)
         {
             List<(Element OptionElement, string ModifierName)> results = new(3);
-            if (!TryGetUltimatumRoot(label, diagnostics, out Element? root) || root == null)
+            if (!TryGetUltimatumRoot(label, diagnostics, out object? root) || root == null)
                 return results;
 
             if (TryGetUltimatumOptionsFromChoicePanelObject(root, diagnostics, out List<(Element OptionElement, string ModifierName)> panelResults))
@@ -40,13 +40,13 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static Element? GetUltimatumBeginButton(LabelOnGround label, List<string>? diagnostics = null)
         {
-            if (!TryGetUltimatumRoot(label, diagnostics, out Element? root) || root == null)
+            if (!TryGetUltimatumRoot(label, diagnostics, out object? root) || root == null)
                 return null;
 
             if (!TryGetPrimaryTreeBranch(root, diagnostics, out object? branch) || branch == null)
                 return null;
 
-            if (!TryGetElementChildNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(4)", 4, out Element? beginNode) || beginNode == null)
+            if (!TryGetTreeNode(branch, diagnostics, "Label->Child(0)->Child(0)->Child(4)", 4, out object? beginNode) || beginNode == null)
                 return null;
 
             if (!TryGetElementChildNode(beginNode, diagnostics, "Label->Child(0)->Child(0)->Child(4)->Child(0)", 0, out Element? beginButton) || beginButton == null)
@@ -145,10 +145,9 @@ namespace ClickIt.Features.Click.Runtime
             return results.Count > 0;
         }
 
-        private static bool TryGetUltimatumRoot(LabelOnGround label, List<string>? diagnostics, out Element? root)
+        private static bool TryGetUltimatumRoot(LabelOnGround label, List<string>? diagnostics, out object? root)
         {
-            root = label?.Label;
-            if (root != null)
+            if (UltimatumLabelMath.TryGetLabelRoot(label, out root) && root != null)
                 return true;
 
             diagnostics?.Add("Tree fail: label.Label is null.");

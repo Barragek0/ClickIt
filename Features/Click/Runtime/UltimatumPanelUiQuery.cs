@@ -42,7 +42,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            if (!DynamicAccess.TryReadBool(panelObj, static panel => panel.IsVisible, out bool isVisible) || !isVisible)
+            if (!DynamicAccess.TryReadBool(panelObj, DynamicAccessProfiles.IsVisible, out bool isVisible) || !isVisible)
             {
                 if (logFailures)
                     debugLog("[TryHandleUltimatumPanelUi] UltimatumPanel exists but is not visible.");

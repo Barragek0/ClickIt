@@ -49,7 +49,7 @@ namespace ClickIt.Features.Click.State
 
                 for (int i = 0; i < labelCount; i++)
                 {
-                    long address = labels[i]?.ItemOnGround?.Address ?? 0;
+                    long address = TryResolveEntityAddress(labels[i]);
                     if (address != 0)
                         _cachedGroundLabelEntityAddresses.Add(address);
                 }
@@ -62,6 +62,26 @@ namespace ClickIt.Features.Click.State
             }
 
             return _cachedGroundLabelEntityAddresses;
+        }
+
+        private static long TryResolveEntityAddress(LabelOnGround? label)
+        {
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                || rawItem == null
+                || !DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Address, out object? rawAddress)
+                || rawAddress == null)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return Convert.ToInt64(rawAddress, global::System.Globalization.CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return 0;
+            }
         }
     }
 }

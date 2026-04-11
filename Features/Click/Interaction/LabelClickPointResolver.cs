@@ -19,8 +19,10 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryResolveLabelRect(label, out RectangleF rect))
                 return false;
 
+            ResolveLabelMetadata(label, out EntityType itemType, out string? itemPath, out string? renderName);
+
             List<RectangleF> potentialBlockers = CollectPotentialBlockingLabelRects(label, rect, allLabels);
-            return IsLabelFullyOverlapped(rect, label.ItemOnGround.Type, label.ItemOnGround.Path, label.ItemOnGround.RenderName, potentialBlockers);
+            return IsLabelFullyOverlapped(rect, itemType, itemPath, renderName, potentialBlockers);
         }
 
         internal bool IsLabelFullyOverlapped(
@@ -52,14 +54,16 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryResolveLabelRect(label, out RectangleF rect))
                 throw new InvalidOperationException("Label element is invalid");
 
+            ResolveLabelMetadata(label, out EntityType itemType, out string? itemPath, out string? renderName);
+
             bool avoidOverlapsEnabled = ShouldAvoidOverlaps();
             IReadOnlyList<RectangleF> blockedAreas = ResolveBlockedAreas(label, rect, allLabels, avoidOverlapsEnabled);
 
             return CalculateClickPosition(
                 rect,
-                label.ItemOnGround?.Type ?? EntityType.WorldItem,
-                label.ItemOnGround?.Path,
-                label.ItemOnGround?.RenderName,
+                itemType,
+                itemPath,
+                renderName,
                 windowTopLeft,
                 blockedAreas,
                 avoidOverlapsEnabled);
@@ -105,14 +109,16 @@ namespace ClickIt.Features.Click.Interaction
             if (!TryResolveLabelRect(label, out RectangleF rect))
                 return false;
 
+            ResolveLabelMetadata(label, out EntityType itemType, out string? itemPath, out string? renderName);
+
             bool avoidOverlapsEnabled = ShouldAvoidOverlaps();
             IReadOnlyList<RectangleF> blockedAreas = ResolveBlockedAreas(label, rect, allLabels, avoidOverlapsEnabled);
 
             return TryCalculateClickPosition(
                 rect,
-                label.ItemOnGround?.Type ?? EntityType.WorldItem,
-                label.ItemOnGround?.Path,
-                label.ItemOnGround?.RenderName,
+                itemType,
+                itemPath,
+                renderName,
                 windowTopLeft,
                 blockedAreas,
                 isClickableArea,
@@ -189,5 +195,29 @@ namespace ClickIt.Features.Click.Interaction
 
         private static List<RectangleF> CollectBlockingOverlaps(LabelOnGround targetLabel, RectangleF targetRect, IReadOnlyList<LabelOnGround>? allLabels)
             => LabelClickPointSearch.BuildIntersectionOverlaps(targetRect, CollectPotentialBlockingLabelRects(targetLabel, targetRect, allLabels));
+
+        private static void ResolveLabelMetadata(LabelOnGround? label, out EntityType itemType, out string? itemPath, out string? renderName)
+        {
+            itemType = EntityType.WorldItem;
+            itemPath = null;
+            renderName = null;
+
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem) || rawItem == null)
+                return;
+
+            if (DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Type, out object? rawType) && rawType != null)
+                itemType = rawType switch
+                {
+                    EntityType entityType => entityType,
+                    int entityTypeValue => (EntityType)entityTypeValue,
+                    _ => EntityType.WorldItem,
+                };
+
+            if (DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath))
+                itemPath = resolvedPath;
+
+            if (DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.RenderName, out string resolvedRenderName))
+                renderName = resolvedRenderName;
+        }
     }
 }

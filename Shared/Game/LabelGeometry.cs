@@ -6,8 +6,14 @@ namespace ClickIt.Shared.Game
         {
             rect = default;
 
-            Element? element = label?.Label;
-            if (element == null || !element.IsValid)
+            Element? element = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawElement)
+                ? rawElement as Element
+                : null;
+            bool isValid = element != null
+                && (DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsValid, out bool resolvedIsValid)
+                    ? resolvedIsValid
+                    : element.IsValid);
+            if (element == null || !isValid)
                 return false;
 
             object? maybeRect = element.GetClientRect();
@@ -72,9 +78,10 @@ namespace ClickIt.Shared.Game
             for (int i = 1; i < count; i++)
             {
                 LabelOnGround key = labels[i];
+                float keyDistance = GetLabelDistance(key);
                 int j = i - 1;
 
-                while (j >= 0 && labels[j].ItemOnGround.DistancePlayer > key.ItemOnGround.DistancePlayer)
+                while (j >= 0 && GetLabelDistance(labels[j]) > keyDistance)
                 {
                     labels[j + 1] = labels[j];
                     j--;
@@ -96,11 +103,11 @@ namespace ClickIt.Shared.Game
 
         internal static int PartitionByDistance(List<LabelOnGround> labels, int low, int high)
         {
-            Entity pivot = labels[high].ItemOnGround;
+            float pivotDistance = GetLabelDistance(labels[high]);
             int i = low - 1;
 
             for (int j = low; j < high; j++)
-                if (labels[j].ItemOnGround.DistancePlayer <= pivot.DistancePlayer)
+                if (GetLabelDistance(labels[j]) <= pivotDistance)
                 {
                     i++;
                     SwapLabels(labels, i, j);
@@ -143,6 +150,15 @@ namespace ClickIt.Shared.Game
 
             (items[i + 1], items[high]) = (items[high], items[i + 1]);
             return i + 1;
+        }
+
+        private static float GetLabelDistance(LabelOnGround? label)
+        {
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                || !DynamicAccess.TryReadFloat(rawItem, DynamicAccessProfiles.DistancePlayer, out float distance))
+                return float.MaxValue;
+
+            return distance;
         }
     }
 }

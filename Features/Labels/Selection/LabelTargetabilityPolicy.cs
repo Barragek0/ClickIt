@@ -4,7 +4,9 @@ namespace ClickIt.Features.Labels.Selection
     {
         public static bool IsEntityTargetableForClick(LabelOnGround label, Entity item)
         {
-            string path = item.Path ?? string.Empty;
+            string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
 
             if (!ShouldAllowHarvestRootElementVisibility(path, IsHarvestRootElementVisibleForClick(label)))
                 return false;
@@ -40,7 +42,9 @@ namespace ClickIt.Features.Labels.Selection
             hasLabelEntityTargetable = false;
             labelEntityTargetable = true;
 
-            Entity? item = label.ItemOnGround;
+            Entity? item = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                ? rawItem as Entity
+                : null;
             if (item != null)
             {
                 Targetable? targetable = item.GetComponent<Targetable>();
@@ -52,22 +56,11 @@ namespace ClickIt.Features.Labels.Selection
                 }
             }
 
-            if (DynamicAccess.TryGetDynamicValue(label, l => l.Entity, out object? rawLabelEntity)
-                && TryResolveLabelEntityTargetableFromRaw(rawLabelEntity, out bool directTargetable, out bool directHasTargetable)
-                && directHasTargetable)
+            if (TryResolveLabelBackedEntityTargetable(label, out bool resolvedTargetable, out bool resolvedHasTargetable)
+                && resolvedHasTargetable)
             {
                 hasLabelEntityTargetable = true;
-                labelEntityTargetable = directTargetable;
-                return;
-            }
-
-            if (DynamicAccess.TryGetDynamicValue(label, l => l.Label, out object? rawLabelElement)
-                && DynamicAccess.TryGetDynamicValue(rawLabelElement, l => l.Entity, out object? rawElementEntity)
-                && TryResolveLabelEntityTargetableFromRaw(rawElementEntity, out bool elementTargetable, out bool elementHasTargetable)
-                && elementHasTargetable)
-            {
-                hasLabelEntityTargetable = true;
-                labelEntityTargetable = elementTargetable;
+                labelEntityTargetable = resolvedTargetable;
             }
         }
 
@@ -93,7 +86,39 @@ namespace ClickIt.Features.Labels.Selection
         }
 
         private static bool IsHarvestRootElementVisibleForClick(LabelOnGround label)
-            => label?.Label?.GetChildAtIndex(0)?.IsVisible == true;
+        {
+            if (!TryResolveLabelRootChild(label, out object? rawChild) || rawChild == null)
+            {
+                return false;
+            }
+
+            return DynamicAccess.TryReadBool(rawChild, DynamicAccessProfiles.IsVisible, out bool isVisible) && isVisible;
+        }
+
+        private static bool TryResolveLabelBackedEntityTargetable(LabelOnGround label, out bool labelEntityTargetable, out bool hasLabelEntityTargetable)
+        {
+            labelEntityTargetable = true;
+            hasLabelEntityTargetable = false;
+
+            if (DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Entity, out object? rawLabelEntity)
+                && TryResolveLabelEntityTargetableFromRaw(rawLabelEntity, out labelEntityTargetable, out hasLabelEntityTargetable)
+                && hasLabelEntityTargetable)
+            {
+                return true;
+            }
+
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabelElement)
+                && DynamicAccess.TryGetDynamicValue(rawLabelElement, DynamicAccessProfiles.Entity, out object? rawElementEntity)
+                && TryResolveLabelEntityTargetableFromRaw(rawElementEntity, out labelEntityTargetable, out hasLabelEntityTargetable)
+                && hasLabelEntityTargetable;
+        }
+
+        private static bool TryResolveLabelRootChild(LabelOnGround label, out object? rawChild)
+        {
+            rawChild = null;
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                && DynamicAccess.TryGetDynamicValue(rawLabel, DynamicAccessProfiles.FirstChild, out rawChild);
+        }
 
         private static bool TryResolveLabelEntityTargetableFromRaw(object? rawLabelEntity, out bool labelEntityTargetable, out bool hasLabelEntityTargetable)
         {
@@ -103,7 +128,7 @@ namespace ClickIt.Features.Labels.Selection
             if (rawLabelEntity == null)
                 return false;
 
-            if (DynamicAccess.TryReadBool(rawLabelEntity, e => e.IsTargetable, out bool dynamicTargetable))
+            if (DynamicAccess.TryReadBool(rawLabelEntity, DynamicAccessProfiles.IsTargetable, out bool dynamicTargetable))
             {
                 hasLabelEntityTargetable = true;
                 labelEntityTargetable = dynamicTargetable;

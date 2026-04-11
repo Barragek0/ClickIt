@@ -80,10 +80,19 @@ namespace ClickIt.Features.Click.Selection
             string? mechanicId,
             Func<float, string?, MechanicRank> buildRank)
         {
-            if (candidate == null || !candidate.IsValid || candidate.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate) || string.IsNullOrWhiteSpace(mechanicId))
+            if (candidate == null
+                || !DynamicAccess.TryReadBool(candidate, DynamicAccessProfiles.IsValid, out bool isValid)
+                || !isValid
+                || !DynamicAccess.TryReadBool(candidate, DynamicAccessProfiles.IsHidden, out bool isHidden)
+                || isHidden
+                || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(candidate)
+                || string.IsNullOrWhiteSpace(mechanicId)
+                || !DynamicAccess.TryReadFloat(candidate, DynamicAccessProfiles.DistancePlayer, out float distance))
+            {
                 return false;
+            }
 
-            MechanicRank rank = buildRank(candidate.DistancePlayer, mechanicId);
+            MechanicRank rank = buildRank(distance, mechanicId);
             return OffscreenTargetRanker.TryPromoteRankedCandidate(
                 ref best,
                 ref bestMechanicId,

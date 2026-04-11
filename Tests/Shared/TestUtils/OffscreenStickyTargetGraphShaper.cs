@@ -26,6 +26,7 @@ namespace ClickIt.Tests.Shared.TestUtils
             var label = (StickyTargetProbeLabel)RuntimeHelpers.GetUninitializedObject(typeof(StickyTargetProbeLabel));
             label.ItemOnGround = itemOnGround;
             label.IsVisible = true;
+            RuntimeMemberAccessor.SetRequiredMember(label, nameof(LabelOnGround.ItemOnGround), itemOnGround);
             return label;
         }
 

@@ -22,14 +22,11 @@ namespace ClickIt.Features.Click.Selection
 
             try
             {
-                if (!DynamicAccess.TryGetDynamicValue(entity, static e => e.PosNum, out object? rawPosition)
-                    || rawPosition is not System.Numerics.Vector3 position)
+                if (!TryProjectEntityScreenPosition(gameController, entity, out worldScreenRaw))
                 {
                     return false;
                 }
 
-                NumVector2 worldScreenRawVector = gameController.Game.IngameState.Camera.WorldToScreen(position);
-                worldScreenRaw = new(worldScreenRawVector.X, worldScreenRawVector.Y);
                 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
 
                 return ClickableProbeResolver.TryResolveNearbyClickablePoint(
@@ -46,6 +43,26 @@ namespace ClickIt.Features.Click.Selection
                 worldScreenAbsolute = default;
                 return false;
             }
+        }
+
+        private static bool TryProjectEntityScreenPosition(GameController gameController, Entity entity, out Vector2 screenPosition)
+        {
+            screenPosition = default;
+
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position
+                || !DynamicAccess.TryGetDynamicValue(gameController, DynamicAccessProfiles.Game, out object? rawGame)
+                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
+                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
+                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
+            {
+                return false;
+            }
+
+            screenPosition = new(projectedX, projectedY);
+            return true;
         }
     }
 }

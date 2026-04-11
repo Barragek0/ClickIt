@@ -43,13 +43,14 @@ namespace ClickIt.Features.Click.Application
 
         internal float? TryGetCursorDistanceSquaredToEntity(Entity? entity, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
-            if (entity == null || !entity.IsValid)
+            if (!DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid)
                 return null;
 
             try
             {
-                NumVector2 worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-                Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
+                if (!TryProjectEntityAbsolutePosition(entity, windowTopLeft, out Vector2 worldScreenAbsolute))
+                    return null;
+
                 return ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, worldScreenAbsolute, windowTopLeft);
             }
             catch
@@ -111,7 +112,13 @@ namespace ClickIt.Features.Click.Application
             => ExecuteInteraction(clickPos, expectedElement, controller, true, holdDurationMs, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
 
         internal bool PerformTrackedLabelClick(Vector2 clickPos, LabelOnGround? label, bool forceUiHoverVerification)
-            => PerformLabelClick(clickPos, label?.Label, _dependencies.GameController, forceUiHoverVerification);
+            => PerformLabelClick(
+                clickPos,
+                DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                    ? rawLabel as Element
+                    : null,
+                _dependencies.GameController,
+                forceUiHoverVerification);
 
         internal bool PerformMechanicClick(Vector2 clickPos)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, false);
@@ -125,7 +132,9 @@ namespace ClickIt.Features.Click.Application
         internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId)
             => ExecuteInteraction(
                 clickPos,
-                label.Label,
+                DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                    ? rawLabel as Element
+                    : null,
                 _dependencies.GameController,
                 SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
                 forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label));
@@ -233,17 +242,15 @@ namespace ClickIt.Features.Click.Application
 
         private bool IsItemWorldProjectionInWindow(Entity? item, Vector2 windowTopLeft)
         {
-            if (item == null)
+            if (!TryProjectEntityAbsolutePosition(item, windowTopLeft, out Vector2 worldScreenAbsolute))
                 return false;
 
-            NumVector2 worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
-            Vector2 worldScreenAbsolute = new(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
             return _dependencies.IsInsideWindowInEitherSpace(worldScreenAbsolute);
         }
 
         private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)
         {
-            return DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
                 && rawItem is Entity item
                 ? item
                 : null;
@@ -255,9 +262,29 @@ namespace ClickIt.Features.Click.Application
                 return explicitPath;
 
             Entity? item = TryGetLabelItemOnGround(label);
-            return DynamicAccess.TryReadString(item, static i => i.Path, out string path)
+            return DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
                 ? path
                 : string.Empty;
+        }
+
+        private bool TryProjectEntityAbsolutePosition(Entity? entity, Vector2 windowTopLeft, out Vector2 absolutePosition)
+        {
+            absolutePosition = default;
+
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position
+                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
+                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
+                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
+                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
+            {
+                return false;
+            }
+
+            absolutePosition = new(projectedX + windowTopLeft.X, projectedY + windowTopLeft.Y);
+            return true;
         }
     }
 }

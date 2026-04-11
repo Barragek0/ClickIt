@@ -39,23 +39,33 @@ namespace ClickIt.Shared.Game
 
         public static bool IsValidClickableLabel(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
-            if (label == null || label.ItemOnGround == null || !label.IsVisible || !IsLabelElementValid(label))
+            if (label == null
+                || !TryGetLabelItem(label, out object? item)
+                || !DynamicAccess.TryReadBool(label, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                || !isVisible
+                || !IsLabelElementValid(label))
                 return false;
 
-            string path = label.ItemOnGround.Path ?? string.Empty;
+            string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
             if (IsHarvestPath(path) && !IsHarvestRootElementVisible(label))
                 return false;
 
             if (!IsLabelInClickableArea(label, pointIsInClickableArea))
                 return false;
 
-            return IsValidEntityType(label.ItemOnGround)
-                || IsValidEntityPath(label.ItemOnGround)
+            return IsValidEntityType(item)
+                || IsValidEntityPath(item)
                 || HasEssenceImprisonmentText(label);
         }
 
         public static bool IsValidEntityPath(Entity item)
-            => IsValidEntityPathCore(item.Path);
+            => IsValidEntityPath((object?)item);
+
+        private static bool IsValidEntityPath(object? item)
+            => DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
+                && IsValidEntityPathCore(path);
 
         internal static bool IsValidEntityPathCore(string? path)
         {
@@ -97,30 +107,38 @@ namespace ClickIt.Shared.Game
         }
 
         public static bool HasEssenceImprisonmentText(LabelOnGround label)
-            => LabelElementSearch.GetElementByString(label.Label, "The monster is imprisoned by powerful Essences.") != null;
+            => TryGetLabelAdapter(label, out IElementAdapter? adapter)
+                && LabelElementSearch.GetElementByStringCore(adapter, "The monster is imprisoned by powerful Essences.") != null;
 
         public static bool IsLabelElementValid(LabelOnGround label)
         {
-            RectangleF? labelRect = label.Label?.GetClientRect();
-            return labelRect is RectangleF
-                   && label.Label?.IsValid == true
-                   && label.Label?.IsVisible == true;
+            return LabelGeometry.TryGetLabelRect(label, out _)
+                   && TryGetLabelRoot(label, out object? root)
+                   && DynamicAccess.TryReadBool(root, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                   && isVisible;
         }
 
         public static bool IsLabelInClickableArea(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
-            RectangleF? labelRect = label.Label?.GetClientRect();
-            return labelRect is RectangleF rect && HasClickablePoint(rect, pointIsInClickableArea);
+            return LabelGeometry.TryGetLabelRect(label, out RectangleF rect)
+                && HasClickablePoint(rect, pointIsInClickableArea);
         }
 
         public static bool IsValidEntityType(Entity item)
         {
-            EntityType type = item.Type;
-            string path = item.Path ?? string.Empty;
+            return IsValidEntityType((object?)item);
+        }
+
+        private static bool IsValidEntityType(object? item)
+        {
+            EntityType type = ResolveEntityType(item);
+            string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
             return type == EntityType.WorldItem
                    || type == EntityType.AreaTransition
                    || path.Contains("AreaTransition")
-                   || (type == EntityType.Chest && !item.GetComponent<Chest>().OpenOnDamage);
+                   || (type == EntityType.Chest && !TryGetChestOpenOnDamage(item));
         }
 
         private static bool HasClickablePoint(RectangleF rect, Func<Vector2, bool> pointIsInClickableArea)
@@ -156,6 +174,60 @@ namespace ClickIt.Shared.Game
                && !path.Contains(Constants.HeistDoorBasic, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsHarvestRootElementVisible(LabelOnGround label)
-            => label.Label?.GetChildAtIndex(0)?.IsVisible == true;
+            => TryGetLabelRoot(label, out object? root)
+                && DynamicAccess.TryGetChildAtIndex(root, 0, out object? rawChild)
+                && rawChild != null
+                && DynamicAccess.TryReadBool(rawChild, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                && isVisible;
+
+        private static bool TryGetLabelItem(LabelOnGround? label, out object? item)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out item)
+                && item != null;
+        }
+
+        private static bool TryGetLabelRoot(LabelOnGround? label, out object? root)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out root)
+                && root != null;
+        }
+
+        private static bool TryGetLabelAdapter(LabelOnGround? label, out IElementAdapter? adapter)
+        {
+            adapter = null;
+            if (!TryGetLabelRoot(label, out object? root) || root == null)
+                return false;
+
+            adapter = root switch
+            {
+                IElementAdapter existingAdapter => existingAdapter,
+                Element element => new ElementAdapter(element),
+                _ => null,
+            };
+
+            return adapter != null;
+        }
+
+        private static EntityType ResolveEntityType(object? item)
+        {
+            if (!DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType)
+                || rawType == null)
+                return EntityType.WorldItem;
+
+            return rawType switch
+            {
+                EntityType entityType => entityType,
+                int entityTypeValue => (EntityType)entityTypeValue,
+                _ => EntityType.WorldItem,
+            };
+        }
+
+        private static bool TryGetChestOpenOnDamage(object? item)
+        {
+            return DynamicAccess.TryGetComponent<Chest>(item, out Chest? rawChest)
+                && rawChest != null
+                && DynamicAccess.TryReadBool(rawChest, DynamicAccessProfiles.OpenOnDamage, out bool openOnDamage)
+                && openOnDamage;
+        }
     }
 }

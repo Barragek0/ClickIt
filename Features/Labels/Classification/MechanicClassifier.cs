@@ -40,10 +40,15 @@ namespace ClickIt.Features.Labels.Classification
             GameController? gameController,
             in MechanicClassifierDependencies dependencies)
         {
-            EntityType type = item.Type;
+            EntityType type = DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType)
+                && rawType is EntityType resolvedType
+                ? resolvedType
+                : default;
             string path = type == EntityType.WorldItem
                 ? dependencies.GetWorldItemMetadataPath(item)
-                : (item.Path ?? string.Empty);
+                : (DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
+                    ? resolvedPath
+                    : string.Empty);
 
             string? mechanicId = ResolvePrimaryMechanicId(settings, path, label, gameController, dependencies);
             if (!string.IsNullOrWhiteSpace(mechanicId))
@@ -65,7 +70,12 @@ namespace ClickIt.Features.Labels.Classification
             => TransitionMechanicClassifier.GetAreaTransitionMechanicId(clickAreaTransitions, clickLabyrinthTrials, type, path);
 
         internal static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)
-            => ShouldClickWorldItemCore(clickItems, type, item?.Path);
+            => ShouldClickWorldItemCore(
+                clickItems,
+                type,
+                DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
+                    ? resolvedPath
+                    : string.Empty);
 
         internal static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, string? itemPath)
         {
@@ -193,11 +203,12 @@ namespace ClickIt.Features.Labels.Classification
             if (!string.IsNullOrWhiteSpace(chest))
                 return chest;
 
+            LabelItemMetadata metadata = ResolveLabelItemMetadata(label);
             string? named = GetNamedInteractableMechanicId(
                 settings.ClickDoors,
                 settings.ClickHeistDoors,
                 settings.ClickLevers,
-                label.ItemOnGround?.RenderName,
+                metadata.RenderName,
                 path);
             if (!string.IsNullOrWhiteSpace(named))
                 return named;
@@ -213,16 +224,32 @@ namespace ClickIt.Features.Labels.Classification
             EntityType type,
             LabelOnGround label)
         {
-            string? path = label.ItemOnGround?.Path;
-            string renderName = label.ItemOnGround?.RenderName ?? string.Empty;
+            LabelItemMetadata metadata = ResolveLabelItemMetadata(label);
             return GetChestMechanicIdFromConfiguredRules(
                 clickBasicChests,
                 clickLeagueChests,
                 clickLeagueChestsOther,
                 enabledSpecificLeagueChestIds,
                 type,
-                path,
-                renderName);
+                metadata.Path,
+                metadata.RenderName);
+        }
+
+        private readonly record struct LabelItemMetadata(string Path, string RenderName);
+
+        private static LabelItemMetadata ResolveLabelItemMetadata(LabelOnGround? label)
+        {
+            object? rawItem = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? itemValue)
+                ? itemValue
+                : null;
+
+            string path = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            string renderName = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
+                ? resolvedRenderName
+                : string.Empty;
+            return new LabelItemMetadata(path, renderName);
         }
 
         private static bool TryResolveConfiguredLeagueChestMechanicId(

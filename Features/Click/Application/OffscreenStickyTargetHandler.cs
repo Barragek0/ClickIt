@@ -16,13 +16,15 @@ namespace ClickIt.Features.Click.Application
         private readonly OffscreenStickyTargetHandlerDependencies _dependencies = dependencies;
 
         internal void SetStickyOffscreenTarget(Entity target)
-            => _dependencies.RuntimeState.StickyOffscreenTargetAddress = target.Address;
+            => _dependencies.RuntimeState.StickyOffscreenTargetAddress = TryGetEntityAddress(target, out long address) ? address : 0;
 
         internal void ClearStickyOffscreenTarget()
             => _dependencies.RuntimeState.StickyOffscreenTargetAddress = 0;
 
         internal bool IsStickyTarget(Entity? entity)
-            => entity != null && OffscreenPathingMath.IsSameEntityAddress(_dependencies.RuntimeState.StickyOffscreenTargetAddress, entity.Address);
+            => entity != null
+                && TryGetEntityAddress(entity, out long address)
+                && OffscreenPathingMath.IsSameEntityAddress(_dependencies.RuntimeState.StickyOffscreenTargetAddress, address);
 
         internal bool TryResolveStickyOffscreenTarget(out Entity? target)
         {
@@ -69,19 +71,19 @@ namespace ClickIt.Features.Click.Application
             path = string.Empty;
             isTargetable = false;
 
-            if (!DynamicAccess.TryReadBool(target, static t => t.IsValid, out bool isValid) || !isValid)
+            if (!DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid)
                 return false;
 
-            if (!DynamicAccess.TryReadBool(target, static t => t.IsHidden, out bool isHidden) || isHidden)
+            if (!DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsHidden, out bool isHidden) || isHidden)
                 return false;
 
             if (OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
                 return false;
 
-            path = DynamicAccess.TryReadString(target, static t => t.Path, out string resolvedPath)
+            path = DynamicAccess.TryReadString(target, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
-            isTargetable = DynamicAccess.TryReadBool(target, static t => t.IsTargetable, out bool resolvedIsTargetable)
+            isTargetable = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsTargetable, out bool resolvedIsTargetable)
                 && resolvedIsTargetable;
             return true;
         }
@@ -96,9 +98,12 @@ namespace ClickIt.Features.Click.Application
 
         private bool TryClickStickyShrine(Entity stickyTarget)
         {
-            NumVector2 shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(stickyTarget.PosNum);
-            Vector2 shrinePos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
-            string path = stickyTarget.Path ?? string.Empty;
+            if (!TryProjectEntityScreenPosition(stickyTarget, out Vector2 shrinePos))
+                return false;
+
+            string path = DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
             if (!_dependencies.IsClickableInEitherSpace(shrinePos, path))
                 return false;
 
@@ -135,7 +140,9 @@ namespace ClickIt.Features.Click.Application
                 mechanicId,
                 windowTopLeft,
                 allLabels,
-                stickyTarget.Path);
+                DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string targetPath)
+                    ? targetPath
+                    : string.Empty);
             if (!resolved)
                 return false;
 
@@ -143,7 +150,12 @@ namespace ClickIt.Features.Click.Application
             if (!clickedLabel)
                 return false;
 
-            ApplySuccessfulStickyLabelClick(stickyTarget.Path, mechanicId, stickyLabel);
+            ApplySuccessfulStickyLabelClick(
+                DynamicAccess.TryReadString(stickyTarget, DynamicAccessProfiles.Path, out string stickyTargetPath)
+                    ? stickyTargetPath
+                    : string.Empty,
+                mechanicId,
+                stickyLabel);
             return true;
         }
 
@@ -162,5 +174,42 @@ namespace ClickIt.Features.Click.Application
             => string.IsNullOrWhiteSpace(stickyTargetPath)
                 ? "Sticky offscreen target click succeeded"
                 : $"Sticky offscreen target click succeeded: {stickyTargetPath}";
+
+        private bool TryProjectEntityScreenPosition(Entity entity, out Vector2 screenPosition)
+        {
+            screenPosition = default;
+
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position
+                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
+                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
+                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
+                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
+            {
+                return false;
+            }
+
+            screenPosition = new(projectedX, projectedY);
+            return true;
+        }
+
+        private static bool TryGetEntityAddress(Entity entity, out long address)
+        {
+            address = 0;
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress) || rawAddress == null)
+                return false;
+
+            try
+            {
+                address = Convert.ToInt64(rawAddress, global::System.Globalization.CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

@@ -88,9 +88,9 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static bool IsAltarLabel(LabelOnGround label)
         {
-            if (!DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
                 || rawItem == null
-                || !DynamicAccess.TryReadString(rawItem, static i => i.Path, out string path))
+                || !DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string path))
             {
                 return false;
             }

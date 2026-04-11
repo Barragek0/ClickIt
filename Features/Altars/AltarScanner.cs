@@ -43,12 +43,21 @@ namespace ClickIt.Features.Altars
             foreach (LabelOnGround label in altarLabels)
             {
                 if (label == null) continue;
-                List<Element> elements = LabelElementSearch.GetElementsByStringContains(label.Label, "valuedefault");
+                Element? labelElement = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                    ? rawLabel as Element
+                    : null;
+                List<Element> elements = LabelElementSearch.GetElementsByStringContains(labelElement, "valuedefault");
                 if (elements == null || elements.Count == 0) continue;
-                string path = label.ItemOnGround?.Path ?? string.Empty;
+                string path = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                    && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+                        ? resolvedPath
+                        : string.Empty;
 
                 foreach (Element el in elements)
-                    if (el != null && el.IsVisible)
+                    if (el != null
+                        && (DynamicAccess.TryReadBool(el, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                            ? isVisible
+                            : el.IsVisible))
                         elementsToProcess.Add((el, path));
 
             }
@@ -62,10 +71,15 @@ namespace ClickIt.Features.Altars
             for (int i = 0; i < labels.Count; i++)
             {
                 LabelOnGround label = labels[i];
-                if (label.ItemOnGround?.Path == null || !label.Label.IsVisible)
+                if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                    || !DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string path)
+                    || !DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                    || rawLabel == null
+                    || !DynamicAccess.TryReadBool(rawLabel, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                    || !isVisible)
                     continue;
 
-                if (label.ItemOnGround.Path.Contains(altarPathToken, StringComparison.Ordinal))
+                if (path.Contains(altarPathToken, StringComparison.Ordinal))
                     result.Add(label);
             }
 

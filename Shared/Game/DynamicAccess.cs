@@ -83,8 +83,63 @@ namespace ClickIt.Shared.Game
 
         public static bool TryGetDynamicValue(object? source, IDynamicMemberReaderProfile profile, out object? value)
         {
-            return TryGetDynamicValue(source, profile.Read, out value);
+            value = null;
+            Interlocked.Increment(ref _tryGetCalls);
+
+            if (source == null)
+            {
+                Interlocked.Increment(ref _nullSourceFailures);
+                return false;
+            }
+
+            try
+            {
+                value = profile.Read((dynamic)source);
+                Interlocked.Increment(ref _tryGetSuccesses);
+                return true;
+            }
+            catch (RuntimeBinderException)
+            {
+                Interlocked.Increment(ref _runtimeBinderFailures);
+                return false;
+            }
+            catch
+            {
+                Interlocked.Increment(ref _otherFailures);
+                return false;
+            }
         }
+
+        public static bool TryGetChildAtIndex(object? source, int index, out object? value)
+        {
+            value = null;
+            if (index < 0)
+                return false;
+
+            return TryGetDynamicValue(source, current => current.GetChildAtIndex(index), out value);
+        }
+
+        public static bool TryProjectWorldToScreen(object? camera, System.Numerics.Vector3 position, out object? value)
+            => TryGetDynamicValue(camera, current => current.WorldToScreen(position), out value);
+
+        public static bool TryGetComponent<TComponent>(object? source, [NotNullWhen(true)] out TComponent? value)
+            where TComponent : class
+        {
+            value = null;
+            return TryGetDynamicValue(source, static current => current.GetComponent<TComponent>(), out object? raw)
+                && (value = raw as TComponent) != null;
+        }
+
+        public static bool TryGetComponent<TComponent>(object? source, out object? value)
+            where TComponent : class
+        {
+            value = null;
+            return TryGetDynamicValue(source, static current => current.GetComponent<TComponent>(), out value)
+                && value != null;
+        }
+
+        public static bool TryHasComponent<TComponent>(object? source, out bool value)
+            => TryReadBool(source, static current => current.HasComponent<TComponent>(), out value);
 
         public static bool TryReadBool(object? source, Func<dynamic, object?> accessor, out bool value)
         {
@@ -102,6 +157,33 @@ namespace ClickIt.Shared.Game
             if (raw == null)
                 return false;
 
+
+            try
+            {
+                value = Convert.ToBoolean(raw, CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                _ = Interlocked.Increment(ref _boolConversionFailures);
+                return false;
+            }
+        }
+
+        public static bool TryReadBool(object? source, IDynamicMemberReaderProfile profile, out bool value)
+        {
+            value = false;
+            if (!TryGetDynamicValue(source, profile, out object? raw))
+                return false;
+
+            if (raw is bool boolValue)
+            {
+                value = boolValue;
+                return true;
+            }
+
+            if (raw == null)
+                return false;
 
             try
             {
@@ -144,6 +226,33 @@ namespace ClickIt.Shared.Game
             }
         }
 
+        public static bool TryReadInt(object? source, IDynamicMemberReaderProfile profile, out int value)
+        {
+            value = 0;
+            if (!TryGetDynamicValue(source, profile, out object? raw))
+                return false;
+
+            if (raw is int intValue)
+            {
+                value = intValue;
+                return true;
+            }
+
+            if (raw == null)
+                return false;
+
+            try
+            {
+                value = Convert.ToInt32(raw, CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                _ = Interlocked.Increment(ref _intConversionFailures);
+                return false;
+            }
+        }
+
         public static bool TryReadFloat(object? source, Func<dynamic, object?> accessor, out float value)
         {
             value = 0;
@@ -173,12 +282,56 @@ namespace ClickIt.Shared.Game
             }
         }
 
+        public static bool TryReadFloat(object? source, IDynamicMemberReaderProfile profile, out float value)
+        {
+            value = 0;
+            if (!TryGetDynamicValue(source, profile, out object? raw))
+                return false;
+
+            if (raw is float floatValue)
+            {
+                value = floatValue;
+                return true;
+            }
+
+            if (raw == null)
+                return false;
+
+            try
+            {
+                value = Convert.ToSingle(raw, CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                _ = Interlocked.Increment(ref _floatConversionFailures);
+                return false;
+            }
+        }
+
         public static bool TryReadString(object? source, Func<dynamic, object?> accessor, out string value)
         {
             value = string.Empty;
             if (!TryGetDynamicValue(source, accessor, out object? raw) || raw == null)
                 return false;
 
+
+            string? text = raw.ToString();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                _ = Interlocked.Increment(ref _emptyStringFailures);
+                return false;
+            }
+
+            value = text.Trim();
+            return true;
+        }
+
+        public static bool TryReadString(object? source, IDynamicMemberReaderProfile profile, out string value)
+        {
+            value = string.Empty;
+            if (!TryGetDynamicValue(source, profile, out object? raw) || raw == null)
+                return false;
 
             string? text = raw.ToString();
             if (string.IsNullOrWhiteSpace(text))

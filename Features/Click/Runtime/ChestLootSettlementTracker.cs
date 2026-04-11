@@ -102,11 +102,18 @@ namespace ClickIt.Features.Click.Runtime
         {
             ClickItSettings settings = _dependencies.Settings;
             ChestLootSettlementState state = _dependencies.State;
+            Entity? chestItem = DynamicAccess.TryGetDynamicValue(chestLabel, DynamicAccessProfiles.ItemOnGround, out object? rawChestItem)
+                ? rawChestItem as Entity
+                : null;
 
             string? resolvedMechanicId = ChestLootSettlementMath.ResolveChestLootSettlementMechanicIdForOpenedLabel(
                 mechanicId,
-                chestLabel?.ItemOnGround?.Path,
-                chestLabel?.ItemOnGround?.RenderName);
+                DynamicAccess.TryReadString(chestItem, DynamicAccessProfiles.Path, out string path)
+                    ? path
+                    : null,
+                DynamicAccess.TryReadString(chestItem, DynamicAccessProfiles.RenderName, out string renderName)
+                    ? renderName
+                    : null);
 
             if (!ChestLootSettlementMath.ShouldWaitForChestLootSettlement(
                 resolvedMechanicId,
@@ -120,9 +127,15 @@ namespace ClickIt.Features.Click.Runtime
             ClearPendingChestOpenConfirmation();
             state.PendingOpenConfirmationActive = true;
             state.PendingOpenMechanicId = resolvedMechanicId;
-            state.PendingOpenItemAddress = chestLabel?.ItemOnGround?.Address ?? 0;
-            state.PendingOpenLabelAddress = chestLabel?.Label?.Address ?? 0;
-            state.SourceGridValid = ChestLootSettlementMath.TryGetEntityGridPosition(chestLabel?.ItemOnGround, out state.SourceGrid);
+            state.PendingOpenItemAddress = DynamicAccess.TryGetDynamicValue(chestItem, DynamicAccessProfiles.Address, out object? rawAddress) && rawAddress is long address
+                ? address
+                : 0;
+            state.PendingOpenLabelAddress = DynamicAccess.TryGetDynamicValue(chestLabel, DynamicAccessProfiles.Label, out object? rawLabel)
+                && DynamicAccess.TryGetDynamicValue(rawLabel, DynamicAccessProfiles.Address, out object? rawLabelAddress)
+                && rawLabelAddress is long labelAddress
+                    ? labelAddress
+                    : 0;
+            state.SourceGridValid = ChestLootSettlementMath.TryGetEntityGridPosition(chestItem, out state.SourceGrid);
         }
 
         public void ClearPendingChestOpenConfirmation()

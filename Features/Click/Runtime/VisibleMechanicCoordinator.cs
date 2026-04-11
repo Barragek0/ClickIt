@@ -101,8 +101,9 @@ namespace ClickIt.Features.Click.Runtime
                 isInClickableArea: pos => _dependencies.PointIsInClickableArea(pos, MechanicIds.Shrines),
                 cursorDistanceResolver: shrine =>
                 {
-                    NumVector2 screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
-                    Vector2 shrineScreenAbsolute = new(screenRaw.X + windowTopLeft.X, screenRaw.Y + windowTopLeft.Y);
+                    if (!TryProjectEntityScreenAbsolute(shrine, windowTopLeft, out Vector2 shrineScreenAbsolute))
+                        return float.MaxValue;
+
                     return ManualCursorSelectionMath.GetManualCursorDistanceSquaredInEitherSpace(cursorAbsolute, shrineScreenAbsolute, windowTopLeft);
                 });
         }
@@ -131,8 +132,9 @@ namespace ClickIt.Features.Click.Runtime
 
         public bool TryClickShrineInteraction(Entity shrine)
         {
-            NumVector2 shrineScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(shrine.PosNum);
-            Vector2 shrineClickPos = new(shrineScreenRaw.X, shrineScreenRaw.Y);
+            if (!TryProjectEntityScreenRaw(shrine, out Vector2 shrineClickPos))
+                return false;
+
             return TryClickDirectMechanic(shrineClickPos, onSuccess: () => TryHandleSuccessfulMechanicAftermath(shrine, invalidateShrineCache: true));
         }
 
@@ -218,7 +220,10 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool IsSettlersCandidateTargetable(SettlersOreCandidate candidate, Entity? entity)
         {
-            if (entity == null || entity.IsTargetable)
+            if (entity == null)
+                return true;
+
+            if (DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool isTargetable) && isTargetable)
                 return true;
 
             _dependencies.DebugLog($"[ProcessRegularClick] Skipping settlers ore candidate ({candidate.MechanicId}) because entity is not targetable.");
@@ -329,7 +334,9 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
             HandleSuccessfulMechanicAftermath(
-                entity.Path,
+                DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string entityPath)
+                    ? entityPath
+                    : string.Empty,
                 _dependencies.StickyTargets.IsStickyTarget(entity),
                 invalidateShrineCache);
             return true;
@@ -370,9 +377,12 @@ namespace ClickIt.Features.Click.Runtime
 
             Entity entity = candidate.Value.Entity;
             return entity != null
-                && entity.IsValid
-                && !entity.IsOpened
-                && entity.DistancePlayer <= _dependencies.Settings.ClickDistance.Value;
+                && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
+                && isValid
+                && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsOpened, out bool isOpened)
+                && !isOpened
+                && DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
+                && distance <= _dependencies.Settings.ClickDistance.Value;
         }
 
         private bool IsSettlersCandidateUsable(SettlersOreCandidate? candidate)
@@ -382,8 +392,40 @@ namespace ClickIt.Features.Click.Runtime
 
             Entity entity = candidate.Value.Entity;
             return entity != null
-                && entity.IsValid
-                && entity.DistancePlayer <= _dependencies.Settings.ClickDistance.Value;
+                && DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
+                && isValid
+                && DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
+                && distance <= _dependencies.Settings.ClickDistance.Value;
+        }
+
+        private bool TryProjectEntityScreenRaw(Entity entity, out Vector2 screenPosition)
+        {
+            screenPosition = default;
+
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position
+                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
+                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
+                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
+                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
+            {
+                return false;
+            }
+
+            screenPosition = new(projectedX, projectedY);
+            return true;
+        }
+
+        private bool TryProjectEntityScreenAbsolute(Entity entity, Vector2 windowTopLeft, out Vector2 absolutePosition)
+        {
+            absolutePosition = default;
+            if (!TryProjectEntityScreenRaw(entity, out Vector2 screenPosition))
+                return false;
+
+            absolutePosition = new(screenPosition.X + windowTopLeft.X, screenPosition.Y + windowTopLeft.Y);
+            return true;
         }
 
     }

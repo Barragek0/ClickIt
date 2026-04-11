@@ -9,17 +9,19 @@ namespace ClickIt.Features.Click.Runtime
         {
             path = string.Empty;
 
-            if (!DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
                 || rawItem == null)
                 return false;
 
-
-            return DynamicAccess.TryReadString(rawItem, static i => i.Path, out path);
+            return DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out path);
         }
+
+        internal static bool TryGetLabelRoot(LabelOnGround? label, out object? root)
+            => DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out root) && root != null;
 
         internal static Element? TryGetLabelElement(LabelOnGround? label)
         {
-            return DynamicAccess.TryGetDynamicValue(label, static l => l.Label, out object? rawLabel)
+            return TryGetLabelRoot(label, out object? rawLabel)
                 && rawLabel is Element element
                 ? element
                 : null;
@@ -27,11 +29,10 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static ulong GetLabelElementAddress(LabelOnGround? label)
         {
-            Element? element = TryGetLabelElement(label);
-            if (element == null)
+            if (!TryGetLabelRoot(label, out object? root) || root == null)
                 return 0;
 
-            return DynamicAccess.TryGetDynamicValue(element, static e => e.Address, out object? rawAddress)
+            return DynamicAccess.TryGetDynamicValue(root, DynamicAccessProfiles.Address, out object? rawAddress)
                 && rawAddress != null
                 ? unchecked((ulong)Convert.ToInt64(rawAddress))
                 : 0;
@@ -45,8 +46,13 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryGetLabelItemPath(label, out string path) || !IsUltimatumPath(path))
                 return false;
 
-            Element? child0 = TryGetLabelElement(label)?.GetChildAtIndex(0);
-            return child0?.IsVisible == true;
+            if (!TryGetLabelRoot(label, out object? root) || root == null)
+                return false;
+
+            return DynamicAccess.TryGetChildAtIndex(root, 0, out object? rawChild0)
+                && rawChild0 != null
+                && DynamicAccess.TryReadBool(rawChild0, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                && isVisible;
         }
 
         internal static bool ShouldSuppressInactiveUltimatumLabel(bool isUltimatumPath, bool isUltimatumLabel)

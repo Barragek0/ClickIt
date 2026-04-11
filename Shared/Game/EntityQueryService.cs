@@ -38,7 +38,7 @@ namespace ClickIt.Shared.Game
             Entity? found = null;
             VisitValidEntities(gameController, entity =>
             {
-                if (entity.Address != address)
+                if (!TryGetEntityAddress(entity, out long entityAddress) || entityAddress != address)
                     return false;
 
                 found = entity;
@@ -46,6 +46,23 @@ namespace ClickIt.Shared.Game
             });
 
             return found;
+        }
+
+        private static bool TryGetEntityAddress(Entity entity, out long address)
+        {
+            address = 0;
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress) || rawAddress == null)
+                return false;
+
+            try
+            {
+                address = Convert.ToInt64(rawAddress, global::System.Globalization.CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

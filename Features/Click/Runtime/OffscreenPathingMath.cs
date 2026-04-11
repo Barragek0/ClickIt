@@ -12,12 +12,12 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static bool IsEntityHiddenByMinimapIcon(Entity entity)
         {
-            if (!DynamicAccess.TryGetDynamicValue(entity, static e => e.GetComponent<MinimapIcon>(), out object? rawMinimapIcon)
-                || rawMinimapIcon is not MinimapIcon minimapIcon)
+            if (!DynamicAccess.TryGetComponent<MinimapIcon>(entity, out MinimapIcon? minimapIcon)
+                || minimapIcon == null)
                 return false;
 
 
-            return DynamicAccess.TryReadBool(minimapIcon, static icon => icon.IsHide, out bool isHiddenByMinimap)
+            return DynamicAccess.TryReadBool(minimapIcon, DynamicAccessProfiles.IsHide, out bool isHiddenByMinimap)
                 && isHiddenByMinimap;
         }
 
@@ -135,10 +135,10 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
 
-            string itemPath = DynamicAccess.TryReadString(item, static i => i.Path, out string path)
+            string itemPath = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string path)
                 ? path
                 : string.Empty;
-            string renderName = DynamicAccess.TryReadString(item, static i => i.RenderName, out string name)
+            string renderName = DynamicAccess.TryReadString(item, DynamicAccessProfiles.RenderName, out string name)
                 ? name
                 : string.Empty;
 
@@ -212,7 +212,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)
         {
-            return DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
                 && rawItem is Entity item
                 ? item
                 : null;
@@ -221,7 +221,7 @@ namespace ClickIt.Features.Click.Runtime
         private static bool TryReadEntityAddress(Entity? entity, out long address)
         {
             address = 0;
-            if (!DynamicAccess.TryGetDynamicValue(entity, static e => e.Address, out object? rawAddress) || rawAddress == null)
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress) || rawAddress == null)
                 return false;
 
 
@@ -256,7 +256,7 @@ namespace ClickIt.Features.Click.Runtime
         private static bool TryReadEntityType(Entity? entity, out EntityType entityType)
         {
             entityType = default;
-            if (!DynamicAccess.TryGetDynamicValue(entity, static e => e.Type, out object? rawType) || rawType == null)
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Type, out object? rawType) || rawType == null)
                 return false;
 
 

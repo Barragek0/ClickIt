@@ -4,14 +4,14 @@ namespace ClickIt.Tests.Features.Labels.Selection
     public class LabelEligibilityEngineTests
     {
         [TestMethod]
-        public void TryBuildCandidate_Throws_WhenOpaqueLabelDereferencesRuntimeItem()
+        public void TryBuildCandidate_ReturnsFalse_WhenOpaqueLabelCannotResolveRuntimeItem()
         {
             LabelOnGround label = ExileCoreOpaqueFactory.CreateOpaqueLabel();
 
             int targetableCallCount = 0;
             int mechanicResolverCallCount = 0;
 
-            Action act = () => _ = LabelEligibilityEngine.TryBuildCandidate(
+            bool result = LabelEligibilityEngine.TryBuildCandidate(
                 label,
                 new ClickSettings { ClickDistance = 999 },
                 (_, _) =>
@@ -26,9 +26,10 @@ namespace ClickIt.Tests.Features.Labels.Selection
                 },
                 out _,
                 out _,
-                out _);
+                out LabelCandidateRejectReason rejectReason);
 
-            act.Should().Throw<NullReferenceException>();
+            result.Should().BeFalse();
+            rejectReason.Should().Be(LabelCandidateRejectReason.NullItem);
             targetableCallCount.Should().Be(0);
             mechanicResolverCallCount.Should().Be(0);
         }

@@ -179,6 +179,50 @@ namespace ClickIt.Tests.Core.Lifecycle
         }
 
         [TestMethod]
+        public void Initialise_WhenOwnerIsNull_ThrowsArgumentNullException()
+        {
+            var settings = new ClickItSettings();
+
+            Action act = () => PluginLifecycleCoordinator.Initialise(null!, settings);
+
+            act.Should().Throw<ArgumentNullException>()
+                .WithParameterName("owner");
+        }
+
+        [TestMethod]
+        public void Initialise_WhenSettingsAreNull_ThrowsArgumentNullException()
+        {
+            var plugin = new ClickIt();
+
+            Action act = () => PluginLifecycleCoordinator.Initialise(plugin, null!);
+
+            act.Should().Throw<ArgumentNullException>()
+                .WithParameterName("settings");
+        }
+
+        [TestMethod]
+        public void Shutdown_WhenOwnerIsNull_ThrowsArgumentNullException()
+        {
+            var settings = new ClickItSettings();
+
+            Action act = () => PluginLifecycleCoordinator.Shutdown(null!, settings);
+
+            act.Should().Throw<ArgumentNullException>()
+                .WithParameterName("owner");
+        }
+
+        [TestMethod]
+        public void Shutdown_WhenSettingsAreNull_ThrowsArgumentNullException()
+        {
+            var plugin = new ClickIt();
+
+            Action act = () => PluginLifecycleCoordinator.Shutdown(plugin, null!);
+
+            act.Should().Throw<ArgumentNullException>()
+                .WithParameterName("runtimeSettings");
+        }
+
+        [TestMethod]
         public void WaitForCoroutineShutdown_ReturnsImmediately_WhenCoroutineIsNull()
         {
             Action act = () => InvokePrivateLifecycleMethod("WaitForCoroutineShutdown", null, 0);
@@ -209,6 +253,34 @@ namespace ClickIt.Tests.Core.Lifecycle
         }
 
         [TestMethod]
+        public void WaitForCoroutineShutdown_WaitsUntilCoroutineCompletes()
+        {
+            var coroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Active", isDone: false);
+            using ManualResetEventSlim completionSignal = new(initialState: false);
+            Thread worker = new(() =>
+            {
+                Thread.Sleep(5);
+                RuntimeMemberAccessor.SetRequiredMember(coroutine, nameof(Coroutine.IsDone), true);
+                completionSignal.Set();
+            });
+
+            worker.Start();
+
+            try
+            {
+                Action act = () => InvokePrivateLifecycleMethod("WaitForCoroutineShutdown", coroutine, 50);
+
+                act.Should().NotThrow();
+                completionSignal.Wait(200).Should().BeTrue();
+                coroutine.IsDone.Should().BeTrue();
+            }
+            finally
+            {
+                worker.Join();
+            }
+        }
+
+        [TestMethod]
         public void StopNamedClickItCoroutines_DoesNotThrow_WhenParallelRunnerIsUnavailable()
         {
             using var scope = CoroutineTestHarness.ReplaceParallelRunner(null);
@@ -226,6 +298,35 @@ namespace ClickIt.Tests.Core.Lifecycle
             Action act = () => InvokePrivateLifecycleMethod("WaitForNamedClickItCoroutinesShutdown", 0);
 
             act.Should().NotThrow();
+        }
+
+        [TestMethod]
+        public void WaitForNamedClickItCoroutinesShutdown_WaitsUntilActiveClickItCoroutineCompletes()
+        {
+            var activeCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Active", isDone: false);
+            using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines([activeCoroutine]);
+            using ManualResetEventSlim completionSignal = new(initialState: false);
+            Thread worker = new(() =>
+            {
+                Thread.Sleep(5);
+                RuntimeMemberAccessor.SetRequiredMember(activeCoroutine, nameof(Coroutine.IsDone), true);
+                completionSignal.Set();
+            });
+
+            worker.Start();
+
+            try
+            {
+                Action act = () => InvokePrivateLifecycleMethod("WaitForNamedClickItCoroutinesShutdown", 50);
+
+                act.Should().NotThrow();
+                completionSignal.Wait(200).Should().BeTrue();
+                activeCoroutine.IsDone.Should().BeTrue();
+            }
+            finally
+            {
+                worker.Join();
+            }
         }
 
         private static void InvokePrivateLifecycleMethod(string methodName, params object?[] arguments)

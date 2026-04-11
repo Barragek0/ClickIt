@@ -254,9 +254,20 @@ namespace ClickIt.Features.Click.Application
 
         private bool IsGruelingGauntletPassiveActive()
         {
-            bool isActive = _gruelingGauntletDetector.IsActive(_dependencies.GameController?.IngameState?.Data);
+            bool isActive = _gruelingGauntletDetector.IsActive(TryGetIngameData(_dependencies.GameController));
             UltimatumGruelingGauntletDetectionStore.Publish(isActive);
             return isActive;
+        }
+
+        private static object? TryGetIngameData(GameController? gameController)
+        {
+            if (!DynamicAccess.TryGetDynamicValue(gameController, DynamicAccessProfiles.IngameState, out object? ingameState)
+                || ingameState == null)
+                return null;
+
+            return DynamicAccess.TryGetDynamicValue(ingameState, DynamicAccessProfiles.Data, out object? ingameData)
+                ? ingameData
+                : null;
         }
 
         private bool GetGruelingGauntletDetectionForDebug()

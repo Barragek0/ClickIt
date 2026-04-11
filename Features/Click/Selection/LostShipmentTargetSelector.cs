@@ -62,25 +62,25 @@ namespace ClickIt.Features.Click.Selection
         {
             candidate = default;
 
-            Entity? entity = DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+            Entity? entity = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
                 ? rawItem as Entity
                 : null;
             if (label == null || entity == null)
                 return false;
 
-            bool isValid = DynamicAccess.TryReadBool(entity, static e => e.IsValid, out bool resolvedIsValid) && resolvedIsValid;
-            float distance = DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float resolvedDistance)
+            bool isValid = DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool resolvedIsValid) && resolvedIsValid;
+            float distance = DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
                 ? resolvedDistance
                 : float.MaxValue;
-            bool isOpened = DynamicAccess.TryReadBool(entity, static e => e.IsOpened, out bool resolvedIsOpened) && resolvedIsOpened;
+            bool isOpened = DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsOpened, out bool resolvedIsOpened) && resolvedIsOpened;
 
             if (VisibleMechanicSelectionPolicy.ShouldSkipLostShipmentEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value, isOpened))
                 return false;
 
-            string path = DynamicAccess.TryReadString(entity, static e => e.Path, out string resolvedPath)
+            string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
-            string renderName = DynamicAccess.TryReadString(entity, static e => e.RenderName, out string resolvedRenderName)
+            string renderName = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
                 ? resolvedRenderName
                 : string.Empty;
             if (!VisibleMechanicSelectionPolicy.IsLostShipmentEntity(path, renderName))

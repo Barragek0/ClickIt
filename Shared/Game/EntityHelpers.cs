@@ -29,7 +29,7 @@ namespace ClickIt.Shared.Game
 
             foreach (Entity entity in gameController.EntityListWrapper.OnlyValidEntities)
             {
-                string path = DynamicAccess.TryReadString(entity, static e => e.Path, out string resolvedPath)
+                string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
                     ? resolvedPath
                     : string.Empty;
 
@@ -56,7 +56,7 @@ namespace ClickIt.Shared.Game
                 return missingItemEntityFallback;
 
 
-            if (DynamicAccess.TryReadString(itemEntity, static e => e.Metadata, out string metadata))
+            if (DynamicAccess.TryReadString(itemEntity, DynamicAccessProfiles.Metadata, out string metadata))
                 return metadata;
 
 
@@ -64,7 +64,7 @@ namespace ClickIt.Shared.Game
                 return mapKeyMetadata;
 
 
-            return DynamicAccess.TryReadString(itemEntity, static e => e.Path, out string path)
+            return DynamicAccess.TryReadString(itemEntity, DynamicAccessProfiles.Path, out string path)
                 ? path
                 : missingMetadataFallback;
         }
@@ -82,11 +82,11 @@ namespace ClickIt.Shared.Game
                 return false;
 
 
-            if (DynamicAccess.TryReadString(itemEntity, static e => e.Metadata, out metadata))
+            if (DynamicAccess.TryReadString(itemEntity, DynamicAccessProfiles.Metadata, out metadata))
                 return true;
 
 
-            if (DynamicAccess.TryReadString(itemEntity, static e => e.Path, out metadata))
+            if (DynamicAccess.TryReadString(itemEntity, DynamicAccessProfiles.Path, out metadata))
                 return true;
 
 
@@ -95,12 +95,12 @@ namespace ClickIt.Shared.Game
 
         private static Entity? TryGetWorldItemEntity(Entity item)
         {
-            if (!DynamicAccess.TryGetDynamicValue(item, static e => e.GetComponent<WorldItem>(), out object? rawWorld)
-                || rawWorld is not WorldItem world)
+            if (!DynamicAccess.TryGetComponent<WorldItem>(item, out WorldItem? world)
+                || world == null)
                 return null;
 
 
-            return DynamicAccess.TryGetDynamicValue(world, static w => w.ItemEntity, out object? rawItemEntity)
+            return DynamicAccess.TryGetDynamicValue(world, DynamicAccessProfiles.ItemEntity, out object? rawItemEntity)
                 ? rawItemEntity as Entity
                 : null;
         }

@@ -120,7 +120,9 @@ namespace ClickIt.Features.Click.Selection
             if (!TryResolveCandidateMechanicId(candidate, allLabels, out string? mechanicId))
                 return false;
 
-            Entity? candidateEntity = candidate!.ItemOnGround;
+            Entity? candidateEntity = DynamicAccess.TryGetDynamicValue(candidate, DynamicAccessProfiles.ItemOnGround, out object? rawCandidateEntity)
+                ? rawCandidateEntity as Entity
+                : null;
             ManualCursorCandidateHoverState hoverState = ResolveCandidateHoverState(candidate, candidateEntity, cursorAbsolute, windowTopLeft);
             if (!hoverState.IsHovered)
                 return false;
@@ -137,7 +139,7 @@ namespace ClickIt.Features.Click.Selection
         }
 
         private bool TryResolveCandidateMechanicId(
-            LabelOnGround? candidate,
+            [NotNullWhen(true)] LabelOnGround? candidate,
             IReadOnlyList<LabelOnGround> allLabels,
             [NotNullWhen(true)] out string? mechanicId)
         {
@@ -206,9 +208,16 @@ namespace ClickIt.Features.Click.Selection
             out float groundProjectionScore)
         {
             groundProjectionScore = float.MaxValue;
+            bool isWorldItem = DynamicAccess.TryGetDynamicValue(candidateEntity, DynamicAccessProfiles.Type, out object? rawType)
+                && rawType switch
+                {
+                    EntityType entityType => entityType == EntityType.WorldItem,
+                    int entityTypeValue => entityTypeValue == (int)EntityType.WorldItem,
+                    _ => false,
+                };
             bool shouldUseGroundProjection = ManualCursorSelectionMath.ShouldUseManualGroundProjectionForCandidate(
                 hasBackingEntity: candidateEntity != null,
-                isWorldItem: candidateEntity?.Type == EntityType.WorldItem);
+                isWorldItem: isWorldItem);
             if (!shouldUseGroundProjection || !TryGetGroundProjectionPoint(candidateEntity, windowTopLeft, out Vector2 projectedGroundPoint))
                 return false;
 
@@ -230,19 +239,26 @@ namespace ClickIt.Features.Click.Selection
         private bool TryGetGroundProjectionPoint(Entity? item, Vector2 windowTopLeft, out Vector2 projectedPoint)
         {
             projectedPoint = default;
-            if (item == null || !item.IsValid)
+            if (!DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid)
                 return false;
 
-            try
-            {
-                NumVector2 worldScreenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(item.PosNum);
-                projectedPoint = new Vector2(worldScreenRaw.X + windowTopLeft.X, worldScreenRaw.Y + windowTopLeft.Y);
-                return float.IsFinite(projectedPoint.X) && float.IsFinite(projectedPoint.Y);
-            }
-            catch
+            if (!DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position
+                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
+                || rawGame == null
+                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
+                || rawIngameState == null
+                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
+                || rawCamera == null
+                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
             {
                 return false;
             }
+
+            projectedPoint = new Vector2(projectedX + windowTopLeft.X, projectedY + windowTopLeft.Y);
+            return float.IsFinite(projectedPoint.X) && float.IsFinite(projectedPoint.Y);
         }
     }
 }

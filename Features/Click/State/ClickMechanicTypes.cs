@@ -6,7 +6,7 @@ namespace ClickIt.Features.Click.State
             : this(
                 entity,
                 clickPosition,
-                DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float distance)
+                DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
                     ? distance
                     : float.MaxValue)
         {
@@ -40,7 +40,7 @@ namespace ClickIt.Features.Click.State
                 entityPath,
                 worldScreenRaw,
                 worldScreenAbsolute,
-                DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float distance)
+                DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
                     ? distance
                     : float.MaxValue)
         {

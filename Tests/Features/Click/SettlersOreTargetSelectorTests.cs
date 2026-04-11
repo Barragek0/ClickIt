@@ -18,15 +18,15 @@ namespace ClickIt.Tests.Features.Click
                 gridX: 6f,
                 gridY: 9f);
 
-            DynamicAccess.TryReadString(entity, static e => e.Path, out string path).Should().BeTrue();
-            DynamicAccess.TryReadString(entity, static e => e.RenderName, out string renderName).Should().BeTrue();
-            DynamicAccess.TryReadBool(entity, static e => e.IsValid, out bool isValid).Should().BeTrue();
-            DynamicAccess.TryReadBool(entity, static e => e.IsHidden, out bool isHidden).Should().BeTrue();
-            DynamicAccess.TryGetDynamicValue(entity, static e => e.Address, out object? address).Should().BeTrue();
-            DynamicAccess.TryReadBool(entity, static e => e.IsTargetable, out bool isTargetable).Should().BeTrue();
-            DynamicAccess.TryGetDynamicValue(entity, static e => e.Type, out object? type).Should().BeTrue();
-            DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float distancePlayer).Should().BeTrue();
-            DynamicAccess.TryGetDynamicValue(entity, static e => e.GridPosNum, out object? gridPos).Should().BeTrue();
+            DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string path).Should().BeTrue();
+            DynamicAccess.TryReadString(entity, DynamicAccessProfiles.RenderName, out string renderName).Should().BeTrue();
+            DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid).Should().BeTrue();
+            DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsHidden, out bool isHidden).Should().BeTrue();
+            DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? address).Should().BeTrue();
+            DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool isTargetable).Should().BeTrue();
+            DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Type, out object? type).Should().BeTrue();
+            DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distancePlayer).Should().BeTrue();
+            DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.GridPosNum, out object? gridPos).Should().BeTrue();
 
             path.Should().Be(MechanicIds.SettlersVerisiumMarker);
             renderName.Should().Be("Verisium Node");
@@ -106,6 +106,144 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void TryBuildSettlersCandidate_ReturnsFalse_WhenSettlersEntityLacksGroundLabel()
+        {
+            SettlersOreTargetSelector selector = CreateSelector(
+                CreateSettings(clickDistance: 20, debugMode: false),
+                gameController: ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(),
+                labelsProvider: static () => []);
+            Entity entity = EntityProbeFactory.Create(
+                path: MechanicIds.SettlersVerisiumMarker,
+                isValid: true,
+                address: 1234,
+                distancePlayer: 12f,
+                posX: 5f,
+                posY: 6f,
+                posZ: 7f);
+
+            TryBuildSettlersCandidateResult result = InvokeTryBuildSettlersCandidate(
+                selector,
+                entity,
+                new HashSet<long>(),
+                captureClickDebug: false);
+
+            result.Resolved.Should().BeFalse();
+            result.Candidate.Should().BeNull();
+            result.HasGroundLabel.Should().BeFalse();
+            result.MatchedMechanic.Should().BeTrue();
+            result.AttemptedProbe.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryBuildSettlersCandidate_ReturnsFalse_AndPublishesProbeFailedDebug_WhenLabelBackedEntityIsNotClickable()
+        {
+            ClickDebugSnapshot? latestSnapshot = null;
+            Entity entity = EntityProbeFactory.Create(
+                path: MechanicIds.SettlersVerisiumMarker,
+                isValid: true,
+                address: 1234,
+                distancePlayer: 12f,
+                posX: 5f,
+                posY: 6f,
+                posZ: 7f);
+
+            SettlersOreTargetSelector selector = CreateSelector(
+                CreateSettings(clickDistance: 20, debugMode: false),
+                gameController: ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(
+                    new RectangleF(100f, 200f, 1280f, 720f)),
+                labelsProvider: static () => [],
+                shouldCaptureClickDebug: static () => true,
+                setLatestClickDebug: snapshot => latestSnapshot = snapshot,
+                isInsideWindowInEitherSpace: static _ => true,
+                isClickableInEitherSpace: static (_, _) => false);
+
+            TryBuildSettlersCandidateResult result = InvokeTryBuildSettlersCandidate(
+                selector,
+                entity,
+                new HashSet<long> { 1234 },
+                captureClickDebug: true);
+
+            result.Resolved.Should().BeFalse();
+            result.Candidate.Should().BeNull();
+            result.HasGroundLabel.Should().BeTrue();
+            result.MatchedMechanic.Should().BeTrue();
+            result.AttemptedProbe.Should().BeTrue();
+            latestSnapshot.Should().NotBeNull();
+            latestSnapshot!.Stage.Should().Be("ProbeFailed");
+            latestSnapshot.MechanicId.Should().Be(MechanicIds.SettlersVerisium);
+            latestSnapshot.EntityPath.Should().Be(MechanicIds.SettlersVerisiumMarker);
+            latestSnapshot.Resolved.Should().BeFalse();
+            latestSnapshot.Notes.Should().Be("No nearby clickable point resolved");
+        }
+
+        [TestMethod]
+        public void TryBuildSettlersCandidate_ReturnsFalse_WhenSettlersMechanicIsDisabled()
+        {
+            ClickItSettings settings = CreateSettings(clickDistance: 20, debugMode: false);
+            settings.ClickSettlersVerisium = new ToggleNode(false);
+            Entity entity = EntityProbeFactory.Create(
+                path: MechanicIds.SettlersVerisiumMarker,
+                isValid: true,
+                address: 1234,
+                distancePlayer: 12f,
+                posX: 5f,
+                posY: 6f,
+                posZ: 7f);
+
+            SettlersOreTargetSelector selector = CreateSelector(
+                settings,
+                gameController: ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(),
+                labelsProvider: static () => [],
+                isInsideWindowInEitherSpace: static _ => true,
+                isClickableInEitherSpace: static (_, _) => true);
+
+            TryBuildSettlersCandidateResult result = InvokeTryBuildSettlersCandidate(
+                selector,
+                entity,
+                new HashSet<long> { 1234 },
+                captureClickDebug: false);
+
+            result.Resolved.Should().BeFalse();
+            result.Candidate.Should().BeNull();
+            result.HasGroundLabel.Should().BeFalse();
+            result.MatchedMechanic.Should().BeFalse();
+            result.AttemptedProbe.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryBuildSettlersCandidate_ReturnsFalse_WhenEntityPathIsNotSettlersOre()
+        {
+            Entity entity = EntityProbeFactory.Create(
+                path: "Metadata/Monsters/Test/NotSettlers",
+                isValid: true,
+                address: 1234,
+                distancePlayer: 9f,
+                posX: 9f,
+                posY: 8f,
+                posZ: 7f);
+
+            SettlersOreTargetSelector selector = CreateSelector(
+                CreateSettings(clickDistance: 20, debugMode: false),
+                gameController: ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(
+                    new RectangleF(100f, 200f, 1280f, 720f)),
+                labelsProvider: static () => [],
+                isInsideWindowInEitherSpace: static _ => true,
+                isClickableInEitherSpace: static (_, _) => true);
+
+            TryBuildSettlersCandidateResult result = InvokeTryBuildSettlersCandidate(
+                selector,
+                entity,
+                new HashSet<long> { 1234 },
+                captureClickDebug: false);
+
+            result.Resolved.Should().BeFalse();
+            result.Candidate.Should().BeNull();
+            result.HasGroundLabel.Should().BeFalse();
+            result.MatchedMechanic.Should().BeFalse();
+            result.AttemptedProbe.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void TryResolveSettlersMechanic_UsesSeededEntityMembers_FromEntityProbeFactory()
         {
             ClickItSettings settings = CreateSettings(clickDistance: 20, debugMode: false);
@@ -159,19 +297,60 @@ namespace ClickIt.Tests.Features.Click
             Func<IList<LabelOnGround>?> labelsProvider,
             Action<string>? debugLog = null,
             Func<bool>? shouldCaptureClickDebug = null,
-            Action<ClickDebugSnapshot>? setLatestClickDebug = null)
+            Action<ClickDebugSnapshot>? setLatestClickDebug = null,
+            Func<Vector2, bool>? isInsideWindowInEitherSpace = null,
+            Func<Vector2, string, bool>? isClickableInEitherSpace = null)
         {
             return new SettlersOreTargetSelector(new SettlersOreTargetSelectorDependencies(
                 Settings: settings,
                 GameController: gameController,
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(
                     shouldCaptureClickDebug: shouldCaptureClickDebug,
-                    setLatestClickDebug: setLatestClickDebug),
+                    setLatestClickDebug: setLatestClickDebug,
+                    isClickableInEitherSpace: isClickableInEitherSpace,
+                    isInsideWindowInEitherSpace: isInsideWindowInEitherSpace),
                 DebugLog: debugLog ?? (static _ => { }),
-                IsInsideWindowInEitherSpace: static _ => false,
-                IsClickableInEitherSpace: static (_, _) => false,
+                IsInsideWindowInEitherSpace: isInsideWindowInEitherSpace ?? (static _ => false),
+                IsClickableInEitherSpace: isClickableInEitherSpace ?? (static (_, _) => false),
                 GroundLabelEntityAddresses: new GroundLabelEntityAddressProvider(labelsProvider)));
         }
+
+        private static TryBuildSettlersCandidateResult InvokeTryBuildSettlersCandidate(
+            SettlersOreTargetSelector selector,
+            Entity entity,
+            IReadOnlySet<long> labelEntityAddresses,
+            bool captureClickDebug)
+        {
+            object?[] args =
+            [
+                entity,
+                new RectangleF(100f, 200f, 1280f, 720f),
+                labelEntityAddresses,
+                captureClickDebug,
+                null,
+                null,
+                null,
+                null
+            ];
+
+            bool resolved = (bool)typeof(SettlersOreTargetSelector)
+                .GetMethod("TryBuildSettlersCandidate", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(selector, args)!;
+
+            return new TryBuildSettlersCandidateResult(
+                Resolved: resolved,
+                Candidate: resolved && args[4] is SettlersOreCandidate candidate ? candidate : null,
+                HasGroundLabel: args[5] is true,
+                MatchedMechanic: args[6] is true,
+                AttemptedProbe: args[7] is true);
+        }
+
+        private readonly record struct TryBuildSettlersCandidateResult(
+            bool Resolved,
+            SettlersOreCandidate? Candidate,
+            bool HasGroundLabel,
+            bool MatchedMechanic,
+            bool AttemptedProbe);
 
         private static ClickItSettings CreateSettings(int clickDistance, bool debugMode)
         {

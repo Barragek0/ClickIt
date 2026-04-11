@@ -5,7 +5,8 @@ namespace ClickIt.Features.Click.Application
         UltimatumAutomationServiceDependencies Automation,
         Func<Element, Vector2, string, string, string, bool> TryClickElement,
         Func<bool> IsGruelingGauntletPassiveActive,
-        Func<bool> GetGruelingGauntletDetectionForDebug);
+        Func<bool> GetGruelingGauntletDetectionForDebug,
+        IUltimatumPanelRuntimeSeam? PanelRuntimeSeam = null);
 
     internal sealed class UltimatumPanelAutomationService(UltimatumPanelAutomationServiceDependencies dependencies)
     {
@@ -13,6 +14,7 @@ namespace ClickIt.Features.Click.Application
         private const int UltimatumPostBeginDelayMs = 60;
 
         private readonly UltimatumPanelAutomationServiceDependencies _dependencies = dependencies;
+        private readonly IUltimatumPanelRuntimeSeam _panelRuntimeSeam = dependencies.PanelRuntimeSeam ?? UltimatumPanelRuntimeSeam.Instance;
 
         public bool TryHandlePanelUi(Vector2 windowTopLeft)
         {
@@ -26,7 +28,7 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            if (!UltimatumPanelUiQuery.TryGetVisiblePanel(automation.GameController, logFailures: true, message => automation.DebugLog(() => message), out UltimatumPanel? panelObj) || panelObj == null)
+            if (!_panelRuntimeSeam.TryGetVisiblePanel(automation.GameController, logFailures: true, message => automation.DebugLog(() => message), out UltimatumPanel? panelObj) || panelObj == null)
             {
                 automation.PublishUltimatumDebug(new UltimatumDebugEvent("PanelMissing", "PanelUi", false, _dependencies.GetGruelingGauntletDetectionForDebug())
                 {
@@ -77,13 +79,13 @@ namespace ClickIt.Features.Click.Application
             bool canClickTakeRewards = automation.Settings.IsUltimatumTakeRewardButtonClickEnabled();
             UltimatumGruelingPanelDecision decision = UltimatumGruelingPanelDecision.Empty;
 
-            if (UltimatumPanelChoiceCollector.TryCollectCandidates(
-                    panelObj,
-                    automation.Settings.GetUltimatumModifierPriority(),
-                    isGruelingGauntletActive: true,
-                    logFailures: true,
-                    message => automation.DebugLog(() => message),
-                    out List<UltimatumPanelChoiceCandidate> candidates))
+            if (_panelRuntimeSeam.TryCollectPanelChoiceCandidates(
+                panelObj,
+                automation.Settings.GetUltimatumModifierPriority(),
+                isGruelingGauntletActive: true,
+                logFailures: true,
+                message => automation.DebugLog(() => message),
+                out List<UltimatumPanelChoiceCandidate> candidates))
             {
                 candidateCount = candidates.Count;
                 decision = UltimatumGruelingPanelDecisionEngine.Resolve(
@@ -157,7 +159,7 @@ namespace ClickIt.Features.Click.Application
         {
             UltimatumAutomationServiceDependencies automation = _dependencies.Automation;
             bool isGruelingGauntletActive = _dependencies.IsGruelingGauntletPassiveActive();
-            if (!UltimatumPanelChoiceCollector.TryCollectCandidates(panelObj, automation.Settings.GetUltimatumModifierPriority(), isGruelingGauntletActive, logFailures: true, message => automation.DebugLog(() => message), out List<UltimatumPanelChoiceCandidate> candidates))
+            if (!_panelRuntimeSeam.TryCollectPanelChoiceCandidates(panelObj, automation.Settings.GetUltimatumModifierPriority(), isGruelingGauntletActive, logFailures: true, message => automation.DebugLog(() => message), out List<UltimatumPanelChoiceCandidate> candidates))
             {
                 automation.DebugLog(() => "[TryClickUltimatumPanelChoice] No ranked choice found.");
                 return false;
@@ -181,8 +183,7 @@ namespace ClickIt.Features.Click.Application
         private bool TryClickPanelTakeRewards(UltimatumPanel panelObj, Vector2 windowTopLeft)
         {
             UltimatumAutomationServiceDependencies automation = _dependencies.Automation;
-            Element? takeRewardsEl = panelObj.GetChildAtIndex(1)?.GetChildAtIndex(4)?.GetChildAtIndex(0);
-            if (!UltimatumPanelButtonResolver.TryResolveTakeRewardsButton(takeRewardsEl, message => automation.DebugLog(() => message), out Element resolvedTakeRewardsElement))
+            if (!_panelRuntimeSeam.TryResolveTakeRewardsButton(panelObj, message => automation.DebugLog(() => message), out Element resolvedTakeRewardsElement))
                 return false;
 
             return _dependencies.TryClickElement(resolvedTakeRewardsElement, windowTopLeft, "[TryClickUltimatumPanelTakeRewards] Skipping click - cursor outside PoE window.", "[TryClickUltimatumPanelTakeRewards] Rejected by clickable-area check.", "[TryClickUltimatumPanelTakeRewards] Clicking Take Rewards at");
@@ -191,7 +192,7 @@ namespace ClickIt.Features.Click.Application
         private bool TryClickPanelConfirm(UltimatumPanel panelObj, Vector2 windowTopLeft)
         {
             UltimatumAutomationServiceDependencies automation = _dependencies.Automation;
-            if (!UltimatumPanelButtonResolver.TryResolveConfirmButton(panelObj.ConfirmButton, message => automation.DebugLog(() => message), out Element confirmElement))
+            if (!_panelRuntimeSeam.TryResolveConfirmButton(panelObj, message => automation.DebugLog(() => message), out Element confirmElement))
                 return false;
 
             return _dependencies.TryClickElement(confirmElement, windowTopLeft, "[TryClickUltimatumPanelConfirm] Skipping click - cursor outside PoE window.", "[TryClickUltimatumPanelConfirm] Rejected by clickable-area check.", "[TryClickUltimatumPanelConfirm] Clicking ConfirmButton at");

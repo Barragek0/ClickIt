@@ -50,7 +50,7 @@ namespace ClickIt.Features.Click.Selection
 
             return ResolveNearestOffscreenEntityTarget(
                 maxDistance,
-                includeEntity: (entity, _) => entity.IsTargetable,
+                includeEntity: static (entity, _) => DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsTargetable, out bool isTargetable) && isTargetable,
                 resolveMechanicId: (_, path) => OffscreenPathingMath.GetEldritchAltarMechanicIdForPath(
                     _dependencies.Settings.ClickExarchAltars.Value,
                     _dependencies.Settings.ClickEaterAltars.Value,
@@ -103,12 +103,14 @@ namespace ClickIt.Features.Click.Selection
             for (int i = 0; i < labels.Count; i++)
             {
                 LabelOnGround? label = labels[i];
-                Entity? entity = label?.ItemOnGround;
+                Entity? entity = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                    ? rawItem as Entity
+                    : null;
                 if (label == null || entity == null)
                     continue;
-                if (!entity.IsValid || entity.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(entity))
+                if (!TryGetOffscreenCandidateState(entity, out float distance, out _))
                     continue;
-                if (entity.DistancePlayer > maxDistance)
+                if (distance > maxDistance)
                     continue;
                 if (_dependencies.PathfindingLabelSuppression.ShouldSuppressPathfindingLabel(label))
                     continue;
@@ -120,7 +122,7 @@ namespace ClickIt.Features.Click.Selection
                 if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft))
                     continue;
 
-                MechanicRank rank = BuildMechanicRank(entity.DistancePlayer, mechanicId, mechanicPriorityContext);
+                MechanicRank rank = BuildMechanicRank(distance, mechanicId, mechanicPriorityContext);
                 _ = OffscreenTargetRanker.TryPromoteRankedCandidate(
                     ref best,
                     ref bestMechanicId,
@@ -155,7 +157,9 @@ namespace ClickIt.Features.Click.Selection
                 if (string.IsNullOrWhiteSpace(mechanicId))
                     return false;
 
-                float distance = entity.DistancePlayer;
+                if (!DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance))
+                    return false;
+
                 if (distance >= bestDistance)
                     return false;
 
@@ -172,15 +176,19 @@ namespace ClickIt.Features.Click.Selection
         {
             path = string.Empty;
 
-            if (entity == null || !entity.IsValid || entity.IsHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(entity))
+            if (entity == null
+                || !TryGetOffscreenCandidateState(entity, out float distance, out path)
+                || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(entity))
+            {
                 return false;
-            if (entity.DistancePlayer > maxDistance)
+            }
+
+            if (distance > maxDistance)
                 return false;
 
-            path = entity.Path ?? string.Empty;
+            if (!TryProjectEntityScreenPosition(entity, out Vector2 screen))
+                return false;
 
-            NumVector2 screenRaw = _dependencies.GameController.Game.IngameState.Camera.WorldToScreen(entity.PosNum);
-            Vector2 screen = new(screenRaw.X, screenRaw.Y);
             if (_dependencies.IsClickableInEitherSpace(screen, path))
                 return false;
 
@@ -196,7 +204,9 @@ namespace ClickIt.Features.Click.Selection
             if (!LabelGeometry.TryGetLabelRect(label, out RectangleF rect))
                 return true;
 
-            string path = entity.Path ?? string.Empty;
+            string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
             bool labelInWindow = _dependencies.IsInsideWindowInEitherSpace(rect.Center);
             bool labelClickable = _dependencies.IsClickableInEitherSpace(rect.Center, path);
 
@@ -209,5 +219,45 @@ namespace ClickIt.Features.Click.Selection
 
         private static MechanicRank BuildMechanicRank(float distance, string? mechanicId, MechanicPriorityContext mechanicPriorityContext)
             => CandidateRankingEngine.BuildRank(distance, mechanicId, mechanicPriorityContext);
+
+        private static bool TryGetOffscreenCandidateState(Entity entity, out float distance, out string path)
+        {
+            distance = 0;
+            path = string.Empty;
+
+            if (!DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid)
+                || !isValid
+                || !DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsHidden, out bool isHidden)
+                || isHidden
+                || !DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out distance))
+            {
+                return false;
+            }
+
+            path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            return true;
+        }
+
+        private bool TryProjectEntityScreenPosition(Entity entity, out Vector2 screenPosition)
+        {
+            screenPosition = default;
+
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position
+                || !DynamicAccess.TryGetDynamicValue(_dependencies.GameController, DynamicAccessProfiles.Game, out object? rawGame)
+                || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out object? rawIngameState)
+                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out object? rawCamera)
+                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
+            {
+                return false;
+            }
+
+            screenPosition = new(projectedX, projectedY);
+            return true;
+        }
     }
 }

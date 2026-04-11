@@ -52,6 +52,19 @@ namespace ClickIt.Tests.Shared.TestUtils
         internal static GameController CreateGameControllerWithEntities(params Entity[] entities)
         {
             GameController gameController = CreateGameControllerWithWindow(new RectangleF(100f, 200f, 1280f, 720f));
+            SeedEntityListWrapper(gameController, entities);
+            return gameController;
+        }
+
+        internal static GameController CreateGameControllerWithWindowGameAndEntities(RectangleF windowRect, params Entity[] entities)
+        {
+            GameController gameController = CreateGameControllerWithWindowAndGame(windowRect);
+            SeedEntityListWrapper(gameController, entities);
+            return gameController;
+        }
+
+        private static void SeedEntityListWrapper(GameController gameController, params Entity[] entities)
+        {
             object entityListWrapper = RuntimeHelpers.GetUninitializedObject(RuntimeMemberAccessor.ResolveRequiredMemberType(gameController, nameof(GameController.EntityListWrapper)));
             List<Entity> seededEntities = entities?.Where(static entity => entity != null).ToList() ?? [];
 
@@ -64,7 +77,6 @@ namespace ClickIt.Tests.Shared.TestUtils
                 });
             RuntimeMemberAccessor.SetRequiredMember(entityListWrapper, "OnlyValidEntities", seededEntities);
             RuntimeMemberAccessor.SetRequiredMember(gameController, nameof(GameController.EntityListWrapper), entityListWrapper);
-            return gameController;
         }
 
         internal static Entity CreateEntityWithPath(string path)

@@ -194,11 +194,19 @@ namespace ClickIt.Features.Labels.Application
         {
             foreach (LabelOnGround label in labels)
             {
-                Entity? item = label?.ItemOnGround;
-                if (item == null || item.DistancePlayer > clickDistance)
+                Entity? item = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                    ? rawItem as Entity
+                    : null;
+                if (item == null
+                    || !DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance)
+                    || distance > clickDistance)
+                {
                     continue;
+                }
 
-                string path = item.Path ?? string.Empty;
+                string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
+                    ? resolvedPath
+                    : string.Empty;
                 if (path.Length == 0)
                     continue;
 

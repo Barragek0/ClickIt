@@ -153,6 +153,28 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void TryResolveStickyOffscreenTarget_ClearsStickyAddress_WhenUntargetableEldritchAltarIsResolved()
+        {
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
+            Entity target = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(
+                address: 42,
+                path: Constants.TangleAltar,
+                isValid: true,
+                isHidden: false,
+                isTargetable: false);
+            var handler = CreateHandler(runtimeState, ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(target));
+
+            bool resolved = handler.TryResolveStickyOffscreenTarget(out var stickyTarget);
+
+            resolved.Should().BeFalse();
+            stickyTarget.Should().BeNull();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
+        }
+
+        [TestMethod]
         public void TryClickStickyTargetIfPossible_ReturnsFalse_WhenVisibleLabelCannotBeResolved()
         {
             var runtimeState = new ClickRuntimeState
@@ -172,19 +194,124 @@ namespace ClickIt.Tests.Features.Click
             runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
         }
 
+        [TestMethod]
+        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndClearsStickyTarget_WhenMechanicIdIsBlank()
+        {
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
+            Entity stickyTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 42);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(stickyTarget);
+            var handler = CreateHandler(
+                runtimeState,
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(stickyTarget),
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
+                labelInteractionPort: new StubLabelInteractionPort("   "));
+
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+
+            clicked.Should().BeFalse();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndKeepsStickyTarget_WhenLabelClickPositionCannotBeResolved()
+        {
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
+            Entity stickyTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 42);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(stickyTarget);
+            var handler = CreateHandler(
+                runtimeState,
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(stickyTarget),
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    tryResolveClickPosition: static (_, _, _, _) => (false, default)),
+                labelInteractionPort: new StubLabelInteractionPort(MechanicIds.BasicChests));
+
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+
+            clicked.Should().BeFalse();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+        }
+
+        [TestMethod]
+        public void TryClickStickyTargetIfPossible_ReturnsFalse_AndKeepsStickyTarget_WhenResolvedLabelInteractionIsRejected()
+        {
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
+            Entity stickyTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 42);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(stickyTarget);
+            var handler = CreateHandler(
+                runtimeState,
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(stickyTarget),
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(25f, 40f)),
+                    executeInteraction: static _ => false),
+                labelInteractionPort: new StubLabelInteractionPort(MechanicIds.BasicChests));
+
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+
+            clicked.Should().BeFalse();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(42);
+        }
+
+        [TestMethod]
+        public void TryClickStickyTargetIfPossible_ReturnsTrue_AndMarksPendingChestConfirmation_WhenResolvedLabelInteractionSucceeds()
+        {
+            var runtimeState = new ClickRuntimeState
+            {
+                StickyOffscreenTargetAddress = 42
+            };
+            var settings = new ClickItSettings();
+            settings.PauseAfterOpeningBasicChests.Value = true;
+            var chestState = new ChestLootSettlementState();
+            var requests = new List<InteractionExecutionRequest>();
+            Entity stickyTarget = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 42);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(stickyTarget);
+            var handler = CreateHandler(
+                runtimeState,
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithEntities(stickyTarget),
+                settings: settings,
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(25f, 40f)),
+                    executeInteraction: request =>
+                    {
+                        requests.Add(request);
+                        return true;
+                    }),
+                labelInteractionPort: new StubLabelInteractionPort(MechanicIds.BasicChests),
+                chestState: chestState);
+
+            bool clicked = handler.TryClickStickyTargetIfPossible(stickyTarget, new Vector2(100f, 200f), [label]);
+
+            clicked.Should().BeTrue();
+            runtimeState.StickyOffscreenTargetAddress.Should().Be(0);
+            requests.Should().ContainSingle();
+            requests[0].ClickPosition.Should().Be(new Vector2(25f, 40f));
+            chestState.PendingOpenConfirmationActive.Should().BeTrue();
+            chestState.PendingOpenMechanicId.Should().Be(MechanicIds.BasicChests);
+            chestState.PendingOpenItemAddress.Should().Be(42);
+        }
+
 
         private static OffscreenStickyTargetHandler CreateHandler(
             ClickRuntimeState runtimeState,
             GameController gameController,
             ClickItSettings? settings = null,
             ClickLabelInteractionService? labelInteraction = null,
-            ILabelInteractionPort? labelInteractionPort = null)
+            ILabelInteractionPort? labelInteractionPort = null,
+            ChestLootSettlementState? chestState = null)
         {
             settings ??= new ClickItSettings();
             var pathfindingLabelSuppression = new PathfindingLabelSuppressionEvaluator(new PathfindingLabelSuppressionEvaluatorDependencies(
                 settings,
                 runtimeState));
-            var chestLootSettlement = CreateChestLootSettlementTracker(settings, new ChestLootSettlementState());
+            var chestLootSettlement = CreateChestLootSettlementTracker(settings, chestState ?? new ChestLootSettlementState());
 
             return new OffscreenStickyTargetHandler(new OffscreenStickyTargetHandlerDependencies(
                 GameController: gameController,

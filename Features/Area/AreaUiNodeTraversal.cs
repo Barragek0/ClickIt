@@ -53,9 +53,8 @@ namespace ClickIt.Features.Area
 
             if (source is Element element)
             {
-                isValid = element.IsValid;
-                isVisible = element.IsVisible;
-                return true;
+                return DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsValid, out isValid)
+                    && DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsVisible, out isVisible);
             }
 
             if (!TryReadBoolMember(source, "IsValid", out isValid))
@@ -83,8 +82,9 @@ namespace ClickIt.Features.Area
             rect = RectangleF.Empty;
             if (source is Element element)
             {
-                rect = element.GetClientRect();
-                return true;
+                return DynamicAccess.TryGetDynamicValue(element, DynamicAccessProfiles.ClientRect, out object? rawElementRect)
+                    && rawElementRect is RectangleF elementRect
+                    && (rect = elementRect) == elementRect;
             }
 
             if (TryReadMemberValue(source, "ClientRect", out object? rawRect) && rawRect is RectangleF rectangle)
@@ -104,7 +104,7 @@ namespace ClickIt.Features.Area
 
             if (source is Element element)
             {
-                child = element.GetChildAtIndex(index);
+                _ = DynamicAccess.TryGetChildAtIndex(element, index, out child);
                 return child != null;
             }
 

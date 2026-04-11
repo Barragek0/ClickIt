@@ -1,21 +1,25 @@
 namespace ClickIt.Features.Click.Runtime
 {
-    internal sealed class OffscreenTargetResolver(GameController gameController, PathfindingService pathfindingService)
+    internal sealed class OffscreenTargetResolver(GameController gameController, PathfindingService pathfindingService, IOffscreenRuntimeSeam? runtimeSeam = null)
     {
         private readonly GameController _gameController = gameController;
         private readonly PathfindingService _pathfindingService = pathfindingService;
+        private readonly IOffscreenRuntimeSeam _runtimeSeam = runtimeSeam ?? OffscreenRuntimeSeam.Instance;
 
         internal int GetRemainingOffscreenPathNodeCount()
         {
             IReadOnlyList<PathfindingService.GridPoint> path = _pathfindingService.GetLatestGridPath();
-            Entity? player = _gameController.Player;
+            Entity? player = _runtimeSeam.GetPlayer(_gameController);
             if (player == null)
                 return 0;
 
 
+            if (!_runtimeSeam.TryGetGridPosition(player, out Vector2 playerGridPosition))
+                return 0;
+
             int nearest = FindClosestPathIndexToPlayer(
                 path,
-                new PathfindingService.GridPoint((int)player.GridPosNum.X, (int)player.GridPosNum.Y));
+                new PathfindingService.GridPoint((int)playerGridPosition.X, (int)playerGridPosition.Y));
 
             return CountRemainingPathNodes(path, nearest);
         }
@@ -24,7 +28,7 @@ namespace ClickIt.Features.Click.Runtime
         {
             targetScreen = default;
 
-            Entity? player = _gameController.Player;
+            Entity? player = _runtimeSeam.GetPlayer(_gameController);
             if (player == null)
                 return false;
 
@@ -34,7 +38,10 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
 
-            PathfindingService.GridPoint playerGrid = new((int)player.GridPosNum.X, (int)player.GridPosNum.Y);
+            if (!_runtimeSeam.TryGetGridPosition(player, out Vector2 playerGridPosition))
+                return false;
+
+            PathfindingService.GridPoint playerGrid = new((int)playerGridPosition.X, (int)playerGridPosition.Y);
             int nearestIndex = FindClosestPathIndexToPlayer(path, playerGrid);
             if (nearestIndex < 0)
                 return false;
@@ -43,7 +50,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
 
 
-            RectangleF window = _gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF window = _runtimeSeam.GetWindowRectangle(_gameController);
             Vector2 center = GetWindowCenter(window);
             float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
             return TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
@@ -51,7 +58,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal bool TryResolveOffscreenTargetScreenPoint(Entity target, out Vector2 targetScreen)
         {
-            RectangleF window = _gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF window = _runtimeSeam.GetWindowRectangle(_gameController);
             Vector2 center = GetWindowCenter(window);
             float radius = SystemMath.Min(window.Width, window.Height) * 0.30f;
             TryGetGridDelta(target, out float deltaX, out float deltaY);
@@ -61,8 +68,9 @@ namespace ClickIt.Features.Click.Runtime
                 return true;
 
 
-            NumVector2 raw = _gameController.Game.IngameState.Camera.WorldToScreen(target.PosNum);
-            Vector2 projected = new(raw.X, raw.Y);
+            if (!_runtimeSeam.TryProjectWorldToScreen(_gameController, target, out Vector2 projected))
+                projected = default;
+
             if (IsFinite(projected) && !IsNearCorner(projected, window))
             {
                 targetScreen = projected;
@@ -178,7 +186,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private void TryGetGridDelta(Entity target, out float deltaX, out float deltaY)
         {
-            Entity? player = _gameController.Player;
+            Entity? player = _runtimeSeam.GetPlayer(_gameController);
             if (player == null)
             {
                 deltaX = 0f;
@@ -186,8 +194,16 @@ namespace ClickIt.Features.Click.Runtime
                 return;
             }
 
-            deltaX = target.GridPosNum.X - player.GridPosNum.X;
-            deltaY = target.GridPosNum.Y - player.GridPosNum.Y;
+            if (!_runtimeSeam.TryGetGridPosition(player, out Vector2 playerGridPosition)
+                || !_runtimeSeam.TryGetGridPosition(target, out Vector2 targetGridPosition))
+            {
+                deltaX = 0f;
+                deltaY = 0f;
+                return;
+            }
+
+            deltaX = targetGridPosition.X - playerGridPosition.X;
+            deltaY = targetGridPosition.Y - playerGridPosition.Y;
         }
 
         private static bool IsFinite(Vector2 point)

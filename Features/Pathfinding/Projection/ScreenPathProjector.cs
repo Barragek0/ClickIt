@@ -51,15 +51,31 @@ namespace ClickIt.Features.Pathfinding.Projection
             if (entity == null)
                 return false;
 
-            Camera? camera = gameController.IngameState?.Camera ?? gameController.Game?.IngameState?.Camera;
-            if (camera == null)
+            object? rawCamera = null;
+            if (!DynamicAccess.TryGetDynamicValue(gameController, DynamicAccessProfiles.IngameState, out object? rawIngameState)
+                || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out rawCamera))
+            {
+                if (!DynamicAccess.TryGetDynamicValue(gameController, DynamicAccessProfiles.Game, out object? rawGame)
+                    || !DynamicAccess.TryGetDynamicValue(rawGame, DynamicAccessProfiles.IngameState, out rawIngameState)
+                    || !DynamicAccess.TryGetDynamicValue(rawIngameState, DynamicAccessProfiles.Camera, out rawCamera))
+                {
+                    return false;
+                }
+            }
+
+            if (!DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position
+                || !DynamicAccess.TryProjectWorldToScreen(rawCamera, position, out object? rawProjected)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.X, out float projectedX)
+                || !DynamicAccess.TryReadFloat(rawProjected, DynamicAccessProfiles.Y, out float projectedY))
+            {
+                return false;
+            }
+
+            if (!IsFinitePoint(projectedX, projectedY))
                 return false;
 
-            NumVector2 raw = camera.WorldToScreen(entity.PosNum);
-            if (!IsFinitePoint(raw.X, raw.Y))
-                return false;
-
-            screen = new Vector2(raw.X, raw.Y);
+            screen = new Vector2(projectedX, projectedY);
             return true;
         }
     }

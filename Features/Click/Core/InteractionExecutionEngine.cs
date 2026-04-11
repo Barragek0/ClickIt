@@ -264,7 +264,7 @@ namespace ClickIt.Features.Click.Core
 
         private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)
         {
-            return DynamicAccess.TryGetDynamicValue(label, static l => l.ItemOnGround, out object? rawItem)
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
                 && rawItem is Entity item
                 ? item
                 : null;

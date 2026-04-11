@@ -22,10 +22,10 @@ namespace ClickIt.Features.Shrines
             if (item == null)
                 return false;
 
-            if (DynamicAccess.TryReadBool(item, static i => i.HasComponent<Shrine>(), out bool hasShrineComponent) && hasShrineComponent)
+            if (DynamicAccess.TryHasComponent<Shrine>(item, out bool hasShrineComponent) && hasShrineComponent)
                 return true;
 
-            string path = DynamicAccess.TryReadString(item, static i => i.Path, out string resolvedPath)
+            string path = DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
             return path.Contains("DarkShrine", StringComparison.OrdinalIgnoreCase);
@@ -36,10 +36,10 @@ namespace ClickIt.Features.Shrines
             if (item == null)
                 return false;
 
-            if (!DynamicAccess.TryReadBool(item, static i => i.IsOpened, out bool isOpened)
-                || !DynamicAccess.TryReadBool(item, static i => i.IsTargetable, out bool isTargetable)
-                || !DynamicAccess.TryReadBool(item, static i => i.IsHidden, out bool isHidden)
-                || !DynamicAccess.TryReadBool(item, static i => i.IsValid, out bool isValid))
+            if (!DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsOpened, out bool isOpened)
+                || !DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsTargetable, out bool isTargetable)
+                || !DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsHidden, out bool isHidden)
+                || !DynamicAccess.TryReadBool(item, DynamicAccessProfiles.IsValid, out bool isValid))
             {
                 return false;
             }
@@ -118,8 +118,9 @@ namespace ClickIt.Features.Shrines
                 if (shrine == null)
                     continue;
 
-                NumVector2 screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
-                Vector2 clickPos = new(screenPosRaw.X, screenPosRaw.Y);
+                if (!TryProjectShrineScreenPosition(shrine, out Vector2 clickPos))
+                    continue;
+
                 if (isInClickableArea(clickPos))
                     return true;
             }
@@ -143,7 +144,8 @@ namespace ClickIt.Features.Shrines
                 if (shrine == null)
                     continue;
 
-                float distance = shrine.DistancePlayer;
+                if (!DynamicAccess.TryReadFloat(shrine, DynamicAccessProfiles.DistancePlayer, out float distance))
+                    continue;
 
                 // Early distance check to avoid expensive calculations
                 if (distance > clickDistance)
@@ -151,8 +153,9 @@ namespace ClickIt.Features.Shrines
 
                 if (isInClickableArea != null)
                 {
-                    NumVector2 screenPosRaw = _camera.WorldToScreen(shrine.PosNum);
-                    Vector2 screenPos = new(screenPosRaw.X, screenPosRaw.Y);
+                    if (!TryProjectShrineScreenPosition(shrine, out Vector2 screenPos))
+                        continue;
+
                     if (!isInClickableArea(screenPos))
                         continue;
                 }
@@ -223,6 +226,21 @@ namespace ClickIt.Features.Shrines
         internal long GetLastShrineCacheTime()
         {
             return _lastShrineCacheTime;
+        }
+
+        private bool TryProjectShrineScreenPosition(Entity shrine, out Vector2 screenPos)
+        {
+            screenPos = default;
+
+            if (!DynamicAccess.TryGetDynamicValue(shrine, DynamicAccessProfiles.PosNum, out object? rawPosition)
+                || rawPosition is not System.Numerics.Vector3 position)
+            {
+                return false;
+            }
+
+            NumVector2 screenPosRaw = _camera.WorldToScreen(position);
+            screenPos = new(screenPosRaw.X, screenPosRaw.Y);
+            return true;
         }
     }
 }

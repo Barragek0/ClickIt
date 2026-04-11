@@ -15,10 +15,11 @@ namespace ClickIt.Features.Click.Runtime
             for (int i = 0; i < options.Count; i++)
             {
                 Element optionElement = options[i].OptionElement;
-                if (optionElement == null || !optionElement.IsValid)
+                bool isValid = optionElement != null && IsElementValid(optionElement);
+                if (optionElement == null || !isValid)
                 {
                     if (logFailures)
-                        debugLog($"[TryClickPreferredUltimatumModifier] Option[{i}] ignored - valid={optionElement?.IsValid ?? false}");
+                        debugLog($"[TryClickPreferredUltimatumModifier] Option[{i}] ignored - valid={isValid}");
 
 
                     continue;
@@ -32,11 +33,11 @@ namespace ClickIt.Features.Click.Runtime
                 if (includeSaturation)
                 {
                     bool hasSaturationState = UltimatumGruelingGauntletPolicy.TryReadChoiceSaturation(optionElement, out bool saturatedState);
-                    isSaturated = UltimatumGruelingGauntletPolicy.ShouldTreatChoiceAsSaturated(hasSaturationState, saturatedState, optionElement.IsVisible);
+                    isSaturated = UltimatumGruelingGauntletPolicy.ShouldTreatChoiceAsSaturated(hasSaturationState, saturatedState, IsElementVisible(optionElement));
                 }
 
                 if (logFailures)
-                    debugLog($"[TryClickPreferredUltimatumModifier] Option[{i}] modifier='{modifierName}', priority={priorityIndex}, saturated={isSaturated}, visible={optionElement.IsVisible}, valid={optionElement.IsValid}");
+                    debugLog($"[TryClickPreferredUltimatumModifier] Option[{i}] modifier='{modifierName}', priority={priorityIndex}, saturated={isSaturated}, visible={IsElementVisible(optionElement)}, valid={isValid}");
 
 
                 candidates.Add(new UltimatumGroundOptionCandidate(optionElement, modifierName, priorityIndex, isSaturated));
@@ -44,5 +45,15 @@ namespace ClickIt.Features.Click.Runtime
 
             return candidates.Count > 0;
         }
+
+        private static bool IsElementValid(Element element)
+            => DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsValid, out bool isValid)
+                ? isValid
+                : element.IsValid;
+
+        private static bool IsElementVisible(Element element)
+            => DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                ? isVisible
+                : element.IsVisible;
     }
 }

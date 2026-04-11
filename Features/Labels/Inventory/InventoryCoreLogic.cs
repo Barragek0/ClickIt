@@ -65,8 +65,8 @@ namespace ClickIt.Features.Labels.Inventory
                 return true;
             }
 
-            if (!DynamicAccess.TryReadInt(baseComponent, static s => s.ItemCellsSizeX, out width)
-                || !DynamicAccess.TryReadInt(baseComponent, static s => s.ItemCellsSizeY, out height))
+            if (!DynamicAccess.TryReadInt(baseComponent, DynamicAccessProfiles.ItemCellsSizeX, out width)
+                || !DynamicAccess.TryReadInt(baseComponent, DynamicAccessProfiles.ItemCellsSizeY, out height))
                 return false;
 
 
@@ -97,11 +97,11 @@ namespace ClickIt.Features.Labels.Inventory
             width = 0;
             height = 0;
 
-            if (!DynamicAccess.TryGetDynamicValue(baseComponent, static s => s.Info, out object? info) || info == null)
+            if (!DynamicAccess.TryGetDynamicValue(baseComponent, DynamicAccessProfiles.Info, out object? info) || info == null)
                 return false;
 
-            if (!DynamicAccess.TryReadInt(info, static s => s.ItemCellsSizeX, out width)
-                || !DynamicAccess.TryReadInt(info, static s => s.ItemCellsSizeY, out height))
+            if (!DynamicAccess.TryReadInt(info, DynamicAccessProfiles.ItemCellsSizeX, out width)
+                || !DynamicAccess.TryReadInt(info, DynamicAccessProfiles.ItemCellsSizeY, out height))
                 return false;
 
 

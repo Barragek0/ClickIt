@@ -81,8 +81,9 @@ namespace ClickIt.UI.Overlays.Common
             if (!TryGetVisibleLabelRect(label, windowArea, out RectangleF rect, out string? itemPathRaw))
                 return false;
 
-            string renderName = label?.ItemOnGround?.RenderName ?? string.Empty;
-            bool isUniqueStrongbox = IsUniqueStrongbox(label);
+            StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
+            string renderName = metadata.RenderName;
+            bool isUniqueStrongbox = metadata.IsUnique;
             if (!IsStrongboxClickableBySettings(itemPathRaw!, renderName, renderState.ClickMetadata, renderState.DontClickMetadata, isUniqueStrongbox))
                 return false;
 
@@ -92,7 +93,7 @@ namespace ClickIt.UI.Overlays.Common
 
         private static Color ResolveStrongboxFrameColor(LabelOnGround? label)
         {
-            Chest? chestComp = label?.ItemOnGround?.GetComponent<Chest>();
+            Chest? chestComp = ResolveStrongboxLabelMetadata(label).Chest;
             bool chestLocked = chestComp?.IsLocked == true;
             return chestLocked ? Color.Red : Color.LawnGreen;
         }
@@ -100,12 +101,14 @@ namespace ClickIt.UI.Overlays.Common
         private static bool TryGetVisibleLabelRect(LabelOnGround? label, RectangleF windowArea, out RectangleF rect, out string? itemPathRaw)
         {
             rect = new RectangleF();
-            itemPathRaw = label?.ItemOnGround?.Path;
+            StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
+            itemPathRaw = metadata.Path;
             if (string.IsNullOrEmpty(itemPathRaw)) return false;
             if (itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0) return false;
 
-            Element? elem = label?.Label;
-            if (elem == null || !elem.IsValid) return false;
+            Element? elem = metadata.Label;
+            if (elem == null) return false;
+            if (!DynamicAccess.TryReadBool(elem, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid) return false;
 
             // Tests can surface a non-RectangleF return here through assembly-shim boundaries.
             object? maybeRectObj = elem.GetClientRect();
@@ -143,7 +146,7 @@ namespace ClickIt.UI.Overlays.Common
 
         private static bool IsUniqueStrongbox(LabelOnGround? label)
         {
-            return label?.ItemOnGround?.Rarity == MonsterRarity.Unique;
+            return ResolveStrongboxLabelMetadata(label).IsUnique;
         }
 
         internal static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata, bool isUniqueStrongbox)
@@ -193,6 +196,34 @@ namespace ClickIt.UI.Overlays.Common
             HashSet<string> currentDontClickIds = _settings.StrongboxDontClickIds ?? [];
             _clickIdsSnapshot = new HashSet<string>(currentClickIds, StringComparer.OrdinalIgnoreCase);
             _dontClickIdsSnapshot = new HashSet<string>(currentDontClickIds, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private readonly record struct StrongboxLabelMetadata(Element? Label, Chest? Chest, string Path, string RenderName, bool IsUnique);
+
+        private static StrongboxLabelMetadata ResolveStrongboxLabelMetadata(LabelOnGround? label)
+        {
+            Element? labelElement = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                ? rawLabel as Element
+                : null;
+
+            object? rawItem = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? itemValue)
+                ? itemValue
+                : null;
+
+            string path = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            string renderName = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
+                ? resolvedRenderName
+                : string.Empty;
+            bool isUnique = DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Rarity, out object? rawRarity)
+                && rawRarity is MonsterRarity rarity
+                && rarity == MonsterRarity.Unique;
+            Chest? chest = DynamicAccess.TryGetComponent<Chest>(rawItem, out Chest? resolvedChest)
+                ? resolvedChest
+                : null;
+
+            return new StrongboxLabelMetadata(labelElement, chest, path, renderName, isUnique);
         }
 
     }

@@ -13,11 +13,13 @@ namespace ClickIt.Features.Click.Runtime
         Action<string> DebugLog,
         Action<string> HoldDebugTelemetryAfterSuccess,
         ClickDebugPublicationService ClickDebugPublisher,
-        Func<Vector2, string, bool> PointIsInClickableArea);
+        Func<Vector2, string, bool> PointIsInClickableArea,
+        IOffscreenRuntimeSeam? RuntimeSeam = null);
 
     internal sealed class OffscreenPathingCoordinator(OffscreenPathingCoordinatorDependencies dependencies)
     {
         private readonly OffscreenPathingCoordinatorDependencies _dependencies = dependencies;
+        private readonly IOffscreenRuntimeSeam _runtimeSeam = dependencies.RuntimeSeam ?? OffscreenRuntimeSeam.Instance;
         private readonly OffscreenTraversalConfirmationGate _traversalConfirmationGate = new();
 
         private readonly record struct OffscreenTraversalTargetContext(
@@ -146,12 +148,14 @@ namespace ClickIt.Features.Click.Runtime
             string stage,
             string movementSkillDebug = "")
         {
-            Entity? player = _dependencies.GameController.Player;
-            Vector2 playerGrid = player != null
-                ? new Vector2(player.GridPosNum.X, player.GridPosNum.Y)
+            Entity? player = _runtimeSeam.GetPlayer(_dependencies.GameController);
+            Vector2 playerGrid = player != null && _runtimeSeam.TryGetGridPosition(player, out Vector2 resolvedPlayerGrid)
+                ? resolvedPlayerGrid
                 : default;
-            Vector2 targetGrid = new(target.GridPosNum.X, target.GridPosNum.Y);
-            RectangleF win = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            Vector2 targetGrid = _runtimeSeam.TryGetGridPosition(target, out Vector2 resolvedTargetGrid)
+                ? resolvedTargetGrid
+                : default;
+            RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
             Vector2 center = new(win.X + (win.Width * 0.5f), win.Y + (win.Height * 0.5f));
 
             _dependencies.PathfindingService.SetLatestOffscreenMovementDebug(new OffscreenMovementDebugSnapshot(
@@ -172,7 +176,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool TryResolveDirectionalWalkClickPosition(Vector2 targetScreen, string targetPath, out Vector2 clickPos)
         {
-            RectangleF win = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
+            RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
             return OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
                 win,
                 targetScreen,
@@ -206,7 +210,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryResolveTraversalTarget(preferredTarget, out Entity? target) || target == null)
                 return false;
 
-            string targetPath = DynamicAccess.TryReadString(target, static t => t.Path, out string resolvedTargetPath)
+            string targetPath = DynamicAccess.TryReadString(target, DynamicAccessProfiles.Path, out string resolvedTargetPath)
                 ? resolvedTargetPath
                 : string.Empty;
             if (preferredTarget == null && _traversalConfirmationGate.ShouldDelay(target, targetPath, out long remainingDelayMs))
@@ -288,9 +292,9 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            bool isValid = DynamicAccess.TryReadBool(target, static t => t.IsValid, out bool resolvedIsValid)
+            bool isValid = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsValid, out bool resolvedIsValid)
                 && resolvedIsValid;
-            bool isHidden = DynamicAccess.TryReadBool(target, static t => t.IsHidden, out bool resolvedIsHidden)
+            bool isHidden = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsHidden, out bool resolvedIsHidden)
                 && resolvedIsHidden;
             if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
             {

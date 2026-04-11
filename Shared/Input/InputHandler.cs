@@ -259,13 +259,13 @@ namespace ClickIt.Shared.Input
 
         private static bool IsPOEActive(GameController? gameController)
         {
-            return DynamicAccess.TryReadBool(gameController?.Window, static window => window.IsForeground(), out bool isForeground)
+            return DynamicAccess.TryReadBool(gameController?.Window, DynamicAccessProfiles.WindowIsForeground, out bool isForeground)
                 && isForeground;
         }
 
         private static bool IsEscapeState(GameController? gameController)
         {
-            return DynamicAccess.TryReadBool(gameController?.Game, static game => game.IsEscapeState, out bool isEscapeState)
+            return DynamicAccess.TryReadBool(gameController?.Game, DynamicAccessProfiles.IsEscapeState, out bool isEscapeState)
                 && isEscapeState;
         }
 

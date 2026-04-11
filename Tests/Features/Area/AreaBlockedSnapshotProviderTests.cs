@@ -210,12 +210,149 @@ namespace ClickIt.Tests.Features.Area
                 .Should().Be((RectangleF.Empty, RectangleF.Empty, RectangleF.Empty));
         }
 
+        [TestMethod]
+        public void UpdateScreenAreas_SkipsRefresh_WhenAreaIsUnchanged_AndIntervalsHaveNotElapsed()
+        {
+            var provider = new AreaBlockedSnapshotProvider();
+            long now = Environment.TickCount64;
+            RectangleF existingChatRect = new(40, 220, 100, 40);
+            RectangleF existingBuffRect = new(1, 2, 3, 4);
+            RectangleF existingQuestRect = new(5, 6, 7, 8);
+            provider.ApplySnapshot(new AreaBlockedSnapshot
+            {
+                LastBlockedUiRectanglesRefreshTimestampMs = now,
+                LastBuffsAndDebuffsRectanglesRefreshTimestampMs = now,
+                ChatPanelBlockedRectangle = existingChatRect,
+                BuffsAndDebuffsRectangle = existingBuffRect,
+                BuffsAndDebuffsRectangles = [existingBuffRect],
+                QuestTrackerBlockedRectangles = [existingQuestRect]
+            });
+            GetBlockedState(provider).LastKnownAreaHash = 789;
+            GameController gameController = CreateAreaGameController(new RectangleF(100, 200, 1200, 800), currentAreaHash: 789);
+
+            provider.UpdateScreenAreas(gameController, blockedUiRefreshIntervalMs: 10_000, forceBlockedUiRefresh: false);
+
+            AreaBlockedSnapshot snapshot = provider.CurrentSnapshot;
+            snapshot.LastBlockedUiRectanglesRefreshTimestampMs.Should().Be(now);
+            snapshot.LastBuffsAndDebuffsRectanglesRefreshTimestampMs.Should().Be(now);
+            snapshot.ChatPanelBlockedRectangle.Should().Be(existingChatRect);
+            snapshot.BuffsAndDebuffsRectangles.Should().Equal([existingBuffRect]);
+            snapshot.QuestTrackerBlockedRectangles.Should().Equal([existingQuestRect]);
+        }
+
+        [TestMethod]
+        public void HasAreaChanged_ReturnsFalse_WhenCurrentAreaHashMatchesStoredHash()
+        {
+            var provider = new AreaBlockedSnapshotProvider();
+            GetBlockedState(provider).LastKnownAreaHash = 123;
+            GameController gameController = CreateAreaGameController(RectangleF.Empty, currentAreaHash: 123);
+
+            bool changed = InvokeHasAreaChanged(provider, gameController);
+
+            changed.Should().BeFalse();
+            GetBlockedState(provider).LastKnownAreaHash.Should().Be(123);
+        }
+
+        [DataTestMethod]
+        [DataRow(false, false, false)]
+        [DataRow(true, false, true)]
+        [DataRow(false, true, true)]
+        public void IsInTownOrHideout_ReturnsExpected_ForAreaFlags(bool isTown, bool isHideout, bool expected)
+        {
+            GameController gameController = CreateAreaGameController(RectangleF.Empty, currentAreaHash: 123, isTown: isTown, isHideout: isHideout);
+
+            InvokeIsInTownOrHideout(gameController).Should().Be(expected);
+        }
+
+        [TestMethod]
+        public void IsInTownOrHideout_ReturnsFalse_WhenControllerIsNull()
+        {
+            InvokeIsInTownOrHideout(null).Should().BeFalse();
+        }
+
         private static void AssertRectangle(RectangleF actual, float x, float y, float width, float height)
         {
             actual.X.Should().BeApproximately(x, 0.0001f);
             actual.Y.Should().BeApproximately(y, 0.0001f);
             actual.Width.Should().BeApproximately(width, 0.0001f);
             actual.Height.Should().BeApproximately(height, 0.0001f);
+        }
+
+        private static AreaBlockedState GetBlockedState(AreaBlockedSnapshotProvider provider)
+        {
+            FieldInfo field = typeof(AreaBlockedSnapshotProvider).GetField("_blockedState", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Unable to locate _blockedState.");
+
+            return (AreaBlockedState)field.GetValue(provider)!;
+        }
+
+        private static bool InvokeHasAreaChanged(AreaBlockedSnapshotProvider provider, GameController gameController)
+        {
+            MethodInfo method = typeof(AreaBlockedSnapshotProvider).GetMethod("HasAreaChanged", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Unable to locate HasAreaChanged.");
+
+            return (bool)method.Invoke(provider, [gameController])!;
+        }
+
+        private static bool InvokeIsInTownOrHideout(GameController? gameController)
+        {
+            MethodInfo method = typeof(AreaBlockedSnapshotProvider).GetMethod("IsInTownOrHideout", BindingFlags.Static | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Unable to locate IsInTownOrHideout.");
+
+            return (bool)method.Invoke(null, [gameController])!;
+        }
+
+        private static GameController CreateAreaGameController(
+            RectangleF windowRect,
+            long currentAreaHash,
+            bool isTown = false,
+            bool isHideout = false,
+            object? questTrackerRoot = null,
+            object? chatPanelRoot = null,
+            object? mapRoot = null,
+            object? gameUiRoot = null)
+        {
+            GameController gameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(windowRect);
+            FakeGameShim game = (FakeGameShim)RuntimeHelpers.GetUninitializedObject(typeof(FakeGameShim));
+            game.CurrentAreaHash = currentAreaHash;
+            game.IngameState = new FakeIngameStateShim
+            {
+                IngameUi = new AreaUiSnapshotReaderTests.FakeIngameUi
+                {
+                    QuestTracker = questTrackerRoot,
+                    ChatPanel = chatPanelRoot,
+                    Map = mapRoot,
+                    GameUI = gameUiRoot
+                }
+            };
+            RuntimeMemberAccessor.SetRequiredMember(gameController, nameof(GameController.Game), game);
+
+            Type areaType = RuntimeMemberAccessor.ResolveRequiredMemberType(gameController, nameof(GameController.Area));
+            object area = RuntimeHelpers.GetUninitializedObject(areaType);
+            Type currentAreaType = RuntimeMemberAccessor.ResolveRequiredMemberType(area, "CurrentArea");
+            object currentArea = RuntimeHelpers.GetUninitializedObject(currentAreaType);
+            RuntimeMemberAccessor.SetRequiredMember(currentArea, "IsTown", isTown);
+            RuntimeMemberAccessor.SetRequiredMember(currentArea, "IsHideout", isHideout);
+            RuntimeMemberAccessor.SetRequiredMember(area, "CurrentArea", currentArea);
+            RuntimeMemberAccessor.SetRequiredMember(gameController, nameof(GameController.Area), area);
+            return gameController;
+        }
+
+        private sealed class FakeGameShim : TheGame
+        {
+            public FakeGameShim()
+                : base(null!, null!, null!, null!)
+            {
+            }
+
+            public new object? CurrentAreaHash { get; set; }
+
+            public new object? IngameState { get; set; }
+        }
+
+        private sealed class FakeIngameStateShim
+        {
+            public object? IngameUi { get; set; }
         }
     }
 }

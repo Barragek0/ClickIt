@@ -11,7 +11,9 @@ namespace ClickIt.Features.Labels.Selection
             out string? mechanicId,
             out LabelCandidateRejectReason rejectReason)
         {
-            item = label.ItemOnGround;
+            item = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                ? rawItem as Entity
+                : null;
             mechanicId = null;
             rejectReason = LabelCandidateRejectReason.None;
 
@@ -21,7 +23,8 @@ namespace ClickIt.Features.Labels.Selection
                 return false;
             }
 
-            if (item.DistancePlayer > clickSettings.ClickDistance)
+            if (!DynamicAccess.TryReadFloat(item, DynamicAccessProfiles.DistancePlayer, out float distance)
+                || distance > clickSettings.ClickDistance)
             {
                 rejectReason = LabelCandidateRejectReason.OutOfDistance;
                 return false;

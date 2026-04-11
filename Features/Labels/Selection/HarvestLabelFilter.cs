@@ -16,7 +16,7 @@ namespace ClickIt.Features.Labels.Selection
                 if (!isInClickableArea(center))
                     continue;
 
-                string path = label.ItemOnGround?.Path ?? string.Empty;
+                string path = TryGetLabelItemPath(label);
                 if (path.Contains("Harvest/Irrigator", StringComparison.OrdinalIgnoreCase)
                     || path.Contains("Harvest/Extractor", StringComparison.OrdinalIgnoreCase))
                     result.Add(label);
@@ -24,7 +24,7 @@ namespace ClickIt.Features.Labels.Selection
             }
 
             if (result.Count > 1)
-                result.Sort(static (a, b) => a.ItemOnGround.DistancePlayer.CompareTo(b.ItemOnGround.DistancePlayer));
+                result.Sort(static (a, b) => TryGetLabelDistance(a).CompareTo(TryGetLabelDistance(b)));
 
             return result;
         }
@@ -32,13 +32,31 @@ namespace ClickIt.Features.Labels.Selection
         private static bool TryGetClickableLabelRectCenter(LabelOnGround? label, out Vector2 center)
         {
             center = default;
-            Element? element = label?.Label;
-            if (element == null || !element.IsValid)
+            Element? element = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                ? rawLabel as Element
+                : null;
+            if (element == null || !DynamicAccess.TryReadBool(element, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid)
                 return false;
 
             RectangleF rect = element.GetClientRect();
             center = rect.Center;
             return rect.Width > 0f && rect.Height > 0f;
+        }
+
+        private static string TryGetLabelItemPath(LabelOnGround? label)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                && DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string path)
+                ? path
+                : string.Empty;
+        }
+
+        private static float TryGetLabelDistance(LabelOnGround? label)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                && DynamicAccess.TryReadFloat(rawItem, DynamicAccessProfiles.DistancePlayer, out float distance)
+                ? distance
+                : float.MaxValue;
         }
     }
 }

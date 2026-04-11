@@ -47,8 +47,8 @@ namespace ClickIt.Features.Click.Selection
                     if (collectDiagnostics)
                         scanned++;
 
-                    bool isValid = DynamicAccess.TryReadBool(entity, static e => e.IsValid, out bool resolvedIsValid) && resolvedIsValid;
-                    float distance = DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float resolvedDistance)
+                    bool isValid = DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool resolvedIsValid) && resolvedIsValid;
+                    float distance = DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
                         ? resolvedDistance
                         : float.MaxValue;
 
@@ -165,7 +165,7 @@ namespace ClickIt.Features.Click.Selection
             matchedMechanic = true;
 
             hasGroundLabel = labelEntityAddresses != null
-                && DynamicAccess.TryGetDynamicValue(entity, static e => e.Address, out object? rawAddress)
+                && DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress)
                 && rawAddress is long entityAddress
                 && OffscreenPathingMath.IsBackedByGroundLabel(entityAddress, labelEntityAddresses);
 
@@ -200,12 +200,12 @@ namespace ClickIt.Features.Click.Selection
         private bool TryResolveSettlersMechanic(Entity entity, out string mechanicId, out string path)
         {
             mechanicId = string.Empty;
-            path = DynamicAccess.TryReadString(entity, static e => e.Path, out string resolvedPath)
+            path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
                 ? resolvedPath
                 : string.Empty;
 
-            bool isValid = DynamicAccess.TryReadBool(entity, static e => e.IsValid, out bool resolvedIsValid) && resolvedIsValid;
-            float distance = DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float resolvedDistance)
+            bool isValid = DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool resolvedIsValid) && resolvedIsValid;
+            float distance = DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float resolvedDistance)
                 ? resolvedDistance
                 : float.MaxValue;
 
@@ -229,7 +229,7 @@ namespace ClickIt.Features.Click.Selection
                 stage: "ProbeFailed",
                 mechanicId: mechanicId,
                 entityPath: path,
-                distance: DynamicAccess.TryReadFloat(entity, static e => e.DistancePlayer, out float distance)
+                distance: DynamicAccess.TryReadFloat(entity, DynamicAccessProfiles.DistancePlayer, out float distance)
                     ? distance
                     : float.MaxValue,
                 worldScreenRaw: worldScreenRaw,
