@@ -121,6 +121,26 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="ValidateDotNet10Sdk" BeforeTargets="GenerateClickItGlobalUsings">
+    <Exec Command="dotnet --version"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          IgnoreExitCode="true"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="Low"
+          StandardErrorImportance="High">
+      <Output TaskParameter="ExitCode" PropertyName="DotNetSdkProbeExitCode" />
+      <Output TaskParameter="ConsoleOutput" ItemName="DotNetSdkProbeOutput" />
+    </Exec>
+    <PropertyGroup>
+      <DotNetSdkProbeText>@(DotNetSdkProbeOutput, ' ')</DotNetSdkProbeText>
+      <DotNetSdkProbeMajor>$([System.Text.RegularExpressions.Regex]::Match('$(DotNetSdkProbeText)', '^\s*(\d+)').Groups[1].Value)</DotNetSdkProbeMajor>
+    </PropertyGroup>
+    <Error Condition="'$(DotNetSdkProbeExitCode)' != '0'"
+           Text="You need to install .NET 10 SDK for ExileAPI to function correctly. Download: https://dotnet.microsoft.com/download/dotnet/10.0 . The SDK check failed with exit code $(DotNetSdkProbeExitCode). Output: $(DotNetSdkProbeText)" />
+    <Error Condition="'$(DotNetSdkProbeMajor)' != '10'"
+           Text="You need to install .NET 10 SDK for ExileAPI to function correctly. Download: https://dotnet.microsoft.com/download/dotnet/10.0 . Detected SDK version: $(DotNetSdkProbeText)" />
+  </Target>
+
   <ItemGroup>
     <CompilerVisibleProperty Include="RootNamespace" />
     <CompilerVisibleProperty Include="ProjectDir" />
