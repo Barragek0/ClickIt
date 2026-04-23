@@ -145,9 +145,8 @@ If you are working on tests, `Tests/README.md` has the repo's testing convention
 - Make sure the plugin actually loaded in ExileAPI.
 - Confirm you are holding the correct hotkey.
 - Check whether the target labels are visible and clickable in game.
+- Disable `Left-handed` in the settings. This should only be used if you're left-handed and using a left-handed mouse which inverts left-click and right-click functionality.
 - Turn on debug settings and confirm the overlay boxes line up with the UI elements.
-
-If the debug boxes do not line up, try borderless windowed mode or move the game window to the top-left of the monitor. That positioning problem comes from ExileAPI, not ClickIt.
 
 ### Chest clicks feel off
 
