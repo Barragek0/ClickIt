@@ -9,19 +9,8 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <GlobalUsingsGeneratorProject>$(MSBuildProjectDirectory)\..\..\.scripts\GlobalUsingsGenerator\GlobalUsingsGenerator.csproj</GlobalUsingsGeneratorProject>
-    <ClickItGeneratedGlobalUsingsFile>$(TEMP)\ClickIt.Generated\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\GlobalUsings.Generated.g.cs</ClickItGeneratedGlobalUsingsFile>
-  </PropertyGroup>
-
   <ItemGroup>
+    <Compile Include="GlobalUsings.cs" />
     <Compile Include="ClickItStub.cs" />
   </ItemGroup>
-
-  <Target Name="GenerateClickItGlobalUsings" BeforeTargets="CoreCompile">
-    <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)&quot; --output &quot;$(ClickItGeneratedGlobalUsingsFile)&quot; --mode stub" WorkingDirectory="$(MSBuildProjectDirectory)" />
-    <ItemGroup>
-      <Compile Include="$(ClickItGeneratedGlobalUsingsFile)" KeepDuplicates="false" AutoGen="true" DesignTime="true" Visible="false" />
-    </ItemGroup>
-  </Target>
 </Project>

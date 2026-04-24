@@ -133,10 +133,6 @@ build.log
 # Local helper scripts
 !.scripts/
 .scripts/*
-!.scripts/GlobalUsingsGenerator/
-!.scripts/GlobalUsingsGenerator/**
-.scripts/GlobalUsingsGenerator/bin/
-.scripts/GlobalUsingsGenerator/obj/
 !.scripts/run-tests.bat
 
 # Local assistant / continuation state

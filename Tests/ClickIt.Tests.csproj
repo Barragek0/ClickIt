@@ -82,9 +82,6 @@
     <ThirdPartyDecompileEnabled Condition="'$(ThirdPartyDecompileEnabled)' == '' and Exists('$(ThirdPartyDecompileScript)') and Exists('$(ThirdPartyDecompilerProject)')">true</ThirdPartyDecompileEnabled>
     <ThirdPartyDecompileEnabled Condition="'$(ThirdPartyDecompileEnabled)' == ''">false</ThirdPartyDecompileEnabled>
     <SkipThirdPartyDecompile Condition="'$(SkipThirdPartyDecompile)' == ''">false</SkipThirdPartyDecompile>
-    <GlobalUsingsGeneratorProject>$(MSBuildProjectDirectory)\..\.scripts\GlobalUsingsGenerator\GlobalUsingsGenerator.csproj</GlobalUsingsGeneratorProject>
-    <ClickItGeneratedGlobalUsingsFile>$(TEMP)\ClickIt.Generated\$(MSBuildProjectName)\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\GlobalUsings.Generated.g.cs</ClickItGeneratedGlobalUsingsFile>
-    <GlobalUsingGeneratorAssemblies>$(MSBuildProjectDirectory)\..\ThirdParty\ExileCore.dll;$(MSBuildProjectDirectory)\..\ThirdParty\GameOffsets.dll;$(MSBuildProjectDirectory)\..\ThirdParty\ProcessMemoryUtilities.dll</GlobalUsingGeneratorAssemblies>
   </PropertyGroup>
 
   <Target Name="RefreshThirdPartyDecompiledSources" BeforeTargets="CoreCompile" Condition="'$(ThirdPartyDecompileEnabled)' == 'true' and '$(DesignTimeBuild)' != 'true' and '$(SkipThirdPartyDecompile)' != 'true'">
@@ -93,13 +90,6 @@
           ConsoleToMSBuild="true"
           StandardOutputImportance="High"
           StandardErrorImportance="High" />
-  </Target>
-
-  <Target Name="GenerateClickItGlobalUsings" BeforeTargets="CoreCompile">
-    <Exec Command="dotnet run --project &quot;$(GlobalUsingsGeneratorProject)&quot; --configuration $(Configuration) -- --project-root &quot;$(MSBuildProjectDirectory)\..&quot; --output &quot;$(ClickItGeneratedGlobalUsingsFile)&quot; --mode tests --assemblies &quot;$(GlobalUsingGeneratorAssemblies)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
-    <ItemGroup>
-      <Compile Include="$(ClickItGeneratedGlobalUsingsFile)" KeepDuplicates="false" AutoGen="true" DesignTime="true" Visible="false" />
-    </ItemGroup>
   </Target>
 
 </Project>
