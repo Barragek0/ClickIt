@@ -70,7 +70,7 @@ namespace ClickIt.Shared.Diagnostics
         private void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
         {
             string taskMessage = $"[Global] Unobserved task exception: {e.Exception?.Message ?? "Unknown task exception"}";
-            LogWithFallback(taskMessage);
+            LogError(taskMessage, 10);
             e.SetObserved(); // Mark as observed to prevent re-throwing
         }
 

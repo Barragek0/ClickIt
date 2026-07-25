@@ -17,9 +17,20 @@ namespace ClickIt.Shared.Game
         public IElementAdapter? GetChildFromIndices(int a, int b)
         {
             if (Underlying == null) return null;
-            Element child = Underlying.GetChildFromIndices(a, b);
-            if (child == null) return null;
-            return new ElementAdapter(child);
+
+            IList<Element> children = Underlying.Children;
+            if (children == null || a < 0 || a >= children.Count)
+                return null;
+
+            Element? childA = children[a];
+            if (childA == null)
+                return null;
+
+            IList<Element> grandChildren = childA.Children;
+            if (grandChildren == null || b < 0 || b >= grandChildren.Count)
+                return null;
+
+            return new ElementAdapter(grandChildren[b]);
         }
 
         public string GetText(int maxChars)

@@ -104,6 +104,13 @@ namespace ClickIt.Features.Area
 
             if (source is Element element)
             {
+                IList<Element> elementChildren = element.Children;
+                if (elementChildren != null && index < elementChildren.Count)
+                {
+                    child = elementChildren[index];
+                    return child != null;
+                }
+
                 _ = DynamicAccess.TryGetChildAtIndex(element, index, out child);
                 return child != null;
             }

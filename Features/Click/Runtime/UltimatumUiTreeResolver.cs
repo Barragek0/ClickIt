@@ -443,6 +443,12 @@ namespace ClickIt.Features.Click.Runtime
             if (node == null || index < 0)
                 return false;
 
+            if (TryGetDynamicValue(node, n => n.Children, out object? childrenObj) && childrenObj is IList list && index < list.Count)
+            {
+                child = list[index];
+                return child != null;
+            }
+
             if (TryGetDynamicValue(node, n => n.GetChildAtIndex(index), out object? directChild) && directChild != null)
             {
                 child = directChild;
@@ -453,12 +459,6 @@ namespace ClickIt.Features.Click.Runtime
             {
                 child = dynamicChild;
                 return true;
-            }
-
-            if (TryGetDynamicValue(node, n => n.Children, out object? childrenObj) && childrenObj is IList list && index < list.Count)
-            {
-                child = list[index];
-                return child != null;
             }
 
             return false;
