@@ -1,0 +1,44 @@
+namespace ClickIt.Tests.Core.Settings
+{
+    [TestClass]
+    public class MetadataSnapshotCacheTests
+    {
+        [TestMethod]
+        public void RefreshPair_RebuildsSnapshots_WhenSignatureChanges()
+        {
+            int signature = 1;
+
+            bool changed = MetadataSnapshotCache.RefreshPair(
+                ref signature,
+                2,
+                () => ["a"],
+                () => ["b"],
+                out string[] primary,
+                out string[] secondary);
+
+            changed.Should().BeTrue();
+            signature.Should().Be(2);
+            primary.Should().Equal("a");
+            secondary.Should().Equal("b");
+        }
+
+        [TestMethod]
+        public void RefreshPair_ReturnsEmptySnapshots_WhenSignatureIsUnchanged()
+        {
+            int signature = 2;
+
+            bool changed = MetadataSnapshotCache.RefreshPair(
+                ref signature,
+                2,
+                () => ["a"],
+                () => ["b"],
+                out string[] primary,
+                out string[] secondary);
+
+            changed.Should().BeFalse();
+            signature.Should().Be(2);
+            primary.Should().BeEmpty();
+            secondary.Should().BeEmpty();
+        }
+    }
+}

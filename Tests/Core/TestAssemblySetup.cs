@@ -1,10 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ClickIt.Utils;
-using System.Runtime.Versioning;
-
 [assembly: SupportedOSPlatform("windows7.0")]
 
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public static class TestAssemblySetup
@@ -12,7 +8,6 @@ namespace ClickIt.Tests.Unit
         [AssemblyInitialize]
         public static void AssemblyInit(TestContext _)
         {
-            // Ensure native input is disabled for all tests to avoid moving / clicking the real mouse
             Mouse.DisableNativeInput = true;
         }
 

@@ -2,59 +2,81 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build ClickIt",
+      "label": "Build and Test",
       "type": "process",
-      "command": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe",
+      "command": "powershell",
       "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "Tests\\Scripts\\invoke-build-and-test.ps1",
+        "-SolutionPath",
         "ClickIt.sln",
-        "/p:Configuration=Debug",
-        "/p:IncludeIntegrationTests=true",
-        "/p:exapiPackage=..\\..\\PoeHelper\\net48\\"
+        "-TestProjectPath",
+        "Tests\\ClickIt.Tests.csproj",
+        "-Configuration",
+        "Debug",
+        "-ExapiPackagePath",
+        "..\\..\\PoeHelper\\net48\\",
+        "-PluginOutputPath",
+        "C:\\Path\\To\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt",
+        "-BuildTool",
+        "msbuild-auto",
+        "-IncludeIntegrationTests"
       ],
-      "problemMatcher": "$msCompile"
+      "presentation": {
+        "reveal": "never"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     },
     {
-      "label": "Run Tests (dotnet test)",
+      "label": "Test",
       "type": "process",
-      "command": "dotnet",
+      "command": "powershell",
       "args": [
-        "test",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "Tests\\Scripts\\invoke-dotnet-test-with-memory-guard.ps1",
+        "-ProjectPath",
         "Tests\\ClickIt.Tests.csproj",
-        "-c",
+        "-Configuration",
         "Debug",
+        "-AdditionalArgs",
         "-p:IncludeIntegrationTests=true"
       ],
       "presentation": {
-        "reveal": "always"
+        "reveal": "never"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
     },
     {
-      "label": "Copy Compiled DLL",
+      "label": "Review Coverage",
       "type": "process",
       "command": "powershell",
       "args": [
         "-NoProfile",
         "-Command",
-        "& { $src = Join-Path $pwd 'bin\\Debug\\net10.0-windows\\win-x64\\ClickIt.dll'; if (-not (Test-Path $src)) { Write-Error \"Compiled DLL not found at $src\"; exit 1 }; $dest = 'C:\\1.Path stuff\\PoeHelper\\net48\\Plugins\\Compiled\\ClickIt'; if(-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; Copy-Item -Path $src -Destination $dest -Force; Write-Output \"Copied $src to $dest\" }"
+        "& { & powershell -NoProfile -ExecutionPolicy Bypass -File 'Tests\\Scripts\\generate-coverage.ps1' -configuration 'Debug'; exit $LASTEXITCODE }"
       ],
       "presentation": {
-        "reveal": "always"
+        "reveal": "never",
+        "panel": "new"
       },
-      "problemMatcher": []
-    },
-    {
-      "label": "Build and Test",
-      "dependsOn": [
-        "Build ClickIt",
-        "Run Tests (dotnet test)",
-        "Copy Compiled DLL"
-      ],
-      "dependsOrder": "sequence",
       "problemMatcher": [],
       "group": {
-        "kind": "build",
-        "isDefault": true
+        "kind": "test",
+        "isDefault": false
       }
     }
   ]

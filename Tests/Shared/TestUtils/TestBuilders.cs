@@ -1,0 +1,60 @@
+namespace ClickIt.Tests.Shared.TestUtils
+{
+    public static class TestBuilders
+    {
+        public static SecondaryAltarComponent BuildSecondary(string[]? upsides = null, string[]? downsides = null, bool hasUnmatched = false)
+        {
+            var upList = upsides != null ? [.. upsides] : new List<string>();
+            var downList = downsides != null ? [.. downsides] : new List<string>();
+            return new SecondaryAltarComponent(null, upList, downList, hasUnmatched);
+        }
+
+        public static PrimaryAltarComponent BuildPrimary(SecondaryAltarComponent? top = null, SecondaryAltarComponent? bottom = null)
+        {
+            var t = top ?? BuildSecondary();
+            var b = bottom ?? BuildSecondary();
+            var topButton = new AltarButton(null);
+            var bottomButton = new AltarButton(null);
+            return new PrimaryAltarComponent(AltarType.Unknown, t, topButton, b, bottomButton);
+        }
+
+        public static AltarWeights BuildAltarWeights(decimal[]? topDown = null, decimal[]? bottomDown = null, decimal[]? topUp = null, decimal[]? bottomUp = null, int topWeight = 0, int bottomWeight = 0)
+        {
+            var aw = new AltarWeights();
+            aw.InitializeFromArrays(topDown ?? new decimal[8], bottomDown ?? new decimal[8], topUp ?? new decimal[8], bottomUp ?? new decimal[8]);
+            aw.TopWeight = topWeight;
+            aw.BottomWeight = bottomWeight;
+            aw.TopUpsideWeight = 0m; foreach (var v in aw.GetTopUpsideWeights()) aw.TopUpsideWeight += v;
+            aw.BottomUpsideWeight = 0m; foreach (var v in aw.GetBottomUpsideWeights()) aw.BottomUpsideWeight += v;
+            aw.TopDownsideWeight = 0m; foreach (var v in aw.GetTopDownsideWeights()) aw.TopDownsideWeight += v;
+            aw.BottomDownsideWeight = 0m; foreach (var v in aw.GetBottomDownsideWeights()) aw.BottomDownsideWeight += v;
+            return aw;
+        }
+
+        public static AltarService BuildTelemetryAltarService(
+            IReadOnlyList<string> topUpsides,
+            IReadOnlyList<string> topDownsides,
+            IReadOnlyList<string> bottomUpsides,
+            IReadOnlyList<string> bottomDownsides,
+            int lastScanExarchLabels,
+            int lastScanEaterLabels,
+            string lastProcessedAltarType)
+        {
+            var settings = new ClickItSettings();
+            var owner = (ClickIt)RuntimeHelpers.GetUninitializedObject(typeof(ClickIt));
+            var altarService = new AltarService(owner, settings, cachedLabels: null);
+            altarService.AddAltarComponent(new PrimaryAltarComponent(
+                AltarType.EaterOfWorlds,
+                new SecondaryAltarComponent(element: null, upsides: [.. topUpsides], downsides: [.. topDownsides]),
+                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton)),
+                new SecondaryAltarComponent(element: null, upsides: [.. bottomUpsides], downsides: [.. bottomDownsides]),
+                (AltarButton)RuntimeHelpers.GetUninitializedObject(typeof(AltarButton))));
+            altarService.DebugInfo.LastScanExarchLabels = lastScanExarchLabels;
+            altarService.DebugInfo.LastScanEaterLabels = lastScanEaterLabels;
+            altarService.DebugInfo.LastProcessedAltarType = lastProcessedAltarType;
+            altarService.DebugInfo.ComponentsProcessed = 1;
+            altarService.DebugInfo.ComponentsAdded = 1;
+            return altarService;
+        }
+    }
+}

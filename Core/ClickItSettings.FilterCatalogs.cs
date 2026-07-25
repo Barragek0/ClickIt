@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using ClickIt.Definitions;
-
 namespace ClickIt
 {
     public partial class ClickItSettings
@@ -12,9 +7,9 @@ namespace ClickIt
             return entries.ToDictionary(idSelector, static x => x, StringComparer.OrdinalIgnoreCase);
         }
 
-        private sealed record ItemSubtypeDefinition(string Id, string DisplayName, IReadOnlyList<string> MetadataIdentifiers);
+        internal sealed record ItemSubtypeDefinition(string Id, string DisplayName, IReadOnlyList<string> MetadataIdentifiers);
 
-        private static readonly Dictionary<string, ItemSubtypeDefinition[]> ItemSubtypeCatalog = new(StringComparer.OrdinalIgnoreCase)
+        internal static readonly Dictionary<string, ItemSubtypeDefinition[]> ItemSubtypeCatalog = new(StringComparer.OrdinalIgnoreCase)
         {
             ["jewels"] =
             [
@@ -72,22 +67,22 @@ namespace ClickIt
             "Scorn", "Envy", "Misery", "Dread"
         ];
 
-        private static readonly HashSet<string> EssenceMedsSuffixes = new(StringComparer.OrdinalIgnoreCase)
+        internal static readonly HashSet<string> EssenceMedsSuffixes = new(StringComparer.OrdinalIgnoreCase)
         {
             "Misery", "Envy", "Dread", "Scorn"
         };
 
-        private static readonly string[] EssenceAllTableNames =
-            EssenceSuffixes.SelectMany(suffix => new[]
+        internal static readonly string[] EssenceAllTableNames =
+            [.. EssenceSuffixes.SelectMany(suffix => new[]
             {
                 $"Screaming Essence of {suffix}",
                 $"Shrieking Essence of {suffix}",
                 $"Deafening Essence of {suffix}"
-            }).ToArray();
+            })];
 
-        private sealed record StrongboxFilterEntry(string Id, string DisplayName, string[] MetadataIdentifiers);
+        internal sealed record StrongboxFilterEntry(string Id, string DisplayName, string[] MetadataIdentifiers);
 
-        private static readonly StrongboxFilterEntry[] StrongboxTableEntries =
+        internal static readonly StrongboxFilterEntry[] StrongboxTableEntries =
         [
             new("regular", "Regular Strongbox (mixed loot)", ["StrongBoxes/Strongbox"]),
             new("arcanist", "Arcanist Strongbox (currency)", ["StrongBoxes/Arcanist"]),
@@ -105,10 +100,10 @@ namespace ClickIt
             new("unique-strongbox", "Unique Strongboxes", ["special:strongbox-unique"])
         ];
 
-        private static readonly Dictionary<string, StrongboxFilterEntry> StrongboxTableEntriesById =
+        internal static readonly Dictionary<string, StrongboxFilterEntry> StrongboxTableEntriesById =
             BuildIdLookup(StrongboxTableEntries, static x => x.Id);
 
-        private static readonly string[] StrongboxDefaultClickIds =
+        internal static readonly string[] StrongboxDefaultClickIds =
         [
             "regular",
             "arcanist",
@@ -125,87 +120,5 @@ namespace ClickIt
             "opalescent"
         ];
 
-        private sealed record MechanicPriorityEntry(string Id, string DisplayName);
-
-        private static readonly MechanicPriorityEntry[] MechanicPriorityEntries =
-        [
-            new(MechanicIds.AltarsSearingExarch, "Searing Exarch"),
-            new(MechanicIds.AltarsEaterOfWorlds, "Eater of Worlds"),
-            new(MechanicIds.Shrines, "Shrines"),
-            new(MechanicIds.LostShipment, "Lost Shipment"),
-            new(MechanicIds.UltimatumInitialOverlay, "Initial Ultimatum Overlay"),
-            new(MechanicIds.UltimatumWindow, "Ultimatum Window"),
-            new(MechanicIds.Essences, "Essences"),
-            new(MechanicIds.Items, "Items"),
-            new(MechanicIds.Strongboxes, "Strongboxes"),
-            new(MechanicIds.BasicChests, "Basic Chests"),
-            new(MechanicIds.LeagueChests, "League Mechanic Chests"),
-            new(MechanicIds.Doors, "Doors"),
-            new(MechanicIds.Levers, "Levers"),
-            new(MechanicIds.AreaTransitions, "Area Transitions"),
-            new(MechanicIds.LabyrinthTrials, "Labyrinth Trials"),
-            new(MechanicIds.CraftingRecipes, "Crafting Recipes"),
-            new(MechanicIds.Harvest, "Nearest Harvest Plot"),
-            new(MechanicIds.Sanctum, "Sanctum"),
-            new(MechanicIds.Betrayal, "Betrayal"),
-            new(MechanicIds.Blight, "Blight"),
-            new(MechanicIds.BreachNodes, "Breach Nodes"),
-            new(MechanicIds.LegionPillars, "Legion Pillars"),
-            new(MechanicIds.AlvaTempleDoors, "Alva Temple Doors"),
-            new(MechanicIds.SettlersCrimsonIron, "Settlers Crimson Iron"),
-            new(MechanicIds.SettlersCopper, "Settlers Copper"),
-            new(MechanicIds.SettlersPetrifiedWood, "Settlers Petrified Wood"),
-            new(MechanicIds.SettlersBismuth, "Settlers Bismuth"),
-            new(MechanicIds.SettlersHourglass, "Settlers Hourglass"),
-            new(MechanicIds.SettlersVerisium, "Settlers Verisium"),
-            new(MechanicIds.RitualInitiate, "Ritual (Initiate)"),
-            new(MechanicIds.RitualCompleted, "Ritual (Completed)"),
-            new(MechanicIds.DelveSulphiteVeins, "Sulphite Veins"),
-            new(MechanicIds.DelveAzuriteVeins, "Azurite Veins"),
-            new(MechanicIds.DelveEncounterInitiators, "Delve Encounter Initiators")
-        ];
-
-        private static readonly Dictionary<string, MechanicPriorityEntry> MechanicPriorityEntriesById =
-            BuildIdLookup(MechanicPriorityEntries, static x => x.Id);
-
-        private static readonly string[] MechanicPriorityDefaultOrderIds =
-        [
-            MechanicIds.Shrines,
-            MechanicIds.LostShipment,
-            MechanicIds.Items,
-            MechanicIds.AltarsSearingExarch,
-            MechanicIds.AltarsEaterOfWorlds,
-            MechanicIds.Essences,
-            MechanicIds.Strongboxes,
-            MechanicIds.RitualInitiate,
-            MechanicIds.RitualCompleted,
-            MechanicIds.UltimatumInitialOverlay,
-            MechanicIds.UltimatumWindow,
-            MechanicIds.Harvest,
-            MechanicIds.CraftingRecipes,
-            MechanicIds.LeagueChests,
-            MechanicIds.BasicChests,
-            MechanicIds.Doors,
-            MechanicIds.Levers,
-            MechanicIds.AreaTransitions,
-            MechanicIds.LabyrinthTrials,
-            MechanicIds.Betrayal,
-            MechanicIds.Sanctum,
-            MechanicIds.Blight,
-            MechanicIds.BreachNodes,
-            MechanicIds.LegionPillars,
-            MechanicIds.AlvaTempleDoors,
-            MechanicIds.SettlersCrimsonIron,
-            MechanicIds.SettlersCopper,
-            MechanicIds.SettlersPetrifiedWood,
-            MechanicIds.SettlersBismuth,
-            MechanicIds.SettlersHourglass,
-            MechanicIds.SettlersVerisium,
-            MechanicIds.DelveSulphiteVeins,
-            MechanicIds.DelveAzuriteVeins,
-            MechanicIds.DelveEncounterInitiators
-        ];
-
-        private static readonly HashSet<string> MechanicPriorityIds = new(MechanicPriorityEntries.Select(static x => x.Id), StringComparer.OrdinalIgnoreCase);
     }
 }

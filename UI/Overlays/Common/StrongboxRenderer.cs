@@ -1,0 +1,230 @@
+namespace ClickIt.UI.Overlays.Common
+{
+    public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
+    {
+        private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+        private readonly record struct StrongboxFrame(RectangleF Rect, Color Color);
+        private readonly record struct StrongboxRenderState(
+            bool ShowFrames,
+            IReadOnlyList<string> ClickMetadata,
+            IReadOnlyList<string> DontClickMetadata);
+
+        private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
+        private readonly ClickItSettings _settings = settings;
+        private IReadOnlyList<string> _cachedClickMetadata = [];
+        private IReadOnlyList<string> _cachedDontClickMetadata = [];
+        private HashSet<string>? _clickIdsSnapshot;
+        private HashSet<string>? _dontClickIdsSnapshot;
+
+        public void Render(GameController? gameController)
+        {
+            if (gameController == null) return;
+            IList<LabelOnGround>? labels = gameController.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
+            if (labels == null) return;
+
+            // Cast via dynamic to avoid assembly type conflicts when the test project
+            RenderFromLabels((IEnumerable<LabelOnGround>)(dynamic)labels, gameController.Window.GetWindowRectangleTimeCache);
+        }
+
+        public void RenderFromLabels(IEnumerable<LabelOnGround> labels, RectangleF windowArea)
+        {
+            if (labels == null) return;
+
+            EnsureStrongboxMetadataCache();
+
+            StrongboxRenderState renderState = ResolveRenderState();
+            if (!ShouldRenderAnyStrongboxes(renderState))
+            {
+                return;
+            }
+
+            RenderStrongboxFrames(labels, windowArea, renderState);
+        }
+
+        private void RenderStrongboxFrames(
+            IEnumerable<LabelOnGround> labels,
+            RectangleF windowArea,
+            StrongboxRenderState renderState)
+        {
+            foreach (LabelOnGround label in labels)
+            {
+                if (!TryResolveStrongboxFrame(label, windowArea, renderState, out StrongboxFrame frame))
+                    continue;
+
+                EnqueueStrongboxFrame(frame);
+            }
+        }
+
+        private void EnqueueStrongboxFrame(StrongboxFrame frame)
+            => _deferredFrameQueue.Enqueue(frame.Rect, frame.Color, 2);
+
+        private StrongboxRenderState ResolveRenderState()
+            => new(
+                _settings.ShowStrongboxFrames.Value,
+                _cachedClickMetadata,
+                _cachedDontClickMetadata);
+
+        private static bool ShouldRenderAnyStrongboxes(StrongboxRenderState renderState)
+            => renderState.ShowFrames || renderState.ClickMetadata.Count > 0;
+
+        private static bool TryResolveStrongboxFrame(
+            LabelOnGround? label,
+            RectangleF windowArea,
+            StrongboxRenderState renderState,
+            out StrongboxFrame frame)
+        {
+            frame = default;
+
+            if (!renderState.ShowFrames)
+                return false;
+
+            if (!TryGetVisibleLabelRect(label, windowArea, out RectangleF rect, out string? itemPathRaw))
+                return false;
+
+            StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
+            string renderName = metadata.RenderName;
+            bool isUniqueStrongbox = metadata.IsUnique;
+            if (!IsStrongboxClickableBySettings(itemPathRaw!, renderName, renderState.ClickMetadata, renderState.DontClickMetadata, isUniqueStrongbox))
+                return false;
+
+            frame = new StrongboxFrame(rect, ResolveStrongboxFrameColor(label));
+            return true;
+        }
+
+        private static Color ResolveStrongboxFrameColor(LabelOnGround? label)
+        {
+            Chest? chestComp = ResolveStrongboxLabelMetadata(label).Chest;
+            bool chestLocked = chestComp?.IsLocked == true;
+            return chestLocked ? Color.Red : Color.LawnGreen;
+        }
+
+        private static bool TryGetVisibleLabelRect(LabelOnGround? label, RectangleF windowArea, out RectangleF rect, out string? itemPathRaw)
+        {
+            rect = new RectangleF();
+            StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
+            itemPathRaw = metadata.Path;
+            if (string.IsNullOrEmpty(itemPathRaw)) return false;
+            if (itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0) return false;
+
+            Element? elem = metadata.Label;
+            if (elem == null) return false;
+            if (!DynamicAccess.TryReadBool(elem, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid) return false;
+
+            // Tests can surface a non-RectangleF return here through assembly-shim boundaries.
+            object? maybeRectObj = elem.GetClientRect();
+            if (maybeRectObj == null) return false;
+
+            if (maybeRectObj is RectangleF rectVal)
+            {
+                rect = rectVal;
+            }
+            else
+            {
+                return false;
+            }
+            if (rect.Width <= 0 || rect.Height <= 0) return false;
+
+            RectangleF rectAbs = new(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
+            if (!rectAbs.Intersects(windowArea)) return false;
+
+            return true;
+        }
+
+        internal static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string>? metadataIdentifiers)
+        {
+            if (metadataIdentifiers == null || metadataIdentifiers.Count == 0)
+                return false;
+
+            for (int i = 0; i < metadataIdentifiers.Count; i++)
+            {
+                if (string.Equals(metadataIdentifiers[i], StrongboxUniqueIdentifier, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsUniqueStrongbox(LabelOnGround? label)
+        {
+            return ResolveStrongboxLabelMetadata(label).IsUnique;
+        }
+
+        internal static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata, bool isUniqueStrongbox)
+        {
+            if (string.IsNullOrEmpty(path) || clickMetadata == null || clickMetadata.Count == 0)
+                return false;
+
+            if (isUniqueStrongbox)
+            {
+                if (ContainsStrongboxUniqueIdentifier(dontClickMetadata))
+                    return false;
+
+                return ContainsStrongboxUniqueIdentifier(clickMetadata);
+            }
+
+            bool dontClickMatch = MetadataIdentifierMatcher.ContainsAny(path, itemName, dontClickMetadata);
+
+            if (dontClickMatch)
+                return false;
+
+            return MetadataIdentifierMatcher.ContainsAny(path, itemName, clickMetadata);
+        }
+
+        private static bool HasMatchingSnapshot(HashSet<string>? currentIds, HashSet<string>? snapshot)
+        {
+            if (currentIds == null)
+                return snapshot == null || snapshot.Count == 0;
+
+            if (snapshot == null)
+                return false;
+
+            return snapshot.SetEquals(currentIds);
+        }
+
+        private void EnsureStrongboxMetadataCache()
+        {
+            if (HasMatchingSnapshot(_settings.StrongboxClickIds, _clickIdsSnapshot)
+                && HasMatchingSnapshot(_settings.StrongboxDontClickIds, _dontClickIdsSnapshot))
+            {
+                return;
+            }
+
+            _cachedClickMetadata = _settings.GetStrongboxClickMetadataIdentifiers();
+            _cachedDontClickMetadata = _settings.GetStrongboxDontClickMetadataIdentifiers();
+
+            HashSet<string> currentClickIds = _settings.StrongboxClickIds ?? [];
+            HashSet<string> currentDontClickIds = _settings.StrongboxDontClickIds ?? [];
+            _clickIdsSnapshot = new HashSet<string>(currentClickIds, StringComparer.OrdinalIgnoreCase);
+            _dontClickIdsSnapshot = new HashSet<string>(currentDontClickIds, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private readonly record struct StrongboxLabelMetadata(Element? Label, Chest? Chest, string Path, string RenderName, bool IsUnique);
+
+        private static StrongboxLabelMetadata ResolveStrongboxLabelMetadata(LabelOnGround? label)
+        {
+            Element? labelElement = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                ? rawLabel as Element
+                : null;
+
+            object? rawItem = DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? itemValue)
+                ? itemValue
+                : null;
+
+            string path = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            string renderName = DynamicAccess.TryReadString(rawItem, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
+                ? resolvedRenderName
+                : string.Empty;
+            bool isUnique = DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Rarity, out object? rawRarity)
+                && rawRarity is MonsterRarity rarity
+                && rarity == MonsterRarity.Unique;
+            Chest? chest = DynamicAccess.TryGetComponent<Chest>(rawItem, out Chest? resolvedChest)
+                ? resolvedChest
+                : null;
+
+            return new StrongboxLabelMetadata(labelElement, chest, path, renderName, isUnique);
+        }
+
+    }
+}

@@ -1,7 +1,4 @@
-using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
-namespace ClickIt.Tests.Unit
+namespace ClickIt.Tests.Core
 {
     [TestClass]
     public class PluginContextTests
@@ -12,15 +9,18 @@ namespace ClickIt.Tests.Unit
             var state = new PluginContext();
 
             state.Random.Should().NotBeNull();
-            state.LastRenderTimer.Should().NotBeNull();
-            state.LastTickTimer.Should().NotBeNull();
-            state.Timer.Should().NotBeNull();
-            state.SecondTimer.Should().NotBeNull();
-            state.LastHotkeyState.Should().BeFalse();
-            state.WorkFinished.Should().BeFalse();
-            state.PerformanceMonitor.Should().BeNull();
-            state.AreaService.Should().BeNull();
-            state.Camera.Should().BeNull();
+            state.Services.Should().NotBeNull();
+            state.Runtime.Should().NotBeNull();
+            state.Rendering.Should().NotBeNull();
+            state.Runtime.LastRenderTimer.Should().NotBeNull();
+            state.Runtime.LastTickTimer.Should().NotBeNull();
+            state.Runtime.Timer.Should().NotBeNull();
+            state.Runtime.SecondTimer.Should().NotBeNull();
+            state.Runtime.LastHotkeyState.Should().BeFalse();
+            state.Runtime.WorkFinished.Should().BeFalse();
+            state.Services.PerformanceMonitor.Should().BeNull();
+            state.Services.AreaService.Should().BeNull();
+            state.Services.Camera.Should().BeNull();
         }
 
         [TestMethod]
@@ -28,12 +28,192 @@ namespace ClickIt.Tests.Unit
         {
             var state = new PluginContext
             {
-                LastHotkeyState = true,
-                WorkFinished = true
+                Runtime = { LastHotkeyState = true, WorkFinished = true }
             };
 
-            state.LastHotkeyState.Should().BeTrue();
-            state.WorkFinished.Should().BeTrue();
+            state.Runtime.LastHotkeyState.Should().BeTrue();
+            state.Runtime.WorkFinished.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void DisposeCompositionRoot_ClearsTrackedServiceReferences()
+        {
+            var state = new PluginContext
+            {
+                Services =
+                {
+                    PerformanceMonitor = new PerformanceMonitor(new ClickItSettings()),
+                    ErrorHandler = new ErrorHandler(new ClickItSettings(), static (_, _) => { }, static (_, _) => { }),
+                    AreaService = new AreaService(),
+                    LabelFilterPort = (LabelFilterPort)RuntimeHelpers.GetUninitializedObject(typeof(LabelFilterPort)),
+                    ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort)),
+                    PathfindingService = (PathfindingService)RuntimeHelpers.GetUninitializedObject(typeof(PathfindingService)),
+                    AlertService = (AlertService)RuntimeHelpers.GetUninitializedObject(typeof(AlertService))
+                },
+                Rendering =
+                {
+                    DeferredTextQueue = new DeferredTextQueue(),
+                    DeferredFrameQueue = new DeferredFrameQueue()
+                }
+            };
+
+            state.DisposeCompositionRoot();
+
+            state.Services.PerformanceMonitor.Should().BeNull();
+            state.Services.ErrorHandler.Should().BeNull();
+            state.Services.AreaService.Should().BeNull();
+            state.Services.LabelFilterPort.Should().BeNull();
+            state.Services.ClickAutomationPort.Should().BeNull();
+            state.Services.PathfindingService.Should().BeNull();
+            state.Services.AlertService.Should().BeNull();
+            state.Rendering.DeferredTextQueue.Should().BeNull();
+            state.Rendering.DeferredFrameQueue.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void GetDebugTelemetrySnapshot_WhenServicesUnavailable_ReturnsEmptyServiceSnapshots()
+        {
+            var state = new PluginContext();
+
+            DebugTelemetrySnapshot snapshot = state.GetDebugTelemetrySnapshot();
+
+            snapshot.Click.ServiceAvailable.Should().BeFalse();
+            snapshot.Label.ServiceAvailable.Should().BeFalse();
+            snapshot.Pathfinding.ServiceAvailable.Should().BeFalse();
+            snapshot.Click.Click.HasData.Should().BeFalse();
+            snapshot.Click.RuntimeLog.HasData.Should().BeFalse();
+            snapshot.Click.Ultimatum.HasData.Should().BeFalse();
+            snapshot.Label.Label.HasData.Should().BeFalse();
+            snapshot.Pathfinding.OffscreenMovement.HasData.Should().BeFalse();
+            snapshot.Rendering.ServiceAvailable.Should().BeTrue();
+            snapshot.Rendering.PendingTextCount.Should().Be(0);
+            snapshot.Rendering.PendingFrameCount.Should().Be(0);
+            snapshot.Status.GameControllerAvailable.Should().BeFalse();
+            snapshot.Errors.ServiceAvailable.Should().BeFalse();
+            snapshot.Inventory.Inventory.HasData.Should().BeFalse();
+            snapshot.Altar.ServiceAvailable.Should().BeFalse();
+            snapshot.HoveredItem.LabelsAvailable.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void GetDebugTelemetrySnapshot_WhenServicesUnavailable_ReturnsEmptyTrails()
+        {
+            var state = new PluginContext();
+
+            DebugTelemetrySnapshot snapshot = state.GetDebugTelemetrySnapshot();
+
+            snapshot.Click.ClickTrail.Should().BeEmpty();
+            snapshot.Click.RuntimeLogTrail.Should().BeEmpty();
+            snapshot.Click.UltimatumTrail.Should().BeEmpty();
+            snapshot.Click.UltimatumOptionPreview.Should().BeEmpty();
+            snapshot.Label.LabelTrail.Should().BeEmpty();
+            snapshot.Pathfinding.OffscreenMovementTrail.Should().BeEmpty();
+            snapshot.Errors.RecentErrors.Should().BeEmpty();
+            snapshot.Inventory.InventoryTrail.Should().BeEmpty();
+            snapshot.Altar.Components.Should().BeEmpty();
+            snapshot.HoveredItem.EntityPath.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void FreezeDebugTelemetrySnapshot_ActivatesHoldState_WhenDurationPositive()
+        {
+            var state = new PluginContext();
+
+            state.FreezeDebugTelemetrySnapshot("offscreen-click", 1000);
+
+            state.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeTrue();
+            remainingMs.Should().BeGreaterThan(0);
+            reason.Should().Be("offscreen-click");
+        }
+
+        [TestMethod]
+        public void FreezeDebugTelemetrySnapshot_ExpiresAfterRequestedWindow()
+        {
+            var state = new PluginContext();
+
+            state.FreezeDebugTelemetrySnapshot("short-hold", 20);
+            Thread.Sleep(40);
+
+            state.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeFalse();
+            remainingMs.Should().Be(0);
+            reason.Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void InitializeCompositionRoot_WhenGameControllerMissing_ResetsWarmStateBeforeThrowing()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            bool disposed = false;
+
+            plugin.State.ServiceRegistry.Register(() => disposed = true);
+            plugin.State.Runtime.IsShuttingDown = true;
+            plugin.State.FreezeDebugTelemetrySnapshot("startup-hold", 1000);
+
+            Action act = () => plugin.State.InitializeCompositionRoot(plugin, settings);
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*GameController is null during plugin initialization.*");
+            plugin.State.Runtime.IsShuttingDown.Should().BeFalse();
+            plugin.State.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeFalse();
+            remainingMs.Should().Be(0);
+            reason.Should().BeEmpty();
+
+            plugin.State.DisposeCompositionRoot();
+
+            disposed.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void FinalizeCompositionRootForStartup_NormalizesWeights_ReloadsAlertSound_AndStartsTimers()
+        {
+            var plugin = new ClickIt();
+            var settings = new ClickItSettings();
+            var performanceMonitor = new PerformanceMonitor(settings);
+            string divineKey = ClickItSettings.BuildCompositeKey(
+                ClickItSettings.AltarTypeMinion,
+                "#% chance to drop an additional Divine Orb");
+            string configDir = Path.Combine(Path.GetTempPath(), "clickit_bootstrap_" + Guid.NewGuid().ToString("N"));
+            string alertPath = Path.Combine(configDir, "alert.wav");
+
+            Directory.CreateDirectory(configDir);
+
+            try
+            {
+                File.WriteAllText(alertPath, "empty");
+                settings.ModAlerts.Remove(divineKey);
+                plugin.State.Services.PerformanceMonitor = performanceMonitor;
+                plugin.State.Services.AlertService = new AlertService(
+                    () => settings,
+                    () => settings,
+                    () => configDir,
+                    () => null,
+                    static (_, _) => { },
+                    static (_, _) => { });
+
+                plugin.State.FinalizeCompositionRootForStartup(plugin, settings);
+                Thread.Sleep(10);
+
+                settings.ModAlerts.Should().ContainKey(divineKey);
+                settings.ModAlerts[divineKey].Should().BeTrue();
+                plugin.State.Services.AlertService!.CurrentAlertSoundPath.Should().Be(alertPath);
+                plugin.State.Runtime.LastRenderTimer.IsRunning.Should().BeTrue();
+                plugin.State.Runtime.LastTickTimer.IsRunning.Should().BeTrue();
+                plugin.State.Runtime.Timer.IsRunning.Should().BeTrue();
+                plugin.State.Runtime.SecondTimer.IsRunning.Should().BeTrue();
+                performanceMonitor.ShouldTriggerMainTimerAction(0).Should().BeTrue();
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(configDir, true);
+                }
+                catch
+                {
+                    // Best effort temp cleanup for the test harness.
+                }
+            }
         }
     }
 }

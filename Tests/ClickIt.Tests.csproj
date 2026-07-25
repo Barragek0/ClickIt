@@ -11,6 +11,7 @@
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -23,6 +24,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="**\obj\**\*.cs" />
+    <Compile Remove="**\bin\**\*.cs" />
+    <Compile Remove="..\ThirdParty\Decompiled\**\*.cs" />
+    <Compile Remove="Harness\GameOffsetsShim\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
     <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
@@ -30,10 +38,12 @@
     <PackageReference Include="Moq" Version="4.20.2" />
     <PackageReference Include="AutoFixture" Version="4.17.0" />
     <PackageReference Include="AutoFixture.AutoMoq" Version="4.17.0" />
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="10.0.5" />
     <PackageReference Include="coverlet.collector" Version="6.0.1" PrivateAssets="all" ExcludeAssets="runtime" />
     <PackageReference Include="coverlet.msbuild" Version="6.0.0" />
   
     <ProjectReference Include="..\ClickIt.csproj" />
+    <ProjectReference Include="Harness\GameOffsetsShim\GameOffsetsShim.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,10 +55,6 @@
       <HintPath>..\ThirdParty\ExileCore.dll</HintPath>
       <Private>true</Private>
     </Reference>
-    <Reference Include="GameOffsets">
-      <HintPath>..\ThirdParty\GameOffsets.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
     <Reference Include="ProcessMemoryUtilities">
       <HintPath>..\ThirdParty\ProcessMemoryUtilities.dll</HintPath>
       <Private>true</Private>
@@ -56,7 +62,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <CollectCoverage>true</CollectCoverage>
+    <CollectCoverage Condition="'$(CollectCoverage)' == ''">false</CollectCoverage>
     <CoverletOutputFormat>lcov</CoverletOutputFormat>
     <Include>[ClickIt]*</Include>
     <Exclude>[SharpDX*]*,[ImGui.NET*]*,[ExileCore*]*,[GameOffsets*]*,[ProcessMemoryUtilities*]*,[Newtonsoft.Json*]*</Exclude>
@@ -66,11 +72,24 @@
         <CoverletOutput>TestResults/lcov.info</CoverletOutput>
   </PropertyGroup>
     <PropertyGroup>
-      <!-- Exclude the same files and folders from coverlet's lcov output that we exclude from XPlat coverage.
-           This keeps LCOV output consistent with runsettings.xml and avoids under-reporting caused by UI/rendering files. -->
-       <!-- coverlet expects forward-slash globs (unix style) when matching source file paths in the generated LCOV.
-         Use forward slashes and double-star patterns so exclusions reliably match absolute or relative source paths. -->
-      <ExcludeByFile>**/Core/ClickItSettings.cs,**/Properties/Settings.Designer.cs,**/Utils/Mouse.cs,**/Utils/Keyboard.cs,**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
+      <!-- Keep LCOV file exclusions aligned with runsettings.xml so every coverage surface uses the same file set. -->
+      <ExcludeByFile>**/obj/**/*.*,**/bin/**/*.*</ExcludeByFile>
     </PropertyGroup>
+
+  <PropertyGroup>
+    <ThirdPartyDecompileScript>$(MSBuildProjectDirectory)\..\.scripts\decompile-thirdparty.ps1</ThirdPartyDecompileScript>
+    <ThirdPartyDecompilerProject>$(MSBuildProjectDirectory)\..\.scripts\ThirdPartyDecompiler\ThirdPartyDecompiler.csproj</ThirdPartyDecompilerProject>
+    <ThirdPartyDecompileEnabled Condition="'$(ThirdPartyDecompileEnabled)' == '' and Exists('$(ThirdPartyDecompileScript)') and Exists('$(ThirdPartyDecompilerProject)')">true</ThirdPartyDecompileEnabled>
+    <ThirdPartyDecompileEnabled Condition="'$(ThirdPartyDecompileEnabled)' == ''">false</ThirdPartyDecompileEnabled>
+    <SkipThirdPartyDecompile Condition="'$(SkipThirdPartyDecompile)' == ''">false</SkipThirdPartyDecompile>
+  </PropertyGroup>
+
+  <Target Name="RefreshThirdPartyDecompiledSources" BeforeTargets="CoreCompile" Condition="'$(ThirdPartyDecompileEnabled)' == 'true' and '$(DesignTimeBuild)' != 'true' and '$(SkipThirdPartyDecompile)' != 'true'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ThirdPartyDecompileScript)&quot;"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="High"
+          StandardErrorImportance="High" />
+  </Target>
 
 </Project>

@@ -115,6 +115,8 @@ Icon?
 
 # Plugin specific output directories
 debug/
+!UI/Debug/
+!UI/Debug/**
 
 # Test and coverage artifacts
 TestResults/
@@ -127,7 +129,6 @@ build.log
 
 # Local-only repository files
 .editorconfig
-GlobalSuppressions.cs
 
 # Local helper scripts
 !.scripts/
@@ -137,9 +138,20 @@ GlobalSuppressions.cs
 # Local assistant / continuation state
 .continue/
 
+# Local prompts
+.github/prompts/
+
+# Planning and review artifacts
+.github/plans/*
+.github/*
+
 # Allow checking in explicit third-party runtime libs used by the tests
 !ThirdParty/
 !ThirdParty/*.dll
+ThirdParty/Decompiled/
+
+# Local third-party decompiler workspace
+.scripts/ThirdPartyDecompiler/
 
 # Copilot
 .github/copilot-instructions.md

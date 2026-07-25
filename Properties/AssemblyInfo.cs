@@ -1,17 +1,14 @@
-﻿using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 [assembly: AssemblyTitle("ClickIt")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("ClickIt")]
-[assembly: AssemblyCopyright("Copyright ©  2025")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
 [assembly: Guid("57675cb8-f97e-443b-a870-bdf4128b9ec5")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("ClickIt.Tests")]
+[assembly: InternalsVisibleTo("ClickIt.Tests")]
 [assembly: SupportedOSPlatform("windows7.0")]

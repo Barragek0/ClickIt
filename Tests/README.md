@@ -1,33 +1,95 @@
-# Tests — Guide for contributors ✅
+# Tests Guide
 
-This document explains testing conventions used in the repository and how to run the test-suite and coverage tools locally.
+This file covers the repo's current test conventions, local test commands, and coverage flow.
 
-Keep tests small, deterministic, and readable. Prefer test seams to avoid invoking native game APIs or assembly conflicts.
+Keep tests small, deterministic, and readable. Prefer behavior-focused tests around the real owner instead of seam tests around wrappers or compatibility shims.
 
-Patterns & conventions
-- Use `Tests/TestUtils/TestBuilders.cs` and small stubs in `Tests/TestUtils` to construct test data.
-- Prefer seam-first access order for implementation details:
-- 1) Public API.
-- 2) Existing `*ForTests` seam methods.
-- 3) Shared reflection helpers in `Tests/TestUtils` (for example `PrivateFieldAccessor`).
-- 4) Direct ad-hoc reflection only when no seam/helper can be used.
-- Prefer parameterized tests (`[DataTestMethod]` + `[DataRow(...)]`) for small logic branches — they are easier to read and increase coverage with minimal code.
-- Avoid calling ExileCore native methods in tests. Where production code requires complex runtime objects, prefer seams (e.g., `TryGetVisibleLabelRect_ForTests`) or uninitialized placeholders where explicitly safe.
-- When a test needs to call a private implementation for edge-case coverage, prefer the `_ForTests` seam method if available. If you must reflect into private members, use a shared helper in `Tests/TestUtils` and keep the reason clearly documented.
+## Test Isolation Policy
 
-Running tests locally
-- Run unit+integration tests (Debug):
+The test project should stay separate from the main project as much as possible.
+
+- Keep test helpers, builders, reflection helpers, and setup code in `Tests/`.
+- Do not add `*ForTests` methods, test-only fields, test-only flags, or test-only branches to production code.
+- Do not wire test execution into the main project build.
+- If tests need access to internal members, configure that from the test/build side instead of hardcoding test hooks into runtime code.
+- Prefer testing through real owners and stable runtime boundaries before reaching for reflection.
+
+## Conventions
+
+- Use `Tests/Shared/TestUtils/TestBuilders.cs` and the helpers under `Tests/Shared/TestUtils/` when you need shared setup.
+- Prefer this access order when testing behavior:
+	1. public API
+	2. existing internal runtime or domain contracts
+	3. test-side reflection helpers when there is no stable runtime contract
+- Prefer parameterized tests such as `[DataTestMethod]` and `[DataRow(...)]` for small branch-heavy logic.
+- Avoid calling ExileCore native methods in tests.
+- Avoid wrapper-only tests when the same behavior is already covered through a stronger domain or application-level test.
+- Keep test namespaces aligned with the runtime owner instead of flattening them into broad buckets.
+- Put support fixtures in `Tests/Shared/TestUtils/` unless they are tightly coupled to one feature.
+
+## Running Tests Locally
+
+Run unit and integration tests in Debug:
+
 ```powershell
-dotnet test Tests/ClickIt.Tests.csproj -c Debug -p:IncludeIntegrationTests=true
+dotnet test Tests\ClickIt.Tests.csproj -c Debug -p:IncludeIntegrationTests=true
 ```
 
-Collect coverage & generate reports
-There is a helper script used throughout the repo at `Tests/Scripts/generate-coverage.ps1` which runs the tests with XPlat coverage and produces `Tests/TestResults/cov/Summary.xml` and `missing-files.csv`.
+The normal `Test`, `Build and Test`, coverage, and CI entry points start a hidden sidecar monitor from `Tests/Scripts/memory-guard.ps1`. That sidecar watches combined `testhost*` memory, writes a temporary trip file if the threshold is exceeded, and the caller prints a memory-guard failure after `dotnet test` completes. Set `CLICKIT_TEST_MEMORY_THRESHOLD_MB` if you need to override the default `2048` MB threshold locally.
 
-Guidelines for new tests
-- Update `Tests/TestSuitePlan.md` when you add tests so we can monitor coverage targets.
+If you want the same workflow the repo expects in VS Code, use the default `Build and Test` task from `.vscode/tasks.json`.
 
-CI notes
-- This project ships a coverage gate workflow template `.github/workflows/coverage-gate.yml` which runs on pull requests and fails the check if the measured line coverage is lower than the saved baseline in `Tests/TestResults/baseline.md`.
+## Coverage
 
-Thanks — maintainers: keep tests readable and small — great tests are better than many brittle ones.
+The repo has one common workspace coverage flow:
+
+- VS Code task: `Review Coverage`
+- Script: `Tests/Scripts/generate-coverage.ps1`
+
+The script runs XPlat coverage, generates a ReportGenerator XML summary, and writes the usual outputs under `Tests/TestResults/`:
+
+- `lcov.info`
+- `coverage.cobertura.xml`
+- `cov/Summary.xml`
+- `missing-files.csv`
+- `uncovered-lines.csv`
+
+`uncovered-lines.csv` is the repo-local replacement for the transient VS Code Problems list produced by the Code Coverage extension. It is generated directly from `Tests/TestResults/lcov.info` and records one row per uncovered line with the same owner and message shape the Problems pane uses.
+
+Run it like this:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File ./Tests/Scripts/generate-coverage.ps1
+```
+
+## Writing New Tests
+
+- Prefer one clear Act step per test.
+- Use existing builders and stubs before inventing new fixture layers.
+- When runtime code moves, move the closest tests with it.
+- When replacing a legacy wrapper API, move the test to the real owning domain instead of preserving the wrapper assertion.
+- If a test needs special access, prefer test-side reflection or test-project build configuration over adding a production seam.
+- If coverage is missing, target the most meaningful uncovered branches first instead of adding lots of narrow tests.
+- When you are using the uncovered-lines list to plan or continue coverage work, refresh coverage first so `Tests/TestResults/uncovered-lines.csv` reflects the current run.
+
+## ExileCore Notes
+
+- Use `Tests/Shared/TestUtils/ExileCoreOpaqueFactory.cs` when you need an ExileCore object only as an opaque reference token in a test.
+- Before assuming an ExileCore property is safe on an uninitialized object, inspect the type with `Tests/Shared/TestUtils/ExileCoreMetadataInspector.cs` and check the opaque-usage notes.
+- Treat `LabelOnGround`, `Entity`, and `GameController` as unsafe by default when a test branch dereferences runtime-backed members such as `Label`, `ItemOnGround`, `DistancePlayer`, `Path`, `EntityListWrapper`, or nested UI state.
+- Prefer testing through delegates, ports, and existing runtime contracts before trying to fabricate deep ExileCore graphs.
+- If a branch still needs remote-memory-backed members, record the exact blocker and move sideways to a nearby branch unless a test-side builder can supply the required graph without touching production code.
+
+## CI Notes
+
+CI is currently defined in `.github/workflows/ci.yml`.
+
+That workflow currently:
+- restores the test project
+- validates coverage exclusion config sync
+- builds the CI stubs
+- runs tests with coverage
+- generates coverage reports
+- uploads `Tests/TestResults/` as an artifact
+
+Keep tests readable and small. A few sharp behavior tests are better than a pile of brittle seam tests.
