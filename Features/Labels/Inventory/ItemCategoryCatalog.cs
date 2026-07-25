@@ -43,6 +43,7 @@
             new("rogue-markers", "Rogue Markers", "Items/Heist/HeistCoin", ItemListKind.Whitelist, ["Rogue's Marker"]),
             new("stone-of-passage", "Stone of Passage", "Incursion/IncursionKey", ItemListKind.Whitelist, ["Stone of Passage"]),
             new("charts", "Charts", "Items/Deepwater", ItemListKind.Whitelist, ["Coral Forest Chart", "Sandy Seabed Chart"]),
+            new("quest-items", "Quest Items", "Items/QuestItems", ItemListKind.Whitelist, ["Bust of Marceus Lioneye", "Sewer Keys"]),
 
             new("armour", "Armour", "Items/Armours/", ItemListKind.Blacklist, ["Iron Hat", "Astral Plate"]),
             new("weapons", "Weapons", "Items/Weapons/", ItemListKind.Blacklist, ["Rusted Sword", "Driftwood Wand"]),
