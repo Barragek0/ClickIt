@@ -42,6 +42,7 @@
             new("heist-quest-contracts", "Heist Quest Contracts", ["special:heist-quest-contract"], ItemListKind.Blacklist, ["Contract: Trial Run", "Contract: The Finest Costumes"]),
             new("rogue-markers", "Rogue Markers", "Items/Heist/HeistCoin", ItemListKind.Whitelist, ["Rogue's Marker"]),
             new("stone-of-passage", "Stone of Passage", "Incursion/IncursionKey", ItemListKind.Whitelist, ["Stone of Passage"]),
+            new("charts", "Charts", "Items/Deepwater", ItemListKind.Whitelist, ["Coral Forest Chart", "Sandy Seabed Chart"]),
 
             new("armour", "Armour", "Items/Armours/", ItemListKind.Blacklist, ["Iron Hat", "Astral Plate"]),
             new("weapons", "Weapons", "Items/Weapons/", ItemListKind.Blacklist, ["Rusted Sword", "Driftwood Wand"]),

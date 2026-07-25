@@ -101,5 +101,27 @@ namespace ClickIt.Tests.Features.Labels.Classification
 
             result.Should().BeFalse();
         }
+
+        [TestMethod]
+        public void ContainsAnyMetadataIdentifier_ChartItemsRule_MatchesMetadataPath()
+        {
+            bool result = MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
+                "Metadata/Items/Deepwater/ChartCoralForest",
+                "Coral Forest Chart",
+                ["Items/Deepwater"]);
+
+            result.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ContainsAnyMetadataIdentifier_ChartItemsRule_DoesNotMatchOtherPaths()
+        {
+            bool result = MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
+                "Metadata/Items/Currency/CurrencyModValues",
+                "Chaos Orb",
+                ["Items/Deepwater"]);
+
+            result.Should().BeFalse();
+        }
     }
 }

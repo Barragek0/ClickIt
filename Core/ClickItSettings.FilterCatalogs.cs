@@ -44,10 +44,10 @@ namespace ClickIt
             ],
             ["flasks"] =
             [
-                new("life", "Life Flasks", ["Items/Flasks/LifeFlask"]),
-                new("mana", "Mana Flasks", ["Items/Flasks/ManaFlask"]),
-                new("hybrid", "Hybrid Flasks", ["Items/Flasks/HybridFlask"]),
-                new("utility", "Utility Flasks", ["Items/Flasks/UtilityFlask"])
+                new("life", "Life Flasks", ["Items/Flasks/FlaskLife"]),
+                new("mana", "Mana Flasks", ["Items/Flasks/FlaskMana"]),
+                new("hybrid", "Hybrid Flasks", ["Items/Flasks/FlaskHybrid"]),
+                new("utility", "Utility Flasks", ["Items/Flasks/FlaskUtility"])
             ],
             ["wombgifts"] =
             [
