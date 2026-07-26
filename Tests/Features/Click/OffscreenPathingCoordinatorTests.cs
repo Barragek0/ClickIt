@@ -777,7 +777,7 @@ namespace ClickIt.Tests.Features.Click
                 MechanicPriorityContextProvider: new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService()),
                 LabelInteraction: labelInteraction,
                 LabelInteractionPort: labelInteractionPort,
-                VisibleLabelSnapshots: new VisibleLabelSnapshotProvider(gameController, new TimeCache<List<LabelOnGround>>(() => [], 50)),
+                VisibleLabelSnapshots: new VisibleLabelSnapshotProvider(new TimeCache<List<LabelOnGround>>(() => [], 50)),
                 IsClickableInEitherSpace: pointIsInClickableArea,
                 IsInsideWindowInEitherSpace: static _ => false,
                 PathfindingLabelSuppression: pathfindingLabelSuppression));

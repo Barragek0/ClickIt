@@ -6,7 +6,8 @@ namespace ClickIt.UI.Settings.Panels
         EssenceCorruptionPanelRenderer essenceCorruptionPanelRenderer,
         StrongboxFilterPanelRenderer strongboxFilterPanelRenderer,
         UltimatumSettingsPanelRenderer ultimatumSettingsPanelRenderer,
-        AltarSettingsPanelRenderer altarSettingsPanelRenderer)
+        AltarSettingsPanelRenderer altarSettingsPanelRenderer,
+        HarvestSettingsPanelRenderer harvestSettingsPanelRenderer)
     {
         private readonly ClickItSettings _settings = settings;
         private readonly ItemTypeFiltersPanelRenderer _itemTypeFiltersPanelRenderer = itemTypeFiltersPanelRenderer;
@@ -14,6 +15,7 @@ namespace ClickIt.UI.Settings.Panels
         private readonly StrongboxFilterPanelRenderer _strongboxFilterPanelRenderer = strongboxFilterPanelRenderer;
         private readonly UltimatumSettingsPanelRenderer _ultimatumSettingsPanelRenderer = ultimatumSettingsPanelRenderer;
         private readonly AltarSettingsPanelRenderer _altarSettingsPanelRenderer = altarSettingsPanelRenderer;
+        private readonly HarvestSettingsPanelRenderer _harvestSettingsPanelRenderer = harvestSettingsPanelRenderer;
 
         private readonly struct ChestDropSettleSettingsDescriptor(
             string labelPrefix,
@@ -51,6 +53,9 @@ namespace ClickIt.UI.Settings.Panels
             }
             else if (string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase))
                 DrawStrongboxSettings();
+
+            else if (string.Equals(entryId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase))
+                _harvestSettingsPanelRenderer.DrawPanel();
 
 
             ImGui.Unindent();

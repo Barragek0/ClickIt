@@ -10,7 +10,7 @@ namespace ClickIt.Features.Click
 
         private GroundLabelEntityAddressProvider GroundLabelEntityAddresses => field ??= new(_gameController);
 
-        private VisibleLabelSnapshotProvider VisibleLabelSnapshots => field ??= new(_gameController, _cachedLabels);
+        private VisibleLabelSnapshotProvider VisibleLabelSnapshots => field ??= new(_cachedLabels);
 
         private PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression => field ??= new(CreatePathfindingLabelSuppressionEvaluatorDependencies());
 

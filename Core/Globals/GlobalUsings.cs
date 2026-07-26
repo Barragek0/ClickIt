@@ -55,6 +55,7 @@ global using ClickIt.Features.Click.Safety;
 global using ClickIt.Features.Click.Selection;
 global using ClickIt.Features.Click.State;
 global using ClickIt.Features.Essence;
+global using ClickIt.Features.Harvest;
 global using ClickIt.Features.Labels;
 global using ClickIt.Features.Labels.Application;
 global using ClickIt.Features.Labels.Classification;

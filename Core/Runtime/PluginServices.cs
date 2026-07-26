@@ -25,6 +25,7 @@ namespace ClickIt.Core.Runtime
         public Camera? Camera { get; set; }
         public InputHandler? InputHandler { get; set; }
         public WeightCalculator? WeightCalculator { get; set; }
+        public HarvestService? HarvestService { get; set; }
 
         internal void Clear()
         {
@@ -47,6 +48,7 @@ namespace ClickIt.Core.Runtime
             Camera = null;
             InputHandler = null;
             WeightCalculator = null;
+            HarvestService = null;
         }
     }
 }

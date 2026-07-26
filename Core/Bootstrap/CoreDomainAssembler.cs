@@ -18,7 +18,9 @@ namespace ClickIt.Core.Bootstrap
         PathfindingService PathfindingService,
         WeightCalculator WeightCalculator,
         DeferredTextQueue DeferredTextQueue,
-        DeferredFrameQueue DeferredFrameQueue);
+        DeferredFrameQueue DeferredFrameQueue,
+        HarvestService HarvestService,
+        HarvestOverlayRenderer HarvestOverlayRenderer);
 
     internal static class CoreDomainAssembler
     {
@@ -62,9 +64,11 @@ namespace ClickIt.Core.Bootstrap
             InputHandler inputHandler = new(settings);
             PathfindingService pathfindingService = new(errorHandler);
             WeightCalculator weightCalculator = new(settings);
+            HarvestService harvestService = new(settings);
 
             DeferredTextQueue deferredTextQueue = new();
             DeferredFrameQueue deferredFrameQueue = new();
+            HarvestOverlayRenderer harvestOverlayRenderer = new(harvestService, settings, deferredTextQueue, deferredFrameQueue);
 
             return new CoreDomainServices(
                 performanceMonitor,
@@ -84,7 +88,9 @@ namespace ClickIt.Core.Bootstrap
                 pathfindingService,
                 weightCalculator,
                 deferredTextQueue,
-                deferredFrameQueue);
+                deferredFrameQueue,
+                harvestService,
+                harvestOverlayRenderer);
         }
     }
 }

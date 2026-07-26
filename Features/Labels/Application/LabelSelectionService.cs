@@ -35,7 +35,13 @@ namespace ClickIt.Features.Labels.Application
             ClickSettings clickSettings = _dependencies.CreateClickSettings(allLabels);
 
             if (captureDebug)
-                PublishSelectionLifecycleDebug("SelectionRequested", allLabels, start, end, $"start={startIndex} maxCount={maxCount}");
+            {
+                string harvestDebug = clickSettings.HarvestLabelSelectionBlocked
+                    ? " harvPref=BLOCKED"
+                    : string.Empty;
+                PublishSelectionLifecycleDebug("SelectionRequested", allLabels, start, end,
+                    $"start={startIndex} maxCount={maxCount}{harvestDebug}");
+            }
 
             LabelOnGround? selected = SelectNextLabelByPriority(allLabels, start, end, clickSettings);
             if (captureDebug)

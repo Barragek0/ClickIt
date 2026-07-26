@@ -9,26 +9,44 @@ namespace ClickIt.Features.Mechanics.Rules
 
     internal static class InteractionMechanicRuleCatalog
     {
-        private interface IInteractionRule
-        {
-            string? TryResolve(in InteractionRuleContext context);
-        }
-
-        private static readonly IInteractionRule[] OrderedInteractionRules =
+        private static readonly Func<InteractionRuleContext, string?>[] OrderedRules =
         [
-            new HarvestInteractionRule(),
-            new DelveSulphiteInteractionRule(),
-            new StrongboxInteractionRule(),
-            new SanctumInteractionRule(),
-            new BetrayalInteractionRule(),
-            new BlightInteractionRule(),
-            new AlvaTempleDoorInteractionRule(),
-            new LegionPillarInteractionRule(),
-            new DelveAzuriteInteractionRule(),
-            new UltimatumInitialOverlayInteractionRule(),
-            new DelveEncounterInitiatorInteractionRule(),
-            new CraftingRecipeInteractionRule(),
-            new BreachInteractionRule()
+            static ctx => ctx.Settings.ClickHarvest && MechanicClassifier.IsHarvestPath(ctx.Path)
+                ? MechanicIds.Harvest : null,
+            static ctx => ctx.Settings.ClickSulphite && ctx.Path.Contains("DelveMineral", StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.DelveSulphiteVeins : null,
+            static ctx => ctx.Settings.ClickStrongboxes
+                && (ctx.Settings.StrongboxClickMetadata?.Count ?? 0) > 0
+                && ctx.Dependencies.ShouldClickStrongbox(ctx.Settings, ctx.Path, ctx.Label)
+                    ? MechanicIds.Strongboxes : null,
+            static ctx => ctx.Settings.ClickSanctum && ctx.Path.Contains("Sanctum", StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.Sanctum : null,
+            static ctx => ctx.Settings.ClickBetrayal && ctx.Path.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.Betrayal : null,
+            static ctx => ctx.Settings.ClickBlight && ctx.Path.Contains("BlightPump", StringComparison.OrdinalIgnoreCase)
+                ? MechanicIds.Blight : null,
+            static ctx => ctx.Settings.ClickAlvaTempleDoors
+                && ctx.Path.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase)
+                && ctx.Dependencies.ShouldAllowClosedDoorPastMechanic(ctx.GameController)
+                    ? MechanicIds.AlvaTempleDoors : null,
+            static ctx => ctx.Settings.ClickLegionPillars
+                && ctx.Path.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase)
+                    ? MechanicIds.LegionPillars : null,
+            static ctx => ctx.Settings.ClickAzurite
+                && ctx.Path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)
+                    ? MechanicIds.DelveAzuriteVeins : null,
+            static ctx => ctx.Settings.ClickInitialUltimatum
+                && Constants.IsUltimatumInteractablePath(ctx.Path)
+                    ? MechanicIds.UltimatumInitialOverlay : null,
+            static ctx => ctx.Settings.ClickDelveSpawners
+                && ctx.Path.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase)
+                    ? MechanicIds.DelveEncounterInitiators : null,
+            static ctx => ctx.Settings.ClickCrafting
+                && ctx.Path.Contains("CraftingUnlocks", StringComparison.OrdinalIgnoreCase)
+                    ? MechanicIds.CraftingRecipes : null,
+            static ctx => ctx.Settings.ClickBreach
+                && ctx.Path.Contains(Constants.Brequel, StringComparison.OrdinalIgnoreCase)
+                    ? MechanicIds.BreachNodes : null,
         ];
 
         internal static string? TryResolve(
@@ -39,130 +57,14 @@ namespace ClickIt.Features.Mechanics.Rules
             in MechanicClassifierDependencies dependencies)
         {
             InteractionRuleContext context = new(settings, path, label, gameController, dependencies);
-            for (int i = 0; i < OrderedInteractionRules.Length; i++)
+            for (int i = 0; i < OrderedRules.Length; i++)
             {
-                string? mechanicId = OrderedInteractionRules[i].TryResolve(context);
+                string? mechanicId = OrderedRules[i](context);
                 if (!string.IsNullOrWhiteSpace(mechanicId))
                     return mechanicId;
             }
 
             return null;
-        }
-
-        private static bool IsUltimatumPath(string path)
-            => Constants.IsUltimatumInteractablePath(path);
-
-        private sealed class HarvestInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.NearestHarvest && MechanicClassifier.IsHarvestPath(context.Path)
-                    ? MechanicIds.Harvest
-                    : null;
-        }
-
-        private sealed class DelveSulphiteInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickSulphite && context.Path.Contains("DelveMineral", StringComparison.OrdinalIgnoreCase)
-                    ? MechanicIds.DelveSulphiteVeins
-                    : null;
-        }
-
-        private sealed class StrongboxInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickStrongboxes
-                    && (context.Settings.StrongboxClickMetadata?.Count ?? 0) > 0
-                    && context.Dependencies.ShouldClickStrongbox(context.Settings, context.Path, context.Label)
-                        ? MechanicIds.Strongboxes
-                        : null;
-        }
-
-        private sealed class SanctumInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickSanctum && context.Path.Contains("Sanctum", StringComparison.OrdinalIgnoreCase)
-                    ? MechanicIds.Sanctum
-                    : null;
-        }
-
-        private sealed class BetrayalInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickBetrayal && context.Path.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase)
-                    ? MechanicIds.Betrayal
-                    : null;
-        }
-
-        private sealed class BlightInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickBlight && context.Path.Contains("BlightPump", StringComparison.OrdinalIgnoreCase)
-                    ? MechanicIds.Blight
-                    : null;
-        }
-
-        private sealed class AlvaTempleDoorInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickAlvaTempleDoors
-                    && context.Path.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase)
-                    && context.Dependencies.ShouldAllowClosedDoorPastMechanic(context.GameController)
-                        ? MechanicIds.AlvaTempleDoors
-                        : null;
-        }
-
-        private sealed class LegionPillarInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickLegionPillars
-                    && context.Path.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase)
-                        ? MechanicIds.LegionPillars
-                        : null;
-        }
-
-        private sealed class DelveAzuriteInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickAzurite
-                    && context.Path.Contains("AzuriteEncounterController", StringComparison.OrdinalIgnoreCase)
-                        ? MechanicIds.DelveAzuriteVeins
-                        : null;
-        }
-
-        private sealed class UltimatumInitialOverlayInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickInitialUltimatum && IsUltimatumPath(context.Path)
-                    ? MechanicIds.UltimatumInitialOverlay
-                    : null;
-        }
-
-        private sealed class DelveEncounterInitiatorInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickDelveSpawners
-                    && context.Path.Contains("Delve/Objects/Encounter", StringComparison.OrdinalIgnoreCase)
-                        ? MechanicIds.DelveEncounterInitiators
-                        : null;
-        }
-
-        private sealed class CraftingRecipeInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickCrafting
-                    && context.Path.Contains("CraftingUnlocks", StringComparison.OrdinalIgnoreCase)
-                        ? MechanicIds.CraftingRecipes
-                        : null;
-        }
-
-        private sealed class BreachInteractionRule : IInteractionRule
-        {
-            public string? TryResolve(in InteractionRuleContext context)
-                => context.Settings.ClickBreach
-                    && context.Path.Contains(Constants.Brequel, StringComparison.OrdinalIgnoreCase)
-                        ? MechanicIds.BreachNodes
-                        : null;
         }
     }
 }

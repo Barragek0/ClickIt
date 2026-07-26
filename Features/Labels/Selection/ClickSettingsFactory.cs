@@ -43,7 +43,7 @@ namespace ClickIt.Features.Labels.Selection
                 ClickLevers = _settings.ClickLevers.Value,
                 ClickAreaTransitions = _settings.ClickAreaTransitions.Value,
                 ClickLabyrinthTrials = _settings.ClickLabyrinthTrials.Value,
-                NearestHarvest = _settings.NearestHarvest.Value,
+                ClickHarvest = _settings.ClickHarvest.Value,
                 ClickSulphite = _settings.ClickSulphiteVeins.Value,
                 ClickAzurite = _settings.ClickAzuriteVeins.Value,
                 ClickDelveSpawners = _settings.ClickDelveSpawners.Value,
@@ -75,7 +75,8 @@ namespace ClickIt.Features.Labels.Selection
                 MechanicPriorityIndexMap = mechanicPrioritySnapshot.PriorityIndexMap,
                 IgnoreDistanceMechanicIds = mechanicPrioritySnapshot.IgnoreDistanceSet,
                 IgnoreDistanceWithinByMechanicId = mechanicPrioritySnapshot.IgnoreDistanceWithinByMechanicId,
-                MechanicPriorityDistancePenalty = _settings.MechanicPriorityDistancePenalty.Value
+                MechanicPriorityDistancePenalty = _settings.MechanicPriorityDistancePenalty.Value,
+                HarvestLabelSelectionBlocked = _settings.HarvestLifeforceEstimation.Value
             };
         }
 

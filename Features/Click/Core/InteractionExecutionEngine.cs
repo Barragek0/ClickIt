@@ -122,11 +122,41 @@ namespace ClickIt.Features.Click.Core
             if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: false))
                 return StopExecution();
 
+            // When lifeforce estimation is active, bypass normal label selection
+            // for harvest labels and directly click the chosen plot (altar pattern).
+            if (TryClickChosenHarvestLabel(context, candidates))
+                return StopExecution();
+
             if (candidates.NextLabel == null)
                 return HandleNoVisibleLabel(context);
 
 
             return HandleVisibleLabel(context, candidates);
+        }
+
+        private bool TryClickChosenHarvestLabel(ClickTickContext context, ClickCandidates candidates)
+        {
+            if (_dependencies.GetHarvestLabelToClick == null)
+                return false;
+
+            LabelOnGround? chosen = _dependencies.GetHarvestLabelToClick();
+            if (chosen == null)
+                return false;
+
+            (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
+                chosen, MechanicIds.Harvest, context.WindowTopLeft, context.AllLabels);
+            if (!resolved)
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                    "HarvestResolveFailed", "Could not resolve harvest plot click position", MechanicIds.Harvest);
+                return false;
+            }
+
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                "HarvestClickDirect", $"Direct harvest click ({clickPos.X:0.0},{clickPos.Y:0.0})", MechanicIds.Harvest);
+
+            return _dependencies.LabelInteraction.PerformResolvedLabelInteraction(
+                clickPos, chosen, MechanicIds.Harvest);
         }
 
         private ExecutionResult HandleNoVisibleLabel(ClickTickContext context)
@@ -193,7 +223,7 @@ namespace ClickIt.Features.Click.Core
                 nextLabel,
                 clickPos,
                 true,
-                "Settlers label candidate selected from ItemsOnGroundLabelsVisible");
+                $"Label candidate selected (mechanic: {candidates.NextLabelMechanicId ?? "none"})");
 
             bool clicked = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, nextLabel, candidates.NextLabelMechanicId);
 
@@ -203,7 +233,7 @@ namespace ClickIt.Features.Click.Core
                 nextLabel,
                 clickPos,
                 clicked,
-                clicked ? "Settlers click completed via label pipeline" : "Settlers click attempt failed via label pipeline");
+                clicked ? $"Click executed ({candidates.NextLabelMechanicId ?? "visible-label"})" : $"Click rejected ({candidates.NextLabelMechanicId ?? "visible-label"})");
 
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(clicked ? "ClickExecuted" : "ClickRejected", clicked ? "Input click executed" : "Input click rejected", candidates.NextLabelMechanicId);
 

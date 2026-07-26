@@ -121,7 +121,8 @@ namespace ClickIt.Features.Click
                                 services.OffscreenPathing,
                                 ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
                                 ClickAutomationSupport.DebugLog,
-                                _inputHandler);
+                                _inputHandler,
+                                GetHarvestLabelToClick);
                 }
 
                 private MovementSkillCoordinatorDependencies CreateMovementSkillCoordinatorDependencies()

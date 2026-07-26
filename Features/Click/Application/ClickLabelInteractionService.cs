@@ -41,6 +41,9 @@ namespace ClickIt.Features.Click.Application
                         : "[PerformLabelClick] Skipping label click - cursor outside PoE window")));
         }
 
+        private static bool ShouldSkipUiHoverVerification(string? mechanicId)
+            => string.Equals(mechanicId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase);
+
         internal float? TryGetCursorDistanceSquaredToEntity(Entity? entity, Vector2 cursorAbsolute, Vector2 windowTopLeft)
         {
             if (!DynamicAccess.TryReadBool(entity, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid)
@@ -132,9 +135,11 @@ namespace ClickIt.Features.Click.Application
         internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId)
             => ExecuteInteraction(
                 clickPos,
-                DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
-                    ? rawLabel as Element
-                    : null,
+                ShouldSkipUiHoverVerification(mechanicId)
+                    ? null
+                    : DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                        ? rawLabel as Element
+                        : null,
                 _dependencies.GameController,
                 SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
                 forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label));

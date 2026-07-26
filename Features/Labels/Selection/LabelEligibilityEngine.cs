@@ -43,6 +43,17 @@ namespace ClickIt.Features.Labels.Selection
                 return false;
             }
 
+            // When lifeforce estimation is active, reject all harvest labels
+            // here so they don't go through the normal label pipeline. The
+            // dedicated click path in InteractionExecutionEngine handles
+            // harvest clicking directly (like the altar pattern).
+            if (clickSettings.HarvestLabelSelectionBlocked
+                && string.Equals(mechanicId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase))
+            {
+                rejectReason = LabelCandidateRejectReason.NoMechanic;
+                return false;
+            }
+
             return true;
         }
     }

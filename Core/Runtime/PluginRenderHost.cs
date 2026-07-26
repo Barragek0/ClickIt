@@ -82,6 +82,17 @@ namespace ClickIt.Core.Runtime
                 long pathfindingStart = Stopwatch.GetTimestamp();
                 rendering.PathfindingRenderer?.Render(gameController, graphics, effectiveSettings);
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.PathfindingOverlay, GetElapsedMs(pathfindingStart));
+
+                if (effectiveSettings.ClickHarvest.Value)
+                {
+                    long harvestStart = Stopwatch.GetTimestamp();
+                    // Process harvest labels during render so the overlay
+                    // shows correct estimates AND the click path can read
+                    // the decision via GetLabelToClick without reprocessing.
+                    services.HarvestService?.ProcessHarvestPlots(services.CachedLabels?.Value);
+                    rendering.HarvestOverlayRenderer?.Render();
+                    services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.HarvestOverlay, GetElapsedMs(harvestStart));
+                }
             }
             catch
             {

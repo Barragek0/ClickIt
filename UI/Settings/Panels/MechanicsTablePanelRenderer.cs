@@ -31,6 +31,7 @@ namespace ClickIt.UI.Settings.Panels
             MechanicIds.Items,
             MechanicIds.Essences,
             MechanicIds.Strongboxes,
+            MechanicIds.Harvest,
             "heist",
             "doors",
             "basic-chests",
@@ -496,7 +497,8 @@ namespace ClickIt.UI.Settings.Panels
         private static bool HasMechanicEntrySubmenu(string entryId)
             => string.Equals(entryId, MechanicIds.Items, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(entryId, MechanicIds.Essences, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase);
+                || string.Equals(entryId, MechanicIds.Strongboxes, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entryId, MechanicIds.Harvest, StringComparison.OrdinalIgnoreCase);
 
         private void DrawMechanicEntrySubmenu(string entryId)
             => _embeddedSettingsPanelRenderer.DrawMechanicEntrySubmenu(entryId);

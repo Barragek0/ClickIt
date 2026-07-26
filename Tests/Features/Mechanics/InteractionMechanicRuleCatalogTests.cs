@@ -15,7 +15,7 @@ namespace ClickIt.Tests.Features.Mechanics
         {
             ClickSettings settings = new()
             {
-                NearestHarvest = true,
+                ClickHarvest = true,
                 ClickBetrayal = true,
                 ClickBlight = true,
                 ClickDelveSpawners = true
@@ -36,7 +36,7 @@ namespace ClickIt.Tests.Features.Mechanics
         {
             ClickSettings settings = new()
             {
-                NearestHarvest = true,
+                ClickHarvest = true,
                 ClickSulphite = true
             };
 

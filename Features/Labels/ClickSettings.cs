@@ -15,7 +15,7 @@ namespace ClickIt.Features.Labels
         public bool ClickLevers { get; set; }
         public bool ClickAreaTransitions { get; set; }
         public bool ClickLabyrinthTrials { get; set; }
-        public bool NearestHarvest { get; set; }
+        public bool ClickHarvest { get; set; }
         public bool ClickSulphite { get; set; }
         public bool ClickBlight { get; set; }
         public bool ClickAlvaTempleDoors { get; set; }
@@ -48,5 +48,6 @@ namespace ClickIt.Features.Labels
         public IReadOnlySet<string> IgnoreDistanceMechanicIds { get; set; }
         public IReadOnlyDictionary<string, int> IgnoreDistanceWithinByMechanicId { get; set; }
         public int MechanicPriorityDistancePenalty { get; set; }
+        public bool HarvestLabelSelectionBlocked { get; set; }
     }
 }

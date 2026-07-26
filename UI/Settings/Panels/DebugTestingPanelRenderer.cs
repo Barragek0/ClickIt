@@ -87,7 +87,8 @@ namespace ClickIt.UI.Settings.Panels
                 new DebugSectionToggleDescriptor("Clicking", _settings.DebugShowClicking, "Show/hide clicking debug section"),
                 new DebugSectionToggleDescriptor("Debug Log Overlay", _settings.DebugShowRuntimeDebugLogOverlay, "Show/hide overlay section that displays DebugLog messages as a recent-stage style trail"),
                 new DebugSectionToggleDescriptor("Recent Errors", _settings.DebugShowRecentErrors, "Show/hide the Recent Errors debug section"),
-                new DebugSectionToggleDescriptor("Debug Frames", _settings.DebugShowFrames, "Show/hide the debug screen area frames")
+                new DebugSectionToggleDescriptor("Debug Frames", _settings.DebugShowFrames, "Show/hide the debug screen area frames"),
+                new DebugSectionToggleDescriptor("Harvest", _settings.DebugShowHarvest, "Show/hide harvest lifeforce estimation debug info")
             ];
 
             foreach (DebugSectionToggleDescriptor toggle in toggles)

@@ -18,6 +18,7 @@ namespace ClickIt.Shared.Diagnostics
         UltimatumOverlay = 4,
         StrongboxOverlay = 5,
         PathfindingOverlay = 6,
+        HarvestOverlay = 9,
         TextFlush = 7,
         FrameFlush = 8
     }

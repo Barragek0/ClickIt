@@ -19,7 +19,8 @@ namespace ClickIt.UI.Settings
             MechanicPriorityTablePanelRenderer mechanicPriorityPanelRenderer = new(settings);
             AltarSettingsPanelRenderer altarSettingsPanelRenderer = new(settings);
             UltimatumSettingsPanelRenderer ultimatumSettingsPanelRenderer = new(settings);
-            MechanicsEmbeddedSettingsPanelRenderer mechanicsEmbeddedSettingsPanelRenderer = new(settings, itemTypeFiltersPanelRenderer, essenceCorruptionPanelRenderer, strongboxFilterPanelRenderer, ultimatumSettingsPanelRenderer, altarSettingsPanelRenderer);
+            HarvestSettingsPanelRenderer harvestSettingsPanelRenderer = new(settings);
+            MechanicsEmbeddedSettingsPanelRenderer mechanicsEmbeddedSettingsPanelRenderer = new(settings, itemTypeFiltersPanelRenderer, essenceCorruptionPanelRenderer, strongboxFilterPanelRenderer, ultimatumSettingsPanelRenderer, altarSettingsPanelRenderer, harvestSettingsPanelRenderer);
             MechanicsTablePanelRenderer mechanicsTablePanelRenderer = new(settings, mechanicsEmbeddedSettingsPanelRenderer);
 
             return ClickItSettingsScreen.Compose(new ClickItSettingsScreenBindings(

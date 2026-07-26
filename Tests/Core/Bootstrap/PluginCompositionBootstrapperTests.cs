@@ -329,7 +329,9 @@ namespace ClickIt.Tests.Core.Bootstrap
                 PathfindingService: CreateOpaque<PathfindingService>(),
                 WeightCalculator: CreateOpaque<WeightCalculator>(),
                 DeferredTextQueue: new DeferredTextQueue(),
-                DeferredFrameQueue: new DeferredFrameQueue());
+                DeferredFrameQueue: new DeferredFrameQueue(),
+                HarvestService: new HarvestService(settings),
+                HarvestOverlayRenderer: CreateOpaque<HarvestOverlayRenderer>());
         }
 
         private static RenderingDomainServices CreateRenderingDomainServices()

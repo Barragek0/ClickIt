@@ -79,6 +79,9 @@ namespace ClickIt
         public ToggleNode DebugShowRecentErrors { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
+        public ToggleNode DebugShowHarvest { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]

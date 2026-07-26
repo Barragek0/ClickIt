@@ -119,6 +119,7 @@ namespace ClickIt.Core.Bootstrap
             services.ShrineService = core.ShrineService;
             services.InputHandler = core.InputHandler;
             services.PathfindingService = core.PathfindingService;
+            services.HarvestService = core.HarvestService;
         }
 
         private static void PublishClickServices(
@@ -132,6 +133,11 @@ namespace ClickIt.Core.Bootstrap
             services.LockedInteractionDispatcher = clickAutomationPort.LockedInteractionDispatcher;
             services.AlertService = alertService;
             services.WeightCalculator = weightCalculator;
+
+            // Wire the dedicated harvest click path (altar pattern).
+            if (services.HarvestService != null)
+                clickAutomationPort.GetHarvestLabelToClick
+                    = () => services.HarvestService.GetLabelToClick();
         }
 
         private static void PublishRenderingState(
@@ -150,6 +156,7 @@ namespace ClickIt.Core.Bootstrap
             renderingState.InventoryFullWarningRenderer = rendering.InventoryFullWarningRenderer;
             renderingState.PathfindingRenderer = rendering.PathfindingRenderer;
             renderingState.AltarDisplayRenderer = rendering.AltarDisplayRenderer;
+            renderingState.HarvestOverlayRenderer = core.HarvestOverlayRenderer;
             renderingState.ClickRuntimeHost = new ClickRuntimeHost(() => services.ClickAutomationPort);
             renderingState.UltimatumRenderer = ultimatumRenderer;
         }

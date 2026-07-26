@@ -103,7 +103,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
         private static ClickSettings CreateFullyEnabledInteractionSettings()
             => new()
             {
-                NearestHarvest = true,
+                ClickHarvest = true,
                 ClickSulphite = true,
                 ClickStrongboxes = true,
                 StrongboxClickMetadata = ["StrongBoxes/Strongbox"],

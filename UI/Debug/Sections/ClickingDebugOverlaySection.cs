@@ -32,7 +32,7 @@ namespace ClickIt.UI.Debug.Sections
             yPos = _context.EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Latest: {latest.Message}", Color.LightGray, 13, 80);
 
             IReadOnlyList<string> trail = telemetry.Click.RuntimeLogTrail;
-            yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 10, wrapWidth: 80);
+            yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 15, wrapWidth: 80);
             return yPos;
         }
 
@@ -107,7 +107,7 @@ namespace ClickIt.UI.Debug.Sections
             yPos = _context.EnqueueWrappedDebugLine(ref xPos, yPos, lineHeight, $"Resolved: {snap.Resolved}  Note: {snap.Notes}", Color.LightGray, 13, 72);
 
             IReadOnlyList<string> trail = telemetry.Click.ClickTrail;
-            yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 8, wrapWidth: 78);
+            yPos = _context.RenderDebugTrailBlock(ref xPos, yPos, lineHeight, trail, maxRows: 15, wrapWidth: 78);
 
             return yPos;
         }

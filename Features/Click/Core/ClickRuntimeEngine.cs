@@ -26,9 +26,8 @@ namespace ClickIt.Features.Click.Core
         ClickLabelInteractionService LabelInteraction,
         Func<bool> ShouldCaptureClickDebug,
         Action<string> HoldDebugTelemetryAfterSuccess,
-        Action<string> DebugLog);
-
-    internal readonly record struct PostInteractionStateEngineDependencies(InputHandler InputHandler);
+        Action<string> DebugLog,
+        Func<LabelOnGround?>? GetHarvestLabelToClick = null);
 
     internal readonly record struct ClickRuntimeEngineDependencies(
         ClickTickContextFactory TickContextFactory,
@@ -46,7 +45,8 @@ namespace ClickIt.Features.Click.Core
         OffscreenPathingCoordinator OffscreenPathing,
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog,
-        InputHandler InputHandler);
+        InputHandler InputHandler,
+        Func<LabelOnGround?>? GetHarvestLabelToClick = null);
 
     internal readonly record struct ClickCandidates(
         LostShipmentCandidate? LostShipment,
@@ -74,7 +74,6 @@ namespace ClickIt.Features.Click.Core
         private readonly CandidateAcquisitionEngine _acquisitionPhase = new(CreateCandidateAcquisitionDependencies(dependencies));
         private readonly CandidateRankingEngine _rankingPhase = new(CreateCandidateRankingDependencies(dependencies));
         private readonly InteractionExecutionEngine _executionPhase = new(CreateInteractionExecutionDependencies(dependencies));
-        private readonly PostInteractionStateEngine _postActionsPhase = new(CreatePostInteractionStateDependencies(dependencies));
 
         private static CandidateAcquisitionEngineDependencies CreateCandidateAcquisitionDependencies(ClickRuntimeEngineDependencies dependencies)
             => new(
@@ -105,10 +104,21 @@ namespace ClickIt.Features.Click.Core
                 dependencies.LabelInteraction,
                 dependencies.ShouldCaptureClickDebug,
                 dependencies.HoldDebugTelemetryAfterSuccess,
-                dependencies.DebugLog);
+                dependencies.DebugLog,
+                dependencies.GetHarvestLabelToClick);
 
-        private static PostInteractionStateEngineDependencies CreatePostInteractionStateDependencies(ClickRuntimeEngineDependencies dependencies)
-            => new(dependencies.InputHandler);
+        private static IEnumerator RunPostClickActions(InputHandler inputHandler, ExecutionResult executionResult)
+        {
+            if (!executionResult.ShouldRunPostActions)
+                yield break;
+
+            if (inputHandler.TriggerToggleItems())
+            {
+                int blockMs = inputHandler.GetToggleItemsPostClickBlockMs();
+                if (blockMs > 0)
+                    yield return new WaitTime(blockMs);
+            }
+        }
 
         public IEnumerator Run()
         {
@@ -130,25 +140,20 @@ namespace ClickIt.Features.Click.Core
 
             ClickCandidates candidates = _acquisitionPhase.Collect(context);
             RankingResult ranking = _rankingPhase.Rank(context, candidates);
-            DecisionResult decision = CandidateGatingPhase.Gate(candidates, ranking);
+            DecisionResult decision = Gate(candidates, ranking);
             ExecutionResult executionResult = _executionPhase.Execute(context, candidates, decision);
 
-            IEnumerator postActions = _postActionsPhase.Run(executionResult);
+            IEnumerator postActions = RunPostClickActions(_dependencies.InputHandler, executionResult);
             while (postActions.MoveNext())
                 yield return postActions.Current;
 
         }
 
-        private sealed class CandidateGatingPhase
-        {
-            public static DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)
-            {
-                return new DecisionResult(
-                    TrySettlers: ranking.PreferSettlers && candidates.SettlersOre.HasValue,
-                    TryLostShipment: ranking.PreferLostShipment && candidates.LostShipment.HasValue,
-                    TryShrine: ranking.PreferShrine,
-                    GroundItemsVisible: ranking.GroundItemsVisible);
-            }
-        }
+        private static DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)
+            => new(
+                TrySettlers: ranking.PreferSettlers && candidates.SettlersOre.HasValue,
+                TryLostShipment: ranking.PreferLostShipment && candidates.LostShipment.HasValue,
+                TryShrine: ranking.PreferShrine,
+                GroundItemsVisible: ranking.GroundItemsVisible);
     }
 }

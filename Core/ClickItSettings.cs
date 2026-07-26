@@ -120,9 +120,13 @@ namespace ClickIt
         [Menu("Legion Pillars", "Click legion encounter pillars.", 13, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickLegionPillars { get; set; } = new ToggleNode(true);
-        [Menu("Nearest Harvest Plot", "Click nearest harvest plot.", 14, 1400)]
+        [Menu("Harvest", "Click the best harvest plot based on estimated lifeforce.", 14, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode NearestHarvest { get; set; } = new ToggleNode(true);
+        public ToggleNode ClickHarvest { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode HarvestLifeforceEstimation { get; set; } = new ToggleNode(true);
+
         [Menu("Sanctum", "Click sanctum related stuff", 15, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickSanctum { get; set; } = new ToggleNode(true);

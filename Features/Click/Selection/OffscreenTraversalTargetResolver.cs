@@ -85,7 +85,7 @@ namespace ClickIt.Features.Click.Selection
 
         private (Entity? Target, string? MechanicId) ResolveNearestOffscreenLabelBackedTarget(int maxDistance)
         {
-            IReadOnlyList<LabelOnGround>? labels = _dependencies.VisibleLabelSnapshots.GetVisibleOrCachedLabels();
+            IReadOnlyList<LabelOnGround>? labels = _dependencies.VisibleLabelSnapshots.GetCachedLabels();
             if (labels == null || labels.Count == 0)
                 return (null, null);
 

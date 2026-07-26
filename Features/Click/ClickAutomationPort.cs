@@ -31,6 +31,10 @@ namespace ClickIt.Features.Click
         private readonly ClickRuntimeState _runtimeState = new();
         private readonly MechanicPriorityContextProvider _mechanicPriorityContextProvider;
 
+        internal Func<LabelOnGround?>? GetHarvestLabelToClick { get; set; }
+
+
+
         internal ClickAutomationPort(
             ClickItSettings settings,
             GameController gameController,
@@ -115,7 +119,7 @@ namespace ClickIt.Features.Click
             => UltimatumAutomation.TryHandlePanelUi(windowTopLeft);
 
         private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
-            => VisibleLabelSnapshots.GetVisibleOrCachedLabels();
+            => VisibleLabelSnapshots.GetCachedLabels();
 
         IEnumerator IClickAutomationService.ProcessRegularClick()
             => ProcessRegularClick();

@@ -94,7 +94,7 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.Blight, "Blight", settings.ClickBlight, null, true),
                 new(MechanicIds.BreachNodes, "Breach Nodes", settings.ClickBreachNodes, null, false),
                 new(MechanicIds.LegionPillars, "Legion Pillars", settings.ClickLegionPillars, null, true),
-                new(MechanicIds.Harvest, "Nearest Harvest Plot", settings.NearestHarvest, null, true),
+                new(MechanicIds.Harvest, "Harvest", settings.ClickHarvest, null, true),
                 new(MechanicIds.Sanctum, "Sanctum", settings.ClickSanctum, null, true),
                 new(MechanicIds.Items, "Items", settings.ClickItems, null, true),
                 new(MechanicIds.Essences, "Essences", settings.ClickEssences, null, true),

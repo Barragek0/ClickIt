@@ -35,9 +35,6 @@ namespace ClickIt.Features.Labels
                 _worldItemMetadataPolicy,
                 InventoryInteractionPolicy);
 
-        private LabelCandidateBuilderService CandidateBuilderService
-            => field ??= new LabelCandidateBuilderService(LabelMechanicResolutionService);
-
         private ILabelSelectionService LabelSelectionService
             => field ??= new LabelSelectionService(CreateLabelSelectionServiceDependencies());
 
@@ -82,7 +79,12 @@ namespace ClickIt.Features.Labels
                 ClickSettingsService.Create,
                 ShouldCaptureLabelDebug,
                 _labelSelectionDiagnostics.PublishEvent,
-                CandidateBuilderService.TryBuildCandidate,
+                (LabelOnGround label, ClickSettings settings, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason)
+                    => LabelEligibilityEngine.TryBuildCandidate(
+                        label, settings,
+                        LabelTargetabilityPolicy.IsEntityTargetableForClick,
+                        LabelMechanicResolutionService.ResolveMechanicId,
+                        out item, out mechanicId, out rejectReason),
                 LabelMechanicResolutionService.GetMechanicIdForLabel);
 
         private InventoryDomainFactoryDependencies CreateInventoryDomainFactoryDependencies()

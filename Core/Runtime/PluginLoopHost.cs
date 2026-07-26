@@ -142,6 +142,11 @@ namespace ClickIt.Core.Runtime
                 yield break;
             }
 
+            // Harvest labels are processed in the render path
+            // (PluginRenderHost) so the overlay renders correctly and the
+            // click path reads the decision via GetLabelToClick without
+            // needing to reprocess labels.
+
             long clickSequenceBefore = GetSuccessfulClickSequence();
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
             yield return runtimeHost.ProcessRegularClick();
