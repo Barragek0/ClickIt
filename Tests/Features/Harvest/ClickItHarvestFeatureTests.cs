@@ -51,7 +51,7 @@ public class ClickItHarvestFeatureTests
     public void GetLabelToClick_LifeforceOff_ReturnsNull()
     {
         var s = new ClickItSettings();
-        s.HarvestLifeforceEstimation.Value = false;
+        s.ClickHigherHarvestEstimate.Value = false;
         var svc = new HarvestService(s);
         svc.GetLabelToClick().Should().BeNull();
     }
@@ -62,7 +62,7 @@ public class ClickItHarvestFeatureTests
         // Simulate blocked decision directly
         LabelOnGround label = ExileCoreOpaqueFactory.CreateOpaqueLabel();
         var s = new ClickItSettings();
-        s.HarvestLifeforceEstimation.Value = true;
+        s.ClickHigherHarvestEstimate.Value = true;
         var svc = new HarvestService(s);
         // Manually set blocked decision (normally done by DecideBestPlot)
         typeof(HarvestService).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(svc, s);
@@ -77,7 +77,7 @@ public class ClickItHarvestFeatureTests
     public void SettingsFactory_LifeforceOn_SetsBlocked()
     {
         var s = new ClickItSettings();
-        s.HarvestLifeforceEstimation.Value = true;
+        s.ClickHigherHarvestEstimate.Value = true;
         var f = new ClickSettingsFactory(s, new MechanicPrioritySnapshotService(), _ => false, _ => false);
         f.Create([]).HarvestLabelSelectionBlocked.Should().BeTrue();
     }
@@ -86,7 +86,7 @@ public class ClickItHarvestFeatureTests
     public void SettingsFactory_LifeforceOff_NoBlocked()
     {
         var s = new ClickItSettings();
-        s.HarvestLifeforceEstimation.Value = false;
+        s.ClickHigherHarvestEstimate.Value = false;
         var f = new ClickSettingsFactory(s, new MechanicPrioritySnapshotService(), _ => false, _ => false);
         f.Create([]).HarvestLabelSelectionBlocked.Should().BeFalse();
     }

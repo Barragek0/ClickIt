@@ -7,7 +7,7 @@ public class ClickSettingsFactoryHarvestTests
     public void Create_LifeforceEstimationEnabled_SetsBlockedFlag()
     {
         var settings = new ClickItSettings();
-        settings.HarvestLifeforceEstimation.Value = true;
+        settings.ClickHigherHarvestEstimate.Value = true;
         var factory = new ClickSettingsFactory(
             settings,
             new MechanicPrioritySnapshotService(),
@@ -23,7 +23,7 @@ public class ClickSettingsFactoryHarvestTests
     public void Create_LifeforceEstimationDisabled_NoBlocked()
     {
         var settings = new ClickItSettings();
-        settings.HarvestLifeforceEstimation.Value = false;
+        settings.ClickHigherHarvestEstimate.Value = false;
         var factory = new ClickSettingsFactory(
             settings,
             new MechanicPrioritySnapshotService(),

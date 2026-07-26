@@ -76,7 +76,7 @@ namespace ClickIt.Features.Labels.Selection
                 IgnoreDistanceMechanicIds = mechanicPrioritySnapshot.IgnoreDistanceSet,
                 IgnoreDistanceWithinByMechanicId = mechanicPrioritySnapshot.IgnoreDistanceWithinByMechanicId,
                 MechanicPriorityDistancePenalty = _settings.MechanicPriorityDistancePenalty.Value,
-                HarvestLabelSelectionBlocked = _settings.HarvestLifeforceEstimation.Value
+                HarvestLabelSelectionBlocked = _settings.ClickHigherHarvestEstimate.Value
             };
         }
 

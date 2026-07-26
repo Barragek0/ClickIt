@@ -125,7 +125,10 @@ namespace ClickIt
         public ToggleNode ClickHarvest { get; set; } = new ToggleNode(true);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
-        public ToggleNode HarvestLifeforceEstimation { get; set; } = new ToggleNode(true);
+        public ToggleNode ShowHarvestLifeforceEstimation { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickHigherHarvestEstimate { get; set; } = new ToggleNode(true);
 
         [Menu("Sanctum", "Click sanctum related stuff", 15, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]

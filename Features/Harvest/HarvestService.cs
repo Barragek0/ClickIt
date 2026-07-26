@@ -81,7 +81,7 @@ public sealed class HarvestService
 
         CurrentEstimates = estimates;
 
-        if (_settings.HarvestLifeforceEstimation.Value)
+        if (_settings.ClickHigherHarvestEstimate.Value)
             CurrentDecision = DecideBestPlot(estimates);
         else
             CurrentDecision = new HarvestDecision(
@@ -138,7 +138,7 @@ public sealed class HarvestService
     /// </summary>
     internal LabelOnGround? GetLabelToClick()
     {
-        if (!_settings.HarvestLifeforceEstimation.Value)
+        if (!_settings.ClickHigherHarvestEstimate.Value)
             return null;
 
         if (CurrentDecision.IsHarvestClickBlocked)

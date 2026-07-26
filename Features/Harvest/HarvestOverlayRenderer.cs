@@ -25,6 +25,9 @@ public sealed class HarvestOverlayRenderer
 
     internal void Render()
     {
+        if (!_settings.ShowHarvestLifeforceEstimation.Value)
+            return;
+
         IReadOnlyList<HarvestPlotEstimate> estimates = _harvestService.CurrentEstimates;
         if (estimates.Count == 0)
             return;

@@ -9,11 +9,20 @@ internal sealed class HarvestSettingsPanelRenderer(ClickItSettings settings)
         ImGui.Spacing();
 
         SettingsUiRenderHelpers.DrawToggleNodeControl(
-            "Lifeforce Estimation##HarvestLifeforceEstimation",
-            _settings.HarvestLifeforceEstimation,
-            "When enabled, ClickIt makes a rough estimate of the lifeforce yield\n" +
-            "for each visible harvest plot and only clicks the one with the highest\n" + "estimated yield. If only one harvest plot is visible, ClickIt will not click.\n" +
-            "It will wait for 2 harvest plots to be visible so it can compare their estimated yields.\n\n" +
-            "When disabled, behaves as a simple nearest-harvest toggle.");
+            "Show Visual Indicator##ShowHarvestLifeforceEstimation",
+            _settings.ShowHarvestLifeforceEstimation,
+            "Shows a visual indicator as to which harvest plot will be clicked on\n" +
+            "based on the setting below.");
+
+        ImGui.Spacing();
+
+        SettingsUiRenderHelpers.DrawToggleNodeControl(
+            "Click Higher Estimate##ClickHigherHarvestEstimate",
+            _settings.ClickHigherHarvestEstimate,
+            "When enabled, ClickIt will click the plot with the highest estimated yield.\n" +
+            "It will not click until 2 harvest plots are visible so it can compare their\n" +
+            "estimated yields.\n\n" +
+            "When disabled, ClickIt will click the harvest plot nearest to the player\n" +
+            "regardless of its estimated lifeforce yield.");
     }
 }
