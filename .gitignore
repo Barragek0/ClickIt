@@ -117,6 +117,8 @@ Icon?
 debug/
 !UI/Debug/
 !UI/Debug/**
+!Features/Blight/Debug/
+!Features/Blight/Debug/**
 
 # Test and coverage artifacts
 TestResults/
