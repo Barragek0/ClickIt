@@ -25,6 +25,7 @@ namespace ClickIt.Features.Observability
         TimingMetricsSnapshot AltarCoroutine,
         TimingMetricsSnapshot ClickCoroutine,
         TimingMetricsSnapshot FlareCoroutine,
+        TimingMetricsSnapshot BlightCoroutine,
         double ClickTargetIntervalMs,
         double AverageSuccessfulClickTimingMs,
         double AverageClickIntervalMs)
@@ -50,6 +51,7 @@ namespace ClickIt.Features.Observability
                 TimingChannel.Altar => AltarCoroutine,
                 TimingChannel.Click => ClickCoroutine,
                 TimingChannel.Flare => FlareCoroutine,
+                TimingChannel.Blight => BlightCoroutine,
                 TimingChannel.Render => Render,
                 TimingChannel.Unknown => default,
                 _ => default,

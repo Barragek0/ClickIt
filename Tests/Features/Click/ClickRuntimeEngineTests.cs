@@ -63,6 +63,7 @@ namespace ClickIt.Tests.Features.Click
                 LabelSelection: null!,
                 LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
                 ShouldCaptureClickDebug: static () => true,
+                PointIsInClickableArea: static (_, _) => true,
                 PathfindingService: null!,
                 PathfindingLabelSuppression: null!,
                 ChestLootSettlement: CreateChestLootSettlementTracker(),

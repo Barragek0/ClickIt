@@ -120,6 +120,7 @@ namespace ClickIt.Core.Bootstrap
             services.InputHandler = core.InputHandler;
             services.PathfindingService = core.PathfindingService;
             services.HarvestService = core.HarvestService;
+            services.BlightService = core.BlightService;
         }
 
         private static void PublishClickServices(
@@ -138,6 +139,36 @@ namespace ClickIt.Core.Bootstrap
             if (services.HarvestService != null)
                 clickAutomationPort.GetHarvestLabelToClick
                     = () => services.HarvestService.GetLabelToClick();
+
+            if (services.BlightService != null)
+            {
+                clickAutomationPort.TryProgressBlightBuilding
+                    = () =>
+                    {
+                        BlightBuildAction action = services.BlightService.TryProgressBlightBuilding(
+                            services.CachedLabels?.Value);
+
+                        // If the state machine wants to click at a position that is
+                        // not in a clickable area (e.g. behind the minimap or off-screen),
+                        // abort the click and reset to Idle so pathfinding can walk closer.
+                        if (action is { Kind: BlightBuildActionKind.ClickPosition }
+                            && !clickAutomationPort.PointIsInClickableArea(
+                                action.ClickPosition, "blight"))
+                        {
+                            services.BlightService.ResetInteractionState();
+                            return new BlightBuildAction(BlightBuildActionKind.None,
+                                DebugMessage: "Click position not clickable - reset to Idle");
+                        }
+
+                        return action;
+                    };
+                clickAutomationPort.GetBlightPathfindTarget
+                    = () => services.BlightService.GetPathfindingTargetEntity();
+                clickAutomationPort.IsBlightEncounterActive
+                    = () => services.BlightService.IsEncounterActive
+                        && (services.BlightService.KnownTowers.Count > 0
+                            || services.BlightService.TowerEntities.Count > 0);
+            }
         }
 
         private static void PublishRenderingState(
@@ -149,7 +180,6 @@ namespace ClickIt.Core.Bootstrap
         {
             renderingState.DeferredTextQueue = core.DeferredTextQueue;
             renderingState.DeferredFrameQueue = core.DeferredFrameQueue;
-            renderingState.DebugRenderer = rendering.DebugRenderer;
             renderingState.StrongboxRenderer = rendering.StrongboxRenderer;
             renderingState.LazyModeRenderer = rendering.LazyModeRenderer;
             renderingState.ClickHotkeyToggleRenderer = rendering.ClickHotkeyToggleRenderer;
@@ -157,6 +187,8 @@ namespace ClickIt.Core.Bootstrap
             renderingState.PathfindingRenderer = rendering.PathfindingRenderer;
             renderingState.AltarDisplayRenderer = rendering.AltarDisplayRenderer;
             renderingState.HarvestOverlayRenderer = core.HarvestOverlayRenderer;
+            renderingState.BlightRenderer = core.BlightRenderer;
+            renderingState.ImGuiDebugOverlay = rendering.ImGuiDebugOverlay;
             renderingState.ClickRuntimeHost = new ClickRuntimeHost(() => services.ClickAutomationPort);
             renderingState.UltimatumRenderer = ultimatumRenderer;
         }

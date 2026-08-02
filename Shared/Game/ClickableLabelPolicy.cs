@@ -37,6 +37,22 @@ namespace ClickIt.Shared.Game
             return false;
         }
 
+        /// <summary>
+        /// Lightweight label validity check used by the label cache factory.
+        /// Only verifies the label has a visible element and an associated
+        /// entity.  Does NOT check clickable-area, entity-type, or path
+        /// matching — those decisions belong to downstream consumers.
+        /// </summary>
+        public static bool IsBasicLabelValid(LabelOnGround label)
+        {
+            return label != null
+                && TryGetLabelItem(label, out object? item)
+                && item != null
+                && DynamicAccess.TryReadBool(label, DynamicAccessProfiles.IsVisible, out bool isVisible)
+                && isVisible
+                && IsLabelElementValid(label);
+        }
+
         public static bool IsValidClickableLabel(LabelOnGround label, Func<Vector2, bool> pointIsInClickableArea)
         {
             if (label == null
@@ -101,6 +117,7 @@ namespace ClickIt.Shared.Game
                 || path.Contains(Constants.Sanctum)
                 || path.Contains(Constants.BetrayalMakeChoice)
                 || path.Contains(Constants.BlightPump)
+                || path.Contains(Constants.BlightFoundation)
                 || path.Contains(Constants.UltimatumChallengeInteractablePath)
                 || path.Contains(Constants.SwitchOnce)
                 || path.Contains(Constants.RitualPath);
@@ -224,7 +241,7 @@ namespace ClickIt.Shared.Game
 
         private static bool TryGetChestOpenOnDamage(object? item)
         {
-            return DynamicAccess.TryGetComponent<Chest>(item, out Chest? rawChest)
+            return DynamicAccess.TryGetComponent(item, out Chest? rawChest)
                 && rawChest != null
                 && DynamicAccess.TryReadBool(rawChest, DynamicAccessProfiles.OpenOnDamage, out bool openOnDamage)
                 && openOnDamage;

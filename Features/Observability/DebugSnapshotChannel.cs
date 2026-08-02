@@ -5,13 +5,15 @@ namespace ClickIt.Features.Observability
         int trailCapacity,
         Func<TSnapshot, long, TSnapshot> withSequence,
         Func<TSnapshot, string> formatSnapshot,
-        Func<TEvent, TSnapshot> eventToSnapshot)
+        Func<TEvent, TSnapshot> eventToSnapshot,
+        Func<TSnapshot, string>? dedupKeyExtractor = null)
     {
         private readonly DebugSnapshotStore<TSnapshot> _store = new(
             emptySnapshot,
             trailCapacity,
             withSequence,
-            formatSnapshot);
+            formatSnapshot,
+            dedupKeyExtractor);
 
         private readonly Func<TEvent, TSnapshot> _eventToSnapshot = eventToSnapshot;
 

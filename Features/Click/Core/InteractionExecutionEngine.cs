@@ -95,9 +95,52 @@ namespace ClickIt.Features.Click.Core
             return false;
         }
 
+        private bool WalkTowardEntity(Entity entity, string? mechanicId)
+        {
+            if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value)
+                return false;
+
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                "WalkTowardEntity", $"Pathfinding toward entity", mechanicId ?? string.Empty);
+            return _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
+        }
+
+        private bool WalkTowardTargetLabel(LabelOnGround label, string? mechanicId, Entity? entity)
+        {
+            if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value)
+                return false;
+            if (entity == null)
+                return false;
+
+            (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
+                label, mechanicId, default, null);
+            if (resolved && _dependencies.PointIsInClickableArea(clickPos, mechanicId ?? string.Empty))
+                return false;
+
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                "WalkTowardLabel", $"Pathfinding toward label entity", mechanicId);
+            return _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
+        }
+
         private ExecutionResult ExecuteHidden(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
+            if (_dependencies.Settings.BlightBlockOtherInteractions.Value
+                && _dependencies.TryProgressBlightBuilding != null
+                && (_dependencies.IsBlightEncounterActive?.Invoke() == true))
+            {
+                if (!TryProgressBlightBuilding(context))
+                {
+                    Entity? blightTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
+                    if (blightTarget != null)
+                        WalkTowardEntity(blightTarget, MechanicIds.Blight);
+                }
+                return StopExecution();
+            }
+
             if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: true))
+                return StopExecution();
+
+            if (TryProgressBlightBuilding(context))
                 return StopExecution();
 
             if (context.IsPostChestLootSettleBlocking)
@@ -108,8 +151,35 @@ namespace ClickIt.Features.Click.Core
                 return StopExecution();
             }
 
+            if (candidates.NextLabel != null)
+            {
+                _dependencies.DebugLog($"[ExecuteHidden] NextLabel exists, checking clickability");
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelCheck",
+                    $"label has entity={(TryGetLabelItemOnGround(candidates.NextLabel) != null)} mechanic={candidates.NextLabelMechanicId}", candidates.NextLabelMechanicId);
+                Entity? labelEntity = TryGetLabelItemOnGround(candidates.NextLabel);
+                if (labelEntity != null && WalkTowardTargetLabel(candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity))
+                    return StopExecution();
+            }
+            else
+            {
+                _dependencies.DebugLog($"[ExecuteHidden] No NextLabel in candidates");
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelNull",
+                    $"labelsInContext={context.AllLabels?.Count ?? 0} settlers={candidates.SettlersOre.HasValue} lostShipment={candidates.LostShipment.HasValue}", null);
+            }
+
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
+            {
+                _dependencies.DebugLog($"[ExecuteHidden] Calling TryWalkTowardOffscreenTarget (no target)");
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenFallbackWalk",
+                    "Calling TryWalkTowardOffscreenTarget with no preferred target", null);
                 _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget();
+            }
+            else
+            {
+                _dependencies.DebugLog($"[ExecuteHidden] WalkTowardOffscreenLabels is OFF");
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenWalkDisabled",
+                    "WalkTowardOffscreenLabels setting is OFF", null);
+            }
 
 
             _dependencies.DebugLog("[ProcessRegularClick] Ground items not visible, breaking");
@@ -119,16 +189,37 @@ namespace ClickIt.Features.Click.Core
 
         private ExecutionResult ExecuteVisible(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
+            if (_dependencies.Settings.BlightBlockOtherInteractions.Value
+                && _dependencies.TryProgressBlightBuilding != null
+                && (_dependencies.IsBlightEncounterActive?.Invoke() == true))
+            {
+                if (!TryProgressBlightBuilding(context))
+                {
+                    Entity? blightTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
+                    if (blightTarget != null)
+                        WalkTowardEntity(blightTarget, MechanicIds.Blight);
+                }
+                return StopExecution();
+            }
+
             if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: false))
                 return StopExecution();
 
-            // When lifeforce estimation is active, bypass normal label selection
-            // for harvest labels and directly click the chosen plot (altar pattern).
             if (TryClickChosenHarvestLabel(context, candidates))
+                return StopExecution();
+
+            if (TryProgressBlightBuilding(context))
                 return StopExecution();
 
             if (candidates.NextLabel == null)
                 return HandleNoVisibleLabel(context);
+
+            // Unified clickability check: if the selected label's click position
+            // is not in a clickable area, pathfind toward its entity instead of
+            // attempting a click that would fail.
+            if (WalkTowardTargetLabel(candidates.NextLabel, candidates.NextLabelMechanicId,
+                TryGetLabelItemOnGround(candidates.NextLabel)))
+                return StopExecution();
 
 
             return HandleVisibleLabel(context, candidates);
@@ -159,8 +250,62 @@ namespace ClickIt.Features.Click.Core
                 clickPos, chosen, MechanicIds.Harvest);
         }
 
+        private bool TryProgressBlightBuilding(ClickTickContext context)
+        {
+            if (_dependencies.TryProgressBlightBuilding == null)
+                return false;
+
+            BlightBuildAction action = _dependencies.TryProgressBlightBuilding();
+            Vector2 clickPos = action.ClickPosition;
+
+            switch (action.Kind)
+            {
+                case BlightBuildActionKind.ClickPosition:
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                        "BlightBuildClick", $"{action.DebugMessage} ({clickPos.X:0.0},{clickPos.Y:0.0})", MechanicIds.Blight);
+                    _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
+                    return true;
+
+                case BlightBuildActionKind.WalkToTarget:
+                    {
+                        _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                            "BlightBuildWalk", action.DebugMessage ?? "Walking toward foundation", MechanicIds.Blight);
+                        Entity? walkTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
+                        if (walkTarget != null)
+                        {
+                            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                                "BlightBuildWalk", "walkTarget found, calling WalkTowardEntity", MechanicIds.Blight);
+                            WalkTowardEntity(walkTarget, MechanicIds.Blight);
+                        }
+                        else
+                        {
+                            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                                "BlightBuildWalk", "walkTarget=null — GetPathfindingTargetEntity returned null (entity on screen or no target)", MechanicIds.Blight);
+                        }
+                        return false;
+                    }
+
+                case BlightBuildActionKind.Complete:
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                        "BlightBuildComplete", action.DebugMessage ?? "Build step completed", MechanicIds.Blight);
+                    return true;
+
+                case BlightBuildActionKind.Error:
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                        "BlightBuildError", action.DebugMessage ?? "Unknown error", MechanicIds.Blight);
+                    return false;
+
+                case BlightBuildActionKind.None:
+                default:
+                    return false;
+            }
+        }
+
         private ExecutionResult HandleNoVisibleLabel(ClickTickContext context)
         {
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HandleNoVisibleLabel",
+                $"labelsInContext={context.AllLabels?.Count ?? 0} walkSetting={_dependencies.Settings.WalkTowardOffscreenLabels.Value}", null);
+
             if (context.IsPostChestLootSettleBlocking)
             {
                 string chestLootSettleReason = context.ChestLootSettleReason;
@@ -180,8 +325,20 @@ namespace ClickIt.Features.Click.Core
 
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleFallbackWalk",
+                    $"Calling TryWalkTowardOffscreenTarget (no target) with {context.AllLabels?.Count ?? 0} labels in context", null);
                 _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget();
+            }
+            else
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleWalkDisabled",
+                    "WalkTowardOffscreenLabels is OFF in HandleNoVisibleLabel", null);
+            }
 
+            Entity? blightTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
+            if (_dependencies.Settings.BlightPathfindToBuild.Value && blightTarget != null)
+                WalkTowardEntity(blightTarget, MechanicIds.Blight);
 
             _dependencies.DebugLog("[ProcessRegularClick] No label to click found, breaking");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("NoLabelExit", "No label click attempted", null);
@@ -283,10 +440,10 @@ namespace ClickIt.Features.Click.Core
                 _dependencies.Settings.WalkTowardOffscreenLabels.Value,
                 nextLabelItem != null,
                 candidates.NextLabelMechanicId);
-            if (shouldContinueEntityPathing)
+            if (shouldContinueEntityPathing && nextLabelItem != null)
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("EntityPathingFallback", "Label visible but unresolved click point; continuing pathing", candidates.NextLabelMechanicId);
-                _ = _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(nextLabelItem);
+                WalkTowardEntity(nextLabelItem, candidates.NextLabelMechanicId);
             }
 
             return StopExecution();

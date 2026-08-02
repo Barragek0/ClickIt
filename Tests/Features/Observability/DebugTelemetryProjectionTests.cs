@@ -35,8 +35,8 @@ namespace ClickIt.Tests.Features.Observability
             snapshot.Click.FrequencyTarget.ClickTargetMs.Should().Be(123);
             snapshot.Click.FrequencyTarget.LazyModeTargetMs.Should().Be(456);
             snapshot.Click.FrequencyTarget.ShowLazyModeTarget.Should().BeFalse();
-            snapshot.Click.Settings.SummaryLines.Should().HaveCount(5);
-            snapshot.Click.Settings.SummaryLines[0].Should().Contain("hotkeyToggle:True");
+            snapshot.Click.Settings.SummaryLines.Should().HaveCount(2);
+            snapshot.Click.Settings.SummaryLines[0].Should().Contain("HT=T");
             snapshot.Click.Settings.InitialUltimatumClickEnabled.Should().BeTrue();
             snapshot.Click.Settings.OtherUltimatumClickEnabled.Should().BeFalse();
         }

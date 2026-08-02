@@ -90,7 +90,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             AlertService alertService = CreateOpaque<AlertService>();
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(alertService, settings);
 
-            rendering.DebugRenderer.Should().NotBeNull();
             rendering.StrongboxRenderer.Should().NotBeNull();
             rendering.LazyModeRenderer.Should().NotBeNull();
             rendering.ClickHotkeyToggleRenderer.Should().NotBeNull();
@@ -140,7 +139,9 @@ namespace ClickIt.Tests.Core.Bootstrap
                 DeferredTextQueue: new DeferredTextQueue(),
                 DeferredFrameQueue: new DeferredFrameQueue(),
                 HarvestService: new HarvestService(settings),
-                HarvestOverlayRenderer: CreateOpaque<HarvestOverlayRenderer>());
+                HarvestOverlayRenderer: CreateOpaque<HarvestOverlayRenderer>(),
+                BlightService: new BlightService(settings),
+                BlightRenderer: CreateOpaque<BlightRenderer>());
         }
 
         private static T CreateOpaque<T>() where T : class

@@ -79,7 +79,7 @@ namespace ClickIt.Features.Click.State
 
             try
             {
-                return Convert.ToInt64(rawAddress, global::System.Globalization.CultureInfo.InvariantCulture);
+                return Convert.ToInt64(rawAddress, System.Globalization.CultureInfo.InvariantCulture);
             }
             catch
             {

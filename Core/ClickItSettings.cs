@@ -1,3 +1,4 @@
+#pragma warning disable CA1822 // Settings members must stay instance — ExileCore reflects on them.
 namespace ClickIt
 {
     public partial class ClickItSettings : ISettings
@@ -57,6 +58,12 @@ namespace ClickIt
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickSynthesisSynthesisedStash { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickAllflameCursedTreasure { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickAllflameBrinerotPlunder { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickAllflameCoralNest { get; set; } = new ToggleNode(true);
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode PauseAfterOpeningBasicChests { get; set; } = new ToggleNode(true);
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public RangeNode<int> PauseAfterOpeningBasicChestsInitialDelayMs { get; set; } = new RangeNode<int>(500, 100, 1500);
@@ -111,9 +118,43 @@ namespace ClickIt
         [Menu("Betrayal", "Click betrayal labels", 10, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBetrayal { get; set; } = new ToggleNode(false);
-        [Menu("Blight", "Click blight pumps", 11, 1400)]
+        [Menu("Blight", "Click blight pumps and build towers during encounters.", 11, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBlight { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickBlightPump { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode ClickBlightTowers { get; set; } = new ToggleNode(false);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public RangeNode<int> BlightTowerStrategy { get; set; } = new RangeNode<int>(0, 0, 1);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizePaths { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizeTowers { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizeTowerRanges { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizeUpgrades { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightPathfindToBuild { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public RangeNode<int> BlightTowerBuildDelayMs { get; set; } = new RangeNode<int>(200, 200, 400);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public RangeNode<int> BlightTowerUpgradeDelayMs { get; set; } = new RangeNode<int>(200, 200, 400);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightBlockOtherInteractions { get; set; } = new ToggleNode(true);
+
         [Menu("Breach Nodes", "Click breach nodes.", 12, 1400)]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode ClickBreachNodes { get; set; } = new ToggleNode(false);
@@ -374,3 +415,4 @@ namespace ClickIt
 
     }
 }
+#pragma warning restore CA1822

@@ -219,7 +219,7 @@ namespace ClickIt.UI.Overlays.Common
             bool isUnique = DynamicAccess.TryGetDynamicValue(rawItem, DynamicAccessProfiles.Rarity, out object? rawRarity)
                 && rawRarity is MonsterRarity rarity
                 && rarity == MonsterRarity.Unique;
-            Chest? chest = DynamicAccess.TryGetComponent<Chest>(rawItem, out Chest? resolvedChest)
+            Chest? chest = DynamicAccess.TryGetComponent(rawItem, out Chest? resolvedChest)
                 ? resolvedChest
                 : null;
 

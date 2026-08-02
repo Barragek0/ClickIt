@@ -58,6 +58,10 @@ namespace ClickIt.Core.Runtime
             _state.Runtime.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.DelveFlareCoroutine);
             _state.Runtime.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
+
+            _state.Runtime.BlightRefreshCoroutine = new Coroutine(MainBlightRefreshCoroutine(), plugin, "ClickIt.BlightRefresh", true);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.BlightRefreshCoroutine);
+            _state.Runtime.BlightRefreshCoroutine.Priority = CoroutinePriority.Normal;
         }
 
         private IEnumerator MainScanForAltarsLogic()
@@ -202,6 +206,23 @@ namespace ClickIt.Core.Runtime
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore, clicked);
+        }
+
+        private IEnumerator MainBlightRefreshCoroutine()
+        {
+            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            {
+                if (_settings.ClickBlightTowers.Value && _state.Services.PerformanceMonitor != null)
+                {
+                    _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Blight);
+                    _state.Services.BlightService?.RefreshEntities(_gameController);
+                    _state.Services.BlightService?.ScanFoundations(_state.Services.CachedLabels?.Value);
+                    _state.Services.BlightService?.ComputeLaneCoverage();
+                    _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Blight);
+                }
+
+                yield return new WaitTime(200);
+            }
         }
 
         private IEnumerator FlareCoroutine()

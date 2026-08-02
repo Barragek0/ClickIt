@@ -487,6 +487,7 @@ namespace ClickIt.Tests.Features.Click
                 ClickDebugPublisher: resolvedClickDebugPublisher,
                 LabelInteraction: resolvedLabelInteraction,
                 ShouldCaptureClickDebug: shouldCaptureClickDebug ?? (static () => false),
+                PointIsInClickableArea: static (_, _) => true,
                 HoldDebugTelemetryAfterSuccess: holdDebugTelemetryAfterSuccess ?? (static _ => { }),
                 DebugLog: debugLog ?? (static _ => { })));
         }

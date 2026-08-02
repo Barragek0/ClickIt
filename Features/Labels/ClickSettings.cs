@@ -18,6 +18,7 @@ namespace ClickIt.Features.Labels
         public bool ClickHarvest { get; set; }
         public bool ClickSulphite { get; set; }
         public bool ClickBlight { get; set; }
+        public bool ClickBlightPump { get; set; }
         public bool ClickAlvaTempleDoors { get; set; }
         public bool ClickLegionPillars { get; set; }
         public bool ClickRitualInitiate { get; set; }

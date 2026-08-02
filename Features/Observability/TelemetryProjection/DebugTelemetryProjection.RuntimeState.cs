@@ -76,8 +76,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 CachedLabelsAvailable: cachedLabels != null,
                 CachedLabelCount: cachedLabels?.Value?.Count ?? 0,
                 PlayerPositionAvailable: player != null,
-                PlayerPositionX: player?.PosNum.X ?? 0,
-                PlayerPositionY: player?.PosNum.Y ?? 0);
+                PlayerPositionX: player?.GridPosNum.X ?? 0,
+                PlayerPositionY: player?.GridPosNum.Y ?? 0);
         }
 
         private static ErrorTelemetrySnapshot BuildErrorTelemetry(ErrorHandler? errorHandler)

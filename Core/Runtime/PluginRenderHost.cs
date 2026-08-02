@@ -46,22 +46,11 @@ namespace ClickIt.Core.Runtime
                     if (shouldCopyDebugInfo)
                         debugTextStartCount = rendering.DeferredTextQueue?.GetPendingCount() ?? 0;
 
-
-                    long sectionStart = Stopwatch.GetTimestamp();
-                    rendering.DebugRenderer?.RenderDebugFrames(effectiveSettings);
-                    if (rendering.DebugRenderer != null
-                        && services.PerformanceMonitor != null
-                        && effectiveSettings.IsAnyDetailedDebugSectionEnabled())
-                        rendering.DebugRenderer.RenderDetailedDebugInfo(effectiveSettings, services.PerformanceMonitor);
-
-
                     if (shouldCopyDebugInfo)
                     {
                         string[] debugLines = rendering.DeferredTextQueue?.GetPendingTextSnapshot(debugTextStartCount) ?? [];
                         debugClipboardService.CompleteAdditionalDebugInfoCopy(debugLines);
                     }
-
-                    services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.DebugOverlay, GetElapsedMs(sectionStart));
                 }
 
                 if (hasAltars)
@@ -83,15 +72,30 @@ namespace ClickIt.Core.Runtime
                 rendering.PathfindingRenderer?.Render(gameController, graphics, effectiveSettings);
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.PathfindingOverlay, GetElapsedMs(pathfindingStart));
 
+                long debugStart = Stopwatch.GetTimestamp();
+                rendering.ImGuiDebugOverlay?.Draw();
+                services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.DebugOverlay, GetElapsedMs(debugStart));
+
                 if (effectiveSettings.ClickHarvest.Value)
                 {
                     long harvestStart = Stopwatch.GetTimestamp();
                     // Process harvest labels during render so the overlay
                     // shows correct estimates AND the click path can read
                     // the decision via GetLabelToClick without reprocessing.
-                    services.HarvestService?.ProcessHarvestPlots(services.CachedLabels?.Value);
+                    services.HarvestService?.ProcessHarvestPlots(services.CachedLabels?.Value, gameController);
                     rendering.HarvestOverlayRenderer?.Render();
                     services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.HarvestOverlay, GetElapsedMs(harvestStart));
+                }
+
+                if (effectiveSettings.ClickBlightTowers.Value)
+                {
+                    long blightStart = Stopwatch.GetTimestamp();
+                    // Blight entity refresh and foundation scanning run on a
+                    // background coroutine (MainBlightRefreshCoroutine) at a
+                    // fixed 200ms interval — only the render call stays in
+                    // the frame loop so debug visuals draw every frame.
+                    rendering.BlightRenderer?.Render(gameController, graphics);
+                    services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.BlightOverlay, GetElapsedMs(blightStart));
                 }
             }
             catch

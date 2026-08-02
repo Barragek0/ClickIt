@@ -95,7 +95,7 @@ namespace ClickIt.Shared.Game
 
         private static Entity? TryGetWorldItemEntity(Entity item)
         {
-            if (!DynamicAccess.TryGetComponent<WorldItem>(item, out WorldItem? world)
+            if (!DynamicAccess.TryGetComponent(item, out WorldItem? world)
                 || world == null)
                 return null;
 

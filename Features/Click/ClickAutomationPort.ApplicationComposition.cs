@@ -21,7 +21,7 @@ namespace ClickIt.Features.Click
         private InteractionExecutionRuntimeDependencies CreateInteractionExecutionRuntimeDependencies()
             => new(
                 ClickAutomationSupport.EnsureCursorInsideGameWindowForClick,
-                point => _forceRefreshPointIsInClickableArea(point, string.Empty),
+                point => ForceRefreshPointIsInClickableArea(point, string.Empty),
                 ClickAutomationSupport.DebugLog,
                 LockedInteractionDispatcher.PerformClick,
                 LockedInteractionDispatcher.PerformHoldClick,

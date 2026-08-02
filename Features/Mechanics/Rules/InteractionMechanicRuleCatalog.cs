@@ -23,8 +23,9 @@ namespace ClickIt.Features.Mechanics.Rules
                 ? MechanicIds.Sanctum : null,
             static ctx => ctx.Settings.ClickBetrayal && ctx.Path.Contains("BetrayalMakeChoice", StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.Betrayal : null,
-            static ctx => ctx.Settings.ClickBlight && ctx.Path.Contains("BlightPump", StringComparison.OrdinalIgnoreCase)
-                ? MechanicIds.Blight : null,
+            static ctx => ctx.Settings.ClickBlight && ctx.Settings.ClickBlightPump
+                && ctx.Path.Contains("BlightPump", StringComparison.OrdinalIgnoreCase)
+                    ? MechanicIds.Blight : null,
             static ctx => ctx.Settings.ClickAlvaTempleDoors
                 && ctx.Path.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase)
                 && ctx.Dependencies.ShouldAllowClosedDoorPastMechanic(ctx.GameController)

@@ -27,6 +27,7 @@ namespace ClickIt.Shared.Game
         public const string Sanctum = "Sanctum";
         public const string BetrayalMakeChoice = "BetrayalMakeChoice";
         public const string BlightPump = "BlightPump";
+        public const string BlightFoundation = "BlightFoundation";
         public const string SwitchOnce = "Switch_Once";
         public const string RitualPath = "Leagues/Ritual";
 

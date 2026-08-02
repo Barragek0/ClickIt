@@ -18,6 +18,7 @@ namespace ClickIt.Tests.Features.Mechanics
                 ClickHarvest = true,
                 ClickBetrayal = true,
                 ClickBlight = true,
+                ClickBlightPump = true,
                 ClickDelveSpawners = true
             };
 
@@ -130,6 +131,42 @@ namespace ClickIt.Tests.Features.Mechanics
                 CreateDependencies(allowClosedDoorPast: true));
 
             allowedResult.Should().Be(MechanicIds.AlvaTempleDoors);
+        }
+
+        [TestMethod]
+        public void TryResolve_RequiresBlightPumpToggle_ForBlightPumpRule()
+        {
+            const string pumpPath = "Metadata/Terrain/Leagues/Blight/Objects/BlightPump";
+
+            ClickSettings pumpDisabled = new()
+            {
+                ClickBlight = true,
+                ClickBlightPump = false
+            };
+
+            string? disabledResult = InteractionMechanicRuleCatalog.TryResolve(
+                pumpDisabled,
+                pumpPath,
+                DummyLabel,
+                gameController: null,
+                CreateDependencies());
+
+            disabledResult.Should().BeNull();
+
+            ClickSettings pumpEnabled = new()
+            {
+                ClickBlight = true,
+                ClickBlightPump = true
+            };
+
+            string? enabledResult = InteractionMechanicRuleCatalog.TryResolve(
+                pumpEnabled,
+                pumpPath,
+                DummyLabel,
+                gameController: null,
+                CreateDependencies());
+
+            enabledResult.Should().Be(MechanicIds.Blight);
         }
 
         private static MechanicClassifierDependencies CreateDependencies(

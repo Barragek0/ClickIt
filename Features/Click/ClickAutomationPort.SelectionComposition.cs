@@ -116,7 +116,7 @@ namespace ClickIt.Features.Click
                 _shrineService,
                 services.LostShipmentTargets,
                 services.SettlersOreTargets,
-                _pointIsInClickableArea,
+                PointIsInClickableArea,
                 services.LabelInteraction,
                 services.OffscreenStickyTargets,
                 _pathfindingService,

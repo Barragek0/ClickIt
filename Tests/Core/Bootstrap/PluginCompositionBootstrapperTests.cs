@@ -37,7 +37,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.WeightCalculator.Should().BeSameAs(core.WeightCalculator);
             context.Rendering.DeferredTextQueue.Should().BeSameAs(core.DeferredTextQueue);
             context.Rendering.DeferredFrameQueue.Should().BeSameAs(core.DeferredFrameQueue);
-            context.Rendering.DebugRenderer.Should().BeSameAs(rendering.DebugRenderer);
             context.Rendering.StrongboxRenderer.Should().BeSameAs(rendering.StrongboxRenderer);
             context.Rendering.LazyModeRenderer.Should().BeSameAs(rendering.LazyModeRenderer);
             context.Rendering.ClickHotkeyToggleRenderer.Should().BeSameAs(rendering.ClickHotkeyToggleRenderer);
@@ -62,7 +61,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.ErrorHandler = new ErrorHandler(settings, static (_, _) => { }, static (_, _) => { });
             context.Services.PathfindingService = CreateOpaque<PathfindingService>();
             context.Services.AlertService = CreateOpaque<AlertService>();
-            context.Rendering.DebugRenderer = CreateOpaque<DebugRenderer>();
             context.Rendering.DeferredTextQueue = new DeferredTextQueue();
             context.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
             context.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => context.Services.ClickAutomationPort);
@@ -76,7 +74,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.ErrorHandler.Should().BeNull();
             context.Services.PathfindingService.Should().BeNull();
             context.Services.AlertService.Should().BeNull();
-            context.Rendering.DebugRenderer.Should().BeNull();
             context.Rendering.DeferredTextQueue.Should().BeNull();
             context.Rendering.DeferredFrameQueue.Should().BeNull();
             context.Rendering.ClickRuntimeHost.Should().BeNull();
@@ -331,20 +328,22 @@ namespace ClickIt.Tests.Core.Bootstrap
                 DeferredTextQueue: new DeferredTextQueue(),
                 DeferredFrameQueue: new DeferredFrameQueue(),
                 HarvestService: new HarvestService(settings),
-                HarvestOverlayRenderer: CreateOpaque<HarvestOverlayRenderer>());
+                HarvestOverlayRenderer: CreateOpaque<HarvestOverlayRenderer>(),
+                BlightService: new BlightService(settings),
+                BlightRenderer: CreateOpaque<BlightRenderer>());
         }
 
         private static RenderingDomainServices CreateRenderingDomainServices()
         {
             return new RenderingDomainServices(
-                DebugRenderer: CreateOpaque<DebugRenderer>(),
                 StrongboxRenderer: CreateOpaque<StrongboxRenderer>(),
                 LazyModeRenderer: CreateOpaque<LazyModeRenderer>(),
                 ClickHotkeyToggleRenderer: CreateOpaque<ClickHotkeyToggleRenderer>(),
                 InventoryFullWarningRenderer: CreateOpaque<InventoryFullWarningRenderer>(),
                 PathfindingRenderer: CreateOpaque<PathfindingRenderer>(),
                 AltarChoiceEvaluator: CreateOpaque<AltarChoiceEvaluator>(),
-                AltarDisplayRenderer: CreateOpaque<AltarDisplayRenderer>());
+                AltarDisplayRenderer: CreateOpaque<AltarDisplayRenderer>(),
+                ImGuiDebugOverlay: CreateOpaque<ImGuiDebugOverlay>());
         }
 
         private static ClickAutomationPort CreateClickAutomationPort(ClickItSettings settings, CoreDomainServices core)

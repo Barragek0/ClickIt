@@ -17,8 +17,6 @@ namespace ClickIt.Features.Click
         private readonly AltarService _altarService;
         private readonly WeightCalculator _weightCalculator;
         private readonly AltarChoiceEvaluator _altarChoiceEvaluator;
-        private readonly Func<Vector2, string, bool> _pointIsInClickableArea;
-        private readonly Func<Vector2, string, bool> _forceRefreshPointIsInClickableArea;
         private readonly InputHandler _inputHandler;
         private readonly ILabelInteractionPort _labelInteractionPort;
         private readonly LabelClickPointResolver _labelClickPointResolver;
@@ -32,6 +30,12 @@ namespace ClickIt.Features.Click
         private readonly MechanicPriorityContextProvider _mechanicPriorityContextProvider;
 
         internal Func<LabelOnGround?>? GetHarvestLabelToClick { get; set; }
+        internal Func<BlightBuildAction>? TryProgressBlightBuilding { get; set; }
+        internal Func<Entity?>? GetBlightPathfindTarget { get; set; }
+        internal Func<bool>? IsBlightEncounterActive { get; set; }
+
+        internal Func<Vector2, string, bool> PointIsInClickableArea { get; }
+        internal Func<Vector2, string, bool> ForceRefreshPointIsInClickableArea { get; }
 
 
 
@@ -59,8 +63,8 @@ namespace ClickIt.Features.Click
             _altarService = altarService ?? throw new ArgumentNullException(nameof(altarService));
             _weightCalculator = weightCalculator ?? throw new ArgumentNullException(nameof(weightCalculator));
             _altarChoiceEvaluator = altarChoiceEvaluator ?? throw new ArgumentNullException(nameof(altarChoiceEvaluator));
-            _pointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
-            _forceRefreshPointIsInClickableArea = forceRefreshPointIsInClickableArea ?? throw new ArgumentNullException(nameof(forceRefreshPointIsInClickableArea));
+            PointIsInClickableArea = pointIsInClickableArea ?? throw new ArgumentNullException(nameof(pointIsInClickableArea));
+            ForceRefreshPointIsInClickableArea = forceRefreshPointIsInClickableArea ?? throw new ArgumentNullException(nameof(forceRefreshPointIsInClickableArea));
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
             _labelInteractionPort = labelInteractionPort ?? throw new ArgumentNullException(nameof(labelInteractionPort));
             _labelClickPointResolver = new LabelClickPointResolver(settings);

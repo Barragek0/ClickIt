@@ -12,7 +12,7 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static bool IsEntityHiddenByMinimapIcon(Entity entity)
         {
-            if (!DynamicAccess.TryGetComponent<MinimapIcon>(entity, out MinimapIcon? minimapIcon)
+            if (!DynamicAccess.TryGetComponent(entity, out MinimapIcon? minimapIcon)
                 || minimapIcon == null)
                 return false;
 

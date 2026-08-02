@@ -81,7 +81,7 @@ namespace ClickIt.Tests.Features.Click
 
             candidate.Should().BeNull();
             logs.Should().ContainSingle();
-            logs[0].Should().Contain("[ResolveNextSettlersOreCandidate] Failed to scan entities:");
+            logs[0].Should().Contain("[SettlersOre] Failed entities:");
         }
 
         [TestMethod]
@@ -102,7 +102,7 @@ namespace ClickIt.Tests.Features.Click
             candidate.Should().BeNull();
             logs.Should().ContainSingle();
             logs[0].StartsWith("[ResolveNextSettlersOreTargetSelector]", StringComparison.Ordinal).Should().BeFalse();
-            logs[0].StartsWith("[ResolveNextSettlersOreCandidate]", StringComparison.Ordinal).Should().BeTrue();
+            logs[0].StartsWith("[SettlersOre]", StringComparison.Ordinal).Should().BeTrue();
         }
 
         [TestMethod]

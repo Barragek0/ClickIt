@@ -36,7 +36,7 @@ namespace ClickIt.Features.Click
 
                 private MovementSkillCoordinator MovementSkills => field ??= new(CreateMovementSkillCoordinatorDependencies());
 
-                private OffscreenTargetResolver OffscreenTargetResolver => field ??= new(_gameController, _pathfindingService);
+                private OffscreenTargetResolver OffscreenTargetResolver => field ??= new(_gameController, _pathfindingService, pointIsInClickableArea: PointIsInClickableArea);
 
                 private ClickTickContextFactory TickContextFactory => field ??= new(CreateClickTickContextFactoryDependencies());
 
@@ -81,7 +81,8 @@ namespace ClickIt.Features.Click
                                 VisibleLabelSnapshots,
                                 ClickAutomationSupport.IsClickableInEitherSpace,
                                 ClickAutomationSupport.IsInsideWindowInEitherSpace,
-                                PathfindingLabelSuppression);
+                                PathfindingLabelSuppression,
+                                DebugLog: ClickAutomationSupport.DebugLog);
 
                 private OffscreenPathingCoordinatorDependencies CreateOffscreenPathingCoordinatorDependencies()
                 {
@@ -99,7 +100,7 @@ namespace ClickIt.Features.Click
                                 ClickAutomationSupport.DebugLog,
                                 ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
                                 services.ClickDebugPublisher,
-                                _pointIsInClickableArea);
+                                PointIsInClickableArea);
                 }
 
                 private ClickRuntimeEngineDependencies CreateClickRuntimeEngineDependencies()
@@ -114,6 +115,7 @@ namespace ClickIt.Features.Click
                                 services.VisibleMechanics,
                                 services.LabelSelection,
                                 services.LabelInteraction,
+                                PointIsInClickableArea,
                                 ClickAutomationSupport.ShouldCaptureClickDebug,
                                 _pathfindingService,
                                 services.PathfindingLabelSuppression,
@@ -122,7 +124,10 @@ namespace ClickIt.Features.Click
                                 ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
                                 ClickAutomationSupport.DebugLog,
                                 _inputHandler,
-                                GetHarvestLabelToClick);
+                                GetHarvestLabelToClick,
+                                TryProgressBlightBuilding,
+                                GetBlightPathfindTarget,
+                                IsBlightEncounterActive);
                 }
 
                 private MovementSkillCoordinatorDependencies CreateMovementSkillCoordinatorDependencies()
@@ -133,7 +138,7 @@ namespace ClickIt.Features.Click
                                 _performanceMonitor,
                                 OffscreenTargetResolver.GetRemainingOffscreenPathNodeCount,
                                 ClickAutomationSupport.EnsureCursorInsideGameWindowForClick,
-                                _pointIsInClickableArea,
+                                PointIsInClickableArea,
                                 ClickAutomationSupport.DebugLog);
 
                 private ClickTickContextFactoryDependencies CreateClickTickContextFactoryDependencies()

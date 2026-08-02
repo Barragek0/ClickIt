@@ -6,7 +6,6 @@ namespace ClickIt.Core.Runtime
         {
         }
 
-        public DebugRenderer? DebugRenderer { get; set; }
         public StrongboxRenderer? StrongboxRenderer { get; set; }
         public UltimatumRenderer? UltimatumRenderer { get; set; }
         public LazyModeRenderer? LazyModeRenderer { get; set; }
@@ -15,6 +14,8 @@ namespace ClickIt.Core.Runtime
         public PathfindingRenderer? PathfindingRenderer { get; set; }
         public AltarDisplayRenderer? AltarDisplayRenderer { get; set; }
         public HarvestOverlayRenderer? HarvestOverlayRenderer { get; set; }
+        public BlightRenderer? BlightRenderer { get; set; }
+        internal ImGuiDebugOverlay? ImGuiDebugOverlay { get; set; }
         public DeferredTextQueue? DeferredTextQueue { get; set; }
         public DeferredFrameQueue? DeferredFrameQueue { get; set; }
         public ClickRuntimeHost? ClickRuntimeHost { get; set; }
@@ -22,7 +23,6 @@ namespace ClickIt.Core.Runtime
 
         internal void Clear()
         {
-            DebugRenderer = null;
             StrongboxRenderer = null;
             UltimatumRenderer = null;
             LazyModeRenderer = null;

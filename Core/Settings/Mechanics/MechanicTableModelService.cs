@@ -9,6 +9,7 @@ namespace ClickIt.Core.Settings.Mechanics
         private const string LeagueChestSubgroupBlight = "Blight";
         private const string LeagueChestSubgroupBreach = "Breach";
         private const string LeagueChestSubgroupSynthesis = "Synthesis";
+        private const string LeagueChestSubgroupAllflame = "Allflame";
         private const string DoorsSubgroupRegular = "Regular";
         private const string DoorsSubgroupAlvaTemple = "Alva Temple";
 
@@ -81,6 +82,9 @@ namespace ClickIt.Core.Settings.Mechanics
                 new(MechanicIds.BlightCyst, "Blight Cyst", settings.ClickBlightCyst, "league-chests", true, LeagueChestSubgroupBlight),
                 new(MechanicIds.BreachGraspingCoffers, "Grasping Coffers", settings.ClickBreachGraspingCoffers, "league-chests", true, LeagueChestSubgroupBreach),
                 new(MechanicIds.SynthesisSynthesisedStash, "Synthesised Stash", settings.ClickSynthesisSynthesisedStash, "league-chests", true, LeagueChestSubgroupSynthesis),
+                new(MechanicIds.AllflameCursedTreasure, "Cursed Treasure", settings.ClickAllflameCursedTreasure, "league-chests", true, LeagueChestSubgroupAllflame),
+                new(MechanicIds.AllflameBrinerotPlunder, "Brinerot Plunder", settings.ClickAllflameBrinerotPlunder, "league-chests", true, LeagueChestSubgroupAllflame),
+                new(MechanicIds.AllflameCoralNest, "Coral Nest", settings.ClickAllflameCoralNest, "league-chests", true, LeagueChestSubgroupAllflame),
                 new(MechanicIds.LeagueChests, "Other League Mechanic Chests", settings.ClickLeagueChestsOther, "league-chests", true),
                 new(MechanicIds.Shrines, "Shrines", settings.ClickShrines, null, true),
                 new(MechanicIds.AreaTransitions, "Area Transitions", settings.ClickAreaTransitions, null, false),

@@ -40,7 +40,7 @@ public sealed class HarvestService
         _settings = settings;
     }
 
-    internal void ProcessHarvestPlots(IReadOnlyList<LabelOnGround>? allLabels)
+    internal void ProcessHarvestPlots(IReadOnlyList<LabelOnGround>? allLabels, GameController? gameController)
     {
         if (!_settings.ClickHarvest.Value)
         {
@@ -74,9 +74,37 @@ public sealed class HarvestService
         {
             (LabelOnGround label, List<HarvestSeedRow> rows) = plots[i];
             double lifeforce = HarvestLifeforceEstimator.EstimateTotalLifeforce(
-                System.Runtime.InteropServices.CollectionsMarshal.AsSpan(rows));
+                CollectionsMarshal.AsSpan(rows));
             RectangleF bounds = ResolveLabelBounds(label);
             estimates.Add(new HarvestPlotEstimate(label, rows, lifeforce, bounds));
+        }
+
+        // Avoid LINQ on the render thread — use a simple loop instead.
+        if (gameController != null)
+        {
+            Size2F windowSize = gameController.Window.GetWindowRectangleTimeCache.Size;
+            Entity? player = gameController.Player;
+            if (player != null)
+            {
+                NumVector2 playerPos = player.GridPosNum;
+
+                List<(float Distance, int Index)> screenDistances = new(estimates.Count);
+                for (int i = 0; i < estimates.Count; i++)
+                {
+                    if (IsLabelOnScreen(estimates[i].LabelBounds, windowSize))
+                    {
+                        float dist = GetLabelDistance(estimates[i], playerPos);
+                        screenDistances.Add((dist, i));
+                    }
+                }
+
+                screenDistances.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
+                int takeCount = SystemMath.Min(2, screenDistances.Count);
+                List<HarvestPlotEstimate> filtered = new(takeCount);
+                for (int i = 0; i < takeCount; i++)
+                    filtered.Add(estimates[screenDistances[i].Index]);
+                estimates = filtered;
+            }
         }
 
         CurrentEstimates = estimates;
@@ -136,6 +164,25 @@ public sealed class HarvestService
     /// blocked). For equal estimates falls back to the nearest label.
     /// When lifeforce estimation is off, returns null (normal pipeline).
     /// </summary>
+    private static bool IsLabelOnScreen(RectangleF bounds, Size2F windowSize)
+    {
+        float cx = bounds.X + (bounds.Width / 2f);
+        float cy = bounds.Y + (bounds.Height / 2f);
+        return cx >= 0 && cy >= 0 && cx <= windowSize.Width && cy <= windowSize.Height;
+    }
+
+    private static float GetLabelDistance(HarvestPlotEstimate estimate, NumVector2 playerPos)
+    {
+        try
+        {
+            if (DynamicAccess.TryGetDynamicValue(estimate.Label, DynamicAccessProfiles.ItemOnGround, out object? rawItem)
+                && DynamicAccess.TryReadFloat(rawItem, DynamicAccessProfiles.DistancePlayer, out float dist))
+                return dist;
+        }
+        catch { }
+        return float.MaxValue;
+    }
+
     internal LabelOnGround? GetLabelToClick()
     {
         if (!_settings.ClickHigherHarvestEstimate.Value)
@@ -151,7 +198,7 @@ public sealed class HarvestService
         return CurrentEstimates.Count > 0 ? CurrentEstimates[0].Label : null;
     }
 
-    private static RectangleF ResolveLabelBounds(LabelOnGround label)
+    internal static RectangleF ResolveLabelBounds(LabelOnGround label)
     {
         try
         {

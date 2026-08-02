@@ -38,7 +38,9 @@ public sealed class HarvestOverlayRenderer
         for (int i = 0; i < estimates.Count; i++)
         {
             HarvestPlotEstimate estimate = estimates[i];
-            if (estimate.LabelBounds == RectangleF.Empty || estimate.LabelBounds.IsEmpty)
+
+            RectangleF labelBounds = HarvestService.ResolveLabelBounds(estimate.Label);
+            if (labelBounds == RectangleF.Empty || labelBounds.IsEmpty)
                 continue;
 
             bool isEqual = _harvestService.CurrentDecision.Outcome == HarvestDecisionOutcome.EqualEstimatesNoClick;
@@ -49,15 +51,15 @@ public sealed class HarvestOverlayRenderer
                 : isChosen ? ChosenHighlightColor : NotChosenHighlightColor;
             _deferredFrameQueue.Enqueue(
                 new RectangleF(
-                    estimate.LabelBounds.X,
-                    estimate.LabelBounds.Y,
-                    estimate.LabelBounds.Width,
-                    estimate.LabelBounds.Height),
+                    labelBounds.X,
+                    labelBounds.Y,
+                    labelBounds.Width,
+                    labelBounds.Height),
                 highlightColor,
                 thickness: 2);
 
-            float textX = estimate.LabelBounds.Right + 4f;
-            float textY = estimate.LabelBounds.Y + 2f;
+            float textX = labelBounds.Right + 4f;
+            float textY = labelBounds.Y + 2f;
             string estimateText = $"{estimate.EstimatedLifeforce:F1}";
             Color textColor = highlightColor;
 

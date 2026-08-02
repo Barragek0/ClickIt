@@ -14,6 +14,9 @@ namespace ClickIt.Features.Labels.Classification
         private const string BlightCystPathMarker = "Chests/Blight";
         private const string BreachGraspingCoffersPathMarker = "Breach/BreachBoxChest";
         private const string SynthesisSynthesisedStashPathMarker = "SynthesisChests/SynthesisChest";
+        private const string AllflameCursedTreasurePathMarker = "LeagueDeepwater/CursedTreasure";
+        private const string AllflameBrinerotPlunderPathMarker = "LeagueDeepwater/BrinerotStores";
+        private const string AllflameCoralNestPathMarker = "LeagueDeepwater/GiantCoralChest";
         private const string HeistHazardsPathMarker = "Heist/Objects/Level/Hazards";
 
         private readonly record struct LeagueChestRule(
@@ -30,7 +33,10 @@ namespace ClickIt.Features.Labels.Classification
             new(MechanicIds.HeistHazards, static (_, path) => IsHeistHazardsPath(path)),
             new(MechanicIds.BlightCyst, static (_, path) => IsBlightCystPath(path)),
             new(MechanicIds.BreachGraspingCoffers, static (_, path) => IsBreachGraspingCoffersPath(path)),
-            new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path))
+            new(MechanicIds.SynthesisSynthesisedStash, static (_, path) => IsSynthesisSynthesisedStashPath(path)),
+            new(MechanicIds.AllflameCursedTreasure, static (_, path) => IsAllflameCursedTreasurePath(path)),
+            new(MechanicIds.AllflameBrinerotPlunder, static (_, path) => IsAllflameBrinerotPlunderPath(path)),
+            new(MechanicIds.AllflameCoralNest, static (_, path) => IsAllflameCoralNestPath(path))
         ];
 
         internal static string? GetClickableMechanicId(
@@ -348,6 +354,18 @@ namespace ClickIt.Features.Labels.Classification
         private static bool IsSynthesisSynthesisedStashPath(string? path)
             => !string.IsNullOrWhiteSpace(path)
                && path.Contains(SynthesisSynthesisedStashPathMarker, StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsAllflameCursedTreasurePath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(AllflameCursedTreasurePathMarker, StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsAllflameBrinerotPlunderPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(AllflameBrinerotPlunderPathMarker, StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsAllflameCoralNestPath(string? path)
+            => !string.IsNullOrWhiteSpace(path)
+               && path.Contains(AllflameCoralNestPathMarker, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsHeistHazardsPath(string? path)
             => !string.IsNullOrWhiteSpace(path)

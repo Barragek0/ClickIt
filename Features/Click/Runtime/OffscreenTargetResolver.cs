@@ -1,10 +1,15 @@
 namespace ClickIt.Features.Click.Runtime
 {
-    internal sealed class OffscreenTargetResolver(GameController gameController, PathfindingService pathfindingService, IOffscreenRuntimeSeam? runtimeSeam = null)
+    internal sealed class OffscreenTargetResolver(
+        GameController gameController,
+        PathfindingService pathfindingService,
+        IOffscreenRuntimeSeam? runtimeSeam = null,
+        Func<Vector2, string, bool>? pointIsInClickableArea = null)
     {
         private readonly GameController _gameController = gameController;
         private readonly PathfindingService _pathfindingService = pathfindingService;
         private readonly IOffscreenRuntimeSeam _runtimeSeam = runtimeSeam ?? OffscreenRuntimeSeam.Instance;
+        private readonly Func<Vector2, string, bool>? _pointIsInClickableArea = pointIsInClickableArea;
 
         internal int GetRemainingOffscreenPathNodeCount()
         {
@@ -73,8 +78,20 @@ namespace ClickIt.Features.Click.Runtime
 
             if (IsFinite(projected) && !IsNearCorner(projected, window))
             {
-                targetScreen = projected;
-                return true;
+                // Target is on screen — but can we actually click there?
+                // If the projected position falls in a blocked zone (minimap,
+                // right panel, etc.), treat the target as still offscreen so
+                // pathfinding keeps walking until it moves into a clickable area.
+                if (_pointIsInClickableArea != null
+                    && !_pointIsInClickableArea(projected, "offscreen"))
+                {
+                    // Falls through to directional-walk fallback below.
+                }
+                else
+                {
+                    targetScreen = projected;
+                    return true;
+                }
             }
 
             return TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);

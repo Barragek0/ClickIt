@@ -218,14 +218,14 @@ namespace ClickIt.Features.Click.Application
                 return $"{sourceSummary} | selection:r:0-0 t:0";
 
             SelectionDebugSummary summary = _dependencies.LabelInteractionPort.GetSelectionDebugSummary(allLabels, 0, labelCount);
-            return $"{sourceSummary} | selection:{summary.ToCompactString()}";
+            return $"{sourceSummary} | {summary.ToShortString()}";
         }
 
         internal string BuildLabelRangeRejectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int start, int endExclusive, int examined)
         {
             int maxCount = SystemMath.Max(0, endExclusive - start);
             SelectionDebugSummary summary = _dependencies.LabelInteractionPort.GetSelectionDebugSummary(allLabels, start, maxCount);
-            return $"range:{start}-{endExclusive} examined:{examined} | {summary.ToCompactString()}";
+            return $"range:{start}-{endExclusive} ex:{examined} | {summary.ToShortString()}";
         }
 
         internal string BuildLabelSourceDebugSummary(IReadOnlyList<LabelOnGround>? cachedLabelSnapshot)

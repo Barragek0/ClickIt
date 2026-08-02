@@ -16,58 +16,25 @@ namespace ClickIt.Features.Observability
         {
             settings ??= new ClickItSettings();
 
-            string toggleLine = string.Join(", ",
-            [
-                $"hotkeyToggle:{settings.ClickHotkeyToggleMode.Value}",
-                $"manualCursor:{settings.ClickOnManualUiHoverOnly.Value}",
-                $"lazyMode:{settings.LazyMode.Value}",
-                $"leftHanded:{settings.LeftHanded.Value}"
-            ]);
+            string line1 = string.Join("  ", new[]
+            {
+                $"Toggle:HT={F(settings.ClickHotkeyToggleMode.Value)} MC={F(settings.ClickOnManualUiHoverOnly.Value)} LM={F(settings.LazyMode.Value)} LH={F(settings.LeftHanded.Value)}",
+                $"Click:R={settings.ClickDistance.Value} f={settings.ClickFrequencyTarget.Value}ms vW={F(settings.VerifyCursorInGameWindowBeforeClick.Value)} vH={F(settings.VerifyUIHoverWhenNotLazy.Value)} aO={F(settings.AvoidOverlappingLabelClickPoints.Value)}",
+                $"Safety:bP={F(settings.BlockOnOpenLeftRightPanel.Value)} tI={F(settings.ToggleItems.Value)} ti={settings.ToggleItemsIntervalMs.Value} pT={settings.ToggleItemsPostToggleClickBlockMs.Value}"
+            });
 
-            string coreClickLine = string.Join(", ",
-            [
-                $"radius:{settings.ClickDistance.Value}",
-                $"freqTarget:{settings.ClickFrequencyTarget.Value}ms",
-                $"verifyCursorInWindow:{settings.VerifyCursorInGameWindowBeforeClick.Value}",
-                $"verifyUiHoverNonLazy:{settings.VerifyUIHoverWhenNotLazy.Value}",
-                $"avoidOverlap:{settings.AvoidOverlappingLabelClickPoints.Value}"
-            ]);
-
-            string inputSafetyLine = string.Join(", ",
-            [
-                $"blockPanels:{settings.BlockOnOpenLeftRightPanel.Value}",
-                $"toggleItems:{settings.ToggleItems.Value}",
-                $"toggleItemsInterval:{settings.ToggleItemsIntervalMs.Value}ms",
-                $"postToggleBlock:{settings.ToggleItemsPostToggleClickBlockMs.Value}ms"
-            ]);
-
-            string pathingLine = string.Join(", ",
-            [
-                $"walkOffscreen:{settings.WalkTowardOffscreenLabels.Value}",
-                $"prioritizeOnscreen:{settings.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value}",
-                $"pathBudget:{settings.OffscreenPathfindingSearchBudget.Value}"
-            ]);
-
-            string chestSettleLine = string.Join(", ",
-            [
-                $"waitBasicChestDrops:{settings.PauseAfterOpeningBasicChests.Value}",
-                $"waitLeagueChestDrops:{settings.PauseAfterOpeningLeagueChests.Value}",
-                $"waitHeistChestDrops:{settings.PauseAfterOpeningHeistChests.Value}",
-                $"allowNearbyDuringSettle:{settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value}",
-                $"nearbySettleDist:{settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance.Value}"
-            ]);
+            string line2 = string.Join("  ", new[]
+            {
+                $"Walk:wO={F(settings.WalkTowardOffscreenLabels.Value)} pO={F(settings.PrioritizeOnscreenClickableMechanicsOverPathfinding.Value)} pB={settings.OffscreenPathfindingSearchBudget.Value}",
+                $"Chest:bC={F(settings.PauseAfterOpeningBasicChests.Value)} lC={F(settings.PauseAfterOpeningLeagueChests.Value)} hC={F(settings.PauseAfterOpeningHeistChests.Value)} aN={F(settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettle.Value)} nD={settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance.Value}"
+            });
 
             return new ClickSettingsTelemetrySnapshot(
-                SummaryLines:
-                [
-                    toggleLine,
-                    coreClickLine,
-                    inputSafetyLine,
-                    pathingLine,
-                    chestSettleLine
-                ],
+                SummaryLines: [line1, line2],
                 InitialUltimatumClickEnabled: settings.IsInitialUltimatumClickEnabled(),
                 OtherUltimatumClickEnabled: settings.IsOtherUltimatumClickEnabled());
         }
+
+        private static string F(bool v) => v ? "T" : "F";
     }
 }

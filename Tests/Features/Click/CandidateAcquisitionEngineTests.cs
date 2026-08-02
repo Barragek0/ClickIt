@@ -40,7 +40,7 @@ namespace ClickIt.Tests.Features.Click
             candidates.NextLabel.Should().BeNull();
             candidates.NextLabelMechanicId.Should().BeNull();
             latestSnapshot.Should().NotBeNull();
-            latestSnapshot!.Stage.Should().Be("GroundItemsHidden");
+            latestSnapshot!.Stage.Should().Be("HiddenLabelNull");
         }
 
         [TestMethod]

@@ -56,7 +56,7 @@ namespace ClickIt.Shared.Game
 
             try
             {
-                address = Convert.ToInt64(rawAddress, global::System.Globalization.CultureInfo.InvariantCulture);
+                address = Convert.ToInt64(rawAddress, System.Globalization.CultureInfo.InvariantCulture);
                 return true;
             }
             catch

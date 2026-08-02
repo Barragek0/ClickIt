@@ -9,7 +9,8 @@ namespace ClickIt.Features.Click.Selection
         VisibleLabelSnapshotProvider VisibleLabelSnapshots,
         Func<Vector2, string, bool> IsClickableInEitherSpace,
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
-        PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression);
+        PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
+        Action<string>? DebugLog = null);
 
     internal sealed class OffscreenTraversalTargetResolver(OffscreenTraversalTargetResolverDependencies dependencies)
     {
@@ -23,6 +24,10 @@ namespace ClickIt.Features.Click.Selection
             (Entity? eldritchAltarTarget, string? eldritchAltarMechanicId) = ResolveNearestOffscreenEldritchAltarTarget(maxDistance);
             Entity? shrineTarget = ResolveNearestOffscreenShrineTarget(maxDistance);
             (Entity? areaTransitionTarget, string? areaTransitionMechanicId) = ResolveNearestOffscreenAreaTransitionTarget(maxDistance);
+
+            _dependencies.DebugLog?.Invoke(string.Format("[TraversalResolver] ResolveNearestOffscreenWalkTarget: label={0} altar={1} shrine={2} transition={3}",
+                    labelBackedTarget?.Path ?? "null", eldritchAltarTarget?.Path ?? "null",
+                    shrineTarget != null ? "yes" : "null", areaTransitionTarget?.Path ?? "null"));
 
             if (labelBackedTarget == null && eldritchAltarTarget == null && shrineTarget == null && areaTransitionTarget == null)
                 return null;
@@ -87,7 +92,12 @@ namespace ClickIt.Features.Click.Selection
         {
             IReadOnlyList<LabelOnGround>? labels = _dependencies.VisibleLabelSnapshots.GetCachedLabels();
             if (labels == null || labels.Count == 0)
+            {
+                _dependencies.DebugLog?.Invoke("[TraversalResolver] ResolveNearestOffscreenLabelBackedTarget: no cached labels");
                 return (null, null);
+            }
+
+            _dependencies.DebugLog?.Invoke($"[TraversalResolver] ResolveNearestOffscreenLabelBackedTarget: scanning {labels.Count} cached labels");
 
             RectangleF windowArea = _dependencies.GameController.Window.GetWindowRectangleTimeCache;
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
@@ -95,6 +105,11 @@ namespace ClickIt.Features.Click.Selection
             _dependencies.MechanicPriorityContextProvider.Refresh();
             MechanicPriorityContext mechanicPriorityContext = _dependencies.MechanicPriorityContextProvider.CreateContext();
 
+            int rejectedNoEntity = 0;
+            int rejectedDistance = 0;
+            int rejectedSuppressed = 0;
+            int rejectedNoMechanic = 0;
+            int rejectedShouldContinue = 0;
             Entity? best = null;
             string? bestMechanicId = null;
             MechanicRank bestRank = default;
@@ -107,20 +122,38 @@ namespace ClickIt.Features.Click.Selection
                     ? rawItem as Entity
                     : null;
                 if (label == null || entity == null)
+                {
+                    rejectedNoEntity++;
                     continue;
+                }
                 if (!TryGetOffscreenCandidateState(entity, out float distance, out _))
+                {
+                    rejectedDistance++;
                     continue;
+                }
                 if (distance > maxDistance)
+                {
+                    rejectedDistance++;
                     continue;
+                }
                 if (_dependencies.PathfindingLabelSuppression.ShouldSuppressPathfindingLabel(label))
+                {
+                    rejectedSuppressed++;
                     continue;
+                }
 
                 string? mechanicId = _dependencies.LabelInteractionPort.GetMechanicIdForLabel(label);
                 if (string.IsNullOrWhiteSpace(mechanicId))
+                {
+                    rejectedNoMechanic++;
                     continue;
+                }
 
                 if (!ShouldContinuePathfindingToLabel(label, entity, labels, windowTopLeft))
+                {
+                    rejectedShouldContinue++;
                     continue;
+                }
 
                 MechanicRank rank = BuildMechanicRank(distance, mechanicId, mechanicPriorityContext);
                 _ = OffscreenTargetRanker.TryPromoteRankedCandidate(
@@ -132,6 +165,11 @@ namespace ClickIt.Features.Click.Selection
                     mechanicId,
                     rank);
             }
+
+            _dependencies.DebugLog?.Invoke(string.Format("[TraversalResolver] Label scan done: total={0} noEntity={1} dist={2} supp={3} noMech={4} skipCont={5} best={6}",
+                    labels.Count, rejectedNoEntity, rejectedDistance, rejectedSuppressed,
+                    rejectedNoMechanic, rejectedShouldContinue,
+                    best != null ? (best.Path ?? "?") : "null"));
 
             return (best, bestMechanicId);
         }

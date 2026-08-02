@@ -205,7 +205,7 @@ namespace ClickIt.Tests.Features.Click
 
             string summary = service.BuildNoLabelDebugSummary([CreateOpaqueLabel(), CreateOpaqueLabel()]);
 
-            summary.Should().Be("visible:0 cached:2 groundVisible:True | selection:r:0-2 t:2 nl:0 ne:1 d:0 u:0 nm:1 wi:0/0 sp:0 sm:0 sd:0");
+            summary.Should().Be("visible:0 cached:2 groundVisible:True | r:0-2 t:2 nl:0 ne:1 d:0 u:0 nm:1 wi:0/0");
         }
 
         [TestMethod]
@@ -222,7 +222,7 @@ namespace ClickIt.Tests.Features.Click
                 endExclusive: 3,
                 examined: 2);
 
-            summary.Should().Be("range:1-3 examined:2 | r:1-3 t:4 nl:0 ne:0 d:1 u:0 nm:2 wi:0/0 sp:0 sm:0 sd:0");
+            summary.Should().Be("range:1-3 ex:2 | r:1-3 t:4 nl:0 ne:0 d:1 u:0 nm:2 wi:0/0");
         }
 
         private static ClickLabelInteractionService CreateService(

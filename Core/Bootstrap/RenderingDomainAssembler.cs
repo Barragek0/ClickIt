@@ -1,14 +1,14 @@
 namespace ClickIt.Core.Bootstrap
 {
     internal readonly record struct RenderingDomainServices(
-        DebugRenderer DebugRenderer,
         StrongboxRenderer StrongboxRenderer,
         LazyModeRenderer LazyModeRenderer,
         ClickHotkeyToggleRenderer ClickHotkeyToggleRenderer,
         InventoryFullWarningRenderer InventoryFullWarningRenderer,
         PathfindingRenderer PathfindingRenderer,
         AltarChoiceEvaluator AltarChoiceEvaluator,
-        AltarDisplayRenderer AltarDisplayRenderer);
+        AltarDisplayRenderer AltarDisplayRenderer,
+        ImGuiDebugOverlay ImGuiDebugOverlay);
 
     internal static class RenderingDomainAssembler
     {
@@ -39,7 +39,6 @@ namespace ClickIt.Core.Bootstrap
             Action<string, int> logMessage,
             Func<InventoryDebugSnapshot, long, bool> tryAutoCopyInventoryWarningTrigger)
         {
-            DebugRenderer debugRenderer = new(plugin, core.AltarService, core.AreaService, core.WeightCalculator, core.DeferredTextQueue, core.DeferredFrameQueue);
             StrongboxRenderer strongboxRenderer = new(settings, core.DeferredFrameQueue);
             LazyModeRenderer lazyModeRenderer = new(settings, core.DeferredTextQueue, core.InputHandler, core.LazyModeBlockerService);
             ClickHotkeyToggleRenderer clickHotkeyToggleRenderer = new(settings, core.DeferredTextQueue, core.InputHandler);
@@ -60,15 +59,17 @@ namespace ClickIt.Core.Bootstrap
                 core.AltarService,
                 logMessage);
 
+            ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin));
+
             return new RenderingDomainServices(
-                debugRenderer,
                 strongboxRenderer,
                 lazyModeRenderer,
                 clickHotkeyToggleRenderer,
                 inventoryFullWarningRenderer,
                 pathfindingRenderer,
                 altarChoiceEvaluator,
-                altarDisplayRenderer);
+                altarDisplayRenderer,
+                guiDebugOverlay);
         }
 
         public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, IClickAutomationService clickAutomationPort, DeferredFrameQueue deferredFrameQueue)

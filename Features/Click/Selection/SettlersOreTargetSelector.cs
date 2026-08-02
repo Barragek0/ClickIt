@@ -101,7 +101,7 @@ namespace ClickIt.Features.Click.Selection
 
                 if (!best.HasValue && collectDiagnostics)
                 {
-                    _dependencies.DebugLog($"[ResolveNextSettlersOreCandidate] none scanned:{scanned} prefiltered:{prefiltered} mechanicMatched:{mechanicMatched} probeAttempts:{probeAttempts} probeResolved:{probeResolved} labelBacked:{labelBacked} labelScanMs:{labelScanMs} entityScanMs:{entityScanMs}");
+                    _dependencies.DebugLog($"[SettlersOre] none s:{scanned} pf:{prefiltered} mm:{mechanicMatched} pa:{probeAttempts} pr:{probeResolved} lb:{labelBacked} ls:{labelScanMs} es:{entityScanMs}");
                     if (captureClickDebug)
                         PublishNoSettlersCandidateDebug(scanned, prefiltered, mechanicMatched, probeAttempts, probeResolved, labelBacked, labelScanMs, entityScanMs);
                 }
@@ -110,7 +110,7 @@ namespace ClickIt.Features.Click.Selection
             }
             catch (Exception ex)
             {
-                _dependencies.DebugLog($"[ResolveNextSettlersOreCandidate] Failed to scan entities: {ex.Message}");
+                _dependencies.DebugLog($"[SettlersOre] Failed entities: {ex.Message}");
                 return null;
             }
         }
@@ -139,7 +139,7 @@ namespace ClickIt.Features.Click.Selection
                 CenterClickable: false,
                 ResolvedInWindow: false,
                 ResolvedClickable: false,
-                Notes: $"scanned={scanned}, prefiltered={prefiltered}, mechanicMatched={mechanicMatched}, probeAttempts={probeAttempts}, probeResolved={probeResolved}, labelBacked={labelBacked}, labelScanMs={labelScanMs}, entityScanMs={entityScanMs}",
+                Notes: $"s={scanned} pf={prefiltered} mm={mechanicMatched} pa={probeAttempts} pr={probeResolved} lb={labelBacked} ls={labelScanMs} es={entityScanMs}",
                 Sequence: 0,
                 TimestampMs: Environment.TickCount64));
         }

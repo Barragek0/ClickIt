@@ -6,27 +6,32 @@ namespace ClickIt.Features.Observability.Performance
         private readonly Stopwatch _altarCoroutineTimer = new();
         private readonly Stopwatch _clickCoroutineTimer = new();
         private readonly Stopwatch _flareCoroutineTimer = new();
+        private readonly Stopwatch _blightCoroutineTimer = new();
 
         private readonly Queue<long> _clickCoroutineTimings = new(10);
         private readonly Queue<long> _altarCoroutineTimings = new(10);
         private readonly Queue<long> _flareCoroutineTimings = new(10);
+        private readonly Queue<long> _blightCoroutineTimings = new(10);
         private readonly Queue<long> _renderTimings = new(60);
         private readonly Queue<long> _successfulClickTimings = new(10);
 
         private readonly object _clickTimingsLock = new();
         private readonly object _altarTimingsLock = new();
         private readonly object _flareTimingsLock = new();
+        private readonly object _blightTimingsLock = new();
         private readonly object _renderTimingsLock = new();
         private readonly object _successfulClickTimingsLock = new();
 
         private long _lastAltarTiming;
         private long _lastClickTiming;
         private long _lastFlareTiming;
+        private long _lastBlightTiming;
         private long _lastRenderTiming;
 
         private long _maxAltarTiming;
         private long _maxClickTiming;
         private long _maxFlareTiming;
+        private long _maxBlightTiming;
 
         public Queue<long> GetRenderTimingsSnapshot()
         {
@@ -92,6 +97,9 @@ namespace ClickIt.Features.Observability.Performance
                 case TimingChannel.Flare:
                     _flareCoroutineTimer.Restart();
                     break;
+                case TimingChannel.Blight:
+                    _blightCoroutineTimer.Restart();
+                    break;
                 case TimingChannel.Unknown:
                 case TimingChannel.Render:
                 default:
@@ -129,6 +137,13 @@ namespace ClickIt.Features.Observability.Performance
                     _maxFlareTiming = SystemMath.Max(_maxFlareTiming, flareTiming);
                     EnqueueTiming(_flareCoroutineTimings, flareTiming, 10, _flareTimingsLock);
                     break;
+                case TimingChannel.Blight:
+                    _blightCoroutineTimer.Stop();
+                    long blightTiming = _blightCoroutineTimer.ElapsedMilliseconds;
+                    _lastBlightTiming = blightTiming;
+                    _maxBlightTiming = SystemMath.Max(_maxBlightTiming, blightTiming);
+                    EnqueueTiming(_blightCoroutineTimings, blightTiming, 10, _blightTimingsLock);
+                    break;
                 case TimingChannel.Unknown:
                 case TimingChannel.Render:
                 default:
@@ -148,6 +163,7 @@ namespace ClickIt.Features.Observability.Performance
                 TimingChannel.Click => _lastClickTiming,
                 TimingChannel.Altar => _lastAltarTiming,
                 TimingChannel.Flare => _lastFlareTiming,
+                TimingChannel.Blight => _lastBlightTiming,
                 TimingChannel.Render => _lastRenderTiming,
                 TimingChannel.Unknown => 0,
                 _ => 0,
@@ -177,6 +193,10 @@ namespace ClickIt.Features.Observability.Performance
                 case TimingChannel.Flare:
                     queue = _flareCoroutineTimings;
                     lockObject = _flareTimingsLock;
+                    break;
+                case TimingChannel.Blight:
+                    queue = _blightCoroutineTimings;
+                    lockObject = _blightTimingsLock;
                     break;
                 case TimingChannel.Render:
                     queue = _renderTimings;
@@ -218,6 +238,7 @@ namespace ClickIt.Features.Observability.Performance
                 TimingChannel.Click => _maxClickTiming,
                 TimingChannel.Altar => _maxAltarTiming,
                 TimingChannel.Flare => _maxFlareTiming,
+                TimingChannel.Blight => _maxBlightTiming,
                 TimingChannel.Unknown => 0,
                 TimingChannel.Render => 0,
                 _ => 0,
@@ -236,6 +257,7 @@ namespace ClickIt.Features.Observability.Performance
                 TimingChannel.Click => GetQueueCount(_clickCoroutineTimings, _clickTimingsLock),
                 TimingChannel.Altar => GetQueueCount(_altarCoroutineTimings, _altarTimingsLock),
                 TimingChannel.Flare => GetQueueCount(_flareCoroutineTimings, _flareTimingsLock),
+                TimingChannel.Blight => GetQueueCount(_blightCoroutineTimings, _blightTimingsLock),
                 TimingChannel.Render => GetQueueCount(_renderTimings, _renderTimingsLock),
                 TimingChannel.Unknown => 0,
                 _ => 0,
@@ -248,6 +270,7 @@ namespace ClickIt.Features.Observability.Performance
             _altarCoroutineTimer.Stop();
             _clickCoroutineTimer.Stop();
             _flareCoroutineTimer.Stop();
+            _blightCoroutineTimer.Stop();
 
             lock (_clickTimingsLock)
                 _clickCoroutineTimings.Clear();
@@ -255,6 +278,8 @@ namespace ClickIt.Features.Observability.Performance
                 _altarCoroutineTimings.Clear();
             lock (_flareTimingsLock)
                 _flareCoroutineTimings.Clear();
+            lock (_blightTimingsLock)
+                _blightCoroutineTimings.Clear();
             lock (_renderTimingsLock)
                 _renderTimings.Clear();
             lock (_successfulClickTimingsLock)
@@ -263,10 +288,12 @@ namespace ClickIt.Features.Observability.Performance
             _lastAltarTiming = 0;
             _lastClickTiming = 0;
             _lastFlareTiming = 0;
+            _lastBlightTiming = 0;
             _lastRenderTiming = 0;
             _maxAltarTiming = 0;
             _maxClickTiming = 0;
             _maxFlareTiming = 0;
+            _maxBlightTiming = 0;
         }
 
         private static TimingChannel MapTimingChannel(string? timingType)
@@ -276,6 +303,7 @@ namespace ClickIt.Features.Observability.Performance
                 "click" => TimingChannel.Click,
                 "altar" => TimingChannel.Altar,
                 "flare" => TimingChannel.Flare,
+                "blight" => TimingChannel.Blight,
                 "render" => TimingChannel.Render,
                 _ => TimingChannel.Unknown,
             };

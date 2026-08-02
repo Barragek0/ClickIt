@@ -134,7 +134,7 @@ $resolvedTestHarnessProjectPath = Resolve-FullPath $TestHarnessProjectPath
 $resolvedPluginOutputPath = Resolve-FullPath $PluginOutputPath
 $resolvedDecompileScriptPath = Resolve-FullPath $DecompileScriptPath
 
-if (-not [string]::IsNullOrWhiteSpace($resolvedDecompileScriptPath)) {
+if (-not $SkipThirdPartyDecompile -and -not [string]::IsNullOrWhiteSpace($resolvedDecompileScriptPath)) {
     & powershell -NoProfile -ExecutionPolicy Bypass -File $resolvedDecompileScriptPath
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
@@ -191,5 +191,28 @@ if (-not (Test-Path $resolvedPluginOutputPath)) {
     New-Item -ItemType Directory -Path $resolvedPluginOutputPath -Force | Out-Null
 }
 
-Copy-Item -Path $builtDllPath -Destination $resolvedPluginOutputPath -Force
-Write-Output "Copied $builtDllPath to $resolvedPluginOutputPath"
+# Use atomic rename to replace the DLL even if it's locked.
+# 1. Copy to a temp name (new file, no lock)
+# 2. Wait until the temp file is accessible (antivirus scanning window)
+# 3. Atomic rename via MoveFileEx replaces the directory entry
+$tmpName = Join-Path $resolvedPluginOutputPath 'ClickIt.dll.new'
+Copy-Item -Path $builtDllPath -Destination $tmpName -Force
+
+# Wait until the temp file is fully released (avoids antivirus scanning race).
+$maxWaitMs = 3000
+$elapsed = 0
+$step = 100
+do {
+    Start-Sleep -Milliseconds $step
+    $elapsed += $step
+    try {
+        [System.IO.File]::OpenRead($tmpName).Dispose()
+        break
+    }
+    catch {
+        # File still locked by scanner — retry
+    }
+} while ($elapsed -lt $maxWaitMs)
+
+Move-Item -Path $tmpName -Destination (Join-Path $resolvedPluginOutputPath 'ClickIt.dll') -Force
+Write-Output "Copied $builtDllPath to $resolvedPluginOutputPath (atomic replace)"

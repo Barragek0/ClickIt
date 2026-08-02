@@ -28,8 +28,20 @@ namespace ClickIt.Features.Click.Runtime
 
         public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
         {
-            if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value)
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardEntry",
+                string.Format("preferredTarget={0} setting={1}",
+                    preferredTarget != null ? DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string entryPrefPath) ? entryPrefPath : "set" : "none",
+                    _dependencies.Settings.WalkTowardOffscreenLabels.Value), null);
+
+            // Only gate on the general pathfinding setting when no specific
+            // target is provided.  Blight-specific pathfinding (with a target)
+            // must work even when the general setting is off.
+            if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value && preferredTarget == null)
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardDisabled",
+                    "WalkTowardOffscreenLabels setting is OFF and no preferredTarget", null);
                 return false;
+            }
 
             if (OffscreenPathingMath.ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(_dependencies.GameController)))
                 return AbortOffscreenPathingForBlocker(
@@ -44,7 +56,14 @@ namespace ClickIt.Features.Click.Runtime
                     null);
 
             if (!TryStartTraversal(preferredTarget, out OffscreenTraversalTargetContext context))
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardNoTarget",
+                    string.Format("preferredTarget={0} | TryStartTraversal returned no target",
+                        preferredTarget != null
+                            ? (DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string walkPrefPath) ? walkPrefPath : "set")
+                            : "none"), null);
                 return false;
+            }
 
             if (!TryBuildTraversalPath(context, out bool builtPath))
                 return false;
@@ -230,10 +249,20 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool TryBuildTraversalPath(OffscreenTraversalTargetContext context, out bool builtPath)
         {
-            builtPath = _dependencies.PathfindingService.TryBuildPathToTarget(
-                _dependencies.GameController,
-                context.Target,
-                _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
+            try
+            {
+                builtPath = _dependencies.PathfindingService.TryBuildPathToTarget(
+                    _dependencies.GameController,
+                    context.Target,
+                    _dependencies.Settings.OffscreenPathfindingSearchBudget.Value);
+            }
+            catch (Exception ex)
+            {
+                _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Path build failed: {ex.Message}");
+                builtPath = false;
+                return false;
+            }
+
             if (builtPath)
                 return true;
 
@@ -288,9 +317,23 @@ namespace ClickIt.Features.Click.Runtime
             target = preferredTarget ?? _dependencies.TraversalTargetResolver.ResolveNearestOffscreenWalkTarget();
             if (target == null)
             {
+                string prefPath = preferredTarget != null
+                    ? (DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string resolvedPrefPath) ? resolvedPrefPath : "set")
+                    : "null";
+                _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: preferred={prefPath} -> no target resolved");
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ResolveTargetNull",
+                    $"preferred={prefPath} | ResolveNearestOffscreenWalkTarget returned null", null);
                 ResetTraversalState(resetConfirmation: true, clearStickyTarget: preferredTarget != null, clearLatestPath: true);
                 return false;
             }
+
+            string targetPath = DynamicAccess.TryReadString(target, DynamicAccessProfiles.Path, out string resolvedTargetPath)
+                ? resolvedTargetPath
+                : string.Empty;
+            float targetDist = DynamicAccess.TryReadFloat(target, DynamicAccessProfiles.DistancePlayer, out float resolvedDist)
+                ? resolvedDist
+                : -1f;
+            _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: found target path={targetPath} dist={targetDist:F1}");
 
             bool isValid = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsValid, out bool resolvedIsValid)
                 && resolvedIsValid;
@@ -298,11 +341,16 @@ namespace ClickIt.Features.Click.Runtime
                 && resolvedIsHidden;
             if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
             {
+                _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: target rejected valid={isValid} hidden={isHidden}");
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ResolveTargetInvalid",
+                    $"path={targetPath} dist={targetDist:F1} valid={isValid} hidden={isHidden}", null);
                 ResetTraversalState(resetConfirmation: true, clearStickyTarget: true, clearLatestPath: true);
                 target = null;
                 return false;
             }
 
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ResolveTargetFound",
+                $"path={targetPath} dist={targetDist:F1}", null);
             return true;
         }
 

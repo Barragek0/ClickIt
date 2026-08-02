@@ -546,7 +546,7 @@ namespace ClickIt.Tests.Features.Click
 
             result.Should().BeFalse();
             heldTelemetry.Should().BeEmpty();
-            debugLogs.Should().BeEmpty();
+            debugLogs.Where(l => !l.Contains("[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: found target")).Should().BeEmpty();
             OffscreenMovementDebugSnapshot snapshot = pathfindingService.GetLatestOffscreenMovementDebug();
             snapshot.Stage.Should().Be("ClickRejected");
             snapshot.TargetPath.Should().Be("Metadata/Monsters/ClickRejected");

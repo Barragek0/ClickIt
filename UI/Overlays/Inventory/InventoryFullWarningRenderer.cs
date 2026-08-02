@@ -158,6 +158,10 @@ namespace ClickIt.UI.Overlays.Inventory
             if (player == null)
                 return null;
 
+            // WorldToScreen projects from WORLD coordinates (PosNum) — the same
+            // space the world renderers and the original plugin feed it.
+            // Player.GridPosNum is grid space and would draw the warning at the
+            // wrong screen spot.
             NumVector2 screenRaw = gameController.Game.IngameState.Camera.WorldToScreen(player.PosNum);
             float x = screenRaw.X;
             float y = screenRaw.Y + PlayerFeetWarningOffsetY;

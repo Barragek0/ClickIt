@@ -82,7 +82,7 @@ namespace ClickIt.UI.Debug.Introspection
                     {
                         processedSinceYield = 0;
                         sliceStopwatch.Restart();
-                        int pct = SystemMath.Min(99, (int)((long)engine.TotalProcessedNodes * 100L / SystemMath.Max(1, normalized.MaxTotalNodes)));
+                        int pct = SystemMath.Min(99, (int)(engine.TotalProcessedNodes * 100L / SystemMath.Max(1, normalized.MaxTotalNodes)));
                         SafeInvokeProgress(onProgress, pct);
 
                         if (!RuntimeObjectIntrospectionStreamWriter.TryFlush(writer, out string? flushError))

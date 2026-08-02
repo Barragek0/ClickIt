@@ -188,10 +188,10 @@ namespace ClickIt.Tests.Core.Runtime
 
             DebugTelemetrySnapshot snapshot = service.GetSnapshot();
 
-            snapshot.Click.Settings.SummaryLines.Should().HaveCount(5);
-            snapshot.Click.Settings.SummaryLines[0].Should().Contain("hotkeyToggle:True");
-            snapshot.Click.Settings.SummaryLines[1].Should().Contain("radius:91");
-            snapshot.Click.Settings.SummaryLines[1].Should().Contain("freqTarget:222ms");
+            snapshot.Click.Settings.SummaryLines.Should().HaveCount(2);
+            snapshot.Click.Settings.SummaryLines[0].Should().Contain("HT=T");
+            snapshot.Click.Settings.SummaryLines[0].Should().Contain("R=91");
+            snapshot.Click.Settings.SummaryLines[0].Should().Contain("f=222ms");
             snapshot.Click.Settings.InitialUltimatumClickEnabled.Should().BeTrue();
             snapshot.Click.Settings.OtherUltimatumClickEnabled.Should().BeFalse();
         }

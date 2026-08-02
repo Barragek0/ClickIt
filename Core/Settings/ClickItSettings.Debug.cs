@@ -10,6 +10,9 @@ namespace ClickIt
         public CustomNode DebugTestingPanel { get; internal set; } = new();
 
         [IgnoreMenu]
+        public ToggleNode DebugWindowVisible { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
         public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
@@ -32,6 +35,10 @@ namespace ClickIt
 
         [JsonIgnore]
         public string MemoryDumpOutputPath { get => TransientState.MemoryDumpOutputPath; set => TransientState.MemoryDumpOutputPath = value; }
+
+        [IgnoreMenu]
+        public ToggleNode DebugShowClick { get; set; } = new ToggleNode(true);
+
 
         [IgnoreMenu]
         public ToggleNode DebugShowStatus { get; set; } = new ToggleNode(true);
@@ -80,6 +87,12 @@ namespace ClickIt
 
         [IgnoreMenu]
         public ToggleNode DebugShowHarvest { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode DebugShowBlight { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode BlightDebugShowLaneLabels { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
         public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);

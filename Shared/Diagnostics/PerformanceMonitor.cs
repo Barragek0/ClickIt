@@ -6,7 +6,8 @@ namespace ClickIt.Shared.Diagnostics
         Click = 1,
         Altar = 2,
         Flare = 3,
-        Render = 4
+        Render = 4,
+        Blight = 5
     }
 
     public enum RenderSection
@@ -19,6 +20,7 @@ namespace ClickIt.Shared.Diagnostics
         StrongboxOverlay = 5,
         PathfindingOverlay = 6,
         HarvestOverlay = 9,
+        BlightOverlay = 10,
         TextFlush = 7,
         FrameFlush = 8
     }
@@ -119,6 +121,7 @@ namespace ClickIt.Shared.Diagnostics
                 MapTimingChannel(TimingChannel.Altar),
                 MapTimingChannel(TimingChannel.Click),
                 MapTimingChannel(TimingChannel.Flare),
+                MapTimingChannel(TimingChannel.Blight),
                 GetClickTargetInterval(),
                 GetAverageSuccessfulClickTiming(),
                 GetAverageClickInterval());

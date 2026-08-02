@@ -23,7 +23,8 @@ namespace ClickIt.Features.Pathfinding.Diagnostics
                 PlayerGrid: debugEvent.PlayerGrid,
                 TargetGrid: debugEvent.TargetGrid,
                 MovementSkillDebug: debugEvent.MovementSkillDebug,
-                TimestampMs: Environment.TickCount64));
+                TimestampMs: Environment.TickCount64),
+            dedupKeyExtractor: static snapshot => $"{snapshot.Stage}|{snapshot.TargetPath}");
 
         public IReadOnlyList<string> GetTrail()
             => _channel.GetTrail();

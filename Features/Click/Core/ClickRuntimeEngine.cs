@@ -24,10 +24,14 @@ namespace ClickIt.Features.Click.Core
         OffscreenPathingCoordinator OffscreenPathing,
         ClickDebugPublicationService ClickDebugPublisher,
         ClickLabelInteractionService LabelInteraction,
+        Func<Vector2, string, bool> PointIsInClickableArea,
         Func<bool> ShouldCaptureClickDebug,
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog,
-        Func<LabelOnGround?>? GetHarvestLabelToClick = null);
+        Func<LabelOnGround?>? GetHarvestLabelToClick = null,
+        Func<BlightBuildAction>? TryProgressBlightBuilding = null,
+        Func<Entity?>? GetBlightPathfindTarget = null,
+        Func<bool>? IsBlightEncounterActive = null);
 
     internal readonly record struct ClickRuntimeEngineDependencies(
         ClickTickContextFactory TickContextFactory,
@@ -38,6 +42,7 @@ namespace ClickIt.Features.Click.Core
         IVisibleMechanicRuntimePort VisibleMechanics,
         LabelSelectionCoordinator LabelSelection,
         ClickLabelInteractionService LabelInteraction,
+        Func<Vector2, string, bool> PointIsInClickableArea,
         Func<bool> ShouldCaptureClickDebug,
         PathfindingService PathfindingService,
         PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
@@ -46,7 +51,10 @@ namespace ClickIt.Features.Click.Core
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog,
         InputHandler InputHandler,
-        Func<LabelOnGround?>? GetHarvestLabelToClick = null);
+        Func<LabelOnGround?>? GetHarvestLabelToClick = null,
+        Func<BlightBuildAction>? TryProgressBlightBuilding = null,
+        Func<Entity?>? GetBlightPathfindTarget = null,
+        Func<bool>? IsBlightEncounterActive = null);
 
     internal readonly record struct ClickCandidates(
         LostShipmentCandidate? LostShipment,
@@ -102,10 +110,14 @@ namespace ClickIt.Features.Click.Core
                 dependencies.OffscreenPathing,
                 dependencies.ClickDebugPublisher,
                 dependencies.LabelInteraction,
+                dependencies.PointIsInClickableArea,
                 dependencies.ShouldCaptureClickDebug,
                 dependencies.HoldDebugTelemetryAfterSuccess,
                 dependencies.DebugLog,
-                dependencies.GetHarvestLabelToClick);
+                dependencies.GetHarvestLabelToClick,
+                dependencies.TryProgressBlightBuilding,
+                dependencies.GetBlightPathfindTarget,
+                dependencies.IsBlightEncounterActive);
 
         private static IEnumerator RunPostClickActions(InputHandler inputHandler, ExecutionResult executionResult)
         {

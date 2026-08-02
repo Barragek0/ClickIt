@@ -110,6 +110,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 ClickSanctum = true,
                 ClickBetrayal = true,
                 ClickBlight = true,
+                ClickBlightPump = true,
                 ClickAlvaTempleDoors = true,
                 ClickLegionPillars = true,
                 ClickAzurite = true,

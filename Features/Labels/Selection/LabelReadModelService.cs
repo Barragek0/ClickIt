@@ -29,18 +29,12 @@ namespace ClickIt.Features.Labels.Selection
             }
 
             List<LabelOnGround> validLabels = new(SystemMath.Min(groundLabels.Count, 1000));
-            RectangleF win = _gameController.Window.GetWindowRectangleTimeCache;
-            Vector2 windowTopLeft = new(win.X, win.Y);
-
-            bool IsClickableInEitherSpace(Vector2 point)
-            {
-                return _pointIsInClickableArea(point) || _pointIsInClickableArea(point + windowTopLeft);
-            }
 
             for (int i = 0; i < groundLabels.Count && validLabels.Count < 1000; i++)
             {
                 LabelOnGround label = groundLabels[i];
-                if (ClickableLabelPolicy.IsValidClickableLabel(label, IsClickableInEitherSpace))
+
+                if (ClickableLabelPolicy.IsBasicLabelValid(label))
                 {
                     validLabels.Add(label);
                 }

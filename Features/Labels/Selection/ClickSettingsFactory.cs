@@ -66,6 +66,7 @@ namespace ClickIt.Features.Labels.Selection
                 ClickSanctum = _settings.ClickSanctum.Value,
                 ClickBetrayal = _settings.ClickBetrayal.Value,
                 ClickBlight = _settings.ClickBlight.Value,
+                ClickBlightPump = _settings.ClickBlightPump.Value,
                 ClickAlvaTempleDoors = _settings.ClickAlvaTempleDoors.Value,
                 ClickLegionPillars = _settings.ClickLegionPillars.Value,
                 ClickRitualInitiate = _settings.ClickRitualInitiate.Value,
@@ -95,6 +96,9 @@ namespace ClickIt.Features.Labels.Selection
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBlightCyst.Value, MechanicIds.BlightCyst);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickBreachGraspingCoffers.Value, MechanicIds.BreachGraspingCoffers);
             AddEnabledLeagueChestSpecificId(enabled, settings.ClickSynthesisSynthesisedStash.Value, MechanicIds.SynthesisSynthesisedStash);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameCursedTreasure.Value, MechanicIds.AllflameCursedTreasure);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameBrinerotPlunder.Value, MechanicIds.AllflameBrinerotPlunder);
+            AddEnabledLeagueChestSpecificId(enabled, settings.ClickAllflameCoralNest.Value, MechanicIds.AllflameCoralNest);
             return enabled;
         }
 

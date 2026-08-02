@@ -20,7 +20,9 @@ namespace ClickIt.Core.Bootstrap
         DeferredTextQueue DeferredTextQueue,
         DeferredFrameQueue DeferredFrameQueue,
         HarvestService HarvestService,
-        HarvestOverlayRenderer HarvestOverlayRenderer);
+        HarvestOverlayRenderer HarvestOverlayRenderer,
+        BlightService BlightService,
+        BlightRenderer BlightRenderer);
 
     internal static class CoreDomainAssembler
     {
@@ -70,6 +72,9 @@ namespace ClickIt.Core.Bootstrap
             DeferredFrameQueue deferredFrameQueue = new();
             HarvestOverlayRenderer harvestOverlayRenderer = new(harvestService, settings, deferredTextQueue, deferredFrameQueue);
 
+            BlightService blightService = new(settings);
+            BlightRenderer blightRenderer = new(blightService, settings);
+
             return new CoreDomainServices(
                 performanceMonitor,
                 errorHandler,
@@ -90,7 +95,9 @@ namespace ClickIt.Core.Bootstrap
                 deferredTextQueue,
                 deferredFrameQueue,
                 harvestService,
-                harvestOverlayRenderer);
+                harvestOverlayRenderer,
+                blightService,
+                blightRenderer);
         }
     }
 }

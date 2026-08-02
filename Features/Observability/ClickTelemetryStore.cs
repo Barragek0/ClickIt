@@ -19,7 +19,8 @@ namespace ClickIt.Features.Observability
                 ClickDebugTrailCapacity,
                 static (snapshot, sequence) => snapshot with { Sequence = sequence },
                 static snapshot => $"{snapshot.Sequence:00000} {snapshot.Stage} | {snapshot.Notes}",
-                static snapshot => snapshot);
+                static snapshot => snapshot,
+                dedupKeyExtractor: static snapshot => $"{snapshot.Stage} | {snapshot.Notes}");
 
             _runtimeDebugLogChannel = new DebugSnapshotChannel<RuntimeDebugLogSnapshot, string>(
                 RuntimeDebugLogSnapshot.Empty,
@@ -30,7 +31,8 @@ namespace ClickIt.Features.Observability
                     HasData: true,
                     Message: message,
                     Sequence: 0,
-                    TimestampMs: Environment.TickCount64));
+                    TimestampMs: Environment.TickCount64),
+                dedupKeyExtractor: static snapshot => snapshot.Message);
 
             _ultimatumDebugChannel = new DebugSnapshotChannel<UltimatumDebugSnapshot, UltimatumDebugEvent>(
                 UltimatumDebugSnapshot.Empty,

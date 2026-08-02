@@ -36,7 +36,8 @@ namespace ClickIt.Core.Settings.Runtime
                 || settings.DebugShowUltimatum
                 || settings.DebugShowClicking
                 || settings.DebugShowRuntimeDebugLogOverlay
-                || settings.DebugShowRecentErrors;
+                || settings.DebugShowRecentErrors
+                || settings.DebugShowBlight;
         }
 
         internal static bool IsOnlyPathfindingDetailedDebugSectionEnabled(ClickItSettings settings)
