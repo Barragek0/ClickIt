@@ -5,7 +5,8 @@ namespace ClickIt.Features.Click.Runtime
         ChestLootSettlementState State,
         GroundLabelEntityAddressProvider GroundLabelEntityAddresses,
         ClickDebugPublicationService ClickDebugPublisher,
-        ClickLabelInteractionService LabelInteraction);
+        ClickLabelInteractionService LabelInteraction,
+        Func<LabelOnGround, bool>? ShouldSuppressBlightChestClick = null);
 
     internal readonly struct ChestLootSettlementTiming(int initialDelayMs, int pollIntervalMs, int quietWindowMs)
     {
@@ -22,6 +23,7 @@ namespace ClickIt.Features.Click.Runtime
     internal sealed class ChestLootSettlementTracker(ChestLootSettlementTrackerDependencies dependencies)
     {
         private readonly ChestLootSettlementTrackerDependencies _dependencies = dependencies;
+        private readonly Func<LabelOnGround, bool> _shouldSuppressBlightChestClick = dependencies.ShouldSuppressBlightChestClick ?? (static _ => false);
 
         public void StartPostChestLootSettlementWatch(string? mechanicId)
         {
@@ -75,6 +77,13 @@ namespace ClickIt.Features.Click.Runtime
 
             if (!ChestLootSettlementMath.ShouldContinueChestOpenRetries(state.PendingOpenConfirmationActive, chestLabelVisible) || pendingChestLabel == null)
                 return false;
+
+            if (_shouldSuppressBlightChestClick(pendingChestLabel))
+            {
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                    "PostChestReclickBlightSuppressed", "Pending chest is a transitioning blight cyst — skipping reclick", state.PendingOpenMechanicId);
+                return false;
+            }
 
             (bool resolvedClickPos, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
                 pendingChestLabel,

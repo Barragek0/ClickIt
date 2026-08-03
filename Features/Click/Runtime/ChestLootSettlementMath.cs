@@ -19,8 +19,8 @@ namespace ClickIt.Features.Click.Runtime
                 if (label == null)
                     continue;
 
-                long currentItemAddress = label.ItemOnGround?.Address ?? 0;
-                long currentLabelAddress = label.Label?.Address ?? 0;
+                long currentItemAddress = TryReadLabelMemberAddress(label, DynamicAccessProfiles.ItemOnGround);
+                long currentLabelAddress = TryReadLabelMemberAddress(label, DynamicAccessProfiles.Label);
                 if ((itemAddress != 0 && currentItemAddress == itemAddress)
                     || (labelAddress != 0 && currentLabelAddress == labelAddress))
                     return label;
@@ -29,6 +29,18 @@ namespace ClickIt.Features.Click.Runtime
 
             return null;
         }
+
+        private static long TryReadLabelMemberAddress(LabelOnGround label, IDynamicMemberReaderProfile profile)
+            => DynamicAccess.TryGetDynamicValue(label, profile, out object? rawMember)
+                ? TryReadAddress(rawMember)
+                : 0;
+
+        private static long TryReadAddress(object? source)
+            => source != null
+                && DynamicAccess.TryGetDynamicValue(source, DynamicAccessProfiles.Address, out object? raw)
+                && raw is long address
+                ? address
+                : 0;
 
         internal static void SeedKnownGroundItemAddresses(HashSet<long> knownAddresses, IReadOnlySet<long>? snapshot)
         {

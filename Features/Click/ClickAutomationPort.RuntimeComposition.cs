@@ -50,7 +50,8 @@ namespace ClickIt.Features.Click
                                         _chestLootSettlementState,
                                         GroundLabelEntityAddresses,
                                         ClickDebugPublisher,
-                                        LabelInteraction);
+                                        LabelInteraction,
+                                        BlightChestTransitionSuppression.ShouldSuppressBlightChestClick);
 
                 private OffscreenStickyTargetHandlerDependencies CreateOffscreenStickyTargetHandlerDependencies()
                         => new(

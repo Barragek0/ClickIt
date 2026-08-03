@@ -276,10 +276,47 @@ namespace ClickIt.Tests.Features.Click
             decision.Should().Contain("dist:15.0");
         }
 
+        [TestMethod]
+        public void TryHandlePendingChestOpenConfirmation_DoesNotReclick_WhenBlightTransitionSuppressionActive()
+        {
+            var settings = new ClickItSettings();
+            settings.PauseAfterOpeningLeagueChests.Value = true;
+
+            var state = new ChestLootSettlementState();
+            Entity stickyItem = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 0x100);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(stickyItem);
+
+            var tracker = CreateTracker(settings, state, shouldSuppressBlightChestClick: static _ => true);
+            tracker.MarkPendingChestOpenConfirmation(MechanicIds.LeagueChests, label);
+
+            bool handled = tracker.TryHandlePendingChestOpenConfirmation(default, new[] { label });
+
+            handled.Should().BeFalse("a transitioning blight cyst must not be re-clicked by the chest reclick path");
+        }
+
+        [TestMethod]
+        public void TryHandlePendingChestOpenConfirmation_StillReclicks_WhenNotBlightSuppressed()
+        {
+            var settings = new ClickItSettings();
+            settings.PauseAfterOpeningLeagueChests.Value = true;
+
+            var state = new ChestLootSettlementState();
+            Entity stickyItem = OffscreenStickyTargetGraphShaper.CreateActiveStickyEntity(address: 0x100);
+            LabelOnGround label = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(stickyItem);
+
+            var tracker = CreateTracker(settings, state);
+            tracker.MarkPendingChestOpenConfirmation(MechanicIds.LeagueChests, label);
+
+            bool handled = tracker.TryHandlePendingChestOpenConfirmation(default, new[] { label });
+
+            handled.Should().BeTrue("a non-blight pending chest still gets the reclick retry");
+        }
+
         private static ChestLootSettlementTracker CreateTracker(
             ClickItSettings settings,
             ChestLootSettlementState state,
-            Func<IReadOnlySet<long>>? snapshotProvider = null)
+            Func<IReadOnlySet<long>>? snapshotProvider = null,
+            Func<LabelOnGround, bool>? shouldSuppressBlightChestClick = null)
         {
             _ = snapshotProvider;
             return new ChestLootSettlementTracker(new ChestLootSettlementTrackerDependencies(
@@ -287,7 +324,8 @@ namespace ClickIt.Tests.Features.Click
                 State: state,
                 GroundLabelEntityAddresses: new GroundLabelEntityAddressProvider(static () => null),
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(),
-                LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService()));
+                LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(),
+                ShouldSuppressBlightChestClick: shouldSuppressBlightChestClick));
         }
     }
 }

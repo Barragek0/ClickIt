@@ -8,6 +8,10 @@ internal sealed class BlightChestTransitionSuppression
     // Entity address -> earliest time the chest may be clicked again (TickCount64).
     private readonly Dictionary<long, long> _noClickUntilMs = [];
 
+    // Entity addresses that already had their false -> true transition. The blacklist is armed once
+    // on that edge and never again, so these never re-arm.
+    private readonly HashSet<long> _everTransitioned = [];
+
     internal bool ShouldSuppressBlightChestClick(LabelOnGround? label)
         => ShouldSuppressBlightChestClick(label, Environment.TickCount64);
 
@@ -31,22 +35,9 @@ internal sealed class BlightChestTransitionSuppression
             ? address
             : 0;
 
-        // A chest the game reports as transitioning gets a 2-second no-click window armed on the first
-        // observation. The window is NOT extended while the flag stays set, so a chest whose flag
-        // lingers (e.g. an opened cyst whose label is still visible) becomes clickable again once the
-        // window elapses instead of being suppressed forever; re-observation then re-arms it, so a
-        // persistently-flagged chest is throttled to one click attempt per window.
-        if (isTransitioned)
+
+        if (isTransitioned && _everTransitioned.Add(key))
         {
-            if (_noClickUntilMs.TryGetValue(key, out long until))
-            {
-                if (now < until)
-                    return true;
-
-                _noClickUntilMs.Remove(key);
-                return false;
-            }
-
             _noClickUntilMs[key] = now + SuppressionDurationMs;
             if (_noClickUntilMs.Count > MaxTrackedEntities)
                 PruneStaleEntries(now);
