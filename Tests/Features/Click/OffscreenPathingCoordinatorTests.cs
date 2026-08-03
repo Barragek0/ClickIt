@@ -718,6 +718,22 @@ namespace ClickIt.Tests.Features.Click
 
 
 
+        [TestMethod]
+        public void OffsetAwayFromScreenCenter_MovesPointTowardCenter_AndStaysInsideWindow()
+        {
+            OffscreenPathingCoordinator.OffsetAwayFromScreenCenter(new Vector2(100f, 100f), new Size2F(1920f, 1080f), 90f)
+                .Should().Be(new Vector2(190f, 190f));
+
+            OffscreenPathingCoordinator.OffsetAwayFromScreenCenter(new Vector2(1800f, 900f), new Size2F(1920f, 1080f), 90f)
+                .Should().Be(new Vector2(1710f, 810f));
+
+            // Points near the edges are offset inward and stay inside the window.
+            OffscreenPathingCoordinator.OffsetAwayFromScreenCenter(new Vector2(10f, 10f), new Size2F(1920f, 1080f), 90f)
+                .Should().Be(new Vector2(100f, 100f));
+            OffscreenPathingCoordinator.OffsetAwayFromScreenCenter(new Vector2(1910f, 1070f), new Size2F(1920f, 1080f), 90f)
+                .Should().Be(new Vector2(1820f, 980f));
+        }
+
         private static OffscreenPathingCoordinator CreateCoordinator(
             ClickRuntimeState runtimeState,
             ClickItSettings? settings = null,

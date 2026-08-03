@@ -14,6 +14,7 @@ namespace ClickIt.Features.Click.Runtime
         Action<string> HoldDebugTelemetryAfterSuccess,
         ClickDebugPublicationService ClickDebugPublisher,
         Func<Vector2, string, bool> PointIsInClickableArea,
+        Func<Vector2, bool>? IsBlightBuildOrUpgradeIconAt = null,
         IOffscreenRuntimeSeam? RuntimeSeam = null);
 
     internal sealed class OffscreenPathingCoordinator(OffscreenPathingCoordinatorDependencies dependencies)
@@ -21,6 +22,8 @@ namespace ClickIt.Features.Click.Runtime
         private readonly OffscreenPathingCoordinatorDependencies _dependencies = dependencies;
         private readonly IOffscreenRuntimeSeam _runtimeSeam = dependencies.RuntimeSeam ?? OffscreenRuntimeSeam.Instance;
         private readonly OffscreenTraversalConfirmationGate _traversalConfirmationGate = new();
+
+        private const float BlightIconAvoidOffset = 90f;
 
         private readonly record struct OffscreenTraversalTargetContext(
             Entity Target,
@@ -80,8 +83,44 @@ namespace ClickIt.Features.Click.Runtime
 
             PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "BeforeClick", movementSkillDebug);
 
-            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(walkClick);
-            return HandleTraversalClickResult(context, builtPath, resolvedFromPath, targetScreen, walkClick, movementSkillDebug, clicked);
+            Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick);
+            bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
+            return HandleTraversalClickResult(context, builtPath, resolvedFromPath, targetScreen, clickPos, movementSkillDebug, clicked);
+        }
+
+        // Pathfinding clicks must never land on a blight tower's build/upgrade icon (that would
+        // accidentally build or upgrade a tower). When the resolved click would hit one, offset the
+        // click toward the screen center so pathfinding continues safely.
+        private Vector2 ResolveBlightIconSafeClickPosition(Vector2 walkClick)
+        {
+            if (_dependencies.IsBlightBuildOrUpgradeIconAt == null || !_dependencies.IsBlightBuildOrUpgradeIconAt(walkClick))
+                return walkClick;
+
+            Vector2 offset;
+            try
+            {
+                Size2F win = _dependencies.GameController?.Window.GetWindowRectangleTimeCache.Size ?? default;
+                offset = win.Width > 0f && win.Height > 0f
+                    ? OffsetAwayFromScreenCenter(walkClick, win, BlightIconAvoidOffset)
+                    : new Vector2(walkClick.X + BlightIconAvoidOffset, walkClick.Y + BlightIconAvoidOffset);
+            }
+            catch
+            {
+                offset = new Vector2(walkClick.X + BlightIconAvoidOffset, walkClick.Y + BlightIconAvoidOffset);
+            }
+
+            _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Click would hit a blight tower build/upgrade icon — offsetting to ({offset.X:F0},{offset.Y:F0})");
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("BlightIconAvoided", "Pathfinding click offset away from a blight tower icon", null);
+            return offset;
+        }
+
+        internal static Vector2 OffsetAwayFromScreenCenter(Vector2 point, Size2F window, float distance)
+        {
+            float dx = point.X < window.Width * 0.5f ? distance : -distance;
+            float dy = point.Y < window.Height * 0.5f ? distance : -distance;
+            return new Vector2(
+                SystemMath.Clamp(point.X + dx, 0f, window.Width),
+                SystemMath.Clamp(point.Y + dy, 0f, window.Height));
         }
 
         public bool TryHandleStickyOffscreenTarget(Vector2 windowTopLeft, IReadOnlyList<LabelOnGround>? allLabels)

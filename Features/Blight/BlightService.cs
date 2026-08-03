@@ -81,6 +81,7 @@ public sealed class BlightService
     }
 
     private readonly BlightPlanExecutor _executor = new();
+    private IReadOnlyList<LabelOnGround>? _lastLabels;
     private int _planVersion;
     private int _lastPlannedTowerCount;
     private int _lastPlannedPathwayCount;
@@ -118,9 +119,16 @@ public sealed class BlightService
 
         // FoundationEntity is only valid for unbuilt towers — fall back to the tower entity list for built ones.
         Entity? entity = GetBestEntityAtPosition(step.Value.FoundationPosition);
-        if (entity != null && !IsEntityFullyOnScreen(entity))
-            return entity;
-        return null;
+        if (entity == null) return null;
+
+        // Keep walking until the tower's menu region — the enlarged phantom rectangle — is fully
+        // on-screen and clickable, not merely until the entity is on screen. The executor's Walking
+        // phase requires the whole rectangle before it stops; returning null here while the entity
+        // is on screen but the menu region is still unusable would stall the build in an infinite
+        // walk loop (the pathfinding request would never walk).
+        if (IsEntityFullyOnScreen(entity) && _executor.IsMenuRegionReadyForStep(_lastLabels, _gameController, this))
+            return null;
+        return entity;
     }
 
     internal Entity? GetBestEntityAtPosition(NumVector2 pos) => _cache.GetBestEntityAtPosition(pos);
@@ -143,6 +151,7 @@ public sealed class BlightService
 
     internal BlightBuildAction TryProgressBlightBuilding(IReadOnlyList<LabelOnGround>? allLabels)
     {
+        _lastLabels = allLabels;
         if (!_settings.ClickBlightTowers.Value || !IsEncounterActive)
             return new BlightBuildAction(BlightBuildActionKind.None, DebugMessage: "Inactive");
 

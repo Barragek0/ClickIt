@@ -46,6 +46,60 @@ internal sealed class ImGuiDebugOverlay(
     private PerformanceMetricsSnapshot _lastPerformance;
     private float _leftColWidth;
     private int _blightChestDebugSelectedIndex;
+    private readonly List<(string Label, string Value, NumVec4 Color)> _kvRows = [];
+
+    private enum DebugSection
+    {
+        Status,
+        Performance,
+        Errors,
+        Clicking,
+        Labels,
+        Pathfinding,
+        Ultimatum,
+        Altar,
+        HoveredItem,
+        Inventory,
+        Blight
+    }
+
+    private readonly DebugSection[] _sectionOrder = new DebugSection[11];
+
+    private int CollectEnabledSections()
+    {
+        int count = 0;
+        if (_settings.DebugShowStatus.Value) _sectionOrder[count++] = DebugSection.Status;
+        if (_settings.DebugShowPerformance.Value) _sectionOrder[count++] = DebugSection.Performance;
+        if (_settings.DebugShowRecentErrors.Value) _sectionOrder[count++] = DebugSection.Errors;
+        if (_settings.DebugShowClicking.Value) _sectionOrder[count++] = DebugSection.Clicking;
+        if (_settings.DebugShowLabels.Value) _sectionOrder[count++] = DebugSection.Labels;
+        if (_settings.DebugShowPathfinding.Value) _sectionOrder[count++] = DebugSection.Pathfinding;
+        if (_settings.DebugShowUltimatum.Value) _sectionOrder[count++] = DebugSection.Ultimatum;
+        if (_settings.DebugShowAltarDetection.Value || _settings.DebugShowAltarService.Value)
+            _sectionOrder[count++] = DebugSection.Altar;
+        if (_settings.DebugShowHoveredItemMetadata.Value) _sectionOrder[count++] = DebugSection.HoveredItem;
+        if (_settings.DebugShowInventoryPickup.Value) _sectionOrder[count++] = DebugSection.Inventory;
+        if (_settings.DebugShowBlight.Value) _sectionOrder[count++] = DebugSection.Blight;
+        return count;
+    }
+
+    private void RenderDebugSection(DebugSection section)
+    {
+        switch (section)
+        {
+            case DebugSection.Status: RenderStatusSection(); break;
+            case DebugSection.Performance: RenderPerformanceSection(); break;
+            case DebugSection.Errors: RenderErrorsSection(); break;
+            case DebugSection.Clicking: RenderClickSection(); break;
+            case DebugSection.Labels: RenderLabelsSection(); break;
+            case DebugSection.Pathfinding: RenderPathfindingSection(); break;
+            case DebugSection.Ultimatum: RenderUltimatumSection(); break;
+            case DebugSection.Altar: RenderAltarSection(); break;
+            case DebugSection.HoveredItem: RenderHoveredItemSection(); break;
+            case DebugSection.Inventory: RenderInventorySection(); break;
+            case DebugSection.Blight: RenderBlightSection(); break;
+        }
+    }
 
     internal void Draw()
     {
@@ -75,24 +129,11 @@ internal sealed class ImGuiDebugOverlay(
         DrawToolbar();
         ImGui.Separator();
 
-        var sections = new List<Action>();
-        if (_settings.DebugShowStatus.Value) sections.Add(RenderStatusSection);
-        if (_settings.DebugShowPerformance.Value) sections.Add(RenderPerformanceSection);
-        if (_settings.DebugShowRecentErrors.Value) sections.Add(RenderErrorsSection);
-        if (_settings.DebugShowClicking.Value) sections.Add(RenderClickSection);
-        if (_settings.DebugShowLabels.Value) sections.Add(RenderLabelsSection);
-        if (_settings.DebugShowPathfinding.Value) sections.Add(RenderPathfindingSection);
-        if (_settings.DebugShowUltimatum.Value) sections.Add(RenderUltimatumSection);
-        if (_settings.DebugShowAltarDetection.Value || _settings.DebugShowAltarService.Value)
-            sections.Add(RenderAltarSection);
-        if (_settings.DebugShowHoveredItemMetadata.Value) sections.Add(RenderHoveredItemSection);
-        if (_settings.DebugShowInventoryPickup.Value) sections.Add(RenderInventorySection);
-        if (_settings.DebugShowBlight.Value) sections.Add(RenderBlightSection);
+        int sectionCount = CollectEnabledSections();
+        if (sectionCount == 0) { ImGui.End(); return; }
 
-        if (sections.Count == 0) { ImGui.End(); return; }
-
-        int split = Math.Min(4, sections.Count);
-        bool hasRight = split < sections.Count;
+        int split = Math.Min(4, sectionCount);
+        bool hasRight = split < sectionCount;
 
         float availW = ImGui.GetContentRegionAvail().X;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
@@ -102,10 +143,10 @@ internal sealed class ImGuiDebugOverlay(
         if (!hasRight)
         {
             ImGui.BeginChild("LeftCol", new NumVec2(availW, 0));
-            for (int i = 0; i < sections.Count; i++)
+            for (int i = 0; i < sectionCount; i++)
             {
                 SectionAccent();
-                sections[i]();
+                RenderDebugSection(_sectionOrder[i]);
             }
             ImGui.EndChild();
             ImGui.End();
@@ -122,7 +163,7 @@ internal sealed class ImGuiDebugOverlay(
         for (int i = 0; i < split; i++)
         {
             SectionAccent();
-            sections[i]();
+            RenderDebugSection(_sectionOrder[i]);
         }
         ImGui.EndChild();
 
@@ -142,10 +183,10 @@ internal sealed class ImGuiDebugOverlay(
         float rightW = availW - rightX;
         ImGui.SetCursorPos(new NumVec2(rightX, colStartY));
         ImGui.BeginChild("RightCol", new NumVec2(rightW, 0));
-        for (int i = split; i < sections.Count; i++)
+        for (int i = split; i < sectionCount; i++)
         {
             SectionAccent();
-            sections[i]();
+            RenderDebugSection(_sectionOrder[i]);
         }
         ImGui.EndChild();
 
@@ -669,42 +710,34 @@ internal sealed class ImGuiDebugOverlay(
         {
             ImGui.TextColored(CInfo, "Offscreen Movement:");
 
-            var offItems = new List<(string, string, NumVec4)>
-            {
-                ("Stage", offscreen.Stage, CWhite),
-                ("Built Path", BoolStr(offscreen.BuiltPath), BoolColor(offscreen.BuiltPath)),
-                ("From Path", BoolStr(offscreen.ResolvedFromPath), BoolColor(offscreen.ResolvedFromPath)),
-                ("Click Point", BoolStr(offscreen.ResolvedClickPoint), BoolColor(offscreen.ResolvedClickPoint)),
-            };
-            DataRows("PfOff1", offItems);
+            _kvRows.Clear();
+            _kvRows.Add(("Stage", offscreen.Stage, CWhite));
+            _kvRows.Add(("Built Path", BoolStr(offscreen.BuiltPath), BoolColor(offscreen.BuiltPath)));
+            _kvRows.Add(("From Path", BoolStr(offscreen.ResolvedFromPath), BoolColor(offscreen.ResolvedFromPath)));
+            _kvRows.Add(("Click Point", BoolStr(offscreen.ResolvedClickPoint), BoolColor(offscreen.ResolvedClickPoint)));
+            DataRows("PfOff1", _kvRows);
 
             if (!string.IsNullOrWhiteSpace(offscreen.MovementSkillDebug))
                 ImGui.TextColored(CWarn, $"Skill: {offscreen.MovementSkillDebug}");
 
             ImGui.TextWrapped($"Target: {TrimPath(offscreen.TargetPath)}");
 
-            var deltaItems = new List<(string, string, NumVec4)>
-            {
-                ("Grid P", $"({offscreen.PlayerGrid.X:F0},{offscreen.PlayerGrid.Y:F0})", COrange),
-                ("Grid T", $"({offscreen.TargetGrid.X:F0},{offscreen.TargetGrid.Y:F0})", COrange),
-                ("Delta", $"({(offscreen.TargetGrid - offscreen.PlayerGrid).X:F0},{(offscreen.TargetGrid - offscreen.PlayerGrid).Y:F0})", COrange),
-            };
-            DataRows("PfOffGrid", deltaItems);
+            _kvRows.Clear();
+            _kvRows.Add(("Grid P", $"({offscreen.PlayerGrid.X:F0},{offscreen.PlayerGrid.Y:F0})", COrange));
+            _kvRows.Add(("Grid T", $"({offscreen.TargetGrid.X:F0},{offscreen.TargetGrid.Y:F0})", COrange));
+            _kvRows.Add(("Delta", $"({(offscreen.TargetGrid - offscreen.PlayerGrid).X:F0},{(offscreen.TargetGrid - offscreen.PlayerGrid).Y:F0})", COrange));
+            DataRows("PfOffGrid", _kvRows);
 
-            var screenItems = new List<(string, string, NumVec4)>
-            {
-                ("Center", $"({offscreen.WindowCenter.X:F1},{offscreen.WindowCenter.Y:F1})", CMuted),
-                ("Target", $"({offscreen.TargetScreen.X:F1},{offscreen.TargetScreen.Y:F1})", CInfo),
-                ("Click", $"({offscreen.ClickScreen.X:F1},{offscreen.ClickScreen.Y:F1})", CLime),
-            };
-            DataRows("PfOffScreen", screenItems);
+            _kvRows.Clear();
+            _kvRows.Add(("Center", $"({offscreen.WindowCenter.X:F1},{offscreen.WindowCenter.Y:F1})", CMuted));
+            _kvRows.Add(("Target", $"({offscreen.TargetScreen.X:F1},{offscreen.TargetScreen.Y:F1})", CInfo));
+            _kvRows.Add(("Click", $"({offscreen.ClickScreen.X:F1},{offscreen.ClickScreen.Y:F1})", CLime));
+            DataRows("PfOffScreen", _kvRows);
 
-            var compassItems = new List<(string, string, NumVec4)>
-            {
-                ("Target Dir", ToCompass(offscreen.TargetScreen - offscreen.WindowCenter), CInfo),
-                ("Click Dir", ToCompass(offscreen.ClickScreen - offscreen.WindowCenter), CLime),
-            };
-            DataRows("PfOffDir", compassItems);
+            _kvRows.Clear();
+            _kvRows.Add(("Target Dir", ToCompass(offscreen.TargetScreen - offscreen.WindowCenter), CInfo));
+            _kvRows.Add(("Click Dir", ToCompass(offscreen.ClickScreen - offscreen.WindowCenter), CLime));
+            DataRows("PfOffDir", _kvRows);
         }
         else
         {
@@ -892,16 +925,29 @@ internal sealed class ImGuiDebugOverlay(
             {
                 ImGui.TableNextRow();
                 _ = ImGui.TableNextColumn(); ImGui.Text("Upsides");
-                _ = ImGui.TableNextColumn(); ImGui.Text(string.Join(", ", section.Upsides.Select(m => m.Text)));
+                _ = ImGui.TableNextColumn(); ImGui.Text(JoinModTexts(section.Upsides));
             }
             if (section.Downsides.Count > 0)
             {
                 ImGui.TableNextRow();
                 _ = ImGui.TableNextColumn(); ImGui.Text("Downsides");
-                _ = ImGui.TableNextColumn(); ImGui.Text(string.Join(", ", section.Downsides.Select(m => m.Text)));
+                _ = ImGui.TableNextColumn(); ImGui.Text(JoinModTexts(section.Downsides));
             }
             ImGui.EndTable();
         }
+    }
+
+    private static string JoinModTexts(IReadOnlyList<AltarWeightedModTelemetrySnapshot> mods)
+    {
+        if (mods.Count == 0) return string.Empty;
+        if (mods.Count == 1) return mods[0].Text;
+        StringBuilder sb = new();
+        for (int i = 0; i < mods.Count; i++)
+        {
+            if (i > 0) sb.Append(", ");
+            sb.Append(mods[i].Text);
+        }
+        return sb.ToString();
     }
 
     private void RenderHoveredItemSection()
@@ -1499,11 +1545,11 @@ internal sealed class ImGuiDebugOverlay(
                 AltarComponentTelemetrySnapshot comp = altar.Components[i];
                 sb.AppendLine($"  Altar #{i + 1}:");
                 sb.AppendLine($"    Top ({comp.Top.SectionName}):");
-                if (comp.Top.Upsides.Count > 0) sb.AppendLine($"      Upsides: {string.Join(", ", comp.Top.Upsides.Select(m => m.Text))}");
-                if (comp.Top.Downsides.Count > 0) sb.AppendLine($"      Downsides: {string.Join(", ", comp.Top.Downsides.Select(m => m.Text))}");
+                if (comp.Top.Upsides.Count > 0) sb.AppendLine($"      Upsides: {JoinModTexts(comp.Top.Upsides)}");
+                if (comp.Top.Downsides.Count > 0) sb.AppendLine($"      Downsides: {JoinModTexts(comp.Top.Downsides)}");
                 sb.AppendLine($"    Bottom ({comp.Bottom.SectionName}):");
-                if (comp.Bottom.Upsides.Count > 0) sb.AppendLine($"      Upsides: {string.Join(", ", comp.Bottom.Upsides.Select(m => m.Text))}");
-                if (comp.Bottom.Downsides.Count > 0) sb.AppendLine($"      Downsides: {string.Join(", ", comp.Bottom.Downsides.Select(m => m.Text))}");
+                if (comp.Bottom.Upsides.Count > 0) sb.AppendLine($"      Upsides: {JoinModTexts(comp.Bottom.Upsides)}");
+                if (comp.Bottom.Downsides.Count > 0) sb.AppendLine($"      Downsides: {JoinModTexts(comp.Bottom.Downsides)}");
             }
             if (altar.ServiceAvailable)
             {

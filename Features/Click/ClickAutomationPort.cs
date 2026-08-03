@@ -25,6 +25,7 @@ namespace ClickIt.Features.Click
         private readonly Func<bool> _groundItemsVisible;
         private readonly TimeCache<List<LabelOnGround>> _cachedLabels;
         private readonly PerformanceMonitor _performanceMonitor;
+        private readonly InteractionExecutor _interactionExecutor;
         private readonly ChestLootSettlementState _chestLootSettlementState = new();
         private readonly ClickRuntimeState _runtimeState = new();
         private readonly MechanicPriorityContextProvider _mechanicPriorityContextProvider;
@@ -86,8 +87,8 @@ namespace ClickIt.Features.Click
                 PointIsInClickableArea: pointIsInClickableArea,
                 LogMessage: message => errorHandler.LogMessage(message),
                 FreezeDebugTelemetrySnapshot: freezeDebugTelemetrySnapshot));
-            InteractionExecutor interactionExecutor = new(settings, performanceMonitor, inputHandler.IsClickHotkeyActiveForCurrentInputState, errorHandler);
-            LockedInteractionDispatcher = new LockedInteractionDispatcher(interactionExecutor);
+            _interactionExecutor = new InteractionExecutor(settings, performanceMonitor, inputHandler.IsClickHotkeyActiveForCurrentInputState, errorHandler);
+            LockedInteractionDispatcher = new LockedInteractionDispatcher(_interactionExecutor);
             _mechanicPriorityContextProvider = new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService());
         }
 
@@ -125,6 +126,59 @@ namespace ClickIt.Features.Click
 
         private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
             => VisibleLabelSnapshots.GetCachedLabels();
+
+        // Pathfinding safety: a walk-click that lands on a blight tower's build/upgrade icon would
+        // accidentally build or upgrade a tower, so check UIHover (plus the icon rects) at the click
+        // position before pathfinding clicks.
+        private bool IsBlightBuildOrUpgradeIconAt(Vector2 screenPos)
+        {
+            IReadOnlyList<LabelOnGround>? labels = GetLabelsForRegularSelection();
+            if (labels == null || labels.Count == 0)
+                return false;
+
+            bool hasBlightLabel = false;
+            for (int i = 0; i < labels.Count; i++)
+            {
+                if (labels[i] != null && BlightEntityCache.IsBlightFoundationOrTowerLabel(labels[i]))
+                {
+                    hasBlightLabel = true;
+                    break;
+                }
+            }
+            if (!hasBlightLabel)
+                return false;
+
+            Element? hovered = _interactionExecutor.HoverAndGetUIHover(screenPos, _gameController);
+            long hoveredAddress = hovered?.Address ?? 0;
+
+            for (int i = 0; i < labels.Count; i++)
+            {
+                LabelOnGround? label = labels[i];
+                if (label == null || !BlightEntityCache.IsBlightFoundationOrTowerLabel(label))
+                    continue;
+
+                Element? labelElement = BlightEntityCache.ResolveLabelElement(label);
+                if (labelElement == null)
+                    continue;
+
+                if (IsBlightIconAt(labelElement, 2, screenPos, hoveredAddress)
+                    || IsBlightIconAt(labelElement, 3, screenPos, hoveredAddress))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsBlightIconAt(Element labelElement, int childIndex, Vector2 screenPos, long hoveredAddress)
+        {
+            RectangleF? iconRect = BlightMenuInteractions.GetMenuChildRect(labelElement, childIndex);
+            return (iconRect != null && PointInRect(iconRect.Value, screenPos))
+                || BlightMenuInteractions.IsMenuChildHit(labelElement, childIndex, hoveredAddress);
+        }
+
+        private static bool PointInRect(RectangleF rect, Vector2 point)
+            => point.X >= rect.X && point.X <= rect.X + rect.Width
+               && point.Y >= rect.Y && point.Y <= rect.Y + rect.Height;
 
         IEnumerator IClickAutomationService.ProcessRegularClick()
             => ProcessRegularClick();

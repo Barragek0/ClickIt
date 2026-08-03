@@ -101,7 +101,8 @@ namespace ClickIt.Features.Click
                                 ClickAutomationSupport.DebugLog,
                                 ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
                                 services.ClickDebugPublisher,
-                                PointIsInClickableArea);
+                                PointIsInClickableArea,
+                                IsBlightBuildOrUpgradeIconAt);
                 }
 
                 private ClickRuntimeEngineDependencies CreateClickRuntimeEngineDependencies()

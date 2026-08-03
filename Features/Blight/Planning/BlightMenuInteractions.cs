@@ -172,6 +172,38 @@ internal static class BlightMenuInteractions
         catch { return null; }
     }
 
+    internal static Element? GetMenuChildElement(Element labelElement, int childIndex)
+    {
+        try
+        {
+            Element? child0 = labelElement.GetChildAtIndex(0);
+            return child0?.GetChildAtIndex(childIndex);
+        }
+        catch { return null; }
+    }
+
+    // True when the hovered element address is the build/upgrade icon (Child[2]/Child[3]) or one of
+    // its direct children — used to keep pathfinding clicks off tower build/upgrade icons.
+    internal static bool IsMenuChildHit(Element labelElement, int childIndex, long hoveredAddress)
+    {
+        Element? child = GetMenuChildElement(labelElement, childIndex);
+        if (child == null || hoveredAddress == 0)
+            return false;
+        if (child.Address == hoveredAddress)
+            return true;
+        try
+        {
+            for (int i = 0; i < child.ChildCount; i++)
+            {
+                Element? sub = child.GetChildAtIndex(i);
+                if (sub != null && sub.Address == hoveredAddress)
+                    return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
     internal static RectangleF? GetMenuRegionRect(Element labelElement)
     {
         RectangleF? rect = GetMenuChildRect(labelElement, 3);

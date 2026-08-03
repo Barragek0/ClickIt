@@ -61,17 +61,7 @@ internal sealed class BlightPlanExecutor
 
         if (_phase == Phase.Walking)
         {
-            bool menuReady = false;
-            if (gc != null && labels != null && labels.Count > 0)
-            {
-                Element? labelEl = FindLabelAt(labels, s.FoundationPosition, service);
-                if (labelEl != null)
-                {
-                    RectangleF? menuRect = BlightMenuInteractions.GetMenuRegionRect(labelEl);
-                    if (menuRect != null && IsMenuRegionUsable(menuRect.Value, gc, service))
-                        menuReady = true;
-                }
-            }
+            bool menuReady = IsMenuRegionReadyForStep(labels, gc, service);
 
             if (!menuReady)
             {
@@ -517,6 +507,23 @@ internal sealed class BlightPlanExecutor
             && isPointInClickableArea(new Vector2(rect.Right, rect.Y))
             && isPointInClickableArea(new Vector2(rect.X, rect.Bottom))
             && isPointInClickableArea(new Vector2(rect.Right, rect.Bottom));
+    }
+
+    // Single source of truth for "the current step's tower menu region is fully on-screen and
+    // clickable". Shared by the Walking phase and BlightService's walk-target resolution so
+    // pathfinding keeps moving until the WHOLE phantom rectangle is usable — not just the entity.
+    internal bool IsMenuRegionReadyForStep(
+        IReadOnlyList<LabelOnGround>? labels,
+        GameController? gc,
+        BlightService service)
+    {
+        if (gc == null || labels == null || labels.Count == 0) return false;
+        BlightPlanStep? step = CurrentPlan?.CurrentStep;
+        if (step == null) return false;
+        Element? labelEl = FindLabelAt(labels, step.Value.FoundationPosition, service);
+        if (labelEl == null) return false;
+        RectangleF? menuRect = BlightMenuInteractions.GetMenuRegionRect(labelEl);
+        return menuRect != null && IsMenuRegionUsable(menuRect.Value, gc, service);
     }
 
     private BlightBuildAction Fail(string reason)
