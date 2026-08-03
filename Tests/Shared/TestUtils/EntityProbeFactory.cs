@@ -68,6 +68,8 @@ namespace ClickIt.Tests.Shared.TestUtils
 
         public new bool IsOpened { get; set; }
 
+        public new bool IsTransitioned { get; set; }
+
         public Dictionary<Type, Component> Components { get; set; } = new();
 
         public new T GetComponent<T>() where T : Component

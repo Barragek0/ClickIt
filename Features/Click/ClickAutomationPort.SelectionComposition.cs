@@ -22,6 +22,8 @@ namespace ClickIt.Features.Click
 
         private LabelSelectionScanEngine LabelSelectionScan => field ??= new(CreateLabelSelectionScanEngineDependencies());
 
+        private BlightChestTransitionSuppression BlightChestTransitionSuppression => field ??= new();
+
         private ManualCursorLabelSelector ManualCursorLabels => field ??= new(CreateManualCursorLabelSelectorDependencies());
 
         private ManualCursorVisibleMechanicSelector ManualCursorVisibleMechanics => field ??= new(CreateManualCursorVisibleMechanicSelectorDependencies());
@@ -59,6 +61,7 @@ namespace ClickIt.Features.Click
                 _labelClickPointResolver,
                 PathfindingLabelSuppression.ShouldSuppressLeverClick,
                 UltimatumLabelMath.ShouldSuppressInactiveUltimatumLabel,
+                BlightChestTransitionSuppression.ShouldSuppressBlightChestClick,
                 LabelInteraction,
                 _mechanicPriorityContextProvider,
                 ClickDebugPublisher,

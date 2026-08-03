@@ -294,6 +294,7 @@ namespace ClickIt.Tests.Features.Click
                 new LabelClickPointResolver(settings),
                 ShouldSuppressLeverClick: static _ => false,
                 ShouldSuppressInactiveUltimatumLabel: static _ => false,
+                ShouldSuppressBlightChestClick: static _ => false,
                 ClickTestServiceFactory.CreateLabelInteractionService(gameController: gameController, labelInteractionPort: port),
                 new MechanicPriorityContextProvider(settings, new MechanicPrioritySnapshotService()),
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(),

@@ -343,7 +343,8 @@ namespace ClickIt.Tests.Core.Bootstrap
                 PathfindingRenderer: CreateOpaque<PathfindingRenderer>(),
                 AltarChoiceEvaluator: CreateOpaque<AltarChoiceEvaluator>(),
                 AltarDisplayRenderer: CreateOpaque<AltarDisplayRenderer>(),
-                ImGuiDebugOverlay: CreateOpaque<ImGuiDebugOverlay>());
+                ImGuiDebugOverlay: CreateOpaque<ImGuiDebugOverlay>(),
+                UiRegionRectangleOverlay: CreateOpaque<UiRegionRectangleOverlay>());
         }
 
         private static ClickAutomationPort CreateClickAutomationPort(ClickItSettings settings, CoreDomainServices core)

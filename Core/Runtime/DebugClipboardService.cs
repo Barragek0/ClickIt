@@ -8,9 +8,7 @@ namespace ClickIt.Core.Runtime
 
     internal sealed class DebugClipboardService(DebugClipboardServiceDependencies dependencies)
     {
-        private readonly DebugClipboardServiceDependencies _dependencies = dependencies;
         private readonly DeepMemoryDumpCoordinator _deepMemoryDumpCoordinator = new(dependencies);
-        private long _lastInventoryWarningAutoCopySuccessTimestampMs;
 
         public bool HasPendingAdditionalDebugInfoCopyRequest { get; private set; }
 
@@ -34,27 +32,6 @@ namespace ClickIt.Core.Runtime
         public void QueueDeepMemoryDumpCoroutine()
         {
             _deepMemoryDumpCoordinator.QueueDeepMemoryDumpCoroutine();
-        }
-
-        public bool TryAutoCopyInventoryWarningDebugSnapshot(InventoryDebugSnapshot snapshot, long now, string[] debugLines)
-        {
-            ClickItSettings? settings = _dependencies.GetEffectiveSettings();
-            if (settings?.AutoCopyInventoryWarningDebug?.Value != true)
-                return false;
-
-            string payload = DebugClipboardPayloadBuilder.BuildInventoryWarningClipboardPayload(
-                snapshot,
-                now,
-                _lastInventoryWarningAutoCopySuccessTimestampMs,
-                debugLines);
-            if (string.IsNullOrWhiteSpace(payload))
-                return false;
-
-            bool copied = TrySetClipboardText(payload);
-            if (copied)
-                _lastInventoryWarningAutoCopySuccessTimestampMs = now;
-
-            return copied;
         }
 
         private void TryCopyAdditionalDebugInfo(string[] debugLines)

@@ -33,6 +33,7 @@ namespace ClickIt.Features.Click
         internal Func<BlightBuildAction>? TryProgressBlightBuilding { get; set; }
         internal Func<Entity?>? GetBlightPathfindTarget { get; set; }
         internal Func<bool>? IsBlightEncounterActive { get; set; }
+        internal ElementTreeInspector? BlightChestDebug { get; set; }
 
         internal Func<Vector2, string, bool> PointIsInClickableArea { get; }
         internal Func<Vector2, string, bool> ForceRefreshPointIsInClickableArea { get; }

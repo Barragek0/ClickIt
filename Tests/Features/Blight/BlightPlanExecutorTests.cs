@@ -114,4 +114,42 @@ public class BlightPlanExecutorTests
         BlightPlanExecutor.IsSpecializationStep(noSpecialization, targetLevel: 4, currentTowerLevel: 3)
             .Should().BeFalse("no chosen specialization means a plain upgrade");
     }
+
+    [TestMethod]
+    public void IsMenuRegionUsable_ReturnsTrue_WhenFullyOnScreenAndClickable()
+    {
+        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(500f, 300f, 200f, 100f), 1920f, 1080f, static _ => true)
+            .Should().BeTrue();
+    }
+
+    [TestMethod]
+    public void IsMenuRegionUsable_ReturnsFalse_WhenPartlyOffScreen()
+    {
+        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(1850f, 300f, 200f, 100f), 1920f, 1080f, static _ => true)
+            .Should().BeFalse("a menu region partly off-screen must keep the player walking");
+    }
+
+    [TestMethod]
+    public void IsMenuRegionUsable_ReturnsFalse_WhenAnyCornerNotClickable()
+    {
+        // Blocks any point below y=350, so the bottom corners of the region are not clickable
+        // (e.g. the region overlaps the buff bar area) — the whole region must be clickable.
+        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(500f, 300f, 200f, 100f), 1920f, 1080f,
+                static point => point.Y <= 350f)
+            .Should().BeFalse("a menu region overlapping a blocked UI region must keep the player walking");
+    }
+
+    [TestMethod]
+    public void IsMenuRegionUsable_ReturnsFalse_ForDegenerateRect()
+    {
+        BlightPlanExecutor.IsMenuRegionUsable(RectangleF.Empty, 1920f, 1080f, static _ => true)
+            .Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void IsMenuRegionUsable_ReturnsFalse_ForDegenerateWindow()
+    {
+        BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(0f, 0f, 10f, 10f), 0f, 0f, static _ => true)
+            .Should().BeFalse();
+    }
 }

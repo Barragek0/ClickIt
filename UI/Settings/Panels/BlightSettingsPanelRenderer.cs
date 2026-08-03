@@ -47,9 +47,9 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
         SettingsUiRenderHelpers.DrawToggleNodeControl(
             "Pathfind to Tower Builds##BlightPathfindToBuild",
             _settings.BlightPathfindToBuild,
-            "When enabled, the plugin pathfinds toward towers that need building even if the main pathfinding setting is disabled.\n\n" +
-            "Only applies while a Blight encounter is active.\n\n" +
-            "Tower building was designed with pathfinding enabled, so it's recommended to keep this setting on — otherwise you'll need to walk to towers manually without feedback from the plugin.");
+            "When enabled, the plugin walks toward towers that need building during an active Blight encounter.\n\n" +
+            "Tower walking reuses the same offscreen pathfinding as regular labels, so the 'Walk toward Offscreen Labels' control must also be enabled for any walking to happen.\n\n" +
+            "Tower building was designed with pathfinding enabled, so it's recommended to keep both settings on, otherwise you'll need to walk to towers manually.");
     }
 
     private void DrawBlockOtherInteractionsToggle()
@@ -57,7 +57,7 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
         SettingsUiRenderHelpers.DrawToggleNodeControl(
             "Block Other Interactions During Blight##BlightBlockOtherInteractions",
             _settings.BlightBlockOtherInteractions,
-            "When enabled, ClickIt blocks all other interactions (e.g. clicking harvest plots, chests, etc.) while a Blight encounter is active.\n\n" +
+            "When enabled, ClickIt blocks all other interactions (e.g. clicking items, chests, etc.) while a Blight encounter is active.\n\n" +
             "This prevents interacting with other objects while the plugin is trying to build towers.\n\n" +
             "It's recommended to keep this enabled.");
     }
@@ -72,7 +72,8 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
         SettingsUiRenderHelpers.DrawToggleNodeControl(
             "Visualize Tower Dots##BlightVisualizeTowers",
             _settings.BlightVisualizeTowers,
-            "When enabled, every tower foundation and tower is shown as a dot both in the game world and on the world map.\n\n" +
+            "When enabled, the foundations the current plan still targets are shown as dots both in the game world and on the world map.\n\n" +
+            "Only foundations with pending build or upgrade steps are drawn - foundations the plan has finished, and foundations the plan never targets, are hidden.\n\n" +
             "Each dot is a circle in the colour of the tower the plan intends for that foundation (unbuilt foundations use the planned tower colour; built towers use their current tower colour).\n\n" +
             "The sub-options below control the plan-order numbers and the tower ranges.");
 
@@ -88,9 +89,8 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
             SettingsUiRenderHelpers.DrawToggleNodeControl(
                 "Visualize Upgrade Order##BlightVisualizeUpgrades",
                 _settings.BlightVisualizeUpgrades,
-                "When enabled, each tower dot shows the plan's execution order as numbers stacked in the centre of the dot, both in the game world and on the world map.\n\n" +
-                "The numbers are the 1-based plan step numbers still pending for that foundation (for example, a tower built then upgraded twice shows 1, 3, 4).\n\n" +
-                "As the plan runs, completed steps disappear, so the numbers shrink and finally vanish once the plan is done.");
+                "When enabled, each targeted tower dot shows the plan's pending execution order as numbers stacked above the dot in the game world only.\n\n" +
+                "As the plan runs, completed steps disappear.");
 
             ImGui.Unindent();
         }

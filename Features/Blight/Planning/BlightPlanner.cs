@@ -424,7 +424,9 @@ internal static class BlightPlanner
                 if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
 
                 NumVector2 pos = knownTowers[i].WorldPosition;
-                bool[] local2 = (bool[])covered.Clone();
+                // Count directly-covered segments first; only clone+propagate when a candidate actually
+                // covers something, so candidates too far away or already-fully-covered cost nothing.
+                bool[]? local2 = null;
                 int direct = 0;
                 float maxDistSq = 0f;
                 for (int s = 0; s < coverage.Length; s++)
@@ -432,13 +434,13 @@ internal static class BlightPlanner
                     if (!isBranchSegment[s] || covered[s]) continue;
                     float d = SqDist(pos, coverage[s].Midpoint);
                     if (d > maxRadiusSq) continue;
-                    local2[s] = true;
                     direct++;
                     if (d > maxDistSq) maxDistSq = d;
+                    (local2 ??= (bool[])covered.Clone())[s] = true;
                 }
                 if (direct == 0) continue;
 
-                bool[] covered2 = BlightLaneTopology.PropagateType(coverage, local2);
+                bool[] covered2 = BlightLaneTopology.PropagateType(coverage, local2!);
                 int newly = 0;
                 for (int s = 0; s < coverage.Length; s++)
                     if (isBranchSegment[s] && covered2[s] && !covered[s]) newly++;

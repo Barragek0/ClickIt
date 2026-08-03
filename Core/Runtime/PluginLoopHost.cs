@@ -67,15 +67,50 @@ namespace ClickIt.Core.Runtime
         private IEnumerator MainScanForAltarsLogic()
         {
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
-                yield return ScanForAltarsLogic();
+                yield return Guarded(ScanForAltarsLogic, "AltarScan");
 
+        }
+
+        // Catches exceptions escaping a plugin coroutine step and logs them through
+        // the plugin ErrorHandler (Recent Errors + game log) instead of letting
+        // ExileCore's runner swallow them into the game log only.
+        private IEnumerator Guarded(Func<IEnumerator> step, string name)
+        {
+            bool failed = false;
+            IEnumerator inner = step();
+            while (!failed)
+            {
+                bool hasNext;
+                try
+                {
+                    hasNext = inner.MoveNext();
+                }
+                catch (Exception ex)
+                {
+                    _errorHandler.LogError($"[{name}] {ex}");
+                    failed = true;
+                    break;
+                }
+                if (!hasNext)
+                    break;
+                yield return inner.Current;
+            }
+            if (failed)
+                yield return new WaitTime(500);
         }
 
         private IEnumerator MainAreaBlockedUiRefreshCoroutine()
         {
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
             {
-                _state.Services.AreaService?.UpdateScreenAreas(_gameController, forceBlockedUiRefresh: true);
+                try
+                {
+                    _state.Services.AreaService?.UpdateScreenAreas(_gameController, forceBlockedUiRefresh: true);
+                }
+                catch (Exception ex)
+                {
+                    _errorHandler.LogError($"[BlockedUiRefresh] {ex}");
+                }
 
                 int waitMs = SystemMath.Max(50, _settings.BlockedUiRefreshIntervalMs?.Value ?? AreaBlockedSnapshotProvider.DefaultBlockedUiRectanglesRefreshIntervalMs);
                 yield return new WaitTime(waitMs);
@@ -96,7 +131,7 @@ namespace ClickIt.Core.Runtime
         private IEnumerator MainClickLabelCoroutine()
         {
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
-                yield return ClickLabel();
+                yield return Guarded(ClickLabel, "ClickLabel");
 
         }
 
@@ -168,7 +203,7 @@ namespace ClickIt.Core.Runtime
         {
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
             {
-                yield return ProcessManualUiHoverClick();
+                yield return Guarded(ProcessManualUiHoverClick, "ManualUiHoverClick");
                 yield return new WaitTime(10);
             }
         }
@@ -214,11 +249,18 @@ namespace ClickIt.Core.Runtime
             {
                 if (_settings.ClickBlightTowers.Value && _state.Services.PerformanceMonitor != null)
                 {
-                    _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Blight);
-                    _state.Services.BlightService?.RefreshEntities(_gameController);
-                    _state.Services.BlightService?.ScanFoundations(_state.Services.CachedLabels?.Value);
-                    _state.Services.BlightService?.ComputeLaneCoverage();
-                    _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Blight);
+                    try
+                    {
+                        _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Blight);
+                        _state.Services.BlightService?.RefreshEntities(_gameController);
+                        _state.Services.BlightService?.ScanFoundations(_state.Services.CachedLabels?.Value);
+                        _state.Services.BlightService?.ComputeLaneCoverage();
+                        _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Blight);
+                    }
+                    catch (Exception ex)
+                    {
+                        _errorHandler.LogError($"[BlightRefresh] {ex}");
+                    }
                 }
 
                 yield return new WaitTime(200);
@@ -231,11 +273,25 @@ namespace ClickIt.Core.Runtime
 
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
             {
-                _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Flare);
+                try
+                {
+                    _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Flare);
+                }
+                catch (Exception ex)
+                {
+                    _errorHandler.LogError($"[FlareCoroutine] {ex}");
+                }
 
-                yield return ProcessFlare();
+                yield return Guarded(ProcessFlare, "Flare");
 
-                _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Flare);
+                try
+                {
+                    _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Flare);
+                }
+                catch (Exception ex)
+                {
+                    _errorHandler.LogError($"[FlareCoroutine] {ex}");
+                }
 
                 yield return new WaitTime(100);
             }

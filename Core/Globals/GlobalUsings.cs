@@ -84,6 +84,7 @@ global using ClickIt.Features.Shrines;
 global using ClickIt.Properties;
 global using ClickIt.Shared;
 global using ClickIt.Shared.Diagnostics;
+global using ClickIt.Shared.Diagnostics.ElementTree;
 global using ClickIt.Shared.Game;
 global using ClickIt.Shared.Input;
 global using ClickIt.Shared.Math;

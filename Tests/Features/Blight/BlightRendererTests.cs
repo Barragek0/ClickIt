@@ -101,6 +101,48 @@ public class BlightRendererTests
     }
 
     [TestMethod]
+    public void GetPendingPlanStepNumbers_MatchesStaticSemantics_AndReusesCachedList()
+    {
+        var renderer = new BlightRenderer(new BlightService(new ClickItSettings()), new ClickItSettings());
+        BlightPlan plan = BuildScenarioPlan();
+
+        IReadOnlyList<int> first = renderer.GetPendingPlanStepNumbers(plan, cursor: 1, SeismicPos);
+        first.Should().Equal(new[] { 2, 5, 6 }, "same result as the static tolerance scan from cursor 1");
+
+        // Re-querying the same (plan, cursor, position) returns the cached instance — no per-frame allocation.
+        IReadOnlyList<int> second = renderer.GetPendingPlanStepNumbers(plan, cursor: 1, SeismicPos);
+        ReferenceEquals(first, second).Should().BeTrue("pending numbers are cached per (plan, cursor)");
+
+        // Advancing the cursor rebuilds the cache, so a different instance comes back.
+        IReadOnlyList<int> afterAdvance = renderer.GetPendingPlanStepNumbers(plan, cursor: 3, SeismicPos);
+        afterAdvance.Should().Equal(new[] { 5, 6 });
+        ReferenceEquals(first, afterAdvance).Should().BeFalse("a new cursor produces a fresh list");
+    }
+
+    [TestMethod]
+    public void GetPendingPlanStepNumbers_ToleranceFallback_IsCachedToo()
+    {
+        var renderer = new BlightRenderer(new BlightService(new ClickItSettings()), new ClickItSettings());
+        BlightPlan plan = BuildScenarioPlan();
+        NumVector2 fuzzyPos = new(SeismicPos.X + 0.5f, SeismicPos.Y);
+
+        IReadOnlyList<int> fuzzy = renderer.GetPendingPlanStepNumbers(plan, cursor: 1, fuzzyPos);
+        fuzzy.Should().Equal(new[] { 2, 5, 6 }, "positions within the <1 grid-unit tolerance still match");
+
+        IReadOnlyList<int> fuzzyAgain = renderer.GetPendingPlanStepNumbers(plan, cursor: 1, fuzzyPos);
+        ReferenceEquals(fuzzy, fuzzyAgain).Should().BeTrue("the tolerance fallback result is cached too");
+    }
+
+    [TestMethod]
+    public void GetPendingPlanStepNumbers_ReturnsSharedEmpty_ForNullPlan()
+    {
+        var renderer = new BlightRenderer(new BlightService(new ClickItSettings()), new ClickItSettings());
+
+        IReadOnlyList<int> numbers = renderer.GetPendingPlanStepNumbers(plan: null, cursor: 0, SeismicPos);
+        numbers.Should().BeEmpty();
+    }
+
+    [TestMethod]
     public void IsCurrentStepAt_ReturnsFalse_ForNullPlanOrDonePlan()
     {
         BlightRenderer.IsCurrentStepAt(plan: null, cursor: 0, ChillingPos).Should().BeFalse();

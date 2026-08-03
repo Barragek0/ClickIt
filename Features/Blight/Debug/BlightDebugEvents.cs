@@ -17,7 +17,7 @@ internal sealed class BlightDebugEvents
             for (int i = 0; i < _stages.Count; i++)
             {
                 string existing = _stages[i];
-                if (ExtractMessage(existing) == message)
+                if (MessageMatches(existing, message))
                 {
                     int count = ExtractDedupCount(existing) + 1;
                     _stages.RemoveAt(i);
@@ -32,34 +32,40 @@ internal sealed class BlightDebugEvents
         }
     }
 
-    private static bool TryFindDedupSuffix(string formatted, out int parenIdx)
+    private static bool MessageMatches(string formatted, string message)
     {
-        parenIdx = formatted.LastIndexOf(" (x", StringComparison.Ordinal);
-        if (parenIdx <= 0)
-            return false;
-        int closeParen = formatted.IndexOf(')', parenIdx);
-        return closeParen == formatted.Length - 1;
+        ReadOnlySpan<char> span = formatted.AsSpan(StripTimestamp(formatted));
+        if (TryFindDedupSuffix(span, out int parenIdx))
+            span = span[..parenIdx];
+        return span.SequenceEqual(message);
     }
 
-    private static string ExtractMessage(string formatted)
+    private static int StripTimestamp(string formatted)
     {
         if (formatted.Length >= 9 && formatted[2] == ':' && formatted[5] == ':')
         {
             int spaceAfterTs = formatted.IndexOf(' ', 8);
             if (spaceAfterTs > 0)
-                formatted = formatted[(spaceAfterTs + 1)..];
+                return spaceAfterTs + 1;
         }
+        return 0;
+    }
 
-        return TryFindDedupSuffix(formatted, out int parenIdx)
-            ? formatted[..parenIdx]
-            : formatted;
+    private static bool TryFindDedupSuffix(ReadOnlySpan<char> formatted, out int parenIdx)
+    {
+        parenIdx = formatted.LastIndexOf(" (x", StringComparison.Ordinal);
+        if (parenIdx <= 0)
+            return false;
+        int closeParen = formatted[(parenIdx + 1)..].IndexOf(')');
+        return closeParen == formatted.Length - parenIdx - 2;
     }
 
     private static int ExtractDedupCount(string formatted)
     {
-        if (TryFindDedupSuffix(formatted, out int parenIdx))
+        ReadOnlySpan<char> span = formatted.AsSpan(StripTimestamp(formatted));
+        if (TryFindDedupSuffix(span, out int parenIdx))
         {
-            string numPart = formatted[(parenIdx + 3)..^1];
+            ReadOnlySpan<char> numPart = span[(parenIdx + 3)..^1];
             if (int.TryParse(numPart, out int count))
                 return count;
         }

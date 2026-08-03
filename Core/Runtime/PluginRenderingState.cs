@@ -16,6 +16,7 @@ namespace ClickIt.Core.Runtime
         public HarvestOverlayRenderer? HarvestOverlayRenderer { get; set; }
         public BlightRenderer? BlightRenderer { get; set; }
         internal ImGuiDebugOverlay? ImGuiDebugOverlay { get; set; }
+        internal UiRegionRectangleOverlay? UiRegionRectangleOverlay { get; set; }
         public DeferredTextQueue? DeferredTextQueue { get; set; }
         public DeferredFrameQueue? DeferredFrameQueue { get; set; }
         public ClickRuntimeHost? ClickRuntimeHost { get; set; }
@@ -31,6 +32,7 @@ namespace ClickIt.Core.Runtime
             PathfindingRenderer = null;
             AltarDisplayRenderer = null;
             HarvestOverlayRenderer = null;
+            UiRegionRectangleOverlay = null;
             DeferredTextQueue = null;
             DeferredFrameQueue = null;
             ClickRuntimeHost = null;

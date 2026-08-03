@@ -6,6 +6,7 @@ namespace ClickIt.Features.Click.Selection
         LabelClickPointResolver LabelClickPointResolver,
         Func<LabelOnGround, bool> ShouldSuppressLeverClick,
         Func<LabelOnGround, bool> ShouldSuppressInactiveUltimatumLabel,
+        Func<LabelOnGround, bool> ShouldSuppressBlightChestClick,
         ClickLabelInteractionService LabelInteraction,
         MechanicPriorityContextProvider MechanicPriorityContextProvider,
         ClickDebugPublicationService ClickDebugPublisher,
@@ -125,6 +126,7 @@ namespace ClickIt.Features.Click.Selection
             int leverSuppressed = 0;
             int ultimatumSuppressed = 0;
             int overlappedSuppressed = 0;
+            int blightChestTransitionSuppressed = 0;
             int indexMisses = 0;
 
             while (currentStart < endExclusive)
@@ -138,7 +140,7 @@ namespace ClickIt.Features.Click.Selection
                         _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelNull", noLabelSummary);
                     }
                     if (examined > 0)
-                        _dependencies.DebugLog($"[LabelSelectDiag] range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
+                        _dependencies.DebugLog($"[LabelSelectDiag] range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} im:{indexMisses}");
 
                     return null;
                 }
@@ -148,6 +150,7 @@ namespace ClickIt.Features.Click.Selection
                 bool suppressLever = _dependencies.ShouldSuppressLeverClick(label);
                 bool suppressUltimatum = _dependencies.ShouldSuppressInactiveUltimatumLabel(label);
                 bool fullyOverlapped = _dependencies.LabelClickPointResolver.IsLabelFullyOverlapped(label, allLabels);
+                bool suppressBlightChestTransition = _dependencies.ShouldSuppressBlightChestClick(label);
 
                 if (suppressLever)
                     leverSuppressed++;
@@ -155,8 +158,10 @@ namespace ClickIt.Features.Click.Selection
                     ultimatumSuppressed++;
                 if (fullyOverlapped)
                     overlappedSuppressed++;
+                if (suppressBlightChestTransition)
+                    blightChestTransitionSuppressed++;
 
-                if (!suppressLever && !suppressUltimatum && !fullyOverlapped)
+                if (!suppressLever && !suppressUltimatum && !fullyOverlapped && !suppressBlightChestTransition)
                 {
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelMatch", $"range:{start}-{endExclusive} examined:{examined}");
                     return label;
@@ -170,7 +175,7 @@ namespace ClickIt.Features.Click.Selection
                 {
                     indexMisses++;
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
-                    _dependencies.DebugLog($"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
+                    _dependencies.DebugLog($"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} im:{indexMisses}");
                     return null;
                 }
 
@@ -180,7 +185,7 @@ namespace ClickIt.Features.Click.Selection
             if (examined > 0)
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelExhausted", $"range:{start}-{endExclusive} examined:{examined}");
-                _dependencies.DebugLog($"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} im:{indexMisses}");
+                _dependencies.DebugLog($"[LabelSelectDiag] exhausted range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} im:{indexMisses}");
             }
 
             return null;

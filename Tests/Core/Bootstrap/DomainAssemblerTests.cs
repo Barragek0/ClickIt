@@ -64,7 +64,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             GameController gameController = ExileCoreOpaqueFactory.CreateOpaqueGameController();
             CoreDomainServices core = CreateCoreDomainServices(settings);
             Graphics graphics = (Graphics)RuntimeHelpers.GetUninitializedObject(typeof(Graphics));
-            var clipboardCopyAttempts = new List<(long Timestamp, long Sequence)>();
             var frozenTelemetrySnapshots = new List<(string Reason, int HoldDurationMs)>();
 
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(
@@ -72,12 +71,7 @@ namespace ClickIt.Tests.Core.Bootstrap
                 settings,
                 core,
                 graphics,
-                owner.LogMessage,
-                (snapshot, now) =>
-                {
-                    clipboardCopyAttempts.Add((now, snapshot.Sequence));
-                    return true;
-                });
+                owner.LogMessage);
             ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(
                 settings,
                 gameController,
@@ -103,7 +97,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             ultimatumRenderer.Should().NotBeNull();
             settingsDomain.AlertService.Should().BeSameAs(alertService);
             settingsDomain.EffectiveSettings.Should().BeSameAs(settings);
-            clipboardCopyAttempts.Should().BeEmpty();
             frozenTelemetrySnapshots.Should().BeEmpty();
             LockManager.Instance.Should().NotBeNull();
         }

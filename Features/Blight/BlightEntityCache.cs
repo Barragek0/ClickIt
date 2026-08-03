@@ -38,6 +38,9 @@ internal sealed class BlightEntityCache
     private int _cachedCoverageTowerCount;
     // Dirty flag — keeps last-good coverage available during recomputation so lanes never flash red.
     private bool _coverageDirty;
+    // Signature of the last scanned coverage-relevant data; when unchanged, the scan skips invalidating
+    // the coverage cache so the steady state never re-allocates the coverage computation.
+    private int _lastScanCoverageSignature;
     // Pathway snapshot aligned with _cachedCoverage so the render thread always draws a consistent bundle.
     private NumVector2[]? _cachedCoveragePathways;
 
@@ -45,6 +48,13 @@ internal sealed class BlightEntityCache
     private Entity[]? _cachedPathwayEntities;
     private (Entity Entity, string TowerId)[]? _cachedTowerEntities;
     private BlightCachedTower[]? _cachedKnownTowers;
+
+    // Reused per-scan scratch buffers (the scan runs on a single coroutine thread), so a steady-state
+    // scan does not re-allocate the saved-state map and local result lists every 200ms.
+    private readonly Dictionary<NumVector2, (BlightTowerType Type, int Level, BlightTowerType Planned)> _scanSavedState = [];
+    private readonly List<Entity> _scanLocalPathways = [];
+    private readonly List<(Entity Entity, string TowerId)> _scanLocalTowers = [];
+    private readonly List<BlightCachedTower> _scanLocalKnown = [];
 
     internal BlightEntityCache(ClickItSettings settings, BlightDebugEvents debug, BlightEncounter encounter)
     {
@@ -149,7 +159,8 @@ internal sealed class BlightEntityCache
         NumVector2[] pathwaysSnapshot;
         (Entity Entity, string TowerId, int RadiusSq)[] towersSnapshot;
         (NumVector2 Pos, BlightTowerType Type, int RadiusSq)[] cachedBuilt;
-        HashSet<NumVector2> loadedTowerPositions = [];
+        // Allocated only on the recompute path; the cache-hit/idle paths below never touch it.
+        HashSet<NumVector2> loadedTowerPositions = null!;
 
         lock (_blightDataLock)
         {
@@ -192,7 +203,7 @@ internal sealed class BlightEntityCache
             cachedBuilt = [.. builtList];
 
             // Loaded towers' entity-based radius is authoritative — skip their cached fallback to avoid inflated coverage.
-            loadedTowerPositions.Clear();
+            loadedTowerPositions = [];
             for (int t = 0; t < towersSnapshot.Length; t++)
             {
                 Entity te = towersSnapshot[t].Entity;
@@ -260,6 +271,45 @@ internal sealed class BlightEntityCache
         return result;
     }
 
+    internal static int ComputeCoverageDataSignature(
+        IReadOnlyList<NumVector2> pathwayPositions,
+        IReadOnlyList<(Entity Entity, string TowerId)> towerEntities,
+        IReadOnlyList<BlightCachedTower> knownTowers)
+    {
+        HashCode hash = new();
+        hash.Add(pathwayPositions.Count);
+        for (int i = 0; i < pathwayPositions.Count; i++)
+        {
+            hash.Add(pathwayPositions[i].X);
+            hash.Add(pathwayPositions[i].Y);
+        }
+
+        hash.Add(towerEntities.Count);
+        for (int t = 0; t < towerEntities.Count; t++)
+        {
+            (Entity entity, string towerId) = towerEntities[t];
+            NumVector2 grid;
+            try { grid = new NumVector2(entity.GridPosNum.X, entity.GridPosNum.Y); }
+            catch { grid = default; }
+            hash.Add(grid.X);
+            hash.Add(grid.Y);
+            hash.Add(towerId, StringComparer.Ordinal);
+        }
+
+        hash.Add(knownTowers.Count);
+        for (int k = 0; k < knownTowers.Count; k++)
+        {
+            BlightCachedTower tower = knownTowers[k];
+            hash.Add(tower.WorldPosition.X);
+            hash.Add(tower.WorldPosition.Y);
+            hash.Add(tower.TowerType);
+            hash.Add(tower.UpgradeLevel);
+            hash.Add(tower.Radius);
+        }
+
+        return hash.ToHashCode();
+    }
+
     internal void RefreshEntities(GameController? gameController)
     {
         _gameController = gameController;
@@ -299,28 +349,25 @@ internal sealed class BlightEntityCache
         }
         _lastFullRefreshEntityScanMs = now;
 
-        // Invalidate coverage only when the full scan is about to run; the old bundle stays visible until recompute.
-        InvalidateCoverageCache();
-
         // Preserve every known tower position before the clear so streamed-out foundations survive.
         int towersBeforeClear = _knownTowers.Count;
-        Dictionary<NumVector2, (BlightTowerType Type, int Level, BlightTowerType Planned)> savedState = [];
+        _scanSavedState.Clear();
         for (int i = 0; i < _knownTowers.Count; i++)
         {
             BlightCachedTower t = _knownTowers[i];
-            savedState[t.WorldPosition] = (t.TowerType, t.UpgradeLevel, t.PlannedTowerType);
+            _scanSavedState[t.WorldPosition] = (t.TowerType, t.UpgradeLevel, t.PlannedTowerType);
         }
-        int savedCount = savedState.Count;
+        int savedCount = _scanSavedState.Count;
 
         int entityScannedFoundations = 0;
         int pathwayCount = 0;
         bool pumpFound = false;
 
-        // Collect scan results locally, then swap them into shared fields under a lock.
-        List<Entity> localPathways = [];
-        List<(Entity Entity, string TowerId)> localTowers = [];
+        // Collect scan results into reused local buffers, then swap them into shared fields under a lock.
+        _scanLocalPathways.Clear();
+        _scanLocalTowers.Clear();
+        _scanLocalKnown.Clear();
         Entity? localPump = null;
-        List<BlightCachedTower> localKnown = [];
 
         EntityQueryService.VisitValidEntities(gameController, entity =>
         {
@@ -330,7 +377,7 @@ internal sealed class BlightEntityCache
             {
                 if (path.Contains(BlightPathwayMetadata, StringComparison.OrdinalIgnoreCase))
                 {
-                    InsertPathwaySortedByIdDesc(localPathways, entity);
+                    InsertPathwaySortedByIdDesc(_scanLocalPathways, entity);
                     _hasDetectedAnyBlightContent = true;
                     pathwayCount++;
                 }
@@ -349,7 +396,7 @@ internal sealed class BlightEntityCache
                 string towerId = BlightHelpers.GetBlightTowerId(blightComp);
                 if (!string.IsNullOrEmpty(towerId))
                 {
-                    localTowers.Add((entity, towerId));
+                    _scanLocalTowers.Add((entity, towerId));
                 }
             }
 
@@ -358,18 +405,18 @@ internal sealed class BlightEntityCache
             {
                 _hasDetectedAnyBlightContent = true;
                 NumVector2 wp = BlightHelpers.GetGridPosition(entity);
-                int idx = BlightHelpers.FindTowerIndexAt(localKnown, wp);
+                int idx = BlightHelpers.FindTowerIndexAt(_scanLocalKnown, wp);
                 if (idx < 0)
                 {
                     BlightTowerType fType = BlightHelpers.DetectFoundationTypeFromPath(path);
-                    idx = localKnown.Count;
-                    localKnown.Add(new BlightCachedTower(wp, fType));
+                    idx = _scanLocalKnown.Count;
+                    _scanLocalKnown.Add(new BlightCachedTower(wp, fType));
                     entityScannedFoundations++;
                 }
 
                 // Store entity reference + world position (in-world helpers project from PosNum, not GridPosNum).
-                localKnown[idx].FoundationEntity = entity;
-                localKnown[idx].WorldPos3 = entity.PosNum;
+                _scanLocalKnown[idx].FoundationEntity = entity;
+                _scanLocalKnown[idx].WorldPos3 = entity.PosNum;
             }
 
             return false;
@@ -378,21 +425,21 @@ internal sealed class BlightEntityCache
         _hasCompletedInitialScan = true;
 
         // Apply saved-state restore + tower import on local lists, then atomically swap into shared fields.
-        for (int i = 0; i < localKnown.Count; i++)
+        for (int i = 0; i < _scanLocalKnown.Count; i++)
         {
-            NumVector2 pos = localKnown[i].WorldPosition;
-            if (savedState.TryGetValue(pos, out (BlightTowerType Type, int Level, BlightTowerType Planned) state))
+            NumVector2 pos = _scanLocalKnown[i].WorldPosition;
+            if (_scanSavedState.TryGetValue(pos, out (BlightTowerType Type, int Level, BlightTowerType Planned) state))
             {
-                localKnown[i].TowerType = state.Type;
-                localKnown[i].UpgradeLevel = state.Level;
-                localKnown[i].PlannedTowerType = state.Planned;
-                savedState.Remove(pos);
+                _scanLocalKnown[i].TowerType = state.Type;
+                _scanLocalKnown[i].UpgradeLevel = state.Level;
+                _scanLocalKnown[i].PlannedTowerType = state.Planned;
+                _scanSavedState.Remove(pos);
             }
         }
         int restoredCount = 0;
-        foreach (KeyValuePair<NumVector2, (BlightTowerType Type, int Level, BlightTowerType Planned)> kvp in savedState)
+        foreach (KeyValuePair<NumVector2, (BlightTowerType Type, int Level, BlightTowerType Planned)> kvp in _scanSavedState)
         {
-            localKnown.Add(new BlightCachedTower(kvp.Key, kvp.Value.Type, kvp.Value.Level)
+            _scanLocalKnown.Add(new BlightCachedTower(kvp.Key, kvp.Value.Type, kvp.Value.Level)
             {
                 PlannedTowerType = kvp.Value.Planned
             });
@@ -400,9 +447,9 @@ internal sealed class BlightEntityCache
         }
 
         int importedTowers = 0;
-        for (int t = 0; t < localTowers.Count; t++)
+        for (int t = 0; t < _scanLocalTowers.Count; t++)
         {
-            (Entity te, string tid) = localTowers[t];
+            (Entity te, string tid) = _scanLocalTowers[t];
             NumVector2 tePos = BlightHelpers.GetGridPosition(te);
 
             int upgradeLevel = BlightHelpers.DetectUpgradeRankFromEntityPath(te);
@@ -416,26 +463,26 @@ internal sealed class BlightEntityCache
                 continue;
 
             // If already in localKnown, update its upgrade level — component data is more recent than saved state.
-            int existingIdx = BlightHelpers.FindTowerIndexAt(localKnown, tePos);
+            int existingIdx = BlightHelpers.FindTowerIndexAt(_scanLocalKnown, tePos);
             if (existingIdx >= 0)
             {
-                if (localKnown[existingIdx].UpgradeLevel < upgradeLevel)
+                if (_scanLocalKnown[existingIdx].UpgradeLevel < upgradeLevel)
                 {
-                    localKnown[existingIdx].UpgradeLevel = upgradeLevel;
-                    localKnown[existingIdx].TowerType = mappedType.Value;
-                    localKnown[existingIdx].PlannedTowerType = mappedType.Value;
+                    _scanLocalKnown[existingIdx].UpgradeLevel = upgradeLevel;
+                    _scanLocalKnown[existingIdx].TowerType = mappedType.Value;
+                    _scanLocalKnown[existingIdx].PlannedTowerType = mappedType.Value;
                     importedTowers++;
                 }
 
                 // Capture the tower's ACTUAL radius from game dat — never fall back to the estimate for a measurable tower.
-                localKnown[existingIdx].Radius = GetTowerRadiusCached(tid);
+                _scanLocalKnown[existingIdx].Radius = GetTowerRadiusCached(tid);
 
                 // Restore the live world position so the in-world dot keeps rendering under a built tower.
-                localKnown[existingIdx].WorldPos3 = te.PosNum;
+                _scanLocalKnown[existingIdx].WorldPos3 = te.PosNum;
                 continue;
             }
 
-            localKnown.Add(new BlightCachedTower(tePos, mappedType.Value, upgradeLevel)
+            _scanLocalKnown.Add(new BlightCachedTower(tePos, mappedType.Value, upgradeLevel)
             {
                 PlannedTowerType = mappedType.Value,
                 WorldPos3 = te.PosNum,
@@ -447,9 +494,9 @@ internal sealed class BlightEntityCache
         lock (_blightDataLock)
         {
             // Merge detected pathway positions so streamed-out segments survive the next scan.
-            for (int p = 0; p < localPathways.Count; p++)
+            for (int p = 0; p < _scanLocalPathways.Count; p++)
             {
-                NumVector2 pos = BlightHelpers.GetGridPosition(localPathways[p]);
+                NumVector2 pos = BlightHelpers.GetGridPosition(_scanLocalPathways[p]);
                 if (pos.X == 0f && pos.Y == 0f)
                     continue;
                 bool exists = false;
@@ -463,12 +510,23 @@ internal sealed class BlightEntityCache
             }
 
             _pathwayEntities.Clear();
-            _pathwayEntities.AddRange(localPathways);
+            _pathwayEntities.AddRange(_scanLocalPathways);
             _towerEntities.Clear();
-            _towerEntities.AddRange(localTowers);
+            _towerEntities.AddRange(_scanLocalTowers);
             _pumpEntity = localPump;
             _knownTowers.Clear();
-            _knownTowers.AddRange(localKnown);
+            _knownTowers.AddRange(_scanLocalKnown);
+
+            // Invalidate coverage only when the scan changed data the coverage computation depends on.
+            // Steady-state scans (no new/changed towers, pathways, or built levels) keep the cached
+            // coverage, so ComputeLaneCoverage returns it without re-allocating; the last-good bundle
+            // stays visible to the render thread either way.
+            int newSignature = ComputeCoverageDataSignature(_persistedPathwayPositions, _towerEntities, _knownTowers);
+            if (newSignature != _lastScanCoverageSignature)
+            {
+                _lastScanCoverageSignature = newSignature;
+                _coverageDirty = true;
+            }
 
             // Snapshot cache is stale after list changes; next read reallocates.
             InvalidateCachedSnapshots();
@@ -825,6 +883,7 @@ internal sealed class BlightEntityCache
             _cachedCoverage = null;
             _cachedCoveragePathways = null;
             _coverageDirty = false;
+            _lastScanCoverageSignature = 0;
         }
     }
 }

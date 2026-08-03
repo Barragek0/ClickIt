@@ -37,13 +37,13 @@ internal static class BlightLaneTopology
         Func<NumVector2, (bool empowering, bool shockNova, bool summoning)>? getSupportCoverage = null)
     {
         int n = positions.Count;
+        if (n < 2)
+            return [];
+
         LaneCoverageResult[] results = new LaneCoverageResult[n];
 
         for (int i = 0; i < n; i++)
             results[i] = new LaneCoverageResult(OrphanSentinel, false, NumVector2.Zero);
-
-        if (n < 2)
-            return results;
 
         int[] parent = pumpGridPosition.HasValue
             ? BuildPumpRootedParents(positions, pumpGridPosition.Value, segmentConnectDistance, out bool[] connected)
@@ -378,10 +378,15 @@ internal static class BlightLaneTopology
         int n = results.Length;
         bool[] has = (bool[])localHas.Clone();
 
+        // Scratch buffers reused across fixed-point iterations (cleared each pass) instead of allocating
+        // a fresh pair per iteration — propagation depth is small but the arrays are per-iteration objects.
+        bool[] ac = new bool[n];
+        bool[] seen = new bool[n];
+
         while (true)
         {
-            bool[] ac = new bool[n];
-            bool[] seen = new bool[n];
+            Array.Clear(ac, 0, n);
+            Array.Clear(seen, 0, n);
 
             for (int i = n - 1; i >= 0; i--)
             {

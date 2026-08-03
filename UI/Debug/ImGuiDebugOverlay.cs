@@ -44,6 +44,8 @@ internal sealed class ImGuiDebugOverlay(
     private readonly IDebugTelemetrySource? _telemetrySource = telemetrySource;
     private DebugTelemetrySnapshot? _lastSnapshot;
     private PerformanceMetricsSnapshot _lastPerformance;
+    private float _leftColWidth;
+    private int _blightChestDebugSelectedIndex;
 
     internal void Draw()
     {
@@ -94,31 +96,58 @@ internal sealed class ImGuiDebugOverlay(
 
         float availW = ImGui.GetContentRegionAvail().X;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
-        float halfW = (availW - spacing) * 0.5f;
         float colStartY = ImGui.GetCursorPosY();
+        float availH = ImGui.GetContentRegionAvail().Y;
 
-        ImGui.BeginChild("LeftCol", new NumVec2(halfW, 0));
-        for (int i = 0; i < split; i++)
+        if (!hasRight)
         {
-            SectionAccent();
-            sections[i]();
-        }
-        float leftHeight = ImGui.GetCursorPosY();
-        ImGui.EndChild();
-
-        if (hasRight)
-        {
-            ImGui.SetCursorPosY(colStartY);
-            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + halfW + spacing);
-
-            ImGui.BeginChild("RightCol", new NumVec2(halfW, 0));
-            for (int i = split; i < sections.Count; i++)
+            ImGui.BeginChild("LeftCol", new NumVec2(availW, 0));
+            for (int i = 0; i < sections.Count; i++)
             {
                 SectionAccent();
                 sections[i]();
             }
             ImGui.EndChild();
+            ImGui.End();
+            return;
         }
+
+        const float splitterW = 6f;
+        const float minColW = 280f;
+        if (_leftColWidth <= 0f)
+            _leftColWidth = (availW - spacing) * 0.5f;
+        float leftW = Math.Clamp(_leftColWidth, minColW, availW - minColW - spacing * 2);
+
+        ImGui.BeginChild("LeftCol", new NumVec2(leftW, 0));
+        for (int i = 0; i < split; i++)
+        {
+            SectionAccent();
+            sections[i]();
+        }
+        ImGui.EndChild();
+
+        ImGui.SetCursorPos(new NumVec2(leftW + spacing, colStartY));
+        NumVec2 splitterOrigin = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+        ImGui.InvisibleButton("##colSplitter", new NumVec2(splitterW, availH));
+        if (ImGui.IsItemActive())
+            _leftColWidth = Math.Clamp(_leftColWidth + ImGui.GetIO().MouseDelta.X, minColW, availW - minColW - spacing * 2);
+
+        float splitterLineX = splitterOrigin.X + splitterW * 0.5f;
+        ImGui.GetWindowDrawList().AddLine(
+            new NumVec2(splitterLineX, splitterOrigin.Y),
+            new NumVec2(splitterLineX, splitterOrigin.Y + availH),
+            ImGui.GetColorU32(ImGuiCol.Separator));
+
+        float rightX = leftW + spacing + splitterW + spacing;
+        float rightW = availW - rightX;
+        ImGui.SetCursorPos(new NumVec2(rightX, colStartY));
+        ImGui.BeginChild("RightCol", new NumVec2(rightW, 0));
+        for (int i = split; i < sections.Count; i++)
+        {
+            SectionAccent();
+            sections[i]();
+        }
+        ImGui.EndChild();
 
         ImGui.End();
     }
@@ -1135,6 +1164,17 @@ internal sealed class ImGuiDebugOverlay(
         }
 
         RenderTrail("Recent Stages", stages, 20);
+
+        RenderBlightChestDebug();
+    }
+
+    private void RenderBlightChestDebug()
+    {
+        ElementTreeInspector? inspector = _blight?.BlightChestDebug;
+        if (inspector == null)
+            return;
+
+        ElementTreeDebugUi.DrawSection(inspector, "Blight Chest Debug", ref _blightChestDebugSelectedIndex);
     }
 
     private void RenderCoverageTree(
@@ -1635,6 +1675,10 @@ internal sealed class ImGuiDebugOverlay(
             for (int i = stageStart; i < stages.Count; i++)
                 sb.AppendLine($"  {stages[i]}");
         }
+
+        sb.AppendLine("Blight Chest Debug (latest):");
+        ElementTreeDebugUi.AppendToDump(sb, _blight.BlightChestDebug);
+
         sb.AppendLine();
     }
 

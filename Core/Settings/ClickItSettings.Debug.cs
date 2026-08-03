@@ -95,10 +95,7 @@ namespace ClickIt
         public ToggleNode BlightDebugShowLaneLabels { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
-        public ToggleNode DebugShowFrames { get; set; } = new ToggleNode(true);
-
-        [IgnoreMenu]
-        public ToggleNode AutoCopyInventoryWarningDebug { get; set; } = new ToggleNode(false);
+        public ToggleNode DebugShowUnclickableScreenRegions { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]

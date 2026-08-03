@@ -36,28 +36,6 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
-        public void TryAutoCopyInventoryWarningDebugSnapshot_ReturnsFalse_WhenSettingsUnavailable()
-        {
-            DebugClipboardService service = CreateService(getSettings: static () => null);
-
-            bool copied = service.TryAutoCopyInventoryWarningDebugSnapshot(CreateInventorySnapshot(), now: 1000, debugLines: ["Debug"]);
-
-            copied.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void TryAutoCopyInventoryWarningDebugSnapshot_ReturnsFalse_WhenAutoCopyDisabled()
-        {
-            var settings = new ClickItSettings();
-            settings.AutoCopyInventoryWarningDebug.Value = false;
-            DebugClipboardService service = CreateService(getSettings: () => settings);
-
-            bool copied = service.TryAutoCopyInventoryWarningDebugSnapshot(CreateInventorySnapshot(), now: 1000, debugLines: ["Debug"]);
-
-            copied.Should().BeFalse();
-        }
-
-        [TestMethod]
         public void QueueDeepMemoryDumpCoroutine_LeavesRuntimeCoroutineUnset_WhenFeatureDisabled()
         {
             PluginContext state = new PluginContext();
@@ -167,33 +145,6 @@ namespace ClickIt.Tests.Core.Runtime
             MethodInfo? method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
             method.Should().NotBeNull($"Expected private method {methodName} to exist.");
             method!.Invoke(instance, args);
-        }
-
-        private static InventoryDebugSnapshot CreateInventorySnapshot()
-        {
-            return new InventoryDebugSnapshot(
-                HasData: true,
-                Stage: "InventoryFullDecision",
-                InventoryFull: true,
-                InventoryFullSource: "CellOccupancy",
-                HasPrimaryInventory: true,
-                UsedFullFlag: false,
-                FullFlagValue: false,
-                UsedCellOccupancy: true,
-                CapacityCells: 60,
-                OccupiedCells: 60,
-                InventoryEntityCount: 24,
-                LayoutEntryCount: 24,
-                GroundItemPath: "Metadata/Items/Test",
-                GroundItemName: "Test Item",
-                IsGroundStackable: false,
-                MatchingPathCount: 1,
-                PartialMatchingStackCount: 0,
-                HasPartialMatchingStack: false,
-                DecisionAllowPickup: false,
-                Notes: string.Empty,
-                Sequence: 1,
-                TimestampMs: 1234);
         }
     }
 }

@@ -30,7 +30,7 @@ namespace ClickIt.Core.Bootstrap
         {
             LockManager.Instance = new LockManager(settings);
 
-            return new ClickAutomationPort(
+            ClickAutomationPort port = new(
                 settings,
                 gameController,
                 core.ErrorHandler,
@@ -46,7 +46,11 @@ namespace ClickIt.Core.Bootstrap
                 new Func<bool>(core.LabelReadModelService.GroundItemsVisible),
                 core.CachedLabels,
                 core.PerformanceMonitor,
-                freezeDebugTelemetrySnapshot);
+                freezeDebugTelemetrySnapshot)
+            {
+                BlightChestDebug = core.BlightService.BlightChestDebug
+            };
+            return port;
         }
     }
 }

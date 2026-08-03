@@ -79,7 +79,9 @@ namespace ClickIt.Features.Click
                 ClickAutomationSupport.IsInsideWindowInEitherSpace,
                 InteractionExecutionRuntime.Execute,
                 _groundItemsVisible,
-                messageFactory => ClickAutomationSupport.DebugLog(messageFactory()));
+                messageFactory => ClickAutomationSupport.DebugLog(messageFactory()),
+                BlightChestDebug,
+                message => _errorHandler.LogError(message));
 
     }
 }

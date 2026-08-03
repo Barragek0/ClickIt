@@ -9,7 +9,9 @@ namespace ClickIt.Features.Click.Application
         Func<Vector2, bool> IsInsideWindowInEitherSpace,
         Func<InteractionExecutionRequest, bool> ExecuteInteraction,
         Func<bool> GroundItemsVisible,
-        Action<Func<string>> DebugLog);
+        Action<Func<string>> DebugLog,
+        ElementTreeInspector? BlightChestDebug = null,
+        Action<string>? LogError = null);
 
     internal sealed class ClickLabelInteractionService(ClickLabelInteractionServiceDependencies dependencies)
     {
@@ -115,13 +117,16 @@ namespace ClickIt.Features.Click.Application
             => ExecuteInteraction(clickPos, expectedElement, controller, true, holdDurationMs, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
 
         internal bool PerformTrackedLabelClick(Vector2 clickPos, LabelOnGround? label, bool forceUiHoverVerification)
-            => PerformLabelClick(
+        {
+            CaptureBlightChestDebug(label, mechanicId: null, reason: "reclick", requireChestMechanic: false);
+            return PerformLabelClick(
                 clickPos,
                 DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
                     ? rawLabel as Element
                     : null,
                 _dependencies.GameController,
                 forceUiHoverVerification);
+        }
 
         internal bool PerformMechanicClick(Vector2 clickPos)
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, false);
@@ -133,7 +138,9 @@ namespace ClickIt.Features.Click.Application
             => ExecuteInteraction(clickPos, null, _dependencies.GameController, useHoldClick, allowWhenHotkeyInactive: true, avoidCursorMove: true);
 
         internal bool PerformResolvedLabelInteraction(Vector2 clickPos, LabelOnGround label, string? mechanicId)
-            => ExecuteInteraction(
+        {
+            CaptureBlightChestDebug(label, mechanicId, "click", requireChestMechanic: true);
+            return ExecuteInteraction(
                 clickPos,
                 ShouldSkipUiHoverVerification(mechanicId)
                     ? null
@@ -143,6 +150,43 @@ namespace ClickIt.Features.Click.Application
                 _dependencies.GameController,
                 SettlersMechanicPolicy.RequiresHoldClick(mechanicId),
                 forceUiHoverVerification: OffscreenPathingMath.ShouldForceUiHoverVerificationForLabel(label));
+        }
+
+        private void CaptureBlightChestDebug(LabelOnGround? label, string? mechanicId, string reason, bool requireChestMechanic)
+        {
+            ElementTreeInspector? inspector = _dependencies.BlightChestDebug;
+            if (inspector == null)
+                return;
+
+            if (requireChestMechanic
+                && !BlightChestDebug.IsBlightChestMechanic(mechanicId)
+                && !string.Equals(mechanicId, MechanicIds.LeagueChests, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            Entity? entity = TryGetLabelItemOnGround(label);
+            if (entity == null)
+                return;
+
+            string path = DynamicAccess.TryReadString(entity, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            if (!BlightChestDebug.IsBlightChestPath(path))
+                return;
+
+            string detail = mechanicId == null ? path : $"{path} ({mechanicId})";
+            // Debug-only capture over the obfuscated game assembly: a failure here
+            // must never abort the click, so the capture is fail-closed at its own
+            // boundary (swallowed + logged) while the interaction proceeds.
+            try
+            {
+                inspector.Capture(label, entity, reason, detail);
+            }
+            catch (Exception ex)
+            {
+                _dependencies.DebugLog(() => $"[BlightChestDebug] Capture failed: {ex.Message}");
+                _dependencies.LogError?.Invoke($"[BlightChestDebug] Capture failed: {ex}");
+            }
+        }
 
         internal bool TryResolveLabelClickPosition(
             LabelOnGround label,

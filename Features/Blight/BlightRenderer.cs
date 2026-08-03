@@ -18,6 +18,12 @@ public sealed class BlightRenderer
 
     private readonly NumVector2[] _halfDiscBuffer = new NumVector2[TowerDotSegments + 1];
 
+    private static readonly IReadOnlyList<int> EmptyPendingNumbers = [];
+
+    private BlightPlan? _pendingNumbersPlan;
+    private int _pendingNumbersCursor = -1;
+    private Dictionary<NumVector2, List<int>>? _pendingNumbersByPosition;
+
     internal BlightRenderer(BlightService blightService, ClickItSettings settings)
     {
         _blightService = blightService;
@@ -67,7 +73,7 @@ public sealed class BlightRenderer
             BlightCachedTower ft = ordered[order];
             bool hasTower = ft.UpgradeLevel > 0;
             bool isCurrentStep = IsCurrentStepAt(plan, cursor, ft.WorldPosition);
-            IReadOnlyList<int> pendingNumbers = PendingPlanStepNumbers(plan, cursor, ft.WorldPosition);
+            IReadOnlyList<int> pendingNumbers = GetPendingPlanStepNumbers(plan, cursor, ft.WorldPosition);
 
             if (!ShouldRenderTowerDot(isCurrentStep, pendingNumbers.Count))
                 continue;
@@ -323,6 +329,43 @@ public sealed class BlightRenderer
                 result.Add(i + 1);
         }
         return result;
+    }
+
+    internal IReadOnlyList<int> GetPendingPlanStepNumbers(BlightPlan? plan, int cursor, NumVector2 position)
+    {
+        if (plan == null || plan.Steps.Count == 0)
+            return EmptyPendingNumbers;
+
+        if (!ReferenceEquals(_pendingNumbersPlan, plan) || _pendingNumbersCursor != cursor)
+        {
+            _pendingNumbersPlan = plan;
+            _pendingNumbersCursor = cursor;
+            _pendingNumbersByPosition = BuildPendingNumbersMap(plan, cursor);
+        }
+
+        if (_pendingNumbersByPosition!.TryGetValue(position, out List<int>? numbers))
+            return numbers;
+
+        // Exact-key miss (positions only ever differ by the <1 grid-unit tolerance): fall back to the
+        // tolerance scan once, then cache the result so later frames reuse it.
+        List<int> computed = [];
+        foreach (int number in PendingPlanStepNumbers(plan, cursor, position))
+            computed.Add(number);
+        _pendingNumbersByPosition[position] = computed;
+        return computed;
+    }
+
+    private static Dictionary<NumVector2, List<int>> BuildPendingNumbersMap(BlightPlan plan, int cursor)
+    {
+        Dictionary<NumVector2, List<int>> map = [];
+        for (int i = cursor; i < plan.Steps.Count; i++)
+        {
+            BlightPlanStep step = plan.Steps[i];
+            if (!map.TryGetValue(step.FoundationPosition, out List<int>? numbers))
+                map[step.FoundationPosition] = numbers = [];
+            numbers.Add(i + 1);
+        }
+        return map;
     }
 
     internal static bool IsCurrentStepAt(BlightPlan? plan, int cursor, NumVector2 position)

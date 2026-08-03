@@ -61,25 +61,25 @@ internal sealed class BlightPlanExecutor
 
         if (_phase == Phase.Walking)
         {
-            bool labelVisible = false;
+            bool menuReady = false;
             if (gc != null && labels != null && labels.Count > 0)
             {
                 Element? labelEl = FindLabelAt(labels, s.FoundationPosition, service);
                 if (labelEl != null)
                 {
-                    Vector2? center = GetLabelCenter(labelEl);
-                    if (center != null && IsPositionInWindow(center.Value, gc))
-                        labelVisible = true;
+                    RectangleF? menuRect = BlightMenuInteractions.GetMenuRegionRect(labelEl);
+                    if (menuRect != null && IsMenuRegionUsable(menuRect.Value, gc, service))
+                        menuReady = true;
                 }
             }
 
-            if (!labelVisible)
+            if (!menuReady)
             {
                 service.AddDebugStage($"Executor: WALK → walking to {s.Action} {s.TowerType} at ({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
                 return new BlightBuildAction(BlightBuildActionKind.WalkToTarget,
                     DebugMessage: $"Walking to ({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
             }
-            service.AddDebugStage($"Executor: WALK → label visible, stopping player");
+            service.AddDebugStage("Executor: WALK → menu region on-screen and clickable, stopping player");
             _stationaryTicks = 0;
             _phase = Phase.StopPlayer;
         }
@@ -218,22 +218,23 @@ internal sealed class BlightPlanExecutor
                     return new BlightBuildAction(BlightBuildActionKind.None,
                         DebugMessage: "Cannot afford to build");
 
-                Vector2? clickPos = GetLabelCenter(labelElement);
-                if (clickPos == null)
-                    return Fail("Label element has no valid rect");
+                NumVector2? buildIconPos = BlightMenuInteractions.GetBuildIconClickPosition(labelElement);
+                if (buildIconPos == null)
+                    return Fail("Build icon not found");
 
-                if (!IsPositionInWindow(clickPos.Value, gc))
+                Vector2 clickPos = new(buildIconPos.Value.X, buildIconPos.Value.Y);
+                if (!IsPositionInWindow(clickPos, gc))
                 {
-                    service.AddDebugStage("Executor: OPEN → label off-screen, walking closer");
+                    service.AddDebugStage("Executor: OPEN → build icon off-screen, walking closer");
                     _phase = Phase.Walking;
                     return new BlightBuildAction(BlightBuildActionKind.WalkToTarget,
-                        DebugMessage: "Label off-screen");
+                        DebugMessage: "Build icon off-screen");
                 }
 
-                service.AddDebugStage($"Executor: OPEN → clicking label at ({clickPos.Value.X:F0},{clickPos.Value.Y:F0})");
+                service.AddDebugStage($"Executor: OPEN → clicking build icon at ({clickPos.X:F0},{clickPos.Y:F0})");
                 _phaseStartTimestamp = Stopwatch.GetTimestamp();
-                return new BlightBuildAction(BlightBuildActionKind.ClickPosition, clickPos.Value,
-                    "Open tower menu");
+                return new BlightBuildAction(BlightBuildActionKind.ClickPosition, clickPos,
+                    "Open tower menu (build icon)");
             }
         }
 
@@ -296,7 +297,24 @@ internal sealed class BlightPlanExecutor
 
                 if (!isSpecializationStep)
                 {
-                    // Plain upgrade — click the next-tier button.
+                    // Plain upgrade — click the next-tier button. Never click when the tower already
+                    // meets the target: a stale menu left open (or a previous click that already
+                    // landed) turns an extra click into an over-upgrade (e.g. Seismic 3 -> 4 = Stone Gaze).
+                    int currentRank = BlightHelpers.DetectUpgradeRankFromEntityPath(
+                        service.GetBestEntityAtPosition(s.FoundationPosition));
+                    if (SystemMath.Max(currentRank, tower.UpgradeLevel) >= s.TargetLevel)
+                    {
+                        service.AddDebugStage($"Executor: SPEC → tower already at rank {SystemMath.Max(currentRank, tower.UpgradeLevel)} >= target {s.TargetLevel} — advancing without clicking");
+                        service.UpdateKnownTowerLevel(s.FoundationPosition, s.TowerType, s.TargetLevel);
+                        _consecutiveFailures = 0;
+                        CurrentCursor++;
+                        _phase = Phase.Walking;
+                        if (CurrentPlan != null)
+                            CurrentPlan = CurrentPlan.WithAdvancedCursor();
+                        return new BlightBuildAction(BlightBuildActionKind.Complete,
+                            DebugMessage: $"Step already complete: {s.TowerType} lvl {s.TargetLevel}");
+                    }
+
                     (NumVector2 Position, string? UpgradeId)? plain = BlightMenuInteractions.GetFirstVisibleUpgradeButton(labelElement);
                     if (plain == null)
                     {
@@ -372,10 +390,12 @@ internal sealed class BlightPlanExecutor
                 _consecutiveFailures++;
                 service.AddDebugStage($"Executor: VERIFY → timeout — rank={currentRank} cached={cachedLevel} target={s.TargetLevel} failures={_consecutiveFailures}");
 
-                // Before retrying, check whether the cached tower data already meets the target.
-                if (cachedLevel >= s.TargetLevel)
+                // Before retrying, check whether the tower already meets the target — the freshest
+                // signal is the entity rank (the cache may lag by one scan). A retry click on an
+                // already-upgraded tower would over-upgrade it (e.g. Seismic 3 -> 4 = Stone Gaze).
+                if (effectiveRank >= s.TargetLevel)
                 {
-                    service.AddDebugStage($"Executor: VERIFY → cached level {cachedLevel} meets target — advancing without re-click");
+                    service.AddDebugStage($"Executor: VERIFY → rank {effectiveRank} meets target — advancing without re-click");
                     service.UpdateKnownTowerLevel(s.FoundationPosition, s.TowerType, s.TargetLevel);
                     _consecutiveFailures = 0;
                     CurrentCursor++;
@@ -458,16 +478,6 @@ internal sealed class BlightPlanExecutor
         catch { return null; }
     }
 
-    private static Vector2? GetLabelCenter(Element element)
-    {
-        try
-        {
-            RectangleF rect = element.GetClientRect();
-            return new Vector2(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
-        }
-        catch { return null; }
-    }
-
     private static bool IsPositionInWindow(Vector2 screenPos, GameController? gc)
     {
         if (gc == null) return false;
@@ -478,6 +488,35 @@ internal sealed class BlightPlanExecutor
                 && screenPos.X <= win.Width && screenPos.Y <= win.Height;
         }
         catch { return false; }
+    }
+
+
+    // The build menu opens around the tower's menu region (Child[3]). Keep walking until that
+    // region — enlarged 30% — is fully on-screen AND in a clickable place (not under the buff bar
+    // etc.) before opening the menu.
+    private static bool IsMenuRegionUsable(RectangleF rect, GameController? gc, BlightService service)
+    {
+        if (gc == null) return false;
+        try
+        {
+            Size2F win = gc.Window.GetWindowRectangleTimeCache.Size;
+            return IsMenuRegionUsable(rect, win.Width, win.Height, service.IsPointInClickableArea);
+        }
+        catch { return false; }
+    }
+
+    internal static bool IsMenuRegionUsable(RectangleF rect, float windowWidth, float windowHeight, Func<Vector2, bool> isPointInClickableArea)
+    {
+        if (windowWidth <= 0f || windowHeight <= 0f || rect.Width <= 0f || rect.Height <= 0f)
+            return false;
+
+        if (rect.X < 0f || rect.Y < 0f || rect.Right > windowWidth || rect.Bottom > windowHeight)
+            return false;
+
+        return isPointInClickableArea(new Vector2(rect.X, rect.Y))
+            && isPointInClickableArea(new Vector2(rect.Right, rect.Y))
+            && isPointInClickableArea(new Vector2(rect.X, rect.Bottom))
+            && isPointInClickableArea(new Vector2(rect.Right, rect.Bottom));
     }
 
     private BlightBuildAction Fail(string reason)

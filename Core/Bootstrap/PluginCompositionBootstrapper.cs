@@ -189,6 +189,7 @@ namespace ClickIt.Core.Bootstrap
             renderingState.HarvestOverlayRenderer = core.HarvestOverlayRenderer;
             renderingState.BlightRenderer = core.BlightRenderer;
             renderingState.ImGuiDebugOverlay = rendering.ImGuiDebugOverlay;
+            renderingState.UiRegionRectangleOverlay = rendering.UiRegionRectangleOverlay;
             renderingState.ClickRuntimeHost = new ClickRuntimeHost(() => services.ClickAutomationPort);
             renderingState.UltimatumRenderer = ultimatumRenderer;
         }

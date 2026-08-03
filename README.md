@@ -72,4 +72,4 @@ In VS Code, rename `.vscode/tasks.sample.json` to `.vscode/tasks.json`, adjust f
 - **Arecurius0** — original pickit improvements that started this project
 - **cheatingeagle / exapitools** — keeping ExileAPI up to date and functional
 - **instantsc** — the Radar plugin that influenced the terrain/pathfinding structure
-- **AI** — used for documentation, bug fixing (if I couldn't find a solution myself), codebase analysis, and all tests in the `Tests/` project
+- **AI** — used for documentation, bug fixing (if I couldn't find a solution myself), refactoring / improving codebase structure, and all tests in the `Tests/` project

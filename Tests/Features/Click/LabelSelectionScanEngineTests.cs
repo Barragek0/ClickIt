@@ -28,6 +28,22 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void ResolveNextLabelCandidate_SkipsBlightChestSuppressedLabel()
+        {
+            LabelOnGround suppressed = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            LabelOnGround selected = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            IReadOnlyList<LabelOnGround> labels = [suppressed, selected];
+            var port = new FakeLabelInteractionPort(
+                getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex],
+                getMechanicIdForLabel: _ => MechanicIds.Shrines);
+            var engine = CreateEngine(
+                labelInteractionPort: port,
+                shouldSuppressBlightChestClick: label => ReferenceEquals(label, suppressed));
+
+            engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
+        }
+
+        [TestMethod]
         public void ResolveNextLabelCandidate_PublishesFindLabelNull_WhenPortReturnsNullImmediately()
         {
             ClickDebugSnapshot? latestSnapshot = null;
@@ -103,6 +119,7 @@ namespace ClickIt.Tests.Features.Click
             ILabelInteractionPort? labelInteractionPort = null,
             Func<LabelOnGround, bool>? shouldSuppressLeverClick = null,
             Func<LabelOnGround, bool>? shouldSuppressInactiveUltimatumLabel = null,
+            Func<LabelOnGround, bool>? shouldSuppressBlightChestClick = null,
             ClickDebugPublicationService? clickDebugPublisher = null)
         {
             GameController gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
@@ -121,6 +138,7 @@ namespace ClickIt.Tests.Features.Click
                 labelClickPointResolver,
                 ShouldSuppressLeverClick: shouldSuppressLeverClick ?? (_ => false),
                 ShouldSuppressInactiveUltimatumLabel: shouldSuppressInactiveUltimatumLabel ?? (_ => false),
+                ShouldSuppressBlightChestClick: shouldSuppressBlightChestClick ?? (_ => false),
                 labelInteraction,
                 mechanicPriorityContextProvider,
                 ClickDebugPublisher: clickDebugPublisher ?? ClickTestDebugPublisherFactory.Create(),

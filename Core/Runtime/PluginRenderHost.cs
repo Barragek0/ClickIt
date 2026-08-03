@@ -74,6 +74,7 @@ namespace ClickIt.Core.Runtime
 
                 long debugStart = Stopwatch.GetTimestamp();
                 rendering.ImGuiDebugOverlay?.Draw();
+                rendering.UiRegionRectangleOverlay?.Render();
                 services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.DebugOverlay, GetElapsedMs(debugStart));
 
                 if (effectiveSettings.ClickHarvest.Value)

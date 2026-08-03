@@ -8,7 +8,8 @@ namespace ClickIt.Core.Bootstrap
         PathfindingRenderer PathfindingRenderer,
         AltarChoiceEvaluator AltarChoiceEvaluator,
         AltarDisplayRenderer AltarDisplayRenderer,
-        ImGuiDebugOverlay ImGuiDebugOverlay);
+        ImGuiDebugOverlay ImGuiDebugOverlay,
+        UiRegionRectangleOverlay UiRegionRectangleOverlay);
 
     internal static class RenderingDomainAssembler
     {
@@ -25,19 +26,14 @@ namespace ClickIt.Core.Bootstrap
                 settings,
                 core,
                 owner.Graphics,
-                owner.LogMessage,
-                (snapshot, now) => owner.GetDebugClipboardService().TryAutoCopyInventoryWarningDebugSnapshot(
-                    snapshot,
-                    now,
-                    core.DeferredTextQueue.GetPendingTextSnapshot(0)));
+                owner.LogMessage);
 
         internal static RenderingDomainServices Assemble(
             BaseSettingsPlugin<ClickItSettings> plugin,
             ClickItSettings settings,
             CoreDomainServices core,
             Graphics graphics,
-            Action<string, int> logMessage,
-            Func<InventoryDebugSnapshot, long, bool> tryAutoCopyInventoryWarningTrigger)
+            Action<string, int> logMessage)
         {
             StrongboxRenderer strongboxRenderer = new(settings, core.DeferredFrameQueue);
             LazyModeRenderer lazyModeRenderer = new(settings, core.DeferredTextQueue, core.InputHandler, core.LazyModeBlockerService);
@@ -45,8 +41,7 @@ namespace ClickIt.Core.Bootstrap
             InventoryFullWarningRenderer inventoryFullWarningRenderer = new(
                 core.DeferredTextQueue,
                 core.AreaService,
-                core.InventoryProbeService.GetLatestDebug,
-                tryAutoCopyInventoryWarningTrigger);
+                core.InventoryProbeService.GetLatestDebug);
             PathfindingRenderer pathfindingRenderer = new(core.PathfindingService);
             AltarChoiceEvaluator altarChoiceEvaluator = new(settings, logMessage);
 
@@ -61,6 +56,8 @@ namespace ClickIt.Core.Bootstrap
 
             ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin));
 
+            UiRegionRectangleOverlay uiRegionRectangleOverlay = new(settings, core.AreaService);
+
             return new RenderingDomainServices(
                 strongboxRenderer,
                 lazyModeRenderer,
@@ -69,7 +66,8 @@ namespace ClickIt.Core.Bootstrap
                 pathfindingRenderer,
                 altarChoiceEvaluator,
                 altarDisplayRenderer,
-                guiDebugOverlay);
+                guiDebugOverlay,
+                uiRegionRectangleOverlay);
         }
 
         public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, IClickAutomationService clickAutomationPort, DeferredFrameQueue deferredFrameQueue)

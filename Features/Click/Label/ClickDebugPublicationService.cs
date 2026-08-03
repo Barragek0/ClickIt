@@ -33,6 +33,9 @@ namespace ClickIt.Features.Click.Label
             bool resolved,
             string notes)
         {
+            if (!_dependencies.ShouldCaptureClickDebug())
+                return;
+
             PublishClickDebugSnapshot(new ClickDebugSnapshot(
                 HasData: true,
                 Stage: stage,
@@ -54,6 +57,9 @@ namespace ClickIt.Features.Click.Label
 
         internal void PublishClickFlowDebugStage(string stage, string notes, string? mechanicId = null)
         {
+            if (!_dependencies.ShouldCaptureClickDebug())
+                return;
+
             PublishClickDebugSnapshot(new ClickDebugSnapshot(
                 HasData: true,
                 Stage: stage,

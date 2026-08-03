@@ -3,6 +3,7 @@
 public sealed class BlightService
 {
     private readonly ClickItSettings _settings;
+    private readonly Func<Vector2, bool> _isPointInClickableArea;
     private GameController? _gameController;
 
     private readonly BlightEntityCache _cache;
@@ -15,13 +16,16 @@ public sealed class BlightService
     internal bool IsEncounterActive => _encounter.IsActive;
     internal IReadOnlyList<BlightCachedTower> KnownTowers => _cache.KnownTowers;
 
-    internal BlightService(ClickItSettings settings)
+    internal BlightService(ClickItSettings settings, Func<Vector2, bool>? isPointInClickableArea = null)
     {
         _settings = settings;
+        _isPointInClickableArea = isPointInClickableArea ?? (static _ => true);
         _cache = new BlightEntityCache(settings, _debugEvents, _encounter);
         _cache.ClearRequested += Clear;
         _cache.DataChanged += HandleCacheDataChanged;
     }
+
+    internal bool IsPointInClickableArea(Vector2 point) => _isPointInClickableArea(point);
 
     internal IBlightTowerStrategy CurrentStrategy => BlightStrategyResolver.Resolve(_settings);
 
@@ -92,6 +96,8 @@ public sealed class BlightService
     private readonly BlightDebugEvents _debugEvents = new();
     internal IReadOnlyList<string> DebugStages => _debugEvents.Stages;
     internal void AddDebugStage(string message) => _debugEvents.Add(message);
+
+    internal ElementTreeInspector BlightChestDebug { get; } = new();
 
     internal BlightCachedTower? CurrentTarget
     {

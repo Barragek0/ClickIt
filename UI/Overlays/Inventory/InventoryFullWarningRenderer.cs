@@ -3,14 +3,12 @@ namespace ClickIt.UI.Overlays.Inventory
     internal class InventoryFullWarningRenderer(
         DeferredTextQueue deferredTextQueue,
         AreaService? areaService = null,
-        Func<InventoryDebugSnapshot>? getLatestInventoryDebug = null,
-        Func<InventoryDebugSnapshot, long, bool>? tryAutoCopyOnWarningTrigger = null)
+        Func<InventoryDebugSnapshot>? getLatestInventoryDebug = null)
     {
         private const string InventoryFullWarningText = "Your inventory is full";
         private const string InventoryLayoutUnreliableNotesPrefix = "Inventory layout unreliable";
         private const int NotFullNoFitMinFreeCellsToSuppressWarning = 12;
         private const int InventoryFullWarningHoldMs = 10_000;
-        private const int InventoryWarningAutoCopyThrottleMs = 1_000;
         private const int InventoryFullWarningTextSize = 48;
         private const float PlayerFeetWarningOffsetY = 50f;
         private static readonly Vector2[] BoldTextOffsets =
@@ -24,10 +22,8 @@ namespace ClickIt.UI.Overlays.Inventory
         private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
         private readonly AreaService? _areaService = areaService;
         private readonly Func<InventoryDebugSnapshot>? _getLatestInventoryDebug = getLatestInventoryDebug;
-        private readonly Func<InventoryDebugSnapshot, long, bool>? _tryAutoCopyOnWarningTrigger = tryAutoCopyOnWarningTrigger;
         private long _lastInventoryFullBlockedTimestampMs;
         private long _lastProcessedInventoryDebugSequence = long.MinValue;
-        private long _lastInventoryWarningAutoCopyAttemptTimestampMs;
 
         public void Render(GameController gameController)
         {
@@ -39,7 +35,6 @@ namespace ClickIt.UI.Overlays.Inventory
                 && ShouldShowInventoryPickupBlockedWarning(snapshot))
             {
                 _lastInventoryFullBlockedTimestampMs = now;
-                TryAutoCopyDebugSnapshot(snapshot, now);
             }
 
             _lastProcessedInventoryDebugSequence = snapshot.Sequence;
@@ -54,25 +49,6 @@ namespace ClickIt.UI.Overlays.Inventory
             Vector2 pos = ResolveInventoryFullWarningPosition(windowRect, leftTertiary, rightTertiary, playerFeetScreen);
 
             EnqueueBoldWarningText(pos);
-        }
-
-        private void TryAutoCopyDebugSnapshot(InventoryDebugSnapshot snapshot, long now)
-        {
-            if (_tryAutoCopyOnWarningTrigger == null)
-                return;
-
-            if (!ShouldAutoCopyInventoryWarning(now, _lastInventoryWarningAutoCopyAttemptTimestampMs))
-                return;
-
-            _lastInventoryWarningAutoCopyAttemptTimestampMs = now;
-            try
-            {
-                _ = _tryAutoCopyOnWarningTrigger.Invoke(snapshot, now);
-            }
-            catch
-            {
-                // Clipboard diagnostics are best-effort and should not affect rendering behavior.
-            }
         }
 
         private void EnqueueBoldWarningText(Vector2 centerPosition)
@@ -138,15 +114,6 @@ namespace ClickIt.UI.Overlays.Inventory
 
             long elapsed = now - lastTriggeredTimestampMs;
             return elapsed is >= 0 and <= InventoryFullWarningHoldMs;
-        }
-
-        internal static bool ShouldAutoCopyInventoryWarning(long now, long lastAutoCopyAttemptTimestampMs)
-        {
-            if (lastAutoCopyAttemptTimestampMs <= 0)
-                return true;
-
-            long elapsed = now - lastAutoCopyAttemptTimestampMs;
-            return elapsed is < 0 or >= InventoryWarningAutoCopyThrottleMs;
         }
 
         internal static Vector2? TryResolvePlayerFeetWarningPosition(GameController gameController)

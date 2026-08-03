@@ -20,25 +20,26 @@ namespace ClickIt.UI.Settings.Panels
                     _settings.DebugWindowVisible.Value = visible;
                 ImGui.Spacing();
 
+                bool showUnclickableScreenRegions = _settings.DebugShowUnclickableScreenRegions.Value;
+                if (ImGui.Checkbox("Display Unclickable Screen Regions", ref showUnclickableScreenRegions))
+                    _settings.DebugShowUnclickableScreenRegions.Value = showUnclickableScreenRegions;
+                ImGui.Spacing();
+
                 SettingsUiRenderHelpers.DrawRangeNodeControl(
                     "Freeze Successful Interaction Debug (ms)",
                     _settings.DebugFreezeSuccessfulInteractionMs,
                     0,
                     20000,
                     "When greater than 0, ClickIt holds the current debug telemetry snapshot for this many milliseconds after a successful automated click or offscreen traversal.");
+                ImGui.Spacing();
+
+                SettingsUiRenderHelpers.DrawToggleNodeControl(
+                    "Log messages",
+                    _settings.LogMessages,
+                    "This will flood your log and screen with debug text.");
 
                 ImGui.Unindent();
             }
-
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Auto Copy Inventory Warning Debug",
-                _settings.AutoCopyInventoryWarningDebug,
-                "Automatically copies inventory warning debug details when the 'Your inventory is full' overlay is triggered. Copy attempts are throttled to once per second.");
-
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Log messages",
-                _settings.LogMessages,
-                "This will flood your log and screen with debug text.");
 
             SettingsUiRenderHelpers.DrawButtonNodeControl("Report Bug", _settings.ReportBugButton, "If you run into a bug that hasn't already been reported, please report it here.");
         }

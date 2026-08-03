@@ -72,7 +72,7 @@ namespace ClickIt.Core.Bootstrap
             DeferredFrameQueue deferredFrameQueue = new();
             HarvestOverlayRenderer harvestOverlayRenderer = new(harvestService, settings, deferredTextQueue, deferredFrameQueue);
 
-            BlightService blightService = new(settings);
+            BlightService blightService = new(settings, point => areaService.PointIsInClickableArea(gameController, point));
             BlightRenderer blightRenderer = new(blightService, settings);
 
             return new CoreDomainServices(
