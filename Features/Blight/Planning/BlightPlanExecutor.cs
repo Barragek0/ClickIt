@@ -29,7 +29,12 @@ internal sealed class BlightPlanExecutor
                     && plan.Steps[i].TargetLevel == current.TargetLevel)
                 {
                     CurrentCursor = i;
-                    CurrentPlan = plan;
+
+                    // Keep the plan's current-step index in lockstep with the preserved cursor:
+                    // the planner always builds at index 0, so without this the debug plan marker
+                    // and the on-screen pending numbers (which render from the cursor) disagree
+                    // whenever a regeneration preserves progress at a later index.
+                    CurrentPlan = plan.WithCurrentStepIndex(i);
                     return;
                 }
             }

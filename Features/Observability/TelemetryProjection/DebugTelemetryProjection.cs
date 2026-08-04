@@ -72,7 +72,8 @@ namespace ClickIt.Features.Observability.TelemetryProjection
                 ServiceAvailable: true,
                 Pathfinding: pathfindingService.GetDebugSnapshot(),
                 OffscreenMovement: pathfindingService.GetLatestOffscreenMovementDebug(),
-                OffscreenMovementTrail: pathfindingService.GetLatestOffscreenMovementDebugTrail());
+                OffscreenMovementTrail: pathfindingService.GetLatestOffscreenMovementDebugTrail(),
+                RecentEvents: pathfindingService.GetDebugEvents());
         }
 
         private static RenderingTelemetrySnapshot BuildRenderingTelemetry(PluginRenderingState? renderingState)

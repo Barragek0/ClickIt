@@ -1079,6 +1079,74 @@ public class BlightPlannerTests
         chillingBuilds.Should().BeGreaterThanOrEqualTo(1, "the forked lane needs Chilling coverage");
     }
 
+    [TestMethod]
+    public void ReorderStepsByProximity_KeepsCoverageStepsBeforeFillSteps()
+    {
+        var rules = new List<TowerBuildRule>
+        {
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Seismic)
+                .SetPriority(TowerBuildPriority.Critical)
+                .SetMaxUpgradeLevel(3)
+                .TreatAsCoverageTower()
+                .Build(),
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Fireball)
+                .SetPriority(TowerBuildPriority.High)
+                .SetMaxUpgradeLevel(4)
+                .Build(),
+        };
+
+        List<BlightPlanStep> steps =
+        [
+            new(BlightPlanAction.Build, new NumVector2(0, 0), BlightTowerType.Fireball, 1),
+            new(BlightPlanAction.Build, new NumVector2(200, 200), BlightTowerType.Seismic, 1),
+            new(BlightPlanAction.Upgrade, new NumVector2(200, 200), BlightTowerType.Seismic, 2),
+            new(BlightPlanAction.Build, new NumVector2(300, 0), BlightTowerType.Fireball, 1),
+        ];
+
+        List<BlightPlanStep> reordered = BlightPlanner.ReorderStepsByProximity(steps, rules);
+
+        reordered.Should().HaveCount(4);
+        int lastCoverage = reordered.FindLastIndex(s => s.TowerType == BlightTowerType.Seismic);
+        int firstFill = reordered.FindIndex(s => s.TowerType == BlightTowerType.Fireball);
+        lastCoverage.Should().BeLessThan(firstFill, "coverage steps must never be pushed after fill steps");
+        reordered.Where(s => s.TowerType == BlightTowerType.Seismic)
+            .Select(s => s.Action)
+            .Should().Equal(BlightPlanAction.Build, BlightPlanAction.Upgrade);
+    }
+
+    [TestMethod]
+    public void ReorderStepsByProximity_GroupsNearbyPositionsConsecutively()
+    {
+        var rules = new List<TowerBuildRule>
+        {
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Fireball)
+                .SetPriority(TowerBuildPriority.Critical)
+                .SetMaxUpgradeLevel(3)
+                .Build(),
+        };
+
+        List<BlightPlanStep> steps =
+        [
+            new(BlightPlanAction.Build, new NumVector2(0, 0), BlightTowerType.Fireball, 1),
+            new(BlightPlanAction.Build, new NumVector2(500, 500), BlightTowerType.Fireball, 1),
+            new(BlightPlanAction.Upgrade, new NumVector2(0, 0), BlightTowerType.Fireball, 2),
+            new(BlightPlanAction.Upgrade, new NumVector2(500, 500), BlightTowerType.Fireball, 2),
+            new(BlightPlanAction.Upgrade, new NumVector2(0, 0), BlightTowerType.Fireball, 3),
+            new(BlightPlanAction.Upgrade, new NumVector2(500, 500), BlightTowerType.Fireball, 3),
+        ];
+
+        List<BlightPlanStep> reordered = BlightPlanner.ReorderStepsByProximity(steps, rules);
+
+        reordered[0].FoundationPosition.X.Should().Be(0f, "the plan starts at the first step's cluster");
+        reordered.Where(s => s.FoundationPosition.X == 0f).Select(s => s.TargetLevel)
+            .Should().Equal(new[] { 1, 2, 3 }, "each position's build+upgrades stay together, in order");
+        reordered.Where(s => s.FoundationPosition.X == 500f).Select(s => s.TargetLevel)
+            .Should().Equal(new[] { 1, 2, 3 });
+    }
+
     private static List<TowerBuildRule> CoverageRules()
     {
         return

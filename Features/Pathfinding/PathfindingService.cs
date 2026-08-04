@@ -7,6 +7,7 @@ namespace ClickIt.Features.Pathfinding
         private readonly ErrorHandler? _errorHandler = errorHandler;
         private readonly OffscreenMovementDiagnosticsChannel _offscreenMovementDiagnostics = new();
         private readonly PathfindingTerrainCache _terrainCache = new();
+        private readonly DedupEventBuffer _debugEvents = new();
 
         internal PathfindingRuntimeState RuntimeState { get; } = new();
 
@@ -14,6 +15,10 @@ namespace ClickIt.Features.Pathfinding
 
         public PathfindingDebugSnapshot GetDebugSnapshot()
             => RuntimeState.GetDebugSnapshot();
+
+        internal void AddDebugStage(string message) => _debugEvents.Add(message);
+
+        internal IReadOnlyList<string> GetDebugEvents() => _debugEvents.Events;
 
         public IReadOnlyList<Vector2> GetLatestScreenPath()
             => RuntimeState.GetLatestScreenPath();
@@ -79,18 +84,34 @@ namespace ClickIt.Features.Pathfinding
             MarkPathBuildAttempt();
 
             if (gameController == null || target == null)
+            {
+                AddDebugStage("Pathfind: aborted — GameController/target unavailable");
                 return Fail("GameController/target unavailable.");
+            }
 
-            if (!PathTerrainSnapshotProvider.TryRefreshTerrainData(gameController, _terrainCache, out bool[][] walkable, out GridPoint dims))
+            if (!PathTerrainSnapshotProvider.TryRefreshTerrainData(gameController, _terrainCache, out bool[][] walkable, out GridPoint dims, out bool terrainFromCache))
+            {
+                AddDebugStage("Pathfind: aborted — terrain/pathfinding data unavailable");
                 return Fail("Terrain/pathfinding data unavailable.");
+            }
+
+            AddDebugStage(terrainFromCache
+                ? $"Pathfind: terrain cache hit grid={dims.X}x{dims.Y}"
+                : $"Pathfind: terrain REBUILT grid={dims.X}x{dims.Y}");
 
             RuntimeState.SetTerrainSnapshot(walkable, dims);
 
             if (!PathGridSearch.TryGetGridPos(gameController.Player, out GridPoint start))
+            {
+                AddDebugStage("Pathfind: aborted — player grid position unavailable");
                 return Fail("Unable to resolve player grid position.");
+            }
 
             if (!PathGridSearch.TryGetGridPos(target, out GridPoint goal))
+            {
+                AddDebugStage("Pathfind: aborted — target grid position unavailable");
                 return Fail("Unable to resolve target grid position.");
+            }
 
             if (!PathGridSearch.TryResolveBestEffortGoal(
                     walkable,
@@ -100,6 +121,7 @@ namespace ClickIt.Features.Pathfinding
                     out bool usedGoalFallback,
                     out string goalResolutionFailureReason))
             {
+                AddDebugStage($"Pathfind: goal resolution FAILED start=({start.X},{start.Y}) goal=({goal.X},{goal.Y}) — {goalResolutionFailureReason}");
                 SetGoalResolutionDebugSnapshot(
                     start,
                     goal,
@@ -114,15 +136,20 @@ namespace ClickIt.Features.Pathfinding
                 : "Using direct walkable goal near target.";
             SetGoalResolutionDebugSnapshot(start, goal, walkableGoal, usedGoalFallback, goalResolutionNote);
 
+            AddDebugStage($"Pathfind: goal start=({start.X},{start.Y}) goal=({goal.X},{goal.Y}) res=({walkableGoal.X},{walkableGoal.Y}) {(usedGoalFallback ? "fallback" : "direct")}");
+
             Stopwatch sw = Stopwatch.StartNew();
             List<GridPoint>? gridPath = PathGridSearch.FindPathAStar(walkable, start, walkableGoal, SystemMath.Max(100, maxExpandedNodes), out int expandedNodes);
             sw.Stop();
 
             if (gridPath == null || gridPath.Count == 0)
             {
+                AddDebugStage($"Pathfind: A* NO ROUTE start=({start.X},{start.Y}) goal=({walkableGoal.X},{walkableGoal.Y}) nodes={expandedNodes} ms={sw.ElapsedMilliseconds}");
                 SetFailedPathBuildSnapshot(expandedNodes, sw.ElapsedMilliseconds, target.Path ?? string.Empty, AStarNoRouteFailureReason);
                 return false;
             }
+
+            AddDebugStage($"Pathfind: route OK start=({start.X},{start.Y}) goal=({walkableGoal.X},{walkableGoal.Y}) nodes={expandedNodes} len={gridPath.Count} ms={sw.ElapsedMilliseconds}");
 
             List<Vector2> screenPath = ScreenPathProjector.BuildScreenPathApproximation(gameController, gridPath, start, goal, target);
 

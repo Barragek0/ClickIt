@@ -745,6 +745,7 @@ internal sealed class ImGuiDebugOverlay(
         }
 
         RenderTrail("Recent Stages", pf.OffscreenMovementTrail, 15);
+        RenderTrail("Recent Events", pf.RecentEvents, 20);
     }
 
     private void RenderUltimatumSection()
@@ -1504,6 +1505,7 @@ internal sealed class ImGuiDebugOverlay(
                 sb.AppendLine($"    Center=({offscreen.WindowCenter.X:F1},{offscreen.WindowCenter.Y:F1}) Target=({offscreen.TargetScreen.X:F1},{offscreen.TargetScreen.Y:F1}) Click=({offscreen.ClickScreen.X:F1},{offscreen.ClickScreen.Y:F1})");
             }
             AppendTrailSb(sb, "  Recent Stages", pf.OffscreenMovementTrail, 15);
+            AppendTrailSb(sb, "  Recent Events", pf.RecentEvents, 20);
         }
         sb.AppendLine();
     }

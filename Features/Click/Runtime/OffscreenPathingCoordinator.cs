@@ -29,6 +29,8 @@ namespace ClickIt.Features.Click.Runtime
             Entity Target,
             string TargetPath);
 
+        private void AddPathfindingStage(string message) => _dependencies.PathfindingService.AddDebugStage(message);
+
         public bool TryWalkTowardOffscreenTarget(Entity? preferredTarget = null)
         {
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardEntry",
@@ -41,6 +43,7 @@ namespace ClickIt.Features.Click.Runtime
             // must work even when the general setting is off.
             if (!_dependencies.Settings.WalkTowardOffscreenLabels.Value && preferredTarget == null)
             {
+                AddPathfindingStage("Walk: disabled — WalkTowardOffscreenLabels setting is off");
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("WalkTowardDisabled",
                     "WalkTowardOffscreenLabels setting is OFF and no preferredTarget", null);
                 return false;
@@ -76,15 +79,24 @@ namespace ClickIt.Features.Click.Runtime
 
             (bool movementSkillUsed, Vector2 movementSkillCastPoint, string movementSkillDebug) = TryUseMovementSkillForOffscreenPathing(context.TargetPath, targetScreen, builtPath);
             if (movementSkillUsed)
+            {
+                AddPathfindingStage($"Walk: movement skill cast toward {context.TargetPath}");
                 return HandleSuccessfulTraversalMovementSkill(context, builtPath, resolvedFromPath, targetScreen, movementSkillCastPoint, movementSkillDebug);
+            }
 
             if (!string.IsNullOrWhiteSpace(movementSkillDebug))
+            {
+                AddPathfindingStage($"Walk: movement skill not used — {movementSkillDebug}");
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Movement skill not used: {movementSkillDebug}");
+            }
 
             PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "BeforeClick", movementSkillDebug);
 
             Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick);
             bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
+            AddPathfindingStage(clicked
+                ? $"Walk: click executed ({clickPos.X:F0},{clickPos.Y:F0})"
+                : $"Walk: click REJECTED ({clickPos.X:F0},{clickPos.Y:F0})");
             return HandleTraversalClickResult(context, builtPath, resolvedFromPath, targetScreen, clickPos, movementSkillDebug, clicked);
         }
 
@@ -109,6 +121,7 @@ namespace ClickIt.Features.Click.Runtime
                 offset = new Vector2(walkClick.X + BlightIconAvoidOffset, walkClick.Y + BlightIconAvoidOffset);
             }
 
+            AddPathfindingStage($"Walk: click offset from blight icon → ({offset.X:F0},{offset.Y:F0})");
             _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Click would hit a blight tower build/upgrade icon — offsetting to ({offset.X:F0},{offset.Y:F0})");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("BlightIconAvoided", "Pathfinding click offset away from a blight tower icon", null);
             return offset;
@@ -308,12 +321,14 @@ namespace ClickIt.Features.Click.Runtime
             PathfindingDebugSnapshot pathfindingSnapshot = _dependencies.PathfindingService.GetDebugSnapshot();
             if (OffscreenPathingMath.ShouldBlockOffscreenTraversalAfterPathBuildFailure(pathfindingSnapshot.LastFailureReason))
             {
+                AddPathfindingStage($"Walk: BLOCKED — A* did not find a route target={context.TargetPath}");
                 PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, default, default, "BlockedNoRoute", pathfindingSnapshot.LastFailureReason);
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("OffscreenPathingBlockedNoRoute", $"target={context.TargetPath}");
                 _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Skipping offscreen traversal because A* did not find a route.");
                 return false;
             }
 
+            AddPathfindingStage($"Walk: no A* route — directional fallback target={context.TargetPath}");
             _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Pathfinding route not found; trying directional walk click.");
             return true;
         }
@@ -330,11 +345,25 @@ namespace ClickIt.Features.Click.Runtime
             (resolvedFromPath, targetScreen) = builtPath
                 ? TryResolveOffscreenTargetScreenPointFromPath()
                 : (false, default);
-            if (!resolvedFromPath)
+
+            // The path-based point sits at a fixed radius in the path's direction, which overshoots
+            // close targets (e.g. a tower already beside the player). Prefer the target's real
+            // on-screen projection so the player walks onto it instead of around it.
+            bool resolvedOnScreen = false;
+            if (resolvedFromPath
+                && _dependencies.TargetResolver.TryResolveOnScreenTargetScreenPoint(context.Target, out Vector2 onScreenTargetScreen))
+            {
+                targetScreen = onScreenTargetScreen;
+                resolvedFromPath = false;
+                resolvedOnScreen = true;
+            }
+
+            if (!resolvedFromPath && !resolvedOnScreen)
             {
                 (bool success, Vector2 resolvedTargetScreen) = TryResolveOffscreenTargetScreenPoint(context.Target);
                 if (!success)
                 {
+                    AddPathfindingStage("Walk: target screen point FAILED");
                     PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, false, false, targetScreen, default, "ResolveTargetScreenFailed");
                     _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Failed to resolve target screen point.");
                     return false;
@@ -346,6 +375,7 @@ namespace ClickIt.Features.Click.Runtime
             if (TryResolveDirectionalWalkClickPosition(targetScreen, context.TargetPath, out walkClick))
                 return true;
 
+            AddPathfindingStage("Walk: directional click point FAILED");
             PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, false, targetScreen, default, "ResolveClickPointFailed");
             _dependencies.DebugLog("[TryWalkTowardOffscreenTarget] Failed to resolve directional click point.");
             return false;
@@ -359,6 +389,7 @@ namespace ClickIt.Features.Click.Runtime
                 string prefPath = preferredTarget != null
                     ? (DynamicAccess.TryReadString(preferredTarget, DynamicAccessProfiles.Path, out string resolvedPrefPath) ? resolvedPrefPath : "set")
                     : "null";
+                AddPathfindingStage($"Walk: no walk target resolved (preferred={prefPath})");
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: preferred={prefPath} -> no target resolved");
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ResolveTargetNull",
                     $"preferred={prefPath} | ResolveNearestOffscreenWalkTarget returned null", null);
@@ -380,6 +411,7 @@ namespace ClickIt.Features.Click.Runtime
                 && resolvedIsHidden;
             if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
             {
+                AddPathfindingStage($"Walk: target REJECTED path={targetPath} valid={isValid} hidden={isHidden} minimap={OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target)}");
                 _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: target rejected valid={isValid} hidden={isHidden}");
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ResolveTargetInvalid",
                     $"path={targetPath} dist={targetDist:F1} valid={isValid} hidden={isHidden}", null);
@@ -388,6 +420,7 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
+            AddPathfindingStage($"Walk: target found path={targetPath} dist={targetDist:F1}");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ResolveTargetFound",
                 $"path={targetPath} dist={targetDist:F1}", null);
             return true;
@@ -395,6 +428,7 @@ namespace ClickIt.Features.Click.Runtime
 
         private bool AbortOffscreenPathingForBlocker(string debugMessage, string? debugStage, string? debugDetails)
         {
+            AddPathfindingStage($"Walk: aborted — {debugMessage}");
             CancelTraversalState();
             _dependencies.DebugLog(debugMessage);
             if (!string.IsNullOrWhiteSpace(debugStage))

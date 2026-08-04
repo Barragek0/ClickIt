@@ -229,7 +229,7 @@ public sealed class BlightService
             }
         }
 
-        BlightPlan plan = BlightPlanner.Build(KnownTowers, coverage, CurrentStrategy.Rules, _cache.FailedFoundationPositions, _planVersion, pumpPos, playerPos, pathwayPositions, _cache.CachedBranchAnchors);
+        BlightPlan plan = BlightPlanner.Build(KnownTowers, coverage, CurrentStrategy.Rules, _cache.FailedFoundationPositions, _planVersion, pumpPos, playerPos, pathwayPositions, _cache.CachedBranchAnchors, CurrentStrategy.GroupStepsByProximity);
 
         _cache.ApplyPlannedTowerTypes(plan);
 

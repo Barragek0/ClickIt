@@ -13,7 +13,8 @@ internal static class BlightPlanner
         NumVector2? pumpPosition = null,
         NumVector2? playerPosition = null,
         IReadOnlyList<NumVector2>? pathwayPositions = null,
-        List<NumVector2>? cachedBranchAnchors = null)
+        List<NumVector2>? cachedBranchAnchors = null,
+        bool groupStepsByProximity = true)
     {
         if (rules.Count == 0 || knownTowers.Count == 0)
             return BlightPlan.Completed(version, "No rules or no foundations");
@@ -251,6 +252,9 @@ internal static class BlightPlanner
         List<BlightPlanStep> steps = BlightFillPlanner.BuildOrderedSteps(
             knownTowers, assignments, rules, coveragePlacements, orderedFillPositions);
 
+        if (groupStepsByProximity)
+            steps = ReorderStepsByProximity(steps, rules);
+
         System.Text.StringBuilder assignDbg = new();
         for (int i = 0; i < knownTowers.Count; i++)
         {
@@ -291,6 +295,101 @@ internal static class BlightPlanner
             + $" | {assignDbg}";
 
         return new BlightPlan(steps, version, summary, details);
+    }
+
+    internal static List<BlightPlanStep> ReorderStepsByProximity(
+        List<BlightPlanStep> steps,
+        IReadOnlyList<TowerBuildRule> rules)
+    {
+        if (steps.Count <= 1)
+            return steps;
+
+        Dictionary<BlightTowerType, TowerBuildRule> ruleByType = [];
+        for (int r = 0; r < rules.Count; r++)
+            ruleByType[rules[r].TowerType] = rules[r];
+
+        List<BlightPlanStep> coverageSteps = [];
+        List<BlightPlanStep> fillSteps = [];
+        for (int i = 0; i < steps.Count; i++)
+        {
+            BlightPlanStep step = steps[i];
+            if (ruleByType.TryGetValue(step.TowerType, out TowerBuildRule rule) && rule.IsCoverageTower)
+                coverageSteps.Add(step);
+            else
+                fillSteps.Add(step);
+        }
+
+        if (fillSteps.Count == 0)
+            return GroupStepsByProximity(coverageSteps);
+        if (coverageSteps.Count == 0)
+            return GroupStepsByProximity(fillSteps);
+
+        List<BlightPlanStep> reordered = GroupStepsByProximity(coverageSteps);
+        reordered.AddRange(GroupStepsByProximity(fillSteps));
+        return reordered;
+    }
+
+    private static List<BlightPlanStep> GroupStepsByProximity(List<BlightPlanStep> steps)
+    {
+        if (steps.Count <= 1)
+            return steps;
+
+        List<List<BlightPlanStep>> clusters = [];
+        List<NumVector2> clusterPositions = [];
+        for (int i = 0; i < steps.Count; i++)
+        {
+            BlightPlanStep step = steps[i];
+            int clusterIdx = -1;
+            for (int c = 0; c < clusters.Count; c++)
+            {
+                if (SqDist(clusterPositions[c], step.FoundationPosition) < 1f)
+                {
+                    clusterIdx = c;
+                    break;
+                }
+            }
+
+            if (clusterIdx < 0)
+            {
+                clusters.Add([step]);
+                clusterPositions.Add(step.FoundationPosition);
+            }
+            else
+            {
+                clusters[clusterIdx].Add(step);
+            }
+        }
+
+        if (clusters.Count <= 1)
+            return steps;
+
+        List<BlightPlanStep> result = [];
+        bool[] visited = new bool[clusters.Count];
+        int current = 0;
+        int placed = 0;
+        while (placed < clusters.Count)
+        {
+            visited[current] = true;
+            result.AddRange(clusters[current]);
+            placed++;
+
+            int next = -1;
+            float bestSq = float.MaxValue;
+            for (int c = 0; c < clusters.Count; c++)
+            {
+                if (visited[c]) continue;
+                float d = (clusterPositions[c] - clusterPositions[current]).LengthSquared();
+                if (d < bestSq)
+                {
+                    bestSq = d;
+                    next = c;
+                }
+            }
+            if (next < 0) break;
+            current = next;
+        }
+
+        return result;
     }
 
     internal readonly record struct CoveragePlacement(

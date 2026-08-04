@@ -4,7 +4,8 @@ namespace ClickIt.Features.Observability
         bool ServiceAvailable,
         PathfindingDebugSnapshot Pathfinding,
         OffscreenMovementDebugSnapshot OffscreenMovement,
-        IReadOnlyList<string> OffscreenMovementTrail)
+        IReadOnlyList<string> OffscreenMovementTrail,
+        IReadOnlyList<string> RecentEvents)
     {
         private static readonly IReadOnlyList<string> EmptyTrail = [];
 
@@ -25,6 +26,7 @@ namespace ClickIt.Features.Observability
                 LastGoalResolutionUsedFallback: false,
                 LastGoalResolutionNote: string.Empty),
             OffscreenMovement: OffscreenMovementDebugSnapshot.Empty,
-            OffscreenMovementTrail: EmptyTrail);
+            OffscreenMovementTrail: EmptyTrail,
+            RecentEvents: EmptyTrail);
     }
 }

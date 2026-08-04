@@ -50,6 +50,11 @@ internal sealed class BlightPlan
                isComplete: CurrentStepIndex + 1 >= Steps.Count,
                currentStepIndex: CurrentStepIndex + 1);
 
+    internal BlightPlan WithCurrentStepIndex(int index)
+        => new(Steps, Version, DebugSummary, Details,
+               isComplete: index >= Steps.Count,
+               currentStepIndex: index);
+
     internal BlightPlanStep? CurrentStep
         => CurrentStepIndex < Steps.Count ? Steps[CurrentStepIndex] : null;
 }

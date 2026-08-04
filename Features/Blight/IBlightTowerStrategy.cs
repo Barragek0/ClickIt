@@ -154,6 +154,8 @@ internal interface IBlightTowerStrategy
 
     IReadOnlyList<TowerBuildRule> Rules { get; }
 
+    bool GroupStepsByProximity => true;
+
     TowerBuildRule? GetRule(BlightTowerType type);
 
     Color GetLaneColor(LaneCoverageResult segment);

@@ -3,32 +3,32 @@ namespace ClickIt.Features.Pathfinding.Terrain
     internal sealed class PathfindingTerrainCache
     {
         internal Vector2i AreaDims;
+        internal long AreaHash;
         internal bool[][]? Walkable;
     }
 
     internal static class PathTerrainSnapshotProvider
     {
-        internal static bool TryRefreshTerrainData(GameController gameController, PathfindingTerrainCache cache, out bool[][] walkable, out PathfindingService.GridPoint dims)
+        internal static bool TryRefreshTerrainData(GameController gameController, PathfindingTerrainCache cache, out bool[][] walkable, out PathfindingService.GridPoint dims, out bool fromCache)
         {
             walkable = [];
             dims = default;
+            fromCache = false;
 
             IngameData? data = gameController.IngameState?.Data ?? gameController.Game?.IngameState?.Data;
             if (data == null)
                 return false;
 
-            // The pathfinding grid is static per area, so cache the converted grid keyed by area
-            // dimensions. This avoids re-reading the full multi-million-cell RawPathfindingData and
-            // re-allocating the walkable grid on every A* call while pathing.
             Vector2i areaDims = data.AreaDimensions;
             bool cacheableArea = areaDims.X > 0 && areaDims.Y > 0;
-            if (cacheableArea && cache.Walkable != null
-                && cache.AreaDims.X == areaDims.X && cache.AreaDims.Y == areaDims.Y)
+            bool hasAreaHash = AreaUiSnapshotReader.TryReadCurrentAreaHash(gameController, out long areaHash);
+            if (ShouldUseTerrainCache(cache, areaDims, areaHash, cacheableArea, hasAreaHash))
             {
                 dims = new PathfindingService.GridPoint(
-                    areaDims.X > 0 ? areaDims.X : cache.Walkable[0].Length,
-                    areaDims.Y > 0 ? areaDims.Y : cache.Walkable.Length);
-                walkable = cache.Walkable;
+                    areaDims.X > 0 ? areaDims.X : cache.Walkable![0].Length,
+                    areaDims.Y > 0 ? areaDims.Y : cache.Walkable!.Length);
+                walkable = cache.Walkable!;
+                fromCache = true;
                 return true;
             }
 
@@ -44,14 +44,29 @@ namespace ClickIt.Features.Pathfinding.Terrain
             dims = new PathfindingService.GridPoint(
                 areaDims.X > 0 ? areaDims.X : gridWidth,
                 areaDims.Y > 0 ? areaDims.Y : gridHeight);
-            if (cacheableArea)
+            if (cacheableArea && hasAreaHash)
             {
                 cache.AreaDims = areaDims;
+                cache.AreaHash = areaHash;
                 cache.Walkable = converted;
             }
             walkable = converted;
             return true;
         }
+
+        // Pure cache-key decision so the same-dims-different-area guard is unit-testable.
+        internal static bool ShouldUseTerrainCache(
+            PathfindingTerrainCache cache,
+            Vector2i areaDims,
+            long areaHash,
+            bool cacheableArea,
+            bool hasAreaHash)
+            => cacheableArea
+                && hasAreaHash
+                && cache.Walkable != null
+                && cache.AreaDims.X == areaDims.X
+                && cache.AreaDims.Y == areaDims.Y
+                && cache.AreaHash == areaHash;
 
         internal static bool TryConvertPathfindingData(object? rawPathData, out int[][]? grid)
         {

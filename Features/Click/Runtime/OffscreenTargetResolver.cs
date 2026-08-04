@@ -97,6 +97,29 @@ namespace ClickIt.Features.Click.Runtime
             return TryComputeGridDirectionPoint(center, deltaX, deltaY, radius, out targetScreen);
         }
 
+        // True when the target's world projection is on-screen and clickable. The path-based
+        // target point sits at a fixed radius in the path's direction, so callers use this to
+        // click close targets at their real screen position instead of overshooting them.
+        internal bool TryResolveOnScreenTargetScreenPoint(Entity target, out Vector2 targetScreen)
+        {
+            targetScreen = default;
+            if (!_runtimeSeam.TryProjectWorldToScreen(_gameController, target, out Vector2 projected))
+                return false;
+
+            if (!IsFinite(projected))
+                return false;
+
+            RectangleF window = _runtimeSeam.GetWindowRectangle(_gameController);
+            if (!IsInsideWindow(window, projected) || IsNearCorner(projected, window))
+                return false;
+
+            if (_pointIsInClickableArea != null && !_pointIsInClickableArea(projected, "offscreen"))
+                return false;
+
+            targetScreen = projected;
+            return true;
+        }
+
         internal static int CountRemainingPathNodes(IReadOnlyList<PathfindingService.GridPoint>? path, int nearestIndex)
         {
             if (path == null || path.Count == 0 || nearestIndex < 0)

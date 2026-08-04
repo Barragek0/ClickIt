@@ -387,6 +387,115 @@ namespace ClickIt.Tests.Features.Click
             targetScreen.Should().Be(Vector2.Zero);
         }
 
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsProjection_WhenOnScreenAndClickable()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenTargetResolver resolver = new(
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(window),
+                new PathfindingService(),
+                new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(900f, 500f),
+                    ProjectWorldToScreen = true
+                },
+                static (_, _) => true);
+
+            bool resolved = resolver.TryResolveOnScreenTargetScreenPoint(target, out Vector2 targetScreen);
+
+            resolved.Should().BeTrue();
+            targetScreen.Should().Be(new Vector2(900f, 500f));
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionIsOutsideWindow()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenTargetResolver resolver = new(
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(window),
+                new PathfindingService(),
+                new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(50f, 400f),
+                    ProjectWorldToScreen = true
+                },
+                static (_, _) => true);
+
+            bool resolved = resolver.TryResolveOnScreenTargetScreenPoint(target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionIsNearCorner()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenTargetResolver resolver = new(
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(window),
+                new PathfindingService(),
+                new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(120f, 220f),
+                    ProjectWorldToScreen = true
+                },
+                static (_, _) => true);
+
+            bool resolved = resolver.TryResolveOnScreenTargetScreenPoint(target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionIsNotClickable()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenTargetResolver resolver = new(
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(window),
+                new PathfindingService(),
+                new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectedPoint = new Vector2(900f, 500f),
+                    ProjectWorldToScreen = true
+                },
+                static (_, _) => false);
+
+            bool resolved = resolver.TryResolveOnScreenTargetScreenPoint(target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
+        [TestMethod]
+        public void TryResolveOnScreenTargetScreenPoint_ReturnsFalse_WhenProjectionFails()
+        {
+            RectangleF window = new(100f, 200f, 1280f, 720f);
+            Entity target = EntityProbeFactory.Create(address: 2, gridX: 3, gridY: 2, type: EntityType.Monster);
+            OffscreenTargetResolver resolver = new(
+                ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(window),
+                new PathfindingService(),
+                new StubOffscreenRuntimeSeam
+                {
+                    Window = window,
+                    ProjectWorldToScreen = false
+                },
+                static (_, _) => true);
+
+            bool resolved = resolver.TryResolveOnScreenTargetScreenPoint(target, out Vector2 targetScreen);
+
+            resolved.Should().BeFalse();
+            targetScreen.Should().Be(Vector2.Zero);
+        }
+
         private static T InvokePrivateStatic<T>(string typeName, string methodName, params object[] args)
         {
             MethodInfo method = typeof(OffscreenTargetResolver).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)

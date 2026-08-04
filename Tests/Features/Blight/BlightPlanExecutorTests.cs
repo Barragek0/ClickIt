@@ -71,6 +71,45 @@ public class BlightPlanExecutorTests
         executor.CurrentCursor.Should().Be(0);
     }
 
+    [TestMethod]
+    public void SetPlan_PreservesCursor_AndSyncsPlanCurrentStepIndex()
+    {
+        var executor = new BlightPlanExecutor();
+        BlightPlan first = new(
+            new[]
+            {
+                Step(BlightPlanAction.Build, 5, 5, BlightTowerType.Seismic, 1),
+                Step(BlightPlanAction.Build, 10, 10, BlightTowerType.Chilling, 1),
+                Step(BlightPlanAction.Build, 20, 20, BlightTowerType.Fireball, 1),
+            },
+            version: 1,
+            debugSummary: "first",
+            currentStepIndex: 1);
+        executor.SetPlan(first);
+        executor.CurrentCursor.Should().Be(1);
+
+        // Regenerated plan (planner always starts at step 0) that still contains the
+        // current step (Chilling at 10,10) — but moved to index 2.
+        BlightPlan second = new(
+            new[]
+            {
+                Step(BlightPlanAction.Build, 30, 30, BlightTowerType.Fireball, 1),
+                Step(BlightPlanAction.Build, 40, 40, BlightTowerType.Seismic, 1),
+                Step(BlightPlanAction.Build, 10, 10, BlightTowerType.Chilling, 1),
+            },
+            version: 2,
+            debugSummary: "second");
+        executor.SetPlan(second);
+
+        // The cursor is preserved at the relocated step...
+        executor.CurrentCursor.Should().Be(2);
+        // ...and the plan's current-step index must follow so the debug marker
+        // (CurrentStepIndex) and the on-screen pending numbers (cursor) agree.
+        executor.CurrentPlan.Should().NotBeNull();
+        executor.CurrentPlan!.CurrentStepIndex.Should().Be(2);
+        executor.CurrentPlan.CurrentStep.Should().Be(second.Steps[2]);
+    }
+
     // ── Specialization gating (only 3→4 with a chosen specialization) ──
 
     [TestMethod]
