@@ -48,13 +48,26 @@ namespace ClickIt.Core.Runtime
             getCachedLabels,
             getErrorHandler);
         private readonly DebugTelemetryFreezeState _freezeState = new();
+        private DebugTelemetrySnapshot? _cachedSnapshot;
+        private long _lastSnapshotBuildTimestampMs;
+
+        // The debug overlay reads the snapshot every frame, but the projection scans live sources
+        // (hovered item, altar, inventory). Rebuilding it at most every 200ms cuts that per-frame
+        // main-thread cost ~5x while keeping the debug display plenty fresh.
+        private const long SnapshotBuildIntervalMs = 200;
 
         internal DebugTelemetrySnapshot GetSnapshot()
         {
             if (_freezeState.TryGetFrozenSnapshot(Environment.TickCount64, out DebugTelemetrySnapshot frozenSnapshot))
                 return frozenSnapshot;
 
-            return BuildCurrentSnapshot();
+            long now = Environment.TickCount64;
+            if (_cachedSnapshot != null && now - _lastSnapshotBuildTimestampMs < SnapshotBuildIntervalMs)
+                return _cachedSnapshot;
+
+            _lastSnapshotBuildTimestampMs = now;
+            _cachedSnapshot = BuildCurrentSnapshot();
+            return _cachedSnapshot;
         }
 
         internal void FreezeSnapshot(string reason, int holdDurationMs)

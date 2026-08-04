@@ -64,57 +64,68 @@ namespace ClickIt.Shared.Game
             if (count <= 1)
                 return;
 
+            // DistancePlayer is a dynamic game-memory read, so a per-comparison sort would multiply
+            // the cost. Precompute the distances once (stack span for typical counts) and sort the
+            // label list against the cached values instead.
+            Span<float> distances = count <= 256 ? stackalloc float[count] : new float[count];
+            for (int i = 0; i < count; i++)
+                distances[i] = GetLabelDistance(labels[i]);
+
             if (count <= 50)
             {
-                InsertionSortByDistance(labels, count);
+                InsertionSortByDistance(labels, distances, count);
                 return;
             }
 
-            QuickSortByDistance(labels, 0, count - 1);
+            QuickSortByDistance(labels, distances, 0, count - 1);
         }
 
-        internal static void InsertionSortByDistance(List<LabelOnGround> labels, int count)
+        internal static void InsertionSortByDistance(List<LabelOnGround> labels, Span<float> distances, int count)
         {
             for (int i = 1; i < count; i++)
             {
                 LabelOnGround key = labels[i];
-                float keyDistance = GetLabelDistance(key);
+                float keyDistance = distances[i];
                 int j = i - 1;
 
-                while (j >= 0 && GetLabelDistance(labels[j]) > keyDistance)
+                while (j >= 0 && distances[j] > keyDistance)
                 {
                     labels[j + 1] = labels[j];
+                    distances[j + 1] = distances[j];
                     j--;
                 }
 
                 labels[j + 1] = key;
+                distances[j + 1] = keyDistance;
             }
         }
 
-        internal static void QuickSortByDistance(List<LabelOnGround> labels, int low, int high)
+        internal static void QuickSortByDistance(List<LabelOnGround> labels, Span<float> distances, int low, int high)
         {
             if (low < high)
             {
-                int pivotIndex = PartitionByDistance(labels, low, high);
-                QuickSortByDistance(labels, low, pivotIndex - 1);
-                QuickSortByDistance(labels, pivotIndex + 1, high);
+                int pivotIndex = PartitionByDistance(labels, distances, low, high);
+                QuickSortByDistance(labels, distances, low, pivotIndex - 1);
+                QuickSortByDistance(labels, distances, pivotIndex + 1, high);
             }
         }
 
-        internal static int PartitionByDistance(List<LabelOnGround> labels, int low, int high)
+        internal static int PartitionByDistance(List<LabelOnGround> labels, Span<float> distances, int low, int high)
         {
-            float pivotDistance = GetLabelDistance(labels[high]);
+            float pivotDistance = distances[high];
             int i = low - 1;
 
             for (int j = low; j < high; j++)
-                if (GetLabelDistance(labels[j]) <= pivotDistance)
+                if (distances[j] <= pivotDistance)
                 {
                     i++;
                     SwapLabels(labels, i, j);
+                    (distances[i], distances[j]) = (distances[j], distances[i]);
                 }
 
 
             SwapLabels(labels, i + 1, high);
+            (distances[i + 1], distances[high]) = (distances[high], distances[i + 1]);
             return i + 1;
         }
 

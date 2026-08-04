@@ -249,6 +249,14 @@ internal sealed class BlightPlanExecutor
                 return Fail($"Tower type {s.TowerType} not found in menu");
             }
 
+            if (!IsPositionInWindow(new Vector2(towerClickPos.Value.X, towerClickPos.Value.Y), gc))
+            {
+                service.AddDebugStage("Executor: SELECT → build menu button off-screen, walking closer");
+                _phase = Phase.Walking;
+                return new BlightBuildAction(BlightBuildActionKind.WalkToTarget,
+                    DebugMessage: "Build menu button off-screen");
+            }
+
             service.AddDebugStage($"Executor: SELECT → clicking {s.TowerType} in build menu at ({towerClickPos.Value.X:F0},{towerClickPos.Value.Y:F0})");
             _phaseStartTimestamp = Stopwatch.GetTimestamp();
             _phase = Phase.WaitVerify;
@@ -312,6 +320,14 @@ internal sealed class BlightPlanExecutor
                         return Fail($"No upgrade button in menu for {s.TowerType}");
                     }
 
+                    if (!IsPositionInWindow(new Vector2(plain.Value.Position.X, plain.Value.Position.Y), gc))
+                    {
+                        service.AddDebugStage("Executor: SPEC → upgrade button off-screen, walking closer");
+                        _phase = Phase.Walking;
+                        return new BlightBuildAction(BlightBuildActionKind.WalkToTarget,
+                            DebugMessage: "Upgrade button off-screen");
+                    }
+
                     service.AddDebugStage($"Executor: SPEC → plain upgrade, clicking next-tier button ('{plain.Value.UpgradeId ?? "?"}') at ({plain.Value.Position.X:F0},{plain.Value.Position.Y:F0})");
                     _phaseStartTimestamp = Stopwatch.GetTimestamp();
                     _phase = Phase.WaitVerify;
@@ -333,6 +349,14 @@ internal sealed class BlightPlanExecutor
                 {
                     service.AddDebugStage($"Executor: SPEC → '{targetTowerId}' (specIndex={specIndex}) not found in menu — FAIL #{_consecutiveFailures + 1}");
                     return Fail($"Specialization '{targetTowerId}' not found in menu");
+                }
+
+                if (!IsPositionInWindow(new Vector2(specPos.Value.X, specPos.Value.Y), gc))
+                {
+                    service.AddDebugStage("Executor: SPEC → specialization button off-screen, walking closer");
+                    _phase = Phase.Walking;
+                    return new BlightBuildAction(BlightBuildActionKind.WalkToTarget,
+                        DebugMessage: "Specialization button off-screen");
                 }
 
                 service.AddDebugStage($"Executor: SPEC → clicking '{targetTowerId}' (specIndex={specIndex}) at ({specPos.Value.X:F0},{specPos.Value.Y:F0})");
@@ -522,7 +546,8 @@ internal sealed class BlightPlanExecutor
         if (step == null) return false;
         Element? labelEl = FindLabelAt(labels, step.Value.FoundationPosition, service);
         if (labelEl == null) return false;
-        RectangleF? menuRect = BlightMenuInteractions.GetMenuRegionRect(labelEl);
+        int childIndex = BlightMenuInteractions.MenuChildIndexForStep(step.Value.Action);
+        RectangleF? menuRect = BlightMenuInteractions.GetMenuRegionRect(labelEl, childIndex);
         return menuRect != null && IsMenuRegionUsable(menuRect.Value, gc, service);
     }
 

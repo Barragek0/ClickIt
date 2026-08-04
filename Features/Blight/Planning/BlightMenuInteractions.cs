@@ -155,10 +155,16 @@ internal static class BlightMenuInteractions
         catch { return null; }
     }
 
-    // The menu region (Child[3]) is bigger than the build icon (Child[2]) but still doesn't cover the
-    // whole sub-menu, so the region we require to be fully on-screen/clickable is Child[3]'s rect
-    // enlarged by ~30% around its center.
+    // The menu region (build icon Child[2] / upgrade icon Child[3]) is bigger than the icon but
+    // still doesn't cover the whole sub-menu, so the region we require to be fully on-screen and
+    // clickable is the step's icon rect enlarged by ~30% around its center.
     internal const float MenuRegionEnlargeRatio = 1.3f;
+
+    // The walk-ready region uses the step's own icon: build (Child[2]) for unbuilt foundations,
+    // upgrade (Child[3]) for built towers. Always using Child[3] for a BUILD step never resolved
+    // (a foundation has no upgrade button) and stalled the build in Walking.
+    internal static int MenuChildIndexForStep(BlightPlanAction action)
+        => action == BlightPlanAction.Upgrade ? 3 : 2;
 
     internal static RectangleF? GetMenuChildRect(Element labelElement, int childIndex)
     {
@@ -204,9 +210,9 @@ internal static class BlightMenuInteractions
         return false;
     }
 
-    internal static RectangleF? GetMenuRegionRect(Element labelElement)
+    internal static RectangleF? GetMenuRegionRect(Element labelElement, int childIndex)
     {
-        RectangleF? rect = GetMenuChildRect(labelElement, 3);
+        RectangleF? rect = GetMenuChildRect(labelElement, childIndex);
         return rect == null ? null : EnlargeRectKeepingCenter(rect.Value, MenuRegionEnlargeRatio);
     }
 

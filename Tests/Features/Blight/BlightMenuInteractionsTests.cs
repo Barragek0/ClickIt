@@ -28,4 +28,13 @@ public class BlightMenuInteractionsTests
         enlarged.X.Should().BeApproximately(-15f, 0.001f);
         enlarged.Y.Should().BeApproximately(-7.5f, 0.001f);
     }
+
+    [TestMethod]
+    public void MenuChildIndexForStep_IsBuildIconForBuild_AndUpgradeIconForUpgrade()
+    {
+        // The walk-ready region must use the step's OWN icon: an unbuilt foundation has no upgrade
+        // button (Child[3]), so checking it for a BUILD step never resolves and stalls the build.
+        BlightMenuInteractions.MenuChildIndexForStep(BlightPlanAction.Build).Should().Be(2);
+        BlightMenuInteractions.MenuChildIndexForStep(BlightPlanAction.Upgrade).Should().Be(3);
+    }
 }

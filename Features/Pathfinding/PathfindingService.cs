@@ -6,6 +6,7 @@ namespace ClickIt.Features.Pathfinding
 
         private readonly ErrorHandler? _errorHandler = errorHandler;
         private readonly OffscreenMovementDiagnosticsChannel _offscreenMovementDiagnostics = new();
+        private readonly PathfindingTerrainCache _terrainCache = new();
 
         internal PathfindingRuntimeState RuntimeState { get; } = new();
 
@@ -80,7 +81,7 @@ namespace ClickIt.Features.Pathfinding
             if (gameController == null || target == null)
                 return Fail("GameController/target unavailable.");
 
-            if (!PathTerrainSnapshotProvider.TryRefreshTerrainData(gameController, out bool[][] walkable, out GridPoint dims))
+            if (!PathTerrainSnapshotProvider.TryRefreshTerrainData(gameController, _terrainCache, out bool[][] walkable, out GridPoint dims))
                 return Fail("Terrain/pathfinding data unavailable.");
 
             RuntimeState.SetTerrainSnapshot(walkable, dims);

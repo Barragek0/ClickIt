@@ -85,5 +85,43 @@ namespace ClickIt.Tests.Shared.Game
             labels[0].Should().BeSameAs(second);
             labels[1].Should().BeSameAs(first);
         }
+
+        [TestMethod]
+        public void SortLabelsByDistance_SortsByPrecomputedDistances()
+        {
+            // Distances are read once up front (not per comparison), but the ordering contract is
+            // unchanged: nearest label first.
+            LabelOnGround far = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(EntityProbeFactory.Create("Metadata/A", address: 0x101, distancePlayer: 50f));
+            LabelOnGround near = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(EntityProbeFactory.Create("Metadata/B", address: 0x202, distancePlayer: 10f));
+            LabelOnGround mid = OffscreenStickyTargetGraphShaper.CreateVisibleLabel(EntityProbeFactory.Create("Metadata/C", address: 0x303, distancePlayer: 30f));
+
+            List<LabelOnGround> labels = [far, near, mid];
+
+            LabelGeometry.SortLabelsByDistance(labels);
+
+            labels.Should().ContainInOrder(near, mid, far);
+        }
+
+        [TestMethod]
+        public void SortLabelsByDistance_UsesQuickSortPath_ForLargeLabelLists()
+        {
+            var labels = new List<LabelOnGround>(60);
+            for (int i = 0; i < 60; i++)
+                labels.Add(OffscreenStickyTargetGraphShaper.CreateVisibleLabel(
+                    EntityProbeFactory.Create($"Metadata/Item{i}", address: 0x1000 + i, distancePlayer: 60f - i)));
+
+            LabelGeometry.SortLabelsByDistance(labels);
+
+            ReadDistance(labels[0]).Should().Be(1f);
+            ReadDistance(labels[^1]).Should().Be(60f);
+        }
+
+        private static float ReadDistance(LabelOnGround label)
+        {
+            DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out object? rawItem);
+            return DynamicAccess.TryReadFloat(rawItem, DynamicAccessProfiles.DistancePlayer, out float distance)
+                ? distance
+                : float.MaxValue;
+        }
     }
 }

@@ -79,6 +79,73 @@ namespace ClickIt.Tests.Features.Pathfinding
         }
 
         [TestMethod]
+        public void FindPathAStar_ConsecutiveCalls_OnDifferentGrids_DoNotLeakState()
+        {
+            // A* reuses per-thread search buffers with a generation stamp. Run several searches
+            // back-to-back on different-sized grids (with obstacles) and verify each still returns
+            // a valid path from its own start to its own goal.
+            bool[][] small =
+            [
+                [true, true, true],
+                [true, false, true],
+                [true, true, true]
+            ];
+            bool[][] medium = CreateGrid(width: 12, height: 12, defaultValue: true);
+            medium[5][5] = false;
+            medium[5][6] = false;
+            medium[6][5] = false;
+            bool[][] large = CreateGrid(width: 40, height: 40, defaultValue: true);
+            for (int i = 10; i < 30; i++)
+                large[20][i] = false;
+
+            (bool[][] Grid, PathfindingService.GridPoint Start, PathfindingService.GridPoint Goal)[] cases =
+            [
+                (small, new PathfindingService.GridPoint(0, 0), new PathfindingService.GridPoint(2, 2)),
+                (medium, new PathfindingService.GridPoint(0, 0), new PathfindingService.GridPoint(11, 11)),
+                (large, new PathfindingService.GridPoint(0, 0), new PathfindingService.GridPoint(39, 39)),
+                (small, new PathfindingService.GridPoint(2, 0), new PathfindingService.GridPoint(0, 2)),
+            ];
+
+            for (int i = 0; i < cases.Length; i++)
+            {
+                (bool[][] grid, PathfindingService.GridPoint start, PathfindingService.GridPoint goal) = cases[i];
+                var path = PathGridSearch.FindPathAStar(grid, start, goal, 5000, out int expanded);
+                path.Should().NotBeNull($"search {i} should find a path");
+                path![0].Should().Be(start);
+                path[^1].Should().Be(goal);
+                expanded.Should().BeGreaterThan(0);
+            }
+        }
+
+        [TestMethod]
+        public void FindPathAStar_AfterBudgetLimitedFailure_SubsequentSearchStillSucceeds()
+        {
+            bool[][] grid = CreateGrid(width: 20, height: 20, defaultValue: true);
+
+            // First search is starved by a tiny budget and aborts partway through.
+            var failed = PathGridSearch.FindPathAStar(
+                grid,
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(19, 19),
+                2,
+                out int failedExpanded);
+            failed.Should().BeNull();
+            failedExpanded.Should().Be(2);
+
+            // A subsequent search must not be corrupted by the aborted one.
+            var path = PathGridSearch.FindPathAStar(
+                grid,
+                new PathfindingService.GridPoint(0, 0),
+                new PathfindingService.GridPoint(19, 19),
+                5000,
+                out int expanded);
+            path.Should().NotBeNull();
+            path![0].Should().Be(new PathfindingService.GridPoint(0, 0));
+            path[^1].Should().Be(new PathfindingService.GridPoint(19, 19));
+            expanded.Should().BeGreaterThan(0);
+        }
+
+        [TestMethod]
         public void TryResolveWalkableGoal_ReturnsAdjacentWalkableTile_WhenDesiredGoalBlocked()
         {
             bool[][] grid =

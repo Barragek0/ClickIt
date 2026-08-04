@@ -20,6 +20,33 @@ namespace ClickIt.Features.Pathfinding.Grid
             new(-1, -1)
         ];
 
+        [ThreadStatic] private static bool[]? s_closed;
+        [ThreadStatic] private static float[]? s_gScore;
+        [ThreadStatic] private static int[]? s_parent;
+        [ThreadStatic] private static int[]? s_version;
+        [ThreadStatic] private static int s_bufferWidth;
+        [ThreadStatic] private static int s_bufferHeight;
+        [ThreadStatic] private static int s_generation;
+        [ThreadStatic] private static PriorityQueue<int, float>? s_open;
+
+        // A* runs over the full area grid (millions of cells): the old per-call arrays were
+        // ~21MB of LOH garbage plus a full-grid init loop per pathfind. Reuse per-thread buffers
+        // (reallocated only when the area grid size changes) and lazily reset them via a generation
+        // stamp instead of clearing the whole grid.
+        private static void EnsureSearchBuffers(int width, int height, int nodeCount)
+        {
+            if (s_closed != null && s_gScore != null && s_parent != null && s_version != null
+                && s_bufferWidth == width && s_bufferHeight == height)
+                return;
+
+            s_bufferWidth = width;
+            s_bufferHeight = height;
+            s_closed = new bool[nodeCount];
+            s_gScore = new float[nodeCount];
+            s_parent = new int[nodeCount];
+            s_version = new int[nodeCount];
+        }
+
         internal static List<PathfindingService.GridPoint>? FindPathAStar(bool[][] walkable, PathfindingService.GridPoint start, PathfindingService.GridPoint goal, int maxExpandedNodes, out int expandedNodes)
         {
             expandedNodes = 0;
@@ -35,20 +62,24 @@ namespace ClickIt.Features.Pathfinding.Grid
 
             int nodeCount = width * height;
             int budget = SystemMath.Max(1, maxExpandedNodes);
-            PriorityQueue<int, float> open = new();
-            bool[] closed = new bool[nodeCount];
-            float[] gScore = new float[nodeCount];
-            int[] parent = new int[nodeCount];
 
-            for (int i = 0; i < nodeCount; i++)
-            {
-                gScore[i] = float.PositiveInfinity;
-                parent[i] = -1;
-            }
+            EnsureSearchBuffers(width, height, nodeCount);
+            int generation = s_generation = s_generation == int.MaxValue ? 1 : s_generation + 1;
+            bool[] closed = s_closed!;
+            float[] gScore = s_gScore!;
+            int[] parent = s_parent!;
+            int[] version = s_version!;
+
+            PriorityQueue<int, float> open = s_open ??= new PriorityQueue<int, float>();
+            open.Clear();
 
             int startKey = ToKey(start.X, start.Y, width);
             int goalKey = ToKey(goal.X, goal.Y, width);
+
+            version[startKey] = generation;
+            closed[startKey] = false;
             gScore[startKey] = 0f;
+            parent[startKey] = -1;
             open.Enqueue(startKey, EstimateCost(start, goal));
 
             while (open.Count > 0 && expandedNodes < budget)
@@ -75,6 +106,13 @@ namespace ClickIt.Features.Pathfinding.Grid
                         continue;
 
                     int neighborKey = ToKey(nx, ny, width);
+                    if (version[neighborKey] != generation)
+                    {
+                        version[neighborKey] = generation;
+                        closed[neighborKey] = false;
+                        gScore[neighborKey] = float.PositiveInfinity;
+                        parent[neighborKey] = -1;
+                    }
                     if (closed[neighborKey])
                         continue;
 

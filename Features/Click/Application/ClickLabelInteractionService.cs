@@ -15,7 +15,9 @@ namespace ClickIt.Features.Click.Application
 
     internal sealed class ClickLabelInteractionService(ClickLabelInteractionServiceDependencies dependencies)
     {
+        private const long BlightChestDebugCaptureIntervalMs = 500;
         private readonly ClickLabelInteractionServiceDependencies _dependencies = dependencies;
+        private long _lastBlightChestDebugCaptureTimestampMs;
 
         internal bool ExecuteInteraction(
             Vector2 clickPos,
@@ -174,6 +176,14 @@ namespace ClickIt.Features.Click.Application
                 return;
 
             string detail = mechanicId == null ? path : $"{path} ({mechanicId})";
+
+            // The ElementTree capture walks the whole chest tree (hundreds of nodes, memory reads,
+            // string snapshots) — rate-limit it so rapid chest clicks/reclicks don't hammer the GC.
+            long now = Environment.TickCount64;
+            if (now - _lastBlightChestDebugCaptureTimestampMs < BlightChestDebugCaptureIntervalMs)
+                return;
+            _lastBlightChestDebugCaptureTimestampMs = now;
+
             // Debug-only capture over the obfuscated game assembly: a failure here
             // must never abort the click, so the capture is fail-closed at its own
             // boundary (swallowed + logged) while the interaction proceeds.

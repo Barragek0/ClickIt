@@ -142,9 +142,8 @@ public sealed class BlightService
             if (camera == null) return false;
             NumVector2 screenPos = camera.WorldToScreen(entity.PosNum);
             Size2F w = _gameController.Window.GetWindowRectangleTimeCache.Size;
-            const float m = 200f;
-            return screenPos.X >= m && screenPos.Y >= m
-                && screenPos.X <= w.Width - m && screenPos.Y <= w.Height - m;
+            return screenPos.X >= 0f && screenPos.Y >= 0f
+                && screenPos.X <= w.Width && screenPos.Y <= w.Height;
         }
         catch { return false; }
     }

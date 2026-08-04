@@ -48,7 +48,10 @@ namespace ClickIt.UI.Overlays.Common
         {
             foreach (LabelOnGround label in labels)
             {
-                if (!TryResolveStrongboxFrame(label, windowArea, renderState, out StrongboxFrame frame))
+                // Resolve the label metadata once per label — the path/name/rarity/chest reads are
+                // dynamic game-memory reads, so re-resolving inside each helper would triple the cost.
+                StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
+                if (!TryResolveStrongboxFrame(label, windowArea, renderState, metadata, out StrongboxFrame frame))
                     continue;
 
                 EnqueueStrongboxFrame(frame);
@@ -71,6 +74,7 @@ namespace ClickIt.UI.Overlays.Common
             LabelOnGround? label,
             RectangleF windowArea,
             StrongboxRenderState renderState,
+            StrongboxLabelMetadata metadata,
             out StrongboxFrame frame)
         {
             frame = default;
@@ -78,30 +82,25 @@ namespace ClickIt.UI.Overlays.Common
             if (!renderState.ShowFrames)
                 return false;
 
-            if (!TryGetVisibleLabelRect(label, windowArea, out RectangleF rect, out string? itemPathRaw))
+            if (!TryGetVisibleLabelRect(metadata, windowArea, out RectangleF rect, out string? itemPathRaw))
                 return false;
 
-            StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
-            string renderName = metadata.RenderName;
-            bool isUniqueStrongbox = metadata.IsUnique;
-            if (!IsStrongboxClickableBySettings(itemPathRaw!, renderName, renderState.ClickMetadata, renderState.DontClickMetadata, isUniqueStrongbox))
+            if (!IsStrongboxClickableBySettings(itemPathRaw!, metadata.RenderName, renderState.ClickMetadata, renderState.DontClickMetadata, metadata.IsUnique))
                 return false;
 
-            frame = new StrongboxFrame(rect, ResolveStrongboxFrameColor(label));
+            frame = new StrongboxFrame(rect, ResolveStrongboxFrameColor(metadata));
             return true;
         }
 
-        private static Color ResolveStrongboxFrameColor(LabelOnGround? label)
+        private static Color ResolveStrongboxFrameColor(StrongboxLabelMetadata metadata)
         {
-            Chest? chestComp = ResolveStrongboxLabelMetadata(label).Chest;
-            bool chestLocked = chestComp?.IsLocked == true;
+            bool chestLocked = metadata.Chest?.IsLocked == true;
             return chestLocked ? Color.Red : Color.LawnGreen;
         }
 
-        private static bool TryGetVisibleLabelRect(LabelOnGround? label, RectangleF windowArea, out RectangleF rect, out string? itemPathRaw)
+        private static bool TryGetVisibleLabelRect(StrongboxLabelMetadata metadata, RectangleF windowArea, out RectangleF rect, out string? itemPathRaw)
         {
             rect = new RectangleF();
-            StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
             itemPathRaw = metadata.Path;
             if (string.IsNullOrEmpty(itemPathRaw)) return false;
             if (itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0) return false;
@@ -142,11 +141,6 @@ namespace ClickIt.UI.Overlays.Common
             }
 
             return false;
-        }
-
-        private static bool IsUniqueStrongbox(LabelOnGround? label)
-        {
-            return ResolveStrongboxLabelMetadata(label).IsUnique;
         }
 
         internal static bool IsStrongboxClickableBySettings(string path, string itemName, IReadOnlyList<string> clickMetadata, IReadOnlyList<string> dontClickMetadata, bool isUniqueStrongbox)
