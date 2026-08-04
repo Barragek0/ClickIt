@@ -9,12 +9,17 @@ namespace ClickIt.UI.Overlays.Common
             IReadOnlyList<string> ClickMetadata,
             IReadOnlyList<string> DontClickMetadata);
 
+        private const int StrongboxScanIntervalMs = 100;
+        private readonly record struct CachedStrongbox(LabelOnGround Label, StrongboxLabelMetadata Metadata);
+
         private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
         private readonly ClickItSettings _settings = settings;
         private IReadOnlyList<string> _cachedClickMetadata = [];
         private IReadOnlyList<string> _cachedDontClickMetadata = [];
         private HashSet<string>? _clickIdsSnapshot;
         private HashSet<string>? _dontClickIdsSnapshot;
+        private long _lastStrongboxScanMs;
+        private List<CachedStrongbox> _cachedStrongboxes = [];
 
         public void Render(GameController? gameController)
         {
@@ -35,23 +40,54 @@ namespace ClickIt.UI.Overlays.Common
             StrongboxRenderState renderState = ResolveRenderState();
             if (!ShouldRenderAnyStrongboxes(renderState))
             {
+                _cachedStrongboxes.Clear();
                 return;
             }
 
-            RenderStrongboxFrames(labels, windowArea, renderState);
+            // Metadata resolution is expensive (dynamic reads + GetClientRect per label), so the
+            // full scan is throttled; per frame we only re-check the (usually zero) cached strongboxes.
+            if (Environment.TickCount64 - _lastStrongboxScanMs >= StrongboxScanIntervalMs)
+            {
+                _lastStrongboxScanMs = Environment.TickCount64;
+                _cachedStrongboxes = ScanStrongboxes(labels, windowArea, renderState);
+            }
+
+            RenderCachedStrongboxFrames(windowArea, renderState);
         }
 
-        private void RenderStrongboxFrames(
+        private static List<CachedStrongbox> ScanStrongboxes(
             IEnumerable<LabelOnGround> labels,
             RectangleF windowArea,
             StrongboxRenderState renderState)
         {
+            List<CachedStrongbox> strongboxes = [];
             foreach (LabelOnGround label in labels)
             {
-                // Resolve the label metadata once per label — the path/name/rarity/chest reads are
-                // dynamic game-memory reads, so re-resolving inside each helper would triple the cost.
+                if (!LabelGeometry.TryGetLabelRectOnScreen(label, windowArea, out _))
+                    continue;
+
                 StrongboxLabelMetadata metadata = ResolveStrongboxLabelMetadata(label);
-                if (!TryResolveStrongboxFrame(label, windowArea, renderState, metadata, out StrongboxFrame frame))
+                if (string.IsNullOrEmpty(metadata.Path) || metadata.Path.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                if (!IsStrongboxClickableBySettings(metadata.Path, metadata.RenderName, renderState.ClickMetadata, renderState.DontClickMetadata, metadata.IsUnique))
+                    continue;
+
+                strongboxes.Add(new CachedStrongbox(label, metadata));
+            }
+
+            return strongboxes;
+        }
+
+        private void RenderCachedStrongboxFrames(RectangleF windowArea, StrongboxRenderState renderState)
+        {
+            for (int i = 0; i < _cachedStrongboxes.Count; i++)
+            {
+                CachedStrongbox cached = _cachedStrongboxes[i];
+                if (!LabelGeometry.TryGetLabelRectOnScreen(cached.Label, windowArea, out RectangleF rect))
+                    continue;
+
+                if (!TryResolveStrongboxFrame(rect, renderState, cached.Metadata, out StrongboxFrame frame))
                     continue;
 
                 EnqueueStrongboxFrame(frame);
@@ -71,8 +107,7 @@ namespace ClickIt.UI.Overlays.Common
             => renderState.ShowFrames || renderState.ClickMetadata.Count > 0;
 
         private static bool TryResolveStrongboxFrame(
-            LabelOnGround? label,
-            RectangleF windowArea,
+            RectangleF rect,
             StrongboxRenderState renderState,
             StrongboxLabelMetadata metadata,
             out StrongboxFrame frame)
@@ -82,10 +117,11 @@ namespace ClickIt.UI.Overlays.Common
             if (!renderState.ShowFrames)
                 return false;
 
-            if (!TryGetVisibleLabelRect(metadata, windowArea, out RectangleF rect, out string? itemPathRaw))
+            string itemPathRaw = metadata.Path;
+            if (string.IsNullOrEmpty(itemPathRaw) || itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0)
                 return false;
 
-            if (!IsStrongboxClickableBySettings(itemPathRaw!, metadata.RenderName, renderState.ClickMetadata, renderState.DontClickMetadata, metadata.IsUnique))
+            if (!IsStrongboxClickableBySettings(itemPathRaw, metadata.RenderName, renderState.ClickMetadata, renderState.DontClickMetadata, metadata.IsUnique))
                 return false;
 
             frame = new StrongboxFrame(rect, ResolveStrongboxFrameColor(metadata));
@@ -96,37 +132,6 @@ namespace ClickIt.UI.Overlays.Common
         {
             bool chestLocked = metadata.Chest?.IsLocked == true;
             return chestLocked ? Color.Red : Color.LawnGreen;
-        }
-
-        private static bool TryGetVisibleLabelRect(StrongboxLabelMetadata metadata, RectangleF windowArea, out RectangleF rect, out string? itemPathRaw)
-        {
-            rect = new RectangleF();
-            itemPathRaw = metadata.Path;
-            if (string.IsNullOrEmpty(itemPathRaw)) return false;
-            if (itemPathRaw.IndexOf("strongbox", StringComparison.OrdinalIgnoreCase) < 0) return false;
-
-            Element? elem = metadata.Label;
-            if (elem == null) return false;
-            if (!DynamicAccess.TryReadBool(elem, DynamicAccessProfiles.IsValid, out bool isValid) || !isValid) return false;
-
-            // Tests can surface a non-RectangleF return here through assembly-shim boundaries.
-            object? maybeRectObj = elem.GetClientRect();
-            if (maybeRectObj == null) return false;
-
-            if (maybeRectObj is RectangleF rectVal)
-            {
-                rect = rectVal;
-            }
-            else
-            {
-                return false;
-            }
-            if (rect.Width <= 0 || rect.Height <= 0) return false;
-
-            RectangleF rectAbs = new(rect.X + windowArea.X, rect.Y + windowArea.Y, rect.Width, rect.Height);
-            if (!rectAbs.Intersects(windowArea)) return false;
-
-            return true;
         }
 
         internal static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string>? metadataIdentifiers)

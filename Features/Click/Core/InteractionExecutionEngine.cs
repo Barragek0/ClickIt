@@ -19,10 +19,11 @@ namespace ClickIt.Features.Click.Core
             if (_dependencies.ChestLootSettlement.ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out string bypassDecision))
                 return false;
 
-            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
-                "PostChestLootSettleBlocked",
-                $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecision}",
-                mechanicId);
+            if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                    "PostChestLootSettleBlocked",
+                    $"{context.ChestLootSettleReason} | nearby-bypass:{bypassDecision}",
+                    mechanicId);
             return true;
         }
 
@@ -153,18 +154,20 @@ namespace ClickIt.Features.Click.Core
 
             if (candidates.NextLabel != null)
             {
-                _dependencies.DebugLog($"[ExecuteHidden] NextLabel exists, checking clickability");
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelCheck",
-                    $"label has entity={(TryGetLabelItemOnGround(candidates.NextLabel) != null)} mechanic={candidates.NextLabelMechanicId}", candidates.NextLabelMechanicId);
+                _dependencies.DebugLog("[ExecuteHidden] NextLabel exists, checking clickability");
+                if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelCheck",
+                        $"label has entity={(TryGetLabelItemOnGround(candidates.NextLabel) != null)} mechanic={candidates.NextLabelMechanicId}", candidates.NextLabelMechanicId);
                 Entity? labelEntity = TryGetLabelItemOnGround(candidates.NextLabel);
                 if (labelEntity != null && WalkTowardTargetLabel(candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity))
                     return StopExecution();
             }
             else
             {
-                _dependencies.DebugLog($"[ExecuteHidden] No NextLabel in candidates");
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelNull",
-                    $"labelsInContext={context.AllLabels?.Count ?? 0} settlers={candidates.SettlersOre.HasValue} lostShipment={candidates.LostShipment.HasValue}", null);
+                _dependencies.DebugLog("[ExecuteHidden] No NextLabel in candidates");
+                if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelNull",
+                        $"labelsInContext={context.AllLabels?.Count ?? 0} settlers={candidates.SettlersOre.HasValue} lostShipment={candidates.LostShipment.HasValue}", null);
             }
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
@@ -282,7 +285,9 @@ namespace ClickIt.Features.Click.Core
                             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                                 "BlightBuildWalk", "walkTarget=null — GetPathfindingTargetEntity returned null (entity on screen or no target)", MechanicIds.Blight);
                         }
-                        return false;
+                        // The walk was already performed; report handled so the caller's fallback
+                        // does not issue a second redundant walk click on the same target.
+                        return true;
                     }
 
                 case BlightBuildActionKind.Complete:
@@ -372,27 +377,32 @@ namespace ClickIt.Features.Click.Core
                 return HandleVisibleLabelResolveFailure(context, candidates, nextLabel);
 
 
-            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", candidates.NextLabelMechanicId);
+            if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("ClickPointResolved", $"Resolved click point ({clickPos.X:0.0},{clickPos.Y:0.0})", candidates.NextLabelMechanicId);
 
-            _dependencies.ClickDebugPublisher.PublishLabelClickDebug(
-                "LabelCandidate",
-                candidates.NextLabelMechanicId,
-                nextLabel,
-                clickPos,
-                true,
-                $"Label candidate selected (mechanic: {candidates.NextLabelMechanicId ?? "none"})");
+            if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                _dependencies.ClickDebugPublisher.PublishLabelClickDebug(
+                    "LabelCandidate",
+                    candidates.NextLabelMechanicId,
+                    nextLabel,
+                    clickPos,
+                    true,
+                    $"Label candidate selected (mechanic: {candidates.NextLabelMechanicId ?? "none"})");
 
             bool clicked = _dependencies.LabelInteraction.PerformResolvedLabelInteraction(clickPos, nextLabel, candidates.NextLabelMechanicId);
 
-            _dependencies.ClickDebugPublisher.PublishLabelClickDebug(
-                clicked ? "ClickSuccess" : "ClickFailed",
-                candidates.NextLabelMechanicId,
-                nextLabel,
-                clickPos,
-                clicked,
-                clicked ? $"Click executed ({candidates.NextLabelMechanicId ?? "visible-label"})" : $"Click rejected ({candidates.NextLabelMechanicId ?? "visible-label"})");
+            if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+            {
+                _dependencies.ClickDebugPublisher.PublishLabelClickDebug(
+                    clicked ? "ClickSuccess" : "ClickFailed",
+                    candidates.NextLabelMechanicId,
+                    nextLabel,
+                    clickPos,
+                    clicked,
+                    clicked ? $"Click executed ({candidates.NextLabelMechanicId ?? "visible-label"})" : $"Click rejected ({candidates.NextLabelMechanicId ?? "visible-label"})");
 
-            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(clicked ? "ClickExecuted" : "ClickRejected", clicked ? "Input click executed" : "Input click rejected", candidates.NextLabelMechanicId);
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(clicked ? "ClickExecuted" : "ClickRejected", clicked ? "Input click executed" : "Input click rejected", candidates.NextLabelMechanicId);
+            }
 
             if (clicked)
             {

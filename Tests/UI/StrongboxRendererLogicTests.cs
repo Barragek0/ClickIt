@@ -127,6 +127,109 @@ namespace ClickIt.Tests.UI
             updatedDontClickMetadata.Should().NotContain(metadata => metadata.Contains("Artisan", StringComparison.OrdinalIgnoreCase));
         }
 
+        [TestMethod]
+        public void RenderFromLabels_EnqueuesFrame_ForOnScreenClickableStrongbox()
+        {
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var renderer = new StrongboxRenderer(settings, queue);
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            renderer.RenderFromLabels(
+                [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(50f, 60f, 100f, 40f))],
+                window);
+
+            queue.GetPendingFrameSnapshot().Should().ContainSingle();
+        }
+
+        [TestMethod]
+        public void RenderFromLabels_SkipsStrongboxFullyOffScreen()
+        {
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var renderer = new StrongboxRenderer(settings, queue);
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            renderer.RenderFromLabels(
+                [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(9000f, 9000f, 100f, 40f))],
+                window);
+
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void RenderFromLabels_SkipsOnScreenNonStrongboxLabel()
+        {
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var queue = new DeferredFrameQueue();
+            var renderer = new StrongboxRenderer(settings, queue);
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            renderer.RenderFromLabels(
+                [CreateStrongboxLabel("Metadata/Items/Currency/Orb", new RectangleF(50f, 60f, 100f, 40f))],
+                window);
+
+            queue.GetPendingFrameSnapshot().Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void RenderFromLabels_ThrottlesRescan_UntilScanIntervalElapses()
+        {
+            var settings = new ClickItSettings { StrongboxClickIds = ["arcanist"] };
+            var renderer = new StrongboxRenderer(settings, new DeferredFrameQueue());
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            renderer.RenderFromLabels(
+                [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(50f, 60f, 100f, 40f))],
+                window);
+            ReadCachedStrongboxCount(renderer).Should().Be(1);
+
+            // Within the scan window the changed label set is not re-scanned.
+            renderer.RenderFromLabels([], window);
+            ReadCachedStrongboxCount(renderer).Should().Be(1);
+
+            // Force the window to elapse → the re-scan sees the empty set.
+            ForceStrongboxRescan(renderer);
+            renderer.RenderFromLabels([], window);
+            ReadCachedStrongboxCount(renderer).Should().Be(0);
+        }
+
+        private static LabelOnGround CreateStrongboxLabel(string path, RectangleF rect, string renderName = "Strongbox")
+        {
+            Entity item = EntityProbeFactory.Create(path: path, renderName: renderName);
+            StrongboxProbeLabel label = (StrongboxProbeLabel)RuntimeHelpers.GetUninitializedObject(typeof(StrongboxProbeLabel));
+            label.ItemOnGround = item;
+            label.Label = new StrongboxProbeElement(rect);
+            return label;
+        }
+
+        private static int ReadCachedStrongboxCount(StrongboxRenderer renderer)
+        {
+            object value = typeof(StrongboxRenderer)
+                .GetField("_cachedStrongboxes", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(renderer)!;
+            return ((System.Collections.ICollection)value).Count;
+        }
+
+        private static void ForceStrongboxRescan(StrongboxRenderer renderer)
+            => typeof(StrongboxRenderer)
+                .GetField("_lastStrongboxScanMs", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(renderer, 0L);
+
+        public sealed class StrongboxProbeLabel : LabelOnGround
+        {
+            public new Entity? ItemOnGround { get; set; }
+
+            public new Element? Label { get; set; }
+        }
+
+        public sealed class StrongboxProbeElement(RectangleF clientRect) : Element
+        {
+            public new bool IsValid { get; set; } = true;
+
+            public override RectangleF GetClientRect() => clientRect;
+        }
+
         private static bool InvokeHasMatchingSnapshot(HashSet<string>? currentIds, HashSet<string>? snapshot)
         {
             MethodInfo method = typeof(StrongboxRenderer).GetMethod("HasMatchingSnapshot", BindingFlags.Static | BindingFlags.NonPublic)!;

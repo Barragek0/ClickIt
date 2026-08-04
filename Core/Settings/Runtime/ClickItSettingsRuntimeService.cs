@@ -125,10 +125,21 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceIds.Count)
                 return false;
 
-            string[] current = [.. settings.MechanicPriorityIgnoreDistanceIds.OrderBy(static x => x, ClickItSettings.PriorityComparer)];
-            for (int i = 0; i < current.Length; i++)
+            // The cached snapshot is the sorted form of the settings set; verify containment
+            // directly instead of materializing a fresh ordered copy on the cache-hit path.
+            foreach (string id in settings.MechanicPriorityIgnoreDistanceIds)
             {
-                if (!string.Equals(current[i], snapshot[i], StringComparison.OrdinalIgnoreCase))
+                bool found = false;
+                for (int i = 0; i < snapshot.Length; i++)
+                {
+                    if (string.Equals(id, snapshot[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
                     return false;
             }
 
@@ -141,12 +152,22 @@ namespace ClickIt.Core.Settings.Runtime
             if (snapshot.Length != settings.MechanicPriorityIgnoreDistanceWithinById.Count)
                 return false;
 
-            KeyValuePair<string, int>[] current = [.. settings.MechanicPriorityIgnoreDistanceWithinById.OrderBy(static x => x.Key, ClickItSettings.PriorityComparer)];
-            for (int i = 0; i < current.Length; i++)
+            // The cached snapshot is the sorted form of the settings map; verify containment
+            // directly instead of materializing a fresh ordered copy on the cache-hit path.
+            foreach (KeyValuePair<string, int> entry in settings.MechanicPriorityIgnoreDistanceWithinById)
             {
-                if (!string.Equals(current[i].Key, snapshot[i].Key, StringComparison.OrdinalIgnoreCase))
-                    return false;
-                if (current[i].Value != snapshot[i].Value)
+                bool found = false;
+                for (int i = 0; i < snapshot.Length; i++)
+                {
+                    if (string.Equals(entry.Key, snapshot[i].Key, StringComparison.OrdinalIgnoreCase)
+                        && entry.Value == snapshot[i].Value)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
                     return false;
             }
 

@@ -163,7 +163,8 @@ namespace ClickIt.Features.Click.Selection
 
                 if (!suppressLever && !suppressUltimatum && !fullyOverlapped && !suppressBlightChestTransition)
                 {
-                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelMatch", $"range:{start}-{endExclusive} examined:{examined}");
+                    if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                        _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelMatch", $"range:{start}-{endExclusive} examined:{examined}");
                     return label;
                 }
 
@@ -174,7 +175,8 @@ namespace ClickIt.Features.Click.Selection
                 if (idx < 0)
                 {
                     indexMisses++;
-                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
+                    if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
+                        _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
                     _dependencies.DebugLog($"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} im:{indexMisses}");
                     return null;
                 }

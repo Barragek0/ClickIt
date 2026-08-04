@@ -143,6 +143,25 @@ public class BlightRendererTests
     }
 
     [TestMethod]
+    public void GetPendingNumberTexts_ReturnsFormattedStrings_CachedAcrossCalls()
+    {
+        var renderer = new BlightRenderer(new BlightService(new ClickItSettings()), new ClickItSettings());
+        BlightPlan plan = BuildScenarioPlan();
+
+        IReadOnlyList<string> first = renderer.GetPendingNumberTexts(plan, cursor: 1, SeismicPos);
+        first.Should().Equal("2", "5", "6");
+
+        // Same (plan, cursor, position) returns the cached string list — no per-frame ToString.
+        IReadOnlyList<string> second = renderer.GetPendingNumberTexts(plan, cursor: 1, SeismicPos);
+        ReferenceEquals(first, second).Should().BeTrue("formatted numbers are cached per (plan, cursor)");
+
+        // A new cursor produces a fresh list.
+        IReadOnlyList<string> afterAdvance = renderer.GetPendingNumberTexts(plan, cursor: 3, SeismicPos);
+        afterAdvance.Should().Equal("5", "6");
+        ReferenceEquals(first, afterAdvance).Should().BeFalse("a new cursor produces a fresh list");
+    }
+
+    [TestMethod]
     public void IsCurrentStepAt_ReturnsFalse_ForNullPlanOrDonePlan()
     {
         BlightRenderer.IsCurrentStepAt(plan: null, cursor: 0, ChillingPos).Should().BeFalse();

@@ -12,17 +12,19 @@ public sealed class BlightRenderer
     private const int LaneLineWidth = 8;
 
     private const float TowerDotRadius = 3.5f;
-    private const int TowerDotSegments = 64;
+    private const int TowerDotSegments = 12;
     private const float PumpGridRadius = 8f;
     private const float PumpWorldCircleRadius = 35f;
 
-    private readonly NumVector2[] _halfDiscBuffer = new NumVector2[TowerDotSegments + 1];
+    private readonly NumVector2[] _discBuffer = new NumVector2[TowerDotSegments + 1];
 
     private static readonly IReadOnlyList<int> EmptyPendingNumbers = [];
+    private static readonly IReadOnlyList<string> EmptyPendingStrings = [];
 
     private BlightPlan? _pendingNumbersPlan;
     private int _pendingNumbersCursor = -1;
     private Dictionary<NumVector2, List<int>>? _pendingNumbersByPosition;
+    private Dictionary<NumVector2, List<string>>? _pendingNumberTextsByPosition;
 
     internal BlightRenderer(BlightService blightService, ClickItSettings settings)
     {
@@ -30,40 +32,58 @@ public sealed class BlightRenderer
         _settings = settings;
     }
 
+    private readonly record struct RenderContext(
+        Camera Camera,
+        Size2F WindowSize,
+        bool LargeMapOpen,
+        NumVector2 PlayerGrid,
+        NumVector2 LargeMapCenter,
+        float LargeMapScale);
+
     internal void Render(GameController gameController, Graphics graphics)
     {
         if (!_settings.ClickBlightTowers.Value || !_blightService.IsEncounterActive)
             return;
 
-        bool largeMapOpen = gameController.Game?.IngameState?.IngameUi?.Map?.LargeMap?.IsVisible ?? false;
+        // Resolve camera/window/player/map once per frame — the per-foundation and per-lane
+        // projection code was re-reading all of these for every tower, dot, and lane segment.
+        Camera? camera = gameController.Game?.IngameState?.Camera;
+        if (camera == null)
+            return;
+        Size2F windowSize = gameController.Window.GetWindowRectangleTimeCache.Size;
+        SubMap? largeMap = gameController.Game?.IngameState?.IngameUi?.Map?.LargeMap;
+        RenderContext ctx = new(
+            camera,
+            windowSize,
+            largeMap?.IsVisible ?? false,
+            gameController.Player?.GridPosNum ?? new NumVector2(),
+            largeMap?.MapCenter ?? new NumVector2(),
+            largeMap?.MapScale ?? 1f);
 
         if (_settings.BlightVisualizePaths.Value)
-            DrawBlightLanes(gameController, graphics, largeMapOpen, _blightService);
+            DrawBlightLanes(ctx, graphics, _blightService);
 
         if (_settings.BlightDebugShowLaneLabels.Value)
-            DrawLaneLabels(gameController, graphics);
+            DrawLaneLabels(ctx, graphics);
 
         if (_settings.BlightVisualizeTowers.Value)
         {
             bool showUpgrades = _settings.BlightVisualizeUpgrades.Value;
             bool showRanges = _settings.BlightVisualizeTowerRanges.Value;
 
-            DrawTowerDots(gameController, graphics, largeMapOpen, showUpgrades);
+            DrawTowerDots(ctx, graphics, showUpgrades);
 
             if (showRanges)
-                DrawTowerRanges(gameController, graphics, largeMapOpen);
+                DrawTowerRanges(ctx, graphics);
         }
 
-        DrawPump(gameController, graphics, largeMapOpen);
+        DrawPump(ctx, graphics);
     }
 
-    private void DrawTowerDots(GameController gameController, Graphics graphics, bool largeMapOpen, bool showUpgrades)
+    private void DrawTowerDots(RenderContext ctx, Graphics graphics, bool showUpgrades)
     {
         IReadOnlyList<BlightCachedTower> ordered = _blightService.GetFoundationsInPriorityOrder();
         IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
-        Camera? camera = gameController.Game?.IngameState?.Camera;
-        if (camera == null)
-            return;
 
         BlightPlan? plan = _blightService.CurrentPlan;
         int cursor = _blightService.CurrentPlanCursor;
@@ -74,14 +94,15 @@ public sealed class BlightRenderer
             bool hasTower = ft.UpgradeLevel > 0;
             bool isCurrentStep = IsCurrentStepAt(plan, cursor, ft.WorldPosition);
             IReadOnlyList<int> pendingNumbers = GetPendingPlanStepNumbers(plan, cursor, ft.WorldPosition);
+            IReadOnlyList<string> pendingNumberTexts = GetPendingNumberTexts(plan, cursor, ft.WorldPosition);
 
             if (!ShouldRenderTowerDot(isCurrentStep, pendingNumbers.Count))
                 continue;
 
-            if (largeMapOpen)
+            if (ctx.LargeMapOpen)
             {
-                NumVector2 mapCenter = ProjectGridToLargeMap(gameController, ft.WorldPosition);
-                float mapRadius = TowerDotRadius * GetLargeMapScale(gameController);
+                NumVector2 mapCenter = ProjectGridToLargeMap(ctx.PlayerGrid, ctx.LargeMapCenter, ctx.LargeMapScale, ft.WorldPosition);
+                float mapRadius = TowerDotRadius * ctx.LargeMapScale;
                 DrawTowerDot(graphics, mapCenter, mapRadius, ft, hasTower, strategy);
 
                 if (isCurrentStep)
@@ -89,17 +110,17 @@ public sealed class BlightRenderer
             }
 
             // In-world: project WORLD (PosNum) with a screen-space radius; restored foundations have no WorldPos3 and draw only on the map.
-            if (ft.WorldPos3 is { } worldPos && IsWorldPosOnScreen(gameController, worldPos))
+            if (ft.WorldPos3 is { } worldPos && IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, worldPos))
             {
-                NumVector2 screenCenter = camera.WorldToScreen(worldPos);
-                float screenRadius = ScreenRadiusForWorldDot(camera, worldPos, GridToWorldRadius(TowerDotRadius));
+                NumVector2 screenCenter = ctx.Camera.WorldToScreen(worldPos);
+                float screenRadius = ScreenRadiusForWorldDot(ctx.Camera, worldPos, GridToWorldRadius(TowerDotRadius));
                 DrawTowerDot(graphics, screenCenter, screenRadius, ft, hasTower, strategy);
 
                 if (isCurrentStep)
                     DrawScreenRing(graphics, screenCenter, screenRadius + CurrentStepRingPad, CurrentStepRingThickness, CurrentStepRingColor);
 
                 if (showUpgrades && pendingNumbers.Count > 0)
-                    DrawStepNumbers(graphics, pendingNumbers, isCurrentStep, screenCenter);
+                    DrawStepNumbers(graphics, pendingNumberTexts, isCurrentStep, screenCenter);
             }
         }
     }
@@ -118,14 +139,12 @@ public sealed class BlightRenderer
         DrawScreenDisc(graphics, center, radius, dotColor);
     }
 
-    private void DrawScreenHalfDisc(Graphics graphics, NumVector2 center, float radius, bool topHalf, Color color)
+    private void DrawScreenDisc(Graphics graphics, NumVector2 center, float radius, Color color)
     {
-        NumVector2[] buffer = _halfDiscBuffer;
+        NumVector2[] buffer = _discBuffer;
         for (int i = 0; i <= TowerDotSegments; i++)
         {
-            float a = topHalf
-                ? MathF.PI + (MathF.PI * i / TowerDotSegments)
-                : MathF.PI * i / TowerDotSegments;
+            float a = MathF.PI * 2f * i / TowerDotSegments;
             buffer[i] = new NumVector2(
                 center.X + (MathF.Cos(a) * radius),
                 center.Y + (MathF.Sin(a) * radius));
@@ -135,7 +154,7 @@ public sealed class BlightRenderer
 
     private static void DrawScreenRing(Graphics graphics, NumVector2 center, float radius, int thickness, Color color)
     {
-        const int segments = 48;
+        const int segments = 24;
         for (int i = 0; i < segments; i++)
         {
             float a0 = MathF.PI * 2f * i / segments;
@@ -148,12 +167,6 @@ public sealed class BlightRenderer
         }
     }
 
-    private void DrawScreenDisc(Graphics graphics, NumVector2 center, float radius, Color color)
-    {
-        DrawScreenHalfDisc(graphics, center, radius, topHalf: true, color);
-        DrawScreenHalfDisc(graphics, center, radius, topHalf: false, color);
-    }
-
     private static float ScreenRadiusForWorldDot(Camera camera, System.Numerics.Vector3 worldCenter, float worldRadius)
     {
         NumVector2 c = camera.WorldToScreen(worldCenter);
@@ -161,9 +174,6 @@ public sealed class BlightRenderer
         NumVector2 py = camera.WorldToScreen(new System.Numerics.Vector3(worldCenter.X, worldCenter.Y + worldRadius, worldCenter.Z));
         return ((px - c).Length() + (py - c).Length()) * 0.5f;
     }
-
-    private static float GetLargeMapScale(GameController gameController)
-        => gameController.Game?.IngameState?.IngameUi?.Map?.LargeMap?.MapScale ?? 1f;
 
     private static readonly Color CurrentStepColor = new(0, 255, 0, 255);
 
@@ -179,13 +189,8 @@ public sealed class BlightRenderer
         graphics.DrawText(text, pos, color, align);
     }
 
-    private static NumVector2 ProjectGridToLargeMap(GameController gameController, NumVector2 gridPos)
+    private static NumVector2 ProjectGridToLargeMap(NumVector2 playerGrid, NumVector2 mapCenter, float mapScale, NumVector2 gridPos)
     {
-        SubMap? largeMap = gameController.Game?.IngameState?.IngameUi?.Map?.LargeMap;
-        NumVector2 playerGrid = gameController.Player?.GridPosNum ?? gridPos;
-        NumVector2 mapCenter = largeMap?.MapCenter ?? new NumVector2();
-        float mapScale = largeMap?.MapScale ?? 1f;
-
         float dx = gridPos.X - playerGrid.X;
         float dy = gridPos.Y - playerGrid.Y;
 
@@ -194,7 +199,7 @@ public sealed class BlightRenderer
             mapCenter.Y + (mapScale * (-(dx + dy) * SubMap.CameraAngleSin)));
     }
 
-    private static void DrawBlightLanes(GameController gameController, Graphics graphics, bool largeMapOpen, BlightService blight)
+    private static void DrawBlightLanes(RenderContext ctx, Graphics graphics, BlightService blight)
     {
         (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = blight.TryGetRenderBundle();
         if (bundle == null || bundle.Value.Pathways.Length < 2)
@@ -215,15 +220,15 @@ public sealed class BlightRenderer
             NumVector2 b = pathways[s];
             Color laneColor = LaneColorFor(coverage[s], strategy);
 
-            if (largeMapOpen)
+            if (ctx.LargeMapOpen)
                 graphics.DrawLineOnLargeMap(a, b, LaneLineWidth, laneColor);
 
-            if (IsGridPosOnScreen(gameController, a))
+            if (IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a))
                 graphics.DrawLineInWorld(a, b, LaneLineWidth, laneColor);
         }
     }
 
-    private void DrawLaneLabels(GameController gameController, Graphics graphics)
+    private void DrawLaneLabels(RenderContext ctx, Graphics graphics)
     {
         (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = _blightService.TryGetRenderBundle();
         if (bundle == null || bundle.Value.Coverage.Length == 0)
@@ -251,9 +256,6 @@ public sealed class BlightRenderer
 
         IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
         IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(strategy);
-        Camera? camera = gameController.Game?.IngameState?.Camera;
-        if (camera == null)
-            return;
 
         float gridToWorld = 1f / PoeMapExtension.WorldToGridConversion;
         for (int s = 0; s < coverage.Length; s++)
@@ -262,9 +264,9 @@ public sealed class BlightRenderer
             if (label == null)
                 continue;
             NumVector2 grid = coverage[s].Midpoint;
-            if (!IsGridPosOnScreen(gameController, grid))
+            if (!IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, grid))
                 continue;
-            NumVector2 screen = camera.WorldToScreen(new System.Numerics.Vector3(
+            NumVector2 screen = ctx.Camera.WorldToScreen(new System.Numerics.Vector3(
                 grid.X * gridToWorld, grid.Y * gridToWorld, 0f));
             LaneCoverageResult seg = coverage[s];
             DrawTextWithShadow(graphics, $"{label} {BlightCoverageFlags.Compact(seg, coverageTypes)}", screen,
@@ -280,7 +282,7 @@ public sealed class BlightRenderer
             LabelLanes(lane.Children[c], labelFor);
     }
 
-    private void DrawTowerRanges(GameController gameController, Graphics graphics, bool largeMapOpen)
+    private void DrawTowerRanges(RenderContext ctx, Graphics graphics)
     {
         IReadOnlyList<(Entity Entity, string TowerId)> towers = _blightService.TowerEntities;
         IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
@@ -295,24 +297,24 @@ public sealed class BlightRenderer
                 ? strategy.GetTowerRangeColor(mapped.Value)
                 : Color.Gray;
 
-            if (largeMapOpen)
+            if (ctx.LargeMapOpen)
                 graphics.DrawCircleOnLargeMap(entity.GridPosNum, false, radius, rangeColor, 4);
 
-            if (IsWorldPosOnScreen(gameController, entity.PosNum))
-                graphics.DrawCircleInWorld(entity.PosNum, GridToWorldRadius(radius), rangeColor, 2, 40, false);
+            if (IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, entity.PosNum))
+                graphics.DrawCircleInWorld(entity.PosNum, GridToWorldRadius(radius), rangeColor, 2, 24, false);
         }
     }
 
-    private void DrawPump(GameController gameController, Graphics graphics, bool largeMapOpen)
+    private void DrawPump(RenderContext ctx, Graphics graphics)
     {
         Entity? pump = _blightService.PumpEntity;
         if (pump == null) return;
 
-        if (largeMapOpen)
+        if (ctx.LargeMapOpen)
             graphics.DrawFilledCircleOnLargeMap(pump.GridPosNum, false, PumpGridRadius, PumpColor, 16);
 
-        if (IsWorldPosOnScreen(gameController, pump.PosNum))
-            graphics.DrawCircleInWorld(pump.PosNum, GridToWorldRadius(PumpWorldCircleRadius), PumpColor, 3, 40, false);
+        if (IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, pump.PosNum))
+            graphics.DrawCircleInWorld(pump.PosNum, GridToWorldRadius(PumpWorldCircleRadius), PumpColor, 3, 24, false);
     }
 
     internal static IReadOnlyList<int> PendingPlanStepNumbers(
@@ -340,7 +342,7 @@ public sealed class BlightRenderer
         {
             _pendingNumbersPlan = plan;
             _pendingNumbersCursor = cursor;
-            _pendingNumbersByPosition = BuildPendingNumbersMap(plan, cursor);
+            RebuildPendingNumberCaches(plan, cursor);
         }
 
         if (_pendingNumbersByPosition!.TryGetValue(position, out List<int>? numbers))
@@ -355,17 +357,47 @@ public sealed class BlightRenderer
         return computed;
     }
 
-    private static Dictionary<NumVector2, List<int>> BuildPendingNumbersMap(BlightPlan plan, int cursor)
+    // Pre-formatted step-number strings so the per-frame text draw never allocates ToString.
+    internal IReadOnlyList<string> GetPendingNumberTexts(BlightPlan? plan, int cursor, NumVector2 position)
     {
-        Dictionary<NumVector2, List<int>> map = [];
+        if (plan == null || plan.Steps.Count == 0)
+            return EmptyPendingStrings;
+
+        if (!ReferenceEquals(_pendingNumbersPlan, plan) || _pendingNumbersCursor != cursor)
+        {
+            _pendingNumbersPlan = plan;
+            _pendingNumbersCursor = cursor;
+            RebuildPendingNumberCaches(plan, cursor);
+        }
+
+        if (_pendingNumberTextsByPosition!.TryGetValue(position, out List<string>? texts))
+            return texts;
+
+        List<string> computed = [];
+        foreach (int number in PendingPlanStepNumbers(plan, cursor, position))
+            computed.Add(number.ToString());
+        _pendingNumberTextsByPosition[position] = computed;
+        return computed;
+    }
+
+    private void RebuildPendingNumberCaches(BlightPlan plan, int cursor)
+    {
+        Dictionary<NumVector2, List<int>> numbers = [];
+        Dictionary<NumVector2, List<string>> texts = [];
         for (int i = cursor; i < plan.Steps.Count; i++)
         {
             BlightPlanStep step = plan.Steps[i];
-            if (!map.TryGetValue(step.FoundationPosition, out List<int>? numbers))
-                map[step.FoundationPosition] = numbers = [];
-            numbers.Add(i + 1);
+            if (!numbers.TryGetValue(step.FoundationPosition, out List<int>? numberList))
+            {
+                numberList = [];
+                numbers[step.FoundationPosition] = numberList;
+                texts[step.FoundationPosition] = [];
+            }
+            numberList.Add(i + 1);
+            texts[step.FoundationPosition].Add((i + 1).ToString());
         }
-        return map;
+        _pendingNumbersByPosition = numbers;
+        _pendingNumberTextsByPosition = texts;
     }
 
     internal static bool IsCurrentStepAt(BlightPlan? plan, int cursor, NumVector2 position)
@@ -378,7 +410,7 @@ public sealed class BlightRenderer
 
     private static void DrawStepNumbers(
         Graphics graphics,
-        IReadOnlyList<int> numbers,
+        IReadOnlyList<string> numbers,
         bool isCurrentStep,
         NumVector2 center)
     {
@@ -392,7 +424,7 @@ public sealed class BlightRenderer
             float y = startY + (i * lineHeight);
             bool current = isCurrentStep && i == 0;
             Color numberColor = current ? CurrentStepColor : Color.White;
-            DrawTextWithShadow(graphics, numbers[i].ToString(), new NumVector2(center.X, y), numberColor, FontAlign.Center);
+            DrawTextWithShadow(graphics, numbers[i], new NumVector2(center.X, y), numberColor, FontAlign.Center);
             if (current)
                 DrawTextWithShadow(graphics, ">", new NumVector2(center.X - markerOffset, y), CurrentStepColor, FontAlign.Center);
         }
@@ -400,25 +432,23 @@ public sealed class BlightRenderer
 
     private static float GridToWorldRadius(float gridRadius) => gridRadius / PoeMapExtension.WorldToGridConversion;
 
-    private static bool IsGridPosOnScreen(GameController gameController, NumVector2 gridPos)
+    private const float OnScreenAllowance = 24f;
+
+    private static bool IsGridPosOnScreen(Camera camera, Size2F windowSize, NumVector2 gridPos)
     {
         float scale = 1f / PoeMapExtension.WorldToGridConversion;
-        return IsWorldPosOnScreen(gameController, new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
+        return IsWorldPosOnScreen(camera, windowSize, new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
     }
 
-    private static bool IsWorldPosOnScreen(GameController gameController, System.Numerics.Vector3 worldPos)
+    private static bool IsWorldPosOnScreen(Camera camera, Size2F windowSize, System.Numerics.Vector3 worldPos)
     {
         try
         {
-            Camera camera = gameController.Game.IngameState.Camera;
             NumVector2 screenPos = camera.WorldToScreen(worldPos);
-            Size2F windowSize = gameController.Window.GetWindowRectangleTimeCache.Size;
-
-            const float allowance = 200f;
-            return screenPos.X >= -allowance
-                && screenPos.X <= windowSize.Width + allowance
-                && screenPos.Y >= -allowance
-                && screenPos.Y <= windowSize.Height + allowance;
+            return screenPos.X >= -OnScreenAllowance
+                && screenPos.X <= windowSize.Width + OnScreenAllowance
+                && screenPos.Y >= -OnScreenAllowance
+                && screenPos.Y <= windowSize.Height + OnScreenAllowance;
         }
         catch
         {

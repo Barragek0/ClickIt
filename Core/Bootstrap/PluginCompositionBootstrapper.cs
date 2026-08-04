@@ -150,14 +150,15 @@ namespace ClickIt.Core.Bootstrap
 
                         // If the state machine wants to click at a position that is
                         // not in a clickable area (e.g. behind the minimap or off-screen),
-                        // abort the click and reset to Idle so pathfinding can walk closer.
+                        // skip the click without resetting progress — resetting to Idle would
+                        // restart the whole walk->stop cycle every time a transient position
+                        // (e.g. the player's feet while moving) lands under a UI element.
                         if (action is { Kind: BlightBuildActionKind.ClickPosition }
                             && !clickAutomationPort.PointIsInClickableArea(
                                 action.ClickPosition, "blight"))
                         {
-                            services.BlightService.ResetInteractionState();
                             return new BlightBuildAction(BlightBuildActionKind.None,
-                                DebugMessage: "Click position not clickable - reset to Idle");
+                                DebugMessage: "Click position not clickable - waiting");
                         }
 
                         return action;

@@ -734,6 +734,51 @@ namespace ClickIt.Tests.Features.Click
                 .Should().Be(new Vector2(1820f, 980f));
         }
 
+        [TestMethod]
+        public void ResolveSafeClickAlongPath_ReturnsClickablePointTowardPlayer_WhenAllPointsClickable()
+        {
+            Vector2 target = new(1303f, 199f);
+
+            Vector2 result = OffscreenPathingCoordinator.ResolveSafeClickAlongPath(
+                target,
+                new Size2F(1920f, 1080f),
+                static _ => true);
+
+            result.X.Should().BeLessThan(target.X);
+            result.Y.Should().BeGreaterThan(target.Y);
+            (result - target).Length().Should().BeApproximately(90f, 1f);
+        }
+
+        [TestMethod]
+        public void ResolveSafeClickAlongPath_StepsFurtherUntilPointIsClickable()
+        {
+            Vector2 target = new(1303f, 199f);
+
+            // The first ~150px toward the player are blocked (e.g. buff bar); the walk must
+            // keep stepping back along the path until it finds a clickable point.
+            Vector2 result = OffscreenPathingCoordinator.ResolveSafeClickAlongPath(
+                target,
+                new Size2F(1920f, 1080f),
+                point => (point - target).Length() >= 200f);
+
+            result.X.Should().BeLessThan(target.X);
+            result.Y.Should().BeGreaterThan(target.Y);
+            (result - target).Length().Should().BeGreaterThanOrEqualTo(200f);
+        }
+
+        [TestMethod]
+        public void ResolveSafeClickAlongPath_ReturnsTarget_WhenTargetIsAtWindowCenter()
+        {
+            Vector2 target = new(960f, 540f);
+
+            Vector2 result = OffscreenPathingCoordinator.ResolveSafeClickAlongPath(
+                target,
+                new Size2F(1920f, 1080f),
+                static _ => false);
+
+            result.Should().Be(target);
+        }
+
         private static OffscreenPathingCoordinator CreateCoordinator(
             ClickRuntimeState runtimeState,
             ClickItSettings? settings = null,

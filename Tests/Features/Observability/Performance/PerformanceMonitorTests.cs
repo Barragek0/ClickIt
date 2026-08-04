@@ -116,6 +116,29 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void RenderSectionTiming_HarvestAndBlight_FlowThroughStoreAndSnapshot()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordRenderSectionTiming(RenderSection.HarvestOverlay, 3.2);
+            monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 5.4);
+
+            (double LastMs, double AverageMs, double MaxMs, long SampleCount) harvestStats = monitor.GetRenderSectionStats(RenderSection.HarvestOverlay);
+            (double LastMs, double AverageMs, double MaxMs, long SampleCount) blightStats = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+
+            harvestStats.LastMs.Should().Be(3.2);
+            harvestStats.SampleCount.Should().Be(1);
+            blightStats.LastMs.Should().Be(5.4);
+            blightStats.SampleCount.Should().Be(1);
+
+            snapshot.GetRenderSection(RenderSection.HarvestOverlay).LastMs.Should().Be(3.2);
+            snapshot.GetRenderSection(RenderSection.HarvestOverlay).SampleCount.Should().Be(1);
+            snapshot.GetRenderSection(RenderSection.BlightOverlay).LastMs.Should().Be(5.4);
+            snapshot.GetRenderSection(RenderSection.BlightOverlay).SampleCount.Should().Be(1);
+        }
+
+        [TestMethod]
         public void ShutdownForHotReload_ClearsRecordedMetrics()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());

@@ -42,6 +42,16 @@ namespace ClickIt.Features.Observability.Performance
         private double _maxFrameFlushMs;
         private long _frameFlushSamples;
 
+        private double _lastHarvestOverlayMs;
+        private double _avgHarvestOverlayMs;
+        private double _maxHarvestOverlayMs;
+        private long _harvestOverlaySamples;
+
+        private double _lastBlightOverlayMs;
+        private double _avgBlightOverlayMs;
+        private double _maxBlightOverlayMs;
+        private long _blightOverlaySamples;
+
         internal void Record(RenderSection section, double ms)
         {
             switch (section)
@@ -70,6 +80,12 @@ namespace ClickIt.Features.Observability.Performance
                 case RenderSection.FrameFlush:
                     RecordSample(ref _lastFrameFlushMs, ref _avgFrameFlushMs, ref _maxFrameFlushMs, ref _frameFlushSamples, ms);
                     break;
+                case RenderSection.HarvestOverlay:
+                    RecordSample(ref _lastHarvestOverlayMs, ref _avgHarvestOverlayMs, ref _maxHarvestOverlayMs, ref _harvestOverlaySamples, ms);
+                    break;
+                case RenderSection.BlightOverlay:
+                    RecordSample(ref _lastBlightOverlayMs, ref _avgBlightOverlayMs, ref _maxBlightOverlayMs, ref _blightOverlaySamples, ms);
+                    break;
                 case RenderSection.Unknown:
                 default:
                     break;
@@ -88,6 +104,8 @@ namespace ClickIt.Features.Observability.Performance
                 RenderSection.PathfindingOverlay => (_lastPathfindingOverlayMs, _avgPathfindingOverlayMs, _maxPathfindingOverlayMs, _pathfindingOverlaySamples),
                 RenderSection.TextFlush => (_lastTextFlushMs, _avgTextFlushMs, _maxTextFlushMs, _textFlushSamples),
                 RenderSection.FrameFlush => (_lastFrameFlushMs, _avgFrameFlushMs, _maxFrameFlushMs, _frameFlushSamples),
+                RenderSection.HarvestOverlay => (_lastHarvestOverlayMs, _avgHarvestOverlayMs, _maxHarvestOverlayMs, _harvestOverlaySamples),
+                RenderSection.BlightOverlay => (_lastBlightOverlayMs, _avgBlightOverlayMs, _maxBlightOverlayMs, _blightOverlaySamples),
                 RenderSection.Unknown => (0, 0, 0, 0),
                 _ => (0, 0, 0, 0)
             };

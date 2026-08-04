@@ -8,14 +8,48 @@ namespace ClickIt.Features.Click.Application
     internal sealed class UltimatumPreviewService(UltimatumPreviewServiceDependencies dependencies)
     {
         private readonly UltimatumPreviewServiceDependencies _dependencies = dependencies;
+        private IReadOnlyList<LabelOnGround>? _groundPreviewLabelsSource;
+        private List<UltimatumPanelOptionPreview>? _cachedGroundPreviews;
+        private bool _cachedGroundPreviewFound;
 
         public bool TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+            => TryGetOptionPreview(ResolveWindowArea(), out previews);
+
+        internal bool TryGetOptionPreview(RectangleF windowArea, out List<UltimatumPanelOptionPreview> previews)
         {
             if (TryGetPanelOptionPreview(out previews) && previews.Count > 0)
                 return true;
 
-            return TryGetGroundLabelOptionPreview(out previews);
+            return TryGetGroundLabelOptionPreviewCached(windowArea, out previews);
         }
+
+        private bool TryGetGroundLabelOptionPreviewCached(RectangleF windowArea, out List<UltimatumPanelOptionPreview> previews)
+        {
+            // The 50ms label cache returns a fresh List reference when its window expires, so
+            // re-scanning only on a reference change keeps the ground-label scan off the per-frame
+            // hot path (no separate timer).
+            IReadOnlyList<LabelOnGround>? labels = _dependencies.Automation.CachedLabels?.Value;
+            if (!ReferenceEquals(labels, _groundPreviewLabelsSource))
+            {
+                _groundPreviewLabelsSource = labels;
+                _cachedGroundPreviewFound = TryGetGroundLabelOptionPreview(windowArea, out List<UltimatumPanelOptionPreview> freshPreviews);
+                _cachedGroundPreviews = freshPreviews;
+            }
+
+            if (!_cachedGroundPreviewFound)
+            {
+                previews = [];
+                return false;
+            }
+
+            previews = _cachedGroundPreviews!;
+            return true;
+        }
+
+        private RectangleF ResolveWindowArea()
+            => _dependencies.Automation.GameController?.Window is { } window
+                ? window.GetWindowRectangleTimeCache
+                : RectangleF.Empty;
 
         private bool TryGetPanelOptionPreview(out List<UltimatumPanelOptionPreview> previews)
         {
@@ -74,10 +108,10 @@ namespace ClickIt.Features.Click.Application
             return previews.Count > 0;
         }
 
-        private bool TryGetGroundLabelOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+        private bool TryGetGroundLabelOptionPreview(RectangleF windowArea, out List<UltimatumPanelOptionPreview> previews)
         {
             previews = [];
-            if (!TryGetActiveGroundLabel(out LabelOnGround? ultimatumLabel) || ultimatumLabel == null)
+            if (!TryGetActiveGroundLabel(windowArea, out LabelOnGround? ultimatumLabel) || ultimatumLabel == null)
                 return false;
 
             List<(Element OptionElement, string ModifierName)> options = UltimatumUiTreeResolver.GetUltimatumOptions(ultimatumLabel);
@@ -117,7 +151,7 @@ namespace ClickIt.Features.Click.Application
             return previews.Count > 0;
         }
 
-        private bool TryGetActiveGroundLabel(out LabelOnGround? ultimatumLabel)
+        private bool TryGetActiveGroundLabel(RectangleF windowArea, out LabelOnGround? ultimatumLabel)
         {
             ultimatumLabel = null;
 
@@ -130,9 +164,9 @@ namespace ClickIt.Features.Click.Application
                 LabelOnGround? label = labels[i];
                 if (label == null)
                     continue;
-                if (!UltimatumLabelMath.IsUltimatumLabel(label))
+                if (!LabelGeometry.TryGetLabelRectOnScreen(label, windowArea, out _))
                     continue;
-                if (!UltimatumLabelMath.IsLabelElementValid(label))
+                if (!UltimatumLabelMath.IsUltimatumLabel(label))
                     continue;
 
                 ultimatumLabel = label;

@@ -40,10 +40,16 @@ namespace ClickIt.Features.Pathfinding.Runtime
                 LastGoalResolutionNote: _lastGoalResolutionNote));
 
         internal IReadOnlyList<Vector2> GetLatestScreenPath()
-            => ReadState(() => _lastScreenPath);
+        {
+            lock (_stateLock)
+                return _lastScreenPath;
+        }
 
         internal IReadOnlyList<PathfindingService.GridPoint> GetLatestGridPath()
-            => ReadState(() => _lastGridPath);
+        {
+            lock (_stateLock)
+                return _lastGridPath;
+        }
 
         internal OffscreenMovementDebugSnapshot GetLatestOffscreenMovementDebug()
             => ReadState(() => _lastOffscreenMovementDebug);

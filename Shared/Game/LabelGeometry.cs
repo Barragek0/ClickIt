@@ -27,6 +27,28 @@ namespace ClickIt.Shared.Game
             return true;
         }
 
+        internal static bool TryGetLabelRectOnScreen(LabelOnGround? label, RectangleF windowArea, out RectangleF rect)
+        {
+            if (!TryGetLabelRect(label, out RectangleF labelRect))
+            {
+                rect = default;
+                return false;
+            }
+
+            if (windowArea.Width > 0 && windowArea.Height > 0)
+            {
+                RectangleF rectAbs = new(labelRect.X + windowArea.X, labelRect.Y + windowArea.Y, labelRect.Width, labelRect.Height);
+                if (!rectAbs.Intersects(windowArea))
+                {
+                    rect = default;
+                    return false;
+                }
+            }
+
+            rect = labelRect;
+            return true;
+        }
+
         internal static void SortByDistance<T>(List<T> items, Func<T, float> getDistance)
         {
             ArgumentNullException.ThrowIfNull(items);

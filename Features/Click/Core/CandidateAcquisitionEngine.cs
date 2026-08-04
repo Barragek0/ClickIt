@@ -7,15 +7,17 @@ namespace ClickIt.Features.Click.Core
         public ClickCandidates Collect(ClickTickContext context)
         {
             int allLabelsCount = context.AllLabels?.Count ?? 0;
+            bool captureClickDebug = _dependencies.ClickDebugPublisher.ShouldCaptureClickDebug();
             string labelSourceSummary = _dependencies.ShouldCaptureClickDebug()
                 ? _dependencies.LabelInteraction.BuildLabelSourceDebugSummary(context.AllLabels)
-                : $"labelsInCache:{allLabelsCount}";
+                : string.Empty;
 
             if (!context.GroundItemsVisible)
             {
                 VisibleMechanicSelectionSnapshot hiddenFallbackSelection = _dependencies.VisibleMechanics.GetHiddenFallbackSelectionSnapshot();
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden",
-                    $"{labelSourceSummary} | hiddenFallback settlers={hiddenFallbackSelection.HasSettlers} lostShipment={hiddenFallbackSelection.HasLostShipment}", null);
+                if (captureClickDebug)
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden",
+                        $"{labelSourceSummary} | hiddenFallback settlers={hiddenFallbackSelection.HasSettlers} lostShipment={hiddenFallbackSelection.HasLostShipment}", null);
 
                 LabelOnGround? hiddenLabel = _dependencies.LabelSelection.ResolveNextLabelCandidate(context.AllLabels);
                 string? hiddenLabelMechanicId = hiddenLabel != null
@@ -23,17 +25,22 @@ namespace ClickIt.Features.Click.Core
                     : null;
 
                 if (hiddenLabel != null)
-                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelFound",
-                        $"{labelSourceSummary} | mechanic={hiddenLabelMechanicId} entity={hiddenLabel.ItemOnGround?.Path}", hiddenLabelMechanicId);
-                else
+                {
+                    if (captureClickDebug)
+                        _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelFound",
+                            $"{labelSourceSummary} | mechanic={hiddenLabelMechanicId} entity={hiddenLabel.ItemOnGround?.Path}", hiddenLabelMechanicId);
+                }
+                else if (captureClickDebug)
+                {
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HiddenLabelNull",
                         $"{labelSourceSummary} | ResolveNextLabelCandidate returned null despite {allLabelsCount} labels in context", null);
+                }
 
                 return new ClickCandidates(hiddenFallbackSelection.LostShipment, hiddenFallbackSelection.Settlers, hiddenLabel, hiddenLabelMechanicId);
             }
 
             VisibleMechanicSelectionSnapshot visibleMechanicSelection = _dependencies.VisibleMechanics.GetVisibleMechanicSelectionSnapshotForLabels(context.AllLabels);
-            if (_dependencies.ShouldCaptureClickDebug())
+            if (captureClickDebug)
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", labelSourceSummary, null);
 
 
@@ -43,11 +50,16 @@ namespace ClickIt.Features.Click.Core
                 : null;
 
             if (nextLabel != null)
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleLabelFound",
-                    $"{labelSourceSummary} | mechanic={nextLabelMechanicId} entity={nextLabel.ItemOnGround?.Path}", nextLabelMechanicId);
-            else
+            {
+                if (captureClickDebug)
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleLabelFound",
+                        $"{labelSourceSummary} | mechanic={nextLabelMechanicId} entity={nextLabel.ItemOnGround?.Path}", nextLabelMechanicId);
+            }
+            else if (captureClickDebug)
+            {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("VisibleLabelNull",
                     $"{labelSourceSummary} | ResolveNextLabelCandidate returned null", null);
+            }
 
             nextLabelMechanicId = OffscreenPathingMath.ResolveLabelMechanicIdForVisibleCandidateComparison(
                 nextLabelMechanicId,

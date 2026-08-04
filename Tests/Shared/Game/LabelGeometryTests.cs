@@ -123,5 +123,70 @@ namespace ClickIt.Tests.Shared.Game
                 ? distance
                 : float.MaxValue;
         }
+
+        [TestMethod]
+        public void TryGetLabelRectOnScreen_ReturnsTrue_WhenLabelRectIntersectsWindow()
+        {
+            var label = new ProbeOnGroundLabel
+            {
+                Label = new ProbeLabelElement(new RectangleF(50f, 60f, 200f, 30f))
+            };
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            bool onScreen = LabelGeometry.TryGetLabelRectOnScreen(label, window, out RectangleF rect);
+
+            onScreen.Should().BeTrue();
+            rect.Should().Be(new RectangleF(50f, 60f, 200f, 30f));
+        }
+
+        [TestMethod]
+        public void TryGetLabelRectOnScreen_ReturnsFalse_WhenLabelRectIsFullyOffScreen()
+        {
+            var label = new ProbeOnGroundLabel
+            {
+                Label = new ProbeLabelElement(new RectangleF(9000f, 9000f, 200f, 30f))
+            };
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            LabelGeometry.TryGetLabelRectOnScreen(label, window, out _).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryGetLabelRectOnScreen_ReturnsTrue_WhenWindowAreaIsEmpty_DisablesGate()
+        {
+            var label = new ProbeOnGroundLabel
+            {
+                Label = new ProbeLabelElement(new RectangleF(9000f, 9000f, 200f, 30f))
+            };
+
+            bool onScreen = LabelGeometry.TryGetLabelRectOnScreen(label, RectangleF.Empty, out RectangleF rect);
+
+            onScreen.Should().BeTrue();
+            rect.Should().Be(new RectangleF(9000f, 9000f, 200f, 30f));
+        }
+
+        [TestMethod]
+        public void TryGetLabelRectOnScreen_ReturnsFalse_WhenLabelHasNoUsableRect()
+        {
+            var label = new ProbeOnGroundLabel
+            {
+                Label = new ProbeLabelElement(RectangleF.Empty)
+            };
+            RectangleF window = new(100f, 100f, 1280f, 720f);
+
+            LabelGeometry.TryGetLabelRectOnScreen(label, window, out _).Should().BeFalse();
+        }
+
+        public sealed class ProbeLabelElement(RectangleF clientRect) : Element
+        {
+            public new bool IsValid { get; set; } = true;
+
+            public override RectangleF GetClientRect() => clientRect;
+        }
+
+        public sealed class ProbeOnGroundLabel : LabelOnGround
+        {
+            public new Element? Label { get; set; }
+        }
     }
 }

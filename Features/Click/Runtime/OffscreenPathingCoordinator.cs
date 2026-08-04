@@ -92,7 +92,7 @@ namespace ClickIt.Features.Click.Runtime
 
             PublishOffscreenMovementDebug(context.Target, context.TargetPath, builtPath, resolvedFromPath, true, targetScreen, walkClick, "BeforeClick", movementSkillDebug);
 
-            Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick);
+            Vector2 clickPos = ResolveBlightIconSafeClickPosition(walkClick, targetScreen, context.TargetPath);
             bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
             AddPathfindingStage(clicked
                 ? $"Walk: click executed ({clickPos.X:F0},{clickPos.Y:F0})"
@@ -101,9 +101,11 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         // Pathfinding clicks must never land on a blight tower's build/upgrade icon (that would
-        // accidentally build or upgrade a tower). When the resolved click would hit one, offset the
-        // click toward the screen center so pathfinding continues safely.
-        private Vector2 ResolveBlightIconSafeClickPosition(Vector2 walkClick)
+        // accidentally build or upgrade a tower). When the resolved click would hit one, walk the
+        // click back along the player→target line — not toward the window center — and keep stepping
+        // until the point is clickable, so a fixed center-ward jump can't land in a blocked UI
+        // region (e.g. the buff bar) where the click is rejected and the walk stalls.
+        private Vector2 ResolveBlightIconSafeClickPosition(Vector2 walkClick, Vector2 targetScreen, string targetPath)
         {
             if (_dependencies.IsBlightBuildOrUpgradeIconAt == null || !_dependencies.IsBlightBuildOrUpgradeIconAt(walkClick))
                 return walkClick;
@@ -113,7 +115,7 @@ namespace ClickIt.Features.Click.Runtime
             {
                 Size2F win = _dependencies.GameController?.Window.GetWindowRectangleTimeCache.Size ?? default;
                 offset = win.Width > 0f && win.Height > 0f
-                    ? OffsetAwayFromScreenCenter(walkClick, win, BlightIconAvoidOffset)
+                    ? ResolveSafeClickAlongPath(targetScreen, win, point => _dependencies.PointIsInClickableArea(point, targetPath))
                     : new Vector2(walkClick.X + BlightIconAvoidOffset, walkClick.Y + BlightIconAvoidOffset);
             }
             catch
@@ -125,6 +127,28 @@ namespace ClickIt.Features.Click.Runtime
             _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Click would hit a blight tower build/upgrade icon — offsetting to ({offset.X:F0},{offset.Y:F0})");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("BlightIconAvoided", "Pathfinding click offset away from a blight tower icon", null);
             return offset;
+        }
+
+        internal static Vector2 ResolveSafeClickAlongPath(Vector2 targetScreen, Size2F window, Func<Vector2, bool> isClickable)
+        {
+            Vector2 center = new(window.Width * 0.5f, window.Height * 0.5f);
+            Vector2 direction = center - targetScreen;
+            float lenSq = (direction.X * direction.X) + (direction.Y * direction.Y);
+            if (lenSq < 1f)
+                return targetScreen;
+
+            float len = MathF.Sqrt(lenSq);
+            Vector2 unit = new(direction.X / len, direction.Y / len);
+            for (float d = BlightIconAvoidOffset; d <= 400f; d += 50f)
+            {
+                Vector2 candidate = new(
+                    SystemMath.Clamp(targetScreen.X + (unit.X * d), 0f, window.Width),
+                    SystemMath.Clamp(targetScreen.Y + (unit.Y * d), 0f, window.Height));
+                if (isClickable(candidate))
+                    return candidate;
+            }
+
+            return targetScreen;
         }
 
         internal static Vector2 OffsetAwayFromScreenCenter(Vector2 point, Size2F window, float distance)

@@ -105,7 +105,9 @@ namespace ClickIt.Core.Runtime
             {
                 try
                 {
-                    _state.Services.AreaService?.UpdateScreenAreas(_gameController, forceBlockedUiRefresh: true);
+                    // Let the scheduler honor BlockedUiRefreshIntervalMs; forcing here would bypass
+                    // the documented refresh interval and rebuild blocked rects redundantly.
+                    _state.Services.AreaService?.UpdateScreenAreas(_gameController);
                 }
                 catch (Exception ex)
                 {

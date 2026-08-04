@@ -155,10 +155,13 @@ namespace ClickIt.Features.Click.Core
             DecisionResult decision = Gate(candidates, ranking);
             ExecutionResult executionResult = _executionPhase.Execute(context, candidates, decision);
 
-            IEnumerator postActions = RunPostClickActions(_dependencies.InputHandler, executionResult);
-            while (postActions.MoveNext())
-                yield return postActions.Current;
-
+            // Only allocate the post-click iterator when it can actually do something.
+            if (executionResult.ShouldRunPostActions)
+            {
+                IEnumerator postActions = RunPostClickActions(_dependencies.InputHandler, executionResult);
+                while (postActions.MoveNext())
+                    yield return postActions.Current;
+            }
         }
 
         private static DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)

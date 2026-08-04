@@ -116,6 +116,8 @@ namespace ClickIt.Shared.Diagnostics
                 MapRenderSection(RenderSection.UltimatumOverlay),
                 MapRenderSection(RenderSection.StrongboxOverlay),
                 MapRenderSection(RenderSection.PathfindingOverlay),
+                MapRenderSection(RenderSection.HarvestOverlay),
+                MapRenderSection(RenderSection.BlightOverlay),
                 MapRenderSection(RenderSection.TextFlush),
                 MapRenderSection(RenderSection.FrameFlush),
                 MapTimingChannel(TimingChannel.Altar),

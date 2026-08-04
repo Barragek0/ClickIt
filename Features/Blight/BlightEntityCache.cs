@@ -30,8 +30,14 @@ internal sealed class BlightEntityCache
     private const string BlightPathwayMetadata = "Metadata/Terrain/Leagues/Blight/Objects/BlightPathway";
     private const string BlightPumpMetadata = "Metadata/Terrain/Leagues/Blight/Objects/BlightPump";
     private const string BlightFoundationEntityMetadata = "Monsters/LeagueBlight/BlightFoundation";
+    private const int MaxEntityPathCacheEntries = 2048;
 
     private readonly Dictionary<string, int> _towerRadiusCache = new(StringComparer.OrdinalIgnoreCase);
+
+    // entity.Path reads are the heaviest per-entity memory/alloc cost in the scan; cache the string
+    // by entity address so the 200ms sweep only reads it once per entity (path is immutable while
+    // the entity lives). Cleared on encounter end / area change; touched only by the scan thread.
+    private readonly Dictionary<long, string> _entityPathCache = [];
 
     private LaneCoverageResult[]? _cachedCoverage;
     private int _cachedCoveragePathwayCount;
@@ -371,7 +377,7 @@ internal sealed class BlightEntityCache
 
         EntityQueryService.VisitValidEntities(gameController, entity =>
         {
-            string? path = GetEntityPath(entity);
+            string? path = GetEntityPathCached(entity);
 
             if (path != null)
             {
@@ -615,6 +621,26 @@ internal sealed class BlightEntityCache
     {
         try { return entity.Path; }
         catch { return null; }
+    }
+
+    private string? GetEntityPathCached(Entity entity)
+    {
+        long address = DynamicAccess.TryGetDynamicValue(entity, DynamicAccessProfiles.Address, out object? rawAddress)
+            && rawAddress != null
+            ? Convert.ToInt64(rawAddress)
+            : 0;
+        if (address != 0 && _entityPathCache.TryGetValue(address, out string? cached))
+            return cached;
+
+        string? path = GetEntityPath(entity);
+        if (path != null && address != 0)
+        {
+            if (_entityPathCache.Count >= MaxEntityPathCacheEntries)
+                _entityPathCache.Clear();
+            _entityPathCache[address] = path;
+        }
+
+        return path;
     }
 
     private static void InsertPathwaySortedByIdDesc(List<Entity> list, Entity entity)
@@ -872,6 +898,7 @@ internal sealed class BlightEntityCache
             _persistedPathwayPositions.Clear();
             _towerEntities.Clear();
             _pumpEntity = null;
+            _entityPathCache.Clear();
         }
         CachedBranchAnchors.Clear();
         _lastProcessedLabels = null;

@@ -87,22 +87,40 @@ namespace ClickIt.Shared.Input
                 CaptureUiBlockingState(gameController?.IngameState?.IngameUi),
                 _settings.IsOtherUltimatumClickEnabled());
 
+        private static readonly string[] ChatPanelNames = ["ChatTitlePanel"];
+        private static readonly string[] AtlasPanelNames = ["Atlas", "AtlasPanel"];
+        private static readonly string[] AtlasTreePanelNames = ["AtlasTreePanel"];
+        private static readonly string[] PassiveTreePanelNames = ["TreePanel"];
+        private static readonly string[] UltimatumPanelNames = ["UltimatumPanel"];
+        private static readonly string[] SyndicatePanelNames = ["SyndicatePanel", "BetrayalWindow"];
+        private static readonly string[] IncursionWindowNames = ["IncursionWindow"];
+        private static readonly string[] RitualWindowNames = ["RitualWindow"];
+        private static readonly string[] SanctumFloorWindowNames = ["SanctumFloorWindow"];
+        private static readonly string[] SanctumRewardWindowNames = ["SanctumRewardWindow"];
+        private static readonly string[] MicrotransactionShopWindowNames = ["MicrotransactionShopWindow"];
+        private static readonly string[] ResurrectPanelNames = ["ResurrectPanel"];
+        private static readonly string[] NpcDialogNames = ["NpcDialog"];
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<PropertyCacheKey, PropertyInfo?> PropertyInfoCache = new();
+
+        private readonly record struct PropertyCacheKey(Type Type, string Name);
+
         internal static UiBlockingState CaptureUiBlockingState(object? uiState)
         {
             return new UiBlockingState(
-                ChatOpen: IsUiElementVisible(uiState, "ChatTitlePanel"),
-                AtlasPanelOpen: IsUiElementVisible(uiState, "Atlas", "AtlasPanel"),
-                AtlasTreePanelOpen: IsUiElementVisible(uiState, "AtlasTreePanel"),
-                PassiveTreePanelOpen: IsUiElementVisible(uiState, "TreePanel"),
-                UltimatumPanelOpen: IsUiElementVisible(uiState, "UltimatumPanel"),
-                SyndicatePanelOpen: IsUiElementVisible(uiState, "SyndicatePanel", "BetrayalWindow"),
-                IncursionWindowOpen: IsUiElementVisible(uiState, "IncursionWindow"),
-                RitualWindowOpen: IsUiElementVisible(uiState, "RitualWindow"),
-                SanctumFloorWindowOpen: IsUiElementVisible(uiState, "SanctumFloorWindow"),
-                SanctumRewardWindowOpen: IsUiElementVisible(uiState, "SanctumRewardWindow"),
-                MicrotransactionShopWindowOpen: IsUiElementVisible(uiState, "MicrotransactionShopWindow"),
-                ResurrectPanelOpen: IsUiElementVisible(uiState, "ResurrectPanel"),
-                NpcDialogOpen: IsUiElementVisible(uiState, "NpcDialog"));
+                ChatOpen: IsUiElementVisible(uiState, ChatPanelNames),
+                AtlasPanelOpen: IsUiElementVisible(uiState, AtlasPanelNames),
+                AtlasTreePanelOpen: IsUiElementVisible(uiState, AtlasTreePanelNames),
+                PassiveTreePanelOpen: IsUiElementVisible(uiState, PassiveTreePanelNames),
+                UltimatumPanelOpen: IsUiElementVisible(uiState, UltimatumPanelNames),
+                SyndicatePanelOpen: IsUiElementVisible(uiState, SyndicatePanelNames),
+                IncursionWindowOpen: IsUiElementVisible(uiState, IncursionWindowNames),
+                RitualWindowOpen: IsUiElementVisible(uiState, RitualWindowNames),
+                SanctumFloorWindowOpen: IsUiElementVisible(uiState, SanctumFloorWindowNames),
+                SanctumRewardWindowOpen: IsUiElementVisible(uiState, SanctumRewardWindowNames),
+                MicrotransactionShopWindowOpen: IsUiElementVisible(uiState, MicrotransactionShopWindowNames),
+                ResurrectPanelOpen: IsUiElementVisible(uiState, ResurrectPanelNames),
+                NpcDialogOpen: IsUiElementVisible(uiState, NpcDialogNames));
         }
 
         internal static string? ResolveUiBlockingReason(UiBlockingState state, bool otherUltimatumClickEnabled)
@@ -137,7 +155,7 @@ namespace ClickIt.Shared.Input
             return null;
         }
 
-        private static bool IsUiElementVisible(object? uiState, params string[] propertyNames)
+        private static bool IsUiElementVisible(object? uiState, string[] propertyNames)
         {
             if (uiState == null)
                 return false;
@@ -145,12 +163,26 @@ namespace ClickIt.Shared.Input
             Type uiStateType = uiState.GetType();
             for (int i = 0; i < propertyNames.Length; i++)
             {
-                object? element = uiStateType.GetProperty(propertyNames[i])?.GetValue(uiState);
-                if (element?.GetType().GetProperty("IsVisible")?.GetValue(element) is true)
+                object? element = GetCachedProperty(uiStateType, propertyNames[i])?.GetValue(uiState);
+                if (element == null)
+                    continue;
+
+                if (GetCachedProperty(element.GetType(), "IsVisible")?.GetValue(element) is true)
                     return true;
             }
 
             return false;
+        }
+
+        private static PropertyInfo? GetCachedProperty(Type type, string name)
+        {
+            PropertyCacheKey key = new(type, name);
+            if (PropertyInfoCache.TryGetValue(key, out PropertyInfo? cached))
+                return cached;
+
+            PropertyInfo? resolved = type.GetProperty(name);
+            PropertyInfoCache[key] = resolved;
+            return resolved;
         }
 
         public string GetCanClickFailureReason(GameController gameController)

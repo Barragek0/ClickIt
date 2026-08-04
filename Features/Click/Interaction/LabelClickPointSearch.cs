@@ -20,18 +20,16 @@ namespace ClickIt.Features.Click.Interaction
             float bottom = targetRect.Bottom - inset;
             float centerY = targetRect.Top + (targetRect.Height * 0.5f);
 
-            Vector2[] probePoints =
-            [
-                ClampPointToRect(preferredPoint, targetRect),
-                new Vector2(left, top),
-                new Vector2(right, top),
-                new Vector2(left, bottom),
-                new Vector2(right, bottom),
-                new Vector2(targetRect.Center.X, top),
-                new Vector2(targetRect.Center.X, bottom),
-                new Vector2(left, centerY),
-                new Vector2(right, centerY)
-            ];
+            Span<Vector2> probePoints = stackalloc Vector2[9];
+            probePoints[0] = ClampPointToRect(preferredPoint, targetRect);
+            probePoints[1] = new Vector2(left, top);
+            probePoints[2] = new Vector2(right, top);
+            probePoints[3] = new Vector2(left, bottom);
+            probePoints[4] = new Vector2(right, bottom);
+            probePoints[5] = new Vector2(targetRect.Center.X, top);
+            probePoints[6] = new Vector2(targetRect.Center.X, bottom);
+            probePoints[7] = new Vector2(left, centerY);
+            probePoints[8] = new Vector2(right, centerY);
 
             for (int i = 0; i < probePoints.Length; i++)
             {

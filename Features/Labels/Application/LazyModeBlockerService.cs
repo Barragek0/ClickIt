@@ -76,6 +76,9 @@ namespace ClickIt.Features.Labels.Application
                 settings: new TimedValueCacheSettings(RequireNonNegativeAge: true));
         private long _lastLazyModeRestrictionLogTimestampMs = long.MinValue;
         private string _lastLazyModeRestrictionLogReason = string.Empty;
+        private IReadOnlyList<LabelOnGround>? _lockedChestScanLabels;
+        private LazyModeRestrictionResult _cachedLockedChestRestriction;
+        private bool _hasLockedChestScan;
         public string? LastRestrictionReason { get; private set; }
 
         public bool HasRestrictedItemsOnScreen(IReadOnlyList<LabelOnGround>? allLabels)
@@ -119,12 +122,21 @@ namespace ClickIt.Features.Labels.Application
             if (allLabels == null)
                 return default;
 
+            // The 50ms label cache returns a fresh List reference each window, so re-scanning only
+            // on a reference change keeps the locked-chest scan off the per-frame hot path.
+            if (_hasLockedChestScan && ReferenceEquals(_lockedChestScanLabels, allLabels))
+                return _cachedLockedChestRestriction;
+
+            _lockedChestScanLabels = allLabels;
+            _hasLockedChestScan = true;
+
             string? reason = TryFindLockedChestRestrictionReason(
                 allLabels,
                 _settings.ClickDistance.Value);
-            return reason == null
+            _cachedLockedChestRestriction = reason == null
                 ? default
                 : new LazyModeRestrictionResult(true, reason);
+            return _cachedLockedChestRestriction;
         }
 
         private LazyModeRestrictionResult ResolveNearbyMonsterRestriction()
