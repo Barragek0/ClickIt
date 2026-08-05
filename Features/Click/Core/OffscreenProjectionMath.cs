@@ -26,10 +26,12 @@ namespace ClickIt.Features.Click.Core
             if (lenSq < 1f)
                 return false;
 
-            // Search all the way back to near the screen center: a target close to the player (or up
-            // under the buff bar / minimap strip) has no clickable point near itself, but a point just
-            // off-center in the target's direction is still in the play area and walks the right way.
-            for (int i = 0; i <= 10; i++)
+            // Search from the target back toward the screen center (t = 1.05 .. 0.35). The clamped
+            // target is the primary fallback — it keeps the walk click as close to the target as the
+            // window allows. Only when that too is unusable (target under the buff bar / minimap
+            // strip) do we fall back to a point just off-center, which is still in the play area and
+            // walks the same direction.
+            for (int i = 0; i <= 7; i++)
             {
                 float t = 1.05f - (i * 0.1f);
                 Vector2 candidate = center + (direction * t);
@@ -47,12 +49,28 @@ namespace ClickIt.Features.Click.Core
             Vector2 clamped = new(
                 SystemMath.Clamp(targetScreen.X, safeLeft, safeRight),
                 SystemMath.Clamp(targetScreen.Y, safeTop, safeBottom));
+            if (pointIsInClickableArea(clamped, targetPath))
+            {
+                clickPos = clamped;
+                return true;
+            }
 
-            if (!pointIsInClickableArea(clamped, targetPath))
-                return false;
+            for (int i = 2; i >= 0; i--)
+            {
+                float t = 0.25f - ((2 - i) * 0.1f);
+                Vector2 candidate = center + (direction * t);
+                if (!OffscreenTargetResolver.IsInsideWindow(windowRect, candidate))
+                    continue;
+                if (candidate.X < safeLeft || candidate.X > safeRight || candidate.Y < safeTop || candidate.Y > safeBottom)
+                    continue;
+                if (!pointIsInClickableArea(candidate, targetPath))
+                    continue;
 
-            clickPos = clamped;
-            return true;
+                clickPos = candidate;
+                return true;
+            }
+
+            return false;
         }
     }
 }

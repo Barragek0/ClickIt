@@ -16,7 +16,7 @@ namespace ClickIt.Features.Observability.Performance
         private readonly Queue<long> _blightCoroutineTimings = new(10);
         private readonly Queue<long> _ultimatumCoroutineTimings = new(10);
         private readonly Queue<long> _labelOverlayCoroutineTimings = new(10);
-        private readonly Queue<long> _renderTimings = new(60);
+        private readonly Queue<double> _renderTimings = new(60);
         private readonly Queue<long> _successfulClickTimings = new(10);
 
         private readonly object _clickTimingsLock = new();
@@ -34,7 +34,7 @@ namespace ClickIt.Features.Observability.Performance
         private long _lastBlightTiming;
         private long _lastUltimatumTiming;
         private long _lastLabelOverlayTiming;
-        private long _lastRenderTiming;
+        private double _lastRenderTiming;
 
         private long _maxAltarTiming;
         private long _maxClickTiming;
@@ -60,15 +60,15 @@ namespace ClickIt.Features.Observability.Performance
         private long _lastUltimatumStopTimestampMs;
         private long _lastLabelOverlayStopTimestampMs;
 
-        public Queue<long> GetRenderTimingsSnapshot()
+        public Queue<double> GetRenderTimingsSnapshot()
         {
             lock (_renderTimingsLock)
             {
-                return new Queue<long>(_renderTimings);
+                return new Queue<double>(_renderTimings);
             }
         }
 
-        public (long LastMs, double AverageMs, long MaxMs, int SampleCount) GetRenderTimingStats()
+        public (double LastMs, double AverageMs, double MaxMs, int SampleCount) GetRenderTimingStats()
         {
             lock (_renderTimingsLock)
             {
@@ -77,12 +77,12 @@ namespace ClickIt.Features.Observability.Performance
                     return (0, 0, 0, 0);
                 }
 
-                long last = 0;
-                long sum = 0;
-                long max = long.MinValue;
+                double last = 0;
+                double sum = 0;
+                double max = double.MinValue;
                 int count = 0;
 
-                foreach (long timing in _renderTimings)
+                foreach (double timing in _renderTimings)
                 {
                     last = timing;
                     sum += timing;
@@ -93,8 +93,7 @@ namespace ClickIt.Features.Observability.Performance
                     count++;
                 }
 
-                double average = count > 0 ? (double)sum / count : 0;
-                return (last, average, max, count);
+                return (last, sum / count, max, count);
             }
         }
 
@@ -106,7 +105,7 @@ namespace ClickIt.Features.Observability.Performance
         public void StopRenderTiming()
         {
             _renderTimer.Stop();
-            long timing = _renderTimer.ElapsedMilliseconds;
+            double timing = _renderTimer.Elapsed.TotalMilliseconds;
             _lastRenderTiming = timing;
             EnqueueTiming(_renderTimings, timing, 60, _renderTimingsLock);
         }
@@ -232,6 +231,14 @@ namespace ClickIt.Features.Observability.Performance
 
         public double GetAverageTiming(TimingChannel channel)
         {
+            if (channel == TimingChannel.Render)
+            {
+                lock (_renderTimingsLock)
+                {
+                    return CalculateAverage(_renderTimings);
+                }
+            }
+
             Queue<long> queue;
             object lockObject;
 
@@ -260,10 +267,6 @@ namespace ClickIt.Features.Observability.Performance
                 case TimingChannel.LabelOverlay:
                     queue = _labelOverlayCoroutineTimings;
                     lockObject = _labelOverlayTimingsLock;
-                    break;
-                case TimingChannel.Render:
-                    queue = _renderTimings;
-                    lockObject = _renderTimingsLock;
                     break;
                 case TimingChannel.Unknown:
                 default:
@@ -444,7 +447,7 @@ namespace ClickIt.Features.Observability.Performance
             };
         }
 
-        private static void EnqueueTiming(Queue<long> queue, long value, int maxLength, object lockObject)
+        private static void EnqueueTiming<T>(Queue<T> queue, T value, int maxLength, object lockObject)
         {
             lock (lockObject)
             {
@@ -471,7 +474,22 @@ namespace ClickIt.Features.Observability.Performance
             return (double)sum / count;
         }
 
-        private static int GetQueueCount(Queue<long> queue, object lockObject)
+        private static double CalculateAverage(Queue<double> queue)
+        {
+            int count = queue.Count;
+            if (count == 0)
+                return 0;
+
+            double sum = 0;
+            foreach (double value in queue)
+            {
+                sum += value;
+            }
+
+            return sum / count;
+        }
+
+        private static int GetQueueCount<T>(Queue<T> queue, object lockObject)
         {
             lock (lockObject)
             {

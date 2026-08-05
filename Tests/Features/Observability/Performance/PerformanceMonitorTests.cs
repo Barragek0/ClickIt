@@ -246,6 +246,24 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void RenderSection_Stats_UseRollingWindow_NotAllTimeCumulative()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            // 70 samples of 1.0 fill and then roll the 60-sample window, then one 2.0 sample.
+            for (int i = 0; i < 70; i++)
+                monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 1.0);
+            monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 2.0);
+
+            (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.DebugOverlay);
+            stats.SampleCount.Should().Be(60);
+            stats.LastMs.Should().Be(2.0);
+            stats.MaxMs.Should().Be(2.0);
+            // Window holds 59×1.0 + 1×2.0.
+            stats.AverageMs.Should().BeApproximately(61.0 / 60.0, 0.001);
+        }
+
+        [TestMethod]
         public void ShutdownForHotReload_ClearsRecordedMetrics()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());

@@ -92,7 +92,7 @@ namespace ClickIt.Shared.Diagnostics
         public double GetAveragePeriod(TimingChannel channel)
             => _timingTracker.GetAveragePeriod(channel);
 
-        public Queue<long> GetRenderTimingsSnapshot()
+        public Queue<double> GetRenderTimingsSnapshot()
             => _timingTracker.GetRenderTimingsSnapshot();
 
         public (double Current, double Average, double Max) GetFpsStats()
@@ -109,7 +109,7 @@ namespace ClickIt.Shared.Diagnostics
             TimingMetricsSnapshot MapTimingChannel(TimingChannel channel)
                 => new(GetLastTiming(channel), GetAverageTiming(channel), GetMaxTiming(channel), GetTimingSampleCount(channel), GetAveragePeriod(channel));
 
-            (long LastMs, double AverageMs, long MaxMs, int SampleCount) renderStats = GetRenderTimingStats();
+            (double LastMs, double AverageMs, double MaxMs, int SampleCount) renderStats = GetRenderTimingStats();
             (double Current, double Average, double Max) = GetFpsStats();
 
             return new PerformanceMetricsSnapshot(
@@ -145,7 +145,7 @@ namespace ClickIt.Shared.Diagnostics
         public (double LastMs, double AverageMs, double MaxMs, long SampleCount) GetRenderSectionStats(RenderSection section)
             => _renderSectionMetrics.GetStats(section);
 
-        public (long LastMs, double AverageMs, long MaxMs, int SampleCount) GetRenderTimingStats()
+        public (double LastMs, double AverageMs, double MaxMs, int SampleCount) GetRenderTimingStats()
             => _timingTracker.GetRenderTimingStats();
 
         public void Start()
