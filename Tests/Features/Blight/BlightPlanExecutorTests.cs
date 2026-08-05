@@ -17,13 +17,14 @@ public class BlightPlanExecutorTests
 
         BlightPlan first = Plan("first", Step(BlightPlanAction.Build, 5, 5, BlightTowerType.Seismic, 1));
         executor.SetPlan(first);
-        executor.CurrentPlan.Should().BeSameAs(first);
+        executor.CurrentPlan.Should().NotBeNull();
+        executor.CurrentPlan!.Steps.Should().BeSameAs(first.Steps);
 
         // A second plan replaces the first — the debug UI (which reads
         // CurrentPlan) must always show the latest plan.
         BlightPlan second = Plan("second", Step(BlightPlanAction.Build, 10, 10, BlightTowerType.Chilling, 1));
         executor.SetPlan(second);
-        executor.CurrentPlan.Should().BeSameAs(second);
+        executor.CurrentPlan!.Steps.Should().BeSameAs(second.Steps);
     }
 
     [TestMethod]
@@ -49,8 +50,7 @@ public class BlightPlanExecutorTests
             Step(BlightPlanAction.Build, 10, 10, BlightTowerType.Chilling, 1));
         executor.SetPlan(first);
 
-        // A regenerated plan whose steps don't match the current one hits
-        // the SetPlan fallback and takes the new plan's cursor.
+        // A regenerated plan replaces the current one; SetPlan always restarts at the first step.
         BlightPlan replacement = new(
             new[]
             {
@@ -61,18 +61,19 @@ public class BlightPlanExecutorTests
             debugSummary: "replacement",
             currentStepIndex: 1);
         executor.SetPlan(replacement);
-        executor.CurrentCursor.Should().Be(1);
-        executor.CurrentPlan.Should().BeSameAs(replacement);
+        executor.CurrentCursor.Should().Be(0);
+        executor.CurrentPlan.Should().NotBeNull();
+        executor.CurrentPlan!.Steps.Should().BeSameAs(replacement.Steps);
 
         // Reset keeps the plan (walk-reapproach within the same encounter)
         // but rewinds to the first step.
         executor.Reset();
-        executor.CurrentPlan.Should().BeSameAs(replacement);
+        executor.CurrentPlan!.Steps.Should().BeSameAs(replacement.Steps);
         executor.CurrentCursor.Should().Be(0);
     }
 
     [TestMethod]
-    public void SetPlan_PreservesCursor_AndSyncsPlanCurrentStepIndex()
+    public void SetPlan_AlwaysRewindsToFirstStep_OnRegeneration()
     {
         var executor = new BlightPlanExecutor();
         BlightPlan first = new(
@@ -86,10 +87,11 @@ public class BlightPlanExecutorTests
             debugSummary: "first",
             currentStepIndex: 1);
         executor.SetPlan(first);
-        executor.CurrentCursor.Should().Be(1);
+        executor.CurrentCursor.Should().Be(0);
+        executor.CurrentPlan!.CurrentStepIndex.Should().Be(0);
 
-        // Regenerated plan (planner always starts at step 0) that still contains the
-        // current step (Chilling at 10,10) — but moved to index 2.
+        // A regenerated plan (planner always starts at step 0) restarts the executor
+        // from the first step — completed work is re-derived from live tower state.
         BlightPlan second = new(
             new[]
             {
@@ -101,13 +103,10 @@ public class BlightPlanExecutorTests
             debugSummary: "second");
         executor.SetPlan(second);
 
-        // The cursor is preserved at the relocated step...
-        executor.CurrentCursor.Should().Be(2);
-        // ...and the plan's current-step index must follow so the debug marker
-        // (CurrentStepIndex) and the on-screen pending numbers (cursor) agree.
+        executor.CurrentCursor.Should().Be(0);
         executor.CurrentPlan.Should().NotBeNull();
-        executor.CurrentPlan!.CurrentStepIndex.Should().Be(2);
-        executor.CurrentPlan.CurrentStep.Should().Be(second.Steps[2]);
+        executor.CurrentPlan!.CurrentStepIndex.Should().Be(0);
+        executor.CurrentPlan.CurrentStep.Should().Be(second.Steps[0]);
     }
 
     // ── Specialization gating (only 3→4 with a chosen specialization) ──

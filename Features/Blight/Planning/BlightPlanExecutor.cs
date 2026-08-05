@@ -40,28 +40,8 @@ internal sealed class BlightPlanExecutor
 
     internal void SetPlan(BlightPlan plan)
     {
-        if (CurrentPlan != null && CurrentCursor < CurrentPlan.Steps.Count)
-        {
-            BlightPlanStep current = CurrentPlan.Steps[CurrentCursor];
-            for (int i = 0; i < plan.Steps.Count; i++)
-            {
-                if (plan.Steps[i].FoundationPosition == current.FoundationPosition
-                    && plan.Steps[i].TowerType == current.TowerType
-                    && plan.Steps[i].TargetLevel == current.TargetLevel)
-                {
-                    CurrentCursor = i;
-
-                    // Keep the plan's current-step index in lockstep with the preserved cursor:
-                    // the planner always builds at index 0, so without this the debug plan marker
-                    // and the on-screen pending numbers (which render from the cursor) disagree
-                    // whenever a regeneration preserves progress at a later index.
-                    CurrentPlan = plan.WithCurrentStepIndex(i);
-                    return;
-                }
-            }
-        }
-        CurrentPlan = plan;
-        CurrentCursor = plan.CurrentStepIndex;
+        CurrentPlan = plan.WithCurrentStepIndex(0);
+        CurrentCursor = 0;
         _phase = Phase.Walking;
         _consecutiveFailures = 0;
         _stationaryTicks = 0;
