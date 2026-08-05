@@ -50,6 +50,21 @@ public class DedupEventBufferTests
     }
 
     [TestMethod]
+    public void Events_ReturnsSnapshot_NotTheLiveList()
+    {
+        var buffer = new DedupEventBuffer();
+        buffer.Add("first");
+
+        IReadOnlyList<string> snapshot = buffer.Events;
+
+        buffer.Add("second");
+
+        snapshot.Count.Should().Be(1, "a previously read snapshot must not grow with the live buffer");
+        snapshot[0].Should().EndWith("first");
+        buffer.Events.Count.Should().Be(2);
+    }
+
+    [TestMethod]
     public void Add_DedupsAcrossInterleavedMessages()
     {
         var buffer = new DedupEventBuffer();

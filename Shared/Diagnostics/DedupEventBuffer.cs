@@ -13,7 +13,18 @@ internal sealed class DedupEventBuffer
         _capacity = capacity;
     }
 
-    internal IReadOnlyList<string> Events => _events;
+    internal IReadOnlyList<string> Events
+    {
+        // Snapshot under the same lock the writer holds: the debug overlay reads this from the
+        // render thread while the blight refresh / executor writes from the loop thread, and a
+        // shared live List would race (collection-modified corruption). The copy is only taken when
+        // the overlay actually renders, so the hot write path is unaffected.
+        get
+        {
+            lock (_events)
+                return [.. _events];
+        }
+    }
 
     internal void Add(string message)
     {

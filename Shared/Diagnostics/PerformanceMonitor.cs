@@ -7,7 +7,9 @@ namespace ClickIt.Shared.Diagnostics
         Altar = 2,
         Flare = 3,
         Render = 4,
-        Blight = 5
+        Blight = 5,
+        Ultimatum = 6,
+        LabelOverlay = 7
     }
 
     public enum RenderSection
@@ -87,6 +89,9 @@ namespace ClickIt.Shared.Diagnostics
         public double GetMaxTiming(string timingType)
             => _timingTracker.GetMaxTiming(timingType);
 
+        public double GetAveragePeriod(TimingChannel channel)
+            => _timingTracker.GetAveragePeriod(channel);
+
         public Queue<long> GetRenderTimingsSnapshot()
             => _timingTracker.GetRenderTimingsSnapshot();
 
@@ -102,7 +107,7 @@ namespace ClickIt.Shared.Diagnostics
             }
 
             TimingMetricsSnapshot MapTimingChannel(TimingChannel channel)
-                => new(GetLastTiming(channel), GetAverageTiming(channel), GetMaxTiming(channel), GetTimingSampleCount(channel));
+                => new(GetLastTiming(channel), GetAverageTiming(channel), GetMaxTiming(channel), GetTimingSampleCount(channel), GetAveragePeriod(channel));
 
             (long LastMs, double AverageMs, long MaxMs, int SampleCount) renderStats = GetRenderTimingStats();
             (double Current, double Average, double Max) = GetFpsStats();
@@ -124,6 +129,8 @@ namespace ClickIt.Shared.Diagnostics
                 MapTimingChannel(TimingChannel.Click),
                 MapTimingChannel(TimingChannel.Flare),
                 MapTimingChannel(TimingChannel.Blight),
+                MapTimingChannel(TimingChannel.Ultimatum),
+                MapTimingChannel(TimingChannel.LabelOverlay),
                 GetClickTargetInterval(),
                 GetAverageSuccessfulClickTiming(),
                 GetAverageClickInterval());

@@ -290,6 +290,12 @@ namespace ClickIt.Features.Click.Core
                         return true;
                     }
 
+                case BlightBuildActionKind.WalkToPosition:
+                    _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                        "BlightBuildWalk", action.DebugMessage ?? "Walking toward foundation position", MechanicIds.Blight);
+                    _dependencies.OffscreenPathing.TryWalkTowardGridPosition(action.GridPosition);
+                    return true;
+
                 case BlightBuildActionKind.Complete:
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                         "BlightBuildComplete", action.DebugMessage ?? "Build step completed", MechanicIds.Blight);

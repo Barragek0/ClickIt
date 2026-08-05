@@ -261,6 +261,69 @@ public class BlightRendererTests
             .Should().Be(Color.White, "real lane edges use the strategy's coverage colour");
     }
 
+    // ── Lane label world-midpoint projection ──
+
+    private static readonly NumVector2 LanePointA = new(100, 100);
+    private static readonly NumVector2 LanePointB = new(200, 200);
+
+    private static LaneCoverageResult[] LaneCoverageWithParent(int segmentIndex, int parentIndex)
+    {
+        LaneCoverageResult[] coverage = new LaneCoverageResult[segmentIndex + 1];
+        coverage[segmentIndex] = new LaneCoverageResult(parentIndex, true, new NumVector2(150, 150));
+        return coverage;
+    }
+
+    [TestMethod]
+    public void ResolveSegmentWorldMidpoint_AveragesBothEndpointWorldPositions()
+    {
+        var worldByGrid = new Dictionary<NumVector2, System.Numerics.Vector3>
+        {
+            [LanePointA] = new(1000f, 1000f, 50f),
+            [LanePointB] = new(2000f, 2000f, 70f),
+        };
+        NumVector2[] pathways = [LanePointA, LanePointB];
+
+        System.Numerics.Vector3? midpoint = BlightRenderer.ResolveSegmentWorldMidpoint(
+            pathways, LaneCoverageWithParent(1, 0), segmentIndex: 1, worldByGrid);
+
+        midpoint.Should().NotBeNull();
+        midpoint!.Value.X.Should().Be(1500f);
+        midpoint.Value.Y.Should().Be(1500f);
+        // Terrain Z is averaged too — projecting the grid point at Z=0 would sit off the lane.
+        midpoint.Value.Z.Should().Be(60f);
+    }
+
+    [TestMethod]
+    public void ResolveSegmentWorldMidpoint_ReturnsNull_WhenParentIndexOutOfRange()
+    {
+        var worldByGrid = new Dictionary<NumVector2, System.Numerics.Vector3>
+        {
+            [LanePointA] = new(1000f, 1000f, 50f),
+            [LanePointB] = new(2000f, 2000f, 70f),
+        };
+        NumVector2[] pathways = [LanePointA, LanePointB];
+
+        BlightRenderer.ResolveSegmentWorldMidpoint(
+                pathways, LaneCoverageWithParent(1, -1), segmentIndex: 1, worldByGrid)
+            .Should().BeNull("a segment without a parent has no line to centre the label on");
+    }
+
+    [TestMethod]
+    public void ResolveSegmentWorldMidpoint_ReturnsNull_WhenEndpointWorldPositionUnavailable()
+    {
+        // Only one endpoint has a cached world position (the other streamed out) — fall back to the
+        // ground-plane projection rather than place the label off one of the line's ends.
+        var worldByGrid = new Dictionary<NumVector2, System.Numerics.Vector3>
+        {
+            [LanePointA] = new(1000f, 1000f, 50f),
+        };
+        NumVector2[] pathways = [LanePointA, LanePointB];
+
+        BlightRenderer.ResolveSegmentWorldMidpoint(
+                pathways, LaneCoverageWithParent(1, 0), segmentIndex: 1, worldByGrid)
+            .Should().BeNull();
+    }
+
     private sealed class TestStrategy : IBlightTowerStrategy
     {
         internal static readonly Color SeismicColor = new(10, 20, 30, 255);

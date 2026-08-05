@@ -15,6 +15,7 @@ public sealed class BlightService
     internal Entity? PumpEntity => _cache.PumpEntity;
     internal bool IsEncounterActive => _encounter.IsActive;
     internal IReadOnlyList<BlightCachedTower> KnownTowers => _cache.KnownTowers;
+    internal IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> PathwayWorldPositions => _cache.PathwayWorldPositions;
 
     internal BlightService(ClickItSettings settings, Func<Vector2, bool>? isPointInClickableArea = null)
     {
@@ -30,7 +31,8 @@ public sealed class BlightService
     internal IBlightTowerStrategy CurrentStrategy => BlightStrategyResolver.Resolve(_settings);
 
     internal LaneCoverageResult[]? TryGetCachedCoverage() => _cache.TryGetCachedCoverage();
-    internal (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? TryGetRenderBundle() => _cache.TryGetRenderBundle();
+    internal (int From, int To)[] TryGetExtraLaneEdges() => _cache.TryGetExtraLaneEdges();
+    internal (NumVector2[] Pathways, LaneCoverageResult[] Coverage, (int From, int To)[] ExtraLaneEdges)? TryGetRenderBundle() => _cache.TryGetRenderBundle();
     internal LaneCoverageResult[] ComputeLaneCoverage() => _cache.ComputeLaneCoverage();
 
     internal (List<NumVector2> Positions, List<(PumpBranch Branch, List<int> Segments)> Branches) GetBranchDebug()
@@ -69,6 +71,18 @@ public sealed class BlightService
 
     internal const int DefaultTowerRadius = 35;
 
+    // Spec §2.2: every tower's radius is reduced by a fixed safety margin of 5 before ANY coverage
+    // decision — a range that only barely grazes a lane may not trigger in-game. The REAL radius is
+    // still used for the on-screen range circles and the executor; only coverage/planning uses the
+    // reduced radius, and the SAME reduced value everywhere so coverage and planning always agree.
+    internal const int CoverageRadiusMargin = 5;
+
+    internal static int GetCoverageRadiusForLevel(BlightTowerType type, int level)
+        => SystemMath.Max(0, GetRadiusForLevel(type, level) - CoverageRadiusMargin);
+
+    internal static int GetCoverageRadius(int realRadius)
+        => realRadius > CoverageRadiusMargin ? realRadius - CoverageRadiusMargin : 0;
+
     internal static int GetRadiusForLevel(BlightTowerType type, int level)
     {
         // Real per-tier radii from the game's BlightTowerDat (captured 2026-08-02).  Radius is
@@ -96,7 +110,21 @@ public sealed class BlightService
 
     private readonly BlightDebugEvents _debugEvents = new();
     internal IReadOnlyList<string> DebugStages => _debugEvents.Stages;
-    internal void AddDebugStage(string message) => _debugEvents.Add(message);
+
+    // Recent Stages is only consumed by the debug overlay / copy-all, but the executor recorded a
+    // formatted string (plus the dedup scan + re-format under a lock) on EVERY tick of an active
+    // encounter — a steady per-tick allocation + lock hit. Throttle to ~10 stages/sec; plenty for a
+    // readable trail and it makes the hot executor path nearly allocation-free.
+    private long _lastDebugStageTimestampMs;
+    private const long DebugStageThrottleMs = 100;
+    internal void AddDebugStage(string message)
+    {
+        long now = Environment.TickCount64;
+        if (now - _lastDebugStageTimestampMs < DebugStageThrottleMs)
+            return;
+        _lastDebugStageTimestampMs = now;
+        _debugEvents.Add(message);
+    }
 
     internal ElementTreeInspector BlightChestDebug { get; } = new();
 
@@ -121,12 +149,12 @@ public sealed class BlightService
         Entity? entity = GetBestEntityAtPosition(step.Value.FoundationPosition);
         if (entity == null) return null;
 
-        // Keep walking until the tower's menu region — the enlarged phantom rectangle — is fully
-        // on-screen and clickable, not merely until the entity is on screen. The executor's Walking
-        // phase requires the whole rectangle before it stops; returning null here while the entity
-        // is on screen but the menu region is still unusable would stall the build in an infinite
-        // walk loop (the pathfinding request would never walk).
-        if (IsEntityFullyOnScreen(entity) && _executor.IsMenuRegionReadyForStep(_lastLabels, _gameController, this))
+        // Walk until the step is ready: build steps need the whole enlarged menu region on-screen
+        // and clickable (clicking the build icon opens the tower sub-menu); upgrade steps just need
+        // the tower fully on-screen (a single click on the upgrade icon — no sub-menu opens). The
+        // executor's Walking phase shares this rule (BlightPlanExecutor.IsStepWalkReady), so
+        // returning null here cannot stall the build.
+        if (IsEntityFullyOnScreen(entity) && _executor.IsStepWalkReady(_lastLabels, _gameController, this))
             return null;
         return entity;
     }

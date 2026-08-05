@@ -139,6 +139,113 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void CoroutinesTotal_AggregatesLastAndAverageSumsAndMaxOfMaxes_AcrossChannels()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.StartCoroutineTiming(TimingChannel.Altar);
+            monitor.StopCoroutineTiming(TimingChannel.Altar);
+            monitor.StartCoroutineTiming(TimingChannel.Click);
+            monitor.StopCoroutineTiming(TimingChannel.Click);
+            monitor.StartCoroutineTiming(TimingChannel.Ultimatum);
+            monitor.StopCoroutineTiming(TimingChannel.Ultimatum);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+
+            snapshot.CoroutinesTotal.SampleCount.Should().Be(3);
+            snapshot.CoroutinesTotal.LastMs.Should().BeApproximately(
+                snapshot.AltarCoroutine.LastMs + snapshot.ClickCoroutine.LastMs + snapshot.UltimatumCoroutine.LastMs, 0.01);
+            snapshot.CoroutinesTotal.AverageMs.Should().BeApproximately(
+                snapshot.AltarCoroutine.AverageMs + snapshot.ClickCoroutine.AverageMs + snapshot.UltimatumCoroutine.AverageMs, 0.01);
+            snapshot.CoroutinesTotal.MaxMs.Should().Be(
+                SystemMath.Max(snapshot.AltarCoroutine.MaxMs, SystemMath.Max(snapshot.ClickCoroutine.MaxMs, snapshot.UltimatumCoroutine.MaxMs)));
+            snapshot.CoroutinesTotal.SampleCount.Should().Be(
+                snapshot.AltarCoroutine.SampleCount + snapshot.ClickCoroutine.SampleCount + snapshot.UltimatumCoroutine.SampleCount);
+        }
+
+        [TestMethod]
+        public void CoroutinesTotal_IsZero_WhenNoCoroutineHasSamples()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+
+            snapshot.CoroutinesTotal.SampleCount.Should().Be(0);
+            snapshot.CoroutinesTotal.LastMs.Should().Be(0);
+            snapshot.CoroutinesTotal.AverageMs.Should().Be(0);
+            snapshot.CoroutinesTotal.MaxMs.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void CoroutinesTotalPerFrameSnapshot_ScalesEachChannelByItsOwnPeriod()
+        {
+            var fps = new FpsMetricsSnapshot(Current: 60, Average: 60, Max: 60);
+            var altar = new TimingMetricsSnapshot(LastMs: 10, AverageMs: 5, MaxMs: 20, SampleCount: 10, AveragePeriodMs: 100);
+            var click = new TimingMetricsSnapshot(LastMs: 20, AverageMs: 10, MaxMs: 30, SampleCount: 10, AveragePeriodMs: 50);
+            PerformanceMetricsSnapshot snapshot = new(
+                Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
+                AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
+                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                TextFlush: default, FrameFlush: default,
+                AltarCoroutine: altar, ClickCoroutine: click,
+                FlareCoroutine: default, BlightCoroutine: default,
+                UltimatumCoroutine: default, LabelOverlayCoroutine: default,
+                ClickTargetIntervalMs: 0, AverageSuccessfulClickTimingMs: 0, AverageClickIntervalMs: 0);
+
+            // altar scale = 1000/100/60 = 1/6; click scale = 1000/50/60 = 1/3.
+            TimingMetricsSnapshot total = snapshot.CoroutinesTotalPerFrameSnapshot;
+            total.SampleCount.Should().Be(2);
+            total.LastMs.Should().BeApproximately(10.0 / 6 + 20.0 / 3, 0.001);
+            total.AverageMs.Should().BeApproximately(5.0 / 6 + 10.0 / 3, 0.001);
+            total.MaxMs.Should().BeApproximately(SystemMath.Max(20.0 / 6, 30.0 / 3), 0.001);
+            snapshot.CoroutinesTotalPerFrame.Should().BeApproximately(5.0 / 6 + 10.0 / 3, 0.001);
+        }
+
+        [TestMethod]
+        public void CoroutinesTotalPerFrameSnapshot_IsZero_WithoutRunPeriods()
+        {
+            var fps = new FpsMetricsSnapshot(Current: 60, Average: 60, Max: 60);
+            var altar = new TimingMetricsSnapshot(LastMs: 10, AverageMs: 5, MaxMs: 20, SampleCount: 10);
+            var click = new TimingMetricsSnapshot(LastMs: 20, AverageMs: 10, MaxMs: 30, SampleCount: 10);
+            PerformanceMetricsSnapshot snapshot = new(
+                Fps: fps, Render: default, LazyMode: default, DebugOverlay: default,
+                AltarOverlay: default, UltimatumOverlay: default, StrongboxOverlay: default,
+                PathfindingOverlay: default, HarvestOverlay: default, BlightOverlay: default,
+                TextFlush: default, FrameFlush: default,
+                AltarCoroutine: altar, ClickCoroutine: click,
+                FlareCoroutine: default, BlightCoroutine: default,
+                UltimatumCoroutine: default, LabelOverlayCoroutine: default,
+                ClickTargetIntervalMs: 0, AverageSuccessfulClickTimingMs: 0, AverageClickIntervalMs: 0);
+
+            TimingMetricsSnapshot total = snapshot.CoroutinesTotalPerFrameSnapshot;
+            total.SampleCount.Should().Be(0);
+            total.LastMs.Should().Be(0);
+            total.AverageMs.Should().Be(0);
+            total.MaxMs.Should().Be(0);
+            snapshot.CoroutinesTotalPerFrame.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void TimingMetricsSnapshot_DutyCycleAndPerFrame_NormalizeByRunPeriod()
+        {
+            var snap = new TimingMetricsSnapshot(LastMs: 5, AverageMs: 2, MaxMs: 10, SampleCount: 10, AveragePeriodMs: 50);
+
+            snap.DutyCyclePercent.Should().Be(4.0);
+            snap.PerFrameScale(60).Should().BeApproximately(1000.0 / 50 / 60, 0.001);
+            snap.PerFrameMs(60).Should().BeApproximately(2 * (1000.0 / 50) / 60, 0.001);
+            snap.PerFrameMs(0).Should().Be(0);
+        }
+
+        [TestMethod]
+        public void TimingMetricsSnapshot_DutyCycleAndPerFrame_AreZero_WithoutRunPeriod()
+        {
+            var snap = new TimingMetricsSnapshot(LastMs: 5, AverageMs: 2, MaxMs: 10, SampleCount: 10);
+
+            snap.DutyCyclePercent.Should().Be(0);
+            snap.PerFrameMs(60).Should().Be(0);
+        }
+
+        [TestMethod]
         public void ShutdownForHotReload_ClearsRecordedMetrics()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());

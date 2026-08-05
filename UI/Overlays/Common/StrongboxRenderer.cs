@@ -11,6 +11,7 @@ namespace ClickIt.UI.Overlays.Common
 
         private const int StrongboxScanIntervalMs = 100;
         private readonly record struct CachedStrongbox(LabelOnGround Label, StrongboxLabelMetadata Metadata);
+        private static readonly List<CachedStrongbox> s_emptyStrongboxes = [];
 
         private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
         private readonly ClickItSettings _settings = settings;
@@ -24,42 +25,40 @@ namespace ClickIt.UI.Overlays.Common
         public void Render(GameController? gameController)
         {
             if (gameController == null) return;
-            IList<LabelOnGround>? labels = gameController.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible;
-            if (labels == null) return;
-
-            // Cast via dynamic to avoid assembly type conflicts when the test project
-            RenderFromLabels((IEnumerable<LabelOnGround>)(dynamic)labels, gameController.Window.GetWindowRectangleTimeCache);
+            Render(gameController.Window.GetWindowRectangleTimeCache);
         }
 
-        public void RenderFromLabels(IEnumerable<LabelOnGround> labels, RectangleF windowArea)
-        {
-            if (labels == null) return;
+        public void Render(RectangleF windowArea)
+            => RenderCachedStrongboxFrames(windowArea, ResolveRenderState());
 
+        // Background refresh (label-overlay coroutine): the expensive metadata scan runs here at a
+        // throttled cadence off the render thread; Render only draws the cached frames each frame.
+        public void Refresh(IEnumerable<LabelOnGround>? labels, RectangleF windowArea)
+        {
             EnsureStrongboxMetadataCache();
 
             StrongboxRenderState renderState = ResolveRenderState();
             if (!ShouldRenderAnyStrongboxes(renderState))
             {
-                _cachedStrongboxes.Clear();
+                _cachedStrongboxes = s_emptyStrongboxes;
                 return;
             }
 
-            // Metadata resolution is expensive (dynamic reads + GetClientRect per label), so the
-            // full scan is throttled; per frame we only re-check the (usually zero) cached strongboxes.
             if (Environment.TickCount64 - _lastStrongboxScanMs >= StrongboxScanIntervalMs)
             {
                 _lastStrongboxScanMs = Environment.TickCount64;
                 _cachedStrongboxes = ScanStrongboxes(labels, windowArea, renderState);
             }
-
-            RenderCachedStrongboxFrames(windowArea, renderState);
         }
 
         private static List<CachedStrongbox> ScanStrongboxes(
-            IEnumerable<LabelOnGround> labels,
+            IEnumerable<LabelOnGround>? labels,
             RectangleF windowArea,
             StrongboxRenderState renderState)
         {
+            if (labels == null)
+                return [];
+
             List<CachedStrongbox> strongboxes = [];
             foreach (LabelOnGround label in labels)
             {

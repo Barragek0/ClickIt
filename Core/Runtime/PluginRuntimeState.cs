@@ -9,6 +9,8 @@ namespace ClickIt.Core.Runtime
         public Coroutine? DelveFlareCoroutine { get; set; }
         public Coroutine? DeepMemoryDumpCoroutine { get; set; }
         public Coroutine? BlightRefreshCoroutine { get; set; }
+        public Coroutine? UltimatumPreviewRefreshCoroutine { get; set; }
+        public Coroutine? LabelOverlayRefreshCoroutine { get; set; }
         public Stopwatch LastRenderTimer { get; } = new();
         public Stopwatch LastTickTimer { get; } = new();
         public Stopwatch Timer { get; } = new();

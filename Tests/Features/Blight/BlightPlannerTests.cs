@@ -403,7 +403,7 @@ public class BlightPlannerTests
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
         var foundations = new List<BlightCachedTower>
         {
-            new(new NumVector2(60, 0), BlightTowerType.Chilling, 1), // built lvl1 — only covers the branch at max radius
+            new(new NumVector2(54, 0), BlightTowerType.Chilling, 1), // built lvl1 — only covers the branch leaf within effective radius
             new(new NumVector2(60, 5), BlightTowerType.Seismic, 3),  // built max — seismic covered
             new(new NumVector2(15, 5), BlightTowerType.Chilling),    // unbuilt — would be a duplicate Chilling
             new(new NumVector2(25, 5), BlightTowerType.Chilling),    // unbuilt
@@ -455,6 +455,35 @@ public class BlightPlannerTests
         int fireballBuilds = plan.Steps.Count(s =>
             s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Fireball);
         fireballBuilds.Should().Be(3, "a strategy with no coverage towers should build fill towers immediately");
+    }
+
+    [TestMethod]
+    public void PlanSteps_CappedAtMaxPlanSteps()
+    {
+        // A blight map can have 100+ foundations; without a cap the fill tier would emit hundreds
+        // of steps and the executor would try to walk to every one. A single plan must carry at
+        // most 30 steps (builds + upgrades) — finishing a batch rebuilds and plans the next.
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = new List<BlightCachedTower>();
+        for (int i = 0; i < 60; i++)
+            foundations.Add(new BlightCachedTower(new NumVector2(40 + (i * 5), 10), BlightTowerType.Chilling));
+
+        var rules = CoverageRules();
+        rules.Add(TowerStrategyBuilder.CreateRule()
+            .SetTower(BlightTowerType.Fireball)
+            .SetPriority(TowerBuildPriority.High)
+            .SetMaxUpgradeLevel(4)
+            .AlwaysUpgradeBeforeBuildingNew()
+            .Build());
+
+        BlightPlan plan = BuildPlan(lane, foundations, rules, pump: new NumVector2(0, 0));
+
+        plan.Steps.Count.Should().BeLessThanOrEqualTo(BlightFillPlanner.MaxPlanSteps,
+            "the plan must never carry more than the hard cap");
+        plan.Steps.Count.Should().BeGreaterThan(0, "with 60 foundations the plan still has work");
+        // The cap must not starve coverage: the first step is a coverage (Chilling/Seismic) build.
+        plan.Steps[0].Action.Should().Be(BlightPlanAction.Build);
+        plan.Steps[0].TowerType.Should().BeOneOf(BlightTowerType.Chilling, BlightTowerType.Seismic);
     }
 
     [TestMethod]
@@ -532,12 +561,12 @@ public class BlightPlannerTests
     {
         var lane = new List<NumVector2>
         {
-            new(30, 0), new(40, 0), new(50, 0),    // branch A — +X, starts 30 from pump
-            new(-30, 0), new(-40, 0), new(-50, 0),  // branch B — -X, starts 30 from pump
+            new(24, 0), new(34, 0), new(44, 0),     // branch A — +X, base midpoint (29,0) within Chilling's EFFECTIVE radius (30)
+            new(-24, 0), new(-34, 0), new(-44, 0),  // branch B — -X, base midpoint (-29,0) within effective radius
         };
         var foundations = Foundations(
-            (0, 0),    // Chilling — reaches both bases at Chilling's base radius (35)
-            (0, -4),   // Seismic — reaches both bases at Seismic's base radius (45)
+            (0, 0),    // Chilling — reaches both bases at Chilling's effective radius (35 − 5)
+            (0, -4),   // Seismic — reaches both bases at Seismic's effective radius (45 − 5)
             (30, 0),   // covers branch A only
             (-30, 0),  // covers branch B only
             (40, 0),   // branch A only

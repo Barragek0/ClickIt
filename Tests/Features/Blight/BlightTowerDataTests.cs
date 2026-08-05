@@ -258,4 +258,29 @@ public class BlightTowerDataTests
             "@-suffixed runtime paths still resolve");
         BlightTowerData.MapFoundationSuffix("Meteor").Should().BeNull("specialization words are not foundations");
     }
+
+    // ── Coverage safety margin (spec §2.2: effective radius = real radius − 5) ──
+
+    [TestMethod]
+    public void GetCoverageRadius_AppliesFixedMargin()
+    {
+        BlightService.GetCoverageRadius(35).Should().Be(30, "Chilling effective radius");
+        BlightService.GetCoverageRadius(45).Should().Be(40, "Seismic effective radius");
+        BlightService.GetCoverageRadius(20).Should().Be(15, "ShockNova effective radius");
+        BlightService.GetCoverageRadius(5).Should().Be(0, "a radius at or below the margin has no coverage reach");
+        BlightService.GetCoverageRadius(0).Should().Be(0);
+    }
+
+    [TestMethod]
+    public void GetCoverageRadiusForLevel_ReducesEveryLevelByTheMargin()
+    {
+        // Chilling radius is constant across ranks (35), so every level's effective radius is 30.
+        BlightService.GetCoverageRadiusForLevel(BlightTowerType.Chilling, 1).Should().Be(30);
+        BlightService.GetCoverageRadiusForLevel(BlightTowerType.Chilling, 3).Should().Be(30);
+        // Fireball grows with rank: 45/60/75/100 → 40/55/70/95.
+        BlightService.GetCoverageRadiusForLevel(BlightTowerType.Fireball, 1).Should().Be(40);
+        BlightService.GetCoverageRadiusForLevel(BlightTowerType.Fireball, 4).Should().Be(95);
+        // The margin must never produce a negative reach.
+        BlightService.GetCoverageRadiusForLevel(BlightTowerType.Fireball, 1).Should().BeGreaterThan(0);
+    }
 }

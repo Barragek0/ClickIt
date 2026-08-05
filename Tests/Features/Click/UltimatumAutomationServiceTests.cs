@@ -10,6 +10,8 @@ namespace ClickIt.Tests.Features.Click
                 useNullGameController: true,
                 cachedLabels: new TimeCache<List<LabelOnGround>>(() => [], 50));
 
+            service.RefreshUltimatumPreview();
+
             bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
             result.Should().BeFalse();
@@ -22,6 +24,8 @@ namespace ClickIt.Tests.Features.Click
             UltimatumAutomationService service = CreateService(
             useNullGameController: true,
             cachedLabels: new TimeCache<List<LabelOnGround>>(() => [null!], 50));
+
+            service.RefreshUltimatumPreview();
 
             bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
@@ -135,6 +139,8 @@ namespace ClickIt.Tests.Features.Click
             UltimatumAutomationService service = CreateService(
                 useNullGameController: true,
                 cachedLabels: new TimeCache<List<LabelOnGround>>(() => [ExileCoreVisibleObjectBuilder.CreateSelectableLabel()], 50));
+
+            service.RefreshUltimatumPreview();
 
             bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 

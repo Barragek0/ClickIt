@@ -5,6 +5,7 @@ internal enum BlightBuildActionKind
     None,
     ClickPosition,
     WalkToTarget,
+    WalkToPosition,
     Complete,
     Error,
 }
@@ -12,4 +13,5 @@ internal enum BlightBuildActionKind
 internal readonly record struct BlightBuildAction(
     BlightBuildActionKind Kind,
     Vector2 ClickPosition = default,
-    string? DebugMessage = null);
+    string? DebugMessage = null,
+    NumVector2 GridPosition = default);

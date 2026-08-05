@@ -191,4 +191,85 @@ public class BlightPlanExecutorTests
         BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(0f, 0f, 10f, 10f), 0f, 0f, static _ => true)
             .Should().BeFalse();
     }
+
+    // ── Walk target resolution (stuck-after-meteor-upgrade regression) ──
+
+    [TestMethod]
+    public void ResolveWalkActionKind_UsesEntityWalk_WhenEntityIsCached()
+    {
+        // A cached foundation entity is the normal case: walk toward the entity.
+        BlightPlanExecutor.ResolveWalkActionKind(hasWalkEntity: true, positionOffScreen: true)
+            .Should().Be(BlightBuildActionKind.WalkToTarget);
+        BlightPlanExecutor.ResolveWalkActionKind(hasWalkEntity: true, positionOffScreen: false)
+            .Should().Be(BlightBuildActionKind.WalkToTarget);
+    }
+
+    [TestMethod]
+    public void ResolveWalkActionKind_NeverRequestsEntityWalk_WithoutAnEntity()
+    {
+        // The deadlock: a foundation known only by its persisted position has no entity to walk
+        // toward, so the old code kept requesting WalkToTarget and the pipeline (which resolves the
+        // entity) never walked — the executor spun forever. With no entity, the executor must never
+        // emit WalkToTarget.
+        BlightPlanExecutor.ResolveWalkActionKind(hasWalkEntity: false, positionOffScreen: true)
+            .Should().Be(BlightBuildActionKind.WalkToPosition);
+        BlightPlanExecutor.ResolveWalkActionKind(hasWalkEntity: false, positionOffScreen: false)
+            .Should().Be(BlightBuildActionKind.None);
+    }
+
+    [TestMethod]
+    public void ResolveWalkActionKind_WalksTowardPosition_WhenOffScreen_ButWaits_WhenOnScreen()
+    {
+        // Off-screen foundation with no cached entity: walk toward the known position so the player
+        // gets within scan range. On-screen but still unscannable: wait for the scan rather than walk.
+        BlightPlanExecutor.ResolveWalkActionKind(hasWalkEntity: false, positionOffScreen: true)
+            .Should().Be(BlightBuildActionKind.WalkToPosition);
+        BlightPlanExecutor.ResolveWalkActionKind(hasWalkEntity: false, positionOffScreen: false)
+            .Should().Be(BlightBuildActionKind.None);
+    }
+
+    // ── Walk-ready gate (build needs the menu region, upgrade just needs the tower on-screen) ──
+
+    [TestMethod]
+    public void IsStepWalkReadyForAction_Upgrade_StopsOnceTowerIsOnScreen()
+    {
+        // Regression: the executor used to keep pathfinding toward an already-on-screen tower for
+        // UPGRADE steps because the full enlarged menu region was required. Upgrading is a single
+        // click on the upgrade icon — no sub-menu opens — so the tower being fully on-screen is
+        // enough to stop walking.
+        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Upgrade,
+                menuRegionReady: false, hasWalkEntity: true, entityFullyOnScreen: true)
+            .Should().BeTrue("an upgrade with the tower on-screen must stop walking");
+    }
+
+    [TestMethod]
+    public void IsStepWalkReadyForAction_Upgrade_WalksWhileTowerIsOffScreen()
+    {
+        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Upgrade,
+                menuRegionReady: false, hasWalkEntity: true, entityFullyOnScreen: false)
+            .Should().BeFalse("an off-screen tower still needs pathfinding");
+    }
+
+    [TestMethod]
+    public void IsStepWalkReadyForAction_Upgrade_NotReady_WithoutEntity()
+    {
+        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Upgrade,
+                menuRegionReady: false, hasWalkEntity: false, entityFullyOnScreen: false)
+            .Should().BeFalse("with no cached entity the upgrade can't proceed yet");
+    }
+
+    [TestMethod]
+    public void IsStepWalkReadyForAction_Build_RequiresMenuRegion()
+    {
+        // A build step clicks the build icon which opens the tower sub-menu, so the WHOLE enlarged
+        // menu region must be on-screen and clickable before stopping — even when the tower itself
+        // is already on-screen.
+        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Build,
+                menuRegionReady: true, hasWalkEntity: true, entityFullyOnScreen: true)
+            .Should().BeTrue("a build step with a usable menu region can stop walking");
+
+        BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Build,
+                menuRegionReady: false, hasWalkEntity: true, entityFullyOnScreen: true)
+            .Should().BeFalse("a build step must keep walking until the menu region is usable");
+    }
 }

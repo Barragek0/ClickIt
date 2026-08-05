@@ -8,26 +8,46 @@ namespace ClickIt.Features.Click.Application
     internal sealed class UltimatumPreviewService(UltimatumPreviewServiceDependencies dependencies)
     {
         private readonly UltimatumPreviewServiceDependencies _dependencies = dependencies;
+        private readonly Lock _snapshotLock = new();
+        private List<UltimatumPanelOptionPreview> _snapshotPreviews = [];
+        private bool _snapshotFound;
+
+        // The panel walk and ground-label scan run on the background UltimatumPreviewRefresh
+        // coroutine (fixed cadence), never the render thread; the renderer only reads the snapshot.
         private IReadOnlyList<LabelOnGround>? _groundPreviewLabelsSource;
         private List<UltimatumPanelOptionPreview>? _cachedGroundPreviews;
         private bool _cachedGroundPreviewFound;
 
-        public bool TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews)
-            => TryGetOptionPreview(ResolveWindowArea(), out previews);
+        internal void Refresh()
+            => Refresh(ResolveWindowArea());
 
-        internal bool TryGetOptionPreview(RectangleF windowArea, out List<UltimatumPanelOptionPreview> previews)
+        internal void Refresh(RectangleF windowArea)
         {
-            if (TryGetPanelOptionPreview(out previews) && previews.Count > 0)
-                return true;
+            bool found = TryGetPanelOptionPreview(out List<UltimatumPanelOptionPreview> computed) && computed.Count > 0;
+            if (!found)
+                found = TryGetGroundLabelOptionPreviewCached(windowArea, out computed);
 
-            return TryGetGroundLabelOptionPreviewCached(windowArea, out previews);
+            lock (_snapshotLock)
+            {
+                _snapshotFound = found;
+                _snapshotPreviews = computed;
+            }
+        }
+
+        internal bool TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews)
+        {
+            lock (_snapshotLock)
+            {
+                previews = _snapshotPreviews;
+                return _snapshotFound;
+            }
         }
 
         private bool TryGetGroundLabelOptionPreviewCached(RectangleF windowArea, out List<UltimatumPanelOptionPreview> previews)
         {
             // The 50ms label cache returns a fresh List reference when its window expires, so
-            // re-scanning only on a reference change keeps the ground-label scan off the per-frame
-            // hot path (no separate timer).
+            // re-scanning only on a reference change keeps the ground-label scan from running on
+            // every refresh tick when the labels are unchanged.
             IReadOnlyList<LabelOnGround>? labels = _dependencies.Automation.CachedLabels?.Value;
             if (!ReferenceEquals(labels, _groundPreviewLabelsSource))
             {

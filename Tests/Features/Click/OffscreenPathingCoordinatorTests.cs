@@ -31,6 +31,19 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
+        public void TryWalkTowardGridPosition_ReturnsFalse_WhenNoCameraAvailable()
+        {
+            // Blight foundations whose entity streamed out are walked toward by grid position.
+            // With no camera the position cannot be projected, so the walk must fail closed
+            // instead of clicking somewhere arbitrary.
+            var coordinator = CreateCoordinator(new ClickRuntimeState());
+
+            bool walked = coordinator.TryWalkTowardGridPosition(new NumVector2(1653f, 800f));
+
+            walked.Should().BeFalse();
+        }
+
+        [TestMethod]
         public void TryWalkTowardOffscreenTarget_ReturnsFalse_WhenOnscreenMechanicBlockerWins()
         {
             var settings = new ClickItSettings

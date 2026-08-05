@@ -366,11 +366,6 @@ internal sealed class ImGuiDebugOverlay(
             double avg = perf.Render.AverageMs;
             NumVec4 c = avg <= 6.94 ? CGreen : avg <= 16.67 ? CWarn : CError;
             ImGui.TextColored(c, $"Render: {perf.Render.LastMs:F0} ms  (avg: {avg:F2}, max: {perf.Render.MaxMs:F0})");
-
-            ImGui.SameLine();
-            RenderingTelemetrySnapshot r = _lastSnapshot.Rendering;
-            int pending = r.PendingTextCount + r.PendingFrameCount;
-            ImGui.TextColored(pending > 200 ? COrangeRed : CMuted, $"  Queue: text={r.PendingTextCount} frames={r.PendingFrameCount}");
         }
 
         bool hasRenderTable = perf.Render.SampleCount > 0;
@@ -408,24 +403,73 @@ internal sealed class ImGuiDebugOverlay(
             RenderClickFrequencyTarget(perf, hasCoroutines: false);
         }
 
-        bool hasAnyCoroutine = perf.AltarCoroutine.SampleCount > 0 || perf.ClickCoroutine.SampleCount > 0 || perf.FlareCoroutine.SampleCount > 0 || perf.BlightCoroutine.SampleCount > 0;
-        if (hasAnyCoroutine)
+        TimingMetricsSnapshot coroutinesTotal = perf.CoroutinesTotal;
+        if (coroutinesTotal.SampleCount > 0)
         {
             ImGui.Spacing();
-            ImGui.TextColored(CHeader, "Coroutines:");
-            if (perf.AltarCoroutine.SampleCount > 0) RenderCoroLine("Altar", perf.AltarCoroutine);
-            if (perf.ClickCoroutine.SampleCount > 0) RenderCoroLine("Click", perf.ClickCoroutine);
-            if (perf.FlareCoroutine.SampleCount > 0) RenderCoroLine("Flare", perf.FlareCoroutine);
-            if (perf.BlightCoroutine.SampleCount > 0) RenderCoroLine("Blight", perf.BlightCoroutine);
+            double fps = perf.Fps.Current;
+            TimingMetricsSnapshot frameTotal = perf.CoroutinesTotalPerFrameSnapshot;
+            NumVec4 coroutineColor = frameTotal.AverageMs <= 6.94 ? CGreen : frameTotal.AverageMs <= 16.67 ? CWarn : CError;
+            ImGui.TextColored(coroutineColor,
+                $"Coroutines: {frameTotal.LastMs:F2} ms/frame (avg: {frameTotal.AverageMs:F2}, max: {frameTotal.MaxMs:F2})");
+            ImGui.SameLine();
+            ImGui.TextColored(CWhite,
+                $"  ms/run: {coroutinesTotal.LastMs:F0} (avg: {coroutinesTotal.AverageMs:F1}, max: {coroutinesTotal.MaxMs:F0})");
+            ImGui.BeginTable("CoroutinesPerFrame", 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX);
+            ImGui.TableSetupColumn("Coroutine (ms/frame)", ImGuiTableColumnFlags.WidthFixed, 150f);
+            ImGui.TableSetupColumn("Last", ImGuiTableColumnFlags.WidthFixed, 38f);
+            ImGui.TableSetupColumn("Avg", ImGuiTableColumnFlags.WidthFixed, 38f);
+            ImGui.TableSetupColumn("Max", ImGuiTableColumnFlags.WidthFixed, 38f);
+            ImGui.TableHeadersRow();
+            RenderCoroutineFrameRow("Altar", perf.AltarCoroutine, fps);
+            RenderCoroutineFrameRow("Click", perf.ClickCoroutine, fps);
+            RenderCoroutineFrameRow("Flare", perf.FlareCoroutine, fps);
+            RenderCoroutineFrameRow("Blight", perf.BlightCoroutine, fps);
+            RenderCoroutineFrameRow("Ultimatum", perf.UltimatumCoroutine, fps);
+            RenderCoroutineFrameRow("Label Overlay", perf.LabelOverlayCoroutine, fps);
+            ImGui.EndTable();
+
+            ImGui.SameLine();
+            ImGui.BeginTable("CoroutinesPerRun", 5, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX);
+            ImGui.TableSetupColumn("Coroutine (ms/run)", ImGuiTableColumnFlags.WidthFixed, 150f);
+            ImGui.TableSetupColumn("Last", ImGuiTableColumnFlags.WidthFixed, 38f);
+            ImGui.TableSetupColumn("Avg", ImGuiTableColumnFlags.WidthFixed, 38f);
+            ImGui.TableSetupColumn("Max", ImGuiTableColumnFlags.WidthFixed, 38f);
+            ImGui.TableSetupColumn("% Time", ImGuiTableColumnFlags.WidthFixed, 50f);
+            ImGui.TableHeadersRow();
+            RenderCoroutineRunRow("Altar", perf.AltarCoroutine);
+            RenderCoroutineRunRow("Click", perf.ClickCoroutine);
+            RenderCoroutineRunRow("Flare", perf.FlareCoroutine);
+            RenderCoroutineRunRow("Blight", perf.BlightCoroutine);
+            RenderCoroutineRunRow("Ultimatum", perf.UltimatumCoroutine);
+            RenderCoroutineRunRow("Label Overlay", perf.LabelOverlayCoroutine);
+            ImGui.EndTable();
         }
     }
 
-    private static void RenderCoroLine(string label, TimingMetricsSnapshot stats)
+    private static void RenderCoroutineFrameRow(string label, TimingMetricsSnapshot stats, double fps)
     {
         if (stats.SampleCount == 0) return;
-        double current = stats.LastMs;
-        NumVec4 c = current >= 50 ? CError : current >= 25 ? CWarn : CGreen;
-        ImGui.TextColored(c, $"{label} Coroutine: {current:F0} ms  (avg: {stats.AverageMs:F1}, max: {stats.MaxMs:F0})");
+        double scale = stats.PerFrameScale(fps);
+        double avg = stats.AverageMs * scale;
+        NumVec4 c = avg <= 6.94 ? CGreen : avg <= 16.67 ? CWarn : CError;
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.Text(label);
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, scale > 0 ? $"{stats.LastMs * scale:F2}" : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, scale > 0 ? $"{avg:F2}" : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, scale > 0 ? $"{stats.MaxMs * scale:F2}" : "-");
+    }
+
+    private static void RenderCoroutineRunRow(string label, TimingMetricsSnapshot stats)
+    {
+        if (stats.SampleCount == 0) return;
+        NumVec4 c = stats.AverageMs >= 50 ? CError : stats.AverageMs >= 25 ? CWarn : CGreen;
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.Text(label);
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{stats.LastMs:F2}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{stats.AverageMs:F2}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{stats.MaxMs:F2}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.AveragePeriodMs > 0 ? $"{stats.DutyCyclePercent:F1}%" : "-");
     }
 
     private static void RenderTimingRow(string label, TimingMetricsSnapshot stats)
@@ -1190,8 +1234,40 @@ internal sealed class ImGuiDebugOverlay(
                 if (ImGui.Button(_settings.BlightDebugShowLaneLabels.Value ? "Lane labels: ON" : "Lane labels: OFF"))
                     _settings.BlightDebugShowLaneLabels.Value = !_settings.BlightDebugShowLaneLabels.Value;
 
-                (List<NumVector2>? positions, List<(PumpBranch Branch, List<int> Segments)>? branchData) = _blight.GetBranchDebug();
-                RenderCoverageTree(coverage, positions, branchData);
+                (int From, int To)[] extraEdges = _blight.TryGetExtraLaneEdges();
+                if (!_covTreeHasCache
+                    || !ReferenceEquals(coverage, _covTreeCoverage)
+                    || !ReferenceEquals(extraEdges, _covTreeExtraEdges))
+                {
+                    _covTreeCoverage = coverage;
+                    _covTreeExtraEdges = extraEdges;
+                    _covTreePositions.Clear();
+                    _covTreeBranchData.Clear();
+                    _covTreeChildren.Clear();
+                    _covTreeForests.Clear();
+
+                    (List<NumVector2> positions, List<(PumpBranch Branch, List<int> Segments)> branchData) = _blight.GetBranchDebug();
+                    _covTreePositions.AddRange(positions);
+                    _covTreeBranchData.AddRange(branchData);
+                    if (branchData.Count > 0)
+                    {
+                        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage, extraEdges);
+                        _covTreeChildren.AddRange(children);
+                        for (int b = 0; b < branchData.Count; b++)
+                        {
+                            (PumpBranch branch, List<int> segments) = branchData[b];
+                            if (branch.CoverageSegment < 0)
+                            {
+                                _covTreeForests.Add([]);
+                                continue;
+                            }
+                            _covTreeForests.Add(BlightLaneTopology.BuildBranchLaneForest(
+                                coverage, children, segments, branch.CoverageSegment, ((char)('A' + (b % 26))).ToString()));
+                        }
+                    }
+                    _covTreeHasCache = true;
+                }
+                RenderCoverageTree(coverage, _covTreePositions, _covTreeBranchData, _covTreeForests);
             }
         }
         catch { }
@@ -1226,14 +1302,14 @@ internal sealed class ImGuiDebugOverlay(
 
     private void RenderCoverageTree(
         LaneCoverageResult[] coverage,
-        List<NumVector2>? positions,
-        List<(PumpBranch Branch, List<int> Segments)>? branchData)
+        List<NumVector2> positions,
+        List<(PumpBranch Branch, List<int> Segments)> branchData,
+        List<List<BlightLaneNode>> forests)
     {
-        if (branchData == null || branchData.Count == 0)
+        if (branchData.Count == 0)
             return;
 
-        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
-        bool havePositions = positions != null && positions.Count == coverage.Length;
+        bool havePositions = positions.Count == coverage.Length;
         IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(_blight.CurrentStrategy);
         string Pt(NumVector2 p) => havePositions ? $"({p.X:F0},{p.Y:F0})" : "";
         string Flags(LaneCoverageResult r) => BlightCoverageFlags.Format(r, coverageTypes);
@@ -1281,8 +1357,7 @@ internal sealed class ImGuiDebugOverlay(
 
             if (ImGui.TreeNodeEx($"Branch {branchLetter} ({segments.Count} segs)##covbranch{branchLetter}", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                List<BlightLaneNode> forest = BlightLaneTopology.BuildBranchLaneForest(
-                    coverage, children, segments, branch.CoverageSegment, branchLetter.ToString());
+                List<BlightLaneNode> forest = forests[b];
                 for (int l = 0; l < forest.Count; l++)
                     RenderLane(forest[l]);
                 ImGui.TreePop();
@@ -1355,10 +1430,18 @@ internal sealed class ImGuiDebugOverlay(
         RenderingTelemetrySnapshot? r = _lastSnapshot?.Rendering;
         if (r != null)
             sb.AppendLine($"  Queue: text={r.PendingTextCount}, frames={r.PendingFrameCount}");
-        AppendCoroLine(sb, "  Altar Coroutine", perf.AltarCoroutine);
-        AppendCoroLine(sb, "  Click Coroutine", perf.ClickCoroutine);
-        AppendCoroLine(sb, "  Flare Coroutine", perf.FlareCoroutine);
-        AppendCoroLine(sb, "  Blight Coroutine", perf.BlightCoroutine);
+        if (perf.CoroutinesTotal.SampleCount > 0)
+        {
+            TimingMetricsSnapshot frameTotal = perf.CoroutinesTotalPerFrameSnapshot;
+            TimingMetricsSnapshot runTotal = perf.CoroutinesTotal;
+            sb.AppendLine($"  Coroutines: {frameTotal.LastMs:F2} ms/frame (avg: {frameTotal.AverageMs:F2}, max: {frameTotal.MaxMs:F2}) | ms/run: {runTotal.LastMs:F0} (avg: {runTotal.AverageMs:F1}, max: {runTotal.MaxMs:F0})");
+        }
+        AppendCoroLine(sb, "  Altar Coroutine", perf.AltarCoroutine, perf.Fps.Current);
+        AppendCoroLine(sb, "  Click Coroutine", perf.ClickCoroutine, perf.Fps.Current);
+        AppendCoroLine(sb, "  Flare Coroutine", perf.FlareCoroutine, perf.Fps.Current);
+        AppendCoroLine(sb, "  Blight Coroutine", perf.BlightCoroutine, perf.Fps.Current);
+        AppendCoroLine(sb, "  Ultimatum Coroutine", perf.UltimatumCoroutine, perf.Fps.Current);
+        AppendCoroLine(sb, "  Label Overlay Coroutine", perf.LabelOverlayCoroutine, perf.Fps.Current);
 
         if (perf.ClickTargetIntervalMs > 0 || perf.AverageClickIntervalMs > 0)
         {
@@ -1386,10 +1469,14 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine($"{label}: last={stats.LastMs:F2} avg={stats.AverageMs:F2} max={stats.MaxMs:F2}");
     }
 
-    private static void AppendCoroLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats)
+    private static void AppendCoroLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats, double fps)
     {
         if (stats.SampleCount == 0) return;
-        sb.AppendLine($"{label}: {stats.LastMs:F0} ms (avg: {stats.AverageMs:F1}, max: {stats.MaxMs:F0})");
+        double scale = stats.PerFrameScale(fps);
+        if (scale > 0)
+            sb.AppendLine($"{label}: {stats.LastMs * scale:F2}/{stats.AverageMs * scale:F2}/{stats.MaxMs * scale:F2} ms/frame | {stats.LastMs:F0}/{stats.AverageMs:F1}/{stats.MaxMs:F0} ms/run ({stats.DutyCyclePercent:F1}%)");
+        else
+            sb.AppendLine($"{label}: {stats.LastMs:F0}/{stats.AverageMs:F1}/{stats.MaxMs:F0} ms/run");
     }
 
     private void AppendErrors(System.Text.StringBuilder sb)
@@ -1657,7 +1744,7 @@ internal sealed class ImGuiDebugOverlay(
                 (List<NumVector2>? positions, List<(PumpBranch Branch, List<int> Segments)>? branchData) = _blight.GetBranchDebug();
                 if (branchData != null && branchData.Count > 0)
                 {
-                    List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
+                    List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage, _blight.TryGetExtraLaneEdges());
                     bool havePositions = positions != null && positions.Count == coverage.Length;
                     IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(_blight.CurrentStrategy);
                     string Pt(NumVector2 p) => havePositions ? $"({p.X:F0},{p.Y:F0})" : "";
@@ -1779,6 +1866,17 @@ internal sealed class ImGuiDebugOverlay(
     private string? _lastTowerDatDump;
     private long _lastTowerDatDumpMs;
     private string? _cachedMemory;
+
+    // Coverage-tree render cache: the blight cache only refreshes on its own 200ms cadence, and
+    // the topology derivation (branch search + lane forest) is expensive on large maps, so it is
+    // rebuilt only when the underlying coverage/extra-edge references change.
+    private LaneCoverageResult[]? _covTreeCoverage;
+    private (int From, int To)[] _covTreeExtraEdges = [];
+    private readonly List<NumVector2> _covTreePositions = [];
+    private readonly List<(PumpBranch Branch, List<int> Segments)> _covTreeBranchData = [];
+    private readonly List<List<int>> _covTreeChildren = [];
+    private readonly List<List<BlightLaneNode>> _covTreeForests = [];
+    private bool _covTreeHasCache;
 
     private static string TrimPath(string? path)
         => string.IsNullOrWhiteSpace(path) ? "<none>" : path.Length <= 80 ? path : path[..77] + "...";

@@ -62,6 +62,14 @@ namespace ClickIt.Core.Runtime
             _state.Runtime.BlightRefreshCoroutine = new Coroutine(MainBlightRefreshCoroutine(), plugin, "ClickIt.BlightRefresh", true);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.BlightRefreshCoroutine);
             _state.Runtime.BlightRefreshCoroutine.Priority = CoroutinePriority.Normal;
+
+            _state.Runtime.UltimatumPreviewRefreshCoroutine = new Coroutine(MainUltimatumPreviewRefreshCoroutine(), plugin, "ClickIt.UltimatumPreviewRefresh", true);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.UltimatumPreviewRefreshCoroutine);
+            _state.Runtime.UltimatumPreviewRefreshCoroutine.Priority = CoroutinePriority.Normal;
+
+            _state.Runtime.LabelOverlayRefreshCoroutine = new Coroutine(MainLabelOverlayRefreshCoroutine(), plugin, "ClickIt.LabelOverlayRefresh", true);
+            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.LabelOverlayRefreshCoroutine);
+            _state.Runtime.LabelOverlayRefreshCoroutine.Priority = CoroutinePriority.Normal;
         }
 
         private IEnumerator MainScanForAltarsLogic()
@@ -266,6 +274,65 @@ namespace ClickIt.Core.Runtime
                 }
 
                 yield return new WaitTime(200);
+            }
+        }
+
+        private IEnumerator MainUltimatumPreviewRefreshCoroutine()
+        {
+            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            {
+                if (_settings.ShowUltimatumOptionOverlay?.Value == true)
+                {
+                    try
+                    {
+                        _state.Services.PerformanceMonitor?.StartCoroutineTiming(TimingChannel.Ultimatum);
+                        _state.Services.ClickAutomationPort?.RefreshUltimatumPreview();
+                        _state.Services.PerformanceMonitor?.StopCoroutineTiming(TimingChannel.Ultimatum);
+                    }
+                    catch (Exception ex)
+                    {
+                        _errorHandler.LogError($"[UltimatumPreviewRefresh] {ex}");
+                    }
+                }
+
+                yield return new WaitTime(50);
+            }
+        }
+
+        // Label-based overlay refresh: harvest plot processing and the strongbox metadata scan run
+        // here at a fixed cadence (the label cache is 50ms, so label/element data stays fresh) off
+        // the render thread; the render calls only draw the cached results each frame.
+        private IEnumerator MainLabelOverlayRefreshCoroutine()
+        {
+            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            {
+                if (_settings.ClickHarvest.Value)
+                {
+                    try
+                    {
+                        _state.Services.PerformanceMonitor?.StartCoroutineTiming(TimingChannel.LabelOverlay);
+                        _state.Services.HarvestService?.ProcessHarvestPlots(_state.Services.CachedLabels?.Value, _gameController);
+                        _state.Services.PerformanceMonitor?.StopCoroutineTiming(TimingChannel.LabelOverlay);
+                    }
+                    catch (Exception ex)
+                    {
+                        _errorHandler.LogError($"[HarvestRefresh] {ex}");
+                    }
+                }
+
+                try
+                {
+                    _state.Services.PerformanceMonitor?.StartCoroutineTiming(TimingChannel.LabelOverlay);
+                    RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
+                    _state.Rendering.StrongboxRenderer?.Refresh(_state.Services.CachedLabels?.Value, windowArea);
+                    _state.Services.PerformanceMonitor?.StopCoroutineTiming(TimingChannel.LabelOverlay);
+                }
+                catch (Exception ex)
+                {
+                    _errorHandler.LogError($"[StrongboxRefresh] {ex}");
+                }
+
+                yield return new WaitTime(50);
             }
         }
 

@@ -121,6 +121,9 @@ namespace ClickIt.Features.Click
         internal bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => UltimatumAutomation.TryGetOptionPreview(out previews);
 
+        internal void RefreshUltimatumPreview()
+            => UltimatumAutomation.RefreshUltimatumPreview();
+
         private bool TryHandleUltimatumPanelUi(Vector2 windowTopLeft)
             => UltimatumAutomation.TryHandlePanelUi(windowTopLeft);
 

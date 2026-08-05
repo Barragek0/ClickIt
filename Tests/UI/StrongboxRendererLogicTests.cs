@@ -135,9 +135,10 @@ namespace ClickIt.Tests.UI
             var renderer = new StrongboxRenderer(settings, queue);
             RectangleF window = new(100f, 100f, 1280f, 720f);
 
-            renderer.RenderFromLabels(
+            renderer.Refresh(
                 [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(50f, 60f, 100f, 40f))],
                 window);
+            renderer.Render(window);
 
             queue.GetPendingFrameSnapshot().Should().ContainSingle();
         }
@@ -150,9 +151,10 @@ namespace ClickIt.Tests.UI
             var renderer = new StrongboxRenderer(settings, queue);
             RectangleF window = new(100f, 100f, 1280f, 720f);
 
-            renderer.RenderFromLabels(
+            renderer.Refresh(
                 [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(9000f, 9000f, 100f, 40f))],
                 window);
+            renderer.Render(window);
 
             queue.GetPendingFrameSnapshot().Should().BeEmpty();
         }
@@ -165,9 +167,10 @@ namespace ClickIt.Tests.UI
             var renderer = new StrongboxRenderer(settings, queue);
             RectangleF window = new(100f, 100f, 1280f, 720f);
 
-            renderer.RenderFromLabels(
+            renderer.Refresh(
                 [CreateStrongboxLabel("Metadata/Items/Currency/Orb", new RectangleF(50f, 60f, 100f, 40f))],
                 window);
+            renderer.Render(window);
 
             queue.GetPendingFrameSnapshot().Should().BeEmpty();
         }
@@ -179,18 +182,21 @@ namespace ClickIt.Tests.UI
             var renderer = new StrongboxRenderer(settings, new DeferredFrameQueue());
             RectangleF window = new(100f, 100f, 1280f, 720f);
 
-            renderer.RenderFromLabels(
+            renderer.Refresh(
                 [CreateStrongboxLabel("Metadata/Chests/StrongBoxes/Arcanist", new RectangleF(50f, 60f, 100f, 40f))],
                 window);
+            renderer.Render(window);
             ReadCachedStrongboxCount(renderer).Should().Be(1);
 
             // Within the scan window the changed label set is not re-scanned.
-            renderer.RenderFromLabels([], window);
+            renderer.Refresh([], window);
+            renderer.Render(window);
             ReadCachedStrongboxCount(renderer).Should().Be(1);
 
             // Force the window to elapse → the re-scan sees the empty set.
             ForceStrongboxRescan(renderer);
-            renderer.RenderFromLabels([], window);
+            renderer.Refresh([], window);
+            renderer.Render(window);
             ReadCachedStrongboxCount(renderer).Should().Be(0);
         }
 

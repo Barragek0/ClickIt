@@ -50,6 +50,10 @@ internal sealed class BlightEntityCache
     // Pathway snapshot aligned with _cachedCoverage so the render thread always draws a consistent bundle.
     private NumVector2[]? _cachedCoveragePathways;
 
+    private (int From, int To)[] _cachedExtraLaneEdges = [];
+
+    private Dictionary<NumVector2, System.Numerics.Vector3> _pathwayWorldPositions = [];
+
     // Cached array snapshots for the render thread — repopulated lazily, avoids per-read ToArray().
     private Entity[]? _cachedPathwayEntities;
     private (Entity Entity, string TowerId)[]? _cachedTowerEntities;
@@ -125,6 +129,10 @@ internal sealed class BlightEntityCache
     {
         get { lock (_blightDataLock) return _cachedCoveragePathways; }
     }
+    internal IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> PathwayWorldPositions
+    {
+        get { lock (_blightDataLock) return _pathwayWorldPositions; }
+    }
 
     internal void InvalidateCoverageCache()
     {
@@ -150,13 +158,21 @@ internal sealed class BlightEntityCache
         }
     }
 
-    internal (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? TryGetRenderBundle()
+    internal (int From, int To)[] TryGetExtraLaneEdges()
+    {
+        lock (_blightDataLock)
+        {
+            return _cachedExtraLaneEdges;
+        }
+    }
+
+    internal (NumVector2[] Pathways, LaneCoverageResult[] Coverage, (int From, int To)[] ExtraLaneEdges)? TryGetRenderBundle()
     {
         lock (_blightDataLock)
         {
             if (_cachedCoveragePathways == null || _cachedCoverage == null)
                 return null;
-            return (_cachedCoveragePathways, _cachedCoverage);
+            return (_cachedCoveragePathways, _cachedCoverage, _cachedExtraLaneEdges);
         }
     }
 
@@ -187,7 +203,8 @@ internal sealed class BlightEntityCache
             for (int t = 0; t < rawTowers.Length; t++)
             {
                 int actualRadius = GetTowerRadiusCached(rawTowers[t].TowerId);
-                towersSnapshot[t] = (rawTowers[t].Entity, rawTowers[t].TowerId, actualRadius * actualRadius);
+                int coverageRadius = BlightService.GetCoverageRadius(actualRadius);
+                towersSnapshot[t] = (rawTowers[t].Entity, rawTowers[t].TowerId, coverageRadius * coverageRadius);
             }
 
             _cachedCoveragePathwayCount = _persistedPathwayPositions.Count;
@@ -203,7 +220,8 @@ internal sealed class BlightEntityCache
                     int r = _knownTowers[i].Radius > 0
                         ? _knownTowers[i].Radius
                         : BlightService.GetRadiusForLevel(_knownTowers[i].TowerType, _knownTowers[i].UpgradeLevel);
-                    builtList.Add((_knownTowers[i].WorldPosition, _knownTowers[i].TowerType, r * r));
+                    int coverageRadius = BlightService.GetCoverageRadius(r);
+                    builtList.Add((_knownTowers[i].WorldPosition, _knownTowers[i].TowerType, coverageRadius * coverageRadius));
                 }
             }
             cachedBuilt = [.. builtList];
@@ -258,20 +276,31 @@ internal sealed class BlightEntityCache
             return (hasChilling, hasSeismic, hasFireball, hasEmpowering, hasShockNova, hasSummoning);
         }
 
+        NumVector2? pumpPos = _pumpEntity != null
+            ? new NumVector2(_pumpEntity.GridPosNum.X, _pumpEntity.GridPosNum.Y)
+            : null;
+
         LaneCoverageResult[] result = BlightLaneTopology.ComputeCoverage(
             pathwaysSnapshot,
             m => { (bool c, bool s, bool f, _, _, _) = Probe(m); return (c, s, f); },
             // Root the lane tree at the pump so a mid-lane fork becomes a real multi-child fork
             // (each branch attaches to the fork point) and the AND-at-fork coverage rule applies.
-            pumpGridPosition: _pumpEntity != null
-                ? new NumVector2(_pumpEntity.GridPosNum.X, _pumpEntity.GridPosNum.Y)
-                : null,
+            pumpGridPosition: pumpPos,
             getSupportCoverage: m => { (_, _, _, bool e, bool sn, bool su) = Probe(m); return (e, sn, su); });
+
+        // Extra real lanes (dead-ends continued onto another arm) also carry coverage — a bridged
+        // dead-end and its target arm are one lane, so coverage flows both ways across the bridge.
+        // Only bridges near the pump survive (a guessed far bridge is more likely a wrong anchor
+        // than a real lane); the branch/divergence structure treats them as real segments.
+        (int From, int To)[] bridges = BlightLaneTopology.FindMissingLaneEdges(
+            pathwaysSnapshot, result, pumpGridPosition: pumpPos);
+        result = BlightLaneTopology.ApplyBridgeCoverage(result, bridges);
 
         lock (_blightDataLock)
         {
             _cachedCoverage = result;
             _cachedCoveragePathways = pathwaysSnapshot;
+            _cachedExtraLaneEdges = bridges;
             _coverageDirty = false;
         }
         return result;
@@ -383,7 +412,7 @@ internal sealed class BlightEntityCache
             {
                 if (path.Contains(BlightPathwayMetadata, StringComparison.OrdinalIgnoreCase))
                 {
-                    InsertPathwaySortedByIdDesc(_scanLocalPathways, entity);
+                    _scanLocalPathways.Add(entity);
                     _hasDetectedAnyBlightContent = true;
                     pathwayCount++;
                 }
@@ -427,6 +456,10 @@ internal sealed class BlightEntityCache
 
             return false;
         });
+
+        // Sort the collected pathways by entity Id DESC (the game's lane order) in one O(n log n)
+        // pass instead of O(n²) insertion-order inserts during the scan.
+        _scanLocalPathways.Sort(static (a, b) => b.Id.CompareTo(a.Id));
 
         _hasCompletedInitialScan = true;
 
@@ -522,6 +555,18 @@ internal sealed class BlightEntityCache
             _pumpEntity = localPump;
             _knownTowers.Clear();
             _knownTowers.AddRange(_scanLocalKnown);
+
+            // Snapshot the visible pathways' world positions (with terrain Z) for lane-label projection.
+            Dictionary<NumVector2, System.Numerics.Vector3> newWorldPositions = [];
+            for (int p = 0; p < _scanLocalPathways.Count; p++)
+            {
+                Entity e = _scanLocalPathways[p];
+                NumVector2 g = BlightHelpers.GetGridPosition(e);
+                if (g.X == 0f && g.Y == 0f)
+                    continue;
+                newWorldPositions[g] = e.PosNum;
+            }
+            _pathwayWorldPositions = newWorldPositions;
 
             // Invalidate coverage only when the scan changed data the coverage computation depends on.
             // Steady-state scans (no new/changed towers, pathways, or built levels) keep the cached
@@ -641,18 +686,6 @@ internal sealed class BlightEntityCache
         }
 
         return path;
-    }
-
-    private static void InsertPathwaySortedByIdDesc(List<Entity> list, Entity entity)
-    {
-        uint id = entity.Id;
-        int i = 0;
-        for (; i < list.Count; i++)
-        {
-            if (list[i].Id < id)
-                break;
-        }
-        list.Insert(i, entity);
     }
 
     internal void ScanFoundations(IReadOnlyList<LabelOnGround>? allLabels)
@@ -899,6 +932,7 @@ internal sealed class BlightEntityCache
             _towerEntities.Clear();
             _pumpEntity = null;
             _entityPathCache.Clear();
+            _pathwayWorldPositions = [];
         }
         CachedBranchAnchors.Clear();
         _lastProcessedLabels = null;
@@ -909,6 +943,7 @@ internal sealed class BlightEntityCache
         {
             _cachedCoverage = null;
             _cachedCoveragePathways = null;
+            _cachedExtraLaneEdges = [];
             _coverageDirty = false;
             _lastScanCoverageSignature = 0;
         }

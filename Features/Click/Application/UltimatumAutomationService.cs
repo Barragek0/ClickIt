@@ -40,6 +40,9 @@ namespace ClickIt.Features.Click.Application
         public bool TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => _previewService.TryGetOptionPreview(out previews);
 
+        public void RefreshUltimatumPreview()
+            => _previewService.Refresh();
+
         public bool TryHandlePanelUi(Vector2 windowTopLeft)
             => _panelAutomationService.TryHandlePanelUi(windowTopLeft);
 

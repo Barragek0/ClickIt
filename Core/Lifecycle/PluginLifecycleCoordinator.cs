@@ -62,6 +62,8 @@ namespace ClickIt.Core.Lifecycle
             PluginRuntimeState runtime = state.Runtime;
             runtime.AltarCoroutine?.Done();
             runtime.BlightRefreshCoroutine?.Done();
+            runtime.UltimatumPreviewRefreshCoroutine?.Done();
+            runtime.LabelOverlayRefreshCoroutine?.Done();
             runtime.ClickLabelCoroutine?.Done();
             runtime.ManualUiHoverCoroutine?.Done();
             runtime.DelveFlareCoroutine?.Done();

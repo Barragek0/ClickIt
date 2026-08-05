@@ -130,14 +130,19 @@ internal static class BlightBranches
             root = coverage[root].ParentIndex;
 
         Stack<int> pending = new();
+        bool[] visited = new bool[coverage.Length];
         foreach (int c in FindSubBranches(coverage, root))
             pending.Push(c);
         while (pending.Count > 0)
         {
             int s = pending.Pop();
+            if (visited[s])
+                continue;
+            visited[s] = true;
             result.Add(s);
             foreach (int c in FindSubBranches(coverage, s))
-                pending.Push(c);
+                if (!visited[c])
+                    pending.Push(c);
         }
         return result;
     }
@@ -181,10 +186,10 @@ internal static class BlightBranches
                 int radius = t.Radius > 0
                     ? t.Radius
                     : BlightService.GetRadiusForLevel(type, t.UpgradeLevel);
-                if (SqDist(t.WorldPosition, point) <= Sq(radius))
+                if (SqDist(t.WorldPosition, point) <= Sq(BlightService.GetCoverageRadius(radius)))
                     return true;
             }
-            else if (SqDist(t.WorldPosition, point) <= Sq(BlightService.GetRadiusForLevel(type, targetLevel)))
+            else if (SqDist(t.WorldPosition, point) <= Sq(BlightService.GetCoverageRadiusForLevel(type, targetLevel)))
             {
                 return true; // in-progress — will cover once upgraded to target
             }

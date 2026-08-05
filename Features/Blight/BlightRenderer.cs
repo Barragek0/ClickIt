@@ -9,7 +9,12 @@ public sealed class BlightRenderer
 
     private static readonly Color PumpColor = new(0, 200, 255, 120);
     internal static readonly Color PhantomLaneColor = new(235, 235, 235, 200);
-    private const int LaneLineWidth = 8;
+    private static readonly Color LaneLabelColor = new(235, 235, 235, 215);
+    // Extra lanes re-added for dead-ends that continue onto another arm: always this fixed pink,
+    // regardless of coverage — they are reconstructed connections, not measured lane colour.
+    internal static readonly Color BridgeLaneColor = new(255, 92, 178, 255);
+    private const int LaneLineWidthMap = 2;
+    private const int LaneLineWidthGame = 4;
 
     private const float TowerDotRadius = 3.5f;
     private const int TowerDotSegments = 12;
@@ -60,27 +65,30 @@ public sealed class BlightRenderer
             largeMap?.MapCenter ?? new NumVector2(),
             largeMap?.MapScale ?? 1f);
 
-        if (_settings.BlightVisualizePaths.Value)
-            DrawBlightLanes(ctx, graphics, _blightService);
+        bool lanesMap = _settings.BlightVisualizePaths.Value && _settings.BlightVisualizePathsMap.Value;
+        bool lanesGame = _settings.BlightVisualizePaths.Value && _settings.BlightVisualizePathsGame.Value;
+        if (lanesMap || lanesGame)
+            DrawBlightLanes(ctx, graphics, _blightService, lanesMap, lanesGame);
 
-        if (_settings.BlightDebugShowLaneLabels.Value)
+        // Lane labels ride on the in-game lane rendering so they stay anchored over the lanes; the
+        // debug-box toggle can hide just the labels while the lanes stay visible.
+        if (lanesGame && _settings.BlightDebugShowLaneLabels.Value)
             DrawLaneLabels(ctx, graphics);
 
-        if (_settings.BlightVisualizeTowers.Value)
-        {
-            bool showUpgrades = _settings.BlightVisualizeUpgrades.Value;
-            bool showRanges = _settings.BlightVisualizeTowerRanges.Value;
+        bool dotsMap = _settings.BlightVisualizeTowers.Value && _settings.BlightVisualizeTowersMap.Value;
+        bool dotsGame = _settings.BlightVisualizeTowers.Value && _settings.BlightVisualizeTowersGame.Value;
+        if (dotsMap || dotsGame)
+            DrawTowerDots(ctx, graphics, dotsMap, dotsGame, _settings.BlightVisualizeUpgrades.Value);
 
-            DrawTowerDots(ctx, graphics, showUpgrades);
-
-            if (showRanges)
-                DrawTowerRanges(ctx, graphics);
-        }
+        bool rangesMap = _settings.BlightVisualizeTowerRanges.Value && _settings.BlightVisualizeTowerRangesMap.Value;
+        bool rangesGame = _settings.BlightVisualizeTowerRanges.Value && _settings.BlightVisualizeTowerRangesGame.Value;
+        if (rangesMap || rangesGame)
+            DrawTowerRanges(ctx, graphics, rangesMap, rangesGame);
 
         DrawPump(ctx, graphics);
     }
 
-    private void DrawTowerDots(RenderContext ctx, Graphics graphics, bool showUpgrades)
+    private void DrawTowerDots(RenderContext ctx, Graphics graphics, bool dotsMap, bool dotsGame, bool showUpgrades)
     {
         IReadOnlyList<BlightCachedTower> ordered = _blightService.GetFoundationsInPriorityOrder();
         IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
@@ -99,7 +107,7 @@ public sealed class BlightRenderer
             if (!ShouldRenderTowerDot(isCurrentStep, pendingNumbers.Count))
                 continue;
 
-            if (ctx.LargeMapOpen)
+            if (ctx.LargeMapOpen && dotsMap)
             {
                 NumVector2 mapCenter = ProjectGridToLargeMap(ctx.PlayerGrid, ctx.LargeMapCenter, ctx.LargeMapScale, ft.WorldPosition);
                 float mapRadius = TowerDotRadius * ctx.LargeMapScale;
@@ -110,7 +118,7 @@ public sealed class BlightRenderer
             }
 
             // In-world: project WORLD (PosNum) with a screen-space radius; restored foundations have no WorldPos3 and draw only on the map.
-            if (ft.WorldPos3 is { } worldPos && IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, worldPos))
+            if (dotsGame && ft.WorldPos3 is { } worldPos && IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, worldPos))
             {
                 NumVector2 screenCenter = ctx.Camera.WorldToScreen(worldPos);
                 float screenRadius = ScreenRadiusForWorldDot(ctx.Camera, worldPos, GridToWorldRadius(TowerDotRadius));
@@ -199,9 +207,9 @@ public sealed class BlightRenderer
             mapCenter.Y + (mapScale * (-(dx + dy) * SubMap.CameraAngleSin)));
     }
 
-    private static void DrawBlightLanes(RenderContext ctx, Graphics graphics, BlightService blight)
+    private static void DrawBlightLanes(RenderContext ctx, Graphics graphics, BlightService blight, bool lanesMap, bool lanesGame)
     {
-        (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = blight.TryGetRenderBundle();
+        (NumVector2[] Pathways, LaneCoverageResult[] Coverage, (int From, int To)[] ExtraLaneEdges)? bundle = blight.TryGetRenderBundle();
         if (bundle == null || bundle.Value.Pathways.Length < 2)
             return;
 
@@ -220,17 +228,37 @@ public sealed class BlightRenderer
             NumVector2 b = pathways[s];
             Color laneColor = LaneColorFor(coverage[s], strategy);
 
-            if (ctx.LargeMapOpen)
-                graphics.DrawLineOnLargeMap(a, b, LaneLineWidth, laneColor);
+            if (ctx.LargeMapOpen && lanesMap)
+                graphics.DrawLineOnLargeMap(a, b, LaneLineWidthMap, laneColor);
 
-            if (IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a))
-                graphics.DrawLineInWorld(a, b, LaneLineWidth, laneColor);
+            // Draw the in-world line when EITHER endpoint is on-screen: a lane — especially a
+            // phantom bridge spanning a gap — whose far end sits off-screen would otherwise vanish
+            // even though the near end (and the player) are on screen.
+            if (lanesGame && (IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a) || IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, b)))
+                graphics.DrawLineInWorld(a, b, LaneLineWidthGame, laneColor);
+        }
+
+        // Real lanes the single-parent tree dropped (a point whose lane continues onto another arm
+        // is nearer its own arm's neighbour, so the edge never entered the tree). Rendered in the
+        // fixed bridge colour — these are reconstructed connections and never take the coverage colour.
+        (int From, int To)[] extraEdges = bundle.Value.ExtraLaneEdges;
+        for (int e = 0; e < extraEdges.Length; e++)
+        {
+            if (extraEdges[e].From < 0 || extraEdges[e].From >= pathways.Length
+                || extraEdges[e].To < 0 || extraEdges[e].To >= pathways.Length)
+                continue;
+            NumVector2 a = pathways[extraEdges[e].From];
+            NumVector2 b = pathways[extraEdges[e].To];
+            if (ctx.LargeMapOpen && lanesMap)
+                graphics.DrawLineOnLargeMap(a, b, LaneLineWidthMap, BridgeLaneColor);
+            if (lanesGame && (IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a) || IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, b)))
+                graphics.DrawLineInWorld(a, b, LaneLineWidthGame, BridgeLaneColor);
         }
     }
 
     private void DrawLaneLabels(RenderContext ctx, Graphics graphics)
     {
-        (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = _blightService.TryGetRenderBundle();
+        (NumVector2[] Pathways, LaneCoverageResult[] Coverage, (int From, int To)[] ExtraLaneEdges)? bundle = _blightService.TryGetRenderBundle();
         if (bundle == null || bundle.Value.Coverage.Length == 0)
             return;
 
@@ -240,7 +268,8 @@ public sealed class BlightRenderer
         if (Branches.Count == 0 || Positions.Count != coverage.Length)
             return;
 
-        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
+        // Bridges are real segments, so they join the branch/divergence structure the labels derive from.
+        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage, bundle.Value.ExtraLaneEdges);
         string?[] labelFor = new string?[coverage.Length];
         for (int b = 0; b < Branches.Count; b++)
         {
@@ -256,8 +285,10 @@ public sealed class BlightRenderer
 
         IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
         IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(strategy);
+        IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> worldByGrid = _blightService.PathwayWorldPositions;
 
         float gridToWorld = 1f / PoeMapExtension.WorldToGridConversion;
+        NumVector2[] pathways = bundle.Value.Pathways;
         for (int s = 0; s < coverage.Length; s++)
         {
             string? label = labelFor[s];
@@ -266,12 +297,41 @@ public sealed class BlightRenderer
             NumVector2 grid = coverage[s].Midpoint;
             if (!IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, grid))
                 continue;
-            NumVector2 screen = ctx.Camera.WorldToScreen(new System.Numerics.Vector3(
-                grid.X * gridToWorld, grid.Y * gridToWorld, 0f));
+
+            // The lanes are drawn following the terrain, so the label must project at the segment's
+            // world midpoint (terrain Z from the pathway entities) — projecting the grid midpoint at
+            // Z=0 lands the text vertically off the lane, offset by terrain height and camera angle.
+            System.Numerics.Vector3 world = ResolveSegmentWorldMidpoint(pathways, coverage, s, worldByGrid)
+                ?? new System.Numerics.Vector3(grid.X * gridToWorld, grid.Y * gridToWorld, 0f);
+            NumVector2 screen = ctx.Camera.WorldToScreen(world);
             LaneCoverageResult seg = coverage[s];
-            DrawTextWithShadow(graphics, $"{label} {BlightCoverageFlags.Compact(seg, coverageTypes)}", screen,
-                LaneColorFor(seg, strategy), FontAlign.Center);
+            DrawLaneLabel(graphics, $"{label} {BlightCoverageFlags.Compact(seg, coverageTypes)}", screen);
         }
+    }
+
+    internal static System.Numerics.Vector3? ResolveSegmentWorldMidpoint(
+        NumVector2[] pathways,
+        LaneCoverageResult[] coverage,
+        int segmentIndex,
+        IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> worldByGrid)
+    {
+        int par = coverage[segmentIndex].ParentIndex;
+        if (par < 0 || par >= pathways.Length)
+            return null;
+        if (!worldByGrid.TryGetValue(pathways[par], out System.Numerics.Vector3 a))
+            return null;
+        if (!worldByGrid.TryGetValue(pathways[segmentIndex], out System.Numerics.Vector3 b))
+            return null;
+        return new System.Numerics.Vector3((a.X + b.X) * 0.5f, (a.Y + b.Y) * 0.5f, (a.Z + b.Z) * 0.5f);
+    }
+
+    // Lane labels sit on top of the lane colour, so they use a light fill with a dark 2-way shadow
+    // to stay readable over both dark lanes and the white phantom bridges.
+    private static void DrawLaneLabel(Graphics graphics, string text, NumVector2 pos)
+    {
+        graphics.DrawText(text, new NumVector2(pos.X - 1f, pos.Y - 1f), Color.Black, FontAlign.Center);
+        graphics.DrawText(text, new NumVector2(pos.X + 1f, pos.Y + 1f), Color.Black, FontAlign.Center);
+        graphics.DrawText(text, pos, LaneLabelColor, FontAlign.Center);
     }
 
     private static void LabelLanes(BlightLaneNode lane, string?[] labelFor)
@@ -282,7 +342,7 @@ public sealed class BlightRenderer
             LabelLanes(lane.Children[c], labelFor);
     }
 
-    private void DrawTowerRanges(RenderContext ctx, Graphics graphics)
+    private void DrawTowerRanges(RenderContext ctx, Graphics graphics, bool rangesMap, bool rangesGame)
     {
         IReadOnlyList<(Entity Entity, string TowerId)> towers = _blightService.TowerEntities;
         IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
@@ -297,10 +357,10 @@ public sealed class BlightRenderer
                 ? strategy.GetTowerRangeColor(mapped.Value)
                 : Color.Gray;
 
-            if (ctx.LargeMapOpen)
-                graphics.DrawCircleOnLargeMap(entity.GridPosNum, false, radius, rangeColor, 4);
+            if (ctx.LargeMapOpen && rangesMap)
+                graphics.DrawCircleOnLargeMap(entity.GridPosNum, false, radius, rangeColor, LaneLineWidthMap);
 
-            if (IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, entity.PosNum))
+            if (rangesGame && IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, entity.PosNum))
                 graphics.DrawCircleInWorld(entity.PosNum, GridToWorldRadius(radius), rangeColor, 2, 24, false);
         }
     }

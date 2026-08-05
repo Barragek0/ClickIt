@@ -80,10 +80,9 @@ namespace ClickIt.Core.Runtime
                 if (effectiveSettings.ClickHarvest.Value)
                 {
                     long harvestStart = Stopwatch.GetTimestamp();
-                    // Process harvest labels during render so the overlay
-                    // shows correct estimates AND the click path can read
-                    // the decision via GetLabelToClick without reprocessing.
-                    services.HarvestService?.ProcessHarvestPlots(services.CachedLabels?.Value, gameController);
+                    // Harvest plot processing runs on a background coroutine
+                    // (MainLabelOverlayRefreshCoroutine) at a fixed 50ms interval —
+                    // the render call only draws the cached estimates each frame.
                     rendering.HarvestOverlayRenderer?.Render();
                     services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.HarvestOverlay, GetElapsedMs(harvestStart));
                 }

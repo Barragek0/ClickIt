@@ -100,6 +100,59 @@ namespace ClickIt.Features.Click.Runtime
             return HandleTraversalClickResult(context, builtPath, resolvedFromPath, targetScreen, clickPos, movementSkillDebug, clicked);
         }
 
+        // Position-only walk fallback for blight foundations whose entity has streamed out: the plan
+        // knows the foundation's grid position but no entity is cached to pathfind toward, so project
+        // the position and issue a directional walk click in its direction. Once the player gets
+        // within scan range the entity reappears and normal entity walking resumes.
+        public bool TryWalkTowardGridPosition(NumVector2 gridPos)
+        {
+            // Mirror the entity-walk's safety gates so the fallback never walks when the entity walk
+            // would have been aborted (ritual active, or a clickable on-screen mechanic available).
+            if (OffscreenPathingMath.ShouldSkipOffscreenPathfindingForRitual(EntityHelpers.IsRitualActive(_dependencies.GameController)))
+                return AbortOffscreenPathingForBlocker(
+                    "[TryWalkTowardGridPosition] Skipping position walk because a RitualBlocker is active.",
+                    "OffscreenPathingBlockedByRitual",
+                    "RitualBlocker active");
+
+            if (_dependencies.OnscreenMechanicPathingBlocker.ShouldAvoidOffscreenPathfindingBecauseOnscreenMechanicIsClickable())
+                return AbortOffscreenPathingForBlocker(
+                    "[TryWalkTowardGridPosition] Skipping position walk because a clickable on-screen mechanic is available.",
+                    null,
+                    null);
+
+            try
+            {
+                Camera? camera = _dependencies.GameController?.Game?.IngameState?.Camera;
+                if (camera == null)
+                    return false;
+
+                float scale = 1f / PoeMapExtension.WorldToGridConversion;
+                NumVector2 raw = camera.WorldToScreen(new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
+                Vector2 targetScreen = new(raw.X, raw.Y);
+                RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
+                if (!OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+                        win, targetScreen, "blight-foundation", _dependencies.PointIsInClickableArea, out Vector2 walkClick))
+                {
+                    AddPathfindingStage($"Walk: no directional click point toward foundation ({gridPos.X:F0},{gridPos.Y:F0})");
+                    return false;
+                }
+
+                bool clicked = _dependencies.LabelInteraction.PerformMechanicClick(
+                    ResolveBlightIconSafeClickPosition(walkClick, targetScreen, "blight-foundation"));
+                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
+                    "BlightBuildWalk",
+                    clicked
+                        ? $"directional walk toward ({gridPos.X:F0},{gridPos.Y:F0})"
+                        : $"walk click rejected ({gridPos.X:F0},{gridPos.Y:F0})",
+                    MechanicIds.Blight);
+                return clicked;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         // Pathfinding clicks must never land on a blight tower's build/upgrade icon (that would
         // accidentally build or upgrade a tower). When the resolved click would hit one, walk the
         // click back along the player→target line — not toward the window center — and keep stepping

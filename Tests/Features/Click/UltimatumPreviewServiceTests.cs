@@ -16,6 +16,8 @@ namespace ClickIt.Tests.Features.Click
                     return false;
                 });
 
+            service.Refresh();
+
             bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
             result.Should().BeFalse();
@@ -30,6 +32,8 @@ namespace ClickIt.Tests.Features.Click
                 useNullGameController: true,
                 cachedLabels: null);
 
+            service.Refresh();
+
             bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
             result.Should().BeFalse();
@@ -43,6 +47,8 @@ namespace ClickIt.Tests.Features.Click
                 useNullGameController: true,
                 cachedLabels: new TimeCache<List<LabelOnGround>>(() => null!, 50));
 
+            service.Refresh();
+
             bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
             result.Should().BeFalse();
@@ -55,6 +61,8 @@ namespace ClickIt.Tests.Features.Click
             UltimatumPreviewService service = CreateService(
                 useNullGameController: true,
                 cachedLabels: new TimeCache<List<LabelOnGround>>(() => [null!], 50));
+
+            service.Refresh();
 
             bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
@@ -75,7 +83,9 @@ namespace ClickIt.Tests.Features.Click
 
             UltimatumPreviewService service = CreateService(cachedLabels: new TimeCache<List<LabelOnGround>>(() => labels, 50));
 
-            bool result = service.TryGetOptionPreview(window, out List<UltimatumPanelOptionPreview> previews);
+            service.Refresh(window);
+
+            bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
             result.Should().BeFalse();
             previews.Should().BeEmpty();
@@ -94,7 +104,9 @@ namespace ClickIt.Tests.Features.Click
 
             UltimatumPreviewService service = CreateService(cachedLabels: new TimeCache<List<LabelOnGround>>(() => labels, 50));
 
-            bool result = service.TryGetOptionPreview(window, out List<UltimatumPanelOptionPreview> previews);
+            service.Refresh(window);
+
+            bool result = service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews);
 
             result.Should().BeTrue();
             previews.Should().HaveCount(1);
@@ -115,10 +127,12 @@ namespace ClickIt.Tests.Features.Click
             var cached = new TimeCache<List<LabelOnGround>>(() => labels, 50);
             UltimatumPreviewService service = CreateService(cachedLabels: cached);
 
-            service.TryGetOptionPreview(window, out List<UltimatumPanelOptionPreview> first).Should().BeTrue();
+            service.Refresh(window);
+            service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> first).Should().BeTrue();
             first.Should().HaveCount(1);
 
-            service.TryGetOptionPreview(window, out List<UltimatumPanelOptionPreview> second).Should().BeTrue();
+            service.Refresh(window);
+            service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> second).Should().BeTrue();
             second.Should().HaveCount(1);
             second[0].ModifierName.Should().Be("Test Modifier");
         }
@@ -136,12 +150,14 @@ namespace ClickIt.Tests.Features.Click
             var cached = new TimeCache<List<LabelOnGround>>(() => currentLabels, 50);
             UltimatumPreviewService service = CreateService(cachedLabels: cached);
 
-            service.TryGetOptionPreview(window, out _).Should().BeTrue();
+            service.Refresh(window);
+            service.TryGetOptionPreview(out _).Should().BeTrue();
 
             currentLabels = [];
             Thread.Sleep(60);
 
-            service.TryGetOptionPreview(window, out List<UltimatumPanelOptionPreview> previews).Should().BeFalse();
+            service.Refresh(window);
+            service.TryGetOptionPreview(out List<UltimatumPanelOptionPreview> previews).Should().BeFalse();
             previews.Should().BeEmpty();
         }
 

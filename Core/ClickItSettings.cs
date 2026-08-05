@@ -135,10 +135,28 @@ namespace ClickIt
         public ToggleNode BlightVisualizePaths { get; set; } = new ToggleNode(true);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizePathsMap { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizePathsGame { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode BlightVisualizeTowers { get; set; } = new ToggleNode(true);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizeTowersMap { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizeTowersGame { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode BlightVisualizeTowerRanges { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizeTowerRangesMap { get; set; } = new ToggleNode(true);
+
+        [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
+        public ToggleNode BlightVisualizeTowerRangesGame { get; set; } = new ToggleNode(true);
 
         [ConditionalDisplay(nameof(ShowLegacySettingsTreeNodes))]
         public ToggleNode BlightVisualizeUpgrades { get; set; } = new ToggleNode(true);

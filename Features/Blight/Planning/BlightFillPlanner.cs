@@ -4,6 +4,13 @@ namespace ClickIt.Features.Blight.Planning;
 
 internal static class BlightFillPlanner
 {
+    // Hard cap on the steps a single plan carries. Blight maps can have 100+ foundations, so the
+    // fill tier alone would otherwise emit hundreds of steps and the executor would try to walk to
+    // every one; 30 steps (≈7 fully-upgraded towers) is more than enough per batch — finishing a
+    // batch triggers a rebuild that plans the next. Coverage steps come first, so the cap never
+    // starves coverage.
+    internal const int MaxPlanSteps = 30;
+
     internal static TowerBuildRule? FindRule(IReadOnlyList<TowerBuildRule> rules, BlightTowerType type)
     {
         for (int r = 0; r < rules.Count; r++)
@@ -18,7 +25,7 @@ internal static class BlightFillPlanner
             return 1;
         for (int lvl = 1; lvl <= maxLevel; lvl++)
         {
-            if (Sq(BlightService.GetRadiusForLevel(type, lvl)) >= requiredRadiusSq)
+            if (Sq(BlightService.GetCoverageRadiusForLevel(type, lvl)) >= requiredRadiusSq)
                 return lvl;
         }
         return maxLevel;
@@ -70,7 +77,7 @@ internal static class BlightFillPlanner
             if (rule.Placement != BlightPlacementPreference.NearestUncoveredLane)
                 continue;
 
-            float maxRadiusSq = Sq(BlightService.GetRadiusForLevel(rule.TowerType, rule.MaxUpgradeLevel));
+            float maxRadiusSq = Sq(BlightService.GetCoverageRadiusForLevel(rule.TowerType, rule.MaxUpgradeLevel));
             while (rule.MaxBuildCount <= 0 || counts[r] < rule.MaxBuildCount)
             {
                 (int fIdx, _) = FindFoundationNearUncoveredLane(
@@ -274,6 +281,9 @@ internal static class BlightFillPlanner
             for (int lvl = e.CurrentLevel + 1; lvl <= e.MaxLevel; lvl++)
                 steps.Add(new BlightPlanStep(BlightPlanAction.Upgrade, e.Pos, e.Type, lvl));
         }
+
+        if (steps.Count > MaxPlanSteps)
+            steps.RemoveRange(MaxPlanSteps, steps.Count - MaxPlanSteps);
 
         return steps;
     }

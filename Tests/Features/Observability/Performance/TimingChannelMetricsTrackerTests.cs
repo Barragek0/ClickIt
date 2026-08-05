@@ -36,6 +36,40 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void CoroutineTiming_TracksUltimatumAndLabelOverlayChannelsIndependently()
+        {
+            var tracker = new TimingChannelMetricsTracker();
+
+            tracker.StartCoroutineTiming(TimingChannel.Ultimatum);
+            tracker.StopCoroutineTiming(TimingChannel.Ultimatum);
+            tracker.StartCoroutineTiming("labeloverlay");
+            tracker.StopCoroutineTiming("labeloverlay");
+
+            tracker.GetTimingSampleCount(TimingChannel.Ultimatum).Should().Be(1);
+            tracker.GetTimingSampleCount(TimingChannel.LabelOverlay).Should().Be(1);
+            tracker.GetTimingSampleCount(TimingChannel.Click).Should().Be(0);
+            tracker.GetLastTiming("ultimatum").Should().BeGreaterThanOrEqualTo(0);
+            tracker.GetMaxTiming(TimingChannel.LabelOverlay).Should().BeGreaterThanOrEqualTo(0);
+        }
+
+        [TestMethod]
+        public void CoroutineTiming_RecordsRunPeriod_BetweenConsecutiveStops()
+        {
+            var tracker = new TimingChannelMetricsTracker();
+
+            // First stop has no prior timestamp, so no period sample is recorded.
+            tracker.StartCoroutineTiming(TimingChannel.LabelOverlay);
+            tracker.StopCoroutineTiming(TimingChannel.LabelOverlay);
+            tracker.GetAveragePeriod(TimingChannel.LabelOverlay).Should().Be(0);
+
+            // Second stop records the wall-clock gap since the first stop.
+            tracker.StartCoroutineTiming(TimingChannel.LabelOverlay);
+            tracker.StopCoroutineTiming(TimingChannel.LabelOverlay);
+            tracker.GetAveragePeriod(TimingChannel.LabelOverlay).Should().BeGreaterThanOrEqualTo(0);
+            tracker.GetAveragePeriod("labeloverlay").Should().BeGreaterThanOrEqualTo(0);
+        }
+
+        [TestMethod]
         public void ClearResetsRecordedState()
         {
             var tracker = new TimingChannelMetricsTracker();

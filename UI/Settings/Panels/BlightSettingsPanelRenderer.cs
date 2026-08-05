@@ -64,36 +64,71 @@ internal sealed class BlightSettingsPanelRenderer(ClickItSettings settings)
 
     private void DrawVisualizationToggles()
     {
-        SettingsUiRenderHelpers.DrawToggleNodeControl(
+        DrawVisualizeToggleWithChildren(
             "Visualize Blight Lanes##BlightVisualizePaths",
             _settings.BlightVisualizePaths,
-            "When enabled, the blight lane pathways are rendered both in the game world over the lanes and on the world map.");
+            "When enabled, the blight lane pathways are rendered over the lanes and on the world map.\n\n" +
+            "The Map and Game sub-options below control which view the lanes appear in.",
+            "Map##BlightVisualizePathsMap",
+            _settings.BlightVisualizePathsMap,
+            "Render the lane pathways on the world map.",
+            "Game##BlightVisualizePathsGame",
+            _settings.BlightVisualizePathsGame,
+            "Render the lane pathways in the game world, including the lane labels on each lane.");
 
-        SettingsUiRenderHelpers.DrawToggleNodeControl(
+        DrawVisualizeToggleWithChildren(
             "Visualize Tower Dots##BlightVisualizeTowers",
             _settings.BlightVisualizeTowers,
             "When enabled, the foundations the current plan still targets are shown as dots both in the game world and on the world map.\n\n" +
             "Only foundations with pending build or upgrade steps are drawn - foundations the plan has finished, and foundations the plan never targets, are hidden.\n\n" +
             "Each dot is a circle in the colour of the tower the plan intends for that foundation (unbuilt foundations use the planned tower colour; built towers use their current tower colour).\n\n" +
-            "The sub-options below control the plan-order numbers and the tower ranges.");
+            "The Map and Game sub-options below control which view the dots appear in.",
+            "Map##BlightVisualizeTowersMap",
+            _settings.BlightVisualizeTowersMap,
+            "Render the tower dots on the world map.",
+            "Game##BlightVisualizeTowersGame",
+            _settings.BlightVisualizeTowersGame,
+            "Render the tower dots in the game world.");
 
-        if (_settings.BlightVisualizeTowers.Value)
-        {
-            ImGui.Indent();
+        DrawVisualizeToggleWithChildren(
+            "Visualize Tower Ranges##BlightVisualizeTowerRanges",
+            _settings.BlightVisualizeTowerRanges,
+            "When enabled, each built tower's current range is shown both in the game world and on the world map.\n\n" +
+            "The Map and Game sub-options below control which view the ranges appear in.",
+            "Map##BlightVisualizeTowerRangesMap",
+            _settings.BlightVisualizeTowerRangesMap,
+            "Render each built tower's range on the world map.",
+            "Game##BlightVisualizeTowerRangesGame",
+            _settings.BlightVisualizeTowerRangesGame,
+            "Render each built tower's range in the game world.");
 
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Visualize Tower Ranges##BlightVisualizeTowerRanges",
-                _settings.BlightVisualizeTowerRanges,
-                "When enabled, each built tower's current range is shown both in the game world and on the world map.");
+        // Upgrade order numbers are in-game only, so this stays a plain toggle.
+        SettingsUiRenderHelpers.DrawToggleNodeControl(
+            "Visualize Upgrade Order##BlightVisualizeUpgrades",
+            _settings.BlightVisualizeUpgrades,
+            "When enabled, each targeted tower dot shows the plan's pending execution order as numbers stacked above the dot in the game world." +
+            "\n\nAs the plan runs, completed steps disappear.");
+    }
 
-            SettingsUiRenderHelpers.DrawToggleNodeControl(
-                "Visualize Upgrade Order##BlightVisualizeUpgrades",
-                _settings.BlightVisualizeUpgrades,
-                "When enabled, each targeted tower dot shows the plan's pending execution order as numbers stacked above the dot in the game world only.\n\n" +
-                "As the plan runs, completed steps disappear.");
+    private static void DrawVisualizeToggleWithChildren(
+        string label,
+        ToggleNode parent,
+        string parentTooltip,
+        string mapLabel,
+        ToggleNode mapNode,
+        string mapTooltip,
+        string gameLabel,
+        ToggleNode gameNode,
+        string gameTooltip)
+    {
+        SettingsUiRenderHelpers.DrawToggleNodeControl(label, parent, parentTooltip);
+        if (!parent.Value)
+            return;
 
-            ImGui.Unindent();
-        }
+        ImGui.Indent();
+        SettingsUiRenderHelpers.DrawToggleNodeControl(mapLabel, mapNode, mapTooltip);
+        SettingsUiRenderHelpers.DrawToggleNodeControl(gameLabel, gameNode, gameTooltip);
+        ImGui.Unindent();
     }
 
     private void DrawStrategySelector()

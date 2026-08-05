@@ -76,7 +76,7 @@ internal static class BlightPlanner
                     int branchIdx = FindNearestBranch(knownTowers[i], pumpBranches);
                     float reqRadiusSq = branchIdx >= 0
                         ? MaxCoveredBranchSegmentDistSq(knownTowers[i], knownTowers[i].TowerType, coverage,
-                            pumpBranches, Sq(BlightService.GetRadiusForLevel(knownTowers[i].TowerType, covRule.MaxUpgradeLevel)))
+                            pumpBranches, Sq(BlightService.GetCoverageRadiusForLevel(knownTowers[i].TowerType, covRule.MaxUpgradeLevel)))
                         : 0f;
                     if (branchIdx >= 0)
                     {
@@ -416,11 +416,15 @@ internal static class BlightPlanner
         HashSet<int> assignedIndices)
     {
         Stack<int> pending = new();
+        bool[] visited = new bool[coverage.Length];
         foreach (int s in BranchSegments(coverage, branch))
             pending.Push(s);
         while (pending.Count > 0)
         {
             int s = pending.Pop();
+            if (visited[s])
+                continue;
+            visited[s] = true;
             for (int i = 0; i < knownTowers.Count; i++)
             {
                 if (assignedIndices.Contains(i)) continue;
@@ -429,7 +433,8 @@ internal static class BlightPlanner
                     return true;
             }
             foreach (int child in FindSubBranches(coverage, s))
-                pending.Push(child);
+                if (!visited[child])
+                    pending.Push(child);
         }
         return false;
     }
@@ -438,7 +443,7 @@ internal static class BlightPlanner
     {
         TowerBuildRule? rule = BlightFillPlanner.FindRule(rules, type);
         int maxLevel = rule?.MaxUpgradeLevel ?? BlightTowerData.MaxUpgradeLevel;
-        return Sq(BlightService.GetRadiusForLevel(type, maxLevel));
+        return Sq(BlightService.GetCoverageRadiusForLevel(type, maxLevel));
     }
 
     private static void AssignCoverage(
@@ -489,7 +494,7 @@ internal static class BlightPlanner
     {
         int maxBuild = rule.MaxBuildCount;
         int placed = maxBuild > 0 ? BlightFillPlanner.CountBuilt(knownTowers, type) : 0;
-        float maxRadiusSq = Sq(BlightService.GetRadiusForLevel(type, rule.MaxUpgradeLevel));
+        float maxRadiusSq = Sq(BlightService.GetCoverageRadiusForLevel(type, rule.MaxUpgradeLevel));
         bool seismic = type == BlightTowerType.Seismic;
 
         // Only segments that belong to a pump branch are coverable — isolated fragments far from the
@@ -617,7 +622,7 @@ internal static class BlightPlanner
         List<CoveragePlacement> coveragePlacements)
     {
         PumpBranch branch = branches[branchIdx];
-        float maxRadiusSq = Sq(BlightService.GetRadiusForLevel(type, rule.MaxUpgradeLevel));
+        float maxRadiusSq = Sq(BlightService.GetCoverageRadiusForLevel(type, rule.MaxUpgradeLevel));
 
         (int idx, float distSq) = FindBestFoundationForSegment(
             knownTowers, branch.Anchor, maxRadiusSq,

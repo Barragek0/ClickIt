@@ -26,8 +26,12 @@ namespace ClickIt.Features.Click.Core
             if (lenSq < 1f)
                 return false;
 
-            for (float t = 1.05f; t >= 0.30f; t -= 0.1f)
+            // Search all the way back to near the screen center: a target close to the player (or up
+            // under the buff bar / minimap strip) has no clickable point near itself, but a point just
+            // off-center in the target's direction is still in the play area and walks the right way.
+            for (int i = 0; i <= 10; i++)
             {
+                float t = 1.05f - (i * 0.1f);
                 Vector2 candidate = center + (direction * t);
                 if (!OffscreenTargetResolver.IsInsideWindow(windowRect, candidate))
                     continue;

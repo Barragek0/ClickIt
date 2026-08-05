@@ -1,6 +1,15 @@
 <#
 Runs the standard local build-and-test loop for ClickIt and copies the built DLL to the
 configured plugin directory.
+
+Fast path notes:
+- A single `dotnet build Tests/ClickIt.Tests.csproj --no-incremental -m` builds the WHOLE graph
+  (product ClickIt.csproj + test harness GameOffsetsShim.csproj + tests) in one MSBuild invocation
+  with parallel nodes — the old flow built each project in a separate serial `dotnet build`.
+- Third-party decompile is owned by THIS script: it runs ONCE, in PARALLEL with the build, and the
+  build always gets SkipThirdPartyDecompile=true so the test project's own decompile target does
+  not re-run it (the decompiled sources are excluded from compilation anyway).
+- Tests run with --no-build --no-restore (everything was just built; restore already ran).
 #>
 
 [CmdletBinding()]
@@ -85,9 +94,9 @@ function Invoke-Build {
             $buildArgs += "/p:exapiPackage=$ExapiPackagePath"
         }
 
-        if ($SkipThirdPartyDecompile) {
-            $buildArgs += '/p:SkipThirdPartyDecompile=true'
-        }
+        # Decompile is owned by THIS script (single parallel run below); always stop the test
+        # project's RefreshThirdPartyDecompiledSources target from re-running it.
+        $buildArgs += '/p:SkipThirdPartyDecompile=true'
 
         if (-not $BuildProjectReferences) {
             $buildArgs += '/p:BuildProjectReferences=false'
@@ -116,13 +125,17 @@ function Invoke-Build {
         $buildArgs += "/p:exapiPackage=$ExapiPackagePath"
     }
 
-    if ($SkipThirdPartyDecompile) {
-        $buildArgs += '/p:SkipThirdPartyDecompile=true'
-    }
+    # Decompile is owned by THIS script (single parallel run below); always stop the test
+    # project's RefreshThirdPartyDecompiledSources target from re-running it.
+    $buildArgs += '/p:SkipThirdPartyDecompile=true'
 
     if (-not $BuildProjectReferences) {
         $buildArgs += '/p:BuildProjectReferences=false'
     }
+
+    # Parallel MSBuild nodes: the test project pulls the product + harness into one graph, and
+    # MSBuild schedules the independent projects across nodes instead of building serially.
+    $buildArgs += '-m'
 
     & dotnet @buildArgs
 }
@@ -134,34 +147,47 @@ $resolvedTestHarnessProjectPath = Resolve-FullPath $TestHarnessProjectPath
 $resolvedPluginOutputPath = Resolve-FullPath $PluginOutputPath
 $resolvedDecompileScriptPath = Resolve-FullPath $DecompileScriptPath
 
+# The decompiled sources under ThirdParty/Decompiled/ are excluded from both csproj compile sets,
+# so decompiling is NOT a build input — start it in parallel with the build and join it afterwards.
+# Start-Job is used (not Start-Process) so the script path with spaces needs no command-line quoting.
+$decompileJob = $null
 if (-not $SkipThirdPartyDecompile -and -not [string]::IsNullOrWhiteSpace($resolvedDecompileScriptPath)) {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $resolvedDecompileScriptPath
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    Write-Output 'Starting third-party decompile in parallel with the build...'
+    $decompileJob = Start-Job -ScriptBlock {
+        param($scriptPath)
+        $output = & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath 2>&1
+        [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
+    } -ArgumentList $resolvedDecompileScriptPath
 }
 
-Invoke-Build -ProjectPath $resolvedProductProjectPath -BuildProjectReferences
+# ONE graph build: the test project references the product (ClickIt.csproj) and the test harness
+# (GameOffsetsShim.csproj), so a single build of it fully builds ALL three projects in one MSBuild
+# graph with parallel nodes — no redundant second/third build of the same code.
+Invoke-Build -ProjectPath $resolvedTestProjectPath -BuildProjectReferences
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-if (-not [string]::IsNullOrWhiteSpace($resolvedTestHarnessProjectPath) -and (Test-Path $resolvedTestHarnessProjectPath)) {
-    Invoke-Build -ProjectPath $resolvedTestHarnessProjectPath
-
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
+if ($null -ne $decompileJob) {
+    Write-Output 'Waiting for third-party decompile to finish...'
+    Wait-Job $decompileJob | Out-Null
+    $result = Receive-Job $decompileJob -Keep
+    $decompileOutput = @($result.Output)
+    if ($decompileJob.State -eq 'Failed' -or $result.ExitCode -ne 0) {
+        $decompileOutput | Write-Output
+        Remove-Job $decompileJob -Force
+        if ($result.ExitCode -ne 0) {
+            exit $result.ExitCode
+        }
+        exit 1
     }
+    $decompileOutput | Write-Output
+    Remove-Job $decompileJob -Force
+    Write-Output 'Third-party decompile complete.'
 }
 
-Invoke-Build -ProjectPath $resolvedTestProjectPath
-
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
-$testArgs = @('--no-build')
+$testArgs = @('--no-build', '--no-restore')
 
 if ($IncludeIntegrationTests) {
     $testArgs += '-p:IncludeIntegrationTests=true'
