@@ -19,7 +19,6 @@ namespace ClickIt.Core.Runtime
         internal UiRegionRectangleOverlay? UiRegionRectangleOverlay { get; set; }
         public DeferredTextQueue? DeferredTextQueue { get; set; }
         public DeferredFrameQueue? DeferredFrameQueue { get; set; }
-        public ClickRuntimeHost? ClickRuntimeHost { get; set; }
         public bool IsRendering { get; set; }
 
         internal void Clear()
@@ -35,7 +34,6 @@ namespace ClickIt.Core.Runtime
             UiRegionRectangleOverlay = null;
             DeferredTextQueue = null;
             DeferredFrameQueue = null;
-            ClickRuntimeHost = null;
             IsRendering = false;
         }
     }

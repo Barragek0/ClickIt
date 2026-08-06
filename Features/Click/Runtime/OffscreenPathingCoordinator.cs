@@ -130,7 +130,7 @@ namespace ClickIt.Features.Click.Runtime
                 NumVector2 raw = camera.WorldToScreen(new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
                 Vector2 targetScreen = new(raw.X, raw.Y);
                 RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
-                if (!OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+                if (!OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                         win, targetScreen, "blight-foundation", _dependencies.PointIsInClickableArea, out Vector2 walkClick))
                 {
                     AddPathfindingStage($"Walk: no directional click point toward foundation ({gridPos.X:F0},{gridPos.Y:F0})");
@@ -347,7 +347,7 @@ namespace ClickIt.Features.Click.Runtime
         private bool TryResolveDirectionalWalkClickPosition(Vector2 targetScreen, string targetPath, out Vector2 clickPos)
         {
             RectangleF win = _runtimeSeam.GetWindowRectangle(_dependencies.GameController);
-            return OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+            return OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 win,
                 targetScreen,
                 targetPath,

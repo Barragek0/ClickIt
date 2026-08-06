@@ -19,14 +19,6 @@ namespace ClickIt.Features.Click.Runtime
         internal static bool TryGetLabelRoot(LabelOnGround? label, out object? root)
             => DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out root) && root != null;
 
-        internal static Element? TryGetLabelElement(LabelOnGround? label)
-        {
-            return TryGetLabelRoot(label, out object? rawLabel)
-                && rawLabel is Element element
-                ? element
-                : null;
-        }
-
         internal static ulong GetLabelElementAddress(LabelOnGround? label)
         {
             if (!TryGetLabelRoot(label, out object? root) || root == null)
@@ -46,9 +38,6 @@ namespace ClickIt.Features.Click.Runtime
                 return 0;
             }
         }
-
-        internal static bool IsLabelElementValid(LabelOnGround? label)
-            => TryGetLabelElement(label)?.IsValid == true;
 
         internal static bool IsUltimatumLabel(LabelOnGround? label)
         {

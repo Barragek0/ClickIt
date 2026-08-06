@@ -45,7 +45,7 @@ namespace ClickIt.Features.Click.Core
             return new RankingResult(
                 PreferSettlers: ShouldTryVisibleSettlers(context, candidates),
                 PreferLostShipment: ShouldTryVisibleLostShipment(context, candidates),
-                PreferShrine: _dependencies.LabelSelection.ShouldPreferShrineOverLabel(candidates.NextLabel, context.NextShrine),
+                PreferShrine: _dependencies.LabelSelectionScan.ShouldPreferShrineOverLabel(candidates.NextLabel, context.NextShrine),
                 GroundItemsVisible: true);
         }
 

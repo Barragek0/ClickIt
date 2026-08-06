@@ -119,7 +119,108 @@ namespace ClickIt.Tests.Features.Labels.Application
             scanEvent.TotalLabels.Should().Be(1);
         }
 
+        private static ClickSettings TestClickSettings()
+            => new()
+            {
+                MechanicPriorityIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+                IgnoreDistanceMechanicIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                IgnoreDistanceWithinByMechanicId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+                MechanicPriorityDistancePenalty = 0,
+            };
+
         private static LabelOnGround CreateOpaqueLabel()
             => (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+
+        [TestMethod]
+        public void GetNextLabelToClick_ReusesCache_WhenLabelsReferenceUnchanged()
+        {
+            LabelOnGround label = CreateOpaqueLabel();
+            int scanCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    scanCount++;
+                    item = candidate == label ? EntityProbeFactory.Create() : null;
+                    mechanicId = candidate == label ? MechanicIds.Items : null;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return candidate == label;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            IReadOnlyList<LabelOnGround> labels = [label];
+
+            LabelOnGround? first = service.GetNextLabelToClick(labels, 0, 10);
+            LabelOnGround? second = service.GetNextLabelToClick(labels, 0, 10);
+            LabelOnGround? third = service.GetNextLabelToClick(labels, 0, 10);
+
+            first.Should().BeSameAs(label);
+            second.Should().BeSameAs(label);
+            third.Should().BeSameAs(label);
+            scanCount.Should().Be(1, "the full scan must run once per labels reference, then be cached");
+        }
+
+        [TestMethod]
+        public void GetNextLabelToClick_Invalidates_WhenLabelsReferenceChanges()
+        {
+            LabelOnGround firstLabel = CreateOpaqueLabel();
+            LabelOnGround secondLabel = CreateOpaqueLabel();
+            int scanCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    scanCount++;
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            IReadOnlyList<LabelOnGround> firstList = [firstLabel];
+            IReadOnlyList<LabelOnGround> secondList = [secondLabel];
+
+            LabelOnGround? a = service.GetNextLabelToClick(firstList, 0, 10);
+            LabelOnGround? b = service.GetNextLabelToClick(secondList, 0, 10);
+
+            a.Should().BeSameAs(firstLabel);
+            b.Should().BeSameAs(secondLabel);
+            scanCount.Should().Be(2, "a new labels reference must invalidate the cache and re-scan");
+        }
+
+        [TestMethod]
+        public void GetNextLabelToClick_DifferentRange_DoesNotReuseCachedResult()
+        {
+            LabelOnGround label = CreateOpaqueLabel();
+            int scanCount = 0;
+            var service = new LabelSelectionService(new LabelSelectionServiceDependencies(
+                GameController: null,
+                CreateClickSettings: static _ => TestClickSettings(),
+                ShouldCaptureLabelDebug: static () => false,
+                PublishLabelDebugStage: static _ => { },
+                TryBuildLabelCandidate: (LabelOnGround candidate, ClickSettings _, out Entity? item, out string? mechanicId, out LabelCandidateRejectReason rejectReason) =>
+                {
+                    scanCount++;
+                    item = EntityProbeFactory.Create();
+                    mechanicId = MechanicIds.Items;
+                    rejectReason = LabelCandidateRejectReason.None;
+                    return true;
+                },
+                GetMechanicIdForLabelCore: static _ => null));
+
+            IReadOnlyList<LabelOnGround> labels = [label];
+
+            service.GetNextLabelToClick(labels, 0, 10);
+            service.GetNextLabelToClick(labels, 0, 5);
+
+            scanCount.Should().Be(2, "a different query range must not reuse the cached scan");
+        }
     }
 }

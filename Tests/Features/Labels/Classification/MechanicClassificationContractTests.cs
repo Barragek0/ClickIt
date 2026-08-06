@@ -27,7 +27,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 path,
                 DummyLabel,
                 gameController: null,
-                CreateDependencies(allowClosedDoorPast: true));
+                CreateInventoryInteractionPolicy(allowClosedDoorPast: false));
 
             mechanicId.Should().Be(expectedMechanicId);
         }
@@ -36,13 +36,19 @@ namespace ClickIt.Tests.Features.Labels.Classification
         public void InteractionRuleCatalog_ResolvesStrongboxes_WhenMetadataAndDependencyAllow()
         {
             ClickSettings settings = CreateFullyEnabledInteractionSettings();
+            LabelOnGround label = CreateStrongboxLabel(new StrongboxItemProbe
+            {
+                ChestComponent = new ChestProbe { IsLocked = false },
+                Rarity = MonsterRarity.White,
+                RenderName = "Arcanist's Strongbox"
+            });
 
             string? mechanicId = InteractionMechanicRuleCatalog.TryResolve(
                 settings,
                 "Metadata/StrongBoxes/Strongbox",
-                DummyLabel,
+                label,
                 gameController: null,
-                CreateDependencies(allowClosedDoorPast: true));
+                CreateInventoryInteractionPolicy(allowClosedDoorPast: false));
 
             mechanicId.Should().Be(MechanicIds.Strongboxes);
         }
@@ -57,7 +63,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 $"Metadata/{Constants.ClosedDoorPast}/SomeDoor",
                 DummyLabel,
                 gameController: null,
-                CreateDependencies(allowClosedDoorPast: true));
+                CreateInventoryInteractionPolicy(allowClosedDoorPast: true));
 
             mechanicId.Should().Be(MechanicIds.AlvaTempleDoors);
         }
@@ -120,13 +126,10 @@ namespace ClickIt.Tests.Features.Labels.Classification
                 ClickBreach = true
             };
 
-        private static MechanicClassifierDependencies CreateDependencies(bool allowClosedDoorPast)
-            => new(
-                static _ => string.Empty,
-                static (_, _, _, _) => true,
-            (_, path, _) => path.Contains("StrongBoxes/Strongbox", StringComparison.OrdinalIgnoreCase),
-                static (_, _) => false,
-                static (_, _, _, _) => null,
-                _ => allowClosedDoorPast);
+        private static InventoryInteractionPolicy CreateInventoryInteractionPolicy(bool allowClosedDoorPast = false)
+            => InteractionRuleTestFactory.CreateInventoryInteractionPolicy(allowClosedDoorPast);
+
+        private static LabelOnGround CreateStrongboxLabel(object item)
+            => new LabelProbe { ItemOnGround = item };
     }
 }

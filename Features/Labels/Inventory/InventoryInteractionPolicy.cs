@@ -11,12 +11,6 @@ namespace ClickIt.Features.Labels.Inventory
         private readonly InventoryPickupPolicyEngine _pickupPolicy = pickupPolicy;
         private readonly string _stoneOfPassageMetadataIdentifier = stoneOfPassageMetadataIdentifier;
 
-        public InventoryDebugSnapshot GetLatestDebug() => _probeService.GetLatestDebug();
-
-        public IReadOnlyList<string> GetLatestDebugTrail() => _probeService.GetLatestDebugTrail();
-
-        public void PublishDebug(InventoryDebugSnapshot snapshot) => _probeService.PublishDebug(snapshot);
-
         public bool ShouldAllowWorldItemWhenInventoryFull(Entity groundItem, GameController? gameController)
             => _pickupPolicy.ShouldAllowWorldItemWhenInventoryFull(groundItem, gameController);
 

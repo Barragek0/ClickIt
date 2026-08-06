@@ -80,67 +80,6 @@ namespace ClickIt.Tests.Features.Labels.Application
         }
 
         [TestMethod]
-        public void LabelDebugService_BuildSelectionDebugSummary_CountsMixedCases_ThroughEntityValueSeam()
-        {
-            ClickSettings clickSettings = CreateClickSettings(clickDistance: 10);
-            LabelDebugCandidate[] candidates =
-            [
-                LabelDebugCandidate.NullLabel,
-                LabelDebugCandidate.NullEntity,
-                new LabelDebugCandidate(
-                    HasLabel: true,
-                    HasItem: true,
-                    Path: MechanicIds.SettlersPetrifiedWoodMarker,
-                    Type: EntityType.WorldItem,
-                    DistancePlayer: 25f,
-                    IsTargetable: true,
-                    MechanicId: null,
-                    AllowWorldItemByMetadata: false),
-                new LabelDebugCandidate(
-                    HasLabel: true,
-                    HasItem: true,
-                    Path: MechanicIds.SettlersCopperMarker,
-                    Type: EntityType.WorldItem,
-                    DistancePlayer: 5f,
-                    IsTargetable: true,
-                    MechanicId: null,
-                    AllowWorldItemByMetadata: true),
-                new LabelDebugCandidate(
-                    HasLabel: true,
-                    HasItem: true,
-                    Path: MechanicIds.SettlersVerisiumMarker,
-                    Type: EntityType.WorldItem,
-                    DistancePlayer: 5f,
-                    IsTargetable: true,
-                    MechanicId: MechanicIds.SettlersVerisium,
-                    AllowWorldItemByMetadata: true),
-                new LabelDebugCandidate(
-                    HasLabel: true,
-                    HasItem: true,
-                    Path: MechanicIds.SettlersBismuthMarker,
-                    Type: EntityType.WorldItem,
-                    DistancePlayer: 5f,
-                    IsTargetable: false,
-                    MechanicId: null,
-                    AllowWorldItemByMetadata: true)
-            ];
-
-            SelectionDebugSummary summary = LabelDebugService.BuildSelectionDebugSummary(candidates, startIndex: 0, maxCount: candidates.Length, clickSettings);
-
-            summary.Total.Should().Be(6);
-            summary.NullLabel.Should().Be(1);
-            summary.NullEntity.Should().Be(1);
-            summary.WorldItem.Should().Be(4);
-            summary.WorldItemMetadataRejected.Should().Be(1);
-            summary.OutOfDistance.Should().Be(1);
-            summary.Untargetable.Should().Be(1);
-            summary.NoMechanic.Should().Be(1);
-            summary.SettlersPathSeen.Should().Be(4);
-            summary.SettlersMechanicMatched.Should().Be(1);
-            summary.SettlersMechanicDisabled.Should().Be(1);
-        }
-
-        [TestMethod]
         public void LabelDebugService_LogSelectionDiagnostics_LogsNone_WhenNoLabelsAreAvailable()
         {
             var settings = new ClickItSettings();
@@ -174,13 +113,8 @@ namespace ClickIt.Tests.Features.Labels.Application
             return new LabelMechanicResolutionService(
                 gameController: null,
                 createClickSettings: static _ => new ClickSettings(),
-                getClassificationDependencies: () => MechanicClassifierDependenciesFactory.Create(
-                    new WorldItemMetadataPolicy(),
-                    new LabelInteractionRuleService(
-                        new WorldItemMetadataPolicy(),
-                        InventoryDomainFactory.Create(new InventoryDomainFactoryDependencies(
-                            new WorldItemMetadataPolicy().GetWorldItemBaseName,
-                            InventoryMetadataIdentifiers.StoneOfPassage)).InteractionPolicy)));
+                worldItemMetadataPolicy: new WorldItemMetadataPolicy(),
+                inventoryInteractionPolicy: CreateInventoryInteractionPolicy());
         }
 
         private static LabelDebugService CreateLabelDebugService(
@@ -206,14 +140,12 @@ namespace ClickIt.Tests.Features.Labels.Application
             return new LabelMechanicResolutionService(
                 gameController: null,
                 createClickSettings: _ => clickSettings,
-                getClassificationDependencies: () => MechanicClassifierDependenciesFactory.Create(
-                    new WorldItemMetadataPolicy(),
-                    new LabelInteractionRuleService(
-                        new WorldItemMetadataPolicy(),
-                        InventoryDomainFactory.Create(new InventoryDomainFactoryDependencies(
-                            new WorldItemMetadataPolicy().GetWorldItemBaseName,
-                            InventoryMetadataIdentifiers.StoneOfPassage)).InteractionPolicy)));
+                worldItemMetadataPolicy: new WorldItemMetadataPolicy(),
+                inventoryInteractionPolicy: CreateInventoryInteractionPolicy());
         }
+
+        private static InventoryInteractionPolicy CreateInventoryInteractionPolicy()
+            => InteractionRuleTestFactory.CreateInventoryInteractionPolicy(allowClosedDoorPast: false);
 
         private static ClickSettings CreateClickSettings(
             int clickDistance = 50,

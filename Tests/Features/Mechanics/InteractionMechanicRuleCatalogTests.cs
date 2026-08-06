@@ -27,7 +27,7 @@ namespace ClickIt.Tests.Features.Mechanics
                 path,
                 DummyLabel,
                 gameController: null,
-                CreateDependencies());
+                CreateInventoryInteractionPolicy());
 
             mechanicId.Should().Be(expectedMechanicId);
         }
@@ -46,7 +46,7 @@ namespace ClickIt.Tests.Features.Mechanics
                 "Metadata/Harvest/Irrigator/DelveMineral",
                 DummyLabel,
                 gameController: null,
-                CreateDependencies());
+                CreateInventoryInteractionPolicy());
 
             mechanicId.Should().Be(MechanicIds.Harvest);
         }
@@ -54,6 +54,13 @@ namespace ClickIt.Tests.Features.Mechanics
         [TestMethod]
         public void TryResolve_RespectsStrongboxMetadataToggleBeforeDependencyDelegate()
         {
+            LabelOnGround label = CreateStrongboxLabel(new StrongboxItemProbe
+            {
+                ChestComponent = new ChestProbe { IsLocked = false },
+                Rarity = MonsterRarity.White,
+                RenderName = "Arcanist's Strongbox"
+            });
+
             ClickSettings disabledSettings = new()
             {
                 ClickStrongboxes = true,
@@ -63,9 +70,9 @@ namespace ClickIt.Tests.Features.Mechanics
             string? disabledResult = InteractionMechanicRuleCatalog.TryResolve(
                 disabledSettings,
                 "Metadata/StrongBoxes/Strongbox",
-                DummyLabel,
+                label,
                 gameController: null,
-                CreateDependencies(shouldClickStrongbox: true));
+                CreateInventoryInteractionPolicy());
 
             disabledResult.Should().BeNull();
 
@@ -78,9 +85,9 @@ namespace ClickIt.Tests.Features.Mechanics
             string? enabledResult = InteractionMechanicRuleCatalog.TryResolve(
                 enabledSettings,
                 "Metadata/StrongBoxes/Strongbox",
-                DummyLabel,
+                label,
                 gameController: null,
-                CreateDependencies(shouldClickStrongbox: true));
+                CreateInventoryInteractionPolicy());
 
             enabledResult.Should().Be(MechanicIds.Strongboxes);
         }
@@ -93,13 +100,19 @@ namespace ClickIt.Tests.Features.Mechanics
                 ClickStrongboxes = false,
                 StrongboxClickMetadata = ["StrongBoxes/Strongbox"]
             };
+            LabelOnGround label = CreateStrongboxLabel(new StrongboxItemProbe
+            {
+                ChestComponent = new ChestProbe { IsLocked = false },
+                Rarity = MonsterRarity.White,
+                RenderName = "Arcanist's Strongbox"
+            });
 
             string? result = InteractionMechanicRuleCatalog.TryResolve(
                 settings,
                 "Metadata/StrongBoxes/Strongbox",
-                DummyLabel,
+                label,
                 gameController: null,
-                CreateDependencies(shouldClickStrongbox: true));
+                CreateInventoryInteractionPolicy());
 
             result.Should().BeNull();
         }
@@ -119,7 +132,7 @@ namespace ClickIt.Tests.Features.Mechanics
                 path,
                 DummyLabel,
                 gameController: null,
-                CreateDependencies(allowClosedDoorPast: false));
+                CreateInventoryInteractionPolicy(allowClosedDoorPast: false));
 
             blockedResult.Should().BeNull();
 
@@ -128,7 +141,7 @@ namespace ClickIt.Tests.Features.Mechanics
                 path,
                 DummyLabel,
                 gameController: null,
-                CreateDependencies(allowClosedDoorPast: true));
+                CreateInventoryInteractionPolicy(allowClosedDoorPast: true));
 
             allowedResult.Should().Be(MechanicIds.AlvaTempleDoors);
         }
@@ -149,7 +162,7 @@ namespace ClickIt.Tests.Features.Mechanics
                 pumpPath,
                 DummyLabel,
                 gameController: null,
-                CreateDependencies());
+                CreateInventoryInteractionPolicy());
 
             disabledResult.Should().BeNull();
 
@@ -164,20 +177,15 @@ namespace ClickIt.Tests.Features.Mechanics
                 pumpPath,
                 DummyLabel,
                 gameController: null,
-                CreateDependencies());
+                CreateInventoryInteractionPolicy());
 
             enabledResult.Should().Be(MechanicIds.Blight);
         }
 
-        private static MechanicClassifierDependencies CreateDependencies(
-            bool shouldClickStrongbox = false,
-            bool allowClosedDoorPast = false)
-            => new(
-                static _ => string.Empty,
-                static (_, _, _, _) => true,
-                (_, _, _) => shouldClickStrongbox,
-                static (_, _) => false,
-                static (_, _, _, _) => null,
-                _ => allowClosedDoorPast);
+        private static InventoryInteractionPolicy CreateInventoryInteractionPolicy(bool allowClosedDoorPast = false)
+            => InteractionRuleTestFactory.CreateInventoryInteractionPolicy(allowClosedDoorPast);
+
+        private static LabelOnGround CreateStrongboxLabel(object item)
+            => new LabelProbe { ItemOnGround = item };
     }
 }

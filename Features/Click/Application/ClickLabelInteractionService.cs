@@ -108,16 +108,6 @@ namespace ClickIt.Features.Click.Application
             bool avoidCursorMove = false)
             => ExecuteInteraction(clickPos, expectedElement, controller, false, 0, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
 
-        internal bool PerformLabelHoldClick(
-            Vector2 clickPos,
-            Element? expectedElement,
-            GameController? controller,
-            int holdDurationMs,
-            bool forceUiHoverVerification = false,
-            bool allowWhenHotkeyInactive = false,
-            bool avoidCursorMove = false)
-            => ExecuteInteraction(clickPos, expectedElement, controller, true, holdDurationMs, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
-
         internal bool PerformTrackedLabelClick(Vector2 clickPos, LabelOnGround? label, bool forceUiHoverVerification)
         {
             CaptureBlightChestDebug(label, mechanicId: null, reason: "reclick", requireChestMechanic: false);

@@ -12,10 +12,9 @@ namespace ClickIt.Tests.Behavior.Click
         [DataRow(500f, 500f, false)]
         public void IsCursorInsideWindow_ReturnsExpected_ForInclusiveBounds(float x, float y, bool expected)
         {
-            var policy = new ClickSafetyPolicy();
             var window = new RectangleF(10, 10, 100, 100);
 
-            bool result = policy.IsCursorInsideWindow(window, new Vector2(x, y));
+            bool result = ClickSafetyPolicy.IsCursorInsideWindow(window, new Vector2(x, y));
 
             result.Should().Be(expected);
         }

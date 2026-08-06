@@ -2,9 +2,6 @@ namespace ClickIt.Features.Labels.Inventory
 {
     internal static class InventoryStackingEngine
     {
-        internal static bool IsPartialStack(int currentStackSize, int maxStackSize)
-            => InventoryCoreLogic.IsPartialStack(currentStackSize, maxStackSize);
-
         internal static bool IsPartialServerStack(bool fullStack, int size)
             => InventoryCoreLogic.IsPartialServerStack(fullStack, size);
 

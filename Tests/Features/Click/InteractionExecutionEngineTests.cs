@@ -36,7 +36,67 @@ namespace ClickIt.Tests.Features.Click
                 CreateDecision(trySettlers: true, tryLostShipment: true, tryShrine: true, groundItemsVisible: true));
 
             result.ShouldRunPostActions.Should().BeFalse();
+            result.DidActionableWork.Should().BeTrue();
             calls.Should().Equal("settlers");
+        }
+
+        [TestMethod]
+        public void Execute_VisibleNothingActionable_ReportsNotActionable()
+        {
+            InteractionExecutionEngine engine = CreateEngine();
+
+            ExecutionResult result = engine.Execute(
+                CreateContext(groundItemsVisible: true),
+                new ClickCandidates(null, null, null, null),
+                CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
+
+            result.ShouldRunPostActions.Should().BeFalse();
+            result.DidActionableWork.Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void Execute_VisibleHarvestClick_ReportsActionable()
+        {
+            LabelOnGround harvestLabel = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            InteractionExecutionEngine engine = CreateEngine(
+                getHarvestLabelToClick: () => harvestLabel,
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    labelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(10f, 10f)),
+                    executeInteraction: static _ => true,
+                    isClickableInEitherSpace: static (_, _) => true,
+                    isInsideWindowInEitherSpace: static _ => true,
+                    groundItemsVisible: static () => true));
+
+            ExecutionResult result = engine.Execute(
+                CreateContext(groundItemsVisible: true),
+                new ClickCandidates(null, null, null, null),
+                CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
+
+            result.ShouldRunPostActions.Should().BeFalse();
+            result.DidActionableWork.Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void Execute_VisibleLabelClick_ReportsActionableAndPostActions()
+        {
+            LabelOnGround label = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
+            InteractionExecutionEngine engine = CreateEngine(
+                labelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(
+                    labelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                    tryResolveClickPosition: static (_, _, _, _) => (true, new Vector2(10f, 10f)),
+                    executeInteraction: static _ => true,
+                    isClickableInEitherSpace: static (_, _) => true,
+                    isInsideWindowInEitherSpace: static _ => true,
+                    groundItemsVisible: static () => true));
+
+            ExecutionResult result = engine.Execute(
+                CreateContext(groundItemsVisible: true),
+                new ClickCandidates(null, null, label, "test-mechanic"),
+                CreateDecision(trySettlers: false, tryLostShipment: false, tryShrine: false, groundItemsVisible: true));
+
+            result.ShouldRunPostActions.Should().BeTrue();
+            result.DidActionableWork.Should().BeTrue();
         }
 
         [TestMethod]
@@ -159,7 +219,7 @@ namespace ClickIt.Tests.Features.Click
             List<ClickDebugSnapshot> snapshots = [];
             int settlersClicks = 0;
             InteractionExecutionEngine engine = CreateEngine(
-                labelSelection: CreateLabelSelectionCoordinator(),
+                specialLabelInteraction: CreateSpecialLabelInteractionHandler(),
                 visibleMechanics: new StubVisibleMechanicInteractionPort(
                     tryClickSettlersOre: _ =>
                     {
@@ -205,7 +265,6 @@ namespace ClickIt.Tests.Features.Click
                 new ClickTickContext(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
-                    Now: Environment.TickCount64,
                     IsPostChestLootSettleBlocking: true,
                     ChestLootSettleReason: "waiting for chest loot to settle",
                     AllLabels: null,
@@ -245,7 +304,6 @@ namespace ClickIt.Tests.Features.Click
                 new ClickTickContext(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
-                    Now: Environment.TickCount64,
                     IsPostChestLootSettleBlocking: true,
                     ChestLootSettleReason: "waiting for chest loot to settle",
                     AllLabels: null,
@@ -287,7 +345,6 @@ namespace ClickIt.Tests.Features.Click
                 new ClickTickContext(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
-                    Now: Environment.TickCount64,
                     IsPostChestLootSettleBlocking: true,
                     ChestLootSettleReason: "waiting for chest loot to settle",
                     AllLabels: null,
@@ -330,7 +387,6 @@ namespace ClickIt.Tests.Features.Click
                 new ClickTickContext(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
-                    Now: Environment.TickCount64,
                     IsPostChestLootSettleBlocking: false,
                     ChestLootSettleReason: string.Empty,
                     AllLabels: labels,
@@ -366,7 +422,6 @@ namespace ClickIt.Tests.Features.Click
                 new ClickTickContext(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
-                    Now: Environment.TickCount64,
                     IsPostChestLootSettleBlocking: false,
                     ChestLootSettleReason: string.Empty,
                     AllLabels: null,
@@ -402,7 +457,6 @@ namespace ClickIt.Tests.Features.Click
                 new ClickTickContext(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
-                    Now: Environment.TickCount64,
                     IsPostChestLootSettleBlocking: false,
                     ChestLootSettleReason: string.Empty,
                     AllLabels: null,
@@ -435,7 +489,6 @@ namespace ClickIt.Tests.Features.Click
                 new ClickTickContext(
                     WindowTopLeft: Vector2.Zero,
                     CursorAbsolute: Vector2.Zero,
-                    Now: Environment.TickCount64,
                     IsPostChestLootSettleBlocking: true,
                     ChestLootSettleReason: "waiting for chest loot to settle",
                     AllLabels: [],
@@ -458,12 +511,13 @@ namespace ClickIt.Tests.Features.Click
         private static InteractionExecutionEngine CreateEngine(
             ILabelInteractionPort? labelInteractionPort = null,
             IVisibleMechanicRuntimePort? visibleMechanics = null,
-            LabelSelectionCoordinator? labelSelection = null,
+            SpecialLabelInteractionHandler? specialLabelInteraction = null,
             ClickLabelInteractionService? labelInteraction = null,
             Func<bool>? shouldCaptureClickDebug = null,
             Action<string>? debugLog = null,
             Action<string>? holdDebugTelemetryAfterSuccess = null,
-            ClickDebugPublicationService? clickDebugPublisher = null)
+            ClickDebugPublicationService? clickDebugPublisher = null,
+            Func<LabelOnGround?>? getHarvestLabelToClick = null)
         {
             ClickItSettings settings = new();
             ClickRuntimeState runtimeState = new();
@@ -480,7 +534,7 @@ namespace ClickIt.Tests.Features.Click
                 LabelInteractionPort: resolvedLabelInteractionPort,
                 PathfindingService: pathfindingService,
                 VisibleMechanics: visibleMechanics ?? new StubVisibleMechanicInteractionPort(),
-                LabelSelection: labelSelection ?? CreateLabelSelectionCoordinator(),
+                SpecialLabelInteraction: specialLabelInteraction ?? CreateSpecialLabelInteractionHandler(),
                 PathfindingLabelSuppression: pathfindingLabelSuppression,
                 ChestLootSettlement: chestLootSettlement,
                 OffscreenPathing: offscreenPathing,
@@ -489,7 +543,8 @@ namespace ClickIt.Tests.Features.Click
                 ShouldCaptureClickDebug: shouldCaptureClickDebug ?? (static () => false),
                 PointIsInClickableArea: static (_, _) => true,
                 HoldDebugTelemetryAfterSuccess: holdDebugTelemetryAfterSuccess ?? (static _ => { }),
-                DebugLog: debugLog ?? (static _ => { })));
+                DebugLog: debugLog ?? (static _ => { }),
+                GetHarvestLabelToClick: getHarvestLabelToClick));
         }
 
         private static ClickTickContext CreateContext(bool groundItemsVisible, Entity? nextShrine = null)
@@ -497,7 +552,6 @@ namespace ClickIt.Tests.Features.Click
             return new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: Vector2.Zero,
-                Now: Environment.TickCount64,
                 IsPostChestLootSettleBlocking: false,
                 ChestLootSettleReason: string.Empty,
                 AllLabels: null,
@@ -506,23 +560,15 @@ namespace ClickIt.Tests.Features.Click
                 GroundItemsVisible: groundItemsVisible);
         }
 
-        private static LabelSelectionCoordinator CreateLabelSelectionCoordinator()
+        private static SpecialLabelInteractionHandler CreateSpecialLabelInteractionHandler()
         {
             ClickItSettings settings = new();
-            SpecialLabelInteractionHandler specialHandler = new(new SpecialLabelInteractionHandlerDependencies(
+            return new SpecialLabelInteractionHandler(new SpecialLabelInteractionHandlerDependencies(
                 Settings: settings,
                 AltarAutomation: ClickTestServiceFactory.CreateAltarAutomationService(settings),
                 LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(labelInteractionPort: ClickTestServiceFactory.CreateNoOpLabelInteractionPort()),
                 UltimatumAutomation: ClickTestServiceFactory.CreateUltimatumAutomationService(settings),
                 DebugLog: static _ => { }));
-
-            return new LabelSelectionCoordinator(new LabelSelectionCoordinatorDependencies(
-                GameController: ExileCoreOpaqueFactory.CreateOpaqueGameController(),
-                ScanEngine: null!,
-                ManualCursorLabelSelector: null!,
-                ManualCursorVisibleMechanicSelector: null!,
-                SpecialLabelInteractionHandler: specialHandler,
-                ManualCursorLabelInteractionHandler: null!));
         }
 
         private static DecisionResult CreateDecision(bool trySettlers, bool tryLostShipment, bool tryShrine, bool groundItemsVisible)
@@ -634,9 +680,6 @@ namespace ClickIt.Tests.Features.Click
             }
 
             public string? GetMechanicIdForLabel(LabelOnGround? label)
-                => null;
-
-            public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
                 => null;
 
             public bool ShouldCorruptEssence(LabelOnGround label)

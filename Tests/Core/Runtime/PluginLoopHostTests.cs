@@ -76,7 +76,6 @@ namespace ClickIt.Tests.Core.Runtime
             var perf = new PerformanceMonitor(settings);
             ctx.Services.PerformanceMonitor = perf;
             ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
-            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => ctx.Services.ClickAutomationPort);
 
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
@@ -87,7 +86,7 @@ namespace ClickIt.Tests.Core.Runtime
             ctx.Runtime.Timer.Stop();
             ctx.Runtime.Timer.Reset();
 
-            var enumerator = host.RunClickLabelStep();
+            var enumerator = host.ClickLabel();
             enumerator.Should().NotBeNull();
 
             enumerator!.MoveNext();
@@ -95,7 +94,7 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
-        public void RunClickLabelStep_SuppressesRegularClick_WhenManualUiHoverModeOwnsTheInput()
+        public void ClickLabel_SuppressesRegularClick_WhenManualUiHoverModeOwnsTheInput()
         {
             var settings = new ClickItSettings();
             settings.Enable.Value = true;
@@ -105,13 +104,12 @@ namespace ClickIt.Tests.Core.Runtime
             var ctx = new PluginContext();
             ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
             ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
-            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => ctx.Services.ClickAutomationPort);
 
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
             var host = new PluginLoopHost(ctx, settings, gc!, eh);
 
-            var enumerator = host.RunClickLabelStep();
+            var enumerator = host.ClickLabel();
 
             enumerator.MoveNext();
 
@@ -119,26 +117,26 @@ namespace ClickIt.Tests.Core.Runtime
         }
 
         [TestMethod]
-        public void RunClickLabelStep_StopsImmediately_WhenPerformanceMonitorMissing()
+        public void ClickLabel_StopsImmediately_WhenPerformanceMonitorMissing()
         {
             var settings = new ClickItSettings();
             settings.Enable.Value = true;
 
             var ctx = new PluginContext();
-            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => new FakeClickAutomationService());
+            ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
 
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
             var host = new PluginLoopHost(ctx, settings, gc!, eh);
 
-            var enumerator = host.RunClickLabelStep();
+            var enumerator = host.ClickLabel();
 
             enumerator.MoveNext().Should().BeFalse();
             ctx.Runtime.WorkFinished.Should().BeFalse();
         }
 
         [TestMethod]
-        public void RunClickLabelStep_StopsImmediately_WhenRuntimeHostMissing()
+        public void ClickLabel_StopsImmediately_WhenClickPortMissing()
         {
             var settings = new ClickItSettings();
             settings.Enable.Value = true;
@@ -150,7 +148,7 @@ namespace ClickIt.Tests.Core.Runtime
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
             var host = new PluginLoopHost(ctx, settings, gc!, eh);
 
-            var enumerator = host.RunClickLabelStep();
+            var enumerator = host.ClickLabel();
 
             enumerator.MoveNext().Should().BeFalse();
             ctx.Runtime.WorkFinished.Should().BeFalse();
@@ -164,12 +162,10 @@ namespace ClickIt.Tests.Core.Runtime
             settings.LazyMode.Value = false;
 
             var ctx = new PluginContext();
-            var fakeService = new FakeClickAutomationService();
-
             ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
             ctx.Services.InputHandler = new InputHandler(settings);
             ctx.Services.CachedLabels = new TimeCache<List<LabelOnGround>>(() => [], 50);
-            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => fakeService);
+            ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
 
             var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
@@ -188,7 +184,6 @@ namespace ClickIt.Tests.Core.Runtime
             IEnumerator enumerator = InvokePrivateCoroutine(host, "ProcessManualUiHoverClick");
 
             enumerator.MoveNext().Should().BeFalse();
-            fakeService.ManualHoverCallCount.Should().Be(0);
         }
 
         [TestMethod]
@@ -202,12 +197,11 @@ namespace ClickIt.Tests.Core.Runtime
             var ctx = new PluginContext();
             var perf = new PerformanceMonitor(settings);
             var labels = new List<LabelOnGround> { ExileCoreOpaqueFactory.CreateOpaqueLabel() };
-            var fakeService = new FakeClickAutomationService();
 
             ctx.Services.PerformanceMonitor = perf;
             ctx.Services.InputHandler = new InputHandler(settings);
             ctx.Services.CachedLabels = new TimeCache<List<LabelOnGround>>(() => labels, 50);
-            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => fakeService);
+            ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
 
             GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(new RectangleF(100f, 200f, 1280f, 720f));
             var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
@@ -219,11 +213,37 @@ namespace ClickIt.Tests.Core.Runtime
             IEnumerator enumerator = InvokePrivateCoroutine(host, "ProcessManualUiHoverClick");
 
             enumerator.MoveNext().Should().BeFalse();
-            fakeService.ManualHoverCallCount.Should().Be(0);
         }
 
         [TestMethod]
-        public void RunClickLabelStep_CancelsOffscreenPathing_AndLogsBlockReason_WhenCanClickIsFalse()
+        public void MainClickLabelCoroutine_PacesIdleIterations_WithWaitTime()
+        {
+            var settings = new ClickItSettings();
+            settings.Enable.Value = true;
+            settings.ClickFrequencyTarget.Value = 1000;
+
+            var ctx = new PluginContext();
+            ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
+            ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
+
+            var gc = RuntimeHelpers.GetUninitializedObject(typeof(GameController)) as GameController;
+            var eh = new ErrorHandler(settings, (s, f) => { }, (m, f) => { });
+            var host = new PluginLoopHost(ctx, settings, gc!, eh);
+
+            IEnumerator enumerator = InvokePrivateCoroutine(host, "MainClickLabelCoroutine");
+
+            // First iteration: the guarded click step (idle — gate blocked, yields nothing).
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeAssignableTo<IEnumerator>();
+            ((IEnumerator)enumerator.Current).MoveNext().Should().BeFalse();
+
+            // Idle iteration → the coroutine paces itself with a WaitTime instead of spinning.
+            enumerator.MoveNext().Should().BeTrue();
+            enumerator.Current.Should().BeOfType<WaitTime>();
+        }
+
+        [TestMethod]
+        public void ClickLabel_BlocksAndLogsReason_WhenCanClickIsFalse()
         {
             var settings = new ClickItSettings();
             settings.Enable.Value = true;
@@ -233,23 +253,19 @@ namespace ClickIt.Tests.Core.Runtime
             settings.ClickFrequencyTarget.Value = -1000;
 
             var ctx = new PluginContext();
-            var fakeService = new FakeClickAutomationService();
             var messages = new List<string>();
 
             ctx.Services.PerformanceMonitor = new PerformanceMonitor(settings);
-            ctx.Services.InputHandler = new InputHandler(settings);
-            ctx.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => fakeService);
+            ctx.Services.ClickAutomationPort = (ClickAutomationPort)RuntimeHelpers.GetUninitializedObject(typeof(ClickAutomationPort));
 
             GameController gc = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindowAndGame(new RectangleF(100f, 200f, 1280f, 720f));
             var eh = new ErrorHandler(settings, (s, f) => { }, (message, _) => messages.Add(message));
             var host = new PluginLoopHost(ctx, settings, gc, eh);
 
-            var enumerator = host.RunClickLabelStep();
+            var enumerator = host.ClickLabel();
 
             enumerator.MoveNext().Should().BeFalse();
             ctx.Runtime.WorkFinished.Should().BeTrue();
-            fakeService.CancelOffscreenPathingCallCount.Should().Be(1);
-            fakeService.ProcessRegularClickCallCount.Should().Be(0);
             messages.Should().ContainSingle(message => message.Contains("[ClickLogic] blocked:", StringComparison.Ordinal)
                 && message.Contains("reason='", StringComparison.Ordinal));
         }
@@ -365,40 +381,6 @@ namespace ClickIt.Tests.Core.Runtime
                     IsRitualActive: static () => false,
                     HasLazyModeRestrictedItems: static _ => false,
                     GetTimestampMs: static () => 1000)));
-        }
-
-        private sealed class FakeClickAutomationService : IClickAutomationService
-        {
-            public int CancelOffscreenPathingCallCount { get; private set; }
-            public int ProcessRegularClickCallCount { get; private set; }
-            public int ManualHoverCallCount { get; private set; }
-
-            public void CancelOffscreenPathingState()
-            {
-                CancelOffscreenPathingCallCount++;
-            }
-
-            public void CancelPostChestLootSettlementState()
-            {
-            }
-
-            public IEnumerator ProcessRegularClick()
-            {
-                ProcessRegularClickCallCount++;
-                yield break;
-            }
-
-            public bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? labels)
-            {
-                ManualHoverCallCount++;
-                return false;
-            }
-
-            public bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
-            {
-                previews = [];
-                return false;
-            }
         }
 
     }

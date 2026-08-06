@@ -172,29 +172,26 @@ namespace ClickIt.Tests.Features.Observability
                 Notes: "click note",
                 Sequence: 7,
                 TimestampMs: 8));
-            support.PublishRuntimeLog("runtime note");
-            support.PublishUltimatumSnapshot(new UltimatumDebugSnapshot(
-                HasData: true,
+            support.DebugLog("runtime note");
+            support.PublishUltimatumEvent(new UltimatumDebugEvent(
                 Stage: "PanelHandled",
                 Source: "PanelUi",
-                IsInitialUltimatumEnabled: true,
-                IsOtherUltimatumEnabled: true,
                 IsPanelVisible: true,
-                IsGruelingGauntletActive: false,
-                HasSaturatedChoice: false,
-                SaturatedModifier: string.Empty,
-                ShouldTakeReward: false,
-                Action: "Confirm",
-                CandidateCount: 2,
-                SaturatedCandidateCount: 0,
-                BestModifier: "Ruin",
-                BestPriority: 3,
-                ClickedChoice: true,
-                ClickedConfirm: true,
-                ClickedTakeRewards: false,
-                Notes: "ultimatum note",
-                Sequence: 9,
-                TimestampMs: 10));
+                IsGruelingGauntletActive: false)
+            {
+                HasSaturatedChoice = false,
+                SaturatedModifier = string.Empty,
+                ShouldTakeReward = false,
+                Action = "Confirm",
+                CandidateCount = 2,
+                SaturatedCandidateCount = 0,
+                BestModifier = "Ruin",
+                BestPriority = 3,
+                ClickedChoice = true,
+                ClickedConfirm = true,
+                ClickedTakeRewards = false,
+                Notes = "ultimatum note",
+            });
 
             DebugTelemetrySnapshot snapshot = DebugTelemetryProjection.Build(
                 clickAutomationPort: null,

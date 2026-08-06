@@ -78,7 +78,6 @@ namespace ClickIt.Features.Click.Core
             context = new ClickTickContext(
                 windowTopLeft,
                 cursorAbsolute,
-                now,
                 chestLootSettlementBlockState.IsBlocking,
                 chestLootSettlementBlockState.Reason,
                 allLabels,

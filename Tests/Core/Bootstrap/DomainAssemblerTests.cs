@@ -79,6 +79,7 @@ namespace ClickIt.Tests.Core.Bootstrap
                 rendering.AltarChoiceEvaluator,
                 static (_, _) => true,
                 static (_, _) => true,
+                ClickTestServiceFactory.CreateNoOpLabelSelectionService(),
                 (reason, holdDurationMs) => frozenTelemetrySnapshots.Add((reason, holdDurationMs)));
             UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
             AlertService alertService = CreateOpaque<AlertService>();

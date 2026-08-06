@@ -4,13 +4,13 @@ namespace ClickIt.Features.Click.Core
         ClickItSettings Settings,
         ILabelInteractionPort LabelInteractionPort,
         IVisibleMechanicQueryPort VisibleMechanics,
-        LabelSelectionCoordinator LabelSelection,
+        LabelSelectionScanEngine LabelSelectionScan,
         ClickDebugPublicationService ClickDebugPublisher,
         ClickLabelInteractionService LabelInteraction,
         Func<bool> ShouldCaptureClickDebug);
 
     internal readonly record struct CandidateRankingEngineDependencies(
-        LabelSelectionCoordinator LabelSelection,
+        LabelSelectionScanEngine LabelSelectionScan,
         ClickLabelInteractionService LabelInteraction);
 
     internal readonly record struct InteractionExecutionEngineDependencies(
@@ -18,7 +18,7 @@ namespace ClickIt.Features.Click.Core
         ILabelInteractionPort LabelInteractionPort,
         PathfindingService PathfindingService,
         IVisibleMechanicInteractionPort VisibleMechanics,
-        LabelSelectionCoordinator LabelSelection,
+        SpecialLabelInteractionHandler SpecialLabelInteraction,
         PathfindingLabelSuppressionEvaluator PathfindingLabelSuppression,
         ChestLootSettlementTracker ChestLootSettlement,
         OffscreenPathingCoordinator OffscreenPathing,
@@ -40,7 +40,8 @@ namespace ClickIt.Features.Click.Core
         ClickItSettings Settings,
         ILabelInteractionPort LabelInteractionPort,
         IVisibleMechanicRuntimePort VisibleMechanics,
-        LabelSelectionCoordinator LabelSelection,
+        LabelSelectionScanEngine LabelSelectionScan,
+        SpecialLabelInteractionHandler SpecialLabelInteraction,
         ClickLabelInteractionService LabelInteraction,
         Func<Vector2, string, bool> PointIsInClickableArea,
         Func<bool> ShouldCaptureClickDebug,
@@ -74,7 +75,7 @@ namespace ClickIt.Features.Click.Core
         bool TryShrine,
         bool GroundItemsVisible);
 
-    internal readonly record struct ExecutionResult(bool ShouldRunPostActions);
+    internal readonly record struct ExecutionResult(bool ShouldRunPostActions, bool DidActionableWork);
 
     internal sealed class ClickRuntimeEngine(ClickRuntimeEngineDependencies dependencies)
     {
@@ -83,19 +84,21 @@ namespace ClickIt.Features.Click.Core
         private readonly CandidateRankingEngine _rankingPhase = new(CreateCandidateRankingDependencies(dependencies));
         private readonly InteractionExecutionEngine _executionPhase = new(CreateInteractionExecutionDependencies(dependencies));
 
+        internal bool LastTickWasActionable { get; private set; }
+
         private static CandidateAcquisitionEngineDependencies CreateCandidateAcquisitionDependencies(ClickRuntimeEngineDependencies dependencies)
             => new(
                 dependencies.Settings,
                 dependencies.LabelInteractionPort,
                 dependencies.VisibleMechanics,
-                dependencies.LabelSelection,
+                dependencies.LabelSelectionScan,
                 dependencies.ClickDebugPublisher,
                 dependencies.LabelInteraction,
                 dependencies.ShouldCaptureClickDebug);
 
         private static CandidateRankingEngineDependencies CreateCandidateRankingDependencies(ClickRuntimeEngineDependencies dependencies)
             => new(
-                dependencies.LabelSelection,
+                dependencies.LabelSelectionScan,
                 dependencies.LabelInteraction);
 
         private static InteractionExecutionEngineDependencies CreateInteractionExecutionDependencies(ClickRuntimeEngineDependencies dependencies)
@@ -104,7 +107,7 @@ namespace ClickIt.Features.Click.Core
                 dependencies.LabelInteractionPort,
                 dependencies.PathfindingService,
                 dependencies.VisibleMechanics,
-                dependencies.LabelSelection,
+                dependencies.SpecialLabelInteraction,
                 dependencies.PathfindingLabelSuppression,
                 dependencies.ChestLootSettlement,
                 dependencies.OffscreenPathing,
@@ -134,10 +137,12 @@ namespace ClickIt.Features.Click.Core
 
         public IEnumerator Run()
         {
+            LastTickWasActionable = false;
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("TickStart", "ProcessRegularClick entered", null);
 
             if (_dependencies.AltarAutomation.HasClickableAltars())
             {
+                LastTickWasActionable = true;
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("AltarBranch", "Clickable altar detected; regular label click path skipped", null);
                 return _dependencies.AltarAutomation.ProcessAltarClicking();
             }
@@ -154,6 +159,7 @@ namespace ClickIt.Features.Click.Core
             RankingResult ranking = _rankingPhase.Rank(context, candidates);
             DecisionResult decision = Gate(candidates, ranking);
             ExecutionResult executionResult = _executionPhase.Execute(context, candidates, decision);
+            LastTickWasActionable = executionResult.DidActionableWork;
 
             // Only allocate the post-click iterator when it can actually do something.
             if (executionResult.ShouldRunPostActions)

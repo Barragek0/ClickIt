@@ -92,7 +92,6 @@ namespace ClickIt.Features.Labels.Inventory
 
             if (_uniqueEntityAddresses.IsValueCreated)
                 _uniqueEntityAddresses.Value?.Clear();
-
         }
 
         public void Dispose()

@@ -17,11 +17,11 @@ namespace ClickIt.Tests.Features.Click
             LabelOnGround suppressed = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
             LabelOnGround selected = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
             IReadOnlyList<LabelOnGround> labels = [suppressed, selected];
-            var port = new FakeLabelInteractionPort(
-                getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex],
-                getMechanicIdForLabel: _ => MechanicIds.Shrines);
+            var port = new FakeLabelInteractionPort(getMechanicIdForLabel: _ => MechanicIds.Shrines);
             var engine = CreateEngine(
                 labelInteractionPort: port,
+                labelSelectionService: new FakeLabelSelectionService(
+                    getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
                 shouldSuppressLeverClick: label => ReferenceEquals(label, suppressed));
 
             engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
@@ -33,11 +33,11 @@ namespace ClickIt.Tests.Features.Click
             LabelOnGround suppressed = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
             LabelOnGround selected = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
             IReadOnlyList<LabelOnGround> labels = [suppressed, selected];
-            var port = new FakeLabelInteractionPort(
-                getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex],
-                getMechanicIdForLabel: _ => MechanicIds.Shrines);
+            var port = new FakeLabelInteractionPort(getMechanicIdForLabel: _ => MechanicIds.Shrines);
             var engine = CreateEngine(
                 labelInteractionPort: port,
+                labelSelectionService: new FakeLabelSelectionService(
+                    getNextLabelToClick: (allLabels, startIndex, maxCount) => allLabels?[startIndex]),
                 shouldSuppressBlightChestClick: label => ReferenceEquals(label, suppressed));
 
             engine.ResolveNextLabelCandidate(labels).Should().BeSameAs(selected);
@@ -52,8 +52,8 @@ namespace ClickIt.Tests.Features.Click
                 (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround))
             ];
             var engine = CreateEngine(
-                labelInteractionPort: new FakeLabelInteractionPort(
-                    getNextLabelToClick: static (_, _, _) => null),
+                labelInteractionPort: new FakeLabelInteractionPort(),
+                labelSelectionService: new FakeLabelSelectionService(getNextLabelToClick: static (_, _, _) => null),
                 clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
                     shouldCaptureClickDebug: static () => true,
                     setLatestClickDebug: snapshot => latestSnapshot = snapshot));
@@ -75,7 +75,8 @@ namespace ClickIt.Tests.Features.Click
             LabelOnGround second = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
             IReadOnlyList<LabelOnGround> labels = [first, second];
             var engine = CreateEngine(
-                labelInteractionPort: new FakeLabelInteractionPort(
+                labelInteractionPort: new FakeLabelInteractionPort(),
+                labelSelectionService: new FakeLabelSelectionService(
                     getNextLabelToClick: (allLabels, startIndex, _) => allLabels?[startIndex]),
                 shouldSuppressInactiveUltimatumLabel: static _ => true,
                 clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
@@ -99,8 +100,8 @@ namespace ClickIt.Tests.Features.Click
             LabelOnGround foreign = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
             IReadOnlyList<LabelOnGround> labels = [inRange];
             var engine = CreateEngine(
-                labelInteractionPort: new FakeLabelInteractionPort(
-                    getNextLabelToClick: (_, _, _) => foreign),
+                labelInteractionPort: new FakeLabelInteractionPort(),
+                labelSelectionService: new FakeLabelSelectionService(getNextLabelToClick: (_, _, _) => foreign),
                 shouldSuppressLeverClick: static _ => true,
                 clickDebugPublisher: ClickTestDebugPublisherFactory.Create(
                     shouldCaptureClickDebug: static () => true,
@@ -117,6 +118,7 @@ namespace ClickIt.Tests.Features.Click
 
         private static LabelSelectionScanEngine CreateEngine(
             ILabelInteractionPort? labelInteractionPort = null,
+            ILabelSelectionService? labelSelectionService = null,
             Func<LabelOnGround, bool>? shouldSuppressLeverClick = null,
             Func<LabelOnGround, bool>? shouldSuppressInactiveUltimatumLabel = null,
             Func<LabelOnGround, bool>? shouldSuppressBlightChestClick = null,
@@ -124,6 +126,7 @@ namespace ClickIt.Tests.Features.Click
         {
             GameController gameController = (GameController)RuntimeHelpers.GetUninitializedObject(typeof(GameController));
             ILabelInteractionPort safeLabelInteractionPort = labelInteractionPort ?? new FakeLabelInteractionPort();
+            ILabelSelectionService safeLabelSelectionService = labelSelectionService ?? new FakeLabelSelectionService();
             var settings = new ClickItSettings();
             settings.AvoidOverlappingLabelClickPoints.Value = false;
             var labelClickPointResolver = new LabelClickPointResolver(settings);
@@ -135,6 +138,7 @@ namespace ClickIt.Tests.Features.Click
             return new LabelSelectionScanEngine(new LabelSelectionScanEngineDependencies(
                 gameController,
                 safeLabelInteractionPort,
+                safeLabelSelectionService,
                 labelClickPointResolver,
                 ShouldSuppressLeverClick: shouldSuppressLeverClick ?? (_ => false),
                 ShouldSuppressInactiveUltimatumLabel: shouldSuppressInactiveUltimatumLabel ?? (_ => false),
@@ -146,7 +150,6 @@ namespace ClickIt.Tests.Features.Click
         }
 
         private sealed class FakeLabelInteractionPort(
-            Func<IReadOnlyList<LabelOnGround>?, int, int, LabelOnGround?>? getNextLabelToClick = null,
             Func<LabelOnGround?, string?>? getMechanicIdForLabel = null) : ILabelInteractionPort
         {
             public SelectionDebugSummary GetSelectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
@@ -159,11 +162,19 @@ namespace ClickIt.Tests.Features.Click
             public string? GetMechanicIdForLabel(LabelOnGround? label)
                 => getMechanicIdForLabel?.Invoke(label);
 
+            public bool ShouldCorruptEssence(LabelOnGround label)
+                => false;
+        }
+
+        private sealed class FakeLabelSelectionService(
+            Func<IReadOnlyList<LabelOnGround>?, int, int, LabelOnGround?>? getNextLabelToClick = null,
+            Func<LabelOnGround?, string?>? getMechanicIdForLabel = null) : ILabelSelectionService
+        {
             public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
                 => getNextLabelToClick?.Invoke(allLabels, startIndex, maxCount);
 
-            public bool ShouldCorruptEssence(LabelOnGround label)
-                => false;
+            public string? GetMechanicIdForLabel(LabelOnGround? label)
+                => getMechanicIdForLabel?.Invoke(label);
         }
     }
 }

@@ -44,7 +44,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Rendering.PathfindingRenderer.Should().BeSameAs(rendering.PathfindingRenderer);
             context.Rendering.AltarDisplayRenderer.Should().BeSameAs(rendering.AltarDisplayRenderer);
             context.Rendering.UltimatumRenderer.Should().BeSameAs(ultimatumRenderer);
-            context.Rendering.ClickRuntimeHost.Should().NotBeNull();
         }
 
         [TestMethod]
@@ -63,7 +62,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.AlertService = CreateOpaque<AlertService>();
             context.Rendering.DeferredTextQueue = new DeferredTextQueue();
             context.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
-            context.Rendering.ClickRuntimeHost = new ClickRuntimeHost(() => context.Services.ClickAutomationPort);
             context.Rendering.IsRendering = true;
 
             context.TryGetDebugTelemetryFreezeState(out _, out _).Should().BeTrue();
@@ -76,7 +74,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.AlertService.Should().BeNull();
             context.Rendering.DeferredTextQueue.Should().BeNull();
             context.Rendering.DeferredFrameQueue.Should().BeNull();
-            context.Rendering.ClickRuntimeHost.Should().BeNull();
             context.Rendering.IsRendering.Should().BeFalse();
             context.GetDebugTelemetrySnapshot().Status.GameControllerAvailable.Should().BeFalse();
             context.TryGetDebugTelemetryFreezeState(out long remainingMs, out string reason).Should().BeFalse();
@@ -199,7 +196,6 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.ClickAutomationPort.Should().BeSameAs(clickAutomationPort);
             context.Services.AlertService.Should().BeSameAs(alertService);
             context.Rendering.UltimatumRenderer.Should().BeSameAs(ultimatumRenderer);
-            context.Rendering.ClickRuntimeHost.Should().NotBeNull();
             GetHandlerCount(settings.OpenConfigDirectory).Should().Be(runtimeOpenHandlersBefore + 1);
             GetHandlerCount(settings.ReloadAlertSound).Should().Be(runtimeReloadHandlersBefore + 1);
             GetHandlerCount(effectiveSettings.OpenConfigDirectory).Should().Be(effectiveOpenHandlersBefore + 1);
@@ -360,6 +356,7 @@ namespace ClickIt.Tests.Core.Bootstrap
                 static (_, _) => true,
                 core.InputHandler,
                 ClickTestServiceFactory.CreateNoOpLabelInteractionPort(),
+                ClickTestServiceFactory.CreateNoOpLabelSelectionService(),
                 CreateOpaque<ShrineService>(),
                 CreateOpaque<PathfindingService>(),
                 static () => false,

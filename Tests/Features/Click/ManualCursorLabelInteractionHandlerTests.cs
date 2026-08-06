@@ -14,16 +14,6 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void TryClickPreferredAltarOption_ReturnsFalse_WhenNoTrackedAltarsExist()
-        {
-            var handler = CreateHandler(new ClickItSettings(), []);
-
-            bool clicked = handler.TryClickPreferredAltarOption(Vector2.Zero, Vector2.Zero);
-
-            clicked.Should().BeFalse();
-        }
-
-        [TestMethod]
         public void TryClickCandidate_ReturnsFalse_WhenClickPositionCannotBeResolved()
         {
             var settings = new ClickItSettings();

@@ -70,7 +70,7 @@ namespace ClickIt.Core.Bootstrap
                 uiRegionRectangleOverlay);
         }
 
-        public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, IClickAutomationService clickAutomationPort, DeferredFrameQueue deferredFrameQueue)
-            => new(settings, clickAutomationPort, deferredFrameQueue);
+        public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, ClickAutomationPort clickAutomationPort, DeferredFrameQueue deferredFrameQueue)
+            => new(settings, () => clickAutomationPort.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) ? previews : null, deferredFrameQueue);
     }
 }

@@ -9,43 +9,44 @@ namespace ClickIt.Tests.Core.Settings
             var whitelist = new[] { "Items/Currency/", "Items/Scarabs/" };
             var blacklist = new[] { "Items/Scarabs/" };
 
-            MetadataFilterMatcher.Matches("Metadata/Items/Currency/CurrencyModValues", whitelist, blacklist).Should().BeTrue();
-            MetadataFilterMatcher.Matches("Metadata/Items/Scarabs/PolishedScarab", whitelist, blacklist).Should().BeFalse();
-            MetadataFilterMatcher.Matches("Metadata/Items/Maps/MapTier16", whitelist, blacklist).Should().BeFalse();
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier("Metadata/Items/Currency/CurrencyModValues", string.Empty, whitelist).Should().BeTrue();
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier("Metadata/Items/Currency/CurrencyModValues", string.Empty, blacklist).Should().BeFalse();
+            // Scarabs match BOTH lists — the blacklist rejection is what makes the combined filter reject them.
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier("Metadata/Items/Scarabs/PolishedScarab", string.Empty, whitelist).Should().BeTrue();
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier("Metadata/Items/Scarabs/PolishedScarab", string.Empty, blacklist).Should().BeTrue();
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier("Metadata/Items/Maps/MapTier16", string.Empty, whitelist).Should().BeFalse();
         }
 
         [TestMethod]
         public void MetadataFilter_SpecialHeistContractRules_MatchExpectedNames()
         {
-            MetadataFilterMatcher.Matches(
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
                 "Metadata/Items/Heist/HeistContract",
                 "Contract: Trial Run",
-                new[] { "special:heist-quest-contract" },
-                Array.Empty<string>()).Should().BeTrue();
+                new[] { "special:heist-quest-contract" }).Should().BeTrue();
 
-            MetadataFilterMatcher.Matches(
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
                 "Metadata/Items/Heist/HeistContract",
                 "Contract: Bunker",
-                new[] { "special:heist-non-quest-contract" },
-                Array.Empty<string>()).Should().BeTrue();
+                new[] { "special:heist-non-quest-contract" }).Should().BeTrue();
         }
 
         [TestMethod]
         public void MetadataFilter_StoneOfPassageMetadataPath_MatchesExpectedIdentifier()
         {
-            MetadataFilterMatcher.Matches(
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
                 "Metadata/Items/QuestItems/Incursion/IncursionKey",
                 string.Empty,
+                item: null,
                 "Stone of Passage",
-                new[] { "Incursion/IncursionKey" },
-                Array.Empty<string>()).Should().BeTrue();
+                new[] { "Incursion/IncursionKey" }).Should().BeTrue();
 
-            MetadataFilterMatcher.Matches(
+            MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(
                 "Metadata/Items/QuestItems/Incursion/SomeOtherQuestItem",
                 string.Empty,
+                item: null,
                 "Stone of Passage",
-                new[] { "Incursion/IncursionKey" },
-                Array.Empty<string>()).Should().BeFalse();
+                new[] { "Incursion/IncursionKey" }).Should().BeFalse();
         }
 
         [TestMethod]

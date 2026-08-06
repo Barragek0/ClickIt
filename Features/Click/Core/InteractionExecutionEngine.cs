@@ -11,9 +11,38 @@ namespace ClickIt.Features.Click.Core
 
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
+            // Ordered decision chain (mechanics → harvest → blight → label → walk).
+            if (TryHandleBlightBlocking(context))
+                return StopExecution(didActionableWork: true);
+
+            if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: !decision.GroundItemsVisible))
+                return StopExecution(didActionableWork: true);
+
+            if (decision.GroundItemsVisible && TryClickChosenHarvestLabel(context, candidates))
+                return StopExecution(didActionableWork: true);
+
+            if (TryProgressBlightBuilding(context))
+                return StopExecution(didActionableWork: true);
+
             return decision.GroundItemsVisible
-                ? ExecuteVisible(context, candidates, decision)
-                : ExecuteHidden(context, candidates, decision);
+                ? ExecuteVisibleRemainder(context, candidates)
+                : ExecuteHiddenRemainder(context, candidates);
+        }
+
+        private bool TryHandleBlightBlocking(ClickTickContext context)
+        {
+            if (!_dependencies.Settings.BlightBlockOtherInteractions.Value
+                || _dependencies.TryProgressBlightBuilding == null
+                || (_dependencies.IsBlightEncounterActive?.Invoke() != true))
+                return false;
+
+            if (!TryProgressBlightBuilding(context))
+            {
+                Entity? blightTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
+                if (blightTarget != null)
+                    WalkTowardEntity(blightTarget, MechanicIds.Blight);
+            }
+            return true;
         }
 
         private bool IsBlockedByPostChestLootSettlement(ClickTickContext context, string? mechanicId, Entity? entity)
@@ -72,9 +101,9 @@ namespace ClickIt.Features.Click.Core
             return _dependencies.VisibleMechanics.TryClickShrineInteraction(context.NextShrine);
         }
 
-        private static ExecutionResult StopExecution()
+        private static ExecutionResult StopExecution(bool didActionableWork = false)
         {
-            return new ExecutionResult(false);
+            return new ExecutionResult(false, didActionableWork);
         }
 
         private bool TryExecuteMechanicSelections(ClickTickContext context, ClickCandidates candidates, DecisionResult decision, bool hiddenFallback)
@@ -128,34 +157,21 @@ namespace ClickIt.Features.Click.Core
             return _dependencies.OffscreenPathing.TryWalkTowardOffscreenTarget(entity);
         }
 
-        private ExecutionResult ExecuteHidden(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
+        private bool TryPublishPostChestLootSettleBlock(ClickTickContext context)
         {
-            if (_dependencies.Settings.BlightBlockOtherInteractions.Value
-                && _dependencies.TryProgressBlightBuilding != null
-                && (_dependencies.IsBlightEncounterActive?.Invoke() == true))
-            {
-                if (!TryProgressBlightBuilding(context))
-                {
-                    Entity? blightTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
-                    if (blightTarget != null)
-                        WalkTowardEntity(blightTarget, MechanicIds.Blight);
-                }
-                return StopExecution();
-            }
+            if (!context.IsPostChestLootSettleBlocking)
+                return false;
 
-            if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: true))
-                return StopExecution();
+            string chestLootSettleReason = context.ChestLootSettleReason;
+            _dependencies.DebugLog($"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
+            _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason, null);
+            return true;
+        }
 
-            if (TryProgressBlightBuilding(context))
+        private ExecutionResult ExecuteHiddenRemainder(ClickTickContext context, ClickCandidates candidates)
+        {
+            if (TryPublishPostChestLootSettleBlock(context))
                 return StopExecution();
-
-            if (context.IsPostChestLootSettleBlocking)
-            {
-                string chestLootSettleReason = context.ChestLootSettleReason;
-                _dependencies.DebugLog($"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason, null);
-                return StopExecution();
-            }
 
             if (candidates.NextLabel != null)
             {
@@ -165,7 +181,7 @@ namespace ClickIt.Features.Click.Core
                         $"label has entity={(TryGetLabelItemOnGround(candidates.NextLabel) != null)} mechanic={candidates.NextLabelMechanicId}", candidates.NextLabelMechanicId);
                 Entity? labelEntity = TryGetLabelItemOnGround(candidates.NextLabel);
                 if (labelEntity != null && WalkTowardTargetLabel(candidates.NextLabel, candidates.NextLabelMechanicId, labelEntity))
-                    return StopExecution();
+                    return StopExecution(didActionableWork: true);
             }
             else
             {
@@ -189,36 +205,13 @@ namespace ClickIt.Features.Click.Core
                     "WalkTowardOffscreenLabels setting is OFF", null);
             }
 
-
             _dependencies.DebugLog("[ProcessRegularClick] Ground items not visible, breaking");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHiddenExit", "No clickable hidden fallback selected", null);
             return StopExecution();
         }
 
-        private ExecutionResult ExecuteVisible(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
+        private ExecutionResult ExecuteVisibleRemainder(ClickTickContext context, ClickCandidates candidates)
         {
-            if (_dependencies.Settings.BlightBlockOtherInteractions.Value
-                && _dependencies.TryProgressBlightBuilding != null
-                && (_dependencies.IsBlightEncounterActive?.Invoke() == true))
-            {
-                if (!TryProgressBlightBuilding(context))
-                {
-                    Entity? blightTarget = _dependencies.GetBlightPathfindTarget?.Invoke();
-                    if (blightTarget != null)
-                        WalkTowardEntity(blightTarget, MechanicIds.Blight);
-                }
-                return StopExecution();
-            }
-
-            if (TryExecuteMechanicSelections(context, candidates, decision, hiddenFallback: false))
-                return StopExecution();
-
-            if (TryClickChosenHarvestLabel(context, candidates))
-                return StopExecution();
-
-            if (TryProgressBlightBuilding(context))
-                return StopExecution();
-
             if (candidates.NextLabel == null)
                 return HandleNoVisibleLabel(context);
 
@@ -227,7 +220,7 @@ namespace ClickIt.Features.Click.Core
             // attempting a click that would fail.
             if (WalkTowardTargetLabel(candidates.NextLabel, candidates.NextLabelMechanicId,
                 TryGetLabelItemOnGround(candidates.NextLabel)))
-                return StopExecution();
+                return StopExecution(didActionableWork: true);
 
 
             return HandleVisibleLabel(context, candidates);
@@ -328,13 +321,8 @@ namespace ClickIt.Features.Click.Core
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("HandleNoVisibleLabel",
                 $"labelsInContext={context.AllLabels?.Count ?? 0} walkSetting={_dependencies.Settings.WalkTowardOffscreenLabels.Value}", null);
 
-            if (context.IsPostChestLootSettleBlocking)
-            {
-                string chestLootSettleReason = context.ChestLootSettleReason;
-                _dependencies.DebugLog($"[ProcessRegularClick] Skipping click attempt while {chestLootSettleReason}.");
-                _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("PostChestLootSettleBlocked", chestLootSettleReason, null);
+            if (TryPublishPostChestLootSettleBlock(context))
                 return StopExecution();
-            }
 
             _dependencies.LabelInteractionPort.LogSelectionDiagnostics(context.AllLabels, 0, context.AllLabels?.Count ?? 0);
             if (_dependencies.ShouldCaptureClickDebug())
@@ -343,7 +331,7 @@ namespace ClickIt.Features.Click.Core
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value
                 && _dependencies.OffscreenPathing.TryHandleStickyOffscreenTarget(context.WindowTopLeft, context.AllLabels))
-                return StopExecution();
+                return StopExecution(didActionableWork: true);
 
 
             if (_dependencies.Settings.WalkTowardOffscreenLabels.Value)
@@ -379,10 +367,10 @@ namespace ClickIt.Features.Click.Core
                 return StopExecution();
             }
 
-            if (_dependencies.LabelSelection.ShouldSkipOrHandleSpecialLabel(nextLabel, context.WindowTopLeft))
+            if (_dependencies.SpecialLabelInteraction.TryHandle(nextLabel, context.WindowTopLeft))
             {
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("SpecialLabelHandled", "Special label handling consumed click tick", candidates.NextLabelMechanicId);
-                return StopExecution();
+                return StopExecution(didActionableWork: true);
             }
 
             (bool resolved, Vector2 clickPos) = _dependencies.LabelInteraction.TryResolveLabelClickPositionResult(
@@ -441,7 +429,7 @@ namespace ClickIt.Features.Click.Core
                         recordLeverClick: _dependencies.PathfindingLabelSuppression.RecordLeverClick);
             }
 
-            return new ExecutionResult(true);
+            return new ExecutionResult(true, DidActionableWork: true);
         }
 
         private ExecutionResult HandleVisibleLabelResolveFailure(ClickTickContext context, ClickCandidates candidates, LabelOnGround nextLabel)
@@ -459,7 +447,7 @@ namespace ClickIt.Features.Click.Core
                     && _dependencies.VisibleMechanics.TryClickSettlersOre(candidates.SettlersOre.Value))
                 {
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("SettlersEntityFallbackSuccess", "Settlers entity click succeeded after label resolve failure", candidates.SettlersOre.Value.MechanicId);
-                    return StopExecution();
+                    return StopExecution(didActionableWork: true);
                 }
             }
 
@@ -473,7 +461,7 @@ namespace ClickIt.Features.Click.Core
                 WalkTowardEntity(nextLabelItem, candidates.NextLabelMechanicId);
             }
 
-            return StopExecution();
+            return StopExecution(didActionableWork: shouldContinueEntityPathing && nextLabelItem != null);
         }
 
         private static Entity? TryGetLabelItemOnGround(LabelOnGround? label)

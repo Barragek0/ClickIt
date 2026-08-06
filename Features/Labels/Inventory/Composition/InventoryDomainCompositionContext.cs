@@ -193,7 +193,7 @@ namespace ClickIt.Features.Labels.Inventory.Composition
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            _itemEntityService?.Dispose();
         }
     }
 }

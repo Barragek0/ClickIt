@@ -11,16 +11,13 @@ namespace ClickIt.Core.Runtime
         private readonly GameController _gameController = gameController ?? throw new ArgumentNullException(nameof(gameController));
         private readonly ErrorHandler _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
         private long _lastCanClickFailureLogTimestampMs;
-
-        private double GetTargetTime(double frequencyTarget, double averageTiming)
-        {
-            return frequencyTarget - averageTiming + _state.Random.Next(0, 6);
-        }
+        private const int ClickIdleWaitMs = 50;
+        private bool _lastClickTickDidWork;
 
         private double ResolveClickTargetTime(double frequencyTarget)
         {
             double avgClickTime = _state.Services.PerformanceMonitor?.GetAverageTiming(TimingChannel.Click) ?? 0;
-            return GetTargetTime(frequencyTarget, avgClickTime);
+            return frequencyTarget - avgClickTime + _state.Random.Next(0, 6);
         }
 
         private long GetSuccessfulClickSequence()
@@ -141,15 +138,20 @@ namespace ClickIt.Core.Runtime
         private IEnumerator MainClickLabelCoroutine()
         {
             while (_settings.Enable && !_state.Runtime.IsShuttingDown)
+            {
                 yield return Guarded(ClickLabel, "ClickLabel");
-
+                if (!_lastClickTickDidWork)
+                    yield return new WaitTime(ClickIdleWaitMs);
+            }
         }
 
-        private IEnumerator ClickLabel()
+        internal IEnumerator ClickLabel()
         {
-            ClickRuntimeHost? runtimeHost = _state.Rendering.ClickRuntimeHost;
+            ClickAutomationPort? clickPort = _state.Services.ClickAutomationPort;
 
-            if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null) yield break;
+            if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || clickPort == null) yield break;
+
+            _lastClickTickDidWork = false;
 
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
             PluginManualUiHoverModeDecision manualUiHoverMode = ResolveManualUiHoverMode(hotkeyActive);
@@ -173,7 +175,7 @@ namespace ClickIt.Core.Runtime
             if (gateDecision.IsBlocked)
             {
                 if (gateDecision.ShouldCancelOffscreenPathing)
-                    runtimeHost.CancelOffscreenPathingState();
+                    clickPort.CancelOffscreenPathingState();
 
 
                 if (_settings.DebugMode?.Value == true)
@@ -198,16 +200,15 @@ namespace ClickIt.Core.Runtime
 
             long clickSequenceBefore = GetSuccessfulClickSequence();
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
-            yield return runtimeHost.ProcessRegularClick();
+            yield return clickPort.ProcessRegularClick();
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
+
+            _lastClickTickDidWork = clickPort.LastClickTickWasActionable;
 
             RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore);
 
             _state.Runtime.WorkFinished = true;
         }
-
-        internal IEnumerator RunClickLabelStep()
-            => ClickLabel();
 
         private IEnumerator MainManualUiHoverClickCoroutine()
         {
@@ -220,9 +221,9 @@ namespace ClickIt.Core.Runtime
 
         private IEnumerator ProcessManualUiHoverClick()
         {
-            ClickRuntimeHost? runtimeHost = _state.Rendering.ClickRuntimeHost;
+            ClickAutomationPort? clickPort = _state.Services.ClickAutomationPort;
 
-            if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || runtimeHost == null || _state.Services.InputHandler == null)
+            if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null || clickPort == null || _state.Services.InputHandler == null)
                 yield break;
 
             bool hotkeyActive = PluginClickRuntimeStateEvaluator.ResolveHotkeyActive(_state.Services);
@@ -247,7 +248,7 @@ namespace ClickIt.Core.Runtime
             long clickSequenceBefore = GetSuccessfulClickSequence();
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
-            bool clicked = runtimeHost.TryClickManualUiHoverLabel(labels);
+            bool clicked = clickPort.TryClickManualUiHoverLabel(labels);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore, clicked);

@@ -61,6 +61,9 @@ namespace ClickIt.Tests.Features.Click
         internal static ILabelInteractionPort CreateNoOpLabelInteractionPort()
             => new NoOpLabelInteractionPort();
 
+        internal static ILabelSelectionService CreateNoOpLabelSelectionService()
+            => new NoOpLabelSelectionService();
+
         private sealed class NoOpLabelInteractionPort : ILabelInteractionPort
         {
             public SelectionDebugSummary GetSelectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
@@ -73,11 +76,17 @@ namespace ClickIt.Tests.Features.Click
             public string? GetMechanicIdForLabel(LabelOnGround? label)
                 => null;
 
+            public bool ShouldCorruptEssence(LabelOnGround label)
+                => false;
+        }
+
+        private sealed class NoOpLabelSelectionService : ILabelSelectionService
+        {
             public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
                 => null;
 
-            public bool ShouldCorruptEssence(LabelOnGround label)
-                => false;
+            public string? GetMechanicIdForLabel(LabelOnGround? label)
+                => null;
         }
     }
 }

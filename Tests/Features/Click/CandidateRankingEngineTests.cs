@@ -84,7 +84,6 @@ namespace ClickIt.Tests.Features.Click
             RankingResult result = engine.Rank(new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: new Vector2(5f, 5f),
-                Now: 100,
                 IsPostChestLootSettleBlocking: false,
                 ChestLootSettleReason: string.Empty,
                 AllLabels: null,
@@ -117,7 +116,6 @@ namespace ClickIt.Tests.Features.Click
             RankingResult result = engine.Rank(new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: new Vector2(5f, 5f),
-                Now: 100,
                 IsPostChestLootSettleBlocking: false,
                 ChestLootSettleReason: string.Empty,
                 AllLabels: [],
@@ -140,7 +138,6 @@ namespace ClickIt.Tests.Features.Click
             RankingResult result = engine.Rank(new ClickTickContext(
                 WindowTopLeft: Vector2.Zero,
                 CursorAbsolute: Vector2.Zero,
-                Now: 100,
                 IsPostChestLootSettleBlocking: false,
                 ChestLootSettleReason: string.Empty,
                 AllLabels: [],
@@ -291,6 +288,7 @@ namespace ClickIt.Tests.Features.Click
             var scanEngine = new LabelSelectionScanEngine(new LabelSelectionScanEngineDependencies(
                 gameController,
                 port,
+                ClickTestServiceFactory.CreateNoOpLabelSelectionService(),
                 new LabelClickPointResolver(settings),
                 ShouldSuppressLeverClick: static _ => false,
                 ShouldSuppressInactiveUltimatumLabel: static _ => false,
@@ -300,16 +298,8 @@ namespace ClickIt.Tests.Features.Click
                 ClickDebugPublisher: ClickTestDebugPublisherFactory.Create(),
                 DebugLog: static _ => { }));
 
-            var coordinator = new LabelSelectionCoordinator(new LabelSelectionCoordinatorDependencies(
-                GameController: gameController,
-                ScanEngine: scanEngine,
-                ManualCursorLabelSelector: null!,
-                ManualCursorVisibleMechanicSelector: null!,
-                SpecialLabelInteractionHandler: null!,
-                ManualCursorLabelInteractionHandler: null!));
-
             return new CandidateRankingEngine(new CandidateRankingEngineDependencies(
-                LabelSelection: coordinator,
+                LabelSelectionScan: scanEngine,
                 LabelInteraction: ClickTestServiceFactory.CreateLabelInteractionService(gameController: gameController, labelInteractionPort: port)));
         }
 
@@ -345,9 +335,6 @@ namespace ClickIt.Tests.Features.Click
             }
 
             public string? GetMechanicIdForLabel(LabelOnGround? label)
-                => null;
-
-            public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
                 => null;
 
             public bool ShouldCorruptEssence(LabelOnGround label)

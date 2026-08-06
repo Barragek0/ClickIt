@@ -1,12 +1,12 @@
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
-    public class OffscreenProjectionMathTests
+    public class OffscreenPathingMathTests
     {
         [TestMethod]
         public void TryResolveDirectionalWalkClickPosition_ReturnsFalse_WhenWindowIsInvalid()
         {
-            bool result = OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+            bool result = OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 new RectangleF(10f, 20f, 0f, 100f),
                 new Vector2(200f, 50f),
                 "Metadata/TestTarget",
@@ -23,7 +23,7 @@ namespace ClickIt.Tests.Features.Click
             RectangleF windowRect = new RectangleF(10f, 20f, 100f, 80f);
             Vector2 center = new Vector2(windowRect.X + (windowRect.Width * 0.5f), windowRect.Y + (windowRect.Height * 0.5f));
 
-            bool result = OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+            bool result = OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 windowRect,
                 center,
                 "Metadata/TestTarget",
@@ -40,7 +40,7 @@ namespace ClickIt.Tests.Features.Click
             RectangleF windowRect = new RectangleF(0f, 0f, 100f, 100f);
             List<(Vector2 Point, string Path)> calls = [];
 
-            bool result = OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+            bool result = OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 windowRect,
                 new Vector2(80f, 50f),
                 "Metadata/TestTarget",
@@ -64,7 +64,7 @@ namespace ClickIt.Tests.Features.Click
             RectangleF windowRect = new RectangleF(0f, 0f, 100f, 100f);
             Vector2 expectedClamped = new Vector2(72f, 50f);
 
-            bool result = OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+            bool result = OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 windowRect,
                 new Vector2(150f, 50f),
                 "Metadata/TestTarget",
@@ -78,7 +78,7 @@ namespace ClickIt.Tests.Features.Click
         [TestMethod]
         public void TryResolveDirectionalWalkClickPosition_ReturnsFalse_WhenNoCandidateOrClampedPointIsClickable()
         {
-            bool result = OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+            bool result = OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 new RectangleF(0f, 0f, 100f, 100f),
                 new Vector2(150f, 50f),
                 "Metadata/TestTarget",
@@ -96,7 +96,7 @@ namespace ClickIt.Tests.Features.Click
             // and the clamped point fall in the rejected strip, but a point just off-center toward it is
             // clickable — that keeps the walk clickable instead of returning false (which stalled the
             // executor's walk toward a foundation near the top HUD edge).
-            bool result = OffscreenProjectionMath.TryResolveDirectionalWalkClickPosition(
+            bool result = OffscreenPathingMath.TryResolveDirectionalWalkClickPosition(
                 new RectangleF(0f, 0f, 100f, 100f),
                 new Vector2(50f, -30f),
                 "Metadata/TestTarget",

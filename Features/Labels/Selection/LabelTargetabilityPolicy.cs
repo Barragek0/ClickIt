@@ -64,27 +64,6 @@ namespace ClickIt.Features.Labels.Selection
             }
         }
 
-        public static void ResolveLabelEntityTargetableFromRaw(object? rawLabelEntity, out bool hasLabelEntityTargetable, out bool labelEntityTargetable)
-        {
-            bool resolved = TryResolveLabelEntityTargetableFromRaw(rawLabelEntity, out labelEntityTargetable, out hasLabelEntityTargetable);
-            if (!resolved)
-            {
-                hasLabelEntityTargetable = false;
-                labelEntityTargetable = true;
-            }
-        }
-
-        public static bool ShouldSkipUntargetableEntity(bool hasLabelEntityTargetable, bool labelEntityTargetable, bool itemIsTargetable, bool allowNullEntityFallback = false)
-        {
-            if (hasLabelEntityTargetable && !labelEntityTargetable)
-                return true;
-
-            if (!hasLabelEntityTargetable)
-                return !allowNullEntityFallback && !itemIsTargetable;
-
-            return !itemIsTargetable;
-        }
-
         private static bool IsHarvestRootElementVisibleForClick(LabelOnGround label)
         {
             if (!TryResolveLabelRootChild(label, out object? rawChild) || rawChild == null)

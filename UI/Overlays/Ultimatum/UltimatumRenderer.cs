@@ -1,9 +1,9 @@
 namespace ClickIt.UI.Overlays.Ultimatum
 {
-    public class UltimatumRenderer(ClickItSettings settings, IClickAutomationService? clickAutomationService, DeferredFrameQueue? deferredFrameQueue)
+    public class UltimatumRenderer(ClickItSettings settings, Func<List<UltimatumPanelOptionPreview>?>? getPreview, DeferredFrameQueue? deferredFrameQueue)
     {
         private readonly ClickItSettings _settings = settings;
-        private readonly IClickAutomationService? _clickAutomationService = clickAutomationService;
+        private readonly Func<List<UltimatumPanelOptionPreview>?>? _getPreview = getPreview;
         private readonly DeferredFrameQueue? _deferredFrameQueue = deferredFrameQueue;
 
         public void Render()
@@ -11,10 +11,11 @@ namespace ClickIt.UI.Overlays.Ultimatum
             if (_settings.ShowUltimatumOptionOverlay?.Value != true)
                 return;
 
-            if (_clickAutomationService == null || _deferredFrameQueue == null)
+            if (_getPreview == null || _deferredFrameQueue == null)
                 return;
 
-            if (!_clickAutomationService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) || previews.Count == 0)
+            List<UltimatumPanelOptionPreview>? previews = _getPreview();
+            if (previews == null || previews.Count == 0)
                 return;
 
             int totalPriorities = SystemMath.Max(1, _settings.GetUltimatumModifierPriority().Count);

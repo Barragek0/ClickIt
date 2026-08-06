@@ -7,9 +7,6 @@ namespace ClickIt.Features.Labels.Inventory
         public static bool ShouldPickupWhenInventoryFull(bool inventoryFull, bool isStackable, bool hasPartialMatchingStack)
             => !inventoryFull || (isStackable && hasPartialMatchingStack);
 
-        public static bool IsPartialStack(int currentStackSize, int maxStackSize)
-            => currentStackSize > 0 && maxStackSize > 0 && currentStackSize < maxStackSize;
-
         public static bool IsPartialServerStack(bool fullStack, int size)
             => size > 0 && !fullStack;
 

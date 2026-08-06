@@ -1,14 +1,6 @@
 
 namespace ClickIt.Features.Labels.Classification
 {
-    internal readonly record struct MechanicClassifierDependencies(
-        Func<Entity, string> GetWorldItemMetadataPath,
-        Func<ClickSettings, Entity, GameController?, LabelOnGround, bool> ShouldAllowWorldItemByMetadata,
-        Func<ClickSettings, string, LabelOnGround, bool> ShouldClickStrongbox,
-        Func<bool, LabelOnGround, bool> ShouldClickEssence,
-        Func<bool, bool, string, LabelOnGround, string?> GetRitualMechanicId,
-        Func<GameController?, bool> ShouldAllowClosedDoorPastMechanic);
-
     internal static class MechanicClassifier
     {
         private const string BlightCystPathMarker = "Chests/Blight";
@@ -44,25 +36,31 @@ namespace ClickIt.Features.Labels.Classification
             Entity item,
             ClickSettings settings,
             GameController? gameController,
-            in MechanicClassifierDependencies dependencies)
+            IWorldItemMetadataPolicy worldItemMetadataPolicy,
+            InventoryInteractionPolicy inventoryInteractionPolicy)
         {
             EntityType type = DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Type, out object? rawType)
                 && rawType is EntityType resolvedType
                 ? resolvedType
                 : default;
             string path = type == EntityType.WorldItem
-                ? dependencies.GetWorldItemMetadataPath(item)
+                ? worldItemMetadataPolicy.GetWorldItemMetadataPath(item)
                 : (DynamicAccess.TryReadString(item, DynamicAccessProfiles.Path, out string resolvedPath)
                     ? resolvedPath
                     : string.Empty);
 
-            string? mechanicId = ResolvePrimaryMechanicId(settings, path, label, gameController, dependencies);
+            string? mechanicId = ResolvePrimaryMechanicId(settings, path, label, gameController, inventoryInteractionPolicy);
             if (!string.IsNullOrWhiteSpace(mechanicId))
                 return mechanicId;
 
             if (type == EntityType.WorldItem)
             {
-                if (!dependencies.ShouldAllowWorldItemByMetadata(settings, item, gameController, label))
+                if (!worldItemMetadataPolicy.ShouldAllowWorldItemByMetadata(
+                        settings,
+                        item,
+                        gameController,
+                        label,
+                        inventoryInteractionPolicy.ShouldAllowWorldItemWhenInventoryFull))
                     return null;
 
                 if (ShouldClickWorldItemCore(settings.ClickItems, type, item))
@@ -73,7 +71,27 @@ namespace ClickIt.Features.Labels.Classification
         }
 
         internal static string? GetAreaTransitionMechanicId(bool clickAreaTransitions, bool clickLabyrinthTrials, EntityType type, string path)
-            => TransitionMechanicClassifier.GetAreaTransitionMechanicId(clickAreaTransitions, clickLabyrinthTrials, type, path);
+        {
+            bool isAreaTransition = type == EntityType.AreaTransition
+                || path.Contains("AreaTransition", StringComparison.OrdinalIgnoreCase);
+            if (!isAreaTransition)
+                return null;
+
+            if (IsLabyrinthTrialTransitionPath(path))
+                return clickLabyrinthTrials ? MechanicIds.LabyrinthTrials : null;
+
+            return clickAreaTransitions ? MechanicIds.AreaTransitions : null;
+        }
+
+        internal static bool IsLabyrinthTrialTransitionPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            return path.Contains("LabyrinthTrial", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("Labyrinth/Trial", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("TrialPortal", StringComparison.OrdinalIgnoreCase);
+        }
 
         internal static bool ShouldClickWorldItemCore(bool clickItems, EntityType type, Entity item)
             => ShouldClickWorldItemCore(
@@ -147,21 +165,6 @@ namespace ClickIt.Features.Labels.Classification
             return MechanicRuleCatalog.IsSettlersOrePath(path);
         }
 
-        internal static bool IsSettlersVerisiumPath(string path)
-            => MechanicRuleCatalog.IsSettlersVerisiumPath(path);
-
-        internal static bool ShouldClickAltar(bool highlightEater, bool highlightExarch, bool clickEater, bool clickExarch, string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return false;
-
-            if (!(highlightEater || highlightExarch || clickEater || clickExarch))
-                return false;
-
-            return path.Contains(Constants.CleansingFireAltar, StringComparison.OrdinalIgnoreCase)
-                || path.Contains(Constants.TangleAltar, StringComparison.OrdinalIgnoreCase);
-        }
-
         internal static bool IsBasicChestName(string? name)
         {
             name ??= string.Empty;
@@ -181,9 +184,9 @@ namespace ClickIt.Features.Labels.Classification
             string path,
             LabelOnGround label,
             GameController? gameController,
-            in MechanicClassifierDependencies dependencies)
+            InventoryInteractionPolicy inventoryInteractionPolicy)
         {
-            string? special = GetSpecialPathMechanicId(settings, path, label, gameController, dependencies);
+            string? special = GetSpecialPathMechanicId(settings, path, label, gameController, inventoryInteractionPolicy);
             if (!string.IsNullOrWhiteSpace(special))
                 return special;
 
@@ -191,10 +194,10 @@ namespace ClickIt.Features.Labels.Classification
             if (!string.IsNullOrWhiteSpace(altar))
                 return altar;
 
-            if (dependencies.ShouldClickEssence(settings.ClickEssences, label))
+            if (ShouldClickEssence(settings.ClickEssences, label))
                 return MechanicIds.Essences;
 
-            return dependencies.GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
+            return GetRitualMechanicId(settings.ClickRitualInitiate, settings.ClickRitualCompleted, path, label);
         }
 
         private static string? ResolveFallbackMechanicId(ClickSettings settings, EntityType type, string path, LabelOnGround label)
@@ -419,7 +422,7 @@ namespace ClickIt.Features.Labels.Classification
             string path,
             LabelOnGround label,
             GameController? gameController,
-            in MechanicClassifierDependencies dependencies)
+            InventoryInteractionPolicy inventoryInteractionPolicy)
         {
             if (string.IsNullOrEmpty(path))
                 return null;
@@ -430,7 +433,7 @@ namespace ClickIt.Features.Labels.Classification
         : null;
 
 
-            return ResolveSpecialNonSettlersMechanic(settings, path, label, gameController, dependencies);
+            return ResolveSpecialNonSettlersMechanic(settings, path, label, gameController, inventoryInteractionPolicy);
         }
 
         private static string? ResolveSpecialNonSettlersMechanic(
@@ -438,8 +441,8 @@ namespace ClickIt.Features.Labels.Classification
             string path,
             LabelOnGround label,
             GameController? gameController,
-            in MechanicClassifierDependencies dependencies)
-            => InteractionMechanicRuleCatalog.TryResolve(settings, path, label, gameController, dependencies);
+            InventoryInteractionPolicy inventoryInteractionPolicy)
+            => InteractionMechanicRuleCatalog.TryResolve(settings, path, label, gameController, inventoryInteractionPolicy);
 
         private static string? GetAltarMechanicId(ClickSettings settings, string path)
         {
@@ -459,5 +462,345 @@ namespace ClickIt.Features.Labels.Classification
             return null;
         }
 
+        internal static bool ShouldClickEssence(bool clickEssences, LabelOnGround label)
+        {
+            if (!clickEssences)
+                return false;
+
+            return LabelContainsText(label, "The monster is imprisoned by powerful Essences.");
+        }
+
+        internal static string? GetRitualMechanicId(bool clickRitualInitiate, bool clickRitualCompleted, string path, LabelOnGround label)
+        {
+            if (string.IsNullOrEmpty(path) || !path.Contains("Leagues/Ritual", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            bool hasFavoursText = LabelContainsText(label, "Interact to view Favours");
+            if (clickRitualInitiate && !hasFavoursText)
+                return MechanicIds.RitualInitiate;
+            if (clickRitualCompleted && hasFavoursText)
+                return MechanicIds.RitualCompleted;
+
+            return null;
+        }
+
+        internal static bool ShouldClickStrongbox(ClickSettings settings, string path, LabelOnGround label)
+        {
+            if (string.IsNullOrEmpty(path) || !TryGetLabelItem(label, out object? item) || item == null)
+                return false;
+
+            if (!TryGetChestLocked(item, out bool isLocked) || isLocked)
+                return false;
+
+            IReadOnlyList<string> clickMetadata = settings.StrongboxClickMetadata ?? [];
+            IReadOnlyList<string> dontClickMetadata = settings.StrongboxDontClickMetadata ?? [];
+            if (clickMetadata.Count == 0)
+                return false;
+
+            if (IsUniqueStrongbox(item))
+            {
+                if (ContainsStrongboxUniqueIdentifier(dontClickMetadata))
+                    return false;
+
+                return ContainsStrongboxUniqueIdentifier(clickMetadata);
+            }
+
+            string renderName = DynamicAccess.TryReadString(item, DynamicAccessProfiles.RenderName, out string resolvedRenderName)
+                ? resolvedRenderName
+                : string.Empty;
+            bool dontClickMatch = MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(path, renderName, dontClickMetadata);
+            if (dontClickMatch)
+                return false;
+
+            return MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(path, renderName, clickMetadata);
+        }
+
+        private static bool LabelContainsText(LabelOnGround? label, string text)
+        {
+            return TryGetLabelAdapter(label, out IElementAdapter? adapter)
+                && LabelElementSearch.GetElementByStringCore(adapter, text) != null;
+        }
+
+        private static bool TryGetLabelAdapter(LabelOnGround? label, out IElementAdapter? adapter)
+        {
+            adapter = null;
+            if (!DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.Label, out object? rawLabel)
+                || rawLabel == null)
+                return false;
+
+            adapter = rawLabel switch
+            {
+                IElementAdapter existingAdapter => existingAdapter,
+                Element element => new ElementAdapter(element),
+                _ => null,
+            };
+
+            return adapter != null;
+        }
+
+        private static bool TryGetLabelItem(LabelOnGround? label, out object? item)
+        {
+            return DynamicAccess.TryGetDynamicValue(label, DynamicAccessProfiles.ItemOnGround, out item)
+                && item != null;
+        }
+
+        private static bool TryGetChestLocked(object item, out bool isLocked)
+        {
+            isLocked = false;
+            if (!DynamicAccess.TryGetComponent<Chest>(item, out object? rawChest)
+                || rawChest == null)
+                return false;
+
+            return DynamicAccess.TryReadBool(rawChest, DynamicAccessProfiles.IsLocked, out isLocked);
+        }
+
+        private static bool ContainsStrongboxUniqueIdentifier(IReadOnlyList<string> metadataIdentifiers)
+        {
+            if (metadataIdentifiers == null || metadataIdentifiers.Count == 0)
+                return false;
+
+            for (int i = 0; i < metadataIdentifiers.Count; i++)
+                if (string.Equals(metadataIdentifiers[i], "special:strongbox-unique", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+
+            return false;
+        }
+
+        private static bool IsUniqueStrongbox(object item)
+        {
+            if (!DynamicAccess.TryGetDynamicValue(item, DynamicAccessProfiles.Rarity, out object? rawRarity)
+                || rawRarity == null)
+                return false;
+
+            return rawRarity switch
+            {
+                MonsterRarity rarity => rarity == MonsterRarity.Unique,
+                int rarityValue => rarityValue == (int)MonsterRarity.Unique,
+                _ => false,
+            };
+        }
     }
+
+    internal static class MetadataIdentifierRuleSet
+        {
+            internal static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, IReadOnlyList<string> identifiers)
+                => ContainsAnyMetadataIdentifier(metadataPath, itemName, item: null, labelText: string.Empty, identifiers);
+
+            internal static bool ContainsAnyMetadataIdentifier(string metadataPath, string itemName, Entity? item, string labelText, IReadOnlyList<string> identifiers)
+            {
+                if (identifiers == null || identifiers.Count == 0)
+                    return false;
+
+                metadataPath ??= string.Empty;
+                itemName ??= string.Empty;
+                labelText ??= string.Empty;
+
+                for (int i = 0; i < identifiers.Count; i++)
+                {
+                    string identifier = identifiers[i] ?? string.Empty;
+                    if (identifier.Length == 0)
+                        continue;
+
+                    if (TryGetSpecialRule(identifier, out string specialRule))
+                    {
+                        if (MatchesSpecialRule(specialRule, metadataPath, itemName, item, labelText))
+                            return true;
+                        continue;
+                    }
+
+                    if (MetadataIdentifierMatcher.ContainsSingle(metadataPath, itemName, identifier))
+                        return true;
+                }
+
+                return false;
+            }
+
+            private static bool TryGetSpecialRule(string identifier, out string specialRule)
+            {
+                specialRule = string.Empty;
+                if (!identifier.StartsWith("special:", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                specialRule = identifier["special:".Length..].Trim();
+                return specialRule.Length > 0;
+            }
+
+            private static bool MatchesSpecialRule(string specialRule, string metadataPath, string itemName, Entity? item, string labelText)
+            {
+                if (specialRule.Equals("unique-items", StringComparison.OrdinalIgnoreCase))
+                    return item != null && IsUniqueItem(item);
+                if (specialRule.Equals("heist-quest-contract", StringComparison.OrdinalIgnoreCase))
+                    return IsHeistQuestContract(itemName);
+                if (specialRule.Equals("heist-non-quest-contract", StringComparison.OrdinalIgnoreCase))
+                    return IsHeistNonQuestContract(itemName);
+                if (specialRule.Equals("inscribed-ultimatum", StringComparison.OrdinalIgnoreCase))
+                    return (item != null && IsInscribedUltimatum(item)) || metadataPath.Contains("ItemisedTrial", StringComparison.OrdinalIgnoreCase);
+                if (specialRule.Equals("jewels-regular", StringComparison.OrdinalIgnoreCase))
+                    return IsRegularJewelsMetadataPath(metadataPath);
+                if (specialRule.Equals("mysterious-wombgift-label", StringComparison.OrdinalIgnoreCase))
+                    return string.Equals(labelText.Trim(), "Mysterious Wombgift", StringComparison.OrdinalIgnoreCase);
+
+                return false;
+            }
+
+            private static bool IsRegularJewelsMetadataPath(string metadataPath)
+            {
+                return metadataPath.Contains("Items/Jewels/", StringComparison.OrdinalIgnoreCase)
+                    && !metadataPath.Contains("Items/Jewels/JewelAbyss", StringComparison.OrdinalIgnoreCase)
+                    && !metadataPath.Contains("Items/Jewels/JewelPassiveTreeExpansion", StringComparison.OrdinalIgnoreCase);
+            }
+
+            private static bool IsUniqueItem(Entity item)
+            {
+                try
+                {
+                    WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                    Entity? itemEntity = worldItemComp?.ItemEntity;
+                    Mods? mods = itemEntity?.GetComponent<Mods>();
+                    return mods?.ItemRarity == ItemRarity.Unique
+                        && !(itemEntity?.Path?.StartsWith("Metadata/Items/Metamorphosis/", StringComparison.OrdinalIgnoreCase) ?? false);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            private static bool IsHeistQuestContract(string itemName)
+                => !string.IsNullOrWhiteSpace(itemName) && Constants.HeistQuestContractNames.Contains(itemName);
+
+            private static bool IsHeistNonQuestContract(string itemName)
+                => !string.IsNullOrWhiteSpace(itemName)
+                   && itemName.StartsWith("Contract:", StringComparison.OrdinalIgnoreCase)
+                   && !Constants.HeistQuestContractNames.Contains(itemName);
+
+            private static bool IsInscribedUltimatum(Entity item)
+            {
+                try
+                {
+                    WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                    Entity? itemEntity = worldItemComp?.ItemEntity;
+                    return itemEntity?.Path?.Contains("ItemisedTrial", StringComparison.OrdinalIgnoreCase) == true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        internal interface IWorldItemMetadataPolicy
+        {
+            string GetWorldItemMetadataPath(Entity item);
+            string GetWorldItemBaseName(Entity item);
+            bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label, Func<Entity, GameController?, bool> shouldAllowWhenInventoryFull);
+        }
+
+        internal sealed class WorldItemMetadataPolicy : IWorldItemMetadataPolicy
+        {
+            public string GetWorldItemMetadataPath(Entity item)
+            {
+                try
+                {
+                    string resolvedMetadata = EntityHelpers.ResolveWorldItemMetadataPath(item);
+                    if (TryGetWorldItemComponentMetadata(item, out string componentMetadata))
+                        return SelectBestWorldItemMetadataPath(resolvedMetadata, componentMetadata);
+
+                    return resolvedMetadata;
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+
+            public string GetWorldItemBaseName(Entity item)
+            {
+                return ResolveWorldItemBaseName(item);
+            }
+
+            public bool ShouldAllowWorldItemByMetadata(ClickSettings settings, Entity item, GameController? gameController, LabelOnGround? label, Func<Entity, GameController?, bool> shouldAllowWhenInventoryFull)
+            {
+                string metadata = GetWorldItemMetadataPath(item);
+                string itemName = ResolveWorldItemBaseName(item);
+                string labelText = GetWorldItemLabelText(label);
+
+                IReadOnlyList<string> whitelist = settings.ItemTypeWhitelistMetadata ?? [];
+                IReadOnlyList<string> blacklist = settings.ItemTypeBlacklistMetadata ?? [];
+
+                bool whitelistPass = whitelist.Count == 0 || MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(metadata, itemName, item, labelText, whitelist);
+                if (!whitelistPass)
+                    return false;
+
+                bool blacklistMatch = blacklist.Count > 0 && MetadataIdentifierRuleSet.ContainsAnyMetadataIdentifier(metadata, itemName, item, labelText, blacklist);
+                if (blacklistMatch)
+                    return false;
+
+                return shouldAllowWhenInventoryFull(item, gameController);
+            }
+
+            internal static string SelectBestWorldItemMetadataPath(string resolvedMetadata, string componentMetadata)
+            {
+                if (string.IsNullOrWhiteSpace(componentMetadata))
+                    return resolvedMetadata ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(resolvedMetadata))
+                    return componentMetadata;
+
+                if (resolvedMetadata.Contains("Metadata/MiscellaneousObjects/", StringComparison.OrdinalIgnoreCase))
+                    return componentMetadata;
+
+                return resolvedMetadata;
+            }
+
+            private static bool TryGetWorldItemComponentMetadata(Entity? item, out string metadata)
+            {
+                metadata = string.Empty;
+                if (item == null)
+                    return false;
+
+                try
+                {
+                    WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                    Entity? itemEntity = worldItemComp?.ItemEntity;
+                    string candidate = itemEntity?.Metadata ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(candidate))
+                        return false;
+
+                    metadata = candidate;
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            private static string ResolveWorldItemBaseName(Entity item)
+            {
+                try
+                {
+                    WorldItem? worldItemComp = item.GetComponent<WorldItem>();
+                    Entity? itemEntity = worldItemComp?.ItemEntity;
+                    return itemEntity?.GetComponent<Base>()?.Name ?? string.Empty;
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+
+            private static string GetWorldItemLabelText(LabelOnGround? label)
+            {
+                try
+                {
+                    return label?.Label?.GetText(512) ?? string.Empty;
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+        }
+
 }

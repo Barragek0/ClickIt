@@ -5,7 +5,6 @@ namespace ClickIt.Features.Labels
         SelectionDebugSummary GetSelectionDebugSummary(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount);
         void LogSelectionDiagnostics(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount);
         string? GetMechanicIdForLabel(LabelOnGround? label);
-        LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount);
         bool ShouldCorruptEssence(LabelOnGround label);
     }
 }

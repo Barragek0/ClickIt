@@ -5,7 +5,7 @@ namespace ClickIt.Features.Mechanics.Rules
         string Path,
         LabelOnGround Label,
         GameController? GameController,
-        MechanicClassifierDependencies Dependencies);
+        InventoryInteractionPolicy InventoryInteractionPolicy);
 
     internal static class InteractionMechanicRuleCatalog
     {
@@ -17,7 +17,7 @@ namespace ClickIt.Features.Mechanics.Rules
                 ? MechanicIds.DelveSulphiteVeins : null,
             static ctx => ctx.Settings.ClickStrongboxes
                 && (ctx.Settings.StrongboxClickMetadata?.Count ?? 0) > 0
-                && ctx.Dependencies.ShouldClickStrongbox(ctx.Settings, ctx.Path, ctx.Label)
+                && MechanicClassifier.ShouldClickStrongbox(ctx.Settings, ctx.Path, ctx.Label)
                     ? MechanicIds.Strongboxes : null,
             static ctx => ctx.Settings.ClickSanctum && ctx.Path.Contains("Sanctum", StringComparison.OrdinalIgnoreCase)
                 ? MechanicIds.Sanctum : null,
@@ -28,7 +28,7 @@ namespace ClickIt.Features.Mechanics.Rules
                     ? MechanicIds.Blight : null,
             static ctx => ctx.Settings.ClickAlvaTempleDoors
                 && ctx.Path.Contains(Constants.ClosedDoorPast, StringComparison.OrdinalIgnoreCase)
-                && ctx.Dependencies.ShouldAllowClosedDoorPastMechanic(ctx.GameController)
+                && ctx.InventoryInteractionPolicy.ShouldAllowClosedDoorPastMechanic(ctx.GameController)
                     ? MechanicIds.AlvaTempleDoors : null,
             static ctx => ctx.Settings.ClickLegionPillars
                 && ctx.Path.Contains(Constants.LegionInitiator, StringComparison.OrdinalIgnoreCase)
@@ -55,9 +55,9 @@ namespace ClickIt.Features.Mechanics.Rules
             string path,
             LabelOnGround label,
             GameController? gameController,
-            in MechanicClassifierDependencies dependencies)
+            InventoryInteractionPolicy inventoryInteractionPolicy)
         {
-            InteractionRuleContext context = new(settings, path, label, gameController, dependencies);
+            InteractionRuleContext context = new(settings, path, label, gameController, inventoryInteractionPolicy);
             for (int i = 0; i < OrderedRules.Length; i++)
             {
                 string? mechanicId = OrderedRules[i](context);

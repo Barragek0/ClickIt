@@ -96,9 +96,6 @@ namespace ClickIt.Tests.Features.Labels.Inventory
         [TestMethod]
         public void StackPredicates_ReturnExpectedValues_ForPartialAndServerStacks()
         {
-            InventoryCoreLogic.IsPartialStack(currentStackSize: 3, maxStackSize: 10).Should().BeTrue();
-            InventoryCoreLogic.IsPartialStack(currentStackSize: 10, maxStackSize: 10).Should().BeFalse();
-
             InventoryCoreLogic.IsPartialServerStack(fullStack: false, size: 3).Should().BeTrue();
             InventoryCoreLogic.IsPartialServerStack(fullStack: true, size: 3).Should().BeFalse();
             InventoryCoreLogic.IsPartialServerStack(fullStack: false, size: 0).Should().BeFalse();

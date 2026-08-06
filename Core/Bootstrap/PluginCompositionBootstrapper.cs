@@ -196,7 +196,6 @@ namespace ClickIt.Core.Bootstrap
             renderingState.BlightRenderer = core.BlightRenderer;
             renderingState.ImGuiDebugOverlay = rendering.ImGuiDebugOverlay;
             renderingState.UiRegionRectangleOverlay = rendering.UiRegionRectangleOverlay;
-            renderingState.ClickRuntimeHost = new ClickRuntimeHost(() => services.ClickAutomationPort);
             renderingState.UltimatumRenderer = ultimatumRenderer;
         }
     }

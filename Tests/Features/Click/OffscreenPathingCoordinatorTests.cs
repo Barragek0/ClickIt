@@ -929,9 +929,6 @@ namespace ClickIt.Tests.Features.Click
             public string? GetMechanicIdForLabel(LabelOnGround? label)
                 => mechanicId;
 
-            public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
-                => null;
-
             public bool ShouldCorruptEssence(LabelOnGround label)
                 => false;
         }

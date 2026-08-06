@@ -115,21 +115,5 @@ namespace ClickIt.Features.Click.Runtime
 
         internal static bool ShouldSuppressPathfindingLabel(bool suppressLeverClick, bool suppressInactiveUltimatum)
             => suppressLeverClick || suppressInactiveUltimatum;
-
-        internal static IReadOnlyList<LabelOnGround>? ResolveVisibleLabelsWithoutForcedCopy(object? rawVisibleLabels)
-        {
-            if (rawVisibleLabels is IReadOnlyList<LabelOnGround> visibleList)
-            {
-                return visibleList.Count > 0 ? visibleList : null;
-            }
-
-            if (rawVisibleLabels is IEnumerable<LabelOnGround> visibleEnumerable)
-            {
-                List<LabelOnGround> snapshot = [.. visibleEnumerable];
-                return snapshot.Count > 0 ? snapshot : null;
-            }
-
-            return null;
-        }
     }
 }

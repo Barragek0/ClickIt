@@ -12,11 +12,6 @@ namespace ClickIt.Features.Click.State
                 RequireNonNegativeAge: true,
                 RequirePositiveCachedTimestamp: true));
 
-        internal GroundLabelEntityAddressProvider(GameController gameController)
-            : this(() => gameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels)
-        {
-        }
-
         internal GroundLabelEntityAddressProvider(Func<IList<LabelOnGround>?> getLabels)
         {
             _getLabels = getLabels ?? throw new ArgumentNullException(nameof(getLabels));

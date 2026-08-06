@@ -36,9 +36,6 @@ namespace ClickIt.Features.Labels.Diagnostics
         public IReadOnlyList<string> GetTrail()
             => _channel.GetTrail();
 
-        public void PublishSnapshot(LabelDebugSnapshot snapshot)
-            => _channel.PublishSnapshot(snapshot);
-
         public void PublishEvent(LabelDebugEvent debugEvent)
             => _channel.PublishEvent(debugEvent);
     }

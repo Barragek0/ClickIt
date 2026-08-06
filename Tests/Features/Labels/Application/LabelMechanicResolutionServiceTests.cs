@@ -14,7 +14,8 @@ namespace ClickIt.Tests.Features.Labels.Application
                     clickSettingsCallCount++;
                     return new ClickSettings();
                 },
-                getClassificationDependencies: static () => throw new InvalidOperationException("Should not classify hidden labels."));
+                worldItemMetadataPolicy: new WorldItemMetadataPolicy(),
+                inventoryInteractionPolicy: InteractionRuleTestFactory.CreateInventoryInteractionPolicy(allowClosedDoorPast: false));
 
             string? mechanicId = service.GetMechanicIdForLabel(null);
 

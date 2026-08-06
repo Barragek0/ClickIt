@@ -12,7 +12,6 @@ namespace ClickIt.Features.Click
     internal sealed class ClickAutomationSupport(ClickAutomationSupportDependencies dependencies)
     {
         private readonly ClickAutomationSupportDependencies _dependencies = dependencies;
-        private readonly ClickSafetyPolicy _clickSafetyPolicy = new();
 
         internal ClickDebugSnapshot GetLatestClickDebug()
             => _dependencies.TelemetryStore.GetLatestClickDebug();
@@ -46,14 +45,6 @@ namespace ClickIt.Features.Click
             _dependencies.TelemetryStore.PublishClickSnapshot(snapshot);
         }
 
-        internal void PublishUltimatumSnapshot(UltimatumDebugSnapshot snapshot)
-        {
-            if (!ShouldCaptureUltimatumDebug())
-                return;
-
-            _dependencies.TelemetryStore.PublishUltimatumSnapshot(snapshot);
-        }
-
         internal void PublishUltimatumEvent(UltimatumDebugEvent debugEvent)
         {
             if (!ShouldCaptureUltimatumDebug())
@@ -61,9 +52,6 @@ namespace ClickIt.Features.Click
 
             _dependencies.TelemetryStore.PublishUltimatumEvent(debugEvent);
         }
-
-        internal void PublishRuntimeLog(string message)
-            => _dependencies.TelemetryStore.PublishRuntimeLog(message);
 
         internal void DebugLog(string message)
         {
@@ -80,7 +68,7 @@ namespace ClickIt.Features.Click
         {
             RectangleF windowArea = _dependencies.GetWindowRectangle();
             Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
-            return _clickSafetyPolicy.IsPointClickableInEitherSpace(clientPoint, windowTopLeft, _dependencies.PointIsInClickableArea, path);
+            return ClickSafetyPolicy.IsPointClickableInEitherSpace(clientPoint, windowTopLeft, _dependencies.PointIsInClickableArea, path);
         }
 
         internal bool IsInsideWindowInEitherSpace(Vector2 point)
@@ -113,7 +101,7 @@ namespace ClickIt.Features.Click
         {
             try
             {
-                return _clickSafetyPolicy.IsCursorInsideWindow(_dependencies.GetWindowRectangle(), _dependencies.GetCursorPosition());
+                return ClickSafetyPolicy.IsCursorInsideWindow(_dependencies.GetWindowRectangle(), _dependencies.GetCursorPosition());
             }
             catch
             {

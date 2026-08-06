@@ -340,27 +340,6 @@ namespace ClickIt.Tests.Features.Labels.Classification
         }
 
         [DataTestMethod]
-        [DataRow(true, false, false, false, "Metadata/Terrain/Objects/CleansingFireAltar/Altar", true)]
-        [DataRow(false, true, false, false, "Metadata/Terrain/Objects/TangleAltar/Altar", true)]
-        [DataRow(false, false, true, false, "Metadata/Terrain/Objects/CleansingFireAltar/Altar", true)]
-        [DataRow(false, false, false, true, "Metadata/Terrain/Objects/TangleAltar/Altar", true)]
-        [DataRow(false, false, false, false, "Metadata/Terrain/Objects/CleansingFireAltar/Altar", false)]
-        [DataRow(true, false, false, false, "Metadata/Terrain/Objects/OtherAltar/Altar", false)]
-        [DataRow(true, false, false, false, "", false)]
-        public void ShouldClickAltar_ReturnsExpected(
-            bool highlightEater,
-            bool highlightExarch,
-            bool clickEater,
-            bool clickExarch,
-            string path,
-            bool expected)
-        {
-            bool result = MechanicClassifier.ShouldClickAltar(highlightEater, highlightExarch, clickEater, clickExarch, path);
-
-            result.Should().Be(expected);
-        }
-
-        [DataTestMethod]
         [DataRow(true, false, false, false, Constants.CleansingFireAltar, MechanicIds.AltarsSearingExarch)]
         [DataRow(false, true, false, false, Constants.TangleAltar, MechanicIds.AltarsEaterOfWorlds)]
         [DataRow(false, false, true, false, Constants.CleansingFireAltar, MechanicIds.AltarsSearingExarch)]
@@ -449,7 +428,7 @@ namespace ClickIt.Tests.Features.Labels.Classification
         [DataRow("", false)]
         public void IsLabyrinthTrialTransitionPath_ReturnsExpected(string path, bool expected)
         {
-            TransitionMechanicClassifier.IsLabyrinthTrialTransitionPath(path).Should().Be(expected);
+            MechanicClassifier.IsLabyrinthTrialTransitionPath(path).Should().Be(expected);
         }
 
         [TestMethod]

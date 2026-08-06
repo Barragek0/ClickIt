@@ -17,6 +17,7 @@ namespace ClickIt.Core.Bootstrap
                 altarChoiceEvaluator,
                 (point, _) => core.AreaService.PointIsInClickableArea(gameController, point),
                 (point, _) => core.AreaService.PointIsInClickableArea(gameController, point, forceBlockedUiRefresh: false),
+                core.LabelFilterPort.LabelSelectionService,
                 owner.State.FreezeDebugTelemetrySnapshot);
 
         internal static ClickAutomationPort Assemble(
@@ -26,6 +27,7 @@ namespace ClickIt.Core.Bootstrap
             AltarChoiceEvaluator altarChoiceEvaluator,
             Func<Vector2, string, bool> pointIsInClickableArea,
             Func<Vector2, string, bool> forceRefreshPointIsInClickableArea,
+            ILabelSelectionService labelSelectionService,
             Action<string, int>? freezeDebugTelemetrySnapshot)
         {
             LockManager.Instance = new LockManager(settings);
@@ -41,6 +43,7 @@ namespace ClickIt.Core.Bootstrap
                 forceRefreshPointIsInClickableArea,
                 core.InputHandler,
                 core.LabelFilterPort,
+                labelSelectionService,
                 core.ShrineService,
                 core.PathfindingService,
                 new Func<bool>(core.LabelReadModelService.GroundItemsVisible),

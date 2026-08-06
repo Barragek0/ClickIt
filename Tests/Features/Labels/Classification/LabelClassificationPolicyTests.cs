@@ -6,11 +6,6 @@ namespace ClickIt.Tests.Features.Labels.Classification
         private static readonly MethodInfo GetNamedInteractableMechanicIdMethod = typeof(MechanicClassifier)
             .GetMethod("GetNamedInteractableMechanicId", BindingFlags.Static | BindingFlags.NonPublic)!;
 
-        public sealed class FakeTargetableEntity
-        {
-            public bool IsTargetable { get; set; }
-        }
-
         [TestMethod]
         public void GetNamedInteractableMechanicId_UsesDoorMechanicForHeistDoorPath_WithoutMatchingBasicVariant()
         {
@@ -155,10 +150,10 @@ namespace ClickIt.Tests.Features.Labels.Classification
             rs2.Should().BeFalse();
 
             var verisiumPath = "Metadata/Terrain/Leagues/Settlers/Node/Objects/NodeTypes/Verisium";
-            var rs3 = MechanicClassifier.IsSettlersVerisiumPath(verisiumPath);
+            var rs3 = MechanicRuleCatalog.IsSettlersVerisiumPath(verisiumPath);
             rs3.Should().BeTrue();
 
-            var rs4 = MechanicClassifier.IsSettlersVerisiumPath(verisiumPath.ToLowerInvariant());
+            var rs4 = MechanicRuleCatalog.IsSettlersVerisiumPath(verisiumPath.ToLowerInvariant());
             rs4.Should().BeTrue();
         }
 
@@ -175,57 +170,6 @@ namespace ClickIt.Tests.Features.Labels.Classification
             cb4.Should().BeFalse();
             var cb5 = MechanicClassifier.IsBasicChestName(null);
             cb5.Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ShouldSkipUntargetableEntity_RespectsLabelEntityAndItemTargetableState()
-        {
-            LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(
-                hasLabelEntityTargetable: true,
-                labelEntityTargetable: false,
-                itemIsTargetable: true).Should().BeTrue();
-
-            LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(
-                hasLabelEntityTargetable: true,
-                labelEntityTargetable: true,
-                itemIsTargetable: false).Should().BeTrue();
-
-            LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(
-                hasLabelEntityTargetable: false,
-                labelEntityTargetable: true,
-                itemIsTargetable: false).Should().BeTrue();
-
-            LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(
-                hasLabelEntityTargetable: false,
-                labelEntityTargetable: true,
-                itemIsTargetable: false,
-                allowNullEntityFallback: true).Should().BeFalse();
-
-            LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(
-                hasLabelEntityTargetable: true,
-                labelEntityTargetable: true,
-                itemIsTargetable: true).Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void ResolveLabelEntityTargetableFromRaw_ReadsDynamicIsTargetable_WhenEntityIsNotMemoryObjectEntity()
-        {
-            object? rawLabelEntity = new FakeTargetableEntity { IsTargetable = false };
-
-            LabelTargetabilityPolicy.ResolveLabelEntityTargetableFromRaw(rawLabelEntity, out bool hasTargetable, out bool targetable);
-            hasTargetable.Should().BeTrue();
-            targetable.Should().BeFalse();
-
-            LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(
-                hasLabelEntityTargetable: true,
-                labelEntityTargetable: false,
-                itemIsTargetable: true).Should().BeTrue();
-
-            LabelTargetabilityPolicy.ShouldSkipUntargetableEntity(
-                hasLabelEntityTargetable: false,
-                labelEntityTargetable: true,
-                itemIsTargetable: false,
-                allowNullEntityFallback: true).Should().BeFalse();
         }
 
         [TestMethod]

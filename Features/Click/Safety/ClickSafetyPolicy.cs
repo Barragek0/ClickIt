@@ -1,16 +1,14 @@
 namespace ClickIt.Features.Click.Safety
 {
-    internal sealed class ClickSafetyPolicy : IClickSafetyPolicy
+    internal sealed class ClickSafetyPolicy
     {
-        internal static readonly ClickSafetyPolicy Instance = new();
-
-        public bool IsPointClickableInEitherSpace(Vector2 clientPoint, Vector2 windowTopLeft, Func<Vector2, string, bool> clickabilityCheck, string path)
+        public static bool IsPointClickableInEitherSpace(Vector2 clientPoint, Vector2 windowTopLeft, Func<Vector2, string, bool> clickabilityCheck, string path)
         {
             return clickabilityCheck(clientPoint, path)
                 || clickabilityCheck(clientPoint + windowTopLeft, path);
         }
 
-        public bool IsCursorInsideWindow(RectangleF windowArea, Vector2 cursorAbsolute)
+        public static bool IsCursorInsideWindow(RectangleF windowArea, Vector2 cursorAbsolute)
         {
             return cursorAbsolute.X >= windowArea.X
                 && cursorAbsolute.Y >= windowArea.Y

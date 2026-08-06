@@ -19,7 +19,33 @@ namespace ClickIt.Features.Labels.Application
     {
         private readonly LabelSelectionServiceDependencies _dependencies = dependencies;
 
+        // Ref-keyed selection cache (single-threaded click coroutine): the full label scan only
+        // re-runs when the 50ms label-list reference changes or a new range is queried.  The
+        // cursor-distance tiebreak is the LAST rank comparator and its staleness is bounded by the
+        // label snapshot itself; the interaction path re-validates the label before clicking, and
+        // suppression (lever/ultimatum/blight-chest/overlap) is applied by the caller per tick.
+        private IReadOnlyList<LabelOnGround>? _selectionCacheLabelsRef;
+        private readonly Dictionary<(int Start, int MaxCount), LabelOnGround?> _selectionCacheByRange = new();
+
         public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
+        {
+            if (ReferenceEquals(allLabels, _selectionCacheLabelsRef))
+            {
+                if (_selectionCacheByRange.TryGetValue((startIndex, maxCount), out LabelOnGround? cached))
+                    return cached;
+            }
+            else
+            {
+                _selectionCacheLabelsRef = allLabels;
+                _selectionCacheByRange.Clear();
+            }
+
+            LabelOnGround? selected = SelectCore(allLabels, startIndex, maxCount);
+            _selectionCacheByRange[(startIndex, maxCount)] = selected;
+            return selected;
+        }
+
+        private LabelOnGround? SelectCore(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
         {
             bool captureDebug = _dependencies.ShouldCaptureLabelDebug();
 

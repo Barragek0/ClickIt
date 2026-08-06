@@ -10,35 +10,45 @@ namespace ClickIt.Features.Labels.Classification.Policies
             => string.Equals(mechanicId, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase);
 
         internal static bool IsEnabled(ClickSettings settings, string? mechanicId)
-        {
-            if (!settings.ClickSettlersOre || string.IsNullOrWhiteSpace(mechanicId))
-                return false;
-
-            return mechanicId switch
-            {
-                var id when string.Equals(id, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCrimsonIron,
-                var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCopper,
-                var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersPetrifiedWood,
-                var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersBismuth,
-                var id when string.Equals(id, MechanicIds.SettlersHourglass, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersOre,
-                var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersVerisium,
-                _ => false
-            };
-        }
+            => IsEnabledCore(
+                settings.ClickSettlersOre,
+                mechanicId,
+                settings.ClickSettlersCrimsonIron,
+                settings.ClickSettlersCopper,
+                settings.ClickSettlersPetrifiedWood,
+                settings.ClickSettlersBismuth,
+                settings.ClickSettlersVerisium);
 
         internal static bool IsEnabled(ClickItSettings settings, string? mechanicId)
+            => IsEnabledCore(
+                settings.ClickSettlersOre?.Value == true,
+                mechanicId,
+                settings.ClickSettlersCrimsonIron?.Value == true,
+                settings.ClickSettlersCopper?.Value == true,
+                settings.ClickSettlersPetrifiedWood?.Value == true,
+                settings.ClickSettlersBismuth?.Value == true,
+                settings.ClickSettlersVerisium?.Value == true);
+
+        private static bool IsEnabledCore(
+            bool clickSettlersOre,
+            string? mechanicId,
+            bool clickCrimsonIron,
+            bool clickCopper,
+            bool clickPetrifiedWood,
+            bool clickBismuth,
+            bool clickVerisium)
         {
-            if (settings.ClickSettlersOre?.Value != true || string.IsNullOrWhiteSpace(mechanicId))
+            if (!clickSettlersOre || string.IsNullOrWhiteSpace(mechanicId))
                 return false;
 
             return mechanicId switch
             {
-                var id when string.Equals(id, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCrimsonIron?.Value == true,
-                var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersCopper?.Value == true,
-                var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersPetrifiedWood?.Value == true,
-                var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersBismuth?.Value == true,
-                var id when string.Equals(id, MechanicIds.SettlersHourglass, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersOre?.Value == true,
-                var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => settings.ClickSettlersVerisium?.Value == true,
+                var id when string.Equals(id, MechanicIds.SettlersCrimsonIron, StringComparison.OrdinalIgnoreCase) => clickCrimsonIron,
+                var id when string.Equals(id, MechanicIds.SettlersCopper, StringComparison.OrdinalIgnoreCase) => clickCopper,
+                var id when string.Equals(id, MechanicIds.SettlersPetrifiedWood, StringComparison.OrdinalIgnoreCase) => clickPetrifiedWood,
+                var id when string.Equals(id, MechanicIds.SettlersBismuth, StringComparison.OrdinalIgnoreCase) => clickBismuth,
+                var id when string.Equals(id, MechanicIds.SettlersHourglass, StringComparison.OrdinalIgnoreCase) => clickSettlersOre,
+                var id when string.Equals(id, MechanicIds.SettlersVerisium, StringComparison.OrdinalIgnoreCase) => clickVerisium,
                 _ => false
             };
         }

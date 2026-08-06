@@ -48,41 +48,6 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void PublishUltimatumSnapshot_DoesNothing_WhenUltimatumDebugCaptureDisabled()
-        {
-            var settings = new ClickItSettings();
-            settings.DebugMode.Value = false;
-
-            var support = CreateSupport(settings);
-
-            support.PublishUltimatumSnapshot(new UltimatumDebugSnapshot(
-                HasData: true,
-                Stage: "PanelHandled",
-                Source: "PanelUi",
-                IsInitialUltimatumEnabled: true,
-                IsOtherUltimatumEnabled: true,
-                IsPanelVisible: true,
-                IsGruelingGauntletActive: false,
-                HasSaturatedChoice: false,
-                SaturatedModifier: string.Empty,
-                ShouldTakeReward: false,
-                Action: "Confirm",
-                CandidateCount: 2,
-                SaturatedCandidateCount: 0,
-                BestModifier: "Ruin",
-                BestPriority: 3,
-                ClickedChoice: true,
-                ClickedConfirm: true,
-                ClickedTakeRewards: false,
-                Notes: "notes",
-                Sequence: 0,
-                TimestampMs: 1));
-
-            support.GetLatestUltimatumDebug().Should().Be(UltimatumDebugSnapshot.Empty);
-            support.GetLatestUltimatumDebugTrail().Should().BeEmpty();
-        }
-
-        [TestMethod]
         public void PublishUltimatumEvent_PublishesProjectedSnapshotAndTrail_WhenCaptureEnabled()
         {
             var settings = new ClickItSettings();

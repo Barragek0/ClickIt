@@ -13,9 +13,6 @@ namespace ClickIt.Features.Click.Selection
     {
         private readonly ManualCursorLabelInteractionHandlerDependencies _dependencies = dependencies;
 
-        internal bool TryClickPreferredAltarOption(Vector2 cursorAbsolute, Vector2 windowTopLeft)
-            => _dependencies.AltarAutomation.TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
-
         internal bool TryClickCandidate(
             LabelOnGround hoveredLabel,
             string? mechanicId,
@@ -30,7 +27,7 @@ namespace ClickIt.Features.Click.Selection
                 ClickLabelSelectionMath.IsAltarLabel(hoveredLabel),
                 _dependencies.AltarAutomation.HasClickableAltars()))
             {
-                return TryClickPreferredAltarOption(cursorAbsolute, windowTopLeft);
+                return _dependencies.AltarAutomation.TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft);
             }
 
             if (_dependencies.LabelInteraction.TryCorruptEssence(hoveredLabel, windowTopLeft))

@@ -1,7 +1,7 @@
 
 namespace ClickIt.Features.Click
 {
-    public sealed partial class ClickAutomationPort : IClickAutomationService
+    public sealed partial class ClickAutomationPort
     {
         /**
         `ClickAutomationPort` is the click-domain entry surface, so keep the constructor eager only for the small set of always-on host dependencies and let the heavier mechanic/runtime owners stay lazy. The lazy members below are intentionally grouped in roughly the same order the runtime reaches them: interaction execution and tick context first, then label/manual-cursor selection, then mechanic/offscreen traversal, and finally Ultimatum handling.
@@ -19,6 +19,7 @@ namespace ClickIt.Features.Click
         private readonly AltarChoiceEvaluator _altarChoiceEvaluator;
         private readonly InputHandler _inputHandler;
         private readonly ILabelInteractionPort _labelInteractionPort;
+        private readonly ILabelSelectionService _labelSelectionService;
         private readonly LabelClickPointResolver _labelClickPointResolver;
         private readonly ShrineService _shrineService;
         private readonly PathfindingService _pathfindingService;
@@ -52,6 +53,7 @@ namespace ClickIt.Features.Click
             Func<Vector2, string, bool> forceRefreshPointIsInClickableArea,
             InputHandler inputHandler,
             ILabelInteractionPort labelInteractionPort,
+            ILabelSelectionService labelSelectionService,
             ShrineService shrineService,
             PathfindingService pathfindingService,
             Func<bool> groundItemsVisible,
@@ -69,6 +71,7 @@ namespace ClickIt.Features.Click
             ForceRefreshPointIsInClickableArea = forceRefreshPointIsInClickableArea ?? throw new ArgumentNullException(nameof(forceRefreshPointIsInClickableArea));
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
             _labelInteractionPort = labelInteractionPort ?? throw new ArgumentNullException(nameof(labelInteractionPort));
+            _labelSelectionService = labelSelectionService ?? throw new ArgumentNullException(nameof(labelSelectionService));
             _labelClickPointResolver = new LabelClickPointResolver(settings);
             _shrineService = shrineService ?? throw new ArgumentNullException(nameof(shrineService));
             _pathfindingService = pathfindingService ?? throw new ArgumentNullException(nameof(pathfindingService));
@@ -104,19 +107,32 @@ namespace ClickIt.Features.Click
         }
 
         internal bool TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? allLabels)
-            => LabelSelection.TryClickManualUiHoverLabel(allLabels);
+        {
+            if (_gameController.Window == null)
+                return false;
+
+            RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
+            Vector2 windowTopLeft = new(windowArea.X, windowArea.Y);
+            SystemDrawingPoint cursor = Mouse.GetCursorPosition();
+            Vector2 cursorAbsolute = new(cursor.X, cursor.Y);
+
+            if (AltarAutomation.TryClickManualCursorPreferredAltarOption(cursorAbsolute, windowTopLeft))
+                return true;
+
+            if (ManualCursorLabels.TryResolveCandidate(allLabels, cursorAbsolute, windowTopLeft, out LabelOnGround? hoveredLabel, out string? mechanicId))
+                return ManualCursorLabelInteraction.TryClickCandidate(hoveredLabel, mechanicId, cursorAbsolute, windowTopLeft, allLabels);
+
+            return ManualCursorVisibleMechanics.TryClick(cursorAbsolute, windowTopLeft);
+        }
+
+        internal bool LastClickTickWasActionable { get; private set; }
 
         internal IEnumerator ProcessRegularClick()
-            => RegularClick.Run();
-
-        internal IEnumerator ProcessAltarClicking()
-            => AltarAutomation.ProcessAltarClicking();
-
-        internal bool HasClickableAltars()
-            => AltarAutomation.HasClickableAltars();
-
-        internal bool ShouldClickAltar(PrimaryAltarComponent altar, bool clickEater, bool clickExarch)
-            => AltarAutomation.ShouldClickAltar(altar, clickEater, clickExarch);
+        {
+            LastClickTickWasActionable = false;
+            yield return RegularClick.Run();
+            LastClickTickWasActionable = RegularClick.LastTickWasActionable;
+        }
 
         internal bool TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
             => UltimatumAutomation.TryGetOptionPreview(out previews);
@@ -234,20 +250,5 @@ namespace ClickIt.Features.Click
         private static bool PointInRect(RectangleF rect, Vector2 point)
             => point.X >= rect.X && point.X <= rect.X + rect.Width
                && point.Y >= rect.Y && point.Y <= rect.Y + rect.Height;
-
-        IEnumerator IClickAutomationService.ProcessRegularClick()
-            => ProcessRegularClick();
-
-        bool IClickAutomationService.TryClickManualUiHoverLabel(IReadOnlyList<LabelOnGround>? labels)
-            => TryClickManualUiHoverLabel(labels);
-
-        void IClickAutomationService.CancelOffscreenPathingState()
-            => CancelOffscreenPathingState();
-
-        void IClickAutomationService.CancelPostChestLootSettlementState()
-            => CancelPostChestLootSettlementState();
-
-        bool IClickAutomationService.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews)
-            => TryGetUltimatumOptionPreview(out previews);
     }
 }

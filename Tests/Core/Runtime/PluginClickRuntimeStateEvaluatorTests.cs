@@ -189,7 +189,7 @@ namespace ClickIt.Tests.Core.Runtime
             settings.ClickOnManualUiHoverOnly.Value = manualUiHoverEnabled;
             settings.LazyMode.Value = lazyModeEnabled;
 
-            PluginClickRuntimeStateEvaluator.ShouldRunManualUiHoverCoroutine(settings).Should().Be(expected);
+            PluginClickRuntimeStateEvaluator.ResolveManualUiHoverMode(settings, clickHotkeyActive: false).ShouldRunCoroutine.Should().Be(expected);
         }
 
         private static void SeedNearbyMonsterCache(

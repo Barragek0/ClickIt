@@ -70,7 +70,7 @@ namespace ClickIt.Features.Click.Selection
             return ResolveNearestOffscreenEntityTarget(
                 maxDistance,
                 includeEntity: (_, _) => true,
-                resolveMechanicId: (entity, path) => TransitionMechanicClassifier.GetAreaTransitionMechanicId(
+                resolveMechanicId: (entity, path) => MechanicClassifier.GetAreaTransitionMechanicId(
                     _dependencies.Settings.ClickAreaTransitions.Value,
                     _dependencies.Settings.ClickLabyrinthTrials.Value,
                     entity.Type,

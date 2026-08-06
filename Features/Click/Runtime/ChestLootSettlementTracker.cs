@@ -212,9 +212,6 @@ namespace ClickIt.Features.Click.Runtime
             state.KnownGroundItemAddresses.Clear();
         }
 
-        public bool ShouldAllowMechanicInteractionDuringPostChestLootSettlement(string? mechanicId, Entity? entity)
-            => ShouldAllowMechanicInteractionDuringPostChestLootSettlement(mechanicId, entity, out _);
-
         /**
         Keep this thin runtime wrapper so production still resolves the nearby
         bypass candidate from the real Entity grid state. The internal overload
@@ -259,7 +256,7 @@ namespace ClickIt.Features.Click.Runtime
             }
 
             int maxDistance = SystemMath.Max(0, settings.AllowNearbyMechanicsWhileWaitingForChestDropsToSettleDistance?.Value ?? 10);
-            float distanceSq = CalculateDistanceSquared(state.SourceGrid, entityGridPos);
+            float distanceSq = CoordinateSpace.DistanceSquared(state.SourceGrid, entityGridPos);
             float distance = MathF.Sqrt(distanceSq);
             bool allowed = ChestLootSettlementMath.IsWithinNearbyChestLootSettlementBypassDistance(state.SourceGrid, entityGridPos, maxDistance);
             decision = $"{(allowed ? "allowed" : "blocked")}; mechanic:{mechanicId ?? "unknown"}; dist:{distance:0.0}; max:{maxDistance}; source:({state.SourceGrid.X:0.0},{state.SourceGrid.Y:0.0}); candidate:({entityGridPos.X:0.0},{entityGridPos.Y:0.0})";
@@ -272,12 +269,5 @@ namespace ClickIt.Features.Click.Runtime
                     _dependencies.Settings.PauseAfterOpeningBasicChestsInitialDelayMs?.Value ?? ChestLootSettlementMath.DefaultInitialDelayMs,
                     _dependencies.Settings.PauseAfterOpeningBasicChestsPollIntervalMs?.Value ?? ChestLootSettlementMath.DefaultPollIntervalMs,
                     _dependencies.Settings.PauseAfterOpeningBasicChestsQuietWindowMs?.Value ?? ChestLootSettlementMath.DefaultQuietWindowMs));
-
-        private static float CalculateDistanceSquared(Vector2 left, Vector2 right)
-        {
-            float deltaX = left.X - right.X;
-            float deltaY = left.Y - right.Y;
-            return (deltaX * deltaX) + (deltaY * deltaY);
-        }
     }
 }

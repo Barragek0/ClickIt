@@ -19,7 +19,7 @@ namespace ClickIt.Features.Click.Core
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("GroundItemsHidden",
                         $"{labelSourceSummary} | hiddenFallback settlers={hiddenFallbackSelection.HasSettlers} lostShipment={hiddenFallbackSelection.HasLostShipment}", null);
 
-                LabelOnGround? hiddenLabel = _dependencies.LabelSelection.ResolveNextLabelCandidate(context.AllLabels);
+                LabelOnGround? hiddenLabel = _dependencies.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
                 string? hiddenLabelMechanicId = hiddenLabel != null
                     ? _dependencies.LabelInteractionPort.GetMechanicIdForLabel(hiddenLabel)
                     : null;
@@ -44,7 +44,7 @@ namespace ClickIt.Features.Click.Core
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("LabelSource", labelSourceSummary, null);
 
 
-            LabelOnGround? nextLabel = _dependencies.LabelSelection.ResolveNextLabelCandidate(context.AllLabels);
+            LabelOnGround? nextLabel = _dependencies.LabelSelectionScan.ResolveNextLabelCandidate(context.AllLabels);
             string? nextLabelMechanicId = nextLabel != null
                 ? _dependencies.LabelInteractionPort.GetMechanicIdForLabel(nextLabel)
                 : null;

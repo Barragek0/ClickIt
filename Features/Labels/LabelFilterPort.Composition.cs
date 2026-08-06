@@ -30,12 +30,7 @@ namespace ClickIt.Features.Labels
             }
         }
 
-        private LabelInteractionRuleService InteractionRuleService
-            => field ??= new LabelInteractionRuleService(
-                _worldItemMetadataPolicy,
-                InventoryInteractionPolicy);
-
-        private ILabelSelectionService LabelSelectionService
+        internal ILabelSelectionService LabelSelectionService
             => field ??= new LabelSelectionService(CreateLabelSelectionServiceDependencies());
 
         internal LabelDebugService LabelDebugService
@@ -44,7 +39,12 @@ namespace ClickIt.Features.Labels
                 _errorHandler,
                 _gameController,
                 ClickSettingsService.Create,
-                InteractionRuleService.ShouldAllowWorldItemByMetadata,
+                (settings, item, gameController, label) => _worldItemMetadataPolicy.ShouldAllowWorldItemByMetadata(
+                    settings,
+                    item,
+                    gameController,
+                    label,
+                    InventoryInteractionPolicy.ShouldAllowWorldItemWhenInventoryFull),
                 LabelMechanicResolutionService,
                 _labelSelectionDiagnostics);
 
@@ -52,18 +52,14 @@ namespace ClickIt.Features.Labels
             => field ??= new LabelMechanicResolutionService(
                 _gameController,
                 ClickSettingsService.Create,
-                () => ClassificationDependencies);
+                _worldItemMetadataPolicy,
+                InventoryInteractionPolicy);
 
         internal LazyModeBlockerService LazyModeBlockerService
             => field ??= new LazyModeBlockerService(
                 _settings,
                 _gameController,
                 reason => _errorHandler.LogMessage(true, true, reason, 5));
-
-        private MechanicClassifierDependencies ClassificationDependencies
-            => _classificationDependencies ??= MechanicClassifierDependenciesFactory.Create(
-                _worldItemMetadataPolicy,
-                InteractionRuleService);
 
         private void EnsureInventoryDomainServices()
         {

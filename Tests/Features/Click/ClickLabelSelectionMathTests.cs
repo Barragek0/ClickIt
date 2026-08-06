@@ -45,22 +45,5 @@ namespace ClickIt.Tests.Features.Click
             ClickLabelSelectionMath.IsInsideWindowInEitherSpace(new Vector2(450, 450), window).Should().BeFalse();
         }
 
-        [TestMethod]
-        public void ResolveVisibleLabelsWithoutForcedCopy_ReturnsExpectedShape_ForListAndEnumerable()
-        {
-            LabelOnGround label = (LabelOnGround)RuntimeHelpers.GetUninitializedObject(typeof(LabelOnGround));
-
-            IReadOnlyList<LabelOnGround>? fromList = ClickLabelSelectionMath.ResolveVisibleLabelsWithoutForcedCopy(new List<LabelOnGround> { label });
-            fromList.Should().NotBeNull();
-            fromList!.Count.Should().Be(1);
-
-            IEnumerable<LabelOnGround> enumerableOnly = new[] { label }.Where(_ => true);
-            IReadOnlyList<LabelOnGround>? fromEnumerable = ClickLabelSelectionMath.ResolveVisibleLabelsWithoutForcedCopy(enumerableOnly);
-            fromEnumerable.Should().NotBeNull();
-            fromEnumerable!.Count.Should().Be(1);
-
-            ClickLabelSelectionMath.ResolveVisibleLabelsWithoutForcedCopy(new List<LabelOnGround>()).Should().BeNull();
-            ClickLabelSelectionMath.ResolveVisibleLabelsWithoutForcedCopy(null).Should().BeNull();
-        }
     }
 }

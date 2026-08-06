@@ -65,25 +65,6 @@ namespace ClickIt.Tests.Features.Click
         }
 
         [TestMethod]
-        public void PerformLabelHoldClick_UsesHoldDefaults()
-        {
-            InteractionExecutionRequest? capturedRequest = null;
-            var service = CreateService(request =>
-            {
-                capturedRequest = request;
-                return true;
-            });
-
-            bool executed = service.PerformLabelHoldClick(new Vector2(44, 55), expectedElement: null, controller: null, holdDurationMs: 120);
-
-            executed.Should().BeTrue();
-            capturedRequest.Should().NotBeNull();
-            capturedRequest!.Value.UseHoldClick.Should().BeTrue();
-            capturedRequest.Value.HoldDurationMs.Should().Be(120);
-            capturedRequest.Value.OutsideWindowLogMessage.Should().Be("[PerformLabelHoldClick] Skipping hold click - cursor outside PoE window");
-        }
-
-        [TestMethod]
         public void ExecuteInteraction_UsesCustomOutsideWindowMessage_WhenProvided()
         {
             InteractionExecutionRequest? capturedRequest = null;
@@ -256,9 +237,6 @@ namespace ClickIt.Tests.Features.Click
             }
 
             public string? GetMechanicIdForLabel(LabelOnGround? label)
-                => null;
-
-            public LabelOnGround? GetNextLabelToClick(IReadOnlyList<LabelOnGround>? allLabels, int startIndex, int maxCount)
                 => null;
 
             public bool ShouldCorruptEssence(LabelOnGround label)

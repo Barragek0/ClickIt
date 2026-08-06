@@ -3,6 +3,7 @@ namespace ClickIt.Features.Click.Selection
     internal readonly record struct LabelSelectionScanEngineDependencies(
         GameController GameController,
         ILabelInteractionPort LabelInteractionPort,
+        ILabelSelectionService LabelSelectionService,
         LabelClickPointResolver LabelClickPointResolver,
         Func<LabelOnGround, bool> ShouldSuppressLeverClick,
         Func<LabelOnGround, bool> ShouldSuppressInactiveUltimatumLabel,
@@ -131,7 +132,7 @@ namespace ClickIt.Features.Click.Selection
 
             while (currentStart < endExclusive)
             {
-                LabelOnGround? label = _dependencies.LabelInteractionPort.GetNextLabelToClick(allLabels, currentStart, endExclusive - currentStart);
+                LabelOnGround? label = _dependencies.LabelSelectionService.GetNextLabelToClick(allLabels, currentStart, endExclusive - currentStart);
                 if (label == null)
                 {
                     if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())

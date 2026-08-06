@@ -220,7 +220,7 @@ namespace ClickIt.Features.Click.Application
         {
             using (LockManager.AcquireStatic(_dependencies.ElementAccessLock))
             {
-                return el != null && el.IsValid && el.IsVisible;
+                return IsValidVisible(el);
             }
         }
 
