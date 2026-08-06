@@ -1320,13 +1320,14 @@ internal sealed class ImGuiDebugOverlay(
 
         void RenderLane(BlightLaneNode lane)
         {
-            for (int i = 0; i < lane.Segments.Count; i++)
+            if (lane.Segments.Count > 0)
             {
-                int s = lane.Segments[i];
-                LaneCoverageResult seg = coverage[s];
-                ImGui.PushStyleColor(ImGuiCol.Text, SegTextColor(seg));
+                LaneCoverageResult first = coverage[lane.Segments[0]];
+                LaneCoverageResult last = coverage[lane.Segments[lane.Segments.Count - 1]];
+                LaneCoverageResult aggregate = BlightLaneTopology.AggregateLane(lane, coverage);
+                ImGui.PushStyleColor(ImGuiCol.Text, SegTextColor(aggregate));
                 ImGui.TreeNodeEx(
-                    $"{lane.Name}.{i + 1} {Pt(seg.Midpoint)} {Flags(seg)}##covseg{s}",
+                    $"{lane.Name} {Pt(first.Midpoint)}->{Pt(last.Midpoint)} {Flags(aggregate)}##covrow{lane.Name}",
                     ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen);
                 ImGui.PopStyleColor();
             }
@@ -1758,10 +1759,12 @@ internal sealed class ImGuiDebugOverlay(
                     void AppendLane(BlightLaneNode lane, int depth)
                     {
                         string indent = new(' ', depth * 2);
-                        for (int i = 0; i < lane.Segments.Count; i++)
+                        if (lane.Segments.Count > 0)
                         {
-                            LaneCoverageResult seg = coverage[lane.Segments[i]];
-                            sb.AppendLine($"{indent}{lane.Name}.{i + 1} {Pt(seg.Midpoint)} {BlightCoverageFlags.Format(seg, coverageTypes)}");
+                            LaneCoverageResult first = coverage[lane.Segments[0]];
+                            LaneCoverageResult last = coverage[lane.Segments[lane.Segments.Count - 1]];
+                            LaneCoverageResult aggregate = BlightLaneTopology.AggregateLane(lane, coverage);
+                            sb.AppendLine($"{indent}{lane.Name} {Pt(first.Midpoint)}->{Pt(last.Midpoint)} {BlightCoverageFlags.Format(aggregate, coverageTypes)}");
                         }
                         for (int c = 0; c < lane.Children.Count; c++)
                         {
@@ -1790,6 +1793,8 @@ internal sealed class ImGuiDebugOverlay(
                             {
                                 if (rendered.Contains(segments[s]))
                                     continue;
+                                if (BlightLaneTopology.IsStackedOnRenderedLane(segments[s], coverage, rendered))
+                                    continue; // stacked duplicate merged into a rendered lane
                                 if (firstUnmapped)
                                 {
                                     sb.AppendLine("  UNMAPPED segments (topology anomaly):");

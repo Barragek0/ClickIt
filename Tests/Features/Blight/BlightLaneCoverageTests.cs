@@ -330,6 +330,154 @@ public class BlightLaneCoverageTests
     }
 
     [TestMethod]
+    public void ComputeCoverage_StackedParallelRows_MergeCoverage_AndPropagate()
+    {
+        // The game lays the SAME lane down as two stacked parallel rows.  A tower on the main row
+        // (3,4) must cover the stacked row (5,6) too, and coverage must then propagate up the fork
+        // at 2 to the trunk (1,0) — without the merge the uncovered stacked row blocks AND-upward
+        // propagation (the reported bug).
+        var positions = new List<NumVector2>
+        {
+            new(0, 0),   // 0 root (pump)
+            new(10, 0),  // 1
+            new(20, 0),  // 2 fork
+            new(30, 0),  // 3 main row
+            new(40, 0),  // 4 main row (Chilling tower)
+            new(30, 3),  // 5 stacked row
+            new(40, 3),  // 6 stacked row
+        };
+
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions,
+            midpoint => (chilling: midpoint.Y < 1f && midpoint.X >= 30f, seismic: false, fireball: false),
+            pumpGridPosition: new NumVector2(0, 0));
+
+        coverage[3].HasChilling.Should().BeTrue();
+        coverage[4].HasChilling.Should().BeTrue();
+        coverage[5].HasChilling.Should().BeTrue("the stacked row shares the tower's coverage with the main row");
+        coverage[6].HasChilling.Should().BeTrue("the stacked row shares the tower's coverage with the main row");
+        coverage[2].HasChilling.Should().BeTrue("coverage propagates up through the fork once the stacked row is merged");
+        coverage[1].HasChilling.Should().BeTrue();
+        coverage[0].HasChilling.Should().BeTrue();
+    }
+
+    [TestMethod]
+    public void ComputeCoverage_StackedRows_SeismicSharesAcrossRows()
+    {
+        var positions = new List<NumVector2>
+        {
+            new(0, 0),   // 0 root (pump)
+            new(10, 0),  // 1
+            new(20, 0),  // 2 fork
+            new(30, 0),  // 3 main row
+            new(40, 0),  // 4 main row
+            new(30, 3),  // 5 stacked row
+            new(40, 3),  // 6 stacked row
+        };
+
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions,
+            midpoint => (chilling: false, seismic: midpoint.Y < 1f && midpoint.X >= 30f, fireball: false),
+            pumpGridPosition: new NumVector2(0, 0));
+
+        coverage[5].HasSeismic.Should().BeTrue();
+        coverage[6].HasSeismic.Should().BeTrue();
+        coverage[0].HasSeismic.Should().BeTrue("Seismic propagates up through the merged stacked fork");
+    }
+
+    [TestMethod]
+    public void BuildLaneTree_StackedDuplicateArm_MergesIntoMainLane()
+    {
+        // Fork at 2 with two equal arms: main 3->4 and a stacked duplicate 5->6 three units away.
+        // The stacked duplicate is the same physical lane written twice, so it merges into the lane
+        // instead of rendering as a numbered divergence.
+        LaneCoverageResult[] coverage =
+        [
+            new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
+            new(0, false, new NumVector2(10, 0)),
+            new(1, false, new NumVector2(20, 0)),
+            new(2, false, new NumVector2(30, 0)),
+            new(3, false, new NumVector2(40, 0)),
+            new(2, false, new NumVector2(30, 3)),
+            new(5, false, new NumVector2(40, 3)),
+        ];
+
+        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
+        BlightLaneNode lane = BlightLaneTopology.BuildLaneTree(coverage, children, 0, "A");
+
+        lane.Segments.Should().Equal([0, 1, 2, 3, 4], "the stacked duplicate arm merges into the lane");
+        lane.Children.Should().HaveCount(0, "no divergence for a stacked duplicate row");
+    }
+
+    [TestMethod]
+    public void BuildLaneTree_DistantParallelArm_StaysDivergence()
+    {
+        // A parallel arm 15 units away is a genuinely separate lane — the "quite close" merge
+        // threshold must NOT absorb it.
+        LaneCoverageResult[] coverage =
+        [
+            new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
+            new(0, false, new NumVector2(10, 0)),
+            new(1, false, new NumVector2(20, 0)),
+            new(2, false, new NumVector2(30, 0)),
+            new(3, false, new NumVector2(40, 0)),
+            new(2, false, new NumVector2(30, 15)),
+            new(5, false, new NumVector2(40, 15)),
+        ];
+
+        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
+        BlightLaneNode lane = BlightLaneTopology.BuildLaneTree(coverage, children, 0, "A");
+
+        lane.Segments.Should().Equal([0, 1, 2, 3, 4]);
+        lane.Children.Should().HaveCount(1, "a distant parallel arm is a real divergence");
+        lane.Children[0].Name.Should().Be("A-1");
+        lane.Children[0].Segments.Should().Equal(5, 6);
+    }
+
+    [TestMethod]
+    public void IsStackedOnRenderedLane_StackedSegmentTrue_DistantFalse()
+    {
+        LaneCoverageResult[] coverage =
+        [
+            new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
+            new(0, false, new NumVector2(10, 0)),
+            new(1, false, new NumVector2(20, 0)),
+            new(2, false, new NumVector2(30, 0)),
+            new(3, false, new NumVector2(40, 0)),
+            new(2, false, new NumVector2(30, 3)),
+            new(5, false, new NumVector2(40, 3)),
+            new(2, false, new NumVector2(30, 15)),
+        ];
+        IReadOnlySet<int> rendered = new HashSet<int> { 3, 4 };
+
+        BlightLaneTopology.IsStackedOnRenderedLane(5, coverage, rendered).Should().BeTrue(
+            "segment 5 is a stacked duplicate of rendered segment 3");
+        BlightLaneTopology.IsStackedOnRenderedLane(6, coverage, rendered).Should().BeTrue(
+            "segment 6 is a stacked duplicate of rendered segment 4");
+        BlightLaneTopology.IsStackedOnRenderedLane(7, coverage, rendered).Should().BeFalse(
+            "segment 7 is 15 units away — a real lane, not a stacked duplicate");
+    }
+
+    [TestMethod]
+    public void AggregateLane_OrsSegmentFlagsAcrossTheLane()
+    {
+        LaneCoverageResult[] coverage =
+        [
+            new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
+            new(0, false, new NumVector2(10, 0), HasChilling: true),
+            new(1, false, new NumVector2(20, 0), HasSeismic: true, IsPhantom: true),
+        ];
+        var lane = new BlightLaneNode("A", [1, 2], []);
+
+        LaneCoverageResult aggregate = BlightLaneTopology.AggregateLane(lane, coverage);
+
+        aggregate.HasChilling.Should().BeTrue();
+        aggregate.HasSeismic.Should().BeTrue();
+        aggregate.HasFireball.Should().BeFalse();
+        aggregate.IsPhantom.Should().BeTrue();
+    }
+
+    [TestMethod]
     public void BuildLaneTree_StopsOnSingleChildCycle_InsteadOfLooping()
     {
         // A corrupt children graph whose single-child chain cycles back on itself (1 -> 2 -> 1)

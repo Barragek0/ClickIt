@@ -4,6 +4,12 @@ internal static class BlightLaneTopology
 {
     internal const float PhantomConnectDistance = 100f;
 
+    // Two segments are the same physical lane written twice (the game lays parallel pathway rows on
+    // top of one another) when both their midpoints AND their parents' midpoints are within this
+    // distance.  Towers covering one row cover both, so stacked rows must merge into ONE lane.
+    // Kept "quite close" so genuinely separate parallel lanes never merge.
+    internal const float StackedLaneMergeDistance = 9f;
+
     // Chains whose pump-nearest point is inside this radius are separate ROOT branches (they start
     // at the pump), not underground lane continuations — phantom bridging must leave them separate.
     internal const float PumpRootRadius = 30f;
@@ -463,6 +469,13 @@ internal static class BlightLaneTopology
             localSummoning[i] = results[i].HasSummoning;
         }
 
+        // Stacked parallel rows of one physical lane share coverage BEFORE propagation.  Without
+        // this, the AND-upward rule treats the stacked row as a fork arm with no coverage and blocks
+        // coverage from propagating up the lane.
+        MergeStackedLaneFlags(
+            localChilling, localSeismic, localFireball,
+            localEmpowering, localShockNova, localSummoning, results, n);
+
         bool[] chilling = PropagateType(results, localChilling);
         bool[] seismic = PropagateType(results, localSeismic);
         bool[] fireball = PropagateType(results, localFireball);
@@ -487,6 +500,174 @@ internal static class BlightLaneTopology
         }
 
         return results;
+    }
+
+    private static void MergeStackedLaneFlags(
+        bool[] chilling, bool[] seismic, bool[] fireball,
+        bool[] empowering, bool[] shockNova, bool[] summoning,
+        LaneCoverageResult[] results, int n)
+    {
+        bool changed;
+        int guard = 0;
+        do
+        {
+            changed = false;
+            for (int i = 0; i < n; i++)
+            {
+                int pi = results[i].ParentIndex;
+                if (pi < 0 || pi == i || results[i].IsPumpStub)
+                    continue;
+                NumVector2 mi = results[i].Midpoint;
+                for (int j = i + 1; j < n; j++)
+                {
+                    int pj = results[j].ParentIndex;
+                    if (pj < 0 || pj == j || results[j].IsPumpStub)
+                        continue;
+                    if (Distance(mi, results[j].Midpoint) > StackedLaneMergeDistance)
+                        continue;
+                    if (!RunsAreParallel(results, pi, i, pj, j))
+                        continue;
+                    changed |= UnionFlags(chilling, seismic, fireball, empowering, shockNova, summoning, i, j);
+                    changed |= UnionFlags(chilling, seismic, fireball, empowering, shockNova, summoning, j, i);
+                }
+            }
+            guard++;
+        } while (changed && guard < 16);
+    }
+
+    private static bool RunsAreParallel(LaneCoverageResult[] results, int parentA, int segA, int parentB, int segB)
+    {
+        float ax = results[segA].Midpoint.X - results[parentA].Midpoint.X;
+        float ay = results[segA].Midpoint.Y - results[parentA].Midpoint.Y;
+        float bx = results[segB].Midpoint.X - results[parentB].Midpoint.X;
+        float by = results[segB].Midpoint.Y - results[parentB].Midpoint.Y;
+        float la = MathF.Sqrt((ax * ax) + (ay * ay));
+        float lb = MathF.Sqrt((bx * bx) + (by * by));
+        if (la < 0.5f || lb < 0.5f)
+            return false; // unknown direction — don't merge on it
+        // Stacked rows of ONE lane run almost exactly parallel (cos ≈ 1).  Two arms of a genuine
+        // fork fan out at a wider angle, so 0.9 separates them while still accepting real stacked
+        // rows (the debug case is ~1-4 units apart and < 10° apart).
+        float cos = ((ax * bx) + (ay * by)) / (la * lb);
+        return cos >= 0.9f;
+    }
+
+    private static bool UnionFlags(
+        bool[] chilling, bool[] seismic, bool[] fireball,
+        bool[] empowering, bool[] shockNova, bool[] summoning,
+        int target, int source)
+    {
+        bool changed = false;
+        if (chilling[source] && !chilling[target]) { chilling[target] = true; changed = true; }
+        if (seismic[source] && !seismic[target]) { seismic[target] = true; changed = true; }
+        if (fireball[source] && !fireball[target]) { fireball[target] = true; changed = true; }
+        if (empowering[source] && !empowering[target]) { empowering[target] = true; changed = true; }
+        if (shockNova[source] && !shockNova[target]) { shockNova[target] = true; changed = true; }
+        if (summoning[source] && !summoning[target]) { summoning[target] = true; changed = true; }
+        return changed;
+    }
+
+    // True when child's maximal fork-free run is a stacked duplicate of main's maximal run: every
+    // child segment sits within the merge distance of a main-run segment (the rows run parallel and
+    // almost on top of one another all the way down).  The "quite close" threshold keeps genuinely
+    // separate parallel lanes from merging.
+    internal static bool IsRunStackedOnRun(
+        LaneCoverageResult[] coverage,
+        List<List<int>> children,
+        int childStart,
+        int mainStart,
+        float distance)
+    {
+        List<int> childRun = CollectMaximalRun(children, childStart);
+        List<int> mainRun = CollectMaximalRun(children, mainStart);
+        if (childRun.Count == 0 || mainRun.Count == 0)
+            return false;
+
+        for (int c = 0; c < childRun.Count; c++)
+        {
+            NumVector2 cm = coverage[childRun[c]].Midpoint;
+            bool near = false;
+            for (int m = 0; m < mainRun.Count; m++)
+            {
+                if (Distance(cm, coverage[mainRun[m]].Midpoint) <= distance)
+                {
+                    near = true;
+                    break;
+                }
+            }
+            if (!near)
+                return false;
+        }
+        return true;
+    }
+
+    private static List<int> CollectMaximalRun(List<List<int>> children, int start)
+    {
+        List<int> run = [];
+        int current = start;
+        int guard = 0;
+        while (current >= 0 && guard++ < children.Count)
+        {
+            run.Add(current);
+            List<int> c = children[current];
+            if (c.Count != 1)
+                break;
+            current = c[0];
+        }
+        return run;
+    }
+
+    private static void MarkSubtreeVisited(List<List<int>> children, bool[] visited, int node)
+    {
+        if (visited[node])
+            return;
+        visited[node] = true;
+        List<int> c = children[node];
+        for (int i = 0; i < c.Count; i++)
+            MarkSubtreeVisited(children, visited, c[i]);
+    }
+
+    // Whether a segment that is not part of the rendered forest is a stacked duplicate of a rendered
+    // lane (merged into it, so it must not be reported as an unmapped topology anomaly).
+    internal static bool IsStackedOnRenderedLane(int segment, LaneCoverageResult[] coverage, IReadOnlySet<int> rendered)
+    {
+        int parent = coverage[segment].ParentIndex;
+        NumVector2 mid = coverage[segment].Midpoint;
+        foreach (int r in rendered)
+        {
+            if (r == segment)
+                continue;
+            if (Distance(mid, coverage[r].Midpoint) > StackedLaneMergeDistance)
+                continue;
+            int rp = coverage[r].ParentIndex;
+            if (rp < 0 || rp == r)
+                continue;
+            if (!RunsAreParallel(coverage, parent, segment, rp, r))
+                continue;
+            return true;
+        }
+        return false;
+    }
+
+    internal static LaneCoverageResult AggregateLane(BlightLaneNode lane, LaneCoverageResult[] coverage)
+    {
+        LaneCoverageResult agg = default;
+        for (int i = 0; i < lane.Segments.Count; i++)
+        {
+            LaneCoverageResult r = coverage[lane.Segments[i]];
+            agg = agg with
+            {
+                IsFullyCovered = agg.IsFullyCovered || r.IsFullyCovered,
+                HasChilling = agg.HasChilling || r.HasChilling,
+                HasSeismic = agg.HasSeismic || r.HasSeismic,
+                HasFireball = agg.HasFireball || r.HasFireball,
+                HasEmpowering = agg.HasEmpowering || r.HasEmpowering,
+                HasShockNova = agg.HasShockNova || r.HasShockNova,
+                HasSummoning = agg.HasSummoning || r.HasSummoning,
+                IsPhantom = agg.IsPhantom || r.IsPhantom,
+            };
+        }
+        return agg;
     }
 
     // Phase 2 (AND upward) then Phase 3 (OR downward), each to fixed point — with a pump-rooted tree
@@ -740,6 +921,16 @@ internal static class BlightLaneTopology
                 int child = forkChildren[i];
                 if (visited[child] || child == mainChild)
                     continue;
+
+                // A fork arm whose run is a stacked duplicate of the main continuation (parallel
+                // rows of the SAME physical lane — the game lays rows on top of one another) is
+                // merged into this lane instead of rendering as a separate divergence.
+                if (IsRunStackedOnRun(coverage, children, child, mainChild, StackedLaneMergeDistance))
+                {
+                    MarkSubtreeVisited(children, visited, child);
+                    continue;
+                }
+
                 childLanes.Add(BuildLaneTree(coverage, children, child, $"{branchPrefix}-{++nameIndex}", branchPrefix, visited, ref nameIndex, subtreeSize));
             }
             current = mainChild;
