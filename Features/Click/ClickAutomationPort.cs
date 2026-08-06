@@ -172,12 +172,60 @@ namespace ClickIt.Features.Click
             return PointInRect(padded, screenPos);
         }
 
-        // Fail-closed pre-click check for blight MENU clicks (build/upgrade/spec): the click point
-        // must still be inside a build/upgrade icon rect — otherwise the menu moved or closed since
-        // the position was resolved and the click is skipped.  Rect-based only (no UIHover — it was
-        // unreliable and rejected valid clicks while the hover was still updating).
+        // Fail-closed pre-click check for blight MENU clicks (build icon, upgrade icon, tower-type
+        // slot, or spec button): the click point must still be over part of the tower's menu UI —
+        // otherwise the menu moved or closed since the position was resolved and the click is
+        // skipped.  The tower-type slots and spec buttons are children of the upgrade icon (Child[3])
+        // that extend beyond its own rect, so they are checked too.  Rect-based only (no UIHover —
+        // it was unreliable and rejected valid clicks while the hover was still updating).
         internal bool IsBlightTowerUiAt(Vector2 screenPos)
-            => IsBlightBuildOrUpgradeIconAt(screenPos, paddingPx: 0f);
+        {
+            IReadOnlyList<LabelOnGround>? labels = GetLabelsForRegularSelection();
+            if (labels == null || labels.Count == 0)
+                return false;
+
+            for (int i = 0; i < labels.Count; i++)
+            {
+                LabelOnGround? label = labels[i];
+                if (label == null || !BlightEntityCache.IsBlightFoundationOrTowerLabel(label))
+                    continue;
+
+                Element? labelElement = BlightEntityCache.ResolveLabelElement(label);
+                if (labelElement == null)
+                    continue;
+
+                if (IsBlightIconAt(labelElement, 2, screenPos, 0f)
+                    || IsBlightIconAt(labelElement, 3, screenPos, 0f)
+                    || IsBlightMenuSlotAt(labelElement, screenPos))
+                    return true;
+            }
+
+            return false;
+        }
+
+        // True when the point is inside any VISIBLE child of the tower menu
+        // (Child[0].Child[3].Child[i]) — the tower-type build slots and specialization buttons,
+        // which extend beyond the upgrade icon's own rect.
+        private static bool IsBlightMenuSlotAt(Element labelElement, Vector2 screenPos)
+        {
+            Element? menu = BlightMenuInteractions.GetMenuChildElement(labelElement, 3);
+            if (menu == null)
+                return false;
+            try
+            {
+                for (int i = 0; i < menu.ChildCount; i++)
+                {
+                    Element? child = menu.GetChildAtIndex(i);
+                    if (child == null || !child.IsVisible)
+                        continue;
+                    RectangleF rect = child.GetClientRect();
+                    if (PointInRect(rect, screenPos))
+                        return true;
+                }
+            }
+            catch { }
+            return false;
+        }
 
         // Padding around a blight build/upgrade icon that makes it an unclickable box — a click that
         // lands in or near the icon is treated as an accidental icon click.

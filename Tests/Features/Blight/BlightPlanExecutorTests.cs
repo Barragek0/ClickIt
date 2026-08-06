@@ -417,4 +417,34 @@ public class BlightPlanExecutorTests
                 string.Empty, BlightTowerType.Fireball, TowerSpecialization.Meteor)
             .Should().BeFalse("an unreadable path is fail-open — never a false trip");
     }
+
+    // ── Build sub-menu toggle-race guard ──
+
+    [TestMethod]
+    public void ShouldWaitForBuildSubMenu_True_WithinWaitWindowAfterClick()
+    {
+        // After the build-icon click the sub-menu needs time to appear; re-clicking the toggle would
+        // close it.  Within the wait window the executor must wait instead of re-clicking.
+        BlightPlanExecutor.ShouldWaitForBuildSubMenu(
+                lastBuildMenuClickTimestampMs: 1000, nowMs: 1300, waitMs: 500)
+            .Should().BeTrue("still inside the wait window — re-clicking would toggle the menu closed");
+    }
+
+    [TestMethod]
+    public void ShouldWaitForBuildSubMenu_False_BeforeFirstClick()
+    {
+        BlightPlanExecutor.ShouldWaitForBuildSubMenu(
+                lastBuildMenuClickTimestampMs: 0, nowMs: 1000, waitMs: 500)
+            .Should().BeFalse("no build-icon click yet — the first click must go through immediately");
+    }
+
+    [TestMethod]
+    public void ShouldWaitForBuildSubMenu_False_AfterWaitWindowElapsed()
+    {
+        // The click may have missed entirely (menu never opened) — after the timeout a retry click is
+        // allowed so the executor cannot wait forever.
+        BlightPlanExecutor.ShouldWaitForBuildSubMenu(
+                lastBuildMenuClickTimestampMs: 1000, nowMs: 1600, waitMs: 500)
+            .Should().BeFalse("past the retry timeout — a re-click is allowed");
+    }
 }

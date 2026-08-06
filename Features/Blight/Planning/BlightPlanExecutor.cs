@@ -9,6 +9,12 @@ internal sealed class BlightPlanExecutor
 
     private bool _stopPlayerSawMovement;
 
+    // Timestamp of the last build-icon click (OpenMenu BUILD).  The build icon is a TOGGLE — a
+    // re-click while the sub-menu is still opening closes it again — so the executor waits for the
+    // sub-menu to appear instead of re-clicking every tick.
+    private long _lastBuildMenuClickTimestampMs;
+    private const long MenuSubMenuWaitMs = 500;
+
     private const int MaxWalkWaitTicksBeforeSkip = 25;
     private int _walkWaitTicks;
     private NumVector2 _walkWaitStepPos;
@@ -40,7 +46,13 @@ internal sealed class BlightPlanExecutor
         _phase = Phase.Walking;
         _consecutiveFailures = 0;
         _stationaryTicks = 0;
+        _lastBuildMenuClickTimestampMs = 0;
     }
+
+    // True while a just-clicked build icon still needs time for the sub-menu to appear — re-clicking
+    // the toggle would close the menu.  Pure so the toggle-race guard is unit-testable.
+    internal static bool ShouldWaitForBuildSubMenu(long lastBuildMenuClickTimestampMs, long nowMs, long waitMs)
+        => lastBuildMenuClickTimestampMs != 0 && nowMs - lastBuildMenuClickTimestampMs < waitMs;
 
     internal BlightBuildAction Tick(
         GameController? gc,
@@ -288,6 +300,7 @@ internal sealed class BlightPlanExecutor
             if (menuPopulated)
             {
                 service.AddDebugStage("Executor: OPEN → menu populated, entering SelectTower");
+                _lastBuildMenuClickTimestampMs = 0;
                 _consecutiveFailures = 0;
                 _phaseStartTimestamp = Stopwatch.GetTimestamp();
                 _phase = Phase.SelectTower;
@@ -311,6 +324,18 @@ internal sealed class BlightPlanExecutor
                     return new BlightBuildAction(BlightBuildActionKind.None,
                         DebugMessage: $"Cannot afford build ({s.TowerType}) — waiting for currency");
                 }
+
+                // The build icon is a TOGGLE — re-clicking it while the sub-menu is still opening
+                // closes the menu again.  After a build-icon click, wait for the sub-menu to appear
+                // (or a retry timeout) instead of re-clicking on the next tick.
+                long nowMs = Environment.TickCount64;
+                if (ShouldWaitForBuildSubMenu(_lastBuildMenuClickTimestampMs, nowMs, MenuSubMenuWaitMs))
+                {
+                    service.AddDebugStage("Executor: OPEN → build icon clicked, waiting for sub-menu");
+                    return new BlightBuildAction(BlightBuildActionKind.None,
+                        DebugMessage: "Waiting for tower sub-menu...");
+                }
+                _lastBuildMenuClickTimestampMs = nowMs;
 
                 NumVector2? buildIconPos = BlightMenuInteractions.GetBuildIconClickPosition(labelElement);
                 if (buildIconPos == null)
@@ -717,6 +742,7 @@ internal sealed class BlightPlanExecutor
         _consecutiveFailures = 0;
         CurrentCursor++;
         _phase = Phase.Walking;
+        _lastBuildMenuClickTimestampMs = 0;
         if (CurrentPlan != null)
             CurrentPlan = CurrentPlan.WithAdvancedCursor();
     }
@@ -768,6 +794,7 @@ internal sealed class BlightPlanExecutor
         _consecutiveFailures = 0;
         _stationaryTicks = 0;
         _phaseStartTimestamp = 0;
+        _lastBuildMenuClickTimestampMs = 0;
     }
 
     internal void ClearPlan()
@@ -778,6 +805,7 @@ internal sealed class BlightPlanExecutor
         _consecutiveFailures = 0;
         _stationaryTicks = 0;
         _phaseStartTimestamp = 0;
+        _lastBuildMenuClickTimestampMs = 0;
     }
 
     internal static bool IsSpecializationStep(int specialization, int targetLevel, int currentTowerLevel)
