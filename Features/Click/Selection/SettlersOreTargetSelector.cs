@@ -214,7 +214,7 @@ namespace ClickIt.Features.Click.Selection
                 return false;
 
 
-            if (!SettlersMechanicPolicy.IsEnabled(_dependencies.Settings, resolvedMechanic)
+            if (!SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(_dependencies.Settings), resolvedMechanic)
                 || VisibleMechanicSelectionPolicy.ShouldSkipSettlersOreEntity(isValid, distance, _dependencies.Settings.ClickDistance.Value))
                 return false;
 

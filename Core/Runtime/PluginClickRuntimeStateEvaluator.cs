@@ -164,12 +164,6 @@ namespace ClickIt.Core.Runtime
         internal static bool ShouldRunManualUiHoverCoroutine(bool manualUiHoverEnabled, bool lazyModeEnabled, bool clickHotkeyActive)
             => ResolveManualUiHoverMode(manualUiHoverEnabled, lazyModeEnabled, clickHotkeyActive).ShouldRunCoroutine;
 
-        internal static PluginManualUiHoverModeDecision ResolveManualUiHoverModeFromSettings(ClickItSettings settings, bool clickHotkeyActive)
-            => ResolveManualUiHoverMode(
-                settings.ClickOnManualUiHoverOnly.Value,
-                settings.LazyMode.Value,
-                clickHotkeyActive);
-
         internal static PluginManualUiHoverModeDecision ResolveManualUiHoverMode(ClickItSettings? settings, bool clickHotkeyActive)
             => ResolveManualUiHoverMode(
                 settings?.ClickOnManualUiHoverOnly?.Value == true,

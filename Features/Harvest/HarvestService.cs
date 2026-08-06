@@ -83,14 +83,12 @@ public sealed class HarvestService
             Entity? player = gameController.Player;
             if (player != null)
             {
-                NumVector2 playerPos = player.GridPosNum;
-
                 List<(float Distance, int Index)> screenDistances = new(estimates.Count);
                 for (int i = 0; i < estimates.Count; i++)
                 {
                     if (IsLabelOnScreen(estimates[i].LabelBounds, windowSize))
                     {
-                        float dist = GetLabelDistance(estimates[i], playerPos);
+                        float dist = GetLabelDistance(estimates[i]);
                         screenDistances.Add((dist, i));
                     }
                 }
@@ -167,7 +165,7 @@ public sealed class HarvestService
         return cx >= 0 && cy >= 0 && cx <= windowSize.Width && cy <= windowSize.Height;
     }
 
-    private static float GetLabelDistance(HarvestPlotEstimate estimate, NumVector2 playerPos)
+    private static float GetLabelDistance(HarvestPlotEstimate estimate)
     {
         try
         {

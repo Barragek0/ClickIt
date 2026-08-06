@@ -1,7 +1,7 @@
 namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
-    public class UltimatumGroundOptionSelectorTests
+    public class UltimatumChoiceSelectorTests
     {
         [TestMethod]
         public void TryGetBest_SelectsLowestPriorityCandidate()
@@ -13,7 +13,7 @@ namespace ClickIt.Tests.Features.Click
                 new UltimatumGroundOptionCandidate(null!, "C", 4, false)
             };
 
-            bool ok = UltimatumGroundOptionSelector.TryGetBest(candidates, out UltimatumGroundOptionCandidate best);
+            bool ok = UltimatumChoiceSelector<UltimatumGroundOptionCandidate>.TryGetBest(candidates, out UltimatumGroundOptionCandidate best);
 
             ok.Should().BeTrue();
             best.ModifierName.Should().Be("B");
@@ -30,7 +30,7 @@ namespace ClickIt.Tests.Features.Click
                 new UltimatumGroundOptionCandidate(null!, "C", 0, true)
             };
 
-            bool ok = UltimatumGroundOptionSelector.TryGetFirstSaturated(candidates, out UltimatumGroundOptionCandidate saturated);
+            bool ok = UltimatumChoiceSelector<UltimatumGroundOptionCandidate>.TryGetFirstSaturated(candidates, out UltimatumGroundOptionCandidate saturated);
 
             ok.Should().BeTrue();
             saturated.ModifierName.Should().Be("B");
@@ -45,7 +45,7 @@ namespace ClickIt.Tests.Features.Click
                 new UltimatumGroundOptionCandidate(null!, "B", 8, true)
             };
 
-            bool ok = UltimatumGroundOptionSelector.TryGetSelected(candidates, isGruelingGauntletActive: true, out UltimatumGroundOptionCandidate selected);
+            bool ok = UltimatumChoiceSelector<UltimatumGroundOptionCandidate>.TryGetSelected(candidates, isGruelingGauntletActive: true, out UltimatumGroundOptionCandidate selected);
 
             ok.Should().BeTrue();
             selected.ModifierName.Should().Be("B");

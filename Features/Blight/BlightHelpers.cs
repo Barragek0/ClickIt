@@ -104,4 +104,39 @@ internal static class BlightHelpers
             return string.Empty;
         }
     }
+
+    // World (PosNum) space is grid * scale; Camera.WorldToScreen takes WORLD positions.
+    internal static System.Numerics.Vector3 GridToWorld(NumVector2 grid)
+    {
+        float scale = 1f / PoeMapExtension.WorldToGridConversion;
+        return new System.Numerics.Vector3(grid.X * scale, grid.Y * scale, 0f);
+    }
+
+    internal static float GridToWorldRadius(float gridRadius)
+        => gridRadius / PoeMapExtension.WorldToGridConversion;
+
+    internal static bool IsScreenPosInWindow(NumVector2 screenPos, Size2F windowSize, float allowance)
+        => screenPos.X >= -allowance && screenPos.X <= windowSize.Width + allowance
+            && screenPos.Y >= -allowance && screenPos.Y <= windowSize.Height + allowance;
+
+    internal static bool IsWorldPosOnScreen(Camera camera, Size2F windowSize, System.Numerics.Vector3 worldPos, float allowance = 24f)
+    {
+        try
+        {
+            return IsScreenPosInWindow(camera.WorldToScreen(worldPos), windowSize, allowance);
+        }
+        catch { return false; }
+    }
+
+    internal static bool IsGridPosOnScreen(Camera camera, Size2F windowSize, NumVector2 gridPos, float allowance = 24f)
+        => IsWorldPosOnScreen(camera, windowSize, GridToWorld(gridPos), allowance);
+
+    internal static bool IsGridPosOffScreen(Camera camera, Size2F windowSize, NumVector2 gridPos)
+    {
+        try
+        {
+            return !IsScreenPosInWindow(camera.WorldToScreen(GridToWorld(gridPos)), windowSize, 0f);
+        }
+        catch { return false; }
+    }
 }

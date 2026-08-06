@@ -24,7 +24,7 @@ namespace ClickIt.Features.Click.Runtime
                 shouldTakeRewardForModifier,
                 canClickTakeReward);
 
-            bool hasBestChoice = UltimatumPanelChoiceSelector.TryGetSelected(candidates, isGruelingGauntletActive, out UltimatumPanelChoiceCandidate best);
+            bool hasBestChoice = UltimatumChoiceSelector<UltimatumPanelChoiceCandidate>.TryGetSelected(candidates, isGruelingGauntletActive, out UltimatumPanelChoiceCandidate best);
             return new UltimatumGruelingPanelDecision(
                 saturation,
                 hasBestChoice,

@@ -299,7 +299,7 @@ namespace ClickIt.Features.Labels.Application
             NearbyMonsterRestrictionSettings restrictionSettings)
         {
             NearbyMonsterCounts counts = CountNearbyMonsters(entities, restrictionSettings);
-            return EvaluateNearbyMonsterRestrictionResult(restrictionSettings, counts);
+            return FinalizeNearbyMonsterRestriction(restrictionSettings, counts);
         }
 
         private static LazyModeRestrictionResult EvaluateNearbyMonsterRestrictionResult(
@@ -307,13 +307,6 @@ namespace ClickIt.Features.Labels.Application
             NearbyMonsterRestrictionSettings restrictionSettings)
         {
             NearbyMonsterCounts counts = CountNearbyMonsters(candidates, restrictionSettings);
-            return EvaluateNearbyMonsterRestrictionResult(restrictionSettings, counts);
-        }
-
-        private static LazyModeRestrictionResult EvaluateNearbyMonsterRestrictionResult(
-            NearbyMonsterRestrictionSettings restrictionSettings,
-            NearbyMonsterCounts counts)
-        {
             return FinalizeNearbyMonsterRestriction(restrictionSettings, counts);
         }
 

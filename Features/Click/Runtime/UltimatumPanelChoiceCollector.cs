@@ -54,7 +54,7 @@ namespace ClickIt.Features.Click.Runtime
                     saturatedCount++;
             }
 
-            hasSaturatedChoice = UltimatumPanelChoiceSelector.TryGetFirstSaturated(candidates, out UltimatumPanelChoiceCandidate saturatedChoice);
+            hasSaturatedChoice = UltimatumChoiceSelector<UltimatumPanelChoiceCandidate>.TryGetFirstSaturated(candidates, out UltimatumPanelChoiceCandidate saturatedChoice);
             saturatedModifier = hasSaturatedChoice ? saturatedChoice.ModifierName : string.Empty;
             shouldTakeReward = hasSaturatedChoice && shouldTakeRewardForModifier(saturatedModifier);
         }

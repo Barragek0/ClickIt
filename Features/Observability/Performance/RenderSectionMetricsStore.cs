@@ -72,14 +72,15 @@ namespace ClickIt.Features.Observability.Performance
             };
         }
 
-        // Bounded rolling window (matches the render total's last-60 window) so a section's avg/max
-        // reflect recent frames. The old all-time cumulative average/max drifted out of step with the
-        // render total (e.g. a one-off 200ms debug spike stayed in max forever while the total rolled
-        // past it), which made the debug table look inconsistent.
+        // Bounded rolling window per section: max reflects the full 100-sample window, average the
+        // most recent 20 samples, last the most recent frame. Matches the coroutine/render tables'
+        // semantics so a section's max never drifts out of step with its avg/last (a one-off spike
+        // rolls out instead of persisting forever).
         private sealed class RollingSampleBuffer
         {
-            private const int Window = 60;
-            private readonly Queue<double> _samples = new(Window);
+            private const int MaxWindow = 100;
+            private const int AverageWindow = 20;
+            private readonly Queue<double> _samples = new(MaxWindow);
             private double _last;
 
             public (double LastMs, double AverageMs, double MaxMs, long SampleCount) Stats
@@ -88,15 +89,13 @@ namespace ClickIt.Features.Observability.Performance
                 {
                     if (_samples.Count == 0)
                         return (0, 0, 0, 0);
-                    double sum = 0;
                     double max = double.MinValue;
                     foreach (double value in _samples)
                     {
-                        sum += value;
                         if (value > max)
                             max = value;
                     }
-                    return (_last, sum / _samples.Count, max, _samples.Count);
+                    return (_last, AverageOfLast(_samples, AverageWindow), max, _samples.Count);
                 }
             }
 
@@ -104,8 +103,24 @@ namespace ClickIt.Features.Observability.Performance
             {
                 _last = ms;
                 _samples.Enqueue(ms);
-                if (_samples.Count > Window)
+                if (_samples.Count > MaxWindow)
                     _samples.Dequeue();
+            }
+
+            private static double AverageOfLast(Queue<double> samples, int recentWindow)
+            {
+                int count = samples.Count;
+                int take = SystemMath.Min(count, recentWindow);
+                int skip = count - take;
+                double sum = 0;
+                int i = 0;
+                foreach (double value in samples)
+                {
+                    if (i >= skip)
+                        sum += value;
+                    i++;
+                }
+                return sum / take;
             }
         }
     }

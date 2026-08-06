@@ -22,7 +22,7 @@ namespace ClickIt.Features.Click.Runtime
             UltimatumGruelingSaturationSummary saturation = UltimatumGruelingSaturationSummary.Empty;
             if (isGruelingGauntletActive)
             {
-                bool hasSaturatedChoice = UltimatumGroundOptionSelector.TryGetFirstSaturated(candidates, out UltimatumGroundOptionCandidate saturatedChoice);
+                bool hasSaturatedChoice = UltimatumChoiceSelector<UltimatumGroundOptionCandidate>.TryGetFirstSaturated(candidates, out UltimatumGroundOptionCandidate saturatedChoice);
                 bool shouldTakeReward = hasSaturatedChoice
                     && shouldTakeRewardForModifier(saturatedChoice.ModifierName);
 
@@ -39,7 +39,7 @@ namespace ClickIt.Features.Click.Runtime
                     action);
             }
 
-            bool hasBestChoice = UltimatumGroundOptionSelector.TryGetSelected(candidates, isGruelingGauntletActive, out UltimatumGroundOptionCandidate best);
+            bool hasBestChoice = UltimatumChoiceSelector<UltimatumGroundOptionCandidate>.TryGetSelected(candidates, isGruelingGauntletActive, out UltimatumGroundOptionCandidate best);
             return new UltimatumGruelingGroundDecision(
                 saturation,
                 hasBestChoice,

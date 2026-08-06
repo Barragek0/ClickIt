@@ -89,6 +89,53 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void CalculateMax_ReturnsMaximumOfCurrentWindow()
+        {
+            var queue = new Queue<long>();
+            queue.Enqueue(1);
+            queue.Enqueue(5);
+            queue.Enqueue(3);
+
+            TimingChannelMetricsTracker.CalculateMax(queue).Should().Be(5);
+        }
+
+        [TestMethod]
+        public void CalculateMax_ReturnsZero_WhenWindowEmpty()
+        {
+            TimingChannelMetricsTracker.CalculateMax(new Queue<long>()).Should().Be(0);
+        }
+
+        [TestMethod]
+        public void GetMaxTiming_ReflectsRollingWindow_NotAllTimeSpikes()
+        {
+            var tracker = new TimingChannelMetricsTracker();
+
+            // One hundred and one quick runs fill the 100-sample window; the reported max must come
+            // from the current window (all ~0ms here), not from any historical spike.
+            for (int i = 0; i < 101; i++)
+            {
+                tracker.StartCoroutineTiming(TimingChannel.Blight);
+                tracker.StopCoroutineTiming(TimingChannel.Blight);
+            }
+
+            tracker.GetTimingSampleCount(TimingChannel.Blight).Should().Be(100);
+            tracker.GetMaxTiming(TimingChannel.Blight).Should().BeLessThanOrEqualTo(tracker.GetLastTiming(TimingChannel.Blight) + 1);
+        }
+
+        [TestMethod]
+        public void SuccessfulClickTiming_AverageUsesLast20Samples()
+        {
+            var tracker = new TimingChannelMetricsTracker();
+
+            for (int i = 0; i < 10; i++)
+                tracker.RecordSuccessfulClickTiming(10);
+            for (int i = 0; i < 20; i++)
+                tracker.RecordSuccessfulClickTiming(1);
+
+            tracker.GetAverageSuccessfulClickTiming().Should().Be(1.0, "the average covers only the last 20 samples");
+        }
+
+        [TestMethod]
         public void SuccessfulClickTiming_UsesBoundedAverageAndClearsWithTracker()
         {
             var tracker = new TimingChannelMetricsTracker();

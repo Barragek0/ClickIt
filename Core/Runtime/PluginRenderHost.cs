@@ -32,6 +32,10 @@ namespace ClickIt.Core.Runtime
                     rendering.LazyModeRenderer?.Render(gameController ?? throw new InvalidOperationException("GameController is null during render"), state);
                     services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.LazyMode, GetElapsedMs(sectionStart));
                 }
+                else
+                {
+                    services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.LazyMode, 0);
+                }
 
                 if (effectiveSettings.IsClickHotkeyToggleModeEnabled())
                     rendering.ClickHotkeyToggleRenderer?.Render(gameController ?? throw new InvalidOperationException("GameController is null during render"));
@@ -58,6 +62,10 @@ namespace ClickIt.Core.Runtime
                     long sectionStart = Stopwatch.GetTimestamp();
                     rendering.AltarDisplayRenderer?.RenderAltarComponents();
                     services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.AltarOverlay, GetElapsedMs(sectionStart));
+                }
+                else
+                {
+                    services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.AltarOverlay, 0);
                 }
 
                 long ultimatumStart = Stopwatch.GetTimestamp();
@@ -86,6 +94,10 @@ namespace ClickIt.Core.Runtime
                     rendering.HarvestOverlayRenderer?.Render();
                     services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.HarvestOverlay, GetElapsedMs(harvestStart));
                 }
+                else
+                {
+                    services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.HarvestOverlay, 0);
+                }
 
                 if (effectiveSettings.ClickBlightTowers.Value)
                 {
@@ -96,6 +108,10 @@ namespace ClickIt.Core.Runtime
                     // the frame loop so debug visuals draw every frame.
                     rendering.BlightRenderer?.Render(gameController, graphics);
                     services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.BlightOverlay, GetElapsedMs(blightStart));
+                }
+                else
+                {
+                    services.PerformanceMonitor?.RecordRenderSectionTiming(RenderSection.BlightOverlay, 0);
                 }
             }
             catch

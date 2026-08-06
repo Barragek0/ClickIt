@@ -71,75 +71,63 @@ namespace ClickIt.Features.Mechanics
                     map.TryAdd(id, i);
             }
 
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.MirageGoldenDjinnCache);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.MirageSilverDjinnCache);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.MirageBronzeDjinnCache);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.HeistSecureLocker);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.HeistSecureRepository);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.HeistHazards);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.BlightCyst);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.BreachGraspingCoffers);
-            AddPriorityAliasFromGroup(map, MechanicIds.LeagueChests, MechanicIds.SynthesisSynthesisedStash);
-            AddPriorityAliasFromGroup(map, MechanicIds.Doors, MechanicIds.HeistDoors);
-            AddPriorityAliasFromGroup(map, MechanicIds.Doors, MechanicIds.AlvaTempleDoors);
+            AddPriorityAliasesFromGroups(map);
 
             return map;
         }
 
-        private static void AddPriorityAliasFromGroup(Dictionary<string, int> map, string groupId, string specificId)
-        {
-            if (map.ContainsKey(specificId))
-                return;
-
-            if (map.TryGetValue(groupId, out int groupIndex))
-                map[specificId] = groupIndex;
-        }
-
         private static void ExpandGroupIgnoreDistanceAliases(HashSet<string> ignoreDistanceSet)
         {
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.MirageGoldenDjinnCache);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.MirageSilverDjinnCache);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.MirageBronzeDjinnCache);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.HeistSecureLocker);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.HeistSecureRepository);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.HeistHazards);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.BlightCyst);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.BreachGraspingCoffers);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.LeagueChests, MechanicIds.SynthesisSynthesisedStash);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.Doors, MechanicIds.HeistDoors);
-            AddIgnoreDistanceAliasFromGroup(ignoreDistanceSet, MechanicIds.Doors, MechanicIds.AlvaTempleDoors);
+            AddIgnoreDistanceAliasesFromGroups(ignoreDistanceSet);
         }
 
         private static void ExpandGroupIgnoreDistanceWithinAliases(Dictionary<string, int> ignoreDistanceWithinMap)
         {
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.MirageGoldenDjinnCache);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.MirageSilverDjinnCache);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.MirageBronzeDjinnCache);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.HeistSecureLocker);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.HeistSecureRepository);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.HeistHazards);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.BlightCyst);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.BreachGraspingCoffers);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.LeagueChests, MechanicIds.SynthesisSynthesisedStash);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.Doors, MechanicIds.HeistDoors);
-            AddIgnoreDistanceWithinAliasFromGroup(ignoreDistanceWithinMap, MechanicIds.Doors, MechanicIds.AlvaTempleDoors);
+            AddIgnoreDistanceWithinAliasesFromGroups(ignoreDistanceWithinMap);
         }
 
-        private static void AddIgnoreDistanceAliasFromGroup(HashSet<string> ignoreDistanceSet, string groupId, string specificId)
-        {
-            if (!ignoreDistanceSet.Contains(groupId))
-                return;
+        private static readonly (string Group, string Specific)[] GroupAliases =
+        [
+            (MechanicIds.LeagueChests, MechanicIds.MirageGoldenDjinnCache),
+            (MechanicIds.LeagueChests, MechanicIds.MirageSilverDjinnCache),
+            (MechanicIds.LeagueChests, MechanicIds.MirageBronzeDjinnCache),
+            (MechanicIds.LeagueChests, MechanicIds.HeistSecureLocker),
+            (MechanicIds.LeagueChests, MechanicIds.HeistSecureRepository),
+            (MechanicIds.LeagueChests, MechanicIds.HeistHazards),
+            (MechanicIds.LeagueChests, MechanicIds.BlightCyst),
+            (MechanicIds.LeagueChests, MechanicIds.BreachGraspingCoffers),
+            (MechanicIds.LeagueChests, MechanicIds.SynthesisSynthesisedStash),
+            (MechanicIds.Doors, MechanicIds.HeistDoors),
+            (MechanicIds.Doors, MechanicIds.AlvaTempleDoors),
+        ];
 
-            ignoreDistanceSet.Add(specificId);
+        private static void AddPriorityAliasesFromGroups(Dictionary<string, int> map)
+        {
+            foreach ((string group, string specific) in GroupAliases)
+            {
+                if (map.ContainsKey(specific) || !map.TryGetValue(group, out int groupIndex))
+                    continue;
+                map[specific] = groupIndex;
+            }
         }
 
-        private static void AddIgnoreDistanceWithinAliasFromGroup(Dictionary<string, int> ignoreDistanceWithinMap, string groupId, string specificId)
+        private static void AddIgnoreDistanceAliasesFromGroups(HashSet<string> ignoreDistanceSet)
         {
-            if (ignoreDistanceWithinMap.ContainsKey(specificId))
-                return;
+            foreach ((string group, string specific) in GroupAliases)
+            {
+                if (ignoreDistanceSet.Contains(group))
+                    ignoreDistanceSet.Add(specific);
+            }
+        }
 
-            if (ignoreDistanceWithinMap.TryGetValue(groupId, out int groupValue))
-                ignoreDistanceWithinMap[specificId] = groupValue;
+        private static void AddIgnoreDistanceWithinAliasesFromGroups(Dictionary<string, int> ignoreDistanceWithinMap)
+        {
+            foreach ((string group, string specific) in GroupAliases)
+            {
+                if (ignoreDistanceWithinMap.ContainsKey(specific) || !ignoreDistanceWithinMap.TryGetValue(group, out int groupValue))
+                    continue;
+                ignoreDistanceWithinMap[specific] = groupValue;
+            }
         }
     }
 }

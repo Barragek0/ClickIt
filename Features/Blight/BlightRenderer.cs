@@ -115,10 +115,10 @@ public sealed class BlightRenderer
             }
 
             // In-world: project WORLD (PosNum) with a screen-space radius; restored foundations have no WorldPos3 and draw only on the map.
-            if (dotsGame && ft.WorldPos3 is { } worldPos && IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, worldPos))
+            if (dotsGame && ft.WorldPos3 is { } worldPos && BlightHelpers.IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, worldPos))
             {
                 NumVector2 screenCenter = ctx.Camera.WorldToScreen(worldPos);
-                float screenRadius = ScreenRadiusForWorldDot(ctx.Camera, worldPos, GridToWorldRadius(TowerDotRadius));
+                float screenRadius = ScreenRadiusForWorldDot(ctx.Camera, worldPos, BlightHelpers.GridToWorldRadius(TowerDotRadius));
                 DrawTowerDot(graphics, screenCenter, screenRadius, ft, hasTower, strategy);
 
                 if (isCurrentStep)
@@ -231,7 +231,7 @@ public sealed class BlightRenderer
             // Draw the in-world line when EITHER endpoint is on-screen: a lane — especially a
             // phantom bridge spanning a gap — whose far end sits off-screen would otherwise vanish
             // even though the near end (and the player) are on screen.
-            if (lanesGame && (IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a) || IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, b)))
+            if (lanesGame && (BlightHelpers.IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a) || BlightHelpers.IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, b)))
                 graphics.DrawLineInWorld(a, b, LaneLineWidthGame, laneColor);
         }
     }
@@ -266,7 +266,6 @@ public sealed class BlightRenderer
         IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(strategy);
         IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> worldByGrid = _blightService.PathwayWorldPositions;
 
-        float gridToWorld = 1f / PoeMapExtension.WorldToGridConversion;
         NumVector2[] pathways = bundle.Value.Pathways;
         for (int s = 0; s < coverage.Length; s++)
         {
@@ -274,14 +273,14 @@ public sealed class BlightRenderer
             if (label == null)
                 continue;
             NumVector2 grid = coverage[s].Midpoint;
-            if (!IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, grid))
+            if (!BlightHelpers.IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, grid))
                 continue;
 
             // The lanes are drawn following the terrain, so the label must project at the segment's
             // world midpoint (terrain Z from the pathway entities) — projecting the grid midpoint at
             // Z=0 lands the text vertically off the lane, offset by terrain height and camera angle.
             System.Numerics.Vector3 world = ResolveSegmentWorldMidpoint(pathways, coverage, s, worldByGrid)
-                ?? new System.Numerics.Vector3(grid.X * gridToWorld, grid.Y * gridToWorld, 0f);
+                ?? BlightHelpers.GridToWorld(grid);
             NumVector2 screen = ctx.Camera.WorldToScreen(world);
             LaneCoverageResult seg = coverage[s];
             DrawLaneLabel(graphics, $"{label} {BlightCoverageFlags.Compact(seg, coverageTypes)}", screen);
@@ -339,8 +338,8 @@ public sealed class BlightRenderer
             if (ctx.LargeMapOpen && rangesMap)
                 graphics.DrawCircleOnLargeMap(entity.GridPosNum, false, radius, rangeColor, LaneLineWidthMap);
 
-            if (rangesGame && IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, entity.PosNum))
-                graphics.DrawCircleInWorld(entity.PosNum, GridToWorldRadius(radius), rangeColor, 2, 24, false);
+            if (rangesGame && BlightHelpers.IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, entity.PosNum))
+                graphics.DrawCircleInWorld(entity.PosNum, BlightHelpers.GridToWorldRadius(radius), rangeColor, 2, 24, false);
         }
     }
 
@@ -357,8 +356,8 @@ public sealed class BlightRenderer
         if (ctx.LargeMapOpen)
             graphics.DrawFilledCircleOnLargeMap(pumpGrid.Value, false, PumpGridRadius, PumpColor, 16);
 
-        if (IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, pumpWorld.Value))
-            graphics.DrawCircleInWorld(pumpWorld.Value, GridToWorldRadius(PumpWorldCircleRadius), PumpColor, 4, 24, false);
+        if (BlightHelpers.IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, pumpWorld.Value))
+            graphics.DrawCircleInWorld(pumpWorld.Value, BlightHelpers.GridToWorldRadius(PumpWorldCircleRadius), PumpColor, 4, 24, false);
     }
 
     internal static IReadOnlyList<int> PendingPlanStepNumbers(
@@ -467,29 +466,4 @@ public sealed class BlightRenderer
         }
     }
 
-    private static float GridToWorldRadius(float gridRadius) => gridRadius / PoeMapExtension.WorldToGridConversion;
-
-    private const float OnScreenAllowance = 24f;
-
-    private static bool IsGridPosOnScreen(Camera camera, Size2F windowSize, NumVector2 gridPos)
-    {
-        float scale = 1f / PoeMapExtension.WorldToGridConversion;
-        return IsWorldPosOnScreen(camera, windowSize, new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
-    }
-
-    private static bool IsWorldPosOnScreen(Camera camera, Size2F windowSize, System.Numerics.Vector3 worldPos)
-    {
-        try
-        {
-            NumVector2 screenPos = camera.WorldToScreen(worldPos);
-            return screenPos.X >= -OnScreenAllowance
-                && screenPos.X <= windowSize.Width + OnScreenAllowance
-                && screenPos.Y >= -OnScreenAllowance
-                && screenPos.Y <= windowSize.Height + OnScreenAllowance;
-        }
-        catch
-        {
-            return false;
-        }
-    }
 }

@@ -4,7 +4,7 @@ namespace ClickIt.Features.Click.Runtime
         Element choiceElement,
         string modifierName,
         int priorityIndex,
-        bool isSaturated)
+        bool isSaturated) : IUltimatumChoice
     {
         public Element ChoiceElement { get; } = choiceElement;
         public string ModifierName { get; } = modifierName;

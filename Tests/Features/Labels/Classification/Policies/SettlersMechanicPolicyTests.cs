@@ -33,7 +33,7 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
             ClickSettings settings = CreateClickSettings();
             settings.ClickSettlersOre = false;
 
-            bool result = SettlersMechanicPolicy.IsEnabled(settings, MechanicIds.SettlersCopper);
+            bool result = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), MechanicIds.SettlersCopper);
 
             result.Should().BeFalse();
         }
@@ -43,7 +43,7 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
         {
             ClickSettings settings = CreateClickSettings();
 
-            bool result = SettlersMechanicPolicy.IsEnabled(settings, "settlers-unknown");
+            bool result = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), "settlers-unknown");
 
             result.Should().BeFalse();
         }
@@ -62,8 +62,8 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
             ClickSettings disabledSettings = CreateClickSettings();
             SetBooleanProperty(ref disabledSettings, enabledPropertyName, false);
 
-            SettlersMechanicPolicy.IsEnabled(enabledSettings, mechanicId).Should().BeTrue();
-            SettlersMechanicPolicy.IsEnabled(disabledSettings, mechanicId).Should().BeFalse();
+            SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(enabledSettings), mechanicId).Should().BeTrue();
+            SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(disabledSettings), mechanicId).Should().BeFalse();
         }
 
         [TestMethod]
@@ -71,10 +71,10 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
         {
             ClickSettings settings = CreateClickSettings();
 
-            bool enabled = SettlersMechanicPolicy.IsEnabled(settings, MechanicIds.SettlersHourglass);
+            bool enabled = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), MechanicIds.SettlersHourglass);
 
             settings.ClickSettlersOre = false;
-            bool disabled = SettlersMechanicPolicy.IsEnabled(settings, MechanicIds.SettlersHourglass);
+            bool disabled = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), MechanicIds.SettlersHourglass);
 
             enabled.Should().BeTrue();
             disabled.Should().BeFalse();
@@ -86,7 +86,7 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
             ClickItSettings settings = CreateRootSettings();
             settings.ClickSettlersOre.Value = false;
 
-            bool result = SettlersMechanicPolicy.IsEnabled(settings, MechanicIds.SettlersCopper);
+            bool result = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), MechanicIds.SettlersCopper);
 
             result.Should().BeFalse();
         }
@@ -96,7 +96,7 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
         {
             ClickItSettings settings = CreateRootSettings();
 
-            bool result = SettlersMechanicPolicy.IsEnabled(settings, "settlers-unknown");
+            bool result = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), "settlers-unknown");
 
             result.Should().BeFalse();
         }
@@ -115,8 +115,8 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
             ClickItSettings disabledSettings = CreateRootSettings();
             SetToggleNodeValue(disabledSettings, enabledPropertyName, false);
 
-            SettlersMechanicPolicy.IsEnabled(enabledSettings, mechanicId).Should().BeTrue();
-            SettlersMechanicPolicy.IsEnabled(disabledSettings, mechanicId).Should().BeFalse();
+            SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(enabledSettings), mechanicId).Should().BeTrue();
+            SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(disabledSettings), mechanicId).Should().BeFalse();
         }
 
         [TestMethod]
@@ -124,10 +124,10 @@ namespace ClickIt.Tests.Features.Labels.Classification.Policies
         {
             ClickItSettings settings = CreateRootSettings();
 
-            bool enabled = SettlersMechanicPolicy.IsEnabled(settings, MechanicIds.SettlersHourglass);
+            bool enabled = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), MechanicIds.SettlersHourglass);
 
             settings.ClickSettlersOre.Value = false;
-            bool disabled = SettlersMechanicPolicy.IsEnabled(settings, MechanicIds.SettlersHourglass);
+            bool disabled = SettlersMechanicPolicy.IsEnabled(SettlersClickFlags.From(settings), MechanicIds.SettlersHourglass);
 
             enabled.Should().BeTrue();
             disabled.Should().BeFalse();

@@ -105,11 +105,5 @@ namespace ClickIt.Shared.Game
                 : null;
         }
 
-        public static bool TryResolveMapKeyDisplayName(Entity? _, out string displayName)
-        {
-            displayName = string.Empty;
-            return false;
-        }
-
     }
 }

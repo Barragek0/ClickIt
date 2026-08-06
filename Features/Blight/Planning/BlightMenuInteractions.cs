@@ -8,8 +8,7 @@ internal static class BlightMenuInteractions
     {
         try
         {
-            Element? child0 = labelElement.GetChildAtIndex(0);
-            Element? menu = child0?.GetChildAtIndex(3);
+            Element? menu = GetMenuChildElement(labelElement, 3);
             if (menu == null) return false;
             for (int i = 0; i < menu.ChildCount; i++)
             {
@@ -24,13 +23,13 @@ internal static class BlightMenuInteractions
 
     internal static bool CanAffordBuild(Element labelElement)
     {
-        try { return labelElement.GetChildAtIndex(0)?.GetChildAtIndex(2)?.IsVisible == true; }
+        try { return GetMenuChildElement(labelElement, 2)?.IsVisible == true; }
         catch { return false; }
     }
 
     internal static bool CanAffordUpgrade(Element labelElement)
     {
-        try { return labelElement.GetChildAtIndex(0)?.GetChildAtIndex(3)?.IsVisible == true; }
+        try { return GetMenuChildElement(labelElement, 3)?.IsVisible == true; }
         catch { return false; }
     }
 
@@ -40,19 +39,7 @@ internal static class BlightMenuInteractions
 
     internal static NumVector2? GetTowerMenuChildClickPosition(
         Element labelElement, int childIndex)
-    {
-        try
-        {
-            Element? child0 = labelElement.GetChildAtIndex(0);
-            Element? menu = child0?.GetChildAtIndex(3);
-            if (menu == null) return null;
-            Element? towerChild = menu.GetChildAtIndex(childIndex);
-            if (towerChild == null) return null;
-            RectangleF rect = towerChild.GetClientRect();
-            return new NumVector2(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
-        }
-        catch { return null; }
-    }
+        => TryGetMenuChildCenter(labelElement, childIndex);
 
     internal static NumVector2? GetSpecializationChildClickPosition(Element labelElement, int childIndex)
     {
@@ -60,15 +47,13 @@ internal static class BlightMenuInteractions
             return null;
         try
         {
-            Element? child0 = labelElement.GetChildAtIndex(0);
-            Element? menu = child0?.GetChildAtIndex(3);
+            Element? menu = GetMenuChildElement(labelElement, 3);
             if (menu == null || childIndex >= menu.ChildCount)
                 return null;
             Element? child = menu.GetChildAtIndex(childIndex);
             if (child == null || !child.IsVisible)
                 return null;
-            RectangleF rect = child.GetClientRect();
-            return new NumVector2(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
+            return Center(child.GetClientRect());
         }
         catch { return null; }
     }
@@ -77,8 +62,7 @@ internal static class BlightMenuInteractions
     {
         try
         {
-            Element? child0 = labelElement.GetChildAtIndex(0);
-            Element? menu = child0?.GetChildAtIndex(3);
+            Element? menu = GetMenuChildElement(labelElement, 3);
             if (menu == null || string.IsNullOrEmpty(targetTowerId)) return null;
 
             for (int i = 0; i < menu.ChildCount; i++)
@@ -88,10 +72,7 @@ internal static class BlightMenuInteractions
 
                 string? id = ReadUpgradeResultTowerId(child);
                 if (id != null && id.Equals(targetTowerId, StringComparison.OrdinalIgnoreCase))
-                {
-                    RectangleF rect = child.GetClientRect();
-                    return new NumVector2(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
-                }
+                    return Center(child.GetClientRect());
             }
 
             return null;
@@ -112,8 +93,7 @@ internal static class BlightMenuInteractions
     {
         try
         {
-            Element? child0 = labelElement.GetChildAtIndex(0);
-            Element? menu = child0?.GetChildAtIndex(3);
+            Element? menu = GetMenuChildElement(labelElement, 3);
             if (menu == null) return null;
 
             for (int i = 0; i < menu.ChildCount; i++)
@@ -121,8 +101,7 @@ internal static class BlightMenuInteractions
                 Element? child = menu.GetChildAtIndex(i);
                 if (child == null || !child.IsVisible) continue;
 
-                RectangleF rect = child.GetClientRect();
-                return (new NumVector2(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f)),
+                return (Center(child.GetClientRect()),
                         ReadUpgradeResultTowerId(child));
             }
 
@@ -132,28 +111,10 @@ internal static class BlightMenuInteractions
     }
 
     internal static NumVector2? GetBuildIconClickPosition(Element labelElement)
-    {
-        try
-        {
-            Element? buildIcon = labelElement.GetChildAtIndex(0)?.GetChildAtIndex(2);
-            if (buildIcon == null) return null;
-            RectangleF rect = buildIcon.GetClientRect();
-            return new NumVector2(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
-        }
-        catch { return null; }
-    }
+        => TryGetMenuChildCenter(labelElement, 2);
 
     internal static NumVector2? GetUpgradeIconClickPosition(Element labelElement)
-    {
-        try
-        {
-            Element? upgradeIcon = labelElement.GetChildAtIndex(0)?.GetChildAtIndex(3);
-            if (upgradeIcon == null) return null;
-            RectangleF rect = upgradeIcon.GetClientRect();
-            return new NumVector2(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
-        }
-        catch { return null; }
-    }
+        => TryGetMenuChildCenter(labelElement, 3);
 
     // The menu region (build icon Child[2] / upgrade icon Child[3]) is bigger than the icon but
     // still doesn't cover the whole sub-menu, so the region we require to be fully on-screen and
@@ -169,10 +130,7 @@ internal static class BlightMenuInteractions
     {
         try
         {
-            Element? child0 = labelElement.GetChildAtIndex(0);
-            Element? child = child0?.GetChildAtIndex(childIndex);
-            if (child == null) return null;
-            return child.GetClientRect();
+            return GetMenuChildElement(labelElement, childIndex)?.GetClientRect();
         }
         catch { return null; }
     }
@@ -217,10 +175,22 @@ internal static class BlightMenuInteractions
 
     internal static RectangleF EnlargeRectKeepingCenter(RectangleF rect, float ratio)
     {
-        float cx = rect.X + (rect.Width / 2f);
-        float cy = rect.Y + (rect.Height / 2f);
+        NumVector2 c = Center(rect);
         float halfW = (rect.Width / 2f) * ratio;
         float halfH = (rect.Height / 2f) * ratio;
-        return new RectangleF(cx - halfW, cy - halfH, halfW * 2f, halfH * 2f);
+        return new RectangleF(c.X - halfW, c.Y - halfH, halfW * 2f, halfH * 2f);
+    }
+
+    private static NumVector2 Center(RectangleF rect)
+        => new(rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f));
+
+    private static NumVector2? TryGetMenuChildCenter(Element labelElement, int childIndex)
+    {
+        try
+        {
+            Element? child = GetMenuChildElement(labelElement, childIndex);
+            return child == null ? null : Center(child.GetClientRect());
+        }
+        catch { return null; }
     }
 }

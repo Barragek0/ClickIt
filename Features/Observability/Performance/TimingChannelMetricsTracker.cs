@@ -2,6 +2,11 @@ namespace ClickIt.Features.Observability.Performance
 {
     internal sealed class TimingChannelMetricsTracker
     {
+        // One rolling window per channel: max is computed over the full 100-sample window, average
+        // over the most recent 20 samples, last is simply the most recent sample.
+        private const int MaxWindow = 100;
+        private const int AverageWindow = 20;
+
         private readonly Stopwatch _renderTimer = new();
         private readonly Stopwatch _altarCoroutineTimer = new();
         private readonly Stopwatch _clickCoroutineTimer = new();
@@ -10,14 +15,14 @@ namespace ClickIt.Features.Observability.Performance
         private readonly Stopwatch _ultimatumCoroutineTimer = new();
         private readonly Stopwatch _labelOverlayCoroutineTimer = new();
 
-        private readonly Queue<long> _clickCoroutineTimings = new(10);
-        private readonly Queue<long> _altarCoroutineTimings = new(10);
-        private readonly Queue<long> _flareCoroutineTimings = new(10);
-        private readonly Queue<long> _blightCoroutineTimings = new(10);
-        private readonly Queue<long> _ultimatumCoroutineTimings = new(10);
-        private readonly Queue<long> _labelOverlayCoroutineTimings = new(10);
-        private readonly Queue<double> _renderTimings = new(60);
-        private readonly Queue<long> _successfulClickTimings = new(10);
+        private readonly Queue<long> _clickCoroutineTimings = new(MaxWindow);
+        private readonly Queue<long> _altarCoroutineTimings = new(MaxWindow);
+        private readonly Queue<long> _flareCoroutineTimings = new(MaxWindow);
+        private readonly Queue<long> _blightCoroutineTimings = new(MaxWindow);
+        private readonly Queue<long> _ultimatumCoroutineTimings = new(MaxWindow);
+        private readonly Queue<long> _labelOverlayCoroutineTimings = new(MaxWindow);
+        private readonly Queue<double> _renderTimings = new(MaxWindow);
+        private readonly Queue<long> _successfulClickTimings = new(AverageWindow);
 
         private readonly object _clickTimingsLock = new();
         private readonly object _altarTimingsLock = new();
@@ -36,22 +41,15 @@ namespace ClickIt.Features.Observability.Performance
         private long _lastLabelOverlayTiming;
         private double _lastRenderTiming;
 
-        private long _maxAltarTiming;
-        private long _maxClickTiming;
-        private long _maxFlareTiming;
-        private long _maxBlightTiming;
-        private long _maxUltimatumTiming;
-        private long _maxLabelOverlayTiming;
-
         // Run period per channel: wall-clock interval between consecutive Stop calls, used to
         // normalize coroutine cost to duty-cycle % and per-frame ms (coroutines run at different
         // cadences, so raw per-run averages are not comparable to the render table).
-        private readonly Queue<long> _altarPeriods = new(10);
-        private readonly Queue<long> _clickPeriods = new(10);
-        private readonly Queue<long> _flarePeriods = new(10);
-        private readonly Queue<long> _blightPeriods = new(10);
-        private readonly Queue<long> _ultimatumPeriods = new(10);
-        private readonly Queue<long> _labelOverlayPeriods = new(10);
+        private readonly Queue<long> _altarPeriods = new(AverageWindow);
+        private readonly Queue<long> _clickPeriods = new(AverageWindow);
+        private readonly Queue<long> _flarePeriods = new(AverageWindow);
+        private readonly Queue<long> _blightPeriods = new(AverageWindow);
+        private readonly Queue<long> _ultimatumPeriods = new(AverageWindow);
+        private readonly Queue<long> _labelOverlayPeriods = new(AverageWindow);
 
         private long _lastAltarStopTimestampMs;
         private long _lastClickStopTimestampMs;
@@ -78,14 +76,12 @@ namespace ClickIt.Features.Observability.Performance
                 }
 
                 double last = 0;
-                double sum = 0;
                 double max = double.MinValue;
                 int count = 0;
 
                 foreach (double timing in _renderTimings)
                 {
                     last = timing;
-                    sum += timing;
                     if (timing > max)
                     {
                         max = timing;
@@ -93,7 +89,7 @@ namespace ClickIt.Features.Observability.Performance
                     count++;
                 }
 
-                return (last, sum / count, max, count);
+                return (last, CalculateAverage(_renderTimings, AverageWindow), max, count);
             }
         }
 
@@ -107,7 +103,7 @@ namespace ClickIt.Features.Observability.Performance
             _renderTimer.Stop();
             double timing = _renderTimer.Elapsed.TotalMilliseconds;
             _lastRenderTiming = timing;
-            EnqueueTiming(_renderTimings, timing, 60, _renderTimingsLock);
+            EnqueueTiming(_renderTimings, timing, MaxWindow, _renderTimingsLock);
         }
 
         public void StartCoroutineTiming(TimingChannel channel)
@@ -152,48 +148,42 @@ namespace ClickIt.Features.Observability.Performance
                     _altarCoroutineTimer.Stop();
                     long altarTiming = _altarCoroutineTimer.ElapsedMilliseconds;
                     _lastAltarTiming = altarTiming;
-                    _maxAltarTiming = SystemMath.Max(_maxAltarTiming, altarTiming);
-                    EnqueueTiming(_altarCoroutineTimings, altarTiming, 10, _altarTimingsLock);
+                    EnqueueTiming(_altarCoroutineTimings, altarTiming, MaxWindow, _altarTimingsLock);
                     RecordPeriod(ref _lastAltarStopTimestampMs, _altarPeriods, _altarTimingsLock);
                     break;
                 case TimingChannel.Click:
                     _clickCoroutineTimer.Stop();
                     long clickTiming = _clickCoroutineTimer.ElapsedMilliseconds;
                     _lastClickTiming = clickTiming;
-                    _maxClickTiming = SystemMath.Max(_maxClickTiming, clickTiming);
-                    EnqueueTiming(_clickCoroutineTimings, clickTiming, 10, _clickTimingsLock);
+                    EnqueueTiming(_clickCoroutineTimings, clickTiming, MaxWindow, _clickTimingsLock);
                     RecordPeriod(ref _lastClickStopTimestampMs, _clickPeriods, _clickTimingsLock);
                     break;
                 case TimingChannel.Flare:
                     _flareCoroutineTimer.Stop();
                     long flareTiming = _flareCoroutineTimer.ElapsedMilliseconds;
                     _lastFlareTiming = flareTiming;
-                    _maxFlareTiming = SystemMath.Max(_maxFlareTiming, flareTiming);
-                    EnqueueTiming(_flareCoroutineTimings, flareTiming, 10, _flareTimingsLock);
+                    EnqueueTiming(_flareCoroutineTimings, flareTiming, MaxWindow, _flareTimingsLock);
                     RecordPeriod(ref _lastFlareStopTimestampMs, _flarePeriods, _flareTimingsLock);
                     break;
                 case TimingChannel.Blight:
                     _blightCoroutineTimer.Stop();
                     long blightTiming = _blightCoroutineTimer.ElapsedMilliseconds;
                     _lastBlightTiming = blightTiming;
-                    _maxBlightTiming = SystemMath.Max(_maxBlightTiming, blightTiming);
-                    EnqueueTiming(_blightCoroutineTimings, blightTiming, 10, _blightTimingsLock);
+                    EnqueueTiming(_blightCoroutineTimings, blightTiming, MaxWindow, _blightTimingsLock);
                     RecordPeriod(ref _lastBlightStopTimestampMs, _blightPeriods, _blightTimingsLock);
                     break;
                 case TimingChannel.Ultimatum:
                     _ultimatumCoroutineTimer.Stop();
                     long ultimatumTiming = _ultimatumCoroutineTimer.ElapsedMilliseconds;
                     _lastUltimatumTiming = ultimatumTiming;
-                    _maxUltimatumTiming = SystemMath.Max(_maxUltimatumTiming, ultimatumTiming);
-                    EnqueueTiming(_ultimatumCoroutineTimings, ultimatumTiming, 10, _ultimatumTimingsLock);
+                    EnqueueTiming(_ultimatumCoroutineTimings, ultimatumTiming, MaxWindow, _ultimatumTimingsLock);
                     RecordPeriod(ref _lastUltimatumStopTimestampMs, _ultimatumPeriods, _ultimatumTimingsLock);
                     break;
                 case TimingChannel.LabelOverlay:
                     _labelOverlayCoroutineTimer.Stop();
                     long labelOverlayTiming = _labelOverlayCoroutineTimer.ElapsedMilliseconds;
                     _lastLabelOverlayTiming = labelOverlayTiming;
-                    _maxLabelOverlayTiming = SystemMath.Max(_maxLabelOverlayTiming, labelOverlayTiming);
-                    EnqueueTiming(_labelOverlayCoroutineTimings, labelOverlayTiming, 10, _labelOverlayTimingsLock);
+                    EnqueueTiming(_labelOverlayCoroutineTimings, labelOverlayTiming, MaxWindow, _labelOverlayTimingsLock);
                     RecordPeriod(ref _lastLabelOverlayStopTimestampMs, _labelOverlayPeriods, _labelOverlayTimingsLock);
                     break;
                 case TimingChannel.Unknown:
@@ -235,7 +225,7 @@ namespace ClickIt.Features.Observability.Performance
             {
                 lock (_renderTimingsLock)
                 {
-                    return CalculateAverage(_renderTimings);
+                    return CalculateAverage(_renderTimings, AverageWindow);
                 }
             }
 
@@ -275,7 +265,7 @@ namespace ClickIt.Features.Observability.Performance
 
             lock (lockObject)
             {
-                return CalculateAverage(queue);
+                return CalculateAverage(queue, AverageWindow);
             }
         }
 
@@ -286,31 +276,58 @@ namespace ClickIt.Features.Observability.Performance
 
         public void RecordSuccessfulClickTiming(long duration)
         {
-            EnqueueTiming(_successfulClickTimings, duration, 10, _successfulClickTimingsLock);
+            EnqueueTiming(_successfulClickTimings, duration, AverageWindow, _successfulClickTimingsLock);
         }
 
         public double GetAverageSuccessfulClickTiming()
         {
             lock (_successfulClickTimingsLock)
             {
-                return CalculateAverage(_successfulClickTimings);
+                return CalculateAverage(_successfulClickTimings, AverageWindow);
             }
         }
 
         public double GetMaxTiming(TimingChannel channel)
         {
-            return channel switch
+            Queue<long> queue;
+            object lockObject;
+
+            switch (channel)
             {
-                TimingChannel.Click => _maxClickTiming,
-                TimingChannel.Altar => _maxAltarTiming,
-                TimingChannel.Flare => _maxFlareTiming,
-                TimingChannel.Blight => _maxBlightTiming,
-                TimingChannel.Ultimatum => _maxUltimatumTiming,
-                TimingChannel.LabelOverlay => _maxLabelOverlayTiming,
-                TimingChannel.Unknown => 0,
-                TimingChannel.Render => 0,
-                _ => 0,
-            };
+                case TimingChannel.Click:
+                    queue = _clickCoroutineTimings;
+                    lockObject = _clickTimingsLock;
+                    break;
+                case TimingChannel.Altar:
+                    queue = _altarCoroutineTimings;
+                    lockObject = _altarTimingsLock;
+                    break;
+                case TimingChannel.Flare:
+                    queue = _flareCoroutineTimings;
+                    lockObject = _flareTimingsLock;
+                    break;
+                case TimingChannel.Blight:
+                    queue = _blightCoroutineTimings;
+                    lockObject = _blightTimingsLock;
+                    break;
+                case TimingChannel.Ultimatum:
+                    queue = _ultimatumCoroutineTimings;
+                    lockObject = _ultimatumTimingsLock;
+                    break;
+                case TimingChannel.LabelOverlay:
+                    queue = _labelOverlayCoroutineTimings;
+                    lockObject = _labelOverlayTimingsLock;
+                    break;
+                case TimingChannel.Unknown:
+                case TimingChannel.Render:
+                default:
+                    return 0;
+            }
+
+            lock (lockObject)
+            {
+                return CalculateMax(queue);
+            }
         }
 
         public double GetMaxTiming(string timingType)
@@ -389,12 +406,6 @@ namespace ClickIt.Features.Observability.Performance
             _lastUltimatumTiming = 0;
             _lastLabelOverlayTiming = 0;
             _lastRenderTiming = 0;
-            _maxAltarTiming = 0;
-            _maxClickTiming = 0;
-            _maxFlareTiming = 0;
-            _maxBlightTiming = 0;
-            _maxUltimatumTiming = 0;
-            _maxLabelOverlayTiming = 0;
 
             lock (_altarTimingsLock)
                 _altarPeriods.Clear();
@@ -420,7 +431,7 @@ namespace ClickIt.Features.Observability.Performance
         {
             long now = Environment.TickCount64;
             if (lastStopTimestampMs != 0)
-                EnqueueTiming(periods, now - lastStopTimestampMs, 10, lockObject);
+                EnqueueTiming(periods, now - lastStopTimestampMs, AverageWindow, lockObject);
             lastStopTimestampMs = now;
         }
 
@@ -428,7 +439,7 @@ namespace ClickIt.Features.Observability.Performance
         {
             lock (lockObject)
             {
-                return CalculateAverage(queue);
+                return CalculateAverage(queue, AverageWindow);
             }
         }
 
@@ -459,34 +470,55 @@ namespace ClickIt.Features.Observability.Performance
             }
         }
 
-        private static double CalculateAverage(Queue<long> queue)
+        internal static long CalculateMax(Queue<long> queue)
         {
-            int count = queue.Count;
-            if (count == 0)
-                return 0;
-
-            long sum = 0;
+            long max = 0;
             foreach (long value in queue)
             {
-                sum += value;
+                if (value > max)
+                    max = value;
             }
-
-            return (double)sum / count;
+            return max;
         }
 
-        private static double CalculateAverage(Queue<double> queue)
+        private static double CalculateAverage(Queue<long> queue, int recentWindow)
         {
             int count = queue.Count;
             if (count == 0)
                 return 0;
 
-            double sum = 0;
-            foreach (double value in queue)
+            int take = SystemMath.Min(count, recentWindow);
+            int skip = count - take;
+            long sum = 0;
+            int i = 0;
+            foreach (long value in queue)
             {
-                sum += value;
+                if (i >= skip)
+                    sum += value;
+                i++;
             }
 
-            return sum / count;
+            return (double)sum / take;
+        }
+
+        private static double CalculateAverage(Queue<double> queue, int recentWindow)
+        {
+            int count = queue.Count;
+            if (count == 0)
+                return 0;
+
+            int take = SystemMath.Min(count, recentWindow);
+            int skip = count - take;
+            double sum = 0;
+            int i = 0;
+            foreach (double value in queue)
+            {
+                if (i >= skip)
+                    sum += value;
+                i++;
+            }
+
+            return sum / take;
         }
 
         private static int GetQueueCount<T>(Queue<T> queue, object lockObject)

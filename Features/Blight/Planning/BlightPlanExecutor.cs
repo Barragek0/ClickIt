@@ -584,10 +584,7 @@ internal sealed class BlightPlanExecutor
         {
             if (gc?.Game?.IngameState?.Camera is not { } camera)
                 return false;
-            float scale = 1f / PoeMapExtension.WorldToGridConversion;
-            NumVector2 screen = camera.WorldToScreen(new System.Numerics.Vector3(gridPos.X * scale, gridPos.Y * scale, 0f));
-            Size2F win = gc.Window.GetWindowRectangleTimeCache.Size;
-            return screen.X < 0f || screen.Y < 0f || screen.X > win.Width || screen.Y > win.Height;
+            return BlightHelpers.IsGridPosOffScreen(camera, gc.Window.GetWindowRectangleTimeCache.Size, gridPos);
         }
         catch { return false; }
     }

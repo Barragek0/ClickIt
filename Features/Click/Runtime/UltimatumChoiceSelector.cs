@@ -1,8 +1,9 @@
 namespace ClickIt.Features.Click.Runtime
 {
-    internal static class UltimatumGroundOptionSelector
+    internal static class UltimatumChoiceSelector<T>
+        where T : struct, IUltimatumChoice
     {
-        internal static bool TryGetBest(IReadOnlyList<UltimatumGroundOptionCandidate> candidates, out UltimatumGroundOptionCandidate best)
+        internal static bool TryGetBest(IReadOnlyList<T> candidates, out T best)
         {
             best = default;
             int bestIndex = int.MaxValue;
@@ -10,7 +11,7 @@ namespace ClickIt.Features.Click.Runtime
 
             for (int i = 0; i < candidates.Count; i++)
             {
-                UltimatumGroundOptionCandidate candidate = candidates[i];
+                T candidate = candidates[i];
                 if (candidate.PriorityIndex < bestIndex)
                 {
                     bestIndex = candidate.PriorityIndex;
@@ -22,13 +23,13 @@ namespace ClickIt.Features.Click.Runtime
             return found && bestIndex != int.MaxValue;
         }
 
-        internal static bool TryGetFirstSaturated(IReadOnlyList<UltimatumGroundOptionCandidate> candidates, out UltimatumGroundOptionCandidate saturated)
+        internal static bool TryGetFirstSaturated(IReadOnlyList<T> candidates, out T saturated)
         {
             saturated = default;
 
             for (int i = 0; i < candidates.Count; i++)
             {
-                UltimatumGroundOptionCandidate candidate = candidates[i];
+                T candidate = candidates[i];
                 if (!candidate.IsSaturated)
                     continue;
 
@@ -40,9 +41,9 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         internal static bool TryGetSelected(
-            IReadOnlyList<UltimatumGroundOptionCandidate> candidates,
+            IReadOnlyList<T> candidates,
             bool isGruelingGauntletActive,
-            out UltimatumGroundOptionCandidate selected)
+            out T selected)
         {
             if (isGruelingGauntletActive && TryGetFirstSaturated(candidates, out selected))
                 return true;

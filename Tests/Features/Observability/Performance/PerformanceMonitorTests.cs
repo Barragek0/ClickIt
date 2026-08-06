@@ -116,6 +116,41 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void RenderSection_AverageUsesLast20Samples_MaxOverWholeWindow()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            for (int i = 0; i < 10; i++)
+                monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 10.0);
+            for (int i = 0; i < 20; i++)
+                monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 1.0);
+
+            (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
+
+            stats.LastMs.Should().Be(1.0);
+            stats.AverageMs.Should().Be(1.0, "the average covers only the last 20 samples");
+            stats.MaxMs.Should().Be(10.0, "the spike is still inside the 100-sample max window");
+            stats.SampleCount.Should().Be(30);
+        }
+
+        [TestMethod]
+        public void RenderSection_MaxRollsOutAfter100Samples()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            for (int i = 0; i < 10; i++)
+                monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 10.0);
+            for (int i = 0; i < 100; i++)
+                monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 1.0);
+
+            (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
+
+            stats.MaxMs.Should().Be(1.0, "the 10ms spike rolled out of the 100-sample window");
+            stats.AverageMs.Should().Be(1.0);
+            stats.SampleCount.Should().Be(100);
+        }
+
+        [TestMethod]
         public void RenderSectionTiming_HarvestAndBlight_FlowThroughStoreAndSnapshot()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
@@ -250,17 +285,17 @@ namespace ClickIt.Tests.Features.Observability.Performance
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
-            // 70 samples of 1.0 fill and then roll the 60-sample window, then one 2.0 sample.
-            for (int i = 0; i < 70; i++)
+            // 110 samples of 1.0 fill and then roll the 100-sample window, then one 2.0 sample.
+            for (int i = 0; i < 110; i++)
                 monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 1.0);
             monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 2.0);
 
             (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.DebugOverlay);
-            stats.SampleCount.Should().Be(60);
+            stats.SampleCount.Should().Be(100);
             stats.LastMs.Should().Be(2.0);
             stats.MaxMs.Should().Be(2.0);
-            // Window holds 59×1.0 + 1×2.0.
-            stats.AverageMs.Should().BeApproximately(61.0 / 60.0, 0.001);
+            // Max window holds 99×1.0 + 1×2.0; average covers the last 20 (19×1.0 + 1×2.0).
+            stats.AverageMs.Should().BeApproximately(21.0 / 20.0, 0.001);
         }
 
         [TestMethod]

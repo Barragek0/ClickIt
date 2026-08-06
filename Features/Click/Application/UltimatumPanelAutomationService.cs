@@ -171,7 +171,7 @@ namespace ClickIt.Features.Click.Application
                 return false;
             }
 
-            if (!UltimatumPanelChoiceSelector.TryGetSelected(candidates, isGruelingGauntletActive, out UltimatumPanelChoiceCandidate best))
+            if (!UltimatumChoiceSelector<UltimatumPanelChoiceCandidate>.TryGetSelected(candidates, isGruelingGauntletActive, out UltimatumPanelChoiceCandidate best))
             {
                 automation.DebugLog(() => "[TryClickUltimatumPanelChoice] No ranked choice found.");
                 return false;

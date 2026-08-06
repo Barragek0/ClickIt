@@ -4,5 +4,5 @@ namespace ClickIt.Features.Click.Runtime
         Element OptionElement,
         string ModifierName,
         int PriorityIndex,
-        bool IsSaturated);
+        bool IsSaturated) : IUltimatumChoice;
 }

@@ -16,7 +16,7 @@ namespace ClickIt.UI.Overlays.Common
                 return;
 
             RectangleF windowRect = gameController.Window.GetWindowRectangleTimeCache;
-            float centerX = windowRect.Width / 2f;
+            float centerX = windowRect.X + (windowRect.Width / 2f);
             float topY = ResolveTopY(_settings.LazyMode.Value);
 
             bool clicking = _inputHandler.IsClickHotkeyActiveForCurrentInputState();

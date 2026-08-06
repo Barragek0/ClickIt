@@ -27,7 +27,7 @@ namespace ClickIt.UI.Overlays.Common
         {
             if (!_settings.LazyMode.Value) return;
             RectangleF windowRect = gameController.Window.GetWindowRectangleTimeCache;
-            float centerX = windowRect.Width / 2f;
+            float centerX = windowRect.X + (windowRect.Width / 2f);
             float topY = LazyModeTitleY;
 
             List<LabelOnGround>? allLabels = state.Services.CachedLabels?.Value;

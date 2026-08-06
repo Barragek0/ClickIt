@@ -449,7 +449,7 @@ internal sealed class ImGuiDebugOverlay(
 
     private static void RenderCoroutineFrameRow(string label, TimingMetricsSnapshot stats, double fps)
     {
-        if (stats.SampleCount == 0) return;
+        if (!ShouldShowTimingRow(stats)) return;
         double scale = stats.PerFrameScale(fps);
         double avg = stats.AverageMs * scale;
         NumVec4 c = avg <= 6.94 ? CGreen : avg <= 16.67 ? CWarn : CError;
@@ -462,7 +462,7 @@ internal sealed class ImGuiDebugOverlay(
 
     private static void RenderCoroutineRunRow(string label, TimingMetricsSnapshot stats)
     {
-        if (stats.SampleCount == 0) return;
+        if (!ShouldShowTimingRow(stats)) return;
         NumVec4 c = stats.AverageMs >= 50 ? CError : stats.AverageMs >= 25 ? CWarn : CGreen;
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.Text(label);
@@ -474,7 +474,7 @@ internal sealed class ImGuiDebugOverlay(
 
     private static void RenderTimingRow(string label, TimingMetricsSnapshot stats)
     {
-        if (stats.SampleCount == 0) return;
+        if (!ShouldShowTimingRow(stats)) return;
         NumVec4 c = stats.AverageMs <= 6.94 ? CGreen : stats.AverageMs <= 16.67 ? CWarn : CError;
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.Text(label);
@@ -1462,15 +1462,20 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine();
     }
 
+    // Rows appear only when the section/coroutine did measurable work in the current window
+    // (last or average > 0) — sections that are disabled or doing nothing stay hidden.
+    internal static bool ShouldShowTimingRow(TimingMetricsSnapshot stats)
+        => stats.LastMs > 0.0 || stats.AverageMs > 0.0;
+
     private static void AppendTimingLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats)
     {
-        if (stats.SampleCount == 0) return;
+        if (!ShouldShowTimingRow(stats)) return;
         sb.AppendLine($"{label}: last={stats.LastMs:F2} avg={stats.AverageMs:F2} max={stats.MaxMs:F2}");
     }
 
     private static void AppendCoroLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats, double fps)
     {
-        if (stats.SampleCount == 0) return;
+        if (!ShouldShowTimingRow(stats)) return;
         double scale = stats.PerFrameScale(fps);
         if (scale > 0)
             sb.AppendLine($"{label}: {stats.LastMs * scale:F2}/{stats.AverageMs * scale:F2}/{stats.MaxMs * scale:F2} ms/frame | {stats.LastMs:F0}/{stats.AverageMs:F1}/{stats.MaxMs:F0} ms/run ({stats.DutyCyclePercent:F1}%)");
