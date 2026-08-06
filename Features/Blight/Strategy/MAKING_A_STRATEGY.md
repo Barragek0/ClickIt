@@ -115,8 +115,7 @@ the target lane segment within range.
 
 `BlightPlacementPreference` values: `Default` (closest to the target lane
 segment), `NearestPump`, `NearExistingTowers`,
-`NearestUncoveredLane` (and the general `NearestPlayer` value, settable via
-`Placement(...)`).
+`NearestUncoveredLane`.
 
 ### Upgrade behaviour
 

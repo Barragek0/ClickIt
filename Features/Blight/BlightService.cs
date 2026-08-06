@@ -9,10 +9,11 @@ public sealed class BlightService
     private readonly BlightEntityCache _cache;
     private readonly BlightEncounter _encounter = new();
 
-    internal void InvalidateCoverageCache() => _cache.InvalidateCoverageCache();
     internal IReadOnlyList<Entity> PathwayEntities => _cache.PathwayEntities;
     internal IReadOnlyList<(Entity Entity, string TowerId)> TowerEntities => _cache.TowerEntities;
     internal Entity? PumpEntity => _cache.PumpEntity;
+    internal NumVector2? PumpGridPosition => _cache.PumpGridPosition;
+    internal System.Numerics.Vector3? PumpWorldPosition => _cache.PumpWorldPosition;
     internal bool IsEncounterActive => _encounter.IsActive;
     internal IReadOnlyList<BlightCachedTower> KnownTowers => _cache.KnownTowers;
     internal IReadOnlyDictionary<NumVector2, System.Numerics.Vector3> PathwayWorldPositions => _cache.PathwayWorldPositions;
@@ -31,8 +32,7 @@ public sealed class BlightService
     internal IBlightTowerStrategy CurrentStrategy => BlightStrategyResolver.Resolve(_settings);
 
     internal LaneCoverageResult[]? TryGetCachedCoverage() => _cache.TryGetCachedCoverage();
-    internal (int From, int To)[] TryGetExtraLaneEdges() => _cache.TryGetExtraLaneEdges();
-    internal (NumVector2[] Pathways, LaneCoverageResult[] Coverage, (int From, int To)[] ExtraLaneEdges)? TryGetRenderBundle() => _cache.TryGetRenderBundle();
+    internal (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? TryGetRenderBundle() => _cache.TryGetRenderBundle();
     internal LaneCoverageResult[] ComputeLaneCoverage() => _cache.ComputeLaneCoverage();
 
     internal (List<NumVector2> Positions, List<(PumpBranch Branch, List<int> Segments)> Branches) GetBranchDebug()
@@ -41,21 +41,16 @@ public sealed class BlightService
         if (coverage is not { Length: > 0 })
             return (new List<NumVector2>(), new List<(PumpBranch, List<int>)>());
 
-        List<NumVector2> positions = [];
-        NumVector2[]? aligned = _cache.CachedCoveragePathways;
-        if (aligned != null && aligned.Length == coverage.Length)
-            positions = [.. aligned];
+        List<NumVector2>? positions = _cache.GetAlignedPathways(coverage);
 
-        NumVector2? pump = _cache.PumpEntity is { } pe
-            ? new NumVector2(pe.GridPosNum.X, pe.GridPosNum.Y)
-            : null;
+        NumVector2? pump = _cache.PumpGridPosition;
 
         List<PumpBranch> branches = BlightBranches.FindPumpBranches(
-            coverage, pump, positions.Count == coverage.Length ? positions : null, _cache.CachedBranchAnchors);
+            coverage, pump, positions, _cache.CachedBranchAnchors);
         List<(PumpBranch, List<int>)> result = [];
         for (int b = 0; b < branches.Count; b++)
             result.Add((branches[b], BlightBranches.BranchSegments(coverage, branches[b])));
-        return (positions, result);
+        return (positions ?? [], result);
     }
 
     internal void RefreshEntities(GameController? gameController)
@@ -67,6 +62,86 @@ public sealed class BlightService
     internal void ScanFoundations(IReadOnlyList<LabelOnGround>? allLabels)
         => _cache.ScanFoundations(allLabels);
     internal int GetTowerRadiusCached(string towerId) => _cache.GetTowerRadiusCached(towerId);
+    internal string DumpPathwayDebug()
+    {
+        IReadOnlyList<Entity> pathways = _cache.PathwayEntities;
+        StringBuilder sb = new();
+        NumVector2? pump = _cache.PumpGridPosition;
+
+        static (NumVector2 Grid, float Dist)? TryResolve(Entity e, NumVector2? pump)
+        {
+            try
+            {
+                NumVector2 g = new(e.GridPosNum.X, e.GridPosNum.Y);
+                float d = pump.HasValue
+                    ? MathF.Sqrt(((g.X - pump.Value.X) * (g.X - pump.Value.X)) + ((g.Y - pump.Value.Y) * (g.Y - pump.Value.Y)))
+                    : -1f;
+                return (g, d);
+            }
+            catch { return null; }
+        }
+
+        int show = SystemMath.Min(pathways.Count, 16);
+        for (int i = 0; i < show; i++)
+        {
+            (NumVector2 Grid, float Dist)? r = TryResolve(pathways[i], pump);
+            if (r == null)
+                continue;
+            sb.Append($"  [{i}] id={pathways[i].Id} ({r.Value.Grid.X:F0},{r.Value.Grid.Y:F0})");
+            if (r.Value.Dist >= 0f)
+                sb.Append($" dPump={r.Value.Dist:F1}");
+            sb.Append('\n');
+        }
+        if (pathways.Count > show)
+            sb.Append($"  ... {pathways.Count - show} more\n");
+
+        sb.AppendLine("Pathways near pump (d<=45, id desc):");
+        int nearCount = 0;
+        for (int i = 0; i < pathways.Count; i++)
+        {
+            (NumVector2 Grid, float Dist)? r = TryResolve(pathways[i], pump);
+            if (r == null || r.Value.Dist > 45f)
+                continue;
+            sb.Append($"  id={pathways[i].Id} ({r.Value.Grid.X:F0},{r.Value.Grid.Y:F0}) dPump={r.Value.Dist:F1}\n");
+            nearCount++;
+        }
+        sb.Append($"  near-pump pathways: {nearCount}\n");
+        return sb.ToString();
+    }
+
+    internal string DumpBranchRootDebug()
+    {
+        LaneCoverageResult[]? coverage = _cache.TryGetCachedCoverage();
+        if (coverage is not { Length: > 0 })
+            return "(no coverage)";
+        NumVector2[]? positions = _cache.CachedCoveragePathways;
+        if (positions == null || positions.Length != coverage.Length)
+            return "(no aligned pathway positions)";
+        NumVector2? pump = _cache.PumpGridPosition;
+
+        StringBuilder sb = new();
+        sb.AppendLine($"Branch roots (orphan segments, {coverage.Length} total):");
+        int nearCount = 0;
+        for (int i = 0; i < coverage.Length; i++)
+        {
+            if (coverage[i].ParentIndex != BlightLaneTopology.OrphanSentinel)
+                continue;
+            NumVector2 p = positions[i];
+            float d = pump.HasValue
+                ? MathF.Sqrt(((p.X - pump.Value.X) * (p.X - pump.Value.X)) + ((p.Y - pump.Value.Y) * (p.Y - pump.Value.Y)))
+                : -1f;
+            bool near = pump.HasValue && d <= BlightLaneTopology.PumpRootRadius;
+            if (near)
+                nearCount++;
+            sb.Append($"  [{i}] ({p.X:F0},{p.Y:F0})");
+            if (d >= 0f)
+                sb.Append($" dPump={d:F1} {(near ? "NEAR(<=30)" : "far")}");
+            sb.Append('\n');
+        }
+        sb.Append($"  near-pump orphans: {nearCount}\n");
+        return sb.ToString();
+    }
+
     internal string DumpBlightTowerDat() => _cache.DumpBlightTowerDat();
 
     internal const int DefaultTowerRadius = 35;
@@ -85,12 +160,9 @@ public sealed class BlightService
 
     internal static int GetRadiusForLevel(BlightTowerType type, int level)
     {
-        // Real per-tier radii from the game's BlightTowerDat (captured 2026-08-02).  Radius is
-        // constant across ranks for Chilling/Seismic/Summoning (the v4 root-cause finding), but it
-        // DOES grow with rank for Fireball/ShockNova/Empowering — the old constant-base model
-        // under-estimated Fireball at rank 3/4 (75/100) and over-estimated it at rank 1 (45).
-        // The actual radius for built towers still comes from the game dat (BlightCachedTower.Radius);
-        // this is the fallback for unbuilt and streamed-out towers.
+        // Real per-tier radii from the game's BlightTowerDat: constant across ranks for
+        // Chilling/Seismic/Summoning, grows with rank for Fireball/ShockNova/Empowering. Built
+        // towers use the live dat radius; this is the fallback for unbuilt/streamed-out towers.
         return BlightTowerData.RadiusForLevel(type, level);
     }
 
@@ -111,12 +183,22 @@ public sealed class BlightService
     private readonly BlightDebugEvents _debugEvents = new();
     internal IReadOnlyList<string> DebugStages => _debugEvents.Stages;
 
-    // Recent Stages is only consumed by the debug overlay / copy-all, but the executor recorded a
-    // formatted string (plus the dedup scan + re-format under a lock) on EVERY tick of an active
-    // encounter — a steady per-tick allocation + lock hit. Throttle to ~10 stages/sec; plenty for a
-    // readable trail and it makes the hot executor path nearly allocation-free.
+    // Throttle debug stages to ~10/sec — the executor was allocating a formatted string + dedup
+    // scan under a lock every tick; the overlay only needs a readable recent trail.
     private long _lastDebugStageTimestampMs;
     private const long DebugStageThrottleMs = 100;
+
+    // Lets hot-path callers skip FORMATTING a debug message when the throttle would drop it —
+    // the executor's per-tick VERIFY loop was allocating an interpolated string every tick.
+    internal bool IsDebugStageDue
+    {
+        get
+        {
+            long now = Environment.TickCount64;
+            return now - _lastDebugStageTimestampMs >= DebugStageThrottleMs;
+        }
+    }
+
     internal void AddDebugStage(string message)
     {
         long now = Environment.TickCount64;
@@ -127,16 +209,6 @@ public sealed class BlightService
     }
 
     internal ElementTreeInspector BlightChestDebug { get; } = new();
-
-    internal BlightCachedTower? CurrentTarget
-    {
-        get
-        {
-            BlightPlanStep? step = _executor.CurrentPlan?.CurrentStep;
-            if (step == null) return null;
-            return BlightHelpers.FindTowerAt(KnownTowers, step.Value.FoundationPosition);
-        }
-    }
 
     internal Entity? GetPathfindingTargetEntity()
     {
@@ -149,17 +221,20 @@ public sealed class BlightService
         Entity? entity = GetBestEntityAtPosition(step.Value.FoundationPosition);
         if (entity == null) return null;
 
-        // Walk until the step is ready: build steps need the whole enlarged menu region on-screen
-        // and clickable (clicking the build icon opens the tower sub-menu); upgrade steps just need
-        // the tower fully on-screen (a single click on the upgrade icon — no sub-menu opens). The
-        // executor's Walking phase shares this rule (BlightPlanExecutor.IsStepWalkReady), so
-        // returning null here cannot stall the build.
-        if (IsEntityFullyOnScreen(entity) && _executor.IsStepWalkReady(_lastLabels, _gameController, this))
+        // Stop walking only when the executor genuinely doesn't need to approach any more — the
+        // executor and the pipeline share ONE walk-readiness decision (BlightPlanExecutor.
+        // WantsWalkForCurrentStep), so pathfinding can never refuse a walk the executor needs
+        // (e.g. an upgrade icon that sits off-window while the tower entity is already on-screen).
+        if (!_executor.WantsWalkForCurrentStep(_gameController, this, _lastLabels))
             return null;
         return entity;
     }
 
     internal Entity? GetBestEntityAtPosition(NumVector2 pos) => _cache.GetBestEntityAtPosition(pos);
+
+    // Cached entity-path read (entity-id validated) for the executor's per-tick rank/verify loops —
+    // avoids re-reading entity.Path (a process-memory read + string allocation) every tick.
+    internal string? GetEntityPathCached(Entity entity) => _cache.GetEntityPathCached(entity);
 
     internal bool IsEntityFullyOnScreen(Entity? entity)
     {
@@ -221,17 +296,12 @@ public sealed class BlightService
         }
 
         _planVersion++;
-        NumVector2? pumpPos = _cache.PumpEntity is { } pump
-            ? new NumVector2(pump.GridPosNum.X, pump.GridPosNum.Y)
-            : null;
+        NumVector2? pumpPos = _cache.PumpGridPosition;
         NumVector2? playerPos = _gameController?.Player != null
             ? new NumVector2(_gameController.Player.GridPosNum.X, _gameController.Player.GridPosNum.Y)
             : null;
 
-        List<NumVector2>? pathwayPositions = null;
-        NumVector2[]? aligned = _cache.CachedCoveragePathways;
-        if (aligned != null && aligned.Length == coverage.Length)
-            pathwayPositions = [.. aligned];
+        List<NumVector2>? pathwayPositions = _cache.GetAlignedPathways(coverage);
 
         // Coordinate-space correction: terrain objects (pump/pathways) can report local-space positions offset
         // from world space by thousands of units — apply the foundation-centroid offset only when it is large.
@@ -309,8 +379,28 @@ public sealed class BlightService
         return 0;
     }
 
-    internal IReadOnlyList<BlightCachedTower> GetFoundationsInPriorityOrder()
-        => KnownTowers;
+    // Plan UI display: a spec-tier upgrade (Fireball lvl4) shows the specialization tower the
+    // strategy chose ("Meteor") instead of the raw base type + level ("Fireball lvl4").
+    internal string GetStepTargetName(BlightPlanStep step)
+    {
+        if (step.Action == BlightPlanAction.Upgrade && step.TargetLevel > 3)
+        {
+            int specIndex = GetSpecialization(step.TowerType);
+            if (specIndex >= 0)
+            {
+                string towerId = BlightTowerData.GetSpecializationTowerId(step.TowerType, (TowerSpecialization)specIndex);
+                BlightTowerInfo? info = BlightTowerData.FindByDatId(towerId);
+                if (info.HasValue)
+                {
+                    string name = info.Value.Name;
+                    return name.EndsWith(" Tower", StringComparison.Ordinal)
+                        ? name[..^" Tower".Length]
+                        : name;
+                }
+            }
+        }
+        return step.TowerType.ToString();
+    }
 
     internal void Clear()
     {
@@ -319,10 +409,9 @@ public sealed class BlightService
         ResetInteractionState();
         _executor.ClearPlan();
 
-        // A cleared encounter must rebuild its plan on the next detection.  Without this reset, a
-        // re-detected encounter with identical geometry (e.g. respawn at checkpoint in the same
-        // map) compares equal to the stale plan counters, ShouldRebuildPlan() skips the rebuild,
-        // and the blight stays active with no plan — exactly the stuck-plan scenario after dying.
+        // A cleared encounter must rebuild its plan on the next detection — without this reset a
+        // re-detected encounter with identical geometry would compare equal to the stale counters
+        // and ShouldRebuildPlan() would skip the rebuild.
         _lastPlannedTowerCount = 0;
         _lastPlannedPathwayCount = 0;
         _lastPlannedBuiltCount = 0;

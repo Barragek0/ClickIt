@@ -40,22 +40,6 @@ internal static class BlightFillPlanner
         return count;
     }
 
-    internal static float DistanceToNearestAssignedTowerSq(
-        IReadOnlyList<BlightCachedTower> knownTowers,
-        HashSet<int> assignedIndices,
-        int candidateIdx)
-    {
-        float best = float.MaxValue;
-        NumVector2 p = knownTowers[candidateIdx].WorldPosition;
-        foreach (int i in assignedIndices)
-        {
-            if (i == candidateIdx) continue;
-            float d = (knownTowers[i].WorldPosition - p).LengthSquared();
-            if (d < best) best = d;
-        }
-        return best;
-    }
-
     internal static void AssignFill(
         List<TowerBuildRule> tierRules,
         IReadOnlyList<BlightCachedTower> knownTowers,
@@ -101,7 +85,7 @@ internal static class BlightFillPlanner
         {
             if (assignedIndices.Contains(i)) continue;
             if (failedPositions.Contains(knownTowers[i].WorldPosition)) continue;
-            candidates.Add((i, FillPlacementMetric(knownTowers, assignedIndices, i, placement, pumpPosition, playerPosition)));
+            candidates.Add((i, PlacementMetric(knownTowers, assignedIndices, i, i, placement, pumpPosition)));
         }
         candidates.Sort((a, b) => a.Metric.CompareTo(b.Metric));
 
@@ -168,27 +152,6 @@ internal static class BlightFillPlanner
         }
 
         return (bestIdx, bestDistSq);
-    }
-
-    private static float FillPlacementMetric(
-        IReadOnlyList<BlightCachedTower> knownTowers,
-        HashSet<int> assignedIndices,
-        int candidateIdx,
-        BlightPlacementPreference placement,
-        NumVector2? pumpPosition,
-        NumVector2? playerPosition)
-    {
-        NumVector2 p = knownTowers[candidateIdx].WorldPosition;
-        return placement switch
-        {
-            BlightPlacementPreference.NearestPump when pumpPosition.HasValue
-                => (p - pumpPosition.Value).LengthSquared(),
-            BlightPlacementPreference.NearestPlayer when playerPosition.HasValue
-                => (p - playerPosition.Value).LengthSquared(),
-            BlightPlacementPreference.NearExistingTowers
-                => DistanceToNearestAssignedTowerSq(knownTowers, assignedIndices, candidateIdx),
-            _ => candidateIdx,
-        };
     }
 
     internal static List<BlightPlanStep> BuildOrderedSteps(

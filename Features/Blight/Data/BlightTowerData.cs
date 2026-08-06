@@ -91,27 +91,17 @@ internal static class BlightTowerData
 
     private const int DefaultRadius = 35;
 
-    internal static BlightTowerInfo Get(BlightTowerId id) => Catalog[(int)id];
-
     internal static BlightTowerInfo? FindByDatId(string datId)
         => ByDatId.TryGetValue(datId, out BlightTowerInfo info) ? info : null;
+
+    internal static bool IsSpecializationTowerId(string datId)
+        => FindByDatId(datId) is { Specialization: not TowerSpecialization.None };
 
     internal static BlightTowerType? MapTowerIdToType(string datId)
         => TypeByDatId.TryGetValue(datId, out BlightTowerType type) ? type : null;
 
     internal static int FindRadius(string datId)
         => ByDatId.TryGetValue(datId, out BlightTowerInfo info) ? info.Radius : 0;
-
-    internal static string GetDisplayName(BlightTowerType type) => type switch
-    {
-        BlightTowerType.Chilling => "Chilling Tower",
-        BlightTowerType.ShockNova => "Shock Nova Tower",
-        BlightTowerType.Empowering => "Empowering Tower",
-        BlightTowerType.Seismic => "Seismic Tower",
-        BlightTowerType.Summoning => "Summoning Tower",
-        BlightTowerType.Fireball => "Fireball Tower",
-        _ => "Unknown"
-    };
 
     internal static int MaxUpgradeLevel => 4;
 
@@ -120,6 +110,12 @@ internal static class BlightTowerData
 
     internal static int GetSpecializationMenuChildIndex(BlightTowerType type, TowerSpecialization spec)
         => ByTypeSpec.TryGetValue((type, spec), out BlightTowerInfo info) ? info.MenuIndex : -1;
+
+    // Fireball's 3→4 panel order is verified in-game (Flamethrower at slot 0, Meteor at slot 1); the
+    // UpgradeResult dat read is unreliable in the current ExileCore build, so the verified slot is
+    // preferred for Fireball. Other types have no verified slot and resolve by tower ID instead.
+    internal static bool HasVerifiedSpecializationMenuIndex(BlightTowerType type)
+        => type == BlightTowerType.Fireball;
 
     internal static int RadiusForLevel(BlightTowerType type, int level)
     {

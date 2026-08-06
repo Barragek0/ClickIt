@@ -17,6 +17,44 @@ internal static class BlightBranches
         return (dx * dx) + (dy * dy);
     }
 
+    // Shared placement metric for coverage and fill tiers: how desirable a foundation is for a
+    // rule.  NearestPump prefers pump proximity, NearExistingTowers prefers clustering beside an
+    // already-assigned tower, and everything else falls back to the caller's metric.
+    internal static float PlacementMetric(
+        IReadOnlyList<BlightCachedTower> knownTowers,
+        HashSet<int> assignedIndices,
+        int candidateIdx,
+        float fallbackMetric,
+        BlightPlacementPreference placement,
+        NumVector2? pumpPosition)
+    {
+        NumVector2 p = knownTowers[candidateIdx].WorldPosition;
+        return placement switch
+        {
+            BlightPlacementPreference.NearestPump when pumpPosition.HasValue
+                => (p - pumpPosition.Value).LengthSquared(),
+            BlightPlacementPreference.NearExistingTowers
+                => DistanceToNearestAssignedTowerSq(knownTowers, assignedIndices, candidateIdx),
+            _ => fallbackMetric,
+        };
+    }
+
+    internal static float DistanceToNearestAssignedTowerSq(
+        IReadOnlyList<BlightCachedTower> knownTowers,
+        HashSet<int> assignedIndices,
+        int candidateIdx)
+    {
+        float best = float.MaxValue;
+        NumVector2 p = knownTowers[candidateIdx].WorldPosition;
+        foreach (int i in assignedIndices)
+        {
+            if (i == candidateIdx) continue;
+            float d = (knownTowers[i].WorldPosition - p).LengthSquared();
+            if (d < best) best = d;
+        }
+        return best;
+    }
+
     internal static List<PumpBranch> FindPumpBranches(
         LaneCoverageResult[] coverage,
         NumVector2? pumpPosition,
@@ -83,20 +121,8 @@ internal static class BlightBranches
         PumpBranch branch, LaneCoverageResult[] coverage, bool seismic,
         IReadOnlyList<BlightCachedTower> knownTowers, int targetLevel)
     {
-        if (branch.CoverageSegment < 0)
-        {
-            // A cached branch with no live segment is verified against its persisted ANCHOR: a built
-            // tower whose radius reaches the anchor covers the branch base — coverage stays stable
-            // when pump-near entities stream out.
-            BlightTowerType type = seismic ? BlightTowerType.Seismic : BlightTowerType.Chilling;
-            return BuiltTowerCovers(branch.Anchor, type, knownTowers, includeAtMax: true, targetLevel);
-        }
-
         bool[] covered = ComputePlannedCoveredState(coverage, seismic, knownTowers, targetLevel);
-        foreach (int s in BranchSegments(coverage, branch))
-            if (!covered[s])
-                return false;
-        return true;
+        return SubtreeFullyCovered(branch, coverage, covered, knownTowers, seismic, targetLevel);
     }
 
     // The working coverage state the planner plans against: the current coverage array (which already

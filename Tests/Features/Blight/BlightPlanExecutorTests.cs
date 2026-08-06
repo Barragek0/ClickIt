@@ -154,6 +154,50 @@ public class BlightPlanExecutorTests
     }
 
     [TestMethod]
+    public void ShouldSkipPlainUpgradeClick_True_WhenButtonIsASpecializationTower()
+    {
+        // When a plain (non-spec) upgrade step's first visible button resolves to a specialization
+        // tower, the tower is already at its max plain level — clicking would over-upgrade it
+        // (e.g. Seismic 3 -> 4 = Stone Gaze). The step must advance without clicking.
+        BlightPlanExecutor.ShouldSkipPlainUpgradeClick("PetrificationTower")
+            .Should().BeTrue("Seismic's Stone Gaze is a spec button — never click on a plain upgrade");
+        BlightPlanExecutor.ShouldSkipPlainUpgradeClick("MeteorTower")
+            .Should().BeTrue("Fireball's Meteor is a spec button — never click on a plain upgrade");
+    }
+
+    [TestMethod]
+    public void ShouldSkipPlainUpgradeClick_False_ForPlainTierButtonsOrUnreadableId()
+    {
+        // A genuine next-tier plain button (StunningTower3, FlameTower2) is a legitimate click; an
+        // unreadable/null button id must NOT trigger the skip (the executor proceeds with the click
+        // as before when the id can't be read).
+        BlightPlanExecutor.ShouldSkipPlainUpgradeClick("StunningTower3")
+            .Should().BeFalse();
+        BlightPlanExecutor.ShouldSkipPlainUpgradeClick("FlameTower2")
+            .Should().BeFalse();
+        BlightPlanExecutor.ShouldSkipPlainUpgradeClick(null)
+            .Should().BeFalse("an unreadable button id must not block the click");
+    }
+
+    [TestMethod]
+    public void ShouldSkipAfterVerifyFailures_OnlyBuildStepsSkip_UpgradesPause()
+    {
+        // A build step that can't be verified after 3 attempts is skipped (best-effort, spec §4.7).
+        BlightPlanExecutor.ShouldSkipAfterVerifyFailures(BlightPlanAction.Build, 3)
+            .Should().BeTrue();
+        BlightPlanExecutor.ShouldSkipAfterVerifyFailures(BlightPlanAction.Build, 2)
+            .Should().BeFalse("below the 3-failure threshold it retries");
+
+        // An upgrade that can't be confirmed is an affordability/state pause — it must NEVER be
+        // skipped, or the plan advances past an upgrade that never happened (the reported bug:
+        // no currency for Fireball lvl3 / Meteor, and the plan moved on anyway).
+        BlightPlanExecutor.ShouldSkipAfterVerifyFailures(BlightPlanAction.Upgrade, 3)
+            .Should().BeFalse("an unaffordable upgrade must pause, not skip");
+        BlightPlanExecutor.ShouldSkipAfterVerifyFailures(BlightPlanAction.Upgrade, 9)
+            .Should().BeFalse("an upgrade never skips on verify failures");
+    }
+
+    [TestMethod]
     public void IsMenuRegionUsable_ReturnsTrue_WhenFullyOnScreenAndClickable()
     {
         BlightPlanExecutor.IsMenuRegionUsable(new RectangleF(500f, 300f, 200f, 100f), 1920f, 1080f, static _ => true)
@@ -270,5 +314,107 @@ public class BlightPlanExecutorTests
         BlightPlanExecutor.IsStepWalkReadyForAction(BlightPlanAction.Build,
                 menuRegionReady: false, hasWalkEntity: true, entityFullyOnScreen: true)
             .Should().BeFalse("a build step must keep walking until the menu region is usable");
+    }
+
+    // ── Pathfinding stop condition (WantsWalkForAction) — must mirror EVERY executor walk trigger ──
+
+    [TestMethod]
+    public void WantsWalkForAction_Upgrade_IconOffWindow_WhileEntityOnScreen_ReturnsTrue()
+    {
+        // THE regression: the tower entity is fully on-screen (the old gate stopped walking) but the
+        // upgrade icon sits off-window — the executor walks closer from OpenMenu, and pathfinding
+        // must not refuse that walk (it used to return null and stall the executor forever).
+        BlightPlanExecutor.WantsWalkForAction(
+                action: BlightPlanAction.Upgrade,
+                walkReadyGate: true,
+                upgradeLabelFound: true,
+                upgradeIconInWindow: false,
+                upgradeEntityOnScreen: true)
+            .Should().BeTrue("an off-window upgrade icon still needs the player to walk closer");
+    }
+
+    [TestMethod]
+    public void WantsWalkForAction_Upgrade_EverythingReady_ReturnsFalse()
+    {
+        BlightPlanExecutor.WantsWalkForAction(
+                action: BlightPlanAction.Upgrade,
+                walkReadyGate: true,
+                upgradeLabelFound: true,
+                upgradeIconInWindow: true,
+                upgradeEntityOnScreen: true)
+            .Should().BeFalse("entity on-screen + icon in-window means the upgrade is clickable");
+    }
+
+    [TestMethod]
+    public void WantsWalkForAction_Upgrade_EntityOffScreen_ReturnsTrue()
+    {
+        BlightPlanExecutor.WantsWalkForAction(
+                action: BlightPlanAction.Upgrade,
+                walkReadyGate: false,
+                upgradeLabelFound: true,
+                upgradeIconInWindow: false,
+                upgradeEntityOnScreen: false)
+            .Should().BeTrue("an off-screen tower still needs pathfinding");
+    }
+
+    [TestMethod]
+    public void WantsWalkForAction_Upgrade_LabelMissing_EntityOnScreen_ReturnsFalse()
+    {
+        // The executor retries (does not walk) when the label is missing but the entity is on-screen.
+        BlightPlanExecutor.WantsWalkForAction(
+                action: BlightPlanAction.Upgrade,
+                walkReadyGate: true,
+                upgradeLabelFound: false,
+                upgradeIconInWindow: false,
+                upgradeEntityOnScreen: true)
+            .Should().BeFalse("a missing label with the entity on-screen is a retry, not a walk");
+    }
+
+    [TestMethod]
+    public void WantsWalkForAction_Build_RegionUsable_ReturnsFalse()
+    {
+        // Builds require the whole menu region usable — once that passes, no further walking.
+        BlightPlanExecutor.WantsWalkForAction(
+                action: BlightPlanAction.Build,
+                walkReadyGate: true,
+                upgradeLabelFound: false,
+                upgradeIconInWindow: false,
+                upgradeEntityOnScreen: false)
+            .Should().BeFalse("a build with a usable menu region is clickable");
+    }
+
+    // ── Spec-result verification (wrong-spec guard) ──
+
+    [TestMethod]
+    public void PathShowsOtherSpecialization_FlamethrowerPath_WhenTargetingMeteor_ReturnsTrue()
+    {
+        // The reported bug: the spec click landed on Flamethrower while the strategy chose Meteor.
+        // The path is the ground truth for which specialization the tower actually became.
+        BlightPlanExecutor.PathShowsOtherSpecialization(
+                "Metadata/Monsters/LeagueBlight/BlightTower/FlamethrowerTower@83",
+                BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeTrue("a Flamethrower path must never pass a Meteor spec step");
+    }
+
+    [TestMethod]
+    public void PathShowsOtherSpecialization_MeteorPath_WhenTargetingMeteor_ReturnsFalse()
+    {
+        BlightPlanExecutor.PathShowsOtherSpecialization(
+                "Metadata/Monsters/LeagueBlight/BlightTower/MeteorTower@83",
+                BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeFalse("the chosen Meteor path is the correct result");
+    }
+
+    [TestMethod]
+    public void PathShowsOtherSpecialization_UnrelatedOrUnreadablePath_ReturnsFalse()
+    {
+        BlightPlanExecutor.PathShowsOtherSpecialization(
+                "Metadata/Monsters/LeagueBlight/BlightTower/FlameTower3@83",
+                BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeFalse("a plain rank path (pre-verify) must not trip the guard");
+
+        BlightPlanExecutor.PathShowsOtherSpecialization(
+                string.Empty, BlightTowerType.Fireball, TowerSpecialization.Meteor)
+            .Should().BeFalse("an unreadable path is fail-open — never a false trip");
     }
 }

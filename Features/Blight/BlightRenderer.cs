@@ -10,16 +10,13 @@ public sealed class BlightRenderer
     private static readonly Color PumpColor = new(0, 200, 255, 120);
     internal static readonly Color PhantomLaneColor = new(235, 235, 235, 200);
     private static readonly Color LaneLabelColor = new(235, 235, 235, 215);
-    // Extra lanes re-added for dead-ends that continue onto another arm: always this fixed pink,
-    // regardless of coverage — they are reconstructed connections, not measured lane colour.
-    internal static readonly Color BridgeLaneColor = new(255, 92, 178, 255);
     private const int LaneLineWidthMap = 2;
     private const int LaneLineWidthGame = 4;
 
     private const float TowerDotRadius = 3.5f;
     private const int TowerDotSegments = 12;
-    private const float PumpGridRadius = 8f;
-    private const float PumpWorldCircleRadius = 35f;
+    private const float PumpGridRadius = 12f;
+    private const float PumpWorldCircleRadius = 42f;
 
     private readonly NumVector2[] _discBuffer = new NumVector2[TowerDotSegments + 1];
 
@@ -90,7 +87,7 @@ public sealed class BlightRenderer
 
     private void DrawTowerDots(RenderContext ctx, Graphics graphics, bool dotsMap, bool dotsGame, bool showUpgrades)
     {
-        IReadOnlyList<BlightCachedTower> ordered = _blightService.GetFoundationsInPriorityOrder();
+        IReadOnlyList<BlightCachedTower> ordered = _blightService.KnownTowers;
         IBlightTowerStrategy strategy = _blightService.CurrentStrategy;
 
         BlightPlan? plan = _blightService.CurrentPlan;
@@ -209,7 +206,7 @@ public sealed class BlightRenderer
 
     private static void DrawBlightLanes(RenderContext ctx, Graphics graphics, BlightService blight, bool lanesMap, bool lanesGame)
     {
-        (NumVector2[] Pathways, LaneCoverageResult[] Coverage, (int From, int To)[] ExtraLaneEdges)? bundle = blight.TryGetRenderBundle();
+        (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = blight.TryGetRenderBundle();
         if (bundle == null || bundle.Value.Pathways.Length < 2)
             return;
 
@@ -237,28 +234,11 @@ public sealed class BlightRenderer
             if (lanesGame && (IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a) || IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, b)))
                 graphics.DrawLineInWorld(a, b, LaneLineWidthGame, laneColor);
         }
-
-        // Real lanes the single-parent tree dropped (a point whose lane continues onto another arm
-        // is nearer its own arm's neighbour, so the edge never entered the tree). Rendered in the
-        // fixed bridge colour — these are reconstructed connections and never take the coverage colour.
-        (int From, int To)[] extraEdges = bundle.Value.ExtraLaneEdges;
-        for (int e = 0; e < extraEdges.Length; e++)
-        {
-            if (extraEdges[e].From < 0 || extraEdges[e].From >= pathways.Length
-                || extraEdges[e].To < 0 || extraEdges[e].To >= pathways.Length)
-                continue;
-            NumVector2 a = pathways[extraEdges[e].From];
-            NumVector2 b = pathways[extraEdges[e].To];
-            if (ctx.LargeMapOpen && lanesMap)
-                graphics.DrawLineOnLargeMap(a, b, LaneLineWidthMap, BridgeLaneColor);
-            if (lanesGame && (IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, a) || IsGridPosOnScreen(ctx.Camera, ctx.WindowSize, b)))
-                graphics.DrawLineInWorld(a, b, LaneLineWidthGame, BridgeLaneColor);
-        }
     }
 
     private void DrawLaneLabels(RenderContext ctx, Graphics graphics)
     {
-        (NumVector2[] Pathways, LaneCoverageResult[] Coverage, (int From, int To)[] ExtraLaneEdges)? bundle = _blightService.TryGetRenderBundle();
+        (NumVector2[] Pathways, LaneCoverageResult[] Coverage)? bundle = _blightService.TryGetRenderBundle();
         if (bundle == null || bundle.Value.Coverage.Length == 0)
             return;
 
@@ -268,8 +248,7 @@ public sealed class BlightRenderer
         if (Branches.Count == 0 || Positions.Count != coverage.Length)
             return;
 
-        // Bridges are real segments, so they join the branch/divergence structure the labels derive from.
-        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage, bundle.Value.ExtraLaneEdges);
+        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
         string?[] labelFor = new string?[coverage.Length];
         for (int b = 0; b < Branches.Count; b++)
         {
@@ -337,7 +316,7 @@ public sealed class BlightRenderer
     private static void LabelLanes(BlightLaneNode lane, string?[] labelFor)
     {
         for (int i = 0; i < lane.Segments.Count; i++)
-            labelFor[lane.Segments[i]] = $"{lane.Name}{i + 1}";
+            labelFor[lane.Segments[i]] = $"{lane.Name}.{i + 1}";
         for (int c = 0; c < lane.Children.Count; c++)
             LabelLanes(lane.Children[c], labelFor);
     }
@@ -367,14 +346,19 @@ public sealed class BlightRenderer
 
     private void DrawPump(RenderContext ctx, Graphics graphics)
     {
+        // The pump entity streams out of scan range when the player walks away from the encounter;
+        // fall back to the persisted position so the dot/circle stays visible while it is active.
         Entity? pump = _blightService.PumpEntity;
-        if (pump == null) return;
+        NumVector2? pumpGrid = pump != null ? new NumVector2(pump.GridPosNum.X, pump.GridPosNum.Y) : _blightService.PumpGridPosition;
+        System.Numerics.Vector3? pumpWorld = pump != null ? pump.PosNum : _blightService.PumpWorldPosition;
+        if (!pumpGrid.HasValue || !pumpWorld.HasValue)
+            return;
 
         if (ctx.LargeMapOpen)
-            graphics.DrawFilledCircleOnLargeMap(pump.GridPosNum, false, PumpGridRadius, PumpColor, 16);
+            graphics.DrawFilledCircleOnLargeMap(pumpGrid.Value, false, PumpGridRadius, PumpColor, 16);
 
-        if (IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, pump.PosNum))
-            graphics.DrawCircleInWorld(pump.PosNum, GridToWorldRadius(PumpWorldCircleRadius), PumpColor, 3, 24, false);
+        if (IsWorldPosOnScreen(ctx.Camera, ctx.WindowSize, pumpWorld.Value))
+            graphics.DrawCircleInWorld(pumpWorld.Value, GridToWorldRadius(PumpWorldCircleRadius), PumpColor, 4, 24, false);
     }
 
     internal static IReadOnlyList<int> PendingPlanStepNumbers(
@@ -394,9 +378,18 @@ public sealed class BlightRenderer
     }
 
     internal IReadOnlyList<int> GetPendingPlanStepNumbers(BlightPlan? plan, int cursor, NumVector2 position)
+        => GetPendingNumbers(plan, cursor, position, EmptyPendingNumbers, static n => n);
+
+    // Pre-formatted step-number strings so the per-frame text draw never allocates ToString.
+    internal IReadOnlyList<string> GetPendingNumberTexts(BlightPlan? plan, int cursor, NumVector2 position)
+        => GetPendingNumbers(plan, cursor, position, EmptyPendingStrings, static n => n.ToString());
+
+    private IReadOnlyList<T> GetPendingNumbers<T>(
+        BlightPlan? plan, int cursor, NumVector2 position,
+        IReadOnlyList<T> empty, Func<int, T> convert)
     {
         if (plan == null || plan.Steps.Count == 0)
-            return EmptyPendingNumbers;
+            return empty;
 
         if (!ReferenceEquals(_pendingNumbersPlan, plan) || _pendingNumbersCursor != cursor)
         {
@@ -405,40 +398,24 @@ public sealed class BlightRenderer
             RebuildPendingNumberCaches(plan, cursor);
         }
 
-        if (_pendingNumbersByPosition!.TryGetValue(position, out List<int>? numbers))
+        // Re-read the cache AFTER the rebuild (RebuildPendingNumberCaches swaps the dictionaries).
+        Dictionary<NumVector2, List<T>> cache = PendingCache<T>();
+        if (cache.TryGetValue(position, out List<T>? numbers))
             return numbers;
 
         // Exact-key miss (positions only ever differ by the <1 grid-unit tolerance): fall back to the
         // tolerance scan once, then cache the result so later frames reuse it.
-        List<int> computed = [];
+        List<T> computed = [];
         foreach (int number in PendingPlanStepNumbers(plan, cursor, position))
-            computed.Add(number);
-        _pendingNumbersByPosition[position] = computed;
+            computed.Add(convert(number));
+        cache[position] = computed;
         return computed;
     }
 
-    // Pre-formatted step-number strings so the per-frame text draw never allocates ToString.
-    internal IReadOnlyList<string> GetPendingNumberTexts(BlightPlan? plan, int cursor, NumVector2 position)
-    {
-        if (plan == null || plan.Steps.Count == 0)
-            return EmptyPendingStrings;
-
-        if (!ReferenceEquals(_pendingNumbersPlan, plan) || _pendingNumbersCursor != cursor)
-        {
-            _pendingNumbersPlan = plan;
-            _pendingNumbersCursor = cursor;
-            RebuildPendingNumberCaches(plan, cursor);
-        }
-
-        if (_pendingNumberTextsByPosition!.TryGetValue(position, out List<string>? texts))
-            return texts;
-
-        List<string> computed = [];
-        foreach (int number in PendingPlanStepNumbers(plan, cursor, position))
-            computed.Add(number.ToString());
-        _pendingNumberTextsByPosition[position] = computed;
-        return computed;
-    }
+    private Dictionary<NumVector2, List<T>> PendingCache<T>()
+        => typeof(T) == typeof(int)
+            ? (Dictionary<NumVector2, List<T>>)(object)_pendingNumbersByPosition!
+            : (Dictionary<NumVector2, List<T>>)(object)_pendingNumberTextsByPosition!;
 
     private void RebuildPendingNumberCaches(BlightPlan plan, int cursor)
     {

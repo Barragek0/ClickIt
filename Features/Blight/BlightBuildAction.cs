@@ -14,4 +14,5 @@ internal readonly record struct BlightBuildAction(
     BlightBuildActionKind Kind,
     Vector2 ClickPosition = default,
     string? DebugMessage = null,
-    NumVector2 GridPosition = default);
+    NumVector2 GridPosition = default,
+    bool IsMenuClick = false);

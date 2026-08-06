@@ -57,4 +57,20 @@ public class BlightEncounterTests
         encounter.Update(pump, 3).Should().BeFalse("restart is not an end transition");
         encounter.IsActive.Should().BeTrue();
     }
+
+    [TestMethod]
+    public void Update_StreamedOutPump_WithPersistedPosition_KeepsEncounterActive()
+    {
+        var encounter = new BlightEncounter();
+        encounter.Update(new Entity(), 3);
+        encounter.IsActive.Should().BeTrue();
+
+        // Pump entity streamed out of scan range (position still cached) — not an end.
+        encounter.Update(null, 0, hasPersistedPump: true).Should().BeFalse("stream-out is not an encounter end");
+        encounter.IsActive.Should().BeTrue("the encounter stays active while the pump position is cached");
+
+        // Fully gone (no persisted position) — ends, so cached data is cleared.
+        encounter.Update(null, 0, hasPersistedPump: false).Should().BeTrue("no pump and no cached position ends the encounter");
+        encounter.IsActive.Should().BeFalse();
+    }
 }

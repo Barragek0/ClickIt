@@ -187,66 +187,40 @@ internal static class BlightPlanner
             if (branchHasChilling[b]) cBefore++;
         }
 
-        System.Text.StringBuilder branchDbg = new();
+        // Debug summaries — one pass over branches, one over towers, producing all formats.
+        System.Text.StringBuilder branchDbg = new(), anchorDbg = new(), branchSegDbg = new();
         for (int b = 0; b < branchCount; b++)
         {
-            if (b > 0) branchDbg.Append(' ');
-            branchDbg.Append((char)('A' + b));
-            branchDbg.Append('(');
-            branchDbg.Append(branchHasChilling[b] ? 'C' : 'c');
-            branchDbg.Append(branchHasSeismic[b] ? 'S' : 's');
-            branchDbg.Append(')');
-        }
-
-        System.Text.StringBuilder anchorDbg = new();
-        for (int b = 0; b < branchCount; b++)
-        {
-            if (b > 0) anchorDbg.Append(' ');
-            anchorDbg.Append('(');
-            anchorDbg.Append(pumpBranches[b].Anchor.X.ToString("F0"));
-            anchorDbg.Append(',');
-            anchorDbg.Append(pumpBranches[b].Anchor.Y.ToString("F0"));
-            anchorDbg.Append(')');
-        }
-
-        System.Text.StringBuilder branchSegDbg = new();
-        for (int b = 0; b < branchCount; b++)
-        {
-            if (b > 0) branchSegDbg.Append(' ');
             PumpBranch pb = pumpBranches[b];
-            branchSegDbg.Append((char)('A' + b));
-            branchSegDbg.Append("(seg=");
-            branchSegDbg.Append(pb.CoverageSegment);
+            char letter = (char)('A' + b);
+            if (b > 0) { branchDbg.Append(' '); anchorDbg.Append(' '); branchSegDbg.Append(' '); }
+            branchDbg.Append(letter).Append('(').Append(branchHasChilling[b] ? 'C' : 'c').Append(branchHasSeismic[b] ? 'S' : 's').Append(')');
+            anchorDbg.Append('(').Append(pb.Anchor.X.ToString("F0")).Append(',').Append(pb.Anchor.Y.ToString("F0")).Append(')');
+            branchSegDbg.Append(letter).Append("(seg=").Append(pb.CoverageSegment);
             if (pb.CoverageSegment >= 0)
-            {
-                branchSegDbg.Append(" mid=(");
-                branchSegDbg.Append(coverage[pb.CoverageSegment].Midpoint.X.ToString("F0"));
-                branchSegDbg.Append(',');
-                branchSegDbg.Append(coverage[pb.CoverageSegment].Midpoint.Y.ToString("F0"));
-                branchSegDbg.Append(") c=");
-                branchSegDbg.Append(coverage[pb.CoverageSegment].HasChilling ? '1' : '0');
-                branchSegDbg.Append(" s=");
-                branchSegDbg.Append(coverage[pb.CoverageSegment].HasSeismic ? '1' : '0');
-            }
+                branchSegDbg.Append(" mid=(").Append(coverage[pb.CoverageSegment].Midpoint.X.ToString("F0"))
+                    .Append(',').Append(coverage[pb.CoverageSegment].Midpoint.Y.ToString("F0"))
+                    .Append(") c=").Append(coverage[pb.CoverageSegment].HasChilling ? '1' : '0')
+                    .Append(" s=").Append(coverage[pb.CoverageSegment].HasSeismic ? '1' : '0');
             branchSegDbg.Append(')');
         }
 
-        System.Text.StringBuilder towerRadiusDbg = new();
+        System.Text.StringBuilder towerRadiusDbg = new(), assignDbg = new(), foundDbg = new();
         for (int i = 0; i < knownTowers.Count; i++)
         {
             BlightCachedTower t = knownTowers[i];
-            if (t.UpgradeLevel <= 0) continue;
-            if (towerRadiusDbg.Length > 0) towerRadiusDbg.Append(' ');
-            int actual = t.Radius;
-            int estimate = BlightService.GetRadiusForLevel(t.TowerType, t.UpgradeLevel);
-            towerRadiusDbg.Append(t.TowerType.ToString()[..3]);
-            towerRadiusDbg.Append('@');
-            towerRadiusDbg.Append(t.UpgradeLevel);
-            towerRadiusDbg.Append(" r=");
-            towerRadiusDbg.Append(actual > 0 ? actual.ToString() : "?");
-            towerRadiusDbg.Append("(est");
-            towerRadiusDbg.Append(estimate);
-            towerRadiusDbg.Append(')');
+            if (i > 0) { assignDbg.Append(' '); foundDbg.Append(' '); }
+            if (t.UpgradeLevel > 0)
+            {
+                if (towerRadiusDbg.Length > 0) towerRadiusDbg.Append(' ');
+                int estimate = BlightService.GetRadiusForLevel(t.TowerType, t.UpgradeLevel);
+                towerRadiusDbg.Append(t.TowerType.ToString()[..3]).Append('@').Append(t.UpgradeLevel)
+                    .Append(" r=").Append(t.Radius > 0 ? t.Radius.ToString() : "?").Append("(est").Append(estimate).Append(')');
+            }
+            bool isAssigned = assignments.ContainsKey(t.WorldPosition);
+            assignDbg.Append(isAssigned ? '+' : '-').Append(t.UpgradeLevel)
+                .Append(isAssigned ? assignments[t.WorldPosition].Type.ToString()[..3] : "---");
+            foundDbg.Append('(').Append(t.WorldPosition.X.ToString("F0")).Append(',').Append(t.WorldPosition.Y.ToString("F0")).Append(')');
         }
 
         List<BlightPlanStep> steps = BlightFillPlanner.BuildOrderedSteps(
@@ -254,28 +228,6 @@ internal static class BlightPlanner
 
         if (groupStepsByProximity)
             steps = ReorderStepsByProximity(steps, rules);
-
-        System.Text.StringBuilder assignDbg = new();
-        for (int i = 0; i < knownTowers.Count; i++)
-        {
-            if (i > 0) assignDbg.Append(' ');
-            BlightCachedTower t = knownTowers[i];
-            bool isAssigned = assignments.ContainsKey(t.WorldPosition);
-            char marker = isAssigned ? '+' : '-';
-            string typeStr = isAssigned ? assignments[t.WorldPosition].Type.ToString()[..3] : "---";
-            assignDbg.Append($"{marker}{t.UpgradeLevel}{typeStr}");
-        }
-
-        System.Text.StringBuilder foundDbg = new();
-        for (int i = 0; i < knownTowers.Count; i++)
-        {
-            if (i > 0) foundDbg.Append(' ');
-            foundDbg.Append('(');
-            foundDbg.Append(knownTowers[i].WorldPosition.X.ToString("F0"));
-            foundDbg.Append(',');
-            foundDbg.Append(knownTowers[i].WorldPosition.Y.ToString("F0"));
-            foundDbg.Append(')');
-        }
 
         string summary = $"v{version} ({steps.Count} steps, {branchCount} branches, {(coverageComplete ? "full" : "partial")} coverage) [{branchDbg}]"
             + $" anchors={anchorDbg}"
@@ -550,7 +502,7 @@ internal static class BlightPlanner
                     if (isBranchSegment[s] && covered2[s] && !covered[s]) newly++;
                 if (newly == 0) continue;
 
-                float metric = PlacementMetric(knownTowers, assignedIndices, i, maxDistSq, rule.Placement, pumpPosition, playerPosition);
+                float metric = PlacementMetric(knownTowers, assignedIndices, i, maxDistSq, rule.Placement, pumpPosition);
                 if (bestIdx < 0 || newly > bestNew || (newly == bestNew && metric < bestMetric))
                 {
                     bestIdx = i;
@@ -626,7 +578,7 @@ internal static class BlightPlanner
 
         (int idx, float distSq) = FindBestFoundationForSegment(
             knownTowers, branch.Anchor, maxRadiusSq,
-            failedPositions, assignedIndices, pumpPosition, playerPosition, rule.Placement);
+            failedPositions, assignedIndices, pumpPosition, rule.Placement);
 
         if (idx < 0 && branch.CoverageSegment >= 0)
         {
@@ -636,7 +588,7 @@ internal static class BlightPlanner
                     continue;
                 (idx, distSq) = FindBestFoundationForSegment(
                     knownTowers, coverage[sb].Midpoint, maxRadiusSq,
-                    failedPositions, assignedIndices, pumpPosition, playerPosition, rule.Placement);
+                    failedPositions, assignedIndices, pumpPosition, rule.Placement);
                 if (idx >= 0)
                     break;
             }
@@ -649,28 +601,6 @@ internal static class BlightPlanner
         assignments[tower.WorldPosition] = (type, BlightTowerData.MaxUpgradeLevel);
         assignedIndices.Add(idx);
         AddCoveragePlacement(knownTowers, branchIdx, type, idx, distSq, playerPosition, coveragePlacements);
-    }
-
-    private static float PlacementMetric(
-        IReadOnlyList<BlightCachedTower> knownTowers,
-        HashSet<int> assignedIndices,
-        int candidateIdx,
-        float fallbackMetric,
-        BlightPlacementPreference placement,
-        NumVector2? pumpPosition,
-        NumVector2? playerPosition)
-    {
-        NumVector2 p = knownTowers[candidateIdx].WorldPosition;
-        return placement switch
-        {
-            BlightPlacementPreference.NearestPump when pumpPosition.HasValue
-                => (p - pumpPosition.Value).LengthSquared(),
-            BlightPlacementPreference.NearestPlayer when playerPosition.HasValue
-                => (p - playerPosition.Value).LengthSquared(),
-            BlightPlacementPreference.NearExistingTowers
-                => BlightFillPlanner.DistanceToNearestAssignedTowerSq(knownTowers, assignedIndices, candidateIdx),
-            _ => fallbackMetric,
-        };
     }
 
     private static void AddCoveragePlacement(
@@ -695,7 +625,6 @@ internal static class BlightPlanner
         HashSet<NumVector2> failedPositions,
         HashSet<int> assignedIndices,
         NumVector2? pumpPosition,
-        NumVector2? playerPosition,
         BlightPlacementPreference placement = BlightPlacementPreference.Default)
     {
         int bestIdx = -1;
@@ -711,16 +640,7 @@ internal static class BlightPlanner
             if (distSq > radiusSq)
                 continue;
 
-            float metric = placement switch
-            {
-                BlightPlacementPreference.NearestPump when pumpPosition.HasValue
-                    => (knownTowers[i].WorldPosition - pumpPosition.Value).LengthSquared(),
-                BlightPlacementPreference.NearestPlayer when playerPosition.HasValue
-                    => (knownTowers[i].WorldPosition - playerPosition.Value).LengthSquared(),
-                BlightPlacementPreference.NearExistingTowers
-                    => BlightFillPlanner.DistanceToNearestAssignedTowerSq(knownTowers, assignedIndices, i),
-                _ => distSq,
-            };
+            float metric = PlacementMetric(knownTowers, assignedIndices, i, distSq, placement, pumpPosition);
 
             if (metric < bestMetric)
             {

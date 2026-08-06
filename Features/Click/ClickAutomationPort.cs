@@ -130,29 +130,16 @@ namespace ClickIt.Features.Click
         private IReadOnlyList<LabelOnGround>? GetLabelsForRegularSelection()
             => VisibleLabelSnapshots.GetCachedLabels();
 
-        // Pathfinding safety: a walk-click that lands on a blight tower's build/upgrade icon would
-        // accidentally build or upgrade a tower, so check UIHover (plus the icon rects) at the click
-        // position before pathfinding clicks.
-        private bool IsBlightBuildOrUpgradeIconAt(Vector2 screenPos)
+        // Pathfinding safety: every blight tower's build icon (Child[2]) and upgrade icon (Child[3])
+        // is an UNCLICKABLE BOX — pathfinding walk-clicks must never land in one (or near one), or
+        // they would accidentally build/upgrade a tower.  Pure geometry: each icon rect is padded
+        // and the padded rect is tested.  No UIHover — the hover element is unreliable for a
+        // freshly-moved cursor, so it let walk-clicks slip through (and added a per-click hover cost).
+        private bool IsBlightBuildOrUpgradeIconAt(Vector2 screenPos, float paddingPx = BlightIconBoxPadding)
         {
             IReadOnlyList<LabelOnGround>? labels = GetLabelsForRegularSelection();
             if (labels == null || labels.Count == 0)
                 return false;
-
-            bool hasBlightLabel = false;
-            for (int i = 0; i < labels.Count; i++)
-            {
-                if (labels[i] != null && BlightEntityCache.IsBlightFoundationOrTowerLabel(labels[i]))
-                {
-                    hasBlightLabel = true;
-                    break;
-                }
-            }
-            if (!hasBlightLabel)
-                return false;
-
-            Element? hovered = _interactionExecutor.HoverAndGetUIHover(screenPos, _gameController);
-            long hoveredAddress = hovered?.Address ?? 0;
 
             for (int i = 0; i < labels.Count; i++)
             {
@@ -164,20 +151,37 @@ namespace ClickIt.Features.Click
                 if (labelElement == null)
                     continue;
 
-                if (IsBlightIconAt(labelElement, 2, screenPos, hoveredAddress)
-                    || IsBlightIconAt(labelElement, 3, screenPos, hoveredAddress))
+                if (IsBlightIconAt(labelElement, 2, screenPos, paddingPx)
+                    || IsBlightIconAt(labelElement, 3, screenPos, paddingPx))
                     return true;
             }
 
             return false;
         }
 
-        private static bool IsBlightIconAt(Element labelElement, int childIndex, Vector2 screenPos, long hoveredAddress)
+        private static bool IsBlightIconAt(Element labelElement, int childIndex, Vector2 screenPos, float paddingPx)
         {
             RectangleF? iconRect = BlightMenuInteractions.GetMenuChildRect(labelElement, childIndex);
-            return (iconRect != null && PointInRect(iconRect.Value, screenPos))
-                || BlightMenuInteractions.IsMenuChildHit(labelElement, childIndex, hoveredAddress);
+            if (iconRect == null)
+                return false;
+            RectangleF padded = new(
+                iconRect.Value.X - paddingPx,
+                iconRect.Value.Y - paddingPx,
+                iconRect.Value.Width + (paddingPx * 2f),
+                iconRect.Value.Height + (paddingPx * 2f));
+            return PointInRect(padded, screenPos);
         }
+
+        // Fail-closed pre-click check for blight MENU clicks (build/upgrade/spec): the click point
+        // must still be inside a build/upgrade icon rect — otherwise the menu moved or closed since
+        // the position was resolved and the click is skipped.  Rect-based only (no UIHover — it was
+        // unreliable and rejected valid clicks while the hover was still updating).
+        internal bool IsBlightTowerUiAt(Vector2 screenPos)
+            => IsBlightBuildOrUpgradeIconAt(screenPos, paddingPx: 0f);
+
+        // Padding around a blight build/upgrade icon that makes it an unclickable box — a click that
+        // lands in or near the icon is treated as an accidental icon click.
+        private const float BlightIconBoxPadding = 30f;
 
         private static bool PointInRect(RectangleF rect, Vector2 point)
             => point.X >= rect.X && point.X <= rect.X + rect.Width

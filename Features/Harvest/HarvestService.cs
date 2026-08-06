@@ -50,10 +50,7 @@ public sealed class HarvestService
             return;
         }
 
-        // Only re-scan when the label list reference has changed.
-        // CachedLabels creates a new List when its 50ms window expires,
-        // so this naturally stays in sync with the cache — no separate
-        // timer needed, no drift, no unnecessary re-scans.
+        // Re-scan only when the 50ms label-list reference changes.
         if (ReferenceEquals(_lastProcessedList, allLabels) && _lastProcessedCount == (allLabels?.Count ?? 0))
             return;
 
@@ -112,11 +109,13 @@ public sealed class HarvestService
         if (_settings.ClickHigherHarvestEstimate.Value)
             CurrentDecision = DecideBestPlot(estimates);
         else
-            CurrentDecision = new HarvestDecision(
-                HarvestDecisionOutcome.TopLabelChosen,
-                estimates[0].Label,
-                estimates[0].EstimatedLifeforce,
-                0);
+            CurrentDecision = estimates.Count > 0
+                ? new HarvestDecision(
+                    HarvestDecisionOutcome.TopLabelChosen,
+                    estimates[0].Label,
+                    estimates[0].EstimatedLifeforce,
+                    0)
+                : new HarvestDecision(HarvestDecisionOutcome.NoHarvestLabels);
     }
 
     internal static HarvestDecision DecideBestPlot(List<HarvestPlotEstimate> estimates)
@@ -137,16 +136,19 @@ public sealed class HarvestService
                 IsHarvestClickBlocked: true);
         }
 
-        estimates.Sort(static (a, b) => b.EstimatedLifeforce.CompareTo(a.EstimatedLifeforce));
+        // Sort a copy — CurrentEstimates is published to the render thread; mutating it here would
+        // throw mid-frame while the renderer iterates it.
+        List<HarvestPlotEstimate> sorted = [.. estimates];
+        sorted.Sort(static (a, b) => b.EstimatedLifeforce.CompareTo(a.EstimatedLifeforce));
 
-        double best = estimates[0].EstimatedLifeforce;
-        double second = estimates[1].EstimatedLifeforce;
+        double best = sorted[0].EstimatedLifeforce;
+        double second = sorted[1].EstimatedLifeforce;
 
         if (best > second)
         {
             return new HarvestDecision(
                 HarvestDecisionOutcome.TopLabelChosen,
-                estimates[0].Label,
+                sorted[0].Label,
                 best,
                 second);
         }
@@ -158,12 +160,6 @@ public sealed class HarvestService
     internal LabelOnGround? GetChosenLabel()
         => CurrentDecision.ChosenLabel;
 
-    /// <summary>
-    /// Returns the label that should be clicked when lifeforce estimation
-    /// is active. Returns null when no clicking should happen (single label,
-    /// blocked). For equal estimates falls back to the nearest label.
-    /// When lifeforce estimation is off, returns null (normal pipeline).
-    /// </summary>
     private static bool IsLabelOnScreen(RectangleF bounds, Size2F windowSize)
     {
         float cx = bounds.X + (bounds.Width / 2f);
@@ -231,7 +227,6 @@ public sealed class HarvestService
         _lastProcessedList = null;
     }
 
-    // Retained for backward compatibility with tests
     internal const long BlockedSentinel = -1;
 
     internal long GetChosenLabelAddress()

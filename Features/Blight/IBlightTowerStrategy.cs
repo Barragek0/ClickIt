@@ -22,8 +22,6 @@ internal enum BlightPlacementPreference
 
     NearestPump = 1,
 
-    NearestPlayer = 2,
-
     NearExistingTowers = 3,
 
     NearestUncoveredLane = 4,

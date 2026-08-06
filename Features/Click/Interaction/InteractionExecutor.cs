@@ -16,7 +16,10 @@ namespace ClickIt.Features.Click.Interaction
         internal long GetSuccessfulClickSequence()
             => Interlocked.Read(ref _successfulClickSequence);
 
-        internal void PerformClick(
+        // Returns true only when the click was actually sent to the OS. Internal rejections (lazy
+        // limiter, hotkey inactive, UIHover mismatch, invalid point) return false so callers do not
+        // run the success aftermath (path/sticky clearing, pending-chest arming, lever cooldowns).
+        internal bool PerformClick(
             Vector2 position,
             Element? expectedElement = null,
             GameController? gameController = null,
@@ -36,7 +39,7 @@ namespace ClickIt.Features.Click.Interaction
                 logExpectedElementMissing: true,
                 out Stopwatch swTotal,
                 out SystemDrawingPoint before))
-                return;
+                return false;
 
 
             if (_settings?.LeftHanded?.Value == true)
@@ -50,9 +53,10 @@ namespace ClickIt.Features.Click.Interaction
             Interlocked.Increment(ref _successfulClickSequence);
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
             swTotal.Stop();
+            return true;
         }
 
-        internal void PerformClickAndHold(
+        internal bool PerformClickAndHold(
             Vector2 position,
             int holdDurationMs,
             Element? expectedElement = null,
@@ -64,11 +68,11 @@ namespace ClickIt.Features.Click.Interaction
             _ = holdDurationMs;
 
             if (!TryConsumeLazyModeLimiter())
-                return;
+                return false;
 
             Keys clickKey = _settings.ClickLabelKeyBinding;
             if (clickKey == Keys.None)
-                return;
+                return false;
             if (!TryPrepareClickExecution(
                 position,
                 expectedElement,
@@ -81,7 +85,7 @@ namespace ClickIt.Features.Click.Interaction
                 logExpectedElementMissing: false,
                 out Stopwatch swTotal,
                 out SystemDrawingPoint before))
-                return;
+                return false;
 
 
             try
@@ -110,6 +114,7 @@ namespace ClickIt.Features.Click.Interaction
             Interlocked.Increment(ref _successfulClickSequence);
             _performanceMonitor.RecordSuccessfulClickTiming(swTotal.ElapsedMilliseconds);
             swTotal.Stop();
+            return true;
         }
 
         internal Element? HoverAndGetUIHover(Vector2 screenPoint, GameController? gameController, int delayMs = -1)

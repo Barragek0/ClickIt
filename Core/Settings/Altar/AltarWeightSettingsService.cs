@@ -4,6 +4,10 @@ namespace ClickIt.Core.Settings.Altar
     {
         internal static void InitializeDefaultWeights(ClickItSettings settings)
         {
+            // A hand-edited/corrupted config can deserialize ModTiers/ModAlerts as null; never NRE at startup.
+            settings.ModTiers ??= new(StringComparer.OrdinalIgnoreCase);
+            settings.ModAlerts ??= new(StringComparer.OrdinalIgnoreCase);
+
             foreach ((string id, string _, string type, int defaultValue) in AltarModsConstants.UpsideMods)
             {
                 string compositeKey = BuildCompositeKey(type, id);

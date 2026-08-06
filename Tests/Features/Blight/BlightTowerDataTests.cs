@@ -79,6 +79,59 @@ public class BlightTowerDataTests
     }
 
     [TestMethod]
+    [DataRow("MeteorTower")]
+    [DataRow("FlamethrowerTower")]
+    [DataRow("TemporalTower")]
+    [DataRow("PetrificationTower")]
+    [DataRow("IcePrisonTower")]
+    [DataRow("FreezingTower")]
+    [DataRow("ArcingTower")]
+    [DataRow("LightningStormTower")]
+    [DataRow("BuffPlayersTower")]
+    [DataRow("WeakenEnemiesTower")]
+    [DataRow("FlyingMinionTower")]
+    [DataRow("TankyMinionTower")]
+    public void IsSpecializationTowerId_True_ForSpecializationTowers(string towerId)
+    {
+        BlightTowerData.IsSpecializationTowerId(towerId)
+            .Should().BeTrue($"{towerId} is a level-4 specialization tower");
+    }
+
+    [TestMethod]
+    [DataRow("FlameTower1")]
+    [DataRow("FlameTower2")]
+    [DataRow("FlameTower3")]
+    [DataRow("ChillingTower3")]
+    [DataRow("StunningTower3")]
+    [DataRow("BuffTower2")]
+    [DataRow("EmptyNode")]
+    public void IsSpecializationTowerId_False_ForRankAndFoundationTowers(string towerId)
+    {
+        BlightTowerData.IsSpecializationTowerId(towerId)
+            .Should().BeFalse($"{towerId} is a rank tower or the foundation, not a specialization");
+    }
+
+    [TestMethod]
+    public void HasVerifiedSpecializationMenuIndex_Fireball_True_OthersFalse()
+    {
+        // Fireball's 3→4 panel order is verified in-game (Flamethrower at 0, Meteor at 1), so the
+        // executor prefers the child index for Fireball. Other types have no verified slot and must
+        // resolve by tower ID — none of them claim a verified index.
+        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Fireball)
+            .Should().BeTrue();
+        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Chilling)
+            .Should().BeFalse();
+        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.ShockNova)
+            .Should().BeFalse();
+        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Empowering)
+            .Should().BeFalse();
+        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Seismic)
+            .Should().BeFalse();
+        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Summoning)
+            .Should().BeFalse();
+    }
+
+    [TestMethod]
     public void GetSpecializationMenuChildIndex_FireballMenuOrder_IsReverseOfEnum()
     {
         // Verified in-game: the Fireball 3→4 upgrade panel shows the two
@@ -225,7 +278,7 @@ public class BlightTowerDataTests
         BlightTowerId[] values = Enum.GetValues<BlightTowerId>();
         values.Length.Should().Be(BlightTowerData.Catalog.Length);
         foreach (BlightTowerId id in values)
-            BlightTowerData.Get(id).Id.Should().Be(id, "Catalog index must equal the BlightTowerId value");
+            BlightTowerData.Catalog[(int)id].Id.Should().Be(id, "Catalog index must equal the BlightTowerId value");
     }
 
     [TestMethod]

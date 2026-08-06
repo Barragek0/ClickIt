@@ -9,6 +9,9 @@ internal static class BlightHelpers
         return BlightTowerData.MapTowerIdToType(towerId);
     }
 
+    internal static bool IsSpecializationTowerId(string towerId)
+        => BlightTowerData.IsSpecializationTowerId(towerId);
+
     internal static BlightTowerType DetectFoundationTypeFromPath(string? path)
     {
         if (string.IsNullOrEmpty(path))
@@ -28,17 +31,24 @@ internal static class BlightHelpers
             return 0;
         try
         {
-            string? path = entity.Path;
-            if (string.IsNullOrEmpty(path))
-                return 0;
-            int rankIdx = path.LastIndexOf("Rank", StringComparison.OrdinalIgnoreCase);
-            if (rankIdx < 0 || rankIdx + 5 >= path.Length)
-                return 0;
-            char rankChar = path[rankIdx + 4];
-            if (char.IsDigit(rankChar))
-                return rankChar - '0';
+            return DetectUpgradeRankFromPath(entity.Path);
         }
         catch { }
+        return 0;
+    }
+
+    // Path-based rank detection so callers can feed a CACHED path instead of re-reading entity.Path
+    // (a per-read process-memory access + string allocation) in hot per-tick loops.
+    internal static int DetectUpgradeRankFromPath(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return 0;
+        int rankIdx = path.LastIndexOf("Rank", StringComparison.OrdinalIgnoreCase);
+        if (rankIdx < 0 || rankIdx + 4 >= path.Length)
+            return 0;
+        char rankChar = path[rankIdx + 4];
+        if (char.IsDigit(rankChar))
+            return rankChar - '0';
         return 0;
     }
 

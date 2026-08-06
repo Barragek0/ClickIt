@@ -15,8 +15,8 @@ namespace ClickIt.Features.Click.Interaction
         Func<string, bool> EnsureCursorInsideGameWindowForClick,
         Func<Vector2, bool> IsClickPositionAllowed,
         Action<string> DebugLog,
-        Action<Vector2, Element?, GameController?, bool, bool, bool> PerformLockedClick,
-        Action<Vector2, int, Element?, GameController?, bool, bool, bool> PerformLockedHoldClick,
+        Func<Vector2, Element?, GameController?, bool, bool, bool, bool> PerformLockedClick,
+        Func<Vector2, int, Element?, GameController?, bool, bool, bool, bool> PerformLockedHoldClick,
         Action RecordClickInterval);
 
     internal interface IInteractionExecutionRuntime
@@ -39,25 +39,28 @@ namespace ClickIt.Features.Click.Interaction
                 return false;
             }
 
-            if (request.UseHoldClick)
-                _dependencies.PerformLockedHoldClick(
-        request.ClickPosition,
-        request.HoldDurationMs,
-        request.ExpectedElement,
-        request.Controller,
-        request.ForceUiHoverVerification,
-        request.AllowWhenHotkeyInactive,
-        request.AvoidCursorMove);
-
-            else
-                _dependencies.PerformLockedClick(
-        request.ClickPosition,
-        request.ExpectedElement,
-        request.Controller,
-        request.ForceUiHoverVerification,
-        request.AllowWhenHotkeyInactive,
-        request.AvoidCursorMove);
-
+            // Only treat the interaction as executed when the executor actually sent the click — internal
+            // rejections (lazy limiter, hotkey inactive, UIHover mismatch, invalid point) must not run
+            // the success aftermath (path/sticky clearing, pending-chest arming, lever cooldowns) or
+            // record a click interval for a click that never happened.
+            bool clicked = request.UseHoldClick
+                ? _dependencies.PerformLockedHoldClick(
+                    request.ClickPosition,
+                    request.HoldDurationMs,
+                    request.ExpectedElement,
+                    request.Controller,
+                    request.ForceUiHoverVerification,
+                    request.AllowWhenHotkeyInactive,
+                    request.AvoidCursorMove)
+                : _dependencies.PerformLockedClick(
+                    request.ClickPosition,
+                    request.ExpectedElement,
+                    request.Controller,
+                    request.ForceUiHoverVerification,
+                    request.AllowWhenHotkeyInactive,
+                    request.AvoidCursorMove);
+            if (!clicked)
+                return false;
 
             _dependencies.RecordClickInterval();
             return true;

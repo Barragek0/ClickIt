@@ -117,21 +117,27 @@ namespace ClickIt.Features.Area
             RectangleF winRect = gameController.Window.GetWindowRectangleTimeCache;
             (RectangleF fullScreen, RectangleF leftCombined, RectangleF rightCombined) = ResolveMainUiRegions(winRect);
 
-            _blockedState.FullScreenRectangle = fullScreen;
+            _blockedState.FullScreenRectangle = ToStandard(fullScreen);
+            _blockedState.HealthAndFlaskRectangle = ToStandard(leftCombined);
+            _blockedState.ManaAndSkillsRectangle = ToStandard(rightCombined);
 
-            _blockedState.HealthAndFlaskRectangle = leftCombined;
-            _blockedState.ManaAndSkillsRectangle = rightCombined;
-
-            (_blockedState.HealthSquareRectangle, _blockedState.FlaskRectangle, _blockedState.FlaskTertiaryRectangle) = SplitBottomAnchoredThreeRectanglesFromLeft(
+            (RectangleF healthSquare, RectangleF flask, RectangleF flaskTertiary) = SplitBottomAnchoredThreeRectanglesFromLeft(
                 leftCombined,
                 SideCompanionHeightRatio,
                 SideTertiaryCompanionHeightRatio,
                 SideTertiaryCompanionWidthRatio);
-            (_blockedState.ManaSquareRectangle, _blockedState.SkillsRectangle, _blockedState.SkillsTertiaryRectangle) = SplitBottomAnchoredThreeRectanglesFromRight(
+            _blockedState.HealthSquareRectangle = ToStandard(healthSquare);
+            _blockedState.FlaskRectangle = ToStandard(flask);
+            _blockedState.FlaskTertiaryRectangle = ToStandard(flaskTertiary);
+
+            (RectangleF manaSquare, RectangleF skills, RectangleF skillsTertiary) = SplitBottomAnchoredThreeRectanglesFromRight(
                 rightCombined,
                 SideCompanionHeightRatio,
                 SideTertiaryCompanionHeightRatio,
                 SideTertiaryCompanionWidthRatio);
+            _blockedState.ManaSquareRectangle = ToStandard(manaSquare);
+            _blockedState.SkillsRectangle = ToStandard(skills);
+            _blockedState.SkillsTertiaryRectangle = ToStandard(skillsTertiary);
 
             RefreshQuestTrackerAreas(gameController, now);
 
@@ -163,6 +169,9 @@ namespace ClickIt.Features.Area
 
             return (fullScreen, leftCombined, rightCombined);
         }
+
+        private static RectangleF ToStandard(RectangleF ltrb)
+            => new(ltrb.X, ltrb.Y, ltrb.Width - ltrb.X, ltrb.Height - ltrb.Y);
 
         private void RefreshQuestTrackerAreas(GameController gameController, long now)
         {

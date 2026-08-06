@@ -32,10 +32,19 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryGetLabelRoot(label, out object? root) || root == null)
                 return 0;
 
-            return DynamicAccess.TryGetDynamicValue(root, DynamicAccessProfiles.Address, out object? rawAddress)
-                && rawAddress != null
-                ? unchecked((ulong)Convert.ToInt64(rawAddress))
-                : 0;
+            // Fail-closed: a non-numeric Address payload from the obfuscated API must not throw in the
+            // selection hot path — treat it as unresolvable (0) instead.
+            try
+            {
+                return DynamicAccess.TryGetDynamicValue(root, DynamicAccessProfiles.Address, out object? rawAddress)
+                    && rawAddress != null
+                    ? unchecked((ulong)Convert.ToInt64(rawAddress))
+                    : 0;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         internal static bool IsLabelElementValid(LabelOnGround? label)

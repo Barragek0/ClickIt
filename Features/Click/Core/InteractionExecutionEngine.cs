@@ -4,6 +4,11 @@ namespace ClickIt.Features.Click.Core
     {
         private readonly InteractionExecutionEngineDependencies _dependencies = dependencies;
 
+        // Let the game register the hover on the blight menu button before the click lands — clicking
+        // too soon after the cursor arrives can miss the element (the UIHover read is unreliable for
+        // a freshly-moved cursor).
+        private const int BlightMenuClickSettleMs = 60;
+
         public ExecutionResult Execute(ClickTickContext context, ClickCandidates candidates, DecisionResult decision)
         {
             return decision.GroundItemsVisible
@@ -266,6 +271,12 @@ namespace ClickIt.Features.Click.Core
                 case BlightBuildActionKind.ClickPosition:
                     _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage(
                         "BlightBuildClick", $"{action.DebugMessage} ({clickPos.X:0.0},{clickPos.Y:0.0})", MechanicIds.Blight);
+                    if (action.IsMenuClick)
+                    {
+                        // Let the game register the hover on the menu button before the click lands —
+                        // clicking too soon after the cursor arrives can miss the element entirely.
+                        Thread.Sleep(BlightMenuClickSettleMs);
+                    }
                     _dependencies.LabelInteraction.PerformMechanicClick(clickPos);
                     return true;
 

@@ -152,10 +152,15 @@ namespace ClickIt.Core.Bootstrap
                         // not in a clickable area (e.g. behind the minimap or off-screen),
                         // skip the click without resetting progress — resetting to Idle would
                         // restart the whole walk->stop cycle every time a transient position
-                        // (e.g. the player's feet while moving) lands under a UI element.
-                        if (action is { Kind: BlightBuildActionKind.ClickPosition }
-                            && !clickAutomationPort.PointIsInClickableArea(
-                                action.ClickPosition, "blight"))
+                        // (e.g. the player's feet while moving) lands under a UI element.  A blight
+                        // MENU click must additionally still be over a blight tower label/icon — if
+                        // the camera moved or the menu closed since the position was resolved, the
+                        // click is skipped (fail-closed) so it can never land on a different slot.
+                        if (action is { Kind: BlightBuildActionKind.ClickPosition } blightClick
+                            && (blightClick.IsMenuClick
+                                ? !clickAutomationPort.IsBlightTowerUiAt(blightClick.ClickPosition)
+                                : !clickAutomationPort.PointIsInClickableArea(
+                                    blightClick.ClickPosition, "blight")))
                         {
                             return new BlightBuildAction(BlightBuildActionKind.None,
                                 DebugMessage: "Click position not clickable - waiting");

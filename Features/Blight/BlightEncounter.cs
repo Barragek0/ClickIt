@@ -6,13 +6,15 @@ internal sealed class BlightEncounter
 {
     internal bool IsActive { get; private set; }
 
-    internal bool Update(Entity? pump, int pathwayCount)
+    internal bool Update(Entity? pump, int pathwayCount, bool hasPersistedPump = false)
     {
-        if (pump == null)
+        if (pump == null && !hasPersistedPump)
         {
             if (IsActive) { IsActive = false; return true; }
             return false;
         }
+        if (pump == null)
+            return false;
 
         bool wasActive = IsActive;
         IsActive = !IsPumpCompleted(pump) && pathwayCount > 0;

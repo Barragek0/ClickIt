@@ -102,7 +102,7 @@ namespace ClickIt.Features.Click
                                 ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
                                 services.ClickDebugPublisher,
                                 PointIsInClickableArea,
-                                IsBlightBuildOrUpgradeIconAt);
+                                pos => IsBlightBuildOrUpgradeIconAt(pos));
                 }
 
                 private ClickRuntimeEngineDependencies CreateClickRuntimeEngineDependencies()

@@ -111,8 +111,8 @@ namespace ClickIt.Tests.Features.Click
             Assert.IsNull(result);
 
             latestSnapshot.Should().NotBeNull();
-            latestSnapshot!.Stage.Should().Be("FindLabelIndexMiss");
-            latestSnapshot.Notes.Should().Contain("misses:1");
+            latestSnapshot!.Stage.Should().Be("FindLabelExhausted", "a single index miss advances past it instead of aborting the whole range");
+            latestSnapshot.Notes.Should().Contain("examined:1");
         }
 
         private static LabelSelectionScanEngine CreateEngine(

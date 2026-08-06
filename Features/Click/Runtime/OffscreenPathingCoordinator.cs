@@ -154,22 +154,31 @@ namespace ClickIt.Features.Click.Runtime
         }
 
         // Pathfinding clicks must never land on a blight tower's build/upgrade icon (that would
-        // accidentally build or upgrade a tower). When the resolved click would hit one, walk the
-        // click back along the player→target line — not toward the window center — and keep stepping
-        // until the point is clickable, so a fixed center-ward jump can't land in a blocked UI
-        // region (e.g. the buff bar) where the click is rejected and the walk stalls.
+        // accidentally build or upgrade a tower).  Build/upgrade icons are PADDED UNCLICKABLE BOXES:
+        // when the resolved click lands in (or near) one, walk the click back along the player→target
+        // line and keep stepping until the point is OUTSIDE every icon box AND clickable — so a
+        // repositioned click can never land on another icon either.  Pure geometry, no UIHover.
         private Vector2 ResolveBlightIconSafeClickPosition(Vector2 walkClick, Vector2 targetScreen, string targetPath)
         {
             if (_dependencies.IsBlightBuildOrUpgradeIconAt == null || !_dependencies.IsBlightBuildOrUpgradeIconAt(walkClick))
                 return walkClick;
 
-            Vector2 offset;
+            Vector2 offset = walkClick;
             try
             {
                 Size2F win = _dependencies.GameController?.Window.GetWindowRectangleTimeCache.Size ?? default;
-                offset = win.Width > 0f && win.Height > 0f
-                    ? ResolveSafeClickAlongPath(targetScreen, win, point => _dependencies.PointIsInClickableArea(point, targetPath))
+                bool hasWindow = win.Width > 0f && win.Height > 0f;
+
+                offset = hasWindow
+                    ? ResolveSafeClickAlongPath(targetScreen, win, point =>
+                        !_dependencies.IsBlightBuildOrUpgradeIconAt(point)
+                        && _dependencies.PointIsInClickableArea(point, targetPath))
                     : new Vector2(walkClick.X + BlightIconAvoidOffset, walkClick.Y + BlightIconAvoidOffset);
+
+                // The path search falls back to the target when nothing else matched — never click a
+                // point that is still on/near an icon: push it away from the screen center instead.
+                if (hasWindow && _dependencies.IsBlightBuildOrUpgradeIconAt(offset))
+                    offset = EscapeIconBox(offset, win);
             }
             catch
             {
@@ -180,6 +189,19 @@ namespace ClickIt.Features.Click.Runtime
             _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] Click would hit a blight tower build/upgrade icon — offsetting to ({offset.X:F0},{offset.Y:F0})");
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("BlightIconAvoided", "Pathfinding click offset away from a blight tower icon", null);
             return offset;
+        }
+
+        // Pushes a point away from the screen center in increasing steps until it clears every icon
+        // box — the last-resort escape when no point along the player→target line is safe.
+        private Vector2 EscapeIconBox(Vector2 point, Size2F win)
+        {
+            for (float d = BlightIconAvoidOffset; d <= BlightIconAvoidOffset * 4f; d += BlightIconAvoidOffset)
+            {
+                Vector2 candidate = OffsetAwayFromScreenCenter(point, win, d);
+                if (!_dependencies.IsBlightBuildOrUpgradeIconAt!(candidate))
+                    return candidate;
+            }
+            return point;
         }
 
         internal static Vector2 ResolveSafeClickAlongPath(Vector2 targetScreen, Size2F window, Func<Vector2, bool> isClickable)

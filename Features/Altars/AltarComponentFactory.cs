@@ -125,7 +125,7 @@ namespace ClickIt.Features.Altars
                 string line = TextHelpers.GetLine(altarMods, i);
                 if (i == 0)
                     negativeModType = line;
-                else if (line != null)
+                else if (!string.IsNullOrEmpty(line))
                     mods.Add(line);
             }
 

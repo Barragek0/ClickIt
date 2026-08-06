@@ -1099,6 +1099,7 @@ internal sealed class ImGuiDebugOverlay(
                     _ = ImGui.TableNextColumn();
                     ImGui.Text(s.Action == BlightPlanAction.Build ? "BUILD" : "UPGRADE");
                     _ = ImGui.TableNextColumn();
+                    string targetName = _blight.GetStepTargetName(s);
                     NumVec4 typeColor = s.TowerType switch
                     {
                         BlightTowerType.Chilling => Vec4(new Color(50, 130, 255)),
@@ -1106,7 +1107,7 @@ internal sealed class ImGuiDebugOverlay(
                         BlightTowerType.Fireball => Vec4(new Color(200, 60, 60)),
                         _ => CWhite
                     };
-                    ImGui.TextColored(typeColor, s.TowerType.ToString());
+                    ImGui.TextColored(typeColor, targetName);
                     _ = ImGui.TableNextColumn();
                     ImGui.Text($"lvl{s.TargetLevel}");
                     _ = ImGui.TableNextColumn();
@@ -1234,13 +1235,10 @@ internal sealed class ImGuiDebugOverlay(
                 if (ImGui.Button(_settings.BlightDebugShowLaneLabels.Value ? "Lane labels: ON" : "Lane labels: OFF"))
                     _settings.BlightDebugShowLaneLabels.Value = !_settings.BlightDebugShowLaneLabels.Value;
 
-                (int From, int To)[] extraEdges = _blight.TryGetExtraLaneEdges();
                 if (!_covTreeHasCache
-                    || !ReferenceEquals(coverage, _covTreeCoverage)
-                    || !ReferenceEquals(extraEdges, _covTreeExtraEdges))
+                    || !ReferenceEquals(coverage, _covTreeCoverage))
                 {
                     _covTreeCoverage = coverage;
-                    _covTreeExtraEdges = extraEdges;
                     _covTreePositions.Clear();
                     _covTreeBranchData.Clear();
                     _covTreeChildren.Clear();
@@ -1251,7 +1249,7 @@ internal sealed class ImGuiDebugOverlay(
                     _covTreeBranchData.AddRange(branchData);
                     if (branchData.Count > 0)
                     {
-                        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage, extraEdges);
+                        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
                         _covTreeChildren.AddRange(children);
                         for (int b = 0; b < branchData.Count; b++)
                         {
@@ -1328,7 +1326,7 @@ internal sealed class ImGuiDebugOverlay(
                 LaneCoverageResult seg = coverage[s];
                 ImGui.PushStyleColor(ImGuiCol.Text, SegTextColor(seg));
                 ImGui.TreeNodeEx(
-                    $"{lane.Name}{i + 1} {Pt(seg.Midpoint)} {Flags(seg)}##covseg{s}",
+                    $"{lane.Name}.{i + 1} {Pt(seg.Midpoint)} {Flags(seg)}##covseg{s}",
                     ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen);
                 ImGui.PopStyleColor();
             }
@@ -1709,9 +1707,17 @@ internal sealed class ImGuiDebugOverlay(
                 BlightPlanStep s = plan.Steps[i];
                 string marker = i == plan.CurrentStepIndex ? ">" : " ";
                 string action = s.Action == BlightPlanAction.Build ? "BUILD" : "UPGRADE";
-                sb.AppendLine($"  {marker}[{i + 1}] {action} {s.TowerType} lvl{s.TargetLevel} ({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
+                sb.AppendLine($"  {marker}[{i + 1}] {action} {_blight.GetStepTargetName(s)} lvl{s.TargetLevel} ({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
             }
         }
+
+        Entity? pumpEntity = _blight.PumpEntity;
+        if (pumpEntity != null)
+        {
+            sb.AppendLine($"Pump: grid=({pumpEntity.GridPosNum.X:F0},{pumpEntity.GridPosNum.Y:F0}) world=({pumpEntity.PosNum.X:F0},{pumpEntity.PosNum.Y:F0})");
+        }
+        sb.Append(_blight.DumpPathwayDebug());
+        sb.Append(_blight.DumpBranchRootDebug());
 
         IReadOnlyList<BlightCachedTower> knownTowers = _blight.KnownTowers;
         bool hasFoundation = false;
@@ -1744,7 +1750,7 @@ internal sealed class ImGuiDebugOverlay(
                 (List<NumVector2>? positions, List<(PumpBranch Branch, List<int> Segments)>? branchData) = _blight.GetBranchDebug();
                 if (branchData != null && branchData.Count > 0)
                 {
-                    List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage, _blight.TryGetExtraLaneEdges());
+                    List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
                     bool havePositions = positions != null && positions.Count == coverage.Length;
                     IReadOnlySet<BlightTowerType> coverageTypes = BlightCoverageFlags.ForStrategy(_blight.CurrentStrategy);
                     string Pt(NumVector2 p) => havePositions ? $"({p.X:F0},{p.Y:F0})" : "";
@@ -1755,7 +1761,7 @@ internal sealed class ImGuiDebugOverlay(
                         for (int i = 0; i < lane.Segments.Count; i++)
                         {
                             LaneCoverageResult seg = coverage[lane.Segments[i]];
-                            sb.AppendLine($"{indent}{lane.Name}{i + 1} {Pt(seg.Midpoint)} {BlightCoverageFlags.Format(seg, coverageTypes)}");
+                            sb.AppendLine($"{indent}{lane.Name}.{i + 1} {Pt(seg.Midpoint)} {BlightCoverageFlags.Format(seg, coverageTypes)}");
                         }
                         for (int c = 0; c < lane.Children.Count; c++)
                         {
@@ -1869,9 +1875,8 @@ internal sealed class ImGuiDebugOverlay(
 
     // Coverage-tree render cache: the blight cache only refreshes on its own 200ms cadence, and
     // the topology derivation (branch search + lane forest) is expensive on large maps, so it is
-    // rebuilt only when the underlying coverage/extra-edge references change.
+    // rebuilt only when the underlying coverage reference changes.
     private LaneCoverageResult[]? _covTreeCoverage;
-    private (int From, int To)[] _covTreeExtraEdges = [];
     private readonly List<NumVector2> _covTreePositions = [];
     private readonly List<(PumpBranch Branch, List<int> Segments)> _covTreeBranchData = [];
     private readonly List<List<int>> _covTreeChildren = [];

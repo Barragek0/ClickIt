@@ -276,9 +276,10 @@ public class BlightLaneCoverageTests
     }
 
     [TestMethod]
-    public void BuildLaneTree_DivergenceSplitsIntoNamedChildLanes()
+    public void BuildLaneTree_LargestArmContinuesLane_SmallerArmIsNumberedSideLane()
     {
-        // Tree: 0(root)->1->2(fork), children 3->4 (AA) and 5->6 (AB).
+        // Tree: 0(root)->1->2(fork). Arm 3->4 has 2 segments, arm 5->6->7 has 3 — the larger arm
+        // continues the lane "A", the smaller one becomes the numbered side lane "A-1".
         LaneCoverageResult[] coverage =
         [
             new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
@@ -288,24 +289,24 @@ public class BlightLaneCoverageTests
             new(3, false, new NumVector2(35, 0)),
             new(2, false, new NumVector2(25, 10)),
             new(5, false, new NumVector2(35, 10)),
+            new(6, false, new NumVector2(45, 10)),
         ];
 
         List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
         BlightLaneNode lane = BlightLaneTopology.BuildLaneTree(coverage, children, 0, "A");
 
         lane.Name.Should().Be("A");
-        lane.Segments.Should().Equal(0, 1, 2);
-        lane.Children.Should().HaveCount(2, "the fork splits into two divergences");
-        lane.Children[0].Name.Should().Be("AA");
+        lane.Segments.Should().Equal([0, 1, 2, 5, 6, 7], "the larger arm continues the same lane");
+        lane.Children.Should().HaveCount(1, "only the smaller arm becomes a side lane");
+        lane.Children[0].Name.Should().Be("A-1");
         lane.Children[0].Segments.Should().Equal(3, 4);
-        lane.Children[1].Name.Should().Be("AB");
-        lane.Children[1].Segments.Should().Equal(5, 6);
     }
 
     [TestMethod]
-    public void BuildLaneTree_DeepDivergence_NestsChildLanes()
+    public void BuildLaneTree_DeepChain_StaysOneLane_WithNumberedSideLane()
     {
-        // 0->1->2->3->4(fork), children 5 (AA) and 6 (AB) — a second-level divergence.
+        // A deep chain 0->1->2->3->4->5 then a fork at 5: child 6 (1 seg) vs child 7->8 (2 segs).
+        // The larger arm (7->8) continues the lane, so the deep chain stays ONE lane "A".
         LaneCoverageResult[] coverage =
         [
             new(BlightLaneTopology.OrphanSentinel, false, new NumVector2(0, 0)),
@@ -314,18 +315,18 @@ public class BlightLaneCoverageTests
             new(2, false, new NumVector2(25, 0)),
             new(3, false, new NumVector2(35, 0)),
             new(4, false, new NumVector2(45, 0)),
-            new(4, false, new NumVector2(45, 10)),
+            new(5, false, new NumVector2(55, 0)),
+            new(5, false, new NumVector2(55, 10)),
+            new(7, false, new NumVector2(65, 10)),
         ];
 
         List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(coverage);
         BlightLaneNode lane = BlightLaneTopology.BuildLaneTree(coverage, children, 0, "A");
 
-        lane.Segments.Should().Equal(0, 1, 2, 3, 4);
-        lane.Children.Should().HaveCount(2);
-        lane.Children[0].Name.Should().Be("AA");
-        lane.Children[0].Segments.Should().Equal(5);
-        lane.Children[1].Name.Should().Be("AB");
-        lane.Children[1].Segments.Should().Equal(6);
+        lane.Segments.Should().Equal([0, 1, 2, 3, 4, 5, 7, 8], "the deep chain stays one lane through the larger arm");
+        lane.Children.Should().HaveCount(1);
+        lane.Children[0].Name.Should().Be("A-1");
+        lane.Children[0].Segments.Should().Equal(6);
     }
 
     [TestMethod]
@@ -554,47 +555,6 @@ public class BlightLaneCoverageTests
         children[2].Should().BeEmpty();
     }
 
-    // ── Bridge edges are real lane segments in the branch/divergence structure ──
-
-    [TestMethod]
-    public void BuildCoverageChildren_IncludesBridgeEdges_AsRealChildDivergence()
-    {
-        // Root 0 → 1 → 2 (dead-end leaf) and root 0 → 3 → 4 → 5. The pink bridge (2,4) means the
-        // dead-end lane continues onto the target arm, so the bridge target (4) gains the bridged
-        // leaf (2) as a REAL child — a divergence at 4 — while 2 keeps its own tree parent (1).
-        LaneCoverageResult[] coverage =
-        [
-            new(BlightLaneTopology.OrphanSentinel, false, NumVector2.Zero), // 0 root
-            new(0, true, new NumVector2(5, 0)),                             // 1 arm A
-            new(1, true, new NumVector2(15, 0)),                            // 2 arm A dead-end (bridge source)
-            new(0, true, new NumVector2(5, 20)),                            // 3 arm B
-            new(3, true, new NumVector2(15, 20)),                           // 4 arm B (bridge target)
-            new(4, true, new NumVector2(25, 20)),                           // 5 arm B continues
-        ];
-
-        List<List<int>> withBridge = BlightLaneTopology.BuildCoverageChildren(coverage, [(2, 4)]);
-
-        withBridge[4].Should().Contain(2, "the bridge target gains the bridged arm as a real child");
-        withBridge[4].Should().Contain(5, "the target keeps its own continuation");
-        withBridge[1].Should().Contain(2, "the bridged leaf keeps its own tree parent too");
-    }
-
-    [TestMethod]
-    public void BuildCoverageChildren_IgnoresOutOfRangeBridgeEdges()
-    {
-        LaneCoverageResult[] coverage =
-        [
-            new(BlightLaneTopology.OrphanSentinel, false, NumVector2.Zero), // 0 root
-            new(0, true, new NumVector2(10, 0)),                            // 1 lane
-        ];
-
-        List<List<int>> children = BlightLaneTopology.BuildCoverageChildren(
-            coverage, [(-1, 1), (0, 0), (1, 99)]);
-
-        children[0].Should().ContainSingle().Which.Should().Be(1);
-        children[1].Should().BeEmpty();
-    }
-
     [TestMethod]
     public void IsRealLaneSegment_ExcludesRootsAndPumpStubs()
     {
@@ -607,263 +567,137 @@ public class BlightLaneCoverageTests
         BlightLaneTopology.IsRealLaneSegment(stub).Should().BeFalse();
     }
 
-    // ── Missing lane edges (real lanes the single-parent tree drops) ──
-
-    // Faithful Atoll AABA/ABA mini-subtree (positions + tree parents from the 18:39 dump).
-    //   AAB side: 0 root → 1 AAB1 → 2 AAB2 → (3 AABA1, 4 AABA2 → 5 AABAA1, 6 AABAB1)
-    //   ABA side: 0 root → 7 AB5 → 8 ABA1 → 9 ABA2 → 10 ABA3 → 11 ABA4 → 12 ABA5 → 13 ABA6
-    //             → 14 ABA7 → 15 ABA8 → 16 ABAA1 → 17 ABAB1
-    private static readonly (int Parent, float X, float Y)[] AtollAabaAba =
-    [
-        (-2, 495, 900),  // 0  upper-branch root (A12/AA1 area)
-        (0, 520, 866),   // 1  AAB1
-        (1, 512, 858),   // 2  AAB2
-        (2, 506, 856),   // 3  AABA1
-        (2, 500, 856),   // 4  AABA2
-        (4, 490, 853),   // 5  AABAA1
-        (4, 495, 858),   // 6  AABAB1
-        (0, 466, 886),   // 7  AB5
-        (7, 467, 882),   // 8  ABA1
-        (8, 467, 880),   // 9  ABA2
-        (9, 466, 877),   // 10 ABA3
-        (10, 470, 874),  // 11 ABA4
-        (11, 477, 871),  // 12 ABA5
-        (12, 476, 865),  // 13 ABA6
-        (13, 468, 856),  // 14 ABA7
-        (14, 466, 845),  // 15 ABA8
-        (15, 468, 842),  // 16 ABAA1
-        (16, 464, 838),  // 17 ABAB1
-    ];
-
     [TestMethod]
-    public void FindMissingLaneEdges_FindsAtollCrossArmLanes_UserPairs()
+    public void ComputeCoverage_PumpNearLanes_NonAdjacentIds_SplitIntoSeparateBranchRoots()
     {
-        // The user sees real lanes in-game between AABAB1↔ABA5 and AABAA1↔ABAA1, but the single-parent
-        // spanning tree dropped them: AABAB1 is closer to AABA2 (5 units) than ABA5 (22), so it was
-        // wired into its own arm and the cross-arm lane never entered the tree. Each dead-end bridges
-        // to its nearest forward-aligned point on the other arm — in the live map that lands on the
-        // closest ABA-arm point (ABA6/ABA7, a couple units before ABA5/ABAA1 on the same arm).
-        var (positions, coverage) = BuildAtollCoverage(AtollAabaAba);
-
-        (int From, int To)[] edges = BlightLaneTopology.FindMissingLaneEdges(positions, coverage);
-
-        edges.Should().Contain((6, 13), "AABAB1→ABA6: the cross-arm lane to the ABA arm the tree missed");
-        edges.Should().Contain((5, 14), "AABAA1→ABA7: the cross-arm lane to the ABA arm the tree missed");
-    }
-
-    [TestMethod]
-    public void FindMissingLaneEdges_ExcludesForkAndSameArmPairs()
-    {
-        var (positions, coverage) = BuildAtollCoverage(AtollAabaAba);
-
-        (int From, int To)[] edges = BlightLaneTopology.FindMissingLaneEdges(positions, coverage);
-
-        edges.Should().NotContain((5, 6), "AABAA1/AABAB1 share the AABA2 fork — no lane between the split arms");
-        edges.Should().NotContain((12, 16), "ABA5/ABAA1 are the same arm (tree path ≈ direct) — already one lane");
-        edges.Should().NotContain((4, 5), "tree-adjacent parent/child is a real tree edge already");
-    }
-
-    [TestMethod]
-    public void FindMissingLaneEdges_ExcludesSiblingForkSpurs()
-    {
-        // Two short spurs off the same fork, only a few units apart — the fork already connects them
-        // via their shared parent, so no extra lane should appear between the split arms.
+        // Two lanes radiate from the pump within the connect distance (the greedy tree would merge
+        // them into one branch root). The game's lane ids are per-lane runs — adjacent ids = same
+        // lane — so non-adjacent pump-near ids must split into separate orphan roots (branch starts).
         var positions = new List<NumVector2>
         {
-            new(0, 0),    // 0 root
-            new(10, 0),   // 1 fork
-            new(12, 4),   // 2 spur A (parent 1)
-            new(16, 0),   // 3 spur B (parent 1)
+            new(5, 0),    // 0 lane A start (pump-near)
+            new(15, 0),   // 1 lane A
+            new(25, 0),   // 2 lane A
+            new(5, 20),   // 3 lane B start (pump-near)
+            new(15, 20),  // 4 lane B
+            new(25, 20),  // 5 lane B
         };
-        var coverage = new LaneCoverageResult[]
-        {
-            new(-2, false, new NumVector2(0, 0)),
-            new(0, true, new NumVector2(5, 0)),
-            new(1, true, new NumVector2(11, 2)),
-            new(1, true, new NumVector2(13, 2)),
-        };
+        long[] ids = [100, 99, 98, 50, 49, 48];
 
-        (int From, int To)[] edges = BlightLaneTopology.FindMissingLaneEdges(positions, coverage);
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
 
-        edges.Should().BeEmpty("spurs off the same fork are already connected through the fork");
+        coverage[0].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane A's pump-near segment is its own branch root");
+        coverage[3].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane B's pump-near segment is its own branch root (non-adjacent id)");
+        coverage[1].ParentIndex.Should().Be(0, "lane A continues along its run");
+        coverage[4].ParentIndex.Should().Be(3, "lane B continues along its run");
     }
 
     [TestMethod]
-    public void FindMissingLaneEdges_OnlyBridgesLeafToNearestForwardCandidate_NoFan()
+    public void ComputeCoverage_SinglePumpLane_AdjacentIds_StaysOneBranchRoot()
     {
-        // Arm A ends at a leaf whose lane heads east. Two points on arm B lie in that forward cone —
-        // the leaf must bridge only to the NEAREST one, never fan out to both.
+        // A single lane whose pump-near segments carry adjacent ids must NOT be split into spurious
+        // branches (the greedy chain is the one lane).
         var positions = new List<NumVector2>
         {
-            new(0, 0),    // 0 root
-            new(10, 0),   // 1 arm A
-            new(20, 0),   // 2 arm A
-            new(30, 0),   // 3 arm A LEAF — lane heads east
-            new(10, 10),  // 4 arm B
-            new(38, 5),   // 5 arm B near — in leaf 3's forward cone (9.4u)
-            new(44, 8),   // 6 arm B far  — also in the cone (16.1u), but not nearest
+            new(5, 0),    // 0 start
+            new(15, 0),   // 1
+            new(25, 0),   // 2
         };
-        var coverage = new LaneCoverageResult[]
-        {
-            new(-2, false, new NumVector2(0, 0)),
-            new(0, true, new NumVector2(5, 0)),
-            new(1, true, new NumVector2(15, 0)),
-            new(2, true, new NumVector2(25, 0)),
-            new(0, true, new NumVector2(5, 5)),
-            new(4, true, new NumVector2(24, 8)),
-            new(5, true, new NumVector2(41, 6)),
-        };
+        long[] ids = [100, 99, 98];
 
-        (int From, int To)[] edges = BlightLaneTopology.FindMissingLaneEdges(positions, coverage);
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
 
-        edges.Should().Contain((3, 5), "the leaf's single nearest forward-aligned candidate");
-        edges.Should().NotContain((3, 6), "the farther forward candidate must not fan out");
-        edges.Should().HaveCount(1, "exactly one bridge from this leaf");
+        coverage[0].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "the single lane's start is the one branch root");
+        coverage[1].ParentIndex.Should().Be(0, "adjacent id — same lane, no split");
+        coverage[2].ParentIndex.Should().Be(1);
     }
 
     [TestMethod]
-    public void FindMissingLaneEdges_ParallelArms_NoLadderOfConnections()
+    public void ComputeCoverage_PumpNearLanes_WithoutIds_KeepsLanesSeparate()
     {
-        // Two arms running parallel 10 units apart: every point on one arm is within 45 units of the
-        // other, but no lane continues between them (both arms just end). No bridges at all — the old
-        // distance-only rule produced a ladder here.
+        // ids == null: the connectivity graph keeps two parallel pump-near lanes SEPARATE (each is
+        // its own branch) instead of the old greedy tree falsely merging them — a tower never
+        // covers the other lane just because the lanes run near each other.
         var positions = new List<NumVector2>
         {
-            new(0, 0),    // 0 root
-            new(10, 0),   // 1 arm A
-            new(20, 0),   // 2 arm A
-            new(30, 0),   // 3 arm A leaf (parent 2)
-            new(10, 10),  // 4 arm B
-            new(20, 10),  // 5 arm B
-            new(30, 10),  // 6 arm B leaf (parent 5)
-        };
-        var coverage = new LaneCoverageResult[]
-        {
-            new(-2, false, new NumVector2(0, 0)),
-            new(0, true, new NumVector2(5, 0)),
-            new(1, true, new NumVector2(15, 0)),
-            new(2, true, new NumVector2(25, 0)),
-            new(0, true, new NumVector2(5, 5)),
-            new(4, true, new NumVector2(15, 10)),
-            new(5, true, new NumVector2(25, 10)),
+            new(5, 0), new(15, 0), new(25, 0), new(5, 20), new(15, 20), new(25, 20),
         };
 
-        (int From, int To)[] edges = BlightLaneTopology.FindMissingLaneEdges(positions, coverage);
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0));
 
-        edges.Should().BeEmpty("parallel arms with no continuation must not be cross-connected");
+        coverage[0].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel);
+        coverage[3].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel,
+            "two parallel lanes stay separate branches; no false cross-lane merge");
     }
 
     [TestMethod]
-    public void FindMissingLaneEdges_PumpGate_KeepsBridgeNearPump_DropsFarBridges()
+    public void ComputeCoverage_FourLaneHub_RealCourthouseGeometry_SplitsIntoFourBranchRoots()
     {
-        // Arm A leaf (3) heads east; arm B point (5) is its single nearest forward candidate (the
-        // existing NoFan test returns exactly (3,5)). With a pump near the candidate the bridge
-        // survives; with a pump far from both ends it is dropped — a guessed far-from-pump bridge is
-        // more likely a wrong anchor than a real lane.
+        // Replicates the Courthouse 83 capture: four id-runs all starting at the shared hub (625,502)
+        // and fanning around the pump (607,522). The old greedy tree merged all four into one branch;
+        // the id-lane structure must root each lane at its own pump-closest segment.
         var positions = new List<NumVector2>
         {
-            new(0, 0),    // 0 root
-            new(10, 0),   // 1 arm A
-            new(20, 0),   // 2 arm A
-            new(30, 0),   // 3 arm A LEAF — lane heads east
-            new(10, 10),  // 4 arm B
-            new(38, 5),   // 5 arm B near — in leaf 3's forward cone (9.4u)
-            new(44, 8),   // 6 arm B far  — also in the cone (16.1u), but not nearest
+            new(625, 502), // 0 lane A hub (id 1141)
+            new(617, 510), // 1
+            new(609, 517), // 2 lane A root — 5.4 from pump
+            new(596, 509), // 3
+            new(588, 503), // 4
+            new(575, 494), // 5
+            new(625, 502), // 6 lane B hub (id 1044)
+            new(627, 517), // 7 lane B root — 20.6 from pump
+            new(629, 527), // 8
+            new(632, 540), // 9
+            new(627, 553), // 10
+            new(627, 562), // 11
+            new(625, 502), // 12 lane C hub (id 935)
+            new(621, 517), // 13 lane C root — 14.9 from pump
+            new(627, 530), // 14
+            new(627, 539), // 15
+            new(621, 552), // 16
+            new(625, 502), // 17 lane D hub (id 802)
+            new(617, 498), // 18 lane D root — 26.0 from pump
+            new(609, 494), // 19
+            new(615, 481), // 20
         };
-        var coverage = new LaneCoverageResult[]
-        {
-            new(-2, false, new NumVector2(0, 0)),
-            new(0, true, new NumVector2(5, 0)),
-            new(1, true, new NumVector2(15, 0)),
-            new(2, true, new NumVector2(25, 0)),
-            new(0, true, new NumVector2(5, 5)),
-            new(4, true, new NumVector2(24, 8)),
-            new(5, true, new NumVector2(41, 6)),
-        };
+        long[] ids =
+        [
+            1141, 1140, 1139, 1138, 1137, 1136,
+            1044, 1043, 1042, 1041, 1040, 1039,
+            935, 934, 933, 932, 931,
+            802, 801, 800, 799,
+        ];
 
-        (int From, int To)[] nearPump = BlightLaneTopology.FindMissingLaneEdges(
-            positions, coverage, pumpGridPosition: new NumVector2(40, 6));
-        nearPump.Should().Contain((3, 5), "the bridge's candidate end sits inside the pump proximity");
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(607, 522), ids: ids);
 
-        (int From, int To)[] farPump = BlightLaneTopology.FindMissingLaneEdges(
-            positions, coverage, pumpGridPosition: new NumVector2(0, 100));
-        farPump.Should().BeEmpty("bridges with neither end near the pump are dropped");
+        coverage[2].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane A roots at its pump-closest segment (609,517)");
+        coverage[13].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "merged lane BC roots at (621,517)");
+        coverage[18].ParentIndex.Should().Be(BlightLaneTopology.OrphanSentinel, "lane D roots at (617,498)");
+
+        // Lanes B and C run alongside each other (parallel rows of one game lane) — they merge into
+        // one branch, so B's pump-closest segment (627,517) is NOT a separate branch root.
+        coverage[7].ParentIndex.Should().NotBe(BlightLaneTopology.OrphanSentinel, "lane B merges into lane C");
+
+        int orphans = coverage.Count(r => r.ParentIndex == BlightLaneTopology.OrphanSentinel);
+        orphans.Should().Be(3, "three real lanes at the pump → three branch roots (A, merged BC, D)");
+
+        // Each lane chains along its own id run and never cross-merges into a neighbour lane.
+        coverage[1].ParentIndex.Should().Be(2, "lane A continues toward its root");
+        coverage[3].ParentIndex.Should().Be(2, "lane A's other side chains back to the root");
+        coverage[8].ParentIndex.Should().Be(7, "lane B chains to its own pump-closest segment");
+        coverage[14].ParentIndex.Should().Be(13, "lane C chains to its own root, not lane B's");
+        coverage[19].ParentIndex.Should().Be(18, "lane D chains to its own root");
     }
 
     // ── Bridge coverage propagation (a bridged dead-end is one lane with its target arm) ──
 
-    // Fork at node 1 (pump-rooted): arm A = 1→2 (dead-end 2), arm B = 1→3→4 (dead-end 4);
-    // dead-end 2 bridges to dead-end 4. The arms are separated by 20 units so the spanning tree
-    // keeps them as distinct branches (no tie absorption).
-    private static LaneCoverageResult[] ComputeForkCoverage(bool chillingOnArmA)
-    {
-        var positions = new List<NumVector2>
-        {
-            new(0, 0),    // 0 root (at pump)
-            new(10, 0),   // 1 fork
-            new(20, 0),   // 2 arm A dead-end (segment midpoint (15,0))
-            new(10, 20),  // 3 arm B
-            new(20, 20),  // 4 arm B dead-end (segment midpoint (15,20))
-        };
-        return BlightLaneTopology.ComputeCoverage(
-            positions,
-            chillingOnArmA
-                ? m => m.X > 10f && m.X < 20f && m.Y < 5f ? (true, false, false) : (false, false, false)
-                : m => m.X > 10f && m.X < 20f && m.Y > 5f ? (true, false, false) : (false, false, false),
-            pumpGridPosition: new NumVector2(0, 0));
-    }
-
-    [TestMethod]
-    public void ApplyBridgeCoverage_FlowsCoverageAcrossBridge_ToOtherArm()
-    {
-        LaneCoverageResult[] coverage = ComputeForkCoverage(chillingOnArmA: true);
-
-        // Control: the bridge is what carries coverage to arm B — without it arm B stays uncovered.
-        coverage[3].HasChilling.Should().BeFalse();
-        coverage[4].HasChilling.Should().BeFalse();
-
-        LaneCoverageResult[] bridged = BlightLaneTopology.ApplyBridgeCoverage(coverage, [(2, 4)]);
-
-        bridged[4].HasChilling.Should().BeTrue("the bridge carries Chilling from arm A's dead-end to arm B");
-        bridged[3].HasChilling.Should().BeTrue("arm B's upstream segment inherits it");
-        bridged[2].HasChilling.Should().BeTrue("the dead-end keeps its own coverage");
-        bridged[4].IsFullyCovered.Should().BeTrue();
-    }
-
-    [TestMethod]
-    public void ApplyBridgeCoverage_FlowsCoverageAcrossBridge_OtherDirection()
-    {
-        LaneCoverageResult[] coverage = ComputeForkCoverage(chillingOnArmA: false);
-
-        LaneCoverageResult[] bridged = BlightLaneTopology.ApplyBridgeCoverage(coverage, [(2, 4)]);
-
-        bridged[2].HasChilling.Should().BeTrue("the bridge carries Chilling from arm B back to arm A's dead-end");
-        bridged[1].HasChilling.Should().BeTrue("arm A's upstream segment inherits it");
-    }
-
-    [TestMethod]
-    public void ApplyBridgeCoverage_EmptyBridges_ReturnsUnchanged()
-    {
-        LaneCoverageResult[] coverage = ComputeForkCoverage(chillingOnArmA: true);
-
-        LaneCoverageResult[] result = BlightLaneTopology.ApplyBridgeCoverage(coverage, []);
-
-        result.Should().BeSameAs(coverage, "no bridges means no re-propagation");
-    }
-
-    private static (List<NumVector2> Positions, LaneCoverageResult[] Coverage) BuildAtollCoverage(
-        (int Parent, float X, float Y)[] segments)
-    {
-        var positions = new List<NumVector2>(segments.Length);
-        var coverage = new LaneCoverageResult[segments.Length];
-        for (int i = 0; i < segments.Length; i++)
-        {
-            positions.Add(new NumVector2(segments[i].X, segments[i].Y));
-            coverage[i] = new LaneCoverageResult(segments[i].Parent, true, new NumVector2(segments[i].X, segments[i].Y));
-        }
-        return (positions, coverage);
-    }
-
+    // Fork at node 1 (pump-rooted): arm A = 1→2 (dead-end 2), arm B = 1→3→4 (dead-end 4, leaving
+    // the junction exactly straight so the connectivity graph keeps the fork); dead-end 2 bridges
+    // to dead-end 4.
     private static LaneCoverageResult[] ComputeCoverage(
         List<NumVector2> positions,
         Func<NumVector2, (bool chilling, bool seismic, bool fireball)> getCoverage,

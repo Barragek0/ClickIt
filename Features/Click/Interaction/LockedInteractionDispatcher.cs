@@ -9,7 +9,7 @@ namespace ClickIt.Features.Click.Interaction
         internal long GetSuccessfulClickSequence()
             => _interactionExecutor.GetSuccessfulClickSequence();
 
-        internal void PerformClick(
+        internal bool PerformClick(
             Vector2 clickPos,
             Element? expectedElement,
             GameController? controller,
@@ -19,11 +19,11 @@ namespace ClickIt.Features.Click.Interaction
         {
             using (LockManager.AcquireStatic(ElementLock))
             {
-                _interactionExecutor.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
+                return _interactionExecutor.PerformClick(clickPos, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
             }
         }
 
-        internal void PerformHoldClick(
+        internal bool PerformHoldClick(
             Vector2 clickPos,
             int holdDurationMs,
             Element? expectedElement,
@@ -34,7 +34,7 @@ namespace ClickIt.Features.Click.Interaction
         {
             using (LockManager.AcquireStatic(ElementLock))
             {
-                _interactionExecutor.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
+                return _interactionExecutor.PerformClickAndHold(clickPos, holdDurationMs, expectedElement, controller, forceUiHoverVerification, allowWhenHotkeyInactive, avoidCursorMove);
             }
         }
     }

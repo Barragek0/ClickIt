@@ -161,8 +161,7 @@ internal static class BlightMenuInteractions
     internal const float MenuRegionEnlargeRatio = 1.3f;
 
     // The walk-ready region uses the step's own icon: build (Child[2]) for unbuilt foundations,
-    // upgrade (Child[3]) for built towers. Always using Child[3] for a BUILD step never resolved
-    // (a foundation has no upgrade button) and stalled the build in Walking.
+    // upgrade (Child[3]) for built towers — a foundation has no upgrade button.
     internal static int MenuChildIndexForStep(BlightPlanAction action)
         => action == BlightPlanAction.Upgrade ? 3 : 2;
 

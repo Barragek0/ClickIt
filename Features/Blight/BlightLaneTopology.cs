@@ -10,30 +10,13 @@ internal static class BlightLaneTopology
     internal const float PumpStubRadius = 30f;
 
     internal static LaneCoverageResult[] ComputeCoverage(
-        IReadOnlyList<Entity> pathwayEntities,
-        Func<NumVector2, (bool chilling, bool seismic, bool fireball)> getCoverage,
-        float segmentConnectDistance = 45f,
-        NumVector2? pumpGridPosition = null,
-        Func<NumVector2, (bool empowering, bool shockNova, bool summoning)>? getSupportCoverage = null)
-    {
-        if (pathwayEntities.Count < 2)
-            return [];
-
-        NumVector2[] positions = new NumVector2[pathwayEntities.Count];
-        for (int i = 0; i < positions.Length; i++)
-            positions[i] = ToVec2(pathwayEntities[i]);
-
-        return ComputeCoverage(positions, getCoverage, segmentConnectDistance, pumpGridPosition,
-            getSupportCoverage: getSupportCoverage);
-    }
-
-    internal static LaneCoverageResult[] ComputeCoverage(
         IReadOnlyList<NumVector2> positions,
         Func<NumVector2, (bool chilling, bool seismic, bool fireball)> getCoverage,
         float segmentConnectDistance = 45f,
         NumVector2? pumpGridPosition = null,
         float phantomConnectDistance = PhantomConnectDistance,
         float pumpRootRadius = PumpRootRadius,
+        IReadOnlyList<long>? ids = null,
         Func<NumVector2, (bool empowering, bool shockNova, bool summoning)>? getSupportCoverage = null)
     {
         int n = positions.Count;
@@ -45,16 +28,38 @@ internal static class BlightLaneTopology
         for (int i = 0; i < n; i++)
             results[i] = new LaneCoverageResult(OrphanSentinel, false, NumVector2.Zero);
 
-        int[] parent = pumpGridPosition.HasValue
-            ? BuildPumpRootedParents(positions, pumpGridPosition.Value, segmentConnectDistance, out bool[] connected)
-            : BuildSequentialParents(positions, segmentConnectDistance, out connected);
+        // Build the lane-connectivity graph and root its pump-side tree by BFS.  With the game's
+        // pathway ids the graph is built from id adjacency (consecutive ids within the connect
+        // distance are the same lane — spec Rule 4's connectivity, plus shared fork/hub points),
+        // which keeps real lane runs and never chains points from different lanes that merely pass
+        // near each other.  Without ids (tests) the geometry-pruned graph is used.  The BFS parent
+        // tree gives every node a parent on the same lane toward the pump and makes a fork node
+        // the parent of every branch (Rules 2-3).
+        LaneGraph graph = ids != null && ids.Count == n && pumpGridPosition.HasValue
+            ? BlightLaneGraph.BuildIdBased(positions, ids, pumpGridPosition.Value, segmentConnectDistance)
+            : BlightLaneGraph.Build(positions, segmentConnectDistance);
+        int[] parent;
+        bool[] connected;
+        if (pumpGridPosition.HasValue)
+        {
+            parent = BlightLaneGraph.BuildPumpRootedParents(graph, pumpGridPosition.Value, out connected);
+            // The game assigns each lane a contiguous id run — adjacent ids (id±1) within the
+            // connect distance are the SAME lane.  On top of the graph tree this re-roots each
+            // pump-near lane as its own branch and merges parallel rows of one game lane.
+            if (ids != null && ids.Count == n)
+                ApplyLaneBranchSplits(positions, pumpGridPosition.Value, segmentConnectDistance, pumpRootRadius, ids, parent);
+        }
+        else
+        {
+            parent = BuildSequentialParents(positions, segmentConnectDistance, out connected);
+        }
 
         bool[] isPhantom = pumpGridPosition.HasValue
             ? ConnectOrphanChains(positions, parent, connected, segmentConnectDistance,
                 phantomConnectDistance, pumpGridPosition, pumpRootRadius)
             : new bool[n];
         bool[] isPumpStub = pumpGridPosition.HasValue
-            ? MarkPumpStubs(positions, parent, pumpGridPosition.Value, PumpStubRadius)
+            ? MarkPumpStubs(positions, parent, pumpGridPosition.Value, PumpStubRadius, segmentConnectDistance, ids)
             : new bool[n];
 
         for (int i = 0; i < n; i++)
@@ -76,7 +81,7 @@ internal static class BlightLaneTopology
                 ParentIndex: par, IsFullyCovered: covered, Midpoint: midpoint,
                 HasChilling: hc, HasSeismic: hs, HasFireball: hf,
                 HasEmpowering: he, HasShockNova: hsn, HasSummoning: hsu,
-                TowerBuilt: covered, IsPhantom: isPhantom[i], IsPumpStub: isPumpStub[i]);
+                IsPhantom: isPhantom[i], IsPumpStub: isPumpStub[i]);
         }
 
         return MergeAndPropagate(results, n);
@@ -101,70 +106,161 @@ internal static class BlightLaneTopology
         return parent;
     }
 
-    private static int[] BuildPumpRootedParents(
+    // Re-roots each pump-near lane as its own branch by id order (adjacent ids within the connect
+    // distance are the same lane), cutting the lane's pump-closest segment; parallel rows of one
+    // game lane are merged into a single branch.
+    private static void ApplyLaneBranchSplits(
         IReadOnlyList<NumVector2> positions, NumVector2 pump, float segmentConnectDistance,
-        out bool[] connected)
+        float pumpRootRadius, IReadOnlyList<long> ids, int[] parent)
     {
         int n = positions.Count;
-        int[] parent = new int[n];
-        Array.Fill(parent, -1);
-        bool[] visited = new bool[n];
-        connected = visited;
-
-        // Pump and pathway entities are both terrain objects, so the pump grid position is in
-        // the same space as the pathway points here.
-        int root = -1;
-        float bestDist = float.MaxValue;
+        Dictionary<long, int> indexById = [];
         for (int i = 0; i < n; i++)
-        {
-            float d = Distance(positions[i], pump);
-            if (d < bestDist)
-            {
-                bestDist = d;
-                root = i;
-            }
-        }
-        if (root < 0)
-            return parent;
+            indexById.TryAdd(ids[i], i);
 
-        visited[root] = true;
-        int reached = 1;
-        while (reached < n)
+        // Lane groups = id-adjacency components.
+        bool[] inLane = new bool[n];
+        List<List<int>> groups = [];
+        for (int start = 0; start < n; start++)
         {
-            int bestJ = -1;
-            int bestParent = -1;
-            float bestD = float.MaxValue;
-            for (int j = 0; j < n; j++)
+            if (inLane[start])
+                continue;
+            List<int> lane = [];
+            Queue<int> q = new();
+            q.Enqueue(start);
+            inLane[start] = true;
+            while (q.Count > 0)
             {
-                if (visited[j])
-                    continue;
-                int nearestVisited = -1;
-                float nearestD = float.MaxValue;
-                for (int k = 0; k < n; k++)
+                int cur = q.Dequeue();
+                lane.Add(cur);
+                for (int d = -1; d <= 1; d += 2)
                 {
-                    if (!visited[k])
+                    if (!indexById.TryGetValue(ids[cur] + d, out int t) || inLane[t])
                         continue;
-                    float d = Distance(positions[j], positions[k]);
-                    if (d <= segmentConnectDistance && d < nearestD)
+                    if (Distance(positions[cur], positions[t]) <= segmentConnectDistance)
                     {
-                        nearestD = d;
-                        nearestVisited = k;
+                        inLane[t] = true;
+                        q.Enqueue(t);
                     }
                 }
-                if (nearestVisited >= 0 && nearestD < bestD)
+            }
+            if (lane.Count >= 2)
+                groups.Add(lane);
+        }
+
+        // Pump-near groups: pump-closest segment + dominant direction (root -> further id-neighbour).
+        int[] ownRoot = new int[groups.Count];
+        float[] ownRootDist = new float[groups.Count];
+        float[] dirX = new float[groups.Count], dirY = new float[groups.Count];
+        for (int g = 0; g < groups.Count; g++)
+        {
+            List<int> lane = groups[g];
+            int root = lane[0];
+            float bestD = Distance(positions[root], pump);
+            for (int i = 1; i < lane.Count; i++)
+            {
+                float d = Distance(positions[lane[i]], pump);
+                if (d < bestD)
                 {
-                    bestD = nearestD;
-                    bestJ = j;
-                    bestParent = nearestVisited;
+                    bestD = d;
+                    root = lane[i];
                 }
             }
-            if (bestJ < 0)
-                break;
-            visited[bestJ] = true;
-            parent[bestJ] = bestParent;
-            reached++;
+            ownRoot[g] = root;
+            ownRootDist[g] = bestD;
+            float farD = bestD;
+            for (int d = -1; d <= 1; d += 2)
+            {
+                if (!indexById.TryGetValue(ids[root] + d, out int t) || t == root)
+                    continue;
+                float tD = Distance(positions[t], pump);
+                if (tD > farD)
+                {
+                    farD = tD;
+                    dirX[g] = positions[t].X - positions[root].X;
+                    dirY[g] = positions[t].Y - positions[root].Y;
+                }
+            }
         }
-        return parent;
+
+        // Merge parallel rows into one game lane (roots close + dominant directions parallel).
+        const float LaneMergeDistance = 18f;
+        const float LaneMergeCos = 0.82f; // ~35°
+        int[] uf = new int[groups.Count];
+        for (int i = 0; i < uf.Length; i++)
+            uf[i] = i;
+        static int Find(int[] uf, int x)
+        {
+            while (uf[x] != x)
+            {
+                uf[x] = uf[uf[x]];
+                x = uf[x];
+            }
+            return x;
+        }
+
+        for (int i = 0; i < groups.Count; i++)
+        {
+            if (ownRootDist[i] > pumpRootRadius)
+                continue;
+            for (int j = i + 1; j < groups.Count; j++)
+            {
+                if (ownRootDist[j] > pumpRootRadius)
+                    continue;
+                float dx = positions[ownRoot[i]].X - positions[ownRoot[j]].X;
+                float dy = positions[ownRoot[i]].Y - positions[ownRoot[j]].Y;
+                if ((dx * dx) + (dy * dy) > LaneMergeDistance * LaneMergeDistance)
+                    continue;
+                float la = MathF.Sqrt((dirX[i] * dirX[i]) + (dirY[i] * dirY[i]));
+                float lb = MathF.Sqrt((dirX[j] * dirX[j]) + (dirY[j] * dirY[j]));
+                if (la < 1f || lb < 1f)
+                    continue;
+                float dot = (dirX[i] * dirX[j]) + (dirY[i] * dirY[j]);
+                if ((dot / (la * lb)) < LaneMergeCos)
+                    continue;
+                int ri = Find(uf, i), rj = Find(uf, j);
+                if (ri != rj)
+                    uf[ri] = rj;
+            }
+        }
+
+        // Branch root per merged cluster = the pump-closest root among its members.
+        Dictionary<int, int> clusterBest = [];
+        for (int g = 0; g < groups.Count; g++)
+        {
+            int r = Find(uf, g);
+            if (!clusterBest.TryGetValue(r, out int best) || ownRootDist[g] < ownRootDist[best])
+                clusterBest[r] = g;
+        }
+
+        // Re-chain each pump-near group toward its own pump-closest segment (id order); cut the
+        // merged branch roots. Far lanes and isolated segments keep their greedy parents.
+        for (int g = 0; g < groups.Count; g++)
+        {
+            if (ownRootDist[g] > pumpRootRadius)
+                continue;
+            int root = ownRoot[g];
+            int branchRoot = ownRoot[clusterBest[Find(uf, g)]];
+            List<int> lane = groups[g];
+            for (int i = 0; i < lane.Count; i++)
+            {
+                int s = lane[i];
+                if (s == root)
+                {
+                    if (s == branchRoot)
+                        parent[s] = -1; // branch root — cut into its own branch
+                    // else keep the greedy parent: ties this lane's row into the merged branch
+                    continue;
+                }
+                long want = ids[s] > ids[root] ? ids[s] - 1 : ids[s] + 1;
+                if (indexById.TryGetValue(want, out int t) && t != s
+                    && Distance(positions[s], positions[t]) <= segmentConnectDistance)
+                {
+                    parent[s] = t;
+                }
+                // else keep greedy parent (id gap / run end)
+            }
+        }
     }
 
     private static bool[] ConnectOrphanChains(
@@ -266,149 +362,36 @@ internal static class BlightLaneTopology
         return isPhantom;
     }
 
-    internal static (int From, int To)[] FindMissingLaneEdges(
-        IReadOnlyList<NumVector2> positions,
-        IReadOnlyList<LaneCoverageResult> coverage,
-        float segmentConnectDistance = 45f,
-        float forwardAngleCos = 0.707f,
-        float treePathFactor = 3f,
-        NumVector2? pumpGridPosition = null,
-        float pumpProximityRadius = 60f)
-    {
-        int n = coverage.Count;
-        if (n < 2)
-            return [];
-
-        int[] parent = new int[n];
-        bool[] hasChild = new bool[n];
-        for (int i = 0; i < n; i++)
-        {
-            int par = coverage[i].ParentIndex;
-            parent[i] = par >= 0 && par != i ? par : -1;
-            if (parent[i] >= 0)
-                hasChild[parent[i]] = true;
-        }
-
-        // Tree-path length between two nodes via ancestor marking; scratch arrays reused across pairs.
-        int[] ancestorMark = new int[n];
-        float[] distFrom = new float[n];
-        int markVersion = 0;
-
-        float TreePathLength(int j, int k)
-        {
-            markVersion++;
-            float d = 0f;
-            int cur = j;
-            int steps = 0;
-            while (cur >= 0)
-            {
-                ancestorMark[cur] = markVersion;
-                distFrom[cur] = d;
-                int p = parent[cur];
-                if (p >= 0)
-                    d += Distance(positions[cur], positions[p]);
-                cur = p;
-                if (++steps > n)
-                    return float.MaxValue;
-            }
-            d = 0f;
-            cur = k;
-            steps = 0;
-            while (cur >= 0)
-            {
-                if (ancestorMark[cur] == markVersion)
-                    return d + distFrom[cur];
-                int p = parent[cur];
-                if (p >= 0)
-                    d += Distance(positions[cur], positions[p]);
-                cur = p;
-                if (++steps > n)
-                    return float.MaxValue;
-            }
-            return float.MaxValue;
-        }
-
-        List<(int From, int To)> result = [];
-        for (int j = 0; j < n; j++)
-        {
-            if (parent[j] < 0 || hasChild[j] || coverage[j].IsPumpStub)
-                continue;
-
-            // The lane's heading INTO the leaf; a continuation keeps heading that way.
-            float ix = positions[j].X - positions[parent[j]].X;
-            float iy = positions[j].Y - positions[parent[j]].Y;
-            float ilenSq = (ix * ix) + (iy * iy);
-            if (ilenSq <= 0.01f)
-                continue;
-
-            int bestK = -1;
-            float bestDistSq = float.MaxValue;
-            for (int k = 0; k < n; k++)
-            {
-                if (k == j || parent[k] < 0 || parent[j] == k || parent[k] == j
-                    || parent[j] == parent[k] || coverage[k].IsPumpStub)
-                    continue;
-                float dx = positions[k].X - positions[j].X;
-                float dy = positions[k].Y - positions[j].Y;
-                float distSq = (dx * dx) + (dy * dy);
-                if (distSq <= 0.01f || distSq > segmentConnectDistance * segmentConnectDistance)
-                    continue;
-                // Forward cone: the candidate must lie roughly in the lane's heading (45°).
-                float dot = (ix * dx) + (iy * dy);
-                if (dot <= 0f)
-                    continue;
-                float cosAngle = dot / (MathF.Sqrt(ilenSq) * MathF.Sqrt(distSq));
-                if (cosAngle < forwardAngleCos)
-                    continue;
-                // Different arms only: the route through the tree must be much longer than the gap.
-                float treeLen = TreePathLength(j, k);
-                if (treeLen < treePathFactor * MathF.Sqrt(distSq))
-                    continue;
-                if (distSq < bestDistSq)
-                {
-                    bestDistSq = distSq;
-                    bestK = k;
-                }
-            }
-
-            if (bestK >= 0)
-                result.Add((j, bestK));
-        }
-
-        if (result.Count == 0)
-            return [];
-
-        if (pumpGridPosition.HasValue)
-        {
-            NumVector2 pump = pumpGridPosition.Value;
-            for (int r = result.Count - 1; r >= 0; r--)
-            {
-                bool fromNear = Distance(positions[result[r].From], pump) <= pumpProximityRadius;
-                bool toNear = Distance(positions[result[r].To], pump) <= pumpProximityRadius;
-                if (!fromNear && !toNear)
-                    result.RemoveAt(r);
-            }
-            if (result.Count == 0)
-                return [];
-        }
-
-        // Deduplicate undirected pairs (two leaves can pick each other).
-        HashSet<(int From, int To)> seen = [];
-        for (int r = 0; r < result.Count; r++)
-        {
-            (int a, int b) = result[r];
-            seen.Add(a < b ? (a, b) : (b, a));
-        }
-        return [.. seen];
-    }
-
     private static bool[] MarkPumpStubs(
-        IReadOnlyList<NumVector2> positions, int[] parent, NumVector2 pump, float pumpStubRadius)
+        IReadOnlyList<NumVector2> positions, int[] parent, NumVector2 pump, float pumpStubRadius,
+        float segmentConnectDistance, IReadOnlyList<long>? ids = null)
     {
         int n = positions.Count;
         bool[] stub = new bool[n];
         if (n == 0)
             return stub;
+
+        // Id-lane members (a segment with an id-adjacent neighbour within the connect distance) are
+        // real lanes — never pump-object stubs, even when their pump-side chain is short.
+        bool[] isLaneMember = new bool[n];
+        if (ids != null && ids.Count == n)
+        {
+            Dictionary<long, int> indexById = [];
+            for (int i = 0; i < n; i++)
+                indexById.TryAdd(ids[i], i);
+            for (int i = 0; i < n; i++)
+            {
+                for (int d = -1; d <= 1; d += 2)
+                {
+                    if (indexById.TryGetValue(ids[i] + d, out int t) && t != i
+                        && Distance(positions[i], positions[t]) <= segmentConnectDistance)
+                    {
+                        isLaneMember[i] = true;
+                        break;
+                    }
+                }
+            }
+        }
 
         List<List<int>> children = new(n);
         for (int i = 0; i < n; i++) children.Add([]);
@@ -456,7 +439,7 @@ internal static class BlightLaneTopology
             int par = parent[s];
             if (par < 0 || par == s)
                 continue;
-            if (nearPump[s])
+            if (nearPump[s] && !isLaneMember[s])
                 stub[s] = true;
         }
         return stub;
@@ -499,112 +482,11 @@ internal static class BlightLaneTopology
                 HasEmpowering: empowering[i],
                 HasShockNova: shockNova[i],
                 HasSummoning: summoning[i],
-                TowerBuilt: results[i].TowerBuilt,
                 IsPhantom: results[i].IsPhantom,
                 IsPumpStub: results[i].IsPumpStub);
         }
 
         return results;
-    }
-
-    internal static LaneCoverageResult[] ApplyBridgeCoverage(
-        LaneCoverageResult[] results,
-        IReadOnlyList<(int From, int To)> bridges)
-    {
-        int n = results.Length;
-        if (n == 0 || bridges.Count == 0)
-            return results;
-
-        bool[] chilling = ExtractType(results, static r => r.HasChilling);
-        bool[] seismic = ExtractType(results, static r => r.HasSeismic);
-        bool[] fireball = ExtractType(results, static r => r.HasFireball);
-        bool[] empowering = ExtractType(results, static r => r.HasEmpowering);
-        bool[] shockNova = ExtractType(results, static r => r.HasShockNova);
-        bool[] summoning = ExtractType(results, static r => r.HasSummoning);
-
-        PropagateAcrossBridges(chilling, results, bridges);
-        PropagateAcrossBridges(seismic, results, bridges);
-        PropagateAcrossBridges(fireball, results, bridges);
-        PropagateAcrossBridges(empowering, results, bridges);
-        PropagateAcrossBridges(shockNova, results, bridges);
-        PropagateAcrossBridges(summoning, results, bridges);
-
-        LaneCoverageResult[] output = new LaneCoverageResult[n];
-        for (int i = 0; i < n; i++)
-        {
-            LaneCoverageResult r = results[i];
-            output[i] = new LaneCoverageResult(
-                ParentIndex: r.ParentIndex,
-                IsFullyCovered: chilling[i] || seismic[i] || fireball[i],
-                Midpoint: r.Midpoint,
-                HasChilling: chilling[i],
-                HasSeismic: seismic[i],
-                HasFireball: fireball[i],
-                HasEmpowering: empowering[i],
-                HasShockNova: shockNova[i],
-                HasSummoning: summoning[i],
-                TowerBuilt: r.TowerBuilt,
-                IsPhantom: r.IsPhantom,
-                IsPumpStub: r.IsPumpStub);
-        }
-        return output;
-    }
-
-    private static bool[] ExtractType(LaneCoverageResult[] results, Func<LaneCoverageResult, bool> get)
-    {
-        bool[] values = new bool[results.Length];
-        for (int i = 0; i < results.Length; i++)
-            values[i] = get(results[i]);
-        return values;
-    }
-
-    private static void PropagateAcrossBridges(
-        bool[] has,
-        LaneCoverageResult[] results,
-        IReadOnlyList<(int From, int To)> bridges)
-    {
-        int n = results.Length;
-        bool[] ac = new bool[n];
-        bool[] seen = new bool[n];
-
-        bool changed = true;
-        while (changed)
-        {
-            changed = false;
-
-            // Coverage flows both ways across each bridge: the two ends are one lane.
-            for (int b = 0; b < bridges.Count; b++)
-            {
-                int j = bridges[b].From;
-                int k = bridges[b].To;
-                if ((uint)j >= n || (uint)k >= n)
-                    continue;
-                if (has[j] && !has[k]) { has[k] = true; changed = true; }
-                if (has[k] && !has[j]) { has[j] = true; changed = true; }
-            }
-
-            // Re-apply the tree propagation (AND-up then OR-down) so coverage keeps flowing along arms.
-            Array.Clear(ac, 0, n);
-            Array.Clear(seen, 0, n);
-            for (int i = n - 1; i >= 0; i--)
-            {
-                int par = results[i].ParentIndex;
-                if (par < 0 || par == i) continue;
-                if (!seen[par]) { ac[par] = has[i]; seen[par] = true; }
-                else { ac[par] = ac[par] && has[i]; }
-            }
-            for (int i = 0; i < n; i++)
-            {
-                bool m = has[i] || (seen[i] && ac[i]);
-                if (m != has[i]) { has[i] = m; changed = true; }
-            }
-            for (int i = 0; i < n; i++)
-            {
-                int par = results[i].ParentIndex;
-                if (par < 0 || par == i) continue;
-                if (has[par] && !has[i]) { has[i] = true; changed = true; }
-            }
-        }
     }
 
     // Phase 2 (AND upward) then Phase 3 (OR downward), each to fixed point — with a pump-rooted tree
@@ -661,9 +543,7 @@ internal static class BlightLaneTopology
         return has;
     }
 
-    internal static List<List<int>> BuildCoverageChildren(
-        LaneCoverageResult[] coverage,
-        IReadOnlyList<(int From, int To)>? extraEdges = null)
+    internal static List<List<int>> BuildCoverageChildren(LaneCoverageResult[] coverage)
     {
         int n = coverage.Length;
         List<List<int>> children = new(n);
@@ -674,23 +554,6 @@ internal static class BlightLaneTopology
             if (par >= 0 && par != i && !coverage[i].IsPumpStub)
                 children[par].Add(i);
         }
-
-        // Pink bridges are real lane segments — the bridge target gains the bridged arm as an
-        // actual child, so the branch/divergence structure reflects the connection (the leaf keeps
-        // its own tree parent too, since it genuinely belongs to both lanes).
-        if (extraEdges != null)
-        {
-            for (int e = 0; e < extraEdges.Count; e++)
-            {
-                (int from, int to) = extraEdges[e];
-                if (from < 0 || from >= n || to < 0 || to >= n || from == to)
-                    continue;
-                List<int> target = children[to];
-                if (!target.Contains(from))
-                    target.Add(from);
-            }
-        }
-
         return children;
     }
 
@@ -723,14 +586,19 @@ internal static class BlightLaneTopology
         if (tops.Remove(mainTop))
             tops.Insert(0, mainTop);
 
+        // Every lane except the branch's main lane gets a unique short name ({letter}-{n}); the
+        // main lane keeps the bare {letter}. One counter shared across all tops and forks keeps
+        // names collision-free no matter how deep the divergence tree gets.
         int nameIndex = 0;
+        bool[] visited = new bool[coverage.Length];
+        int[] subtreeSize = ComputeSubtreeSizes(children);
         List<BlightLaneNode> forest = [];
         for (int t = 0; t < tops.Count; t++)
         {
             int top = tops[t];
             if (top != mainTop)
             {
-                forest.Add(BuildLaneTree(coverage, children, top, $"{letter}-{++nameIndex}"));
+                forest.Add(BuildLaneTree(coverage, children, top, $"{letter}-{++nameIndex}", letter, visited, ref nameIndex, subtreeSize));
                 continue;
             }
 
@@ -745,7 +613,7 @@ internal static class BlightLaneTopology
             int best = -1;
             for (int a = 0; a < arms.Count; a++)
             {
-                int size = SubtreeSize(children, arms[a]);
+                int size = subtreeSize[arms[a]];
                 if (size > best) { best = size; mainArm = arms[a]; }
             }
             List<int> ordered = [mainArm];
@@ -755,7 +623,7 @@ internal static class BlightLaneTopology
             for (int a = 0; a < ordered.Count; a++)
             {
                 string name = a == 0 ? letter : $"{letter}-{++nameIndex}";
-                forest.Add(BuildLaneTree(coverage, children, ordered[a], name));
+                forest.Add(BuildLaneTree(coverage, children, ordered[a], name, letter, visited, ref nameIndex, subtreeSize));
             }
         }
 
@@ -774,26 +642,31 @@ internal static class BlightLaneTopology
         return set;
     }
 
-    private static int SubtreeSize(List<List<int>> children, int start)
+    // Precomputed subtree sizes (one O(n) pass) let BuildLaneTree pick the largest arm as the lane
+    // continuation at every fork without walking the subtree per fork. Memoized so bridge-shared
+    // nodes are counted once, and cycle-safe (a revisited node returns its partial size).
+    private static int[] ComputeSubtreeSizes(List<List<int>> children)
     {
         int n = children.Count;
-        bool[] visited = new bool[n];
-        int count = 0;
-        Stack<int> pending = new();
-        pending.Push(start);
-        while (pending.Count > 0)
-        {
-            int s = pending.Pop();
-            if (visited[s])
-                continue;
-            visited[s] = true;
-            count++;
-            List<int> c = children[s];
-            for (int i = 0; i < c.Count; i++)
-                if (!visited[c[i]])
-                    pending.Push(c[i]);
-        }
-        return count;
+        int[] size = new int[n];
+        bool[] done = new bool[n];
+        for (int s = 0; s < n; s++)
+            if (!done[s])
+                ComputeSubtreeSize(children, size, done, s);
+        return size;
+    }
+
+    private static int ComputeSubtreeSize(List<List<int>> children, int[] size, bool[] done, int node)
+    {
+        if (done[node])
+            return size[node];
+        done[node] = true;
+        int total = 1;
+        List<int> c = children[node];
+        for (int i = 0; i < c.Count; i++)
+            total += ComputeSubtreeSize(children, size, done, c[i]);
+        size[node] = total;
+        return total;
     }
 
     internal static BlightLaneNode BuildLaneTree(
@@ -801,7 +674,11 @@ internal static class BlightLaneTopology
         List<List<int>> children,
         int laneStart,
         string name)
-        => BuildLaneTree(coverage, children, laneStart, name, new bool[coverage.Length]);
+    {
+        int nameIndex = 0;
+        return BuildLaneTree(coverage, children, laneStart, name, name,
+            new bool[coverage.Length], ref nameIndex, ComputeSubtreeSizes(children));
+    }
 
     // A segment can only be claimed by ONE branch: the shared visited set makes the recursion finite
     // even if the children graph is ever corrupted into a cycle (a cycle would otherwise recurse
@@ -811,30 +688,63 @@ internal static class BlightLaneTopology
         List<List<int>> children,
         int laneStart,
         string name,
-        bool[] visited)
+        string branchPrefix,
+        bool[] visited,
+        ref int nameIndex,
+        int[] subtreeSize)
     {
         List<int> segments = [];
+        List<BlightLaneNode> childLanes = [];
         int current = laneStart;
-        while (true)
+
+        while (current >= 0)
         {
-            if (visited[current])
+            // Walk the maximal fork-free run, collecting segments into THIS lane.
+            while (true)
+            {
+                if (visited[current])
+                {
+                    current = -1;
+                    break;
+                }
+                visited[current] = true;
+                segments.Add(current);
+                List<int> c = children[current];
+                if (c.Count != 1)
+                    break;
+                current = c[0];
+            }
+            if (current < 0)
                 break;
-            visited[current] = true;
-            segments.Add(current);
-            List<int> c = children[current];
-            if (c.Count != 1)
-                break;
-            current = c[0];
+
+            // At a fork the LARGEST arm continues THIS lane (same name) so a winding trunk stays
+            // ONE lane instead of fragmenting into a new lane per segment; only the smaller arms
+            // become short numbered side lanes.
+            List<int> forkChildren = children[current];
+            int mainChild = -1;
+            int mainSize = -1;
+            for (int i = 0; i < forkChildren.Count; i++)
+            {
+                int child = forkChildren[i];
+                if (visited[child])
+                    continue;
+                int sz = subtreeSize[child];
+                if (sz > mainSize)
+                {
+                    mainSize = sz;
+                    mainChild = child;
+                }
+            }
+            for (int i = 0; i < forkChildren.Count; i++)
+            {
+                int child = forkChildren[i];
+                if (visited[child] || child == mainChild)
+                    continue;
+                childLanes.Add(BuildLaneTree(coverage, children, child, $"{branchPrefix}-{++nameIndex}", branchPrefix, visited, ref nameIndex, subtreeSize));
+            }
+            current = mainChild;
         }
 
-        List<BlightLaneNode> childLanes = [];
-        List<int> forkChildren = children[current];
-        for (int i = 0; i < forkChildren.Count; i++)
-        {
-            int child = forkChildren[i];
-            if (!visited[child])
-                childLanes.Add(BuildLaneTree(coverage, children, child, name + (char)('A' + i), visited));
-        }
         return new BlightLaneNode(name, segments, childLanes);
     }
 
@@ -844,9 +754,6 @@ internal static class BlightLaneTopology
         float dy = a.Y - b.Y;
         return MathF.Sqrt((dx * dx) + (dy * dy));
     }
-
-    internal static NumVector2 ToVec2(Entity e)
-        => new(e.GridPosNum.X, e.GridPosNum.Y);
 
     internal const int OrphanSentinel = -2;
 }
@@ -866,7 +773,6 @@ internal readonly record struct LaneCoverageResult(
     bool HasEmpowering = false,
     bool HasShockNova = false,
     bool HasSummoning = false,
-    bool TowerBuilt = false,
     bool IsPhantom = false,
     bool IsPumpStub = false);
 

@@ -46,10 +46,10 @@ internal sealed class UiRegionRectangleOverlay(ClickItSettings settings, AreaSer
         DrawRects(draw, _areaService.QuestTrackerBlockedRectangles, QuestTrackerColor);
     }
 
-    // AreaService rectangles are LTRB-packed (X=left, Y=top, Width=right, Height=bottom).
+    // AreaService rectangles are standard X/Y/W/H client coordinates.
     internal static bool TryGetDrawRect(RectangleF rect, out NumVector2 min, out NumVector2 max)
     {
-        if (rect.Width <= rect.X || rect.Height <= rect.Y)
+        if (rect.Width <= 0f || rect.Height <= 0f)
         {
             min = default;
             max = default;
@@ -57,7 +57,7 @@ internal sealed class UiRegionRectangleOverlay(ClickItSettings settings, AreaSer
         }
 
         min = new NumVector2(rect.X, rect.Y);
-        max = new NumVector2(rect.Width, rect.Height);
+        max = new NumVector2(rect.X + rect.Width, rect.Y + rect.Height);
         return true;
     }
 

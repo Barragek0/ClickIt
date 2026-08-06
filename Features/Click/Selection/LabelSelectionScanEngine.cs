@@ -178,7 +178,10 @@ namespace ClickIt.Features.Click.Selection
                     if (_dependencies.ClickDebugPublisher.ShouldCaptureClickDebug())
                         _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("FindLabelIndexMiss", $"range:{start}-{endExclusive} examined:{examined} misses:{indexMisses}");
                     _dependencies.DebugLog($"[LabelSelectDiag] index-miss range:{start}-{endExclusive} examined:{examined} lv:{leverSuppressed} ul:{ultimatumSuppressed} ov:{overlappedSuppressed} bt:{blightChestTransitionSuppressed} im:{indexMisses}");
-                    return null;
+                    // A single transient index miss (duplicate reference / snapshot anomaly) must not
+                    // reject every remaining label in the range — advance past it and keep scanning.
+                    currentStart++;
+                    continue;
                 }
 
                 currentStart = idx + 1;

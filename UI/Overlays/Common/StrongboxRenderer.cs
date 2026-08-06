@@ -80,13 +80,16 @@ namespace ClickIt.UI.Overlays.Common
 
         private void RenderCachedStrongboxFrames(RectangleF windowArea, StrongboxRenderState renderState)
         {
-            for (int i = 0; i < _cachedStrongboxes.Count; i++)
+            // The background coroutine swaps the list reference; iterate a captured local so a swap
+            // between the Count read and the indexer read can't throw IndexOutOfRangeException.
+            List<CachedStrongbox> cached = _cachedStrongboxes;
+            for (int i = 0; i < cached.Count; i++)
             {
-                CachedStrongbox cached = _cachedStrongboxes[i];
-                if (!LabelGeometry.TryGetLabelRectOnScreen(cached.Label, windowArea, out RectangleF rect))
+                CachedStrongbox sb = cached[i];
+                if (!LabelGeometry.TryGetLabelRectOnScreen(sb.Label, windowArea, out RectangleF rect))
                     continue;
 
-                if (!TryResolveStrongboxFrame(rect, renderState, cached.Metadata, out StrongboxFrame frame))
+                if (!TryResolveStrongboxFrame(rect, renderState, sb.Metadata, out StrongboxFrame frame))
                     continue;
 
                 EnqueueStrongboxFrame(frame);

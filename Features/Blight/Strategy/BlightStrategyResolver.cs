@@ -16,13 +16,6 @@ internal static class BlightStrategyResolver
         };
     }
 
-    internal static string GetName(BlightTowerStrategy strategy) => strategy switch
-    {
-        BlightTowerStrategy.ChillingSeismicMeteor => DefaultStrategy.Name,
-        BlightTowerStrategy.MeteorOnly => MeteorOnly.Name,
-        _ => "Unknown"
-    };
-
     internal static string GetDescription(BlightTowerStrategy strategy) => strategy switch
     {
         BlightTowerStrategy.ChillingSeismicMeteor => DefaultStrategy.Description,
