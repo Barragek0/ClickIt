@@ -58,6 +58,38 @@ namespace ClickIt.Tests.Features.Area
         }
 
         [TestMethod]
+        public void IsInMap_ReturnsFalse_WhenControllerOrAreaUnavailable()
+        {
+            AreaService.IsInMap(null).Should().BeFalse();
+        }
+
+        [DataTestMethod]
+        [DataRow(false, false, true)]
+        [DataRow(true, false, false)]
+        [DataRow(false, true, false)]
+        [DataRow(true, true, false)]
+        public void IsInMap_ReturnsExpected_ForAreaFlags(bool isTown, bool isHideout, bool expected)
+        {
+            GameController gameController = CreateAreaGameController(isTown, isHideout);
+
+            AreaService.IsInMap(gameController).Should().Be(expected);
+        }
+
+        private static GameController CreateAreaGameController(bool isTown, bool isHideout)
+        {
+            GameController gameController = ExileCoreVisibleObjectBuilder.CreateGameControllerWithWindow(default);
+            Type areaType = RuntimeMemberAccessor.ResolveRequiredMemberType(gameController, nameof(GameController.Area));
+            object area = RuntimeHelpers.GetUninitializedObject(areaType);
+            Type currentAreaType = RuntimeMemberAccessor.ResolveRequiredMemberType(area, "CurrentArea");
+            object currentArea = RuntimeHelpers.GetUninitializedObject(currentAreaType);
+            RuntimeMemberAccessor.SetRequiredMember(currentArea, "IsTown", isTown);
+            RuntimeMemberAccessor.SetRequiredMember(currentArea, "IsHideout", isHideout);
+            RuntimeMemberAccessor.SetRequiredMember(area, "CurrentArea", currentArea);
+            RuntimeMemberAccessor.SetRequiredMember(gameController, nameof(GameController.Area), area);
+            return gameController;
+        }
+
+        [TestMethod]
         public void PointIsInClickableArea_BorderCases_BehaveConsistently()
         {
             var svc = new AreaService();

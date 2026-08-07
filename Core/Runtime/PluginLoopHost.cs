@@ -13,6 +13,22 @@ namespace ClickIt.Core.Runtime
         private long _lastCanClickFailureLogTimestampMs;
         private const int ClickIdleWaitMs = 50;
         private bool _lastClickTickDidWork;
+        // Set to the remaining frequency-target time when the gate is only waiting on the click
+        // timer, so the observed click interval tracks the target instead of overshooting by up to
+        // the coarse idle-wait window. Falls back to ClickIdleWaitMs otherwise.
+        private int _clickIdleWaitMs = ClickIdleWaitMs;
+
+        private static double GetElapsedMs(long startTimestamp)
+            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
+
+        private void RecordProcessing(ProcessingSection section, long startTimestamp, long startAllocatedBytes)
+        {
+            PerformanceMonitor? pm = _state.Services.PerformanceMonitor;
+            if (pm == null)
+                return;
+            pm.RecordProcessingTiming(section, GetElapsedMs(startTimestamp));
+            pm.RecordAllocation(section, GC.GetAllocatedBytesForCurrentThread() - startAllocatedBytes);
+        }
 
         private double ResolveClickTargetTime(double frequencyTarget)
         {
@@ -56,17 +72,17 @@ namespace ClickIt.Core.Runtime
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.DelveFlareCoroutine);
             _state.Runtime.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
 
-            _state.Runtime.BlightRefreshCoroutine = new Coroutine(MainBlightRefreshCoroutine(), plugin, "ClickIt.BlightRefresh", true);
-            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.BlightRefreshCoroutine);
-            _state.Runtime.BlightRefreshCoroutine.Priority = CoroutinePriority.Normal;
-
-            _state.Runtime.UltimatumPreviewRefreshCoroutine = new Coroutine(MainUltimatumPreviewRefreshCoroutine(), plugin, "ClickIt.UltimatumPreviewRefresh", true);
-            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.UltimatumPreviewRefreshCoroutine);
-            _state.Runtime.UltimatumPreviewRefreshCoroutine.Priority = CoroutinePriority.Normal;
-
-            _state.Runtime.LabelOverlayRefreshCoroutine = new Coroutine(MainLabelOverlayRefreshCoroutine(), plugin, "ClickIt.LabelOverlayRefresh", true);
-            _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.LabelOverlayRefreshCoroutine);
-            _state.Runtime.LabelOverlayRefreshCoroutine.Priority = CoroutinePriority.Normal;
+            // Overlay API: owns the per-overlay refresh coroutines (cadence + timing + error routing).
+            _state.Rendering.OverlayRenderHost?.StartAll(
+                plugin,
+                () => new OverlayRefreshContext(
+                    _gameController,
+                    _state.Services.CachedLabels?.Value,
+                    _gameController.Window.GetWindowRectangleTimeCache,
+                    _settings),
+                () => _settings.Enable && !_state.Runtime.IsShuttingDown,
+                _state.Services.PerformanceMonitor,
+                message => _errorHandler.LogError(message));
         }
 
         private IEnumerator MainScanForAltarsLogic()
@@ -112,7 +128,10 @@ namespace ClickIt.Core.Runtime
                 {
                     // Let the scheduler honor BlockedUiRefreshIntervalMs; forcing here would bypass
                     // the documented refresh interval and rebuild blocked rects redundantly.
+                    long start = Stopwatch.GetTimestamp();
+                    long allocStart = GC.GetAllocatedBytesForCurrentThread();
                     _state.Services.AreaService?.UpdateScreenAreas(_gameController);
+                    RecordProcessing(ProcessingSection.AreaBlockedUi, start, allocStart);
                 }
                 catch (Exception ex)
                 {
@@ -129,7 +148,10 @@ namespace ClickIt.Core.Runtime
             if (_state.Runtime.IsShuttingDown || _state.Services.PerformanceMonitor == null) yield break;
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Altar);
+            long start = Stopwatch.GetTimestamp();
+            long allocStart = GC.GetAllocatedBytesForCurrentThread();
             _state.Services.AltarService?.ProcessAltarScanningLogic();
+            RecordProcessing(ProcessingSection.Altar, start, allocStart);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Altar);
 
             _state.Runtime.AltarCoroutine?.Pause();
@@ -141,7 +163,7 @@ namespace ClickIt.Core.Runtime
             {
                 yield return Guarded(ClickLabel, "ClickLabel");
                 if (!_lastClickTickDidWork)
-                    yield return new WaitTime(ClickIdleWaitMs);
+                    yield return new WaitTime(_clickIdleWaitMs);
             }
         }
 
@@ -177,6 +199,12 @@ namespace ClickIt.Core.Runtime
                 if (gateDecision.ShouldCancelOffscreenPathing)
                     clickPort.CancelOffscreenPathingState();
 
+                // When only the frequency timer is gating (click is possible, just not due yet),
+                // sleep exactly the remaining time instead of the coarse idle wait so the observed
+                // click interval tracks the target.
+                _clickIdleWaitMs = !gateDecision.ReadyByTime && gateDecision.CanClick
+                    ? SystemMath.Clamp((int)SystemMath.Ceiling(targetTime - _state.Runtime.Timer.ElapsedMilliseconds), 1, ClickIdleWaitMs)
+                    : ClickIdleWaitMs;
 
                 if (_settings.DebugMode?.Value == true)
                 {
@@ -192,6 +220,7 @@ namespace ClickIt.Core.Runtime
                 _state.Runtime.WorkFinished = true;
                 yield break;
             }
+            _clickIdleWaitMs = ClickIdleWaitMs;
 
             // Harvest labels are processed in the render path
             // (PluginRenderHost) so the overlay renders correctly and the
@@ -200,7 +229,10 @@ namespace ClickIt.Core.Runtime
 
             long clickSequenceBefore = GetSuccessfulClickSequence();
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
+            long clickStart = Stopwatch.GetTimestamp();
+            long clickAllocStart = GC.GetAllocatedBytesForCurrentThread();
             yield return clickPort.ProcessRegularClick();
+            RecordProcessing(ProcessingSection.Click, clickStart, clickAllocStart);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             _lastClickTickDidWork = clickPort.LastClickTickWasActionable;
@@ -248,93 +280,13 @@ namespace ClickIt.Core.Runtime
             long clickSequenceBefore = GetSuccessfulClickSequence();
 
             _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Click);
+            long hoverStart = Stopwatch.GetTimestamp();
+            long hoverAllocStart = GC.GetAllocatedBytesForCurrentThread();
             bool clicked = clickPort.TryClickManualUiHoverLabel(labels);
+            RecordProcessing(ProcessingSection.ManualUiHover, hoverStart, hoverAllocStart);
             _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Click);
 
             RestartClickTimerAfterSuccessfulInteraction(clickSequenceBefore, clicked);
-        }
-
-        private IEnumerator MainBlightRefreshCoroutine()
-        {
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
-            {
-                if (_settings.ClickBlightTowers.Value && _state.Services.PerformanceMonitor != null)
-                {
-                    try
-                    {
-                        _state.Services.PerformanceMonitor.StartCoroutineTiming(TimingChannel.Blight);
-                        _state.Services.BlightService?.RefreshEntities(_gameController);
-                        _state.Services.BlightService?.ScanFoundations(_state.Services.CachedLabels?.Value);
-                        _state.Services.BlightService?.ComputeLaneCoverage();
-                        _state.Services.PerformanceMonitor.StopCoroutineTiming(TimingChannel.Blight);
-                    }
-                    catch (Exception ex)
-                    {
-                        _errorHandler.LogError($"[BlightRefresh] {ex}");
-                    }
-                }
-
-                yield return new WaitTime(200);
-            }
-        }
-
-        private IEnumerator MainUltimatumPreviewRefreshCoroutine()
-        {
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
-            {
-                if (_settings.ShowUltimatumOptionOverlay?.Value == true)
-                {
-                    try
-                    {
-                        _state.Services.PerformanceMonitor?.StartCoroutineTiming(TimingChannel.Ultimatum);
-                        _state.Services.ClickAutomationPort?.RefreshUltimatumPreview();
-                        _state.Services.PerformanceMonitor?.StopCoroutineTiming(TimingChannel.Ultimatum);
-                    }
-                    catch (Exception ex)
-                    {
-                        _errorHandler.LogError($"[UltimatumPreviewRefresh] {ex}");
-                    }
-                }
-
-                yield return new WaitTime(50);
-            }
-        }
-
-        // Label-based overlay refresh: harvest plot processing and the strongbox metadata scan run
-        // here at a fixed cadence (the label cache is 50ms, so label/element data stays fresh) off
-        // the render thread; the render calls only draw the cached results each frame.
-        private IEnumerator MainLabelOverlayRefreshCoroutine()
-        {
-            while (_settings.Enable && !_state.Runtime.IsShuttingDown)
-            {
-                if (_settings.ClickHarvest.Value)
-                {
-                    try
-                    {
-                        _state.Services.PerformanceMonitor?.StartCoroutineTiming(TimingChannel.LabelOverlay);
-                        _state.Services.HarvestService?.ProcessHarvestPlots(_state.Services.CachedLabels?.Value, _gameController);
-                        _state.Services.PerformanceMonitor?.StopCoroutineTiming(TimingChannel.LabelOverlay);
-                    }
-                    catch (Exception ex)
-                    {
-                        _errorHandler.LogError($"[HarvestRefresh] {ex}");
-                    }
-                }
-
-                try
-                {
-                    _state.Services.PerformanceMonitor?.StartCoroutineTiming(TimingChannel.LabelOverlay);
-                    RectangleF windowArea = _gameController.Window.GetWindowRectangleTimeCache;
-                    _state.Rendering.StrongboxRenderer?.Refresh(_state.Services.CachedLabels?.Value, windowArea);
-                    _state.Services.PerformanceMonitor?.StopCoroutineTiming(TimingChannel.LabelOverlay);
-                }
-                catch (Exception ex)
-                {
-                    _errorHandler.LogError($"[StrongboxRefresh] {ex}");
-                }
-
-                yield return new WaitTime(50);
-            }
         }
 
         private IEnumerator FlareCoroutine()
@@ -352,7 +304,10 @@ namespace ClickIt.Core.Runtime
                     _errorHandler.LogError($"[FlareCoroutine] {ex}");
                 }
 
+                long flareStart = Stopwatch.GetTimestamp();
+                long flareAllocStart = GC.GetAllocatedBytesForCurrentThread();
                 yield return Guarded(ProcessFlare, "Flare");
+                RecordProcessing(ProcessingSection.Flare, flareStart, flareAllocStart);
 
                 try
                 {

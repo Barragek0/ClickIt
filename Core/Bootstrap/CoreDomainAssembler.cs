@@ -20,9 +20,8 @@ namespace ClickIt.Core.Bootstrap
         DeferredTextQueue DeferredTextQueue,
         DeferredFrameQueue DeferredFrameQueue,
         HarvestService HarvestService,
-        HarvestOverlayRenderer HarvestOverlayRenderer,
         BlightService BlightService,
-        BlightRenderer BlightRenderer);
+        DeferredDrawQueue DeferredDrawQueue);
 
     internal static class CoreDomainAssembler
     {
@@ -57,23 +56,28 @@ namespace ClickIt.Core.Bootstrap
 
             LabelReadModelService labelReadModelService = new(
                 gameController,
-                point => areaService.PointIsInClickableArea(gameController, point));
+                point => areaService.PointIsInClickableArea(gameController, point),
+                ms => performanceMonitor.RecordProcessingTiming(ProcessingSection.Label, ms),
+                bytes => performanceMonitor.RecordAllocation(ProcessingSection.Label, bytes),
+                breakdown => performanceMonitor.RecordLabelScanAllocation(breakdown));
             TimeCache<List<LabelOnGround>> cachedLabels = labelReadModelService.CachedLabels;
 
             AltarService altarService = new(owner, settings, cachedLabels);
             LabelFilterPort labelFilterPort = new(settings, new EssenceService(settings), errorHandler, gameController);
             ShrineService shrineService = new(gameController, camera);
             InputHandler inputHandler = new(settings);
-            PathfindingService pathfindingService = new(errorHandler);
+            PathfindingService pathfindingService = new(
+                errorHandler,
+                ms => performanceMonitor.RecordProcessingTiming(ProcessingSection.Pathfinding, ms),
+                bytes => performanceMonitor.RecordAllocation(ProcessingSection.Pathfinding, bytes));
             WeightCalculator weightCalculator = new(settings);
             HarvestService harvestService = new(settings);
 
             DeferredTextQueue deferredTextQueue = new();
             DeferredFrameQueue deferredFrameQueue = new();
-            HarvestOverlayRenderer harvestOverlayRenderer = new(harvestService, settings, deferredTextQueue, deferredFrameQueue);
+            DeferredDrawQueue deferredDrawQueue = new();
 
             BlightService blightService = new(settings, point => areaService.PointIsInClickableArea(gameController, point));
-            BlightRenderer blightRenderer = new(blightService, settings);
 
             return new CoreDomainServices(
                 performanceMonitor,
@@ -95,9 +99,8 @@ namespace ClickIt.Core.Bootstrap
                 deferredTextQueue,
                 deferredFrameQueue,
                 harvestService,
-                harvestOverlayRenderer,
                 blightService,
-                blightRenderer);
+                deferredDrawQueue);
         }
     }
 }

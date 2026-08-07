@@ -3,9 +3,9 @@ namespace ClickIt.Features.Observability.Performance
     internal sealed class TimingChannelMetricsTracker
     {
         // One rolling window per channel: max is computed over the full 100-sample window, average
-        // over the most recent 20 samples, last is simply the most recent sample.
-        private const int MaxWindow = 100;
-        private const int AverageWindow = 20;
+        // over the most recent 100 samples, last is simply the most recent sample.
+        private const int MaxWindow = 1000;
+        private const int AverageWindow = 100;
 
         private readonly Stopwatch _renderTimer = new();
         private readonly Stopwatch _altarCoroutineTimer = new();

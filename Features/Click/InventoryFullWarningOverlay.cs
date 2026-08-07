@@ -1,9 +1,10 @@
-namespace ClickIt.UI.Overlays.Inventory
+namespace ClickIt.Features.Click
 {
-    internal class InventoryFullWarningRenderer(
-        DeferredTextQueue deferredTextQueue,
-        AreaService? areaService = null,
-        Func<InventoryDebugSnapshot>? getLatestInventoryDebug = null)
+    /// <summary>
+    /// Owns the inventory-full warning text overlay. Sequence-dirty-tracked internally (the
+    /// warning timestamp refreshes only when the cached inventory snapshot sequence changes).
+    /// </summary>
+    internal sealed class InventoryFullWarningOverlay : IOverlay
     {
         private const string InventoryFullWarningText = "Your inventory is full";
         private const string InventoryLayoutUnreliableNotesPrefix = "Inventory layout unreliable";
@@ -19,15 +20,36 @@ namespace ClickIt.UI.Overlays.Inventory
             new Vector2(0f, 1f)
         ];
 
-        private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
-        private readonly AreaService? _areaService = areaService;
-        private readonly Func<InventoryDebugSnapshot>? _getLatestInventoryDebug = getLatestInventoryDebug;
+        private readonly AreaService? _areaService;
+        private readonly Func<InventoryDebugSnapshot>? _getLatestInventoryDebug;
         private long _lastInventoryFullBlockedTimestampMs;
         private long _lastProcessedInventoryDebugSequence = long.MinValue;
 
-        public void Render(GameController gameController)
+        public InventoryFullWarningOverlay(AreaService? areaService, Func<InventoryDebugSnapshot>? getLatestInventoryDebug)
         {
+            _areaService = areaService;
+            _getLatestInventoryDebug = getLatestInventoryDebug;
+        }
 
+        public string Name => "InventoryFullWarning";
+
+        public RenderSection Section => RenderSection.InventoryFullWarning;
+
+        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.None;
+
+        public TimingChannel? RefreshTimingChannel => null;
+
+        public ProcessingSection ProcessingSection => ProcessingSection.Unknown;
+
+        public bool IsEnabled(ClickItSettings settings)
+            => true;
+
+        public void Refresh(OverlayRefreshContext ctx)
+        {
+        }
+
+        public void Draw(OverlayRenderContext ctx)
+        {
             long now = Environment.TickCount64;
             InventoryDebugSnapshot snapshot = _getLatestInventoryDebug?.Invoke()
                 ?? InventoryDebugSnapshot.Empty;
@@ -42,21 +64,21 @@ namespace ClickIt.UI.Overlays.Inventory
             if (!ShouldShowInventoryFullWarning(now, _lastInventoryFullBlockedTimestampMs))
                 return;
 
-            RectangleF windowRect = gameController.Window.GetWindowRectangleTimeCache;
+            RectangleF windowRect = ctx.WindowArea;
             RectangleF leftTertiary = _areaService?.FlaskTertiaryRectangle ?? RectangleF.Empty;
             RectangleF rightTertiary = _areaService?.SkillsTertiaryRectangle ?? RectangleF.Empty;
-            Vector2? playerFeetScreen = TryResolvePlayerFeetWarningPosition(gameController);
+            Vector2? playerFeetScreen = TryResolvePlayerFeetWarningPosition(ctx.GameController);
             Vector2 pos = ResolveInventoryFullWarningPosition(windowRect, leftTertiary, rightTertiary, playerFeetScreen);
 
-            EnqueueBoldWarningText(pos);
+            EnqueueBoldWarningText(ctx.TextQueue, pos);
         }
 
-        private void EnqueueBoldWarningText(Vector2 centerPosition)
+        private void EnqueueBoldWarningText(DeferredTextQueue textQueue, Vector2 centerPosition)
         {
             for (int i = 0; i < BoldTextOffsets.Length; i++)
             {
                 Vector2 offsetPosition = centerPosition + BoldTextOffsets[i];
-                _deferredTextQueue.Enqueue(
+                textQueue.Enqueue(
                     InventoryFullWarningText,
                     offsetPosition,
                     Color.Black,
@@ -64,7 +86,7 @@ namespace ClickIt.UI.Overlays.Inventory
                     FontAlign.Center);
             }
 
-            _deferredTextQueue.Enqueue(
+            textQueue.Enqueue(
                 InventoryFullWarningText,
                 centerPosition,
                 Color.OrangeRed,
@@ -116,7 +138,7 @@ namespace ClickIt.UI.Overlays.Inventory
             return elapsed is >= 0 and <= InventoryFullWarningHoldMs;
         }
 
-        internal static Vector2? TryResolvePlayerFeetWarningPosition(GameController gameController)
+        internal static Vector2? TryResolvePlayerFeetWarningPosition(GameController? gameController)
         {
             if (gameController?.Game?.IngameState?.Camera == null)
                 return null;

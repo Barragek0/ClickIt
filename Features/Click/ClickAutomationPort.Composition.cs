@@ -234,6 +234,7 @@ namespace ClickIt.Features.Click
                 ClickAutomationSupport.HoldDebugTelemetryAfterSuccessfulInteraction,
                 ClickAutomationSupport.DebugLog,
                 _inputHandler,
+                breakdown => _performanceMonitor.RecordClickAllocation(breakdown),
                 GetHarvestLabelToClick,
                 TryProgressBlightBuilding,
                 GetBlightPathfindTarget,

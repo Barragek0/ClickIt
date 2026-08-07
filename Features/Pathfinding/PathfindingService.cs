@@ -1,10 +1,12 @@
 namespace ClickIt.Features.Pathfinding
 {
-    public sealed class PathfindingService(ErrorHandler? errorHandler = null)
+    public sealed class PathfindingService(ErrorHandler? errorHandler = null, Action<double>? recordProcessingMs = null, Action<long>? recordAllocationBytes = null)
     {
         public const string AStarNoRouteFailureReason = "A* did not find a route.";
 
         private readonly ErrorHandler? _errorHandler = errorHandler;
+        private readonly Action<double>? _recordProcessingMs = recordProcessingMs;
+        private readonly Action<long>? _recordAllocationBytes = recordAllocationBytes;
         private readonly OffscreenMovementDiagnosticsChannel _offscreenMovementDiagnostics = new();
         private readonly PathfindingTerrainCache _terrainCache = new();
         private readonly DedupEventBuffer _debugEvents = new();
@@ -80,6 +82,21 @@ namespace ClickIt.Features.Pathfinding
         }
 
         public bool TryBuildPathToTarget(GameController? gameController, Entity? target, int maxExpandedNodes)
+        {
+            long start = Stopwatch.GetTimestamp();
+            long allocStart = GC.GetAllocatedBytesForCurrentThread();
+            try
+            {
+                return TryBuildPathToTargetCore(gameController, target, maxExpandedNodes);
+            }
+            finally
+            {
+                _recordProcessingMs?.Invoke((Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
+                _recordAllocationBytes?.Invoke(GC.GetAllocatedBytesForCurrentThread() - allocStart);
+            }
+        }
+
+        private bool TryBuildPathToTargetCore(GameController? gameController, Entity? target, int maxExpandedNodes)
         {
             MarkPathBuildAttempt();
 

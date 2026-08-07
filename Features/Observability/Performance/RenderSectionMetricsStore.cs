@@ -12,6 +12,10 @@ namespace ClickIt.Features.Observability.Performance
         private readonly RollingSampleBuffer _frameFlush = new();
         private readonly RollingSampleBuffer _harvestOverlay = new();
         private readonly RollingSampleBuffer _blightOverlay = new();
+        private readonly RollingSampleBuffer _clickHotkeyToggle = new();
+        private readonly RollingSampleBuffer _inventoryFullWarning = new();
+        private readonly RollingSampleBuffer _uiRegionRectangle = new();
+        private readonly RollingSampleBuffer _performanceOverlay = new();
 
         internal void Record(RenderSection section, double ms)
         {
@@ -47,6 +51,18 @@ namespace ClickIt.Features.Observability.Performance
                 case RenderSection.BlightOverlay:
                     _blightOverlay.Record(ms);
                     break;
+                case RenderSection.ClickHotkeyToggle:
+                    _clickHotkeyToggle.Record(ms);
+                    break;
+                case RenderSection.InventoryFullWarning:
+                    _inventoryFullWarning.Record(ms);
+                    break;
+                case RenderSection.UiRegionRectangle:
+                    _uiRegionRectangle.Record(ms);
+                    break;
+                case RenderSection.PerformanceOverlay:
+                    _performanceOverlay.Record(ms);
+                    break;
                 case RenderSection.Unknown:
                 default:
                     break;
@@ -67,61 +83,13 @@ namespace ClickIt.Features.Observability.Performance
                 RenderSection.FrameFlush => _frameFlush.Stats,
                 RenderSection.HarvestOverlay => _harvestOverlay.Stats,
                 RenderSection.BlightOverlay => _blightOverlay.Stats,
+                RenderSection.ClickHotkeyToggle => _clickHotkeyToggle.Stats,
+                RenderSection.InventoryFullWarning => _inventoryFullWarning.Stats,
+                RenderSection.UiRegionRectangle => _uiRegionRectangle.Stats,
+                RenderSection.PerformanceOverlay => _performanceOverlay.Stats,
                 RenderSection.Unknown => (0, 0, 0, 0),
                 _ => (0, 0, 0, 0)
             };
-        }
-
-        // Bounded rolling window per section: max reflects the full 100-sample window, average the
-        // most recent 20 samples, last the most recent frame. Matches the coroutine/render tables'
-        // semantics so a section's max never drifts out of step with its avg/last (a one-off spike
-        // rolls out instead of persisting forever).
-        private sealed class RollingSampleBuffer
-        {
-            private const int MaxWindow = 100;
-            private const int AverageWindow = 20;
-            private readonly Queue<double> _samples = new(MaxWindow);
-            private double _last;
-
-            public (double LastMs, double AverageMs, double MaxMs, long SampleCount) Stats
-            {
-                get
-                {
-                    if (_samples.Count == 0)
-                        return (0, 0, 0, 0);
-                    double max = double.MinValue;
-                    foreach (double value in _samples)
-                    {
-                        if (value > max)
-                            max = value;
-                    }
-                    return (_last, AverageOfLast(_samples, AverageWindow), max, _samples.Count);
-                }
-            }
-
-            public void Record(double ms)
-            {
-                _last = ms;
-                _samples.Enqueue(ms);
-                if (_samples.Count > MaxWindow)
-                    _samples.Dequeue();
-            }
-
-            private static double AverageOfLast(Queue<double> samples, int recentWindow)
-            {
-                int count = samples.Count;
-                int take = SystemMath.Min(count, recentWindow);
-                int skip = count - take;
-                double sum = 0;
-                int i = 0;
-                foreach (double value in samples)
-                {
-                    if (i >= skip)
-                        sum += value;
-                    i++;
-                }
-                return sum / take;
-            }
         }
     }
 }

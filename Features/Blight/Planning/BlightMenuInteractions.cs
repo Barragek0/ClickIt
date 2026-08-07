@@ -35,11 +35,18 @@ internal static class BlightMenuInteractions
 
     internal static NumVector2? GetTowerMenuChildClickPosition(
         Element labelElement, BlightTowerType towerType)
-        => GetTowerMenuChildClickPosition(labelElement, (int)towerType);
-
-    internal static NumVector2? GetTowerMenuChildClickPosition(
-        Element labelElement, int childIndex)
-        => TryGetMenuChildCenter(labelElement, childIndex);
+    {
+        // The tower-type slot is a child of the tower/upgrade menu: Child[0].Child[3].Child[(int)towerType].
+        // (Order confirmed in-game: Chilling=0, ShockNova=1, Empowering=2, Seismic=3, Summoning=4, Fireball=5.)
+        try
+        {
+            Element? menu = GetMenuChildElement(labelElement, 3);
+            if (menu == null) return null;
+            Element? slot = menu.GetChildAtIndex((int)towerType);
+            return slot == null ? null : Center(slot.GetClientRect());
+        }
+        catch { return null; }
+    }
 
     internal static NumVector2? GetSpecializationChildClickPosition(Element labelElement, int childIndex)
     {

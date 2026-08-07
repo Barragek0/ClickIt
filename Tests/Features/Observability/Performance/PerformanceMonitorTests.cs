@@ -116,7 +116,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
-        public void RenderSection_AverageUsesLast20Samples_MaxOverWholeWindow()
+        public void RenderSection_AverageCoversWholeWindow_MaxOverWholeWindow()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
@@ -128,26 +128,26 @@ namespace ClickIt.Tests.Features.Observability.Performance
             (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
 
             stats.LastMs.Should().Be(1.0);
-            stats.AverageMs.Should().Be(1.0, "the average covers only the last 20 samples");
-            stats.MaxMs.Should().Be(10.0, "the spike is still inside the 100-sample max window");
+            stats.AverageMs.Should().BeApproximately(4.0, 0.001, "the average covers the last 100 samples");
+            stats.MaxMs.Should().Be(10.0, "the spike is still inside the 1000-sample max window");
             stats.SampleCount.Should().Be(30);
         }
 
         [TestMethod]
-        public void RenderSection_MaxRollsOutAfter100Samples()
+        public void RenderSection_MaxRollsOutAfter1000Samples()
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
             for (int i = 0; i < 10; i++)
                 monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 10.0);
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 1000; i++)
                 monitor.RecordRenderSectionTiming(RenderSection.BlightOverlay, 1.0);
 
             (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.BlightOverlay);
 
-            stats.MaxMs.Should().Be(1.0, "the 10ms spike rolled out of the 100-sample window");
+            stats.MaxMs.Should().Be(1.0, "the 10ms spike rolled out of the 1000-sample window");
             stats.AverageMs.Should().Be(1.0);
-            stats.SampleCount.Should().Be(100);
+            stats.SampleCount.Should().Be(1000);
         }
 
         [TestMethod]
@@ -171,6 +171,162 @@ namespace ClickIt.Tests.Features.Observability.Performance
             snapshot.GetRenderSection(RenderSection.HarvestOverlay).SampleCount.Should().Be(1);
             snapshot.GetRenderSection(RenderSection.BlightOverlay).LastMs.Should().Be(5.4);
             snapshot.GetRenderSection(RenderSection.BlightOverlay).SampleCount.Should().Be(1);
+        }
+
+        [TestMethod]
+        public void ProcessingTiming_FlowsThroughStoreAndSnapshot()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordProcessingTiming(ProcessingSection.Label, 4.0);
+            monitor.RecordProcessingTiming(ProcessingSection.Label, 6.0);
+            monitor.RecordProcessingTiming(ProcessingSection.Pathfinding, 20.0);
+
+            (double lastMs, double avgMs, double maxMs, long count, double _) = monitor.GetProcessingStats(ProcessingSection.Label);
+            lastMs.Should().Be(6.0);
+            avgMs.Should().Be(5.0);
+            maxMs.Should().Be(6.0);
+            count.Should().Be(2);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.GetProcessingSection(ProcessingSection.Label).LastMs.Should().Be(6.0);
+            snapshot.GetProcessingSection(ProcessingSection.Label).SampleCount.Should().Be(2);
+            snapshot.GetProcessingSection(ProcessingSection.Pathfinding).LastMs.Should().Be(20.0);
+            snapshot.GetProcessingSection(ProcessingSection.Altar).SampleCount.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void ProcessingTotal_AggregatesLastAndAverageSumsAndMaxOfMaxes()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordProcessingTiming(ProcessingSection.Blight, 10.0);
+            monitor.RecordProcessingTiming(ProcessingSection.Click, 5.0);
+            monitor.RecordProcessingTiming(ProcessingSection.Ultimatum, 15.0);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+
+            snapshot.ProcessingTotal.SampleCount.Should().Be(3);
+            snapshot.ProcessingTotal.LastMs.Should().BeApproximately(
+                snapshot.GetProcessingSection(ProcessingSection.Blight).LastMs
+                + snapshot.GetProcessingSection(ProcessingSection.Click).LastMs
+                + snapshot.GetProcessingSection(ProcessingSection.Ultimatum).LastMs, 0.01);
+            snapshot.ProcessingTotal.AverageMs.Should().BeApproximately(
+                snapshot.GetProcessingSection(ProcessingSection.Blight).AverageMs
+                + snapshot.GetProcessingSection(ProcessingSection.Click).AverageMs
+                + snapshot.GetProcessingSection(ProcessingSection.Ultimatum).AverageMs, 0.01);
+            snapshot.ProcessingTotal.MaxMs.Should().Be(15.0);
+        }
+
+        [TestMethod]
+        public void ProcessingTotal_IsZero_WhenNoSectionHasSamples()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+
+            snapshot.ProcessingTotal.SampleCount.Should().Be(0);
+            snapshot.ProcessingTotal.LastMs.Should().Be(0);
+            snapshot.ProcessingTotal.AverageMs.Should().Be(0);
+            snapshot.ProcessingTotal.MaxMs.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void NewRenderSections_FlowThroughStoreAndSnapshot()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordRenderSectionTiming(RenderSection.ClickHotkeyToggle, 1.1);
+            monitor.RecordRenderSectionTiming(RenderSection.InventoryFullWarning, 2.2);
+            monitor.RecordRenderSectionTiming(RenderSection.UiRegionRectangle, 3.3);
+            monitor.RecordRenderSectionTiming(RenderSection.PerformanceOverlay, 4.4);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+
+            snapshot.GetRenderSection(RenderSection.ClickHotkeyToggle).LastMs.Should().Be(1.1);
+            snapshot.GetRenderSection(RenderSection.ClickHotkeyToggle).SampleCount.Should().Be(1);
+            snapshot.GetRenderSection(RenderSection.InventoryFullWarning).LastMs.Should().Be(2.2);
+            snapshot.GetRenderSection(RenderSection.UiRegionRectangle).LastMs.Should().Be(3.3);
+            snapshot.GetRenderSection(RenderSection.PerformanceOverlay).LastMs.Should().Be(4.4);
+        }
+
+        [TestMethod]
+        public void Allocations_FlowThroughStoreAndSnapshot()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordAllocation(ProcessingSection.Label, 2048);
+            monitor.RecordAllocation(ProcessingSection.Pathfinding, 8192);
+
+            GcAllocationSnapshot labelStats = monitor.GetAllocationStats(ProcessingSection.Label);
+            labelStats.SampleCount.Should().Be(1);
+            labelStats.AvgBytesPerRun.Should().Be(2048);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.GetAllocationSection(ProcessingSection.Label).AvgBytesPerRun.Should().Be(2048);
+            snapshot.GetAllocationSection(ProcessingSection.Pathfinding).AvgBytesPerRun.Should().Be(8192);
+            snapshot.GetAllocationSection(ProcessingSection.Blight).SampleCount.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void LabelScanAllocation_FlowsThroughStoreAndSnapshot()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordLabelScanAllocation(new LabelScanAllocationBreakdown(
+                ListReadBytes: 1024 * 1024, ListAllocBytes: 4096, ValidityBytes: 32768, SortBytes: 2048, TotalBytes: 1024 * 1024 + 4096 + 32768 + 2048));
+            monitor.RecordLabelScanAllocation(new LabelScanAllocationBreakdown(
+                ListReadBytes: 2 * 1024 * 1024, ListAllocBytes: 8192, ValidityBytes: 65536, SortBytes: 1024, TotalBytes: 2 * 1024 * 1024 + 8192 + 65536 + 1024));
+
+            LabelScanAllocationStats stats = monitor.GetLabelScanAllocationStats();
+            stats.SampleCount.Should().Be(2);
+            stats.ListRead.AvgBytesPerRun.Should().Be((1024 * 1024 + 2 * 1024 * 1024) / 2.0);
+            stats.ListRead.MaxBytesPerRun.Should().Be(2 * 1024 * 1024);
+            stats.ListRead.LastBytesPerRun.Should().Be(2 * 1024 * 1024);
+            stats.Validity.AvgBytesPerRun.Should().Be((32768 + 65536) / 2.0);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.LabelScanAllocation.SampleCount.Should().Be(2);
+            snapshot.LabelScanAllocation.ListRead.AvgBytesPerRun.Should().Be((1024 * 1024 + 2 * 1024 * 1024) / 2.0);
+            snapshot.LabelScanAllocation.Sort.MaxBytesPerRun.Should().Be(2048);
+        }
+
+        [TestMethod]
+        public void ClickAllocation_FlowsThroughStoreAndSnapshot()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            monitor.RecordClickAllocation(new ClickAllocationBreakdown(
+                ContextBytes: 2048, AcquireBytes: 1024 * 1024, RankBytes: 32768, ExecuteBytes: 65536, PostBytes: 1024, OtherBytes: 8192, TotalBytes: 2048 + 1024 * 1024 + 32768 + 65536 + 1024 + 8192));
+            monitor.RecordClickAllocation(new ClickAllocationBreakdown(
+                ContextBytes: 4096, AcquireBytes: 2 * 1024 * 1024, RankBytes: 16384, ExecuteBytes: 131072, PostBytes: 0, OtherBytes: 16384, TotalBytes: 4096 + 2 * 1024 * 1024 + 16384 + 131072 + 16384));
+
+            ClickAllocationStats stats = monitor.GetClickAllocationStats();
+            stats.SampleCount.Should().Be(2);
+            stats.Acquire.AvgBytesPerRun.Should().Be((1024 * 1024 + 2 * 1024 * 1024) / 2.0);
+            stats.Acquire.LastBytesPerRun.Should().Be(2 * 1024 * 1024);
+            stats.Other.AvgBytesPerRun.Should().Be((8192 + 16384) / 2.0);
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+            snapshot.ClickAllocation.SampleCount.Should().Be(2);
+            snapshot.ClickAllocation.Execute.AvgBytesPerRun.Should().Be((65536 + 131072) / 2.0);
+            snapshot.ClickAllocation.Rank.MaxBytesPerRun.Should().Be(32768);
+            snapshot.ClickAllocation.Other.LastBytesPerRun.Should().Be(16384);
+        }
+
+        [TestMethod]
+        public void MemorySnapshot_ReportsHeapAndProcessMetrics()
+        {
+            var monitor = new PerformanceMonitor(new ClickItSettings());
+
+            PerformanceMetricsSnapshot snapshot = monitor.GetDebugSnapshot();
+
+            snapshot.Memory.ProcessWorkingSetMb.Should().BeGreaterThan(0);
+            snapshot.Memory.ManagedHeapMb.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.Gen0Mb.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.Gen2Mb.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.FragmentedMb.Should().BeGreaterThanOrEqualTo(0);
+            snapshot.Memory.MemoryLoadPercent.Should().BeInRange(0, 100);
         }
 
         [TestMethod]
@@ -232,7 +388,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             total.SampleCount.Should().Be(2);
             total.LastMs.Should().BeApproximately(10.0 / 6 + 20.0 / 3, 0.001);
             total.AverageMs.Should().BeApproximately(5.0 / 6 + 10.0 / 3, 0.001);
-            total.MaxMs.Should().BeApproximately(SystemMath.Max(20.0 / 6, 30.0 / 3), 0.001);
+            total.MaxMs.Should().BeApproximately(20.0 / 6 + 30.0 / 3, 0.001);
             snapshot.CoroutinesTotalPerFrame.Should().BeApproximately(5.0 / 6 + 10.0 / 3, 0.001);
         }
 
@@ -285,17 +441,17 @@ namespace ClickIt.Tests.Features.Observability.Performance
         {
             var monitor = new PerformanceMonitor(new ClickItSettings());
 
-            // 110 samples of 1.0 fill and then roll the 100-sample window, then one 2.0 sample.
-            for (int i = 0; i < 110; i++)
+            // 1000 samples of 1.0 fill and then roll the 1000-sample window, then one 2.0 sample.
+            for (int i = 0; i < 1000; i++)
                 monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 1.0);
             monitor.RecordRenderSectionTiming(RenderSection.DebugOverlay, 2.0);
 
             (double LastMs, double AverageMs, double MaxMs, long SampleCount) stats = monitor.GetRenderSectionStats(RenderSection.DebugOverlay);
-            stats.SampleCount.Should().Be(100);
+            stats.SampleCount.Should().Be(1000);
             stats.LastMs.Should().Be(2.0);
             stats.MaxMs.Should().Be(2.0);
-            // Max window holds 99×1.0 + 1×2.0; average covers the last 20 (19×1.0 + 1×2.0).
-            stats.AverageMs.Should().BeApproximately(21.0 / 20.0, 0.001);
+            // Max window holds 999×1.0 + 1×2.0; average covers the last 100 samples.
+            stats.AverageMs.Should().BeApproximately(1.01, 0.001);
         }
 
         [TestMethod]

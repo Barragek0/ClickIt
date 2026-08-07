@@ -81,21 +81,16 @@ namespace ClickIt.Tests.Core.Bootstrap
                 static (_, _) => true,
                 ClickTestServiceFactory.CreateNoOpLabelSelectionService(),
                 (reason, holdDurationMs) => frozenTelemetrySnapshots.Add((reason, holdDurationMs)));
-            UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
+            UltimatumOverlay ultimatumOverlay = RenderingDomainAssembler.CreateUltimatumOverlay(settings, clickAutomationPort);
             AlertService alertService = CreateOpaque<AlertService>();
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(alertService, settings);
 
-            rendering.StrongboxRenderer.Should().NotBeNull();
-            rendering.LazyModeRenderer.Should().NotBeNull();
-            rendering.ClickHotkeyToggleRenderer.Should().NotBeNull();
-            rendering.InventoryFullWarningRenderer.Should().NotBeNull();
-            rendering.PathfindingRenderer.Should().NotBeNull();
+            rendering.OverlayRenderHost.Should().NotBeNull();
             rendering.AltarChoiceEvaluator.Should().NotBeNull();
-            rendering.AltarDisplayRenderer.Should().NotBeNull();
             clickAutomationPort.Should().NotBeNull();
             clickAutomationPort.ClickAutomationSupport.Should().NotBeNull();
             clickAutomationPort.LockedInteractionDispatcher.Should().NotBeNull();
-            ultimatumRenderer.Should().NotBeNull();
+            ultimatumOverlay.Should().NotBeNull();
             settingsDomain.AlertService.Should().BeSameAs(alertService);
             settingsDomain.EffectiveSettings.Should().BeSameAs(settings);
             frozenTelemetrySnapshots.Should().BeEmpty();
@@ -133,9 +128,8 @@ namespace ClickIt.Tests.Core.Bootstrap
                 DeferredTextQueue: new DeferredTextQueue(),
                 DeferredFrameQueue: new DeferredFrameQueue(),
                 HarvestService: new HarvestService(settings),
-                HarvestOverlayRenderer: CreateOpaque<HarvestOverlayRenderer>(),
                 BlightService: new BlightService(settings),
-                BlightRenderer: CreateOpaque<BlightRenderer>());
+                DeferredDrawQueue: new DeferredDrawQueue());
         }
 
         private static T CreateOpaque<T>() where T : class

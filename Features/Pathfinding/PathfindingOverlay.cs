@@ -1,6 +1,10 @@
-namespace ClickIt.UI.Overlays.Pathfinding
+namespace ClickIt.Features.Pathfinding
 {
-    public sealed class PathfindingRenderer(PathfindingService pathfindingService)
+    /// <summary>
+    /// Owns the offscreen-pathfinding line overlay. The path itself is computed off-frame by the
+    /// PathfindingService; Draw projects the cached path points each frame and enqueues lines.
+    /// </summary>
+    public sealed class PathfindingOverlay : IOverlay
     {
         private const int TileToGridConversion = 23;
         private const int TileToWorldConversion = 250;
@@ -9,26 +13,45 @@ namespace ClickIt.UI.Overlays.Pathfinding
         private static readonly float CameraAngleCos = (float)SystemMath.Cos(CameraAngle);
         private static readonly float CameraAngleSin = (float)SystemMath.Sin(CameraAngle);
 
-        private readonly PathfindingService _pathfindingService = pathfindingService;
+        private readonly PathfindingService _pathfindingService;
 
-        public void Render(GameController? gameController, Graphics? graphics, ClickItSettings settings)
+        public PathfindingOverlay(PathfindingService pathfindingService)
         {
-            if (!settings.WalkTowardOffscreenLabels.Value)
+            _pathfindingService = pathfindingService;
+        }
+
+        public string Name => "Pathfinding";
+
+        public RenderSection Section => RenderSection.PathfindingOverlay;
+
+        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.None;
+
+        public TimingChannel? RefreshTimingChannel => null;
+
+        public ProcessingSection ProcessingSection => ProcessingSection.Pathfinding;
+
+        public bool IsEnabled(ClickItSettings settings)
+            => settings.WalkTowardOffscreenLabels.Value;
+
+        public void Refresh(OverlayRefreshContext ctx)
+        {
+        }
+
+        public void Draw(OverlayRenderContext ctx)
+        {
+            if (ctx.GameController == null)
                 return;
 
-            if (gameController == null || graphics == null)
-                return;
-
-            _pathfindingService.ClearPathIfStale(settings.OffscreenPathfindingLineTimeoutMs.Value);
+            _pathfindingService.ClearPathIfStale(ctx.Settings.OffscreenPathfindingLineTimeoutMs.Value);
 
             IReadOnlyList<PathfindingService.GridPoint> gridPath = _pathfindingService.GetLatestGridPath();
             if (gridPath.Count < 2)
                 return;
 
-            if (TryRenderMapPath(gameController, graphics, gridPath))
+            if (TryRenderMapPath(ctx, gridPath))
                 return;
 
-            RenderFallbackScreenPath(graphics);
+            RenderFallbackScreenPath(ctx.DrawQueue);
         }
 
         internal static string ToCompass(Vector2 delta)
@@ -43,14 +66,14 @@ namespace ClickIt.UI.Overlays.Pathfinding
             return string.IsNullOrEmpty(ns + ew) ? "Center" : ns + ew;
         }
 
-        private void RenderFallbackScreenPath(Graphics graphics)
+        private void RenderFallbackScreenPath(DeferredDrawQueue queue)
         {
             IReadOnlyList<Vector2> points = _pathfindingService.GetLatestScreenPath();
             if (points.Count < 2)
                 return;
 
             for (int i = 1; i < points.Count; i++)
-                DrawLine(graphics, points[i - 1], points[i], 2, Color.Red);
+                DrawLine(queue, points[i - 1], points[i], 2, Color.Red);
         }
 
         private static bool TryGetPlayerGrid(GameController gameController, out PathfindingService.GridPoint playerGrid)
@@ -83,14 +106,13 @@ namespace ClickIt.UI.Overlays.Pathfinding
             return bestIndex;
         }
 
-        private static void DrawLine(Graphics graphics, Vector2 start, Vector2 end, int thickness, Color color)
-        {
-            graphics.DrawLine(new NumVector2(start.X, start.Y), new NumVector2(end.X, end.Y), thickness, color);
-        }
+        private static void DrawLine(DeferredDrawQueue queue, Vector2 start, Vector2 end, int thickness, Color color)
+            => queue.EnqueueLine(new NumVector2(start.X, start.Y), new NumVector2(end.X, end.Y), thickness, color);
 
-        private static bool TryRenderMapPath(GameController gameController, Graphics graphics, IReadOnlyList<PathfindingService.GridPoint> gridPath)
+        private static bool TryRenderMapPath(OverlayRenderContext ctx, IReadOnlyList<PathfindingService.GridPoint> gridPath)
         {
-            SubMap? mapElement = gameController.IngameState?.IngameUi?.Map?.LargeMap;
+            GameController? gameController = ctx.GameController;
+            SubMap? mapElement = gameController?.IngameState?.IngameUi?.Map?.LargeMap;
             if (mapElement == null)
                 return false;
 
@@ -98,14 +120,14 @@ namespace ClickIt.UI.Overlays.Pathfinding
             if (largeMap == null || !largeMap.IsVisible)
                 return false;
 
-            if (!TryGetPlayerGrid(gameController, out PathfindingService.GridPoint playerGrid))
+            if (!TryGetPlayerGrid(gameController!, out PathfindingService.GridPoint playerGrid))
                 return false;
 
             int startIndex = FindClosestGridPathIndex(gridPath, playerGrid);
             if (startIndex < 0 || startIndex >= gridPath.Count)
                 return false;
 
-            float[][]? rawHeights = gameController.IngameState?.Data?.RawTerrainHeightData;
+            float[][]? rawHeights = gameController!.IngameState?.Data?.RawTerrainHeightData;
             float playerHeight = GetPlayerHeightEstimate(gameController);
             Vector2 mapCenter = new(largeMap.MapCenter.X, largeMap.MapCenter.Y);
             float mapScale = (float)largeMap.MapScale;
@@ -113,13 +135,13 @@ namespace ClickIt.UI.Overlays.Pathfinding
             Vector2 playerPoint = TranslateGridToMap(playerGrid, playerGrid, playerHeight, rawHeights, mapCenter, mapScale);
             Vector2 firstPoint = TranslateGridToMap(gridPath[startIndex], playerGrid, playerHeight, rawHeights, mapCenter, mapScale);
 
-            DrawLine(graphics, playerPoint, firstPoint, 2, Color.Red);
+            DrawLine(ctx.DrawQueue, playerPoint, firstPoint, 2, Color.Red);
 
             Vector2 previous = firstPoint;
             for (int i = startIndex + 1; i < gridPath.Count; i++)
             {
                 Vector2 current = TranslateGridToMap(gridPath[i], playerGrid, playerHeight, rawHeights, mapCenter, mapScale);
-                DrawLine(graphics, previous, current, 2, Color.Red);
+                DrawLine(ctx.DrawQueue, previous, current, 2, Color.Red);
                 previous = current;
             }
 

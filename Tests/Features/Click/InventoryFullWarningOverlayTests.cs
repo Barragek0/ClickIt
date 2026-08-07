@@ -1,14 +1,14 @@
-namespace ClickIt.Tests.UI
+namespace ClickIt.Tests.Features.Click
 {
     [TestClass]
-    public class InventoryFullWarningRendererTests
+    public class InventoryFullWarningOverlayTests
     {
         [TestMethod]
         public void ShouldShowInventoryPickupBlockedWarning_ReturnsTrue_WhenFullDecisionDisallowsPickup()
         {
             var snapshot = CreateInventorySnapshot(stage: "InventoryFullDecision", inventoryFull: true, allowPickup: false);
 
-            bool blocked = InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
+            bool blocked = InventoryFullWarningOverlay.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeTrue();
         }
 
@@ -17,7 +17,7 @@ namespace ClickIt.Tests.UI
         {
             var snapshot = CreateInventorySnapshot(stage: "InventoryNotFullNoFit", inventoryFull: false, allowPickup: false);
 
-            bool blocked = InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
+            bool blocked = InventoryFullWarningOverlay.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeTrue();
         }
 
@@ -30,7 +30,7 @@ namespace ClickIt.Tests.UI
                 GroundItemName = string.Empty
             };
 
-            bool blocked = InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
+            bool blocked = InventoryFullWarningOverlay.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeFalse();
         }
 
@@ -42,7 +42,7 @@ namespace ClickIt.Tests.UI
                 Notes = "Inventory layout unreliable from PlayerInventories[0].InventorySlotItems (raw:1 parsed:0)"
             };
 
-            bool blocked = InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
+            bool blocked = InventoryFullWarningOverlay.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeFalse();
         }
 
@@ -60,14 +60,14 @@ namespace ClickIt.Tests.UI
                 IsGroundStackable = false
             };
 
-            bool blocked = InventoryFullWarningRenderer.ShouldShowInventoryPickupBlockedWarning(snapshot);
+            bool blocked = InventoryFullWarningOverlay.ShouldShowInventoryPickupBlockedWarning(snapshot);
             blocked.Should().BeFalse();
         }
 
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_PrefersPlayerFeet_WhenAvailable()
         {
-            Vector2 result = InventoryFullWarningRenderer.ResolveInventoryFullWarningPosition(
+            Vector2 result = InventoryFullWarningOverlay.ResolveInventoryFullWarningPosition(
                 new RectangleF(0, 0, 1920, 1080),
                 new RectangleF(10, 20, 110, 120),
                 new RectangleF(1810, 20, 1910, 120),
@@ -79,7 +79,7 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_UsesWindowFallback_WhenTertiariesAreMissing()
         {
-            Vector2 result = InventoryFullWarningRenderer.ResolveInventoryFullWarningPosition(
+            Vector2 result = InventoryFullWarningOverlay.ResolveInventoryFullWarningPosition(
                 new RectangleF(100, 50, 1200, 700),
                 RectangleF.Empty,
                 RectangleF.Empty,
@@ -91,7 +91,7 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_UsesWindowFallback_WhenOnlyOneTertiaryIsValid()
         {
-            Vector2 result = InventoryFullWarningRenderer.ResolveInventoryFullWarningPosition(
+            Vector2 result = InventoryFullWarningOverlay.ResolveInventoryFullWarningPosition(
                 new RectangleF(0, 0, 1600, 900),
                 new RectangleF(10, 20, 150, 220),
                 RectangleF.Empty,
@@ -103,7 +103,7 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ResolveInventoryFullWarningPosition_UsesMidpointBetweenValidTertiaries()
         {
-            Vector2 result = InventoryFullWarningRenderer.ResolveInventoryFullWarningPosition(
+            Vector2 result = InventoryFullWarningOverlay.ResolveInventoryFullWarningPosition(
                 new RectangleF(0, 0, 1600, 900),
                 new RectangleF(40, 100, 240, 300),
                 new RectangleF(1160, 120, 1360, 360),
@@ -115,17 +115,27 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ShouldShowInventoryFullWarning_ReturnsExpectedState_ForInitialExpiredAndFutureTimestamps()
         {
-            InventoryFullWarningRenderer.ShouldShowInventoryFullWarning(now: 1000, lastTriggeredTimestampMs: 0)
+            InventoryFullWarningOverlay.ShouldShowInventoryFullWarning(now: 1000, lastTriggeredTimestampMs: 0)
                 .Should().BeFalse();
 
-            InventoryFullWarningRenderer.ShouldShowInventoryFullWarning(now: 15_500, lastTriggeredTimestampMs: 5_000)
+            InventoryFullWarningOverlay.ShouldShowInventoryFullWarning(now: 15_500, lastTriggeredTimestampMs: 5_000)
                 .Should().BeFalse();
 
-            InventoryFullWarningRenderer.ShouldShowInventoryFullWarning(now: 4_000, lastTriggeredTimestampMs: 5_000)
+            InventoryFullWarningOverlay.ShouldShowInventoryFullWarning(now: 4_000, lastTriggeredTimestampMs: 5_000)
                 .Should().BeFalse();
 
-            InventoryFullWarningRenderer.ShouldShowInventoryFullWarning(now: 14_999, lastTriggeredTimestampMs: 5_000)
+            InventoryFullWarningOverlay.ShouldShowInventoryFullWarning(now: 14_999, lastTriggeredTimestampMs: 5_000)
                 .Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void ShouldRefreshInventoryFullWarningTimestamp_OnlyWhenSequenceChanges()
+        {
+            var snapshot = CreateInventorySnapshot(stage: "InventoryFullDecision", inventoryFull: true, allowPickup: false, sequence: 7);
+
+            InventoryFullWarningOverlay.ShouldRefreshInventoryFullWarningTimestamp(6, 7, snapshot).Should().BeTrue();
+            InventoryFullWarningOverlay.ShouldRefreshInventoryFullWarningTimestamp(7, 7, snapshot).Should().BeFalse();
+            InventoryFullWarningOverlay.ShouldRefreshInventoryFullWarningTimestamp(7, 7, InventoryDebugSnapshot.Empty).Should().BeFalse();
         }
 
         private static InventoryDebugSnapshot CreateInventorySnapshot(string stage, bool inventoryFull, bool allowPickup, long sequence = 0)

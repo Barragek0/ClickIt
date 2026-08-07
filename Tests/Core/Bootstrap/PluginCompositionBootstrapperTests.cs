@@ -11,10 +11,9 @@ namespace ClickIt.Tests.Core.Bootstrap
             CoreDomainServices core = CreateCoreDomainServices(settings);
             RenderingDomainServices rendering = CreateRenderingDomainServices();
             ClickAutomationPort clickAutomationPort = CreateClickAutomationPort(settings, core);
-            UltimatumRenderer ultimatumRenderer = CreateOpaque<UltimatumRenderer>();
             AlertService alertService = CreateOpaque<AlertService>();
 
-            InvokeApplyPorts(context, core, rendering, clickAutomationPort, ultimatumRenderer, alertService);
+            InvokeApplyPorts(context, core, rendering, clickAutomationPort, alertService);
 
             context.Services.PerformanceMonitor.Should().BeSameAs(core.PerformanceMonitor);
             context.Services.ErrorHandler.Should().BeSameAs(core.ErrorHandler);
@@ -37,13 +36,8 @@ namespace ClickIt.Tests.Core.Bootstrap
             context.Services.WeightCalculator.Should().BeSameAs(core.WeightCalculator);
             context.Rendering.DeferredTextQueue.Should().BeSameAs(core.DeferredTextQueue);
             context.Rendering.DeferredFrameQueue.Should().BeSameAs(core.DeferredFrameQueue);
-            context.Rendering.StrongboxRenderer.Should().BeSameAs(rendering.StrongboxRenderer);
-            context.Rendering.LazyModeRenderer.Should().BeSameAs(rendering.LazyModeRenderer);
-            context.Rendering.ClickHotkeyToggleRenderer.Should().BeSameAs(rendering.ClickHotkeyToggleRenderer);
-            context.Rendering.InventoryFullWarningRenderer.Should().BeSameAs(rendering.InventoryFullWarningRenderer);
-            context.Rendering.PathfindingRenderer.Should().BeSameAs(rendering.PathfindingRenderer);
-            context.Rendering.AltarDisplayRenderer.Should().BeSameAs(rendering.AltarDisplayRenderer);
-            context.Rendering.UltimatumRenderer.Should().BeSameAs(ultimatumRenderer);
+            context.Rendering.OverlayRenderHost.Should().BeSameAs(rendering.OverlayRenderHost);
+            context.Rendering.DeferredDrawQueue.Should().BeSameAs(core.DeferredDrawQueue);
         }
 
         [TestMethod]
@@ -183,9 +177,8 @@ namespace ClickIt.Tests.Core.Bootstrap
             CoreDomainServices core = CreateCoreDomainServices(settings);
             RenderingDomainServices rendering = CreateRenderingDomainServices();
             ClickAutomationPort clickAutomationPort = CreateClickAutomationPort(settings, core);
-            UltimatumRenderer ultimatumRenderer = CreateOpaque<UltimatumRenderer>();
             AlertService alertService = CreateAlertService(effectiveSettings);
-            object parts = CreateCompositionRootParts(core, rendering, clickAutomationPort, ultimatumRenderer, alertService, effectiveSettings);
+            object parts = CreateCompositionRootParts(core, rendering, clickAutomationPort, alertService, effectiveSettings);
             int runtimeOpenHandlersBefore = GetHandlerCount(settings.OpenConfigDirectory);
             int runtimeReloadHandlersBefore = GetHandlerCount(settings.ReloadAlertSound);
             int effectiveOpenHandlersBefore = GetHandlerCount(effectiveSettings.OpenConfigDirectory);
@@ -195,7 +188,7 @@ namespace ClickIt.Tests.Core.Bootstrap
 
             context.Services.ClickAutomationPort.Should().BeSameAs(clickAutomationPort);
             context.Services.AlertService.Should().BeSameAs(alertService);
-            context.Rendering.UltimatumRenderer.Should().BeSameAs(ultimatumRenderer);
+            context.Rendering.OverlayRenderHost.Should().BeSameAs(rendering.OverlayRenderHost);
             GetHandlerCount(settings.OpenConfigDirectory).Should().Be(runtimeOpenHandlersBefore + 1);
             GetHandlerCount(settings.ReloadAlertSound).Should().Be(runtimeReloadHandlersBefore + 1);
             GetHandlerCount(effectiveSettings.OpenConfigDirectory).Should().Be(effectiveOpenHandlersBefore + 1);
@@ -246,11 +239,10 @@ namespace ClickIt.Tests.Core.Bootstrap
             CoreDomainServices core,
             RenderingDomainServices rendering,
             ClickAutomationPort clickAutomationPort,
-            UltimatumRenderer ultimatumRenderer,
             AlertService alertService)
         {
             MethodInfo method = typeof(PluginCompositionBootstrapper).GetMethod("ApplyPorts", BindingFlags.NonPublic | BindingFlags.Static)!;
-            method.Invoke(null, [context, core, rendering, clickAutomationPort, ultimatumRenderer, alertService]);
+            method.Invoke(null, [context, core, rendering, clickAutomationPort, alertService]);
         }
 
         private static void InvokePublishCompositionState(PluginContext context, ClickItSettings settings, object parts)
@@ -269,13 +261,12 @@ namespace ClickIt.Tests.Core.Bootstrap
             CoreDomainServices core,
             RenderingDomainServices rendering,
             ClickAutomationPort clickAutomationPort,
-            UltimatumRenderer ultimatumRenderer,
             AlertService alertService,
             ClickItSettings effectiveSettings)
         {
             SettingsDomainServices settingsDomain = new(alertService, effectiveSettings);
             Type partsType = typeof(PluginCompositionBootstrapper).GetNestedType("CompositionRootParts", BindingFlags.NonPublic)!;
-            return Activator.CreateInstance(partsType, core, rendering, clickAutomationPort, ultimatumRenderer, settingsDomain)!;
+            return Activator.CreateInstance(partsType, core, rendering, clickAutomationPort, settingsDomain)!;
         }
 
         private static AlertService CreateAlertService(ClickItSettings settings)
@@ -324,23 +315,17 @@ namespace ClickIt.Tests.Core.Bootstrap
                 DeferredTextQueue: new DeferredTextQueue(),
                 DeferredFrameQueue: new DeferredFrameQueue(),
                 HarvestService: new HarvestService(settings),
-                HarvestOverlayRenderer: CreateOpaque<HarvestOverlayRenderer>(),
                 BlightService: new BlightService(settings),
-                BlightRenderer: CreateOpaque<BlightRenderer>());
+                DeferredDrawQueue: new DeferredDrawQueue());
         }
 
         private static RenderingDomainServices CreateRenderingDomainServices()
         {
             return new RenderingDomainServices(
-                StrongboxRenderer: CreateOpaque<StrongboxRenderer>(),
-                LazyModeRenderer: CreateOpaque<LazyModeRenderer>(),
-                ClickHotkeyToggleRenderer: CreateOpaque<ClickHotkeyToggleRenderer>(),
-                InventoryFullWarningRenderer: CreateOpaque<InventoryFullWarningRenderer>(),
-                PathfindingRenderer: CreateOpaque<PathfindingRenderer>(),
                 AltarChoiceEvaluator: CreateOpaque<AltarChoiceEvaluator>(),
-                AltarDisplayRenderer: CreateOpaque<AltarDisplayRenderer>(),
                 ImGuiDebugOverlay: CreateOpaque<ImGuiDebugOverlay>(),
-                UiRegionRectangleOverlay: CreateOpaque<UiRegionRectangleOverlay>());
+                UiRegionRectangleOverlay: CreateOpaque<UiRegionRectangleOverlay>(),
+                OverlayRenderHost: new OverlayRenderHost());
         }
 
         private static ClickAutomationPort CreateClickAutomationPort(ClickItSettings settings, CoreDomainServices core)

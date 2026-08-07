@@ -52,6 +52,7 @@ namespace ClickIt.Features.Click.Core
         Action<string> HoldDebugTelemetryAfterSuccess,
         Action<string> DebugLog,
         InputHandler InputHandler,
+        Action<ClickAllocationBreakdown>? RecordAllocationBreakdown = null,
         Func<LabelOnGround?>? GetHarvestLabelToClick = null,
         Func<BlightBuildAction>? TryProgressBlightBuilding = null,
         Func<Entity?>? GetBlightPathfindTarget = null,
@@ -138,36 +139,73 @@ namespace ClickIt.Features.Click.Core
         public IEnumerator Run()
         {
             LastTickWasActionable = false;
+            long runStart = GC.GetAllocatedBytesForCurrentThread();
             _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("TickStart", "ProcessRegularClick entered", null);
 
             if (_dependencies.AltarAutomation.HasClickableAltars())
             {
                 LastTickWasActionable = true;
                 _dependencies.ClickDebugPublisher.PublishClickFlowDebugStage("AltarBranch", "Clickable altar detected; regular label click path skipped", null);
-                return _dependencies.AltarAutomation.ProcessAltarClicking();
+                long altarStart = GC.GetAllocatedBytesForCurrentThread();
+                IEnumerator altar = _dependencies.AltarAutomation.ProcessAltarClicking();
+                while (altar.MoveNext())
+                    yield return altar.Current;
+                long altarBytes = GC.GetAllocatedBytesForCurrentThread() - altarStart;
+                long total = GC.GetAllocatedBytesForCurrentThread() - runStart;
+                _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
+                    ContextBytes: 0, AcquireBytes: 0, RankBytes: 0, ExecuteBytes: altarBytes, PostBytes: 0,
+                    OtherBytes: SystemMath.Max(0, total - altarBytes), TotalBytes: total));
+                yield break;
             }
 
-            return RunCore();
+            IEnumerator core = RunCore(runStart);
+            while (core.MoveNext())
+                yield return core.Current;
         }
 
-        private IEnumerator RunCore()
+        private IEnumerator RunCore(long runStart)
         {
+            long ctxStart = GC.GetAllocatedBytesForCurrentThread();
             if (!_dependencies.TickContextFactory.TryCreateRegularClickContext(out ClickTickContext context))
+            {
+                long earlyCtxBytes = GC.GetAllocatedBytesForCurrentThread() - ctxStart;
+                long earlyTotal = GC.GetAllocatedBytesForCurrentThread() - runStart;
+                _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
+                    earlyCtxBytes, 0, 0, 0, 0, SystemMath.Max(0, earlyTotal - earlyCtxBytes), earlyTotal));
                 yield break;
+            }
+            long ctxBytes = GC.GetAllocatedBytesForCurrentThread() - ctxStart;
 
+            long acquireStart = GC.GetAllocatedBytesForCurrentThread();
             ClickCandidates candidates = _acquisitionPhase.Collect(context);
+            long acquireBytes = GC.GetAllocatedBytesForCurrentThread() - acquireStart;
+
+            long rankStart = GC.GetAllocatedBytesForCurrentThread();
             RankingResult ranking = _rankingPhase.Rank(context, candidates);
+            long rankBytes = GC.GetAllocatedBytesForCurrentThread() - rankStart;
+
             DecisionResult decision = Gate(candidates, ranking);
+
+            long executeStart = GC.GetAllocatedBytesForCurrentThread();
             ExecutionResult executionResult = _executionPhase.Execute(context, candidates, decision);
+            long executeBytes = GC.GetAllocatedBytesForCurrentThread() - executeStart;
             LastTickWasActionable = executionResult.DidActionableWork;
 
-            // Only allocate the post-click iterator when it can actually do something.
+            long postBytes = 0;
             if (executionResult.ShouldRunPostActions)
             {
+                long postStart = GC.GetAllocatedBytesForCurrentThread();
                 IEnumerator postActions = RunPostClickActions(_dependencies.InputHandler, executionResult);
                 while (postActions.MoveNext())
                     yield return postActions.Current;
+                postBytes = GC.GetAllocatedBytesForCurrentThread() - postStart;
             }
+
+            long total = GC.GetAllocatedBytesForCurrentThread() - runStart;
+            long stageSum = ctxBytes + acquireBytes + rankBytes + executeBytes + postBytes;
+            _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
+                ctxBytes, acquireBytes, rankBytes, executeBytes, postBytes,
+                SystemMath.Max(0, total - stageSum), total));
         }
 
         private static DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)

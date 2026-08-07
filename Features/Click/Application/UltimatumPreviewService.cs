@@ -122,7 +122,7 @@ namespace ClickIt.Features.Click.Application
                     continue;
 
                 bool isSelected = decision.HasBestChoice && ReferenceEquals(candidate.ChoiceElement, decision.BestChoiceElement);
-                previews.Add(new UltimatumPanelOptionPreview(rect, candidate.ModifierName, candidate.PriorityIndex, isSelected));
+                previews.Add(new UltimatumPanelOptionPreview(rect, candidate.ChoiceElement, candidate.ModifierName, candidate.PriorityIndex, isSelected));
             }
 
             return previews.Count > 0;
@@ -165,7 +165,7 @@ namespace ClickIt.Features.Click.Application
                     continue;
 
                 bool isSelected = decision.HasBestChoice && ReferenceEquals(candidate.OptionElement, decision.BestChoiceElement);
-                previews.Add(new UltimatumPanelOptionPreview(rect, candidate.ModifierName, candidate.PriorityIndex, isSelected));
+                previews.Add(new UltimatumPanelOptionPreview(rect, candidate.OptionElement, candidate.ModifierName, candidate.PriorityIndex, isSelected));
             }
 
             return previews.Count > 0;

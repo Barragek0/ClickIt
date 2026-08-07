@@ -1,15 +1,10 @@
 namespace ClickIt.Core.Bootstrap
 {
     internal readonly record struct RenderingDomainServices(
-        StrongboxRenderer StrongboxRenderer,
-        LazyModeRenderer LazyModeRenderer,
-        ClickHotkeyToggleRenderer ClickHotkeyToggleRenderer,
-        InventoryFullWarningRenderer InventoryFullWarningRenderer,
-        PathfindingRenderer PathfindingRenderer,
         AltarChoiceEvaluator AltarChoiceEvaluator,
-        AltarDisplayRenderer AltarDisplayRenderer,
         ImGuiDebugOverlay ImGuiDebugOverlay,
-        UiRegionRectangleOverlay UiRegionRectangleOverlay);
+        UiRegionRectangleOverlay UiRegionRectangleOverlay,
+        OverlayRenderHost OverlayRenderHost);
 
     internal static class RenderingDomainAssembler
     {
@@ -35,42 +30,33 @@ namespace ClickIt.Core.Bootstrap
             Graphics graphics,
             Action<string, int> logMessage)
         {
-            StrongboxRenderer strongboxRenderer = new(settings, core.DeferredFrameQueue);
-            LazyModeRenderer lazyModeRenderer = new(settings, core.DeferredTextQueue, core.InputHandler, core.LazyModeBlockerService);
-            ClickHotkeyToggleRenderer clickHotkeyToggleRenderer = new(settings, core.DeferredTextQueue, core.InputHandler);
-            InventoryFullWarningRenderer inventoryFullWarningRenderer = new(
-                core.DeferredTextQueue,
-                core.AreaService,
-                core.InventoryProbeService.GetLatestDebug);
-            PathfindingRenderer pathfindingRenderer = new(core.PathfindingService);
-            AltarChoiceEvaluator altarChoiceEvaluator = new(settings, logMessage);
+            OverlayRenderHost overlayRenderHost = new();
+            overlayRenderHost.Register(new StrongboxOverlay());
 
-            AltarDisplayRenderer altarDisplayRenderer = new(
-                graphics,
-                core.WeightCalculator,
-                altarChoiceEvaluator,
-                core.DeferredTextQueue,
-                core.DeferredFrameQueue,
-                core.AltarService,
-                logMessage);
+            AltarChoiceEvaluator altarChoiceEvaluator = new(settings, logMessage);
+            overlayRenderHost.Register(new AltarOverlay(core.WeightCalculator, altarChoiceEvaluator, core.AltarService, logMessage));
+            overlayRenderHost.Register(new HarvestOverlay(core.HarvestService));
+            overlayRenderHost.Register(new LazyModeOverlay(core.InputHandler, core.LazyModeBlockerService));
+            overlayRenderHost.Register(new ClickHotkeyToggleOverlay(core.InputHandler));
+            overlayRenderHost.Register(new InventoryFullWarningOverlay(core.AreaService, core.InventoryProbeService.GetLatestDebug));
+            overlayRenderHost.Register(new PathfindingOverlay(core.PathfindingService));
+            overlayRenderHost.Register(new BlightOverlay(core.BlightService));
+            overlayRenderHost.Register(new PerformanceInGameOverlay(core.PerformanceMonitor.GetDebugSnapshot, () => AreaService.IsInMap(plugin.GameController)));
 
             ImGuiDebugOverlay guiDebugOverlay = new(settings, core.PerformanceMonitor, core.BlightService, new PluginDebugTelemetrySource(plugin));
 
             UiRegionRectangleOverlay uiRegionRectangleOverlay = new(settings, core.AreaService);
 
             return new RenderingDomainServices(
-                strongboxRenderer,
-                lazyModeRenderer,
-                clickHotkeyToggleRenderer,
-                inventoryFullWarningRenderer,
-                pathfindingRenderer,
                 altarChoiceEvaluator,
-                altarDisplayRenderer,
                 guiDebugOverlay,
-                uiRegionRectangleOverlay);
+                uiRegionRectangleOverlay,
+                overlayRenderHost);
         }
 
-        public static UltimatumRenderer CreateUltimatumRenderer(ClickItSettings settings, ClickAutomationPort clickAutomationPort, DeferredFrameQueue deferredFrameQueue)
-            => new(settings, () => clickAutomationPort.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) ? previews : null, deferredFrameQueue);
+        public static UltimatumOverlay CreateUltimatumOverlay(ClickItSettings settings, ClickAutomationPort clickAutomationPort)
+            => new(
+                () => clickAutomationPort.TryGetUltimatumOptionPreview(out List<UltimatumPanelOptionPreview> previews) ? previews : null,
+                () => clickAutomationPort.RefreshUltimatumPreview());
     }
 }

@@ -1,58 +1,80 @@
-namespace ClickIt.UI.Overlays.Common
+namespace ClickIt.Features.Strongboxes
 {
-    public class StrongboxRenderer(ClickItSettings settings, DeferredFrameQueue deferredFrameQueue)
+    /// <summary>
+    /// Owns the strongbox frame overlay end-to-end: refresh cadence (host coroutine), the
+    /// off-frame label scan, and the per-frame draw of cached frames. Decision helpers are
+    /// internal static so the classifier and tests share the same rules.
+    /// </summary>
+    public sealed class StrongboxOverlay : IOverlay
     {
         private const string StrongboxUniqueIdentifier = "special:strongbox-unique";
+        private const int StrongboxScanIntervalMs = 100;
+
         private readonly record struct StrongboxFrame(RectangleF Rect, Color Color);
         private readonly record struct StrongboxRenderState(
             bool ShowFrames,
             IReadOnlyList<string> ClickMetadata,
             IReadOnlyList<string> DontClickMetadata);
-
-        private const int StrongboxScanIntervalMs = 100;
+        private readonly record struct StrongboxLabelMetadata(Element? Label, Chest? Chest, string Path, string RenderName, bool IsUnique);
         private readonly record struct CachedStrongbox(LabelOnGround Label, StrongboxLabelMetadata Metadata);
+
         private static readonly List<CachedStrongbox> s_emptyStrongboxes = [];
 
-        private readonly DeferredFrameQueue _deferredFrameQueue = deferredFrameQueue;
-        private readonly ClickItSettings _settings = settings;
+        private readonly OverlaySnapshot<List<CachedStrongbox>> _snapshot = new(s_emptyStrongboxes);
+
         private IReadOnlyList<string> _cachedClickMetadata = [];
         private IReadOnlyList<string> _cachedDontClickMetadata = [];
         private HashSet<string>? _clickIdsSnapshot;
         private HashSet<string>? _dontClickIdsSnapshot;
-        private long _lastStrongboxScanMs;
-        private List<CachedStrongbox> _cachedStrongboxes = [];
 
-        public void Render(GameController? gameController)
+        public string Name => "Strongbox";
+
+        public RenderSection Section => RenderSection.StrongboxOverlay;
+
+        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.Throttled(StrongboxScanIntervalMs);
+
+        public TimingChannel? RefreshTimingChannel => TimingChannel.LabelOverlay;
+
+        public ProcessingSection ProcessingSection => ProcessingSection.Strongbox;
+
+        public bool IsEnabled(ClickItSettings settings)
+            => settings.ShowStrongboxFrames.Value || (settings.StrongboxClickIds?.Count ?? 0) > 0;
+
+        // Coroutine thread — the only place this overlay reads labels / game memory.
+        public void Refresh(OverlayRefreshContext ctx)
         {
-            if (gameController == null) return;
-            Render(gameController.Window.GetWindowRectangleTimeCache);
-        }
+            EnsureStrongboxMetadataCache(ctx.Settings);
 
-        public void Render(RectangleF windowArea)
-            => RenderCachedStrongboxFrames(windowArea, ResolveRenderState());
-
-        // Background refresh (label-overlay coroutine): the expensive metadata scan runs here at a
-        // throttled cadence off the render thread; Render only draws the cached frames each frame.
-        public void Refresh(IEnumerable<LabelOnGround>? labels, RectangleF windowArea)
-        {
-            EnsureStrongboxMetadataCache();
-
-            StrongboxRenderState renderState = ResolveRenderState();
+            StrongboxRenderState renderState = ResolveRenderState(ctx.Settings);
             if (!ShouldRenderAnyStrongboxes(renderState))
             {
-                _cachedStrongboxes = s_emptyStrongboxes;
+                _snapshot.Replace(s_emptyStrongboxes);
                 return;
             }
 
-            if (Environment.TickCount64 - _lastStrongboxScanMs >= StrongboxScanIntervalMs)
+            _snapshot.Replace(ScanStrongboxes(ctx.Labels, ctx.WindowArea, renderState));
+        }
+
+        // Render thread — cached data + fresh per-frame projection, enqueue only.
+        public void Draw(OverlayRenderContext ctx)
+        {
+            StrongboxRenderState renderState = ResolveRenderState(ctx.Settings);
+            List<CachedStrongbox> cached = _snapshot.Current;
+            for (int i = 0; i < cached.Count; i++)
             {
-                _lastStrongboxScanMs = Environment.TickCount64;
-                _cachedStrongboxes = ScanStrongboxes(labels, windowArea, renderState);
+                CachedStrongbox sb = cached[i];
+                if (!LabelGeometry.TryGetLabelRectOnScreen(sb.Label, ctx.WindowArea, out RectangleF rect))
+                    continue;
+
+                if (!TryResolveStrongboxFrame(rect, renderState, sb.Metadata, out StrongboxFrame frame))
+                    continue;
+
+                ctx.FrameQueue.Enqueue(frame.Rect, frame.Color, 2);
             }
         }
 
         private static List<CachedStrongbox> ScanStrongboxes(
-            IEnumerable<LabelOnGround>? labels,
+            IReadOnlyList<LabelOnGround>? labels,
             RectangleF windowArea,
             StrongboxRenderState renderState)
         {
@@ -78,30 +100,9 @@ namespace ClickIt.UI.Overlays.Common
             return strongboxes;
         }
 
-        private void RenderCachedStrongboxFrames(RectangleF windowArea, StrongboxRenderState renderState)
-        {
-            // The background coroutine swaps the list reference; iterate a captured local so a swap
-            // between the Count read and the indexer read can't throw IndexOutOfRangeException.
-            List<CachedStrongbox> cached = _cachedStrongboxes;
-            for (int i = 0; i < cached.Count; i++)
-            {
-                CachedStrongbox sb = cached[i];
-                if (!LabelGeometry.TryGetLabelRectOnScreen(sb.Label, windowArea, out RectangleF rect))
-                    continue;
-
-                if (!TryResolveStrongboxFrame(rect, renderState, sb.Metadata, out StrongboxFrame frame))
-                    continue;
-
-                EnqueueStrongboxFrame(frame);
-            }
-        }
-
-        private void EnqueueStrongboxFrame(StrongboxFrame frame)
-            => _deferredFrameQueue.Enqueue(frame.Rect, frame.Color, 2);
-
-        private StrongboxRenderState ResolveRenderState()
+        private StrongboxRenderState ResolveRenderState(ClickItSettings settings)
             => new(
-                _settings.ShowStrongboxFrames.Value,
+                settings.ShowStrongboxFrames.Value,
                 _cachedClickMetadata,
                 _cachedDontClickMetadata);
 
@@ -182,24 +183,22 @@ namespace ClickIt.UI.Overlays.Common
             return snapshot.SetEquals(currentIds);
         }
 
-        private void EnsureStrongboxMetadataCache()
+        private void EnsureStrongboxMetadataCache(ClickItSettings settings)
         {
-            if (HasMatchingSnapshot(_settings.StrongboxClickIds, _clickIdsSnapshot)
-                && HasMatchingSnapshot(_settings.StrongboxDontClickIds, _dontClickIdsSnapshot))
+            if (HasMatchingSnapshot(settings.StrongboxClickIds, _clickIdsSnapshot)
+                && HasMatchingSnapshot(settings.StrongboxDontClickIds, _dontClickIdsSnapshot))
             {
                 return;
             }
 
-            _cachedClickMetadata = _settings.GetStrongboxClickMetadataIdentifiers();
-            _cachedDontClickMetadata = _settings.GetStrongboxDontClickMetadataIdentifiers();
+            _cachedClickMetadata = settings.GetStrongboxClickMetadataIdentifiers();
+            _cachedDontClickMetadata = settings.GetStrongboxDontClickMetadataIdentifiers();
 
-            HashSet<string> currentClickIds = _settings.StrongboxClickIds ?? [];
-            HashSet<string> currentDontClickIds = _settings.StrongboxDontClickIds ?? [];
+            HashSet<string> currentClickIds = settings.StrongboxClickIds ?? [];
+            HashSet<string> currentDontClickIds = settings.StrongboxDontClickIds ?? [];
             _clickIdsSnapshot = new HashSet<string>(currentClickIds, StringComparer.OrdinalIgnoreCase);
             _dontClickIdsSnapshot = new HashSet<string>(currentDontClickIds, StringComparer.OrdinalIgnoreCase);
         }
-
-        private readonly record struct StrongboxLabelMetadata(Element? Label, Chest? Chest, string Path, string RenderName, bool IsUnique);
 
         private static StrongboxLabelMetadata ResolveStrongboxLabelMetadata(LabelOnGround? label)
         {
@@ -226,6 +225,5 @@ namespace ClickIt.UI.Overlays.Common
 
             return new StrongboxLabelMetadata(labelElement, chest, path, renderName, isUnique);
         }
-
     }
 }

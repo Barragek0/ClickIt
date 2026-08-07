@@ -13,6 +13,12 @@ namespace ClickIt
         public ToggleNode DebugWindowVisible { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
+        public TextNode DebugWindowPosition { get; set; } = new TextNode("");
+
+        [IgnoreMenu]
+        public TextNode DebugWindowSplitterWidth { get; set; } = new TextNode("");
+
+        [IgnoreMenu]
         public ToggleNode DebugMode { get; set; } = new ToggleNode(false);
 
         [IgnoreMenu]
@@ -51,6 +57,12 @@ namespace ClickIt
 
         [IgnoreMenu]
         public ToggleNode DebugShowPerformance { get; set; } = new ToggleNode(true);
+
+        [IgnoreMenu]
+        public ToggleNode RenderPerformanceInGame { get; set; } = new ToggleNode(false);
+
+        [IgnoreMenu]
+        public ToggleNode OnlyShowPerformanceInGameWhileInMap { get; set; } = new ToggleNode(true);
 
         [IgnoreMenu]
         public ToggleNode DebugShowClickFrequencyTarget { get; set; } = new ToggleNode(true);

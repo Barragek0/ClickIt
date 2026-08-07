@@ -1,6 +1,10 @@
-namespace ClickIt.UI.Overlays.Common
+namespace ClickIt.Features.Labels
 {
-    public class LazyModeRenderer(ClickItSettings settings, DeferredTextQueue deferredTextQueue, InputHandler inputHandler, LazyModeBlockerService? lazyModeBlockerService)
+    /// <summary>
+    /// Owns the Lazy Mode status text overlay. Pure per-frame: reads input/settings state and
+    /// enqueues the status lines (no coroutine refresh — the decision inputs are already cached).
+    /// </summary>
+    public sealed class LazyModeOverlay : IOverlay
     {
         private const string LazyModeTitle = "Lazy Mode";
         private const string GenericRestrictionDetectedText = "Lazy mode blocking condition detected.";
@@ -14,35 +18,54 @@ namespace ClickIt.UI.Overlays.Common
         private const float LazyModeLineHeightMultiplier = 1.2f;
         private const int BodyFontSize = 24;
 
-        private readonly ClickItSettings _settings = settings;
-        private readonly DeferredTextQueue _deferredTextQueue = deferredTextQueue ?? new DeferredTextQueue();
-        private readonly InputHandler _inputHandler = inputHandler;
-        private readonly LazyModeBlockerService? _lazyModeBlockerService = lazyModeBlockerService;
+        private readonly InputHandler _inputHandler;
+        private readonly LazyModeBlockerService? _lazyModeBlockerService;
         private Keys _cachedClickLabelKey = (Keys)(-1);
         private string _cachedHoldClickLabelHint = string.Empty;
         private Keys _cachedLazyModeDisableKey = (Keys)(-1);
         private string _cachedToggleDisableHint = string.Empty;
 
-        public void Render(GameController gameController, PluginContext state)
+        public LazyModeOverlay(InputHandler inputHandler, LazyModeBlockerService? lazyModeBlockerService)
         {
-            if (!_settings.LazyMode.Value) return;
-            RectangleF windowRect = gameController.Window.GetWindowRectangleTimeCache;
+            _inputHandler = inputHandler;
+            _lazyModeBlockerService = lazyModeBlockerService;
+        }
+
+        public string Name => "LazyMode";
+
+        public RenderSection Section => RenderSection.LazyMode;
+
+        public OverlayRefreshPolicy RefreshPolicy => OverlayRefreshPolicy.None;
+
+        public TimingChannel? RefreshTimingChannel => null;
+
+        public ProcessingSection ProcessingSection => ProcessingSection.Label;
+
+        public bool IsEnabled(ClickItSettings settings)
+            => settings.LazyMode.Value;
+
+        public void Refresh(OverlayRefreshContext ctx)
+        {
+        }
+
+        public void Draw(OverlayRenderContext ctx)
+        {
+            RectangleF windowRect = ctx.WindowArea;
             float centerX = windowRect.X + (windowRect.Width / 2f);
             float topY = LazyModeTitleY;
 
-            List<LabelOnGround>? allLabels = state.Services.CachedLabels?.Value;
-            bool hasRestrictedItems = _lazyModeBlockerService?.HasRestrictedItemsOnScreen(allLabels) ?? false;
+            bool hasRestrictedItems = _lazyModeBlockerService?.HasRestrictedItemsOnScreen(ctx.Labels) ?? false;
             string restrictionReason = GetLazyModeRestrictionDisplayReason(_lazyModeBlockerService?.LastRestrictionReason);
 
             (bool leftClickBlocks, bool rightClickBlocks, bool mouseButtonBlocks) =
-                InputHandler.GetMouseButtonBlockingState(_settings, Input.GetKeyState);
+                InputHandler.GetMouseButtonBlockingState(ctx.Settings, Input.GetKeyState);
 
-            Keys clickLabelKey = _settings.ClickLabelKeyBinding;
+            Keys clickLabelKey = ctx.Settings.ClickLabelKeyBinding;
             bool hotkeyHeld = Input.GetKeyState(clickLabelKey);
             bool lazyModeDisableHeld = _inputHandler.IsLazyModeDisableActiveForCurrentInputState();
-            bool lazyModeDisableToggleMode = _settings.IsLazyModeDisableHotkeyToggleModeEnabled();
-            bool isRitualActive = EntityHelpers.IsRitualActive(gameController);
-            bool canActuallyClick = _inputHandler?.CanClick(gameController, false, isRitualActive) ?? false;
+            bool lazyModeDisableToggleMode = ctx.Settings.IsLazyModeDisableHotkeyToggleModeEnabled();
+            bool isRitualActive = EntityHelpers.IsRitualActive(ctx.GameController);
+            bool canActuallyClick = _inputHandler?.CanClick(ctx.GameController, false, isRitualActive) ?? false;
 
             (Color textColor, string? line1, string? line2, string? line3) = ComposeLazyModeStatus(
                 hasRestrictedItems,
@@ -53,12 +76,13 @@ namespace ClickIt.UI.Overlays.Common
                 mouseButtonBlocks,
                 leftClickBlocks,
                 rightClickBlocks,
-                gameController,
+                ctx.GameController,
                 clickLabelKey,
+                ctx.Settings.LazyModeDisableKeyBinding,
                 isRitualActive,
                 canActuallyClick);
 
-            RenderLazyModeText(centerX, topY, textColor, line1, line2, line3);
+            RenderLazyModeText(ctx.TextQueue, centerX, topY, textColor, line1, line2, line3);
         }
 
         private (Color color, string line1, string line2, string line3) ComposeLazyModeStatus(
@@ -70,8 +94,9 @@ namespace ClickIt.UI.Overlays.Common
             bool mouseButtonBlocks,
             bool leftClickBlocks,
             bool rightClickBlocks,
-            GameController gameController,
+            GameController? gameController,
             Keys clickLabelKey,
+            Keys lazyModeDisableKeyBinding,
             bool isRitualActive,
             bool canActuallyClick)
         {
@@ -85,7 +110,7 @@ namespace ClickIt.UI.Overlays.Common
             if (lazyModeDisableHeld)
             {
                 string resumeHint = lazyModeDisableToggleMode
-                    ? GetToggleDisableHint(_settings.LazyModeDisableKeyBinding)
+                    ? GetToggleDisableHint(lazyModeDisableKeyBinding)
                     : ReleaseToResumeLazyClickingText;
 
                 return (Color.Red, LazyModeDisabledByHotkeyText, resumeHint, string.Empty);
@@ -158,9 +183,9 @@ namespace ClickIt.UI.Overlays.Common
             return leftClickBlocks ? "Left mouse button" : "Right mouse button";
         }
 
-        private void RenderLazyModeText(float centerX, float topY, Color color, string line1, string line2, string line3)
+        internal void RenderLazyModeText(DeferredTextQueue textQueue, float centerX, float topY, Color color, string? line1, string? line2, string? line3)
         {
-            _deferredTextQueue.Enqueue(LazyModeTitle, new Vector2(centerX, topY), color, 36, FontAlign.Center);
+            textQueue.Enqueue(LazyModeTitle, new Vector2(centerX, topY), color, 36, FontAlign.Center);
 
             List<string> wrappedLines = [];
             wrappedLines.AddRange(WrapOverlayText(line1, OverlayLineLengthLimit));
@@ -174,7 +199,7 @@ namespace ClickIt.UI.Overlays.Common
             for (int i = 0; i < wrappedLines.Count; i++)
             {
                 float y = topY + ((i + 1) * lineHeight);
-                _deferredTextQueue.Enqueue(wrappedLines[i], new Vector2(centerX, y), color, BodyFontSize, FontAlign.Center);
+                textQueue.Enqueue(wrappedLines[i], new Vector2(centerX, y), color, BodyFontSize, FontAlign.Center);
             }
         }
     }

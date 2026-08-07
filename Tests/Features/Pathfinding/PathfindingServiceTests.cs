@@ -32,6 +32,19 @@ namespace ClickIt.Tests.Features.Pathfinding
         }
 
         [TestMethod]
+        public void TryBuildPathToTarget_RecordsProcessingTiming_WhenHookProvided()
+        {
+            double recordedMs = -1;
+            var service = new PathfindingService(errorHandler: null, recordProcessingMs: ms => recordedMs = ms);
+            Entity target = ExileCoreOpaqueFactory.CreateOpaqueEntity();
+
+            bool result = service.TryBuildPathToTarget(gameController: null, target, maxExpandedNodes: 500);
+
+            result.Should().BeFalse();
+            recordedMs.Should().BeGreaterThanOrEqualTo(0, "the processing hook fires even on the early-abort path");
+        }
+
+        [TestMethod]
         public void FindPathAStar_FindsPath_OnSimpleWalkableGrid()
         {
             bool[][] grid =

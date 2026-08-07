@@ -57,6 +57,12 @@ namespace ClickIt.Features.Area
         internal static bool ShouldUpdateMapPanelBlockedRectangle(bool isInTownOrHideout)
             => AreaBlockedSnapshotProvider.ShouldUpdateMapPanelBlockedRectangle(isInTownOrHideout);
 
+        internal static bool IsInMap(GameController? gameController)
+        {
+            AreaInstance? area = gameController?.Area?.CurrentArea;
+            return area != null && !area.IsHideout && !area.IsTown;
+        }
+
         internal static (RectangleF primarySquare, RectangleF secondaryCompanion) SplitBottomAnchoredRectangleFromLeft(
             RectangleF source,
             float secondaryHeightRatio)

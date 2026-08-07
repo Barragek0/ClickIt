@@ -16,8 +16,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Services.AreaService = new AreaService();
             plugin.State.Rendering.DeferredTextQueue = new DeferredTextQueue();
             plugin.State.Rendering.DeferredFrameQueue = new DeferredFrameQueue();
-
-            plugin.State.Rendering.AltarDisplayRenderer = (AltarDisplayRenderer)RuntimeHelpers.GetUninitializedObject(typeof(AltarDisplayRenderer));
+            plugin.State.Rendering.OverlayRenderHost = new OverlayRenderHost();
 
             LockManager.Instance = new LockManager(settings);
 
@@ -28,7 +27,7 @@ namespace ClickIt.Tests.Core.Lifecycle
             plugin.State.Services.AreaService.Should().BeNull();
             plugin.State.Rendering.DeferredTextQueue.Should().BeNull();
             plugin.State.Rendering.DeferredFrameQueue.Should().BeNull();
-            plugin.State.Rendering.AltarDisplayRenderer.Should().BeNull();
+            plugin.State.Rendering.OverlayRenderHost.Should().BeNull();
             plugin.State.Runtime.IsShuttingDown.Should().BeTrue();
 
             LockManager.Instance.Should().BeNull();

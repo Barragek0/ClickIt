@@ -110,20 +110,20 @@ namespace ClickIt.Tests.Features.Observability.Performance
         {
             var tracker = new TimingChannelMetricsTracker();
 
-            // One hundred and one quick runs fill the 100-sample window; the reported max must come
-            // from the current window (all ~0ms here), not from any historical spike.
-            for (int i = 0; i < 101; i++)
+            // One thousand and one quick runs fill the 1000-sample window; the reported max must
+            // come from the current window (all ~0ms here), not from any historical spike.
+            for (int i = 0; i < 1001; i++)
             {
                 tracker.StartCoroutineTiming(TimingChannel.Blight);
                 tracker.StopCoroutineTiming(TimingChannel.Blight);
             }
 
-            tracker.GetTimingSampleCount(TimingChannel.Blight).Should().Be(100);
+            tracker.GetTimingSampleCount(TimingChannel.Blight).Should().Be(1000);
             tracker.GetMaxTiming(TimingChannel.Blight).Should().BeLessThanOrEqualTo(tracker.GetLastTiming(TimingChannel.Blight) + 1);
         }
 
         [TestMethod]
-        public void SuccessfulClickTiming_AverageUsesLast20Samples()
+        public void SuccessfulClickTiming_AverageCoversWholeWindow()
         {
             var tracker = new TimingChannelMetricsTracker();
 
@@ -132,7 +132,7 @@ namespace ClickIt.Tests.Features.Observability.Performance
             for (int i = 0; i < 20; i++)
                 tracker.RecordSuccessfulClickTiming(1);
 
-            tracker.GetAverageSuccessfulClickTiming().Should().Be(1.0, "the average covers only the last 20 samples");
+            tracker.GetAverageSuccessfulClickTiming().Should().BeApproximately(4.0, 0.001, "the average covers the whole 100-sample window");
         }
 
         [TestMethod]

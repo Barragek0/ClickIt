@@ -1,4 +1,5 @@
 using ImGuiNET;
+using System.Globalization;
 using NumVec2 = System.Numerics.Vector2;
 using NumVec4 = System.Numerics.Vector4;
 using ClickIt.Features.Observability;
@@ -18,11 +19,10 @@ internal sealed class ImGuiDebugOverlay(
     IDebugTelemetrySource? telemetrySource = null)
 {
     private const string WindowTitle = "ClickIt Debug Info";
-    private const float WindowMinWidth = 1125f;
+    private const float WindowMinWidth = 1240f;
     private const float WindowMinHeight = 400f;
     private static readonly NumVec2 DefaultPosN = new(100f, 80f);
 
-    private static readonly NumVec4 CGood = Vec4(Color.LawnGreen);
     private static readonly NumVec4 CWarn = Vec4(Color.Yellow);
     private static readonly NumVec4 CError = Vec4(Color.Red);
     private static readonly NumVec4 CInfo = Vec4(Color.Cyan);
@@ -35,7 +35,6 @@ internal sealed class ImGuiDebugOverlay(
     private static readonly NumVec4 CGold = Vec4(Color.Gold);
     private static readonly NumVec4 CGreen = Vec4(Color.LightGreen);
     private static readonly NumVec4 CLightBlue = Vec4(Color.LightBlue);
-    private static readonly NumVec4 CPink = Vec4(Color.LightPink);
     private static readonly NumVec4 COrangeRed = Vec4(Color.OrangeRed);
 
     private readonly ClickItSettings _settings = settings;
@@ -45,6 +44,9 @@ internal sealed class ImGuiDebugOverlay(
     private DebugTelemetrySnapshot? _lastSnapshot;
     private PerformanceMetricsSnapshot _lastPerformance;
     private float _leftColWidth;
+    private bool _windowPosApplied;
+    private float _savedWinX;
+    private float _savedWinY;
     private int _blightChestDebugSelectedIndex;
     private readonly List<(string Label, string Value, NumVec4 Color)> _kvRows = [];
 
@@ -114,6 +116,14 @@ internal sealed class ImGuiDebugOverlay(
         if (_performanceMonitor != null)
             _lastPerformance = _performanceMonitor.GetDebugSnapshot();
 
+        if (!_windowPosApplied)
+        {
+            ImGui.SetNextWindowPos(TryLoadWindowPosition(out float winX, out float winY)
+                ? new NumVec2(winX, winY)
+                : DefaultPosN);
+            _windowPosApplied = true;
+        }
+
         ImGui.SetNextWindowSizeConstraints(
             new NumVec2(WindowMinWidth, WindowMinHeight),
             new NumVec2(2000f, 2000f));
@@ -125,6 +135,8 @@ internal sealed class ImGuiDebugOverlay(
             return;
         }
         _settings.DebugWindowVisible.Value = visible;
+
+        PersistWindowPosition();
 
         DrawToolbar();
         ImGui.Separator();
@@ -156,7 +168,9 @@ internal sealed class ImGuiDebugOverlay(
         const float splitterW = 6f;
         const float minColW = 280f;
         if (_leftColWidth <= 0f)
-            _leftColWidth = (availW - spacing) * 0.5f;
+            _leftColWidth = TryLoadSplitterWidth(out float savedWidth)
+                ? savedWidth
+                : (availW - spacing) * 0.6f;
         float leftW = Math.Clamp(_leftColWidth, minColW, availW - minColW - spacing * 2);
 
         ImGui.BeginChild("LeftCol", new NumVec2(leftW, 0));
@@ -170,8 +184,17 @@ internal sealed class ImGuiDebugOverlay(
         ImGui.SetCursorPos(new NumVec2(leftW + spacing, colStartY));
         NumVec2 splitterOrigin = ImGui.GetWindowPos() + ImGui.GetCursorPos();
         ImGui.InvisibleButton("##colSplitter", new NumVec2(splitterW, availH));
+        if (ImGui.IsItemHovered())
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
         if (ImGui.IsItemActive())
-            _leftColWidth = Math.Clamp(_leftColWidth + ImGui.GetIO().MouseDelta.X, minColW, availW - minColW - spacing * 2);
+        {
+            float newLeftW = Math.Clamp(_leftColWidth + ImGui.GetIO().MouseDelta.X, minColW, availW - minColW - spacing * 2);
+            if (SystemMath.Abs(newLeftW - _leftColWidth) >= 1f)
+            {
+                _leftColWidth = newLeftW;
+                _settings.DebugWindowSplitterWidth.Value = _leftColWidth.ToString("F0");
+            }
+        }
 
         float splitterLineX = splitterOrigin.X + splitterW * 0.5f;
         ImGui.GetWindowDrawList().AddLine(
@@ -199,47 +222,36 @@ internal sealed class ImGuiDebugOverlay(
             CopyAllToClipboard();
         ImGui.SameLine();
         ImGui.TextDisabled("|");
-        ImGui.SameLine();
 
-        bool v = _settings.DebugShowStatus.Value;
-        if (ImGui.Checkbox("Status", ref v)) _settings.DebugShowStatus.Value = v;
+        ToolbarToggle("Status", _settings.DebugShowStatus);
+        ToolbarToggle("Performance", _settings.DebugShowPerformance);
+        ToolbarToggle("Errors", _settings.DebugShowRecentErrors);
+        ToolbarToggle("Click", _settings.DebugShowClicking);
+        ToolbarToggle("Labels", _settings.DebugShowLabels);
+        ToolbarToggle("Pathfinding", _settings.DebugShowPathfinding);
+        ToolbarToggle("Ultimatum", _settings.DebugShowUltimatum);
+        ToolbarToggle("Hovered", _settings.DebugShowHoveredItemMetadata);
+        ToolbarToggle("Inventory", _settings.DebugShowInventoryPickup);
+        ToolbarToggle("Blight", _settings.DebugShowBlight);
+
         ImGui.SameLine();
-        v = _settings.DebugShowPerformance.Value;
-        if (ImGui.Checkbox("Performance", ref v)) _settings.DebugShowPerformance.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowRecentErrors.Value;
-        if (ImGui.Checkbox("Errors", ref v)) _settings.DebugShowRecentErrors.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowClicking.Value;
-        if (ImGui.Checkbox("Click", ref v)) _settings.DebugShowClicking.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowLabels.Value;
-        if (ImGui.Checkbox("Labels", ref v)) _settings.DebugShowLabels.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowPathfinding.Value;
-        if (ImGui.Checkbox("Pathfinding", ref v)) _settings.DebugShowPathfinding.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowUltimatum.Value;
-        if (ImGui.Checkbox("Ultimatum", ref v)) _settings.DebugShowUltimatum.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowAltarDetection.Value || _settings.DebugShowAltarService.Value;
+        bool v = _settings.DebugShowAltarDetection.Value || _settings.DebugShowAltarService.Value;
         if (ImGui.Checkbox("Altar", ref v))
         {
             _settings.DebugShowAltarDetection.Value = v;
             _settings.DebugShowAltarService.Value = v;
         }
-        ImGui.SameLine();
-        v = _settings.DebugShowHoveredItemMetadata.Value;
-        if (ImGui.Checkbox("Hovered", ref v)) _settings.DebugShowHoveredItemMetadata.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowInventoryPickup.Value;
-        if (ImGui.Checkbox("Inventory", ref v)) _settings.DebugShowInventoryPickup.Value = v;
-        ImGui.SameLine();
-        v = _settings.DebugShowBlight.Value;
-        if (ImGui.Checkbox("Blight", ref v)) _settings.DebugShowBlight.Value = v;
     }
 
-    private static void DataRows(string id, IReadOnlyList<(string Label, string Value, NumVec4 Color)> items)
+    private static void ToolbarToggle(string label, ToggleNode node)
+    {
+        ImGui.SameLine();
+        bool v = node.Value;
+        if (ImGui.Checkbox(label, ref v))
+            node.Value = v;
+    }
+
+    private static void DataRows(List<(string Label, string Value, NumVec4 Color)> items)
     {
         for (int i = 0; i < items.Count; i++)
         {
@@ -347,6 +359,11 @@ internal sealed class ImGuiDebugOverlay(
 
         PerformanceMetricsSnapshot perf = _lastPerformance;
 
+        // Two independent columns: the summary lines are pinned to a fixed X so a changing value
+        // width never shifts the opposite side, while the fixed-fit tables sit directly adjacent
+        // (SameLine) with just the default item spacing between them.
+        const float summaryColX = 370f;
+
         ImGui.Spacing();
         if (perf.Fps.Max > 0)
         {
@@ -358,98 +375,224 @@ internal sealed class ImGuiDebugOverlay(
         {
             ImGui.TextColored(CMuted, "FPS: --");
         }
+        ImGui.SameLine(summaryColX);
+        MemoryMetricsSnapshot mem = perf.Memory;
+        ImGui.TextColored(SizeColor(mem.ProcessWorkingSetMb), $"Memory: {FormatMemoryMb(mem.ProcessWorkingSetMb)}");
         ImGui.SameLine();
-        ImGui.TextColored(CWhite, $"  Memory: {FormatMemory()}");
+        ImGui.TextColored(SizeColor(mem.ManagedHeapMb), $"  Managed: {FormatMemoryMb(mem.ManagedHeapMb)}");
+        ImGui.SameLine();
+        ImGui.TextColored(FragmentationColor(mem.FragmentedMb), $"  Frag: {FormatMemoryMb(mem.FragmentedMb)}");
 
-        if (perf.Render.SampleCount > 0)
-        {
-            double avg = perf.Render.AverageMs;
-            NumVec4 c = avg <= 6.94 ? CGreen : avg <= 16.67 ? CWarn : CError;
-            ImGui.TextColored(c, $"Render: {perf.Render.LastMs:F0} ms  (avg: {avg:F2}, max: {perf.Render.MaxMs:F0})");
-        }
+        ImGui.Spacing();
+        bool renderInGame = _settings.RenderPerformanceInGame.Value;
+        if (ImGui.Checkbox("Render in-game", ref renderInGame))
+            _settings.RenderPerformanceInGame.Value = renderInGame;
+        ImGui.SameLine();
+        bool onlyInMap = _settings.OnlyShowPerformanceInGameWhileInMap.Value;
+        if (ImGui.Checkbox("Only in map", ref onlyInMap))
+            _settings.OnlyShowPerformanceInGameWhileInMap.Value = onlyInMap;
 
-        bool hasRenderTable = perf.Render.SampleCount > 0;
+        RenderRenderTable(perf);
+        ImGui.SameLine(0, 0);
+        ImGui.SetCursorPosX(summaryColX);
+        RenderProcessingTable(perf);
+
+        ImGui.Spacing();
+        double coroutineFps = perf.Fps.Current;
+        BeginFixedTable("CoroutinesPerFrame", "CR ms/f", 175f, "Last", 38f, "Avg", 38f, "Max", 38f);
+        RenderTimingTotalRow("Total", perf.CoroutinesTotalPerFrameSnapshot);
+        RenderScaledTimingRow("Altar", perf.AltarCoroutine, coroutineFps);
+        RenderScaledTimingRow("Blight", perf.BlightCoroutine, coroutineFps);
+        RenderScaledTimingRow("Click", perf.ClickCoroutine, coroutineFps);
+        RenderScaledTimingRow("Flare", perf.FlareCoroutine, coroutineFps);
+        RenderScaledTimingRow("Label Overlay", perf.LabelOverlayCoroutine, coroutineFps);
+        RenderScaledTimingRow("Ultimatum", perf.UltimatumCoroutine, coroutineFps);
+        ImGui.EndTable();
+        ImGui.SameLine(0, 0);
+        ImGui.SetCursorPosX(summaryColX);
+        RenderGcTable(perf);
+
+        ImGui.Spacing();
         bool hasFreqTarget = perf.ClickTargetIntervalMs > 0 || perf.AverageClickIntervalMs > 0;
-
-        if (hasRenderTable)
-        {
-            ImGui.BeginTable("RenderBreakdown", 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX);
-            ImGui.TableSetupColumn("Section", ImGuiTableColumnFlags.WidthFixed, 85f);
-            ImGui.TableSetupColumn("Last", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableSetupColumn("Avg", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableSetupColumn("Max", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableHeadersRow();
-
-            RenderTimingRow("Lazy", perf.GetRenderSection(RenderSection.LazyMode));
-            RenderTimingRow("Debug", perf.GetRenderSection(RenderSection.DebugOverlay));
-            RenderTimingRow("Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
-            RenderTimingRow("Ultimatum", perf.GetRenderSection(RenderSection.UltimatumOverlay));
-            RenderTimingRow("Strongbox", perf.GetRenderSection(RenderSection.StrongboxOverlay));
-            RenderTimingRow("Pathfinding", perf.GetRenderSection(RenderSection.PathfindingOverlay));
-            RenderTimingRow("Harvest", perf.GetRenderSection(RenderSection.HarvestOverlay));
-            RenderTimingRow("Blight", perf.GetRenderSection(RenderSection.BlightOverlay));
-            RenderTimingRow("Flush.Text", perf.GetRenderSection(RenderSection.TextFlush));
-            RenderTimingRow("Flush.Frame", perf.GetRenderSection(RenderSection.FrameFlush));
-            ImGui.EndTable();
-
-            if (hasFreqTarget)
-            {
-                ImGui.SameLine();
-                RenderClickFrequencyTarget(perf, hasCoroutines: false);
-            }
-        }
-        else if (hasFreqTarget)
-        {
-            RenderClickFrequencyTarget(perf, hasCoroutines: false);
-        }
-
-        TimingMetricsSnapshot coroutinesTotal = perf.CoroutinesTotal;
-        if (coroutinesTotal.SampleCount > 0)
-        {
-            ImGui.Spacing();
-            double fps = perf.Fps.Current;
-            TimingMetricsSnapshot frameTotal = perf.CoroutinesTotalPerFrameSnapshot;
-            NumVec4 coroutineColor = frameTotal.AverageMs <= 6.94 ? CGreen : frameTotal.AverageMs <= 16.67 ? CWarn : CError;
-            ImGui.TextColored(coroutineColor,
-                $"Coroutines: {frameTotal.LastMs:F2} ms/frame (avg: {frameTotal.AverageMs:F2}, max: {frameTotal.MaxMs:F2})");
-            ImGui.SameLine();
-            ImGui.TextColored(CWhite,
-                $"  ms/run: {coroutinesTotal.LastMs:F0} (avg: {coroutinesTotal.AverageMs:F1}, max: {coroutinesTotal.MaxMs:F0})");
-            ImGui.BeginTable("CoroutinesPerFrame", 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX);
-            ImGui.TableSetupColumn("Coroutine (ms/frame)", ImGuiTableColumnFlags.WidthFixed, 150f);
-            ImGui.TableSetupColumn("Last", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableSetupColumn("Avg", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableSetupColumn("Max", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableHeadersRow();
-            RenderCoroutineFrameRow("Altar", perf.AltarCoroutine, fps);
-            RenderCoroutineFrameRow("Click", perf.ClickCoroutine, fps);
-            RenderCoroutineFrameRow("Flare", perf.FlareCoroutine, fps);
-            RenderCoroutineFrameRow("Blight", perf.BlightCoroutine, fps);
-            RenderCoroutineFrameRow("Ultimatum", perf.UltimatumCoroutine, fps);
-            RenderCoroutineFrameRow("Label Overlay", perf.LabelOverlayCoroutine, fps);
-            ImGui.EndTable();
-
-            ImGui.SameLine();
-            ImGui.BeginTable("CoroutinesPerRun", 5, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX);
-            ImGui.TableSetupColumn("Coroutine (ms/run)", ImGuiTableColumnFlags.WidthFixed, 150f);
-            ImGui.TableSetupColumn("Last", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableSetupColumn("Avg", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableSetupColumn("Max", ImGuiTableColumnFlags.WidthFixed, 38f);
-            ImGui.TableSetupColumn("% Time", ImGuiTableColumnFlags.WidthFixed, 50f);
-            ImGui.TableHeadersRow();
-            RenderCoroutineRunRow("Altar", perf.AltarCoroutine);
-            RenderCoroutineRunRow("Click", perf.ClickCoroutine);
-            RenderCoroutineRunRow("Flare", perf.FlareCoroutine);
-            RenderCoroutineRunRow("Blight", perf.BlightCoroutine);
-            RenderCoroutineRunRow("Ultimatum", perf.UltimatumCoroutine);
-            RenderCoroutineRunRow("Label Overlay", perf.LabelOverlayCoroutine);
-            ImGui.EndTable();
-        }
+        if (hasFreqTarget)
+            RenderClickFrequencyTarget(perf, hasCoroutines: true);
     }
 
-    private static void RenderCoroutineFrameRow(string label, TimingMetricsSnapshot stats, double fps)
+    private static void BeginFixedTable(string id, string col1, float w1, string col2, float w2, string col3, float w3, string col4, float w4)
     {
-        if (!ShouldShowTimingRow(stats)) return;
+        ImGui.BeginTable(id, 4, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX);
+        ImGui.TableSetupColumn(col1, ImGuiTableColumnFlags.WidthFixed, w1);
+        ImGui.TableSetupColumn(col2, ImGuiTableColumnFlags.WidthFixed, w2);
+        ImGui.TableSetupColumn(col3, ImGuiTableColumnFlags.WidthFixed, w3);
+        ImGui.TableSetupColumn(col4, ImGuiTableColumnFlags.WidthFixed, w4);
+        ImGui.TableHeadersRow();
+    }
+
+    private static void RenderRenderTable(PerformanceMetricsSnapshot perf)
+    {
+        BeginFixedTable("RenderBreakdown", "Render", 95f, "Last", 38f, "Avg", 38f, "Max", 38f);
+
+        RenderTimingTotalRow("Total", perf.RenderTableTotal);
+        RenderTimingRow("Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
+        RenderTimingRow("Blight", perf.GetRenderSection(RenderSection.BlightOverlay));
+        RenderTimingRow("Click.Hotkey", perf.GetRenderSection(RenderSection.ClickHotkeyToggle));
+        RenderTimingRow("Debug", perf.GetRenderSection(RenderSection.DebugOverlay));
+        RenderTimingRow("Flush.Frame", perf.GetRenderSection(RenderSection.FrameFlush));
+        RenderTimingRow("Flush.Text", perf.GetRenderSection(RenderSection.TextFlush));
+        RenderTimingRow("Harvest", perf.GetRenderSection(RenderSection.HarvestOverlay));
+        RenderTimingRow("Inv.Full", perf.GetRenderSection(RenderSection.InventoryFullWarning));
+        RenderTimingRow("Lazy", perf.GetRenderSection(RenderSection.LazyMode));
+        RenderTimingRow("Pathfinding", perf.GetRenderSection(RenderSection.PathfindingOverlay));
+        RenderTimingRow("Perf.Overlay", perf.GetRenderSection(RenderSection.PerformanceOverlay));
+        RenderTimingRow("Strongbox", perf.GetRenderSection(RenderSection.StrongboxOverlay));
+        RenderTimingRow("UI.Rect", perf.GetRenderSection(RenderSection.UiRegionRectangle));
+        RenderTimingRow("Ultimatum", perf.GetRenderSection(RenderSection.UltimatumOverlay));
+        ImGui.EndTable();
+    }
+
+    private static void RenderProcessingTable(PerformanceMetricsSnapshot perf)
+    {
+        double fps = perf.Fps.Current;
+        BeginFixedTable("ProcessingBreakdown", "Proc ms/f", 110f, "Last", 38f, "Avg", 38f, "Max", 38f);
+
+        RenderTimingTotalRow("Total", perf.ProcessingTotalPerFrameSnapshot);
+        RenderScaledTimingRow("Altar", perf.GetProcessingSection(ProcessingSection.Altar), fps);
+        RenderScaledTimingRow("Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi), fps);
+        RenderScaledTimingRow("Blight", perf.GetProcessingSection(ProcessingSection.Blight), fps);
+        RenderScaledTimingRow("Click", perf.GetProcessingSection(ProcessingSection.Click), fps);
+        RenderScaledTimingRow("Flare", perf.GetProcessingSection(ProcessingSection.Flare), fps);
+        RenderScaledTimingRow("Harvest", perf.GetProcessingSection(ProcessingSection.Harvest), fps);
+        RenderScaledTimingRow("Label Scan", perf.GetProcessingSection(ProcessingSection.Label), fps);
+        RenderScaledTimingRow("Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover), fps);
+        RenderScaledTimingRow("Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding), fps);
+        RenderScaledTimingRow("Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox), fps);
+        RenderScaledTimingRow("Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum), fps);
+        ImGui.EndTable();
+    }
+
+    private static void RenderGcTable(PerformanceMetricsSnapshot perf)
+    {
+        double fps = perf.Fps.Current;
+        BeginFixedTable("GcBreakdown", "GC", 110f, "KB/f", 60f, "KB/s", 90f, "Max", 60f);
+
+        RenderGcTotalRow(perf);
+        RenderGcRow("Altar", perf.GetAllocationSection(ProcessingSection.Altar), fps);
+        RenderGcRow("Area.Blocked", perf.GetAllocationSection(ProcessingSection.AreaBlockedUi), fps);
+        RenderGcRow("Blight", perf.GetAllocationSection(ProcessingSection.Blight), fps);
+        RenderGcRow("Click", perf.GetAllocationSection(ProcessingSection.Click), fps);
+        RenderClickBreakdown(perf);
+        RenderGcRow("Flare", perf.GetAllocationSection(ProcessingSection.Flare), fps);
+        RenderGcRow("Harvest", perf.GetAllocationSection(ProcessingSection.Harvest), fps);
+        RenderGcRow("Label Scan", perf.GetAllocationSection(ProcessingSection.Label), fps);
+        RenderLabelScanBreakdown(perf);
+        RenderGcRow("Manual Hover", perf.GetAllocationSection(ProcessingSection.ManualUiHover), fps);
+        RenderGcRow("Pathfinding", perf.GetAllocationSection(ProcessingSection.Pathfinding), fps);
+        RenderGcRow("Strongbox", perf.GetAllocationSection(ProcessingSection.Strongbox), fps);
+        RenderGcRow("Ultimatum", perf.GetAllocationSection(ProcessingSection.Ultimatum), fps);
+        ImGui.EndTable();
+    }
+
+    private static void RenderLabelScanBreakdown(PerformanceMetricsSnapshot perf)
+    {
+        LabelScanAllocationStats s = perf.LabelScanAllocation;
+        if (s.SampleCount == 0)
+            return;
+        double fps = perf.Fps.Current;
+        double periodMs = perf.GetAllocationSection(ProcessingSection.Label).AvgPeriodMs;
+        RenderGcStageRow("Validity", s.Validity, fps, periodMs);
+        RenderGcStageRow("Sort", s.Sort, fps, periodMs);
+    }
+
+    private static void RenderClickBreakdown(PerformanceMetricsSnapshot perf)
+    {
+        ClickAllocationStats s = perf.ClickAllocation;
+        if (s.SampleCount == 0)
+            return;
+        double fps = perf.Fps.Current;
+        double periodMs = perf.GetAllocationSection(ProcessingSection.Click).AvgPeriodMs;
+        RenderGcStageRow("Context", s.Context, fps, periodMs);
+        RenderGcStageRow("Acquire", s.Acquire, fps, periodMs);
+        RenderGcStageRow("Rank", s.Rank, fps, periodMs);
+        RenderGcStageRow("Execute", s.Execute, fps, periodMs);
+        RenderGcStageRow("Post", s.Post, fps, periodMs);
+        RenderGcStageRow("Other", s.Other, fps, periodMs);
+    }
+
+    private static void RenderGcStageRow(string label, AllocationStageSnapshot s, double fps, double periodMs)
+    {
+        if (s.AvgBytesPerRun <= 0 && s.MaxBytesPerRun <= 0)
+            return;
+        double allocPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
+        double mbPerSecond = 1024.0 * 1024.0;
+        NumVec4 c = allocPerSecond >= 15 * mbPerSecond ? CError : allocPerSecond >= 6 * mbPerSecond ? CWarn : CGreen;
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.Text($"  {label}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, fps > 0 ? FormatBytes(allocPerSecond / fps) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatAllocRate(allocPerSecond));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(s.MaxBytesPerRun));
+    }
+
+    private static void RenderGcRow(string label, GcAllocationSnapshot stats, double fps)
+    {
+        double mbPerSecond = 1024.0 * 1024.0;
+        NumVec4 c = stats.AllocPerSecond >= 15 * mbPerSecond ? CError : stats.AllocPerSecond >= 6 * mbPerSecond ? CWarn : CGreen;
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.Text(label);
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.SampleCount > 0 && fps > 0 ? FormatBytes(stats.AllocPerSecond / fps) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.SampleCount > 0 ? FormatAllocRate(stats.AllocPerSecond) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.SampleCount > 0 ? FormatBytes(stats.MaxBytesPerRun) : "-");
+    }
+
+    // Table-wide timing totals as the first data row: last/avg/max summed across every row beneath
+    // (max is the combination of all maxes, not the single worst).
+    private static void RenderTimingTotalRow(string label, TimingMetricsSnapshot total)
+    {
+        bool hasData = total.SampleCount > 0;
+        NumVec4 c = total.AverageMs <= 6.94 ? CGreen : total.AverageMs <= 16.67 ? CWarn : CError;
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(CHeader, label);
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, hasData ? $"{total.LastMs:F2}" : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, hasData ? $"{total.AverageMs:F2}" : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, hasData ? $"{total.MaxMs:F2}" : "-");
+    }
+
+    // Table-wide GC totals as the first data row: KB/f, KB/s and Max summed across every row beneath.
+    private static void RenderGcTotalRow(PerformanceMetricsSnapshot perf)
+    {
+        (_, double avgKf, double maxKf) = perf.GcTableTotalBytesPerFrame;
+        double mb = 1024.0 * 1024.0;
+        double allocPerSecond = avgKf * perf.Fps.Current;
+        NumVec4 c = allocPerSecond >= 15 * mb ? CError : allocPerSecond >= 6 * mb ? CWarn : CGreen;
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(CHeader, "Total");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(avgKf));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatAllocRate(allocPerSecond));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(maxKf));
+    }
+
+    private static string FormatMemoryMb(double mb)
+        => mb >= 1024.0 ? $"{mb / 1024.0:F1} GB" : $"{mb:F0} MB";
+
+    private static NumVec4 SizeColor(double mb)
+        => mb > 2048 ? CError : mb > 1228.8 ? CWarn : CGreen;
+
+    private static NumVec4 FragmentationColor(double mb)
+        => mb > 400 ? CError : mb > 100 ? CWarn : CGreen;
+
+    private static string FormatBytes(double bytes)
+    {
+        if (bytes >= 1024.0 * 1024.0)
+            return $"{bytes / (1024.0 * 1024.0):F1} MB";
+        if (bytes >= 1024.0)
+            return $"{bytes / 1024.0:F0} KB";
+        return $"{bytes:F0} B";
+    }
+
+    private static string FormatAllocRate(double bytesPerSecond)
+        => $"{FormatBytes(bytesPerSecond)}/s";
+
+    private static void RenderScaledTimingRow(string label, TimingMetricsSnapshot stats, double fps)
+    {
         double scale = stats.PerFrameScale(fps);
         double avg = stats.AverageMs * scale;
         NumVec4 c = avg <= 6.94 ? CGreen : avg <= 16.67 ? CWarn : CError;
@@ -460,21 +603,8 @@ internal sealed class ImGuiDebugOverlay(
         _ = ImGui.TableNextColumn(); ImGui.TextColored(c, scale > 0 ? $"{stats.MaxMs * scale:F2}" : "-");
     }
 
-    private static void RenderCoroutineRunRow(string label, TimingMetricsSnapshot stats)
-    {
-        if (!ShouldShowTimingRow(stats)) return;
-        NumVec4 c = stats.AverageMs >= 50 ? CError : stats.AverageMs >= 25 ? CWarn : CGreen;
-        ImGui.TableNextRow();
-        _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{stats.LastMs:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{stats.AverageMs:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{stats.MaxMs:F2}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.AveragePeriodMs > 0 ? $"{stats.DutyCyclePercent:F1}%" : "-");
-    }
-
     private static void RenderTimingRow(string label, TimingMetricsSnapshot stats)
     {
-        if (!ShouldShowTimingRow(stats)) return;
         NumVec4 c = stats.AverageMs <= 6.94 ? CGreen : stats.AverageMs <= 16.67 ? CWarn : CError;
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.Text(label);
@@ -483,12 +613,19 @@ internal sealed class ImGuiDebugOverlay(
         _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{stats.MaxMs:F2}");
     }
 
-    private void RenderClickFrequencyTarget(PerformanceMetricsSnapshot perf, bool hasCoroutines = true)
+    private readonly record struct FrequencyTargetModel(
+        double TargetMs,
+        double ProcessingMs,
+        double DelayMs,
+        double ModeledTotalMs,
+        double ObservedTotalMs,
+        double SchedulerDeltaMs,
+        double Deviation,
+        string TargetStatus);
+
+    private static FrequencyTargetModel BuildFrequencyTargetModel(PerformanceMetricsSnapshot perf, ClickFrequencyTargetTelemetrySnapshot? freqTarget)
     {
-        ClickFrequencyTargetTelemetrySnapshot freqTarget = _lastSnapshot.Click.FrequencyTarget;
-        double targetMs = freqTarget.SettingsAvailable
-            ? freqTarget.TargetIntervalMs
-            : perf.ClickTargetIntervalMs;
+        double targetMs = freqTarget is { SettingsAvailable: true } ? freqTarget.TargetIntervalMs : perf.ClickTargetIntervalMs;
         double processingMs = perf.ClickCoroutine.AverageMs;
         if (processingMs <= 0) processingMs = perf.AverageSuccessfulClickTimingMs;
         double observedMs = perf.AverageClickIntervalMs;
@@ -497,27 +634,32 @@ internal sealed class ImGuiDebugOverlay(
         double modeledTotalMs = delayMs + processingMs;
         double observedTotalMs = observedMs > 0 ? observedMs : modeledTotalMs;
         double schedulerDeltaMs = observedTotalMs - modeledTotalMs;
-        double deviation = observedTotalMs > 0
-            ? (observedTotalMs - targetMs) / targetMs
-            : 0;
+        double deviation = observedTotalMs > 0 ? (observedTotalMs - targetMs) / targetMs : 0;
 
         string targetStatus = deviation <= 0.10
             ? (observedMs > 0 ? "meeting target" : "estimating")
             : "not meeting target";
 
+        return new FrequencyTargetModel(targetMs, processingMs, delayMs, modeledTotalMs, observedTotalMs, schedulerDeltaMs, deviation, targetStatus);
+    }
+
+    private void RenderClickFrequencyTarget(PerformanceMetricsSnapshot perf, bool hasCoroutines = true)
+    {
+        ClickFrequencyTargetTelemetrySnapshot freqTarget = _lastSnapshot.Click.FrequencyTarget;
+        FrequencyTargetModel m = BuildFrequencyTargetModel(perf, freqTarget);
+
         if (!hasCoroutines) { ImGui.BeginGroup(); }
-        ImGui.TextColored(CHeader, "Click Frequency Target");
         if (ImGui.BeginTable("FreqTarget", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
         {
-            ImGui.TableSetupColumn("Metric", ImGuiTableColumnFlags.WidthFixed, 100f);
-            ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthFixed, 210f);
+            ImGui.TableSetupColumn("Click Frequency Target", ImGuiTableColumnFlags.WidthFixed, 180f);
+            ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthFixed, 165f);
             ImGui.TableHeadersRow();
 
-            FreqTargetRow("Target", $"{targetMs:F0} ms{(freqTarget.ShowLazyModeTarget ? " (Lazy)" : "")}", CWarn);
-            FreqTargetRow("Processing", $"{processingMs:F0} ms", processingMs > targetMs ? CError : processingMs >= targetMs * 0.75 ? CWarn : CGreen);
-            FreqTargetRow("Total (model)", $"{modeledTotalMs:F0} ms", deviation <= 0.05 ? CGreen : deviation <= 0.10 ? CWarn : CError);
-            FreqTargetRow("Scheduler", $"{schedulerDeltaMs:+0;-0;0} ms", Math.Abs(schedulerDeltaMs) <= 5 ? CGreen : Math.Abs(schedulerDeltaMs) <= 20 ? CWarn : COrangeRed);
-            FreqTargetRow("Observed", $"{observedTotalMs:F0} ms ({targetStatus})", deviation <= 0.05 ? CGreen : deviation <= 0.10 ? CWarn : CError);
+            FreqTargetRow("Target", $"{m.TargetMs:F0} ms{(freqTarget.ShowLazyModeTarget ? " (Lazy)" : "")}", CWarn);
+            FreqTargetRow("Processing", $"{m.ProcessingMs:F0} ms", m.ProcessingMs > m.TargetMs ? CError : m.ProcessingMs >= m.TargetMs * 0.75 ? CWarn : CGreen);
+            FreqTargetRow("Total (model)", $"{m.ModeledTotalMs:F0} ms", m.Deviation <= 0.05 ? CGreen : m.Deviation <= 0.10 ? CWarn : CError);
+            FreqTargetRow("Scheduler", $"{m.SchedulerDeltaMs:+0;-0;0} ms", Math.Abs(m.SchedulerDeltaMs) <= 5 ? CGreen : Math.Abs(m.SchedulerDeltaMs) <= 20 ? CWarn : COrangeRed);
+            FreqTargetRow("Observed", $"{m.ObservedTotalMs:F0} ms ({m.TargetStatus})", m.Deviation <= 0.05 ? CGreen : m.Deviation <= 0.10 ? CWarn : CError);
             ImGui.EndTable();
         }
         if (!hasCoroutines) { ImGui.EndGroup(); }
@@ -759,7 +901,7 @@ internal sealed class ImGuiDebugOverlay(
             _kvRows.Add(("Built Path", BoolStr(offscreen.BuiltPath), BoolColor(offscreen.BuiltPath)));
             _kvRows.Add(("From Path", BoolStr(offscreen.ResolvedFromPath), BoolColor(offscreen.ResolvedFromPath)));
             _kvRows.Add(("Click Point", BoolStr(offscreen.ResolvedClickPoint), BoolColor(offscreen.ResolvedClickPoint)));
-            DataRows("PfOff1", _kvRows);
+            DataRows(_kvRows);
 
             if (!string.IsNullOrWhiteSpace(offscreen.MovementSkillDebug))
                 ImGui.TextColored(CWarn, $"Skill: {offscreen.MovementSkillDebug}");
@@ -770,18 +912,18 @@ internal sealed class ImGuiDebugOverlay(
             _kvRows.Add(("Grid P", $"({offscreen.PlayerGrid.X:F0},{offscreen.PlayerGrid.Y:F0})", COrange));
             _kvRows.Add(("Grid T", $"({offscreen.TargetGrid.X:F0},{offscreen.TargetGrid.Y:F0})", COrange));
             _kvRows.Add(("Delta", $"({(offscreen.TargetGrid - offscreen.PlayerGrid).X:F0},{(offscreen.TargetGrid - offscreen.PlayerGrid).Y:F0})", COrange));
-            DataRows("PfOffGrid", _kvRows);
+            DataRows(_kvRows);
 
             _kvRows.Clear();
             _kvRows.Add(("Center", $"({offscreen.WindowCenter.X:F1},{offscreen.WindowCenter.Y:F1})", CMuted));
             _kvRows.Add(("Target", $"({offscreen.TargetScreen.X:F1},{offscreen.TargetScreen.Y:F1})", CInfo));
             _kvRows.Add(("Click", $"({offscreen.ClickScreen.X:F1},{offscreen.ClickScreen.Y:F1})", CLime));
-            DataRows("PfOffScreen", _kvRows);
+            DataRows(_kvRows);
 
             _kvRows.Clear();
             _kvRows.Add(("Target Dir", ToCompass(offscreen.TargetScreen - offscreen.WindowCenter), CInfo));
             _kvRows.Add(("Click Dir", ToCompass(offscreen.ClickScreen - offscreen.WindowCenter), CLime));
-            DataRows("PfOffDir", _kvRows);
+            DataRows(_kvRows);
         }
         else
         {
@@ -1326,19 +1468,28 @@ internal sealed class ImGuiDebugOverlay(
                 LaneCoverageResult last = coverage[lane.Segments[lane.Segments.Count - 1]];
                 LaneCoverageResult aggregate = BlightLaneTopology.AggregateLane(lane, coverage);
                 ImGui.PushStyleColor(ImGuiCol.Text, SegTextColor(aggregate));
-                ImGui.TreeNodeEx(
-                    $"{lane.Name} {Pt(first.Midpoint)}->{Pt(last.Midpoint)} {Flags(aggregate)}##covrow{lane.Name}",
-                    ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen);
+                string label = $"{lane.Name} {Pt(first.Midpoint)}->{Pt(last.Midpoint)} {Flags(aggregate)}";
+                if (lane.Children.Count > 0)
+                {
+                    // A lane with divergences renders as a dropdown with its child lanes nested
+                    // inside it (not as flat "Divergence" siblings below a leaf).
+                    if (ImGui.TreeNodeEx($"{label}##covrow{lane.Name}", ImGuiTreeNodeFlags.DefaultOpen))
+                    {
+                        for (int c = 0; c < lane.Children.Count; c++)
+                            RenderLane(lane.Children[c]);
+                        ImGui.TreePop();
+                    }
+                }
+                else
+                {
+                    ImGui.TreeNodeEx($"{label}##covrow{lane.Name}", ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen);
+                }
                 ImGui.PopStyleColor();
             }
-            for (int c = 0; c < lane.Children.Count; c++)
+            else
             {
-                BlightLaneNode child = lane.Children[c];
-                if (ImGui.TreeNodeEx($"Divergence {child.Name}##covlane{child.Name}", ImGuiTreeNodeFlags.DefaultOpen))
-                {
-                    RenderLane(child);
-                    ImGui.TreePop();
-                }
+                for (int c = 0; c < lane.Children.Count; c++)
+                    RenderLane(lane.Children[c]);
             }
         }
 
@@ -1411,24 +1562,76 @@ internal sealed class ImGuiDebugOverlay(
         PerformanceMetricsSnapshot perf = _lastPerformance;
         if (perf.Fps.Max > 0)
             sb.AppendLine($"  FPS: {perf.Fps.Current:F1} (avg: {perf.Fps.Average:F1}, max: {perf.Fps.Max:F1})");
-        sb.AppendLine($"  Memory: {FormatMemory()}");
+        sb.AppendLine($"  Memory: {FormatMemoryMb(perf.Memory.ProcessWorkingSetMb)} (managed {FormatMemoryMb(perf.Memory.ManagedHeapMb)}, gen2 {FormatMemoryMb(perf.Memory.Gen2Mb)}, loh {FormatMemoryMb(perf.Memory.LohMb)}, frag {FormatMemoryMb(perf.Memory.FragmentedMb)}, load {perf.Memory.MemoryLoadPercent:F0}%)");
         if (perf.Render.SampleCount > 0)
         {
             sb.AppendLine($"  Render: {perf.Render.LastMs:F0} ms (avg: {perf.Render.AverageMs:F2}, max: {perf.Render.MaxMs:F0})");
-            AppendTimingLine(sb, "    Lazy", perf.GetRenderSection(RenderSection.LazyMode));
-            AppendTimingLine(sb, "    Debug", perf.GetRenderSection(RenderSection.DebugOverlay));
             AppendTimingLine(sb, "    Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
-            AppendTimingLine(sb, "    Ultimatum", perf.GetRenderSection(RenderSection.UltimatumOverlay));
-            AppendTimingLine(sb, "    Strongbox", perf.GetRenderSection(RenderSection.StrongboxOverlay));
-            AppendTimingLine(sb, "    Pathfinding", perf.GetRenderSection(RenderSection.PathfindingOverlay));
-            AppendTimingLine(sb, "    Harvest", perf.GetRenderSection(RenderSection.HarvestOverlay));
             AppendTimingLine(sb, "    Blight", perf.GetRenderSection(RenderSection.BlightOverlay));
-            AppendTimingLine(sb, "    Flush.Text", perf.GetRenderSection(RenderSection.TextFlush));
+            AppendTimingLine(sb, "    Click.Hotkey", perf.GetRenderSection(RenderSection.ClickHotkeyToggle));
+            AppendTimingLine(sb, "    Debug", perf.GetRenderSection(RenderSection.DebugOverlay));
             AppendTimingLine(sb, "    Flush.Frame", perf.GetRenderSection(RenderSection.FrameFlush));
+            AppendTimingLine(sb, "    Flush.Text", perf.GetRenderSection(RenderSection.TextFlush));
+            AppendTimingLine(sb, "    Harvest", perf.GetRenderSection(RenderSection.HarvestOverlay));
+            AppendTimingLine(sb, "    Inv.Full", perf.GetRenderSection(RenderSection.InventoryFullWarning));
+            AppendTimingLine(sb, "    Lazy", perf.GetRenderSection(RenderSection.LazyMode));
+            AppendTimingLine(sb, "    Pathfinding", perf.GetRenderSection(RenderSection.PathfindingOverlay));
+            AppendTimingLine(sb, "    Perf.Overlay", perf.GetRenderSection(RenderSection.PerformanceOverlay));
+            AppendTimingLine(sb, "    Strongbox", perf.GetRenderSection(RenderSection.StrongboxOverlay));
+            AppendTimingLine(sb, "    UI.Rect", perf.GetRenderSection(RenderSection.UiRegionRectangle));
+            AppendTimingLine(sb, "    Ultimatum", perf.GetRenderSection(RenderSection.UltimatumOverlay));
         }
         RenderingTelemetrySnapshot? r = _lastSnapshot?.Rendering;
         if (r != null)
             sb.AppendLine($"  Queue: text={r.PendingTextCount}, frames={r.PendingFrameCount}");
+        if (perf.ProcessingTotal.SampleCount > 0)
+        {
+            TimingMetricsSnapshot processing = perf.ProcessingTotal;
+            sb.AppendLine($"  Processing: {processing.LastMs:F0} ms (avg: {processing.AverageMs:F2}, max: {processing.MaxMs:F0})");
+            AppendTimingLine(sb, "    Altar", perf.GetProcessingSection(ProcessingSection.Altar));
+            AppendTimingLine(sb, "    Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi));
+            AppendTimingLine(sb, "    Blight", perf.GetProcessingSection(ProcessingSection.Blight));
+            AppendTimingLine(sb, "    Click", perf.GetProcessingSection(ProcessingSection.Click));
+            AppendTimingLine(sb, "    Flare", perf.GetProcessingSection(ProcessingSection.Flare));
+            AppendTimingLine(sb, "    Harvest", perf.GetProcessingSection(ProcessingSection.Harvest));
+            AppendTimingLine(sb, "    Label Scan", perf.GetProcessingSection(ProcessingSection.Label));
+            AppendTimingLine(sb, "    Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover));
+            AppendTimingLine(sb, "    Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding));
+            AppendTimingLine(sb, "    Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox));
+            AppendTimingLine(sb, "    Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum));
+        }
+        if (perf.Allocations != null && perf.Allocations.Count > 0)
+        {
+            sb.AppendLine("  GC Allocations:");
+            foreach (ProcessingSection section in Enum.GetValues<ProcessingSection>())
+            {
+                if (section == ProcessingSection.Unknown)
+                    continue;
+                GcAllocationSnapshot stats = perf.GetAllocationSection(section);
+                if (stats.SampleCount > 0)
+                    sb.AppendLine($"    {section}: {FormatAllocRate(stats.AllocPerSecond)} (avg {FormatBytes(stats.AvgBytesPerRun)}/run, max {FormatBytes(stats.MaxBytesPerRun)})");
+            }
+            LabelScanAllocationStats labelScan = perf.LabelScanAllocation;
+            if (labelScan.SampleCount > 0)
+            {
+                double labelPeriodMs = perf.GetAllocationSection(ProcessingSection.Label).AvgPeriodMs;
+                sb.AppendLine("    Label Scan breakdown:");
+                AppendGcStageLine(sb, "      Validity", labelScan.Validity, labelPeriodMs);
+                AppendGcStageLine(sb, "      Sort", labelScan.Sort, labelPeriodMs);
+            }
+            ClickAllocationStats click = perf.ClickAllocation;
+            if (click.SampleCount > 0)
+            {
+                double clickPeriodMs = perf.GetAllocationSection(ProcessingSection.Click).AvgPeriodMs;
+                sb.AppendLine("    Click breakdown:");
+                AppendGcStageLine(sb, "      Context", click.Context, clickPeriodMs);
+                AppendGcStageLine(sb, "      Acquire", click.Acquire, clickPeriodMs);
+                AppendGcStageLine(sb, "      Rank", click.Rank, clickPeriodMs);
+                AppendGcStageLine(sb, "      Execute", click.Execute, clickPeriodMs);
+                AppendGcStageLine(sb, "      Post", click.Post, clickPeriodMs);
+                AppendGcStageLine(sb, "      Other", click.Other, clickPeriodMs);
+            }
+        }
         if (perf.CoroutinesTotal.SampleCount > 0)
         {
             TimingMetricsSnapshot frameTotal = perf.CoroutinesTotalPerFrameSnapshot;
@@ -1436,46 +1639,40 @@ internal sealed class ImGuiDebugOverlay(
             sb.AppendLine($"  Coroutines: {frameTotal.LastMs:F2} ms/frame (avg: {frameTotal.AverageMs:F2}, max: {frameTotal.MaxMs:F2}) | ms/run: {runTotal.LastMs:F0} (avg: {runTotal.AverageMs:F1}, max: {runTotal.MaxMs:F0})");
         }
         AppendCoroLine(sb, "  Altar Coroutine", perf.AltarCoroutine, perf.Fps.Current);
+        AppendCoroLine(sb, "  Blight Coroutine", perf.BlightCoroutine, perf.Fps.Current);
         AppendCoroLine(sb, "  Click Coroutine", perf.ClickCoroutine, perf.Fps.Current);
         AppendCoroLine(sb, "  Flare Coroutine", perf.FlareCoroutine, perf.Fps.Current);
-        AppendCoroLine(sb, "  Blight Coroutine", perf.BlightCoroutine, perf.Fps.Current);
-        AppendCoroLine(sb, "  Ultimatum Coroutine", perf.UltimatumCoroutine, perf.Fps.Current);
         AppendCoroLine(sb, "  Label Overlay Coroutine", perf.LabelOverlayCoroutine, perf.Fps.Current);
+        AppendCoroLine(sb, "  Ultimatum Coroutine", perf.UltimatumCoroutine, perf.Fps.Current);
 
         if (perf.ClickTargetIntervalMs > 0 || perf.AverageClickIntervalMs > 0)
         {
             sb.AppendLine("  Click Frequency Target:");
             ClickFrequencyTargetTelemetrySnapshot? freqTarget = _lastSnapshot?.Click?.FrequencyTarget;
-            double targetMs = (freqTarget?.SettingsAvailable == true ? freqTarget.TargetIntervalMs : perf.ClickTargetIntervalMs);
-            double processingMs = perf.ClickCoroutine.AverageMs > 0 ? perf.ClickCoroutine.AverageMs : perf.AverageSuccessfulClickTimingMs;
-            double delayMs = Math.Max(0, targetMs - processingMs);
-            double modeledTotalMs = delayMs + processingMs;
-            double observedTotalMs = perf.AverageClickIntervalMs > 0 ? perf.AverageClickIntervalMs : modeledTotalMs;
-            double schedulerDeltaMs = observedTotalMs - modeledTotalMs;
-            sb.AppendLine($"    Target: {targetMs:F0} ms{(freqTarget?.ShowLazyModeTarget == true ? " (Lazy)" : "")}");
-            sb.AppendLine($"    Delay: {delayMs:F0} ms");
-            sb.AppendLine($"    Processing: {processingMs:F0} ms");
-            sb.AppendLine($"    Total (model): {modeledTotalMs:F0} ms");
-            sb.AppendLine($"    Scheduler: {schedulerDeltaMs:+0;-0;0} ms");
-            sb.AppendLine($"    Observed: {observedTotalMs:F0} ms");
+            FrequencyTargetModel m = BuildFrequencyTargetModel(perf, freqTarget);
+            sb.AppendLine($"    Target: {m.TargetMs:F0} ms{(freqTarget?.ShowLazyModeTarget == true ? " (Lazy)" : "")}");
+            sb.AppendLine($"    Delay: {m.DelayMs:F0} ms");
+            sb.AppendLine($"    Processing: {m.ProcessingMs:F0} ms");
+            sb.AppendLine($"    Total (model): {m.ModeledTotalMs:F0} ms");
+            sb.AppendLine($"    Scheduler: {m.SchedulerDeltaMs:+0;-0;0} ms");
+            sb.AppendLine($"    Observed: {m.ObservedTotalMs:F0} ms");
         }
         sb.AppendLine();
     }
 
-    // Rows appear only when the section/coroutine did measurable work in the current window
-    // (last or average > 0) — sections that are disabled or doing nothing stay hidden.
-    internal static bool ShouldShowTimingRow(TimingMetricsSnapshot stats)
-        => stats.LastMs > 0.0 || stats.AverageMs > 0.0;
-
     private static void AppendTimingLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats)
     {
-        if (!ShouldShowTimingRow(stats)) return;
         sb.AppendLine($"{label}: last={stats.LastMs:F2} avg={stats.AverageMs:F2} max={stats.MaxMs:F2}");
+    }
+
+    private static void AppendGcStageLine(System.Text.StringBuilder sb, string label, AllocationStageSnapshot stats, double periodMs)
+    {
+        double allocPerSecond = periodMs > 0 ? stats.AvgBytesPerRun * 1000.0 / periodMs : 0;
+        sb.AppendLine($"{label}: {FormatAllocRate(allocPerSecond)} (avg {FormatBytes(stats.AvgBytesPerRun)}/run, last {FormatBytes(stats.LastBytesPerRun)}/run, max {FormatBytes(stats.MaxBytesPerRun)})");
     }
 
     private static void AppendCoroLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats, double fps)
     {
-        if (!ShouldShowTimingRow(stats)) return;
         double scale = stats.PerFrameScale(fps);
         if (scale > 0)
             sb.AppendLine($"{label}: {stats.LastMs * scale:F2}/{stats.AverageMs * scale:F2}/{stats.MaxMs * scale:F2} ms/frame | {stats.LastMs:F0}/{stats.AverageMs:F1}/{stats.MaxMs:F0} ms/run ({stats.DutyCyclePercent:F1}%)");
@@ -1772,10 +1969,7 @@ internal sealed class ImGuiDebugOverlay(
                             sb.AppendLine($"{indent}{lane.Name} {Pt(first.Midpoint)}->{Pt(last.Midpoint)} {BlightCoverageFlags.Format(aggregate, coverageTypes)}");
                         }
                         for (int c = 0; c < lane.Children.Count; c++)
-                        {
-                            sb.AppendLine($"{indent}Divergence {lane.Children[c].Name}");
                             AppendLane(lane.Children[c], depth + 1);
-                        }
                     }
 
                     for (int b = 0; b < branchData.Count; b++)
@@ -1848,6 +2042,39 @@ internal sealed class ImGuiDebugOverlay(
 
     private static NumVec4 BoolColor(bool v) => v ? CGreen : CError;
 
+    private bool TryLoadWindowPosition(out float x, out float y)
+    {
+        x = 0f;
+        y = 0f;
+        string raw = _settings.DebugWindowPosition.Value;
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+        int comma = raw.IndexOf(',');
+        if (comma <= 0 || comma == raw.Length - 1)
+            return false;
+        return float.TryParse(raw.AsSpan(0, comma), NumberStyles.Float, CultureInfo.InvariantCulture, out x)
+            && float.TryParse(raw.AsSpan(comma + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out y);
+    }
+
+    private bool TryLoadSplitterWidth(out float width)
+    {
+        width = 0f;
+        string raw = _settings.DebugWindowSplitterWidth.Value;
+        return !string.IsNullOrWhiteSpace(raw)
+            && float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out width)
+            && width > 0f;
+    }
+
+    private void PersistWindowPosition()
+    {
+        NumVec2 pos = ImGui.GetWindowPos();
+        if (SystemMath.Abs(pos.X - _savedWinX) < 1f && SystemMath.Abs(pos.Y - _savedWinY) < 1f)
+            return;
+        _savedWinX = pos.X;
+        _savedWinY = pos.Y;
+        _settings.DebugWindowPosition.Value = $"{pos.X:F0},{pos.Y:F0}";
+    }
+
     private static void AppendTrailSb(System.Text.StringBuilder sb, string header, IReadOnlyList<string> trail, int maxRows)
     {
         if (trail.Count == 0) return;
@@ -1857,31 +2084,8 @@ internal sealed class ImGuiDebugOverlay(
             sb.AppendLine($"  {trail[i]}");
     }
 
-    private string FormatMemory()
-    {
-        // Cache the value and refresh at most once per second to avoid
-        // allocating a Process object and making a system call every frame.
-        long now = Environment.TickCount64;
-        if (now - _lastMemoryFetchMs < 1000 && _cachedMemory != null)
-            return _cachedMemory;
-
-        _lastMemoryFetchMs = now;
-        try
-        {
-            long mb = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024;
-            _cachedMemory = mb > 0 ? $"{mb} MB" : "N/A";
-        }
-        catch
-        {
-            _cachedMemory = "N/A";
-        }
-        return _cachedMemory;
-    }
-
-    private long _lastMemoryFetchMs;
     private string? _lastTowerDatDump;
     private long _lastTowerDatDumpMs;
-    private string? _cachedMemory;
 
     // Coverage-tree render cache: the blight cache only refreshes on its own 200ms cadence, and
     // the topology derivation (branch search + lane forest) is expensive on large maps, so it is

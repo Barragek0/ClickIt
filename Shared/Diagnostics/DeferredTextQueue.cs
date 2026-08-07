@@ -4,11 +4,11 @@ namespace ClickIt.Shared.Diagnostics
     {
         private const int MaxBufferedItems = 8192;
         private readonly Lock _queueLock = new();
-        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> _items = [];
-        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align)> _spare = [];
+        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow)> _items = [];
+        private List<(string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow)> _spare = [];
         private int _pendingCount;
 
-        public void Enqueue(string text, Vector2 pos, Color color, int size, FontAlign align = FontAlign.Left)
+        public void Enqueue(string text, Vector2 pos, Color color, int size, FontAlign align = FontAlign.Left, bool shadow = false)
         {
             if (string.IsNullOrEmpty(text) || size <= 0)
                 return;
@@ -25,7 +25,7 @@ namespace ClickIt.Shared.Diagnostics
                         _items.RemoveRange(0, removeCount);
                     }
 
-                    _items.Add((text, pos, color, size, align));
+                    _items.Add((text, pos, color, size, align, shadow));
                     _pendingCount = _items.Count;
                 }
             }
@@ -50,9 +50,11 @@ namespace ClickIt.Shared.Diagnostics
 
             for (int i = 0; i < _spare.Count; i++)
             {
-                (string Text, Vector2 Position, Color Color, int Size, FontAlign Align) entry = _spare[i];
+                (string Text, Vector2 Position, Color Color, int Size, FontAlign Align, bool Shadow) entry = _spare[i];
                 try
                 {
+                    if (entry.Shadow)
+                        graphics.DrawText(entry.Text, new NumVector2(entry.Position.X + 1f, entry.Position.Y + 1f), Color.Black, entry.Align);
                     graphics.DrawText(entry.Text, new NumVector2(entry.Position.X, entry.Position.Y), entry.Color, entry.Align);
                 }
                 catch

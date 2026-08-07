@@ -1,15 +1,15 @@
-namespace ClickIt.Tests.UI
+namespace ClickIt.Tests.Features.Labels
 {
     [TestClass]
-    public class LazyModeRendererLogicTests
+    public class LazyModeOverlayLogicTests
     {
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsRestrictionAndOverrideHint_WhenRestrictedAndHotkeyNotHeld()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: true,
                 restrictionReason: "Rare monster nearby.",
                 hotkeyHeld: false,
@@ -28,14 +28,13 @@ namespace ClickIt.Tests.UI
             result.line2.Should().Be("Hold T to override.");
             result.line3.Should().BeEmpty();
         }
-
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsOverrideStatus_WhenRestrictedAndHotkeyHeld()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: true,
                 restrictionReason: "Rare monster nearby.",
                 hotkeyHeld: true,
@@ -60,10 +59,10 @@ namespace ClickIt.Tests.UI
         {
             var settings = new ClickItSettings();
             settings.LazyModeDisableKey = new HotkeyNodeV2(Keys.Y);
-            var renderer = CreateRenderer(settings);
+            var overlay = CreateOverlay(settings);
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: false,
@@ -74,6 +73,7 @@ namespace ClickIt.Tests.UI
                 rightClickBlocks: false,
                 gameController: null,
                 clickLabelKey: Keys.T,
+                lazyModeDisableKeyBinding: settings.LazyModeDisableKeyBinding,
                 isRitualActive: false,
                 canActuallyClick: true);
 
@@ -86,10 +86,10 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsReleaseHint_WhenDisableHotkeyIsHeldInNonToggleMode()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: false,
@@ -112,10 +112,10 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsMouseBlockMessage_WhenMouseButtonsAreHeld()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: false,
@@ -138,10 +138,10 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsCombinedMouseBlockMessage_WhenBothMouseButtonsAreHeld()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: false,
@@ -164,10 +164,10 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsRitualBlockMessage_WhenRitualIsActiveWithoutOverride()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: false,
@@ -190,10 +190,10 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsOverrideStatus_WhenRitualIsActiveAndHotkeyHeld()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: true,
@@ -216,10 +216,10 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsInputFailureReason_WhenClickingIsUnavailable()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: false,
@@ -242,10 +242,10 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void ComposeLazyModeStatus_ReturnsReadyState_WhenNoBlockersApply()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
             var result = InvokeComposeLazyModeStatus(
-                renderer,
+                overlay,
                 hasRestrictedItems: false,
                 restrictionReason: string.Empty,
                 hotkeyHeld: false,
@@ -268,7 +268,7 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void WrapOverlayText_WrapsLongTextAndSkipsBlankLines()
         {
-            var lines = LazyModeRenderer.WrapOverlayText("first line\n\nthis line should wrap into chunks", 12);
+            var lines = LazyModeOverlay.WrapOverlayText("first line\n\nthis line should wrap into chunks", 12);
 
             lines.Should().NotBeEmpty();
             lines[0].Should().Be("first line");
@@ -278,18 +278,18 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void GetLazyModeRestrictionDisplayReason_ReturnsGenericForBlankAndTrimmedValueOtherwise()
         {
-            LazyModeRenderer.GetLazyModeRestrictionDisplayReason(null).Should().Be("Lazy mode blocking condition detected.");
-            LazyModeRenderer.GetLazyModeRestrictionDisplayReason("   ").Should().Be("Lazy mode blocking condition detected.");
-            LazyModeRenderer.GetLazyModeRestrictionDisplayReason("  Rare monster nearby.  ").Should().Be("Rare monster nearby.");
+            LazyModeOverlay.GetLazyModeRestrictionDisplayReason(null).Should().Be("Lazy mode blocking condition detected.");
+            LazyModeOverlay.GetLazyModeRestrictionDisplayReason("   ").Should().Be("Lazy mode blocking condition detected.");
+            LazyModeOverlay.GetLazyModeRestrictionDisplayReason("  Rare monster nearby.  ").Should().Be("Rare monster nearby.");
         }
 
         [TestMethod]
         public void GetBlockingMouseButtonName_ReturnsExpectedLabels_ForRightAndBothButtons()
         {
-            LazyModeRenderer.GetBlockingMouseButtonName(leftClickBlocks: false, rightClickBlocks: true)
+            LazyModeOverlay.GetBlockingMouseButtonName(leftClickBlocks: false, rightClickBlocks: true)
                 .Should().Be("Right mouse button");
 
-            LazyModeRenderer.GetBlockingMouseButtonName(leftClickBlocks: true, rightClickBlocks: true)
+            LazyModeOverlay.GetBlockingMouseButtonName(leftClickBlocks: true, rightClickBlocks: true)
                 .Should().Be("both mouse buttons");
         }
 
@@ -297,10 +297,10 @@ namespace ClickIt.Tests.UI
         public void RenderLazyModeText_EnqueuesTitleAndWrappedBodyLines()
         {
             var queue = new DeferredTextQueue();
-            var renderer = CreateRenderer(deferredTextQueue: queue);
+            var overlay = CreateOverlay();
 
-            InvokeRenderLazyModeText(
-                renderer,
+            overlay.RenderLazyModeText(
+                queue,
                 centerX: 300f,
                 topY: 60f,
                 color: Color.Red,
@@ -318,30 +318,28 @@ namespace ClickIt.Tests.UI
         [TestMethod]
         public void HoldAndToggleHintHelpers_RefreshCachedHints_WhenKeysChange()
         {
-            var renderer = CreateRenderer();
+            var overlay = CreateOverlay();
 
-            InvokeGetHoldClickLabelHint(renderer, Keys.T).Should().Be("Hold T to override.");
-            InvokeGetHoldClickLabelHint(renderer, Keys.Y).Should().Be("Hold Y to override.");
+            InvokeGetHoldClickLabelHint(overlay, Keys.T).Should().Be("Hold T to override.");
+            InvokeGetHoldClickLabelHint(overlay, Keys.Y).Should().Be("Hold Y to override.");
 
-            InvokeGetToggleDisableHint(renderer, Keys.U).Should().Be("Press U again to resume lazy clicking.");
-            InvokeGetToggleDisableHint(renderer, Keys.I).Should().Be("Press I again to resume lazy clicking.");
+            InvokeGetToggleDisableHint(overlay, Keys.U).Should().Be("Press U again to resume lazy clicking.");
+            InvokeGetToggleDisableHint(overlay, Keys.I).Should().Be("Press I again to resume lazy clicking.");
         }
 
-        private static LazyModeRenderer CreateRenderer(
+        private static LazyModeOverlay CreateOverlay(
             ClickItSettings? settings = null,
-            DeferredTextQueue? deferredTextQueue = null,
             InputHandler? inputHandler = null,
             LazyModeBlockerService? lazyModeBlockerService = null)
         {
             settings ??= new ClickItSettings();
             inputHandler ??= new InputHandler(settings);
-            deferredTextQueue ??= new DeferredTextQueue();
 
-            return new LazyModeRenderer(settings, deferredTextQueue, inputHandler, lazyModeBlockerService);
+            return new LazyModeOverlay(inputHandler, lazyModeBlockerService);
         }
 
         private static (Color color, string line1, string line2, string line3) InvokeComposeLazyModeStatus(
-            LazyModeRenderer renderer,
+            LazyModeOverlay overlay,
             bool hasRestrictedItems,
             string restrictionReason,
             bool hotkeyHeld,
@@ -352,58 +350,28 @@ namespace ClickIt.Tests.UI
             bool rightClickBlocks,
             GameController? gameController,
             Keys clickLabelKey,
-            bool isRitualActive,
-            bool canActuallyClick)
+            Keys lazyModeDisableKeyBinding = Keys.None,
+            bool isRitualActive = false,
+            bool canActuallyClick = true)
         {
-            MethodInfo method = typeof(LazyModeRenderer).GetMethod("ComposeLazyModeStatus", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            MethodInfo method = typeof(LazyModeOverlay).GetMethod("ComposeLazyModeStatus", BindingFlags.Instance | BindingFlags.NonPublic)!;
             object result = method.Invoke(
-                renderer,
-                [
-                    hasRestrictedItems,
-                    restrictionReason,
-                    hotkeyHeld,
-                    lazyModeDisableHeld,
-                    lazyModeDisableToggleMode,
-                    mouseButtonBlocks,
-                    leftClickBlocks,
-                    rightClickBlocks,
-                    gameController,
-                    clickLabelKey,
-                    isRitualActive,
-                    canActuallyClick
-                ])!;
+                overlay,
+                [hasRestrictedItems, restrictionReason, hotkeyHeld, lazyModeDisableHeld, lazyModeDisableToggleMode, mouseButtonBlocks, leftClickBlocks, rightClickBlocks, gameController, clickLabelKey, lazyModeDisableKeyBinding, isRitualActive, canActuallyClick])!;
 
-            Type resultType = result.GetType();
-            return (
-                (Color)resultType.GetField("Item1")!.GetValue(result)!,
-                (string)resultType.GetField("Item2")!.GetValue(result)!,
-                (string)resultType.GetField("Item3")!.GetValue(result)!,
-                (string)resultType.GetField("Item4")!.GetValue(result)!);
+            return ((Color color, string line1, string line2, string line3))result;
         }
 
-        private static void InvokeRenderLazyModeText(
-            LazyModeRenderer renderer,
-            float centerX,
-            float topY,
-            Color color,
-            string line1,
-            string line2,
-            string line3)
+        private static string InvokeGetHoldClickLabelHint(LazyModeOverlay overlay, Keys clickLabelKey)
         {
-            MethodInfo method = typeof(LazyModeRenderer).GetMethod("RenderLazyModeText", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            method.Invoke(renderer, [centerX, topY, color, line1, line2, line3]);
+            MethodInfo method = typeof(LazyModeOverlay).GetMethod("GetHoldClickLabelHint", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            return (string)method.Invoke(overlay, [clickLabelKey])!;
         }
 
-        private static string InvokeGetHoldClickLabelHint(LazyModeRenderer renderer, Keys clickLabelKey)
+        private static string InvokeGetToggleDisableHint(LazyModeOverlay overlay, Keys disableKey)
         {
-            MethodInfo method = typeof(LazyModeRenderer).GetMethod("GetHoldClickLabelHint", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            return (string)method.Invoke(renderer, [clickLabelKey])!;
-        }
-
-        private static string InvokeGetToggleDisableHint(LazyModeRenderer renderer, Keys disableKey)
-        {
-            MethodInfo method = typeof(LazyModeRenderer).GetMethod("GetToggleDisableHint", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            return (string)method.Invoke(renderer, [disableKey])!;
+            MethodInfo method = typeof(LazyModeOverlay).GetMethod("GetToggleDisableHint", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            return (string)method.Invoke(overlay, [disableKey])!;
         }
     }
 }

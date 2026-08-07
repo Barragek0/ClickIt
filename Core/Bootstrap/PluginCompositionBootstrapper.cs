@@ -6,7 +6,6 @@ namespace ClickIt.Core.Bootstrap
             CoreDomainServices Core,
             RenderingDomainServices Rendering,
             ClickAutomationPort ClickAutomationPort,
-            UltimatumRenderer UltimatumRenderer,
             SettingsDomainServices SettingsDomain);
 
         internal static void InitializeCompositionRoot(PluginContext context, ClickIt owner, ClickItSettings settings)
@@ -55,9 +54,10 @@ namespace ClickIt.Core.Bootstrap
             CoreDomainServices core = CoreDomainAssembler.Assemble(owner, settings, gameController);
             RenderingDomainServices rendering = RenderingDomainAssembler.Assemble(owner, settings, core);
             ClickAutomationPort clickAutomationPort = ClickDomainAssembler.Assemble(owner, settings, gameController, core, rendering.AltarChoiceEvaluator);
-            UltimatumRenderer ultimatumRenderer = RenderingDomainAssembler.CreateUltimatumRenderer(settings, clickAutomationPort, core.DeferredFrameQueue);
+            UltimatumOverlay ultimatumOverlay = RenderingDomainAssembler.CreateUltimatumOverlay(settings, clickAutomationPort);
+            rendering.OverlayRenderHost.Register(ultimatumOverlay);
             SettingsDomainServices settingsDomain = SettingsDomainAssembler.Assemble(owner);
-            return new CompositionRootParts(core, rendering, clickAutomationPort, ultimatumRenderer, settingsDomain);
+            return new CompositionRootParts(core, rendering, clickAutomationPort, settingsDomain);
         }
 
         private static void PublishCompositionState(PluginContext context, ClickItSettings settings, CompositionRootParts parts)
@@ -67,7 +67,6 @@ namespace ClickIt.Core.Bootstrap
                 parts.Core,
                 parts.Rendering,
                 parts.ClickAutomationPort,
-                parts.UltimatumRenderer,
                 parts.SettingsDomain.AlertService);
 
             SettingsDomainAssembler.WireActions(
@@ -93,14 +92,13 @@ namespace ClickIt.Core.Bootstrap
             CoreDomainServices core,
             RenderingDomainServices rendering,
             ClickAutomationPort clickAutomationPort,
-            UltimatumRenderer ultimatumRenderer,
             AlertService alertService)
         {
             PluginServices services = context.Services;
 
             PublishCoreServices(services, core);
             PublishClickServices(services, clickAutomationPort, alertService, core.WeightCalculator);
-            PublishRenderingState(context.Rendering, services, core, rendering, ultimatumRenderer);
+            PublishRenderingState(context.Rendering, services, core, rendering);
         }
 
         private static void PublishCoreServices(PluginServices services, CoreDomainServices core)
@@ -181,22 +179,14 @@ namespace ClickIt.Core.Bootstrap
             PluginRenderingState renderingState,
             PluginServices services,
             CoreDomainServices core,
-            RenderingDomainServices rendering,
-            UltimatumRenderer ultimatumRenderer)
+            RenderingDomainServices rendering)
         {
             renderingState.DeferredTextQueue = core.DeferredTextQueue;
             renderingState.DeferredFrameQueue = core.DeferredFrameQueue;
-            renderingState.StrongboxRenderer = rendering.StrongboxRenderer;
-            renderingState.LazyModeRenderer = rendering.LazyModeRenderer;
-            renderingState.ClickHotkeyToggleRenderer = rendering.ClickHotkeyToggleRenderer;
-            renderingState.InventoryFullWarningRenderer = rendering.InventoryFullWarningRenderer;
-            renderingState.PathfindingRenderer = rendering.PathfindingRenderer;
-            renderingState.AltarDisplayRenderer = rendering.AltarDisplayRenderer;
-            renderingState.HarvestOverlayRenderer = core.HarvestOverlayRenderer;
-            renderingState.BlightRenderer = core.BlightRenderer;
+            renderingState.DeferredDrawQueue = core.DeferredDrawQueue;
             renderingState.ImGuiDebugOverlay = rendering.ImGuiDebugOverlay;
             renderingState.UiRegionRectangleOverlay = rendering.UiRegionRectangleOverlay;
-            renderingState.UltimatumRenderer = ultimatumRenderer;
+            renderingState.OverlayRenderHost = rendering.OverlayRenderHost;
         }
     }
 }

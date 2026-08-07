@@ -1,7 +1,7 @@
-namespace ClickIt.Tests.UI
+namespace ClickIt.Tests.Features.Pathfinding
 {
     [TestClass]
-    public class PathfindingRendererTests
+    public class PathfindingOverlayTests
     {
         [DataTestMethod]
         [DataRow(30f, -30f, "NE")]
@@ -14,7 +14,7 @@ namespace ClickIt.Tests.UI
         [DataRow(-30f, 0f, "W")]
         public void ToCompass_ReturnsExpectedDirection(float dx, float dy, string expected)
         {
-            PathfindingRenderer.ToCompass(new Vector2(dx, dy)).Should().Be(expected);
+            PathfindingOverlay.ToCompass(new Vector2(dx, dy)).Should().Be(expected);
         }
 
     }
