@@ -166,47 +166,64 @@ namespace ClickIt.Features.Click.Core
         private IEnumerator RunCore(long runStart)
         {
             long ctxStart = GC.GetAllocatedBytesForCurrentThread();
+            long ctxTimestamp = Stopwatch.GetTimestamp();
             if (!_dependencies.TickContextFactory.TryCreateRegularClickContext(out ClickTickContext context))
             {
                 long earlyCtxBytes = GC.GetAllocatedBytesForCurrentThread() - ctxStart;
                 long earlyTotal = GC.GetAllocatedBytesForCurrentThread() - runStart;
+                double earlyCtxMs = GetElapsedMs(ctxTimestamp);
                 _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
-                    earlyCtxBytes, 0, 0, 0, 0, SystemMath.Max(0, earlyTotal - earlyCtxBytes), earlyTotal));
+                    earlyCtxBytes, 0, 0, 0, 0, SystemMath.Max(0, earlyTotal - earlyCtxBytes), earlyTotal,
+                    ContextMs: earlyCtxMs));
                 yield break;
             }
             long ctxBytes = GC.GetAllocatedBytesForCurrentThread() - ctxStart;
+            double ctxMs = GetElapsedMs(ctxTimestamp);
 
             long acquireStart = GC.GetAllocatedBytesForCurrentThread();
+            long acquireTimestamp = Stopwatch.GetTimestamp();
             ClickCandidates candidates = _acquisitionPhase.Collect(context);
             long acquireBytes = GC.GetAllocatedBytesForCurrentThread() - acquireStart;
+            double acquireMs = GetElapsedMs(acquireTimestamp);
 
             long rankStart = GC.GetAllocatedBytesForCurrentThread();
+            long rankTimestamp = Stopwatch.GetTimestamp();
             RankingResult ranking = _rankingPhase.Rank(context, candidates);
             long rankBytes = GC.GetAllocatedBytesForCurrentThread() - rankStart;
+            double rankMs = GetElapsedMs(rankTimestamp);
 
             DecisionResult decision = Gate(candidates, ranking);
 
             long executeStart = GC.GetAllocatedBytesForCurrentThread();
+            long executeTimestamp = Stopwatch.GetTimestamp();
             ExecutionResult executionResult = _executionPhase.Execute(context, candidates, decision);
             long executeBytes = GC.GetAllocatedBytesForCurrentThread() - executeStart;
+            double executeMs = GetElapsedMs(executeTimestamp);
             LastTickWasActionable = executionResult.DidActionableWork;
 
             long postBytes = 0;
+            double postMs = 0;
             if (executionResult.ShouldRunPostActions)
             {
                 long postStart = GC.GetAllocatedBytesForCurrentThread();
+                long postTimestamp = Stopwatch.GetTimestamp();
                 IEnumerator postActions = RunPostClickActions(_dependencies.InputHandler, executionResult);
                 while (postActions.MoveNext())
                     yield return postActions.Current;
                 postBytes = GC.GetAllocatedBytesForCurrentThread() - postStart;
+                postMs = GetElapsedMs(postTimestamp);
             }
 
             long total = GC.GetAllocatedBytesForCurrentThread() - runStart;
             long stageSum = ctxBytes + acquireBytes + rankBytes + executeBytes + postBytes;
             _dependencies.RecordAllocationBreakdown?.Invoke(new ClickAllocationBreakdown(
                 ctxBytes, acquireBytes, rankBytes, executeBytes, postBytes,
-                SystemMath.Max(0, total - stageSum), total));
+                SystemMath.Max(0, total - stageSum), total,
+                ContextMs: ctxMs, AcquireMs: acquireMs, RankMs: rankMs, ExecuteMs: executeMs, PostMs: postMs));
         }
+
+        private static double GetElapsedMs(long startTimestamp)
+            => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
         private static DecisionResult Gate(ClickCandidates candidates, RankingResult ranking)
             => new(

@@ -14,6 +14,11 @@ internal sealed class ClickAllocationStore
     private readonly StageSamples _execute = new();
     private readonly StageSamples _post = new();
     private readonly StageSamples _other = new();
+    private readonly StageTimingSamples _contextTime = new();
+    private readonly StageTimingSamples _acquireTime = new();
+    private readonly StageTimingSamples _rankTime = new();
+    private readonly StageTimingSamples _executeTime = new();
+    private readonly StageTimingSamples _postTime = new();
     private long _sampleCount;
 
     internal void Record(ClickAllocationBreakdown breakdown)
@@ -26,6 +31,11 @@ internal sealed class ClickAllocationStore
             _execute.Record(breakdown.ExecuteBytes);
             _post.Record(breakdown.PostBytes);
             _other.Record(breakdown.OtherBytes);
+            _contextTime.Record(breakdown.ContextMs);
+            _acquireTime.Record(breakdown.AcquireMs);
+            _rankTime.Record(breakdown.RankMs);
+            _executeTime.Record(breakdown.ExecuteMs);
+            _postTime.Record(breakdown.PostMs);
             _sampleCount++;
         }
     }
@@ -41,7 +51,12 @@ internal sealed class ClickAllocationStore
                 _execute.Stats,
                 _post.Stats,
                 _other.Stats,
-                _sampleCount);
+                _sampleCount,
+                _contextTime.Stats,
+                _acquireTime.Stats,
+                _rankTime.Stats,
+                _executeTime.Stats,
+                _postTime.Stats);
         }
     }
 
@@ -75,6 +90,40 @@ internal sealed class ClickAllocationStore
                         max = b;
                 }
                 return new AllocationStageSnapshot(_last, total / (double)_bytes.Count, max);
+            }
+        }
+    }
+
+    private sealed class StageTimingSamples
+    {
+        private readonly Queue<double> _millis = new(MaxWindow);
+        private double _last;
+
+        public void Record(double ms)
+        {
+            if (ms < 0)
+                ms = 0;
+            _last = ms;
+            _millis.Enqueue(ms);
+            if (_millis.Count > MaxWindow)
+                _millis.Dequeue();
+        }
+
+        public TimingStageSnapshot Stats
+        {
+            get
+            {
+                if (_millis.Count == 0)
+                    return default;
+                double total = 0;
+                double max = 0;
+                foreach (double ms in _millis)
+                {
+                    total += ms;
+                    if (ms > max)
+                        max = ms;
+                }
+                return new TimingStageSnapshot(_last, total / _millis.Count, max);
             }
         }
     }

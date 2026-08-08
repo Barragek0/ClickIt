@@ -40,7 +40,8 @@ namespace ClickIt.Features.Observability
 
     // Per-stage allocation inside the click pipeline (bytes allocated by one stage of one run).
     // OtherBytes captures click work outside the named stages (Run() prelude, debug-stage
-    // publishing, iterator machinery) so the stages sum to the recorded TotalBytes.
+    // publishing, iterator machinery) so the stages sum to the recorded TotalBytes. The *Ms fields
+    // carry the same stages' wall-clock time so the debug tables can show time AND allocation.
     public readonly record struct ClickAllocationBreakdown(
         long ContextBytes,
         long AcquireBytes,
@@ -48,7 +49,14 @@ namespace ClickIt.Features.Observability
         long ExecuteBytes,
         long PostBytes,
         long OtherBytes = 0,
-        long TotalBytes = 0);
+        long TotalBytes = 0,
+        double ContextMs = 0,
+        double AcquireMs = 0,
+        double RankMs = 0,
+        double ExecuteMs = 0,
+        double PostMs = 0);
+
+    public readonly record struct TimingStageSnapshot(double LastMs, double AvgMs, double MaxMs);
 
     // Rolling per-stage click-pipeline allocation stats for the same last/avg/max breakdown.
     public readonly record struct ClickAllocationStats(
@@ -58,7 +66,12 @@ namespace ClickIt.Features.Observability
         AllocationStageSnapshot Execute,
         AllocationStageSnapshot Post,
         AllocationStageSnapshot Other,
-        long SampleCount);
+        long SampleCount,
+        TimingStageSnapshot ContextTime = default,
+        TimingStageSnapshot AcquireTime = default,
+        TimingStageSnapshot RankTime = default,
+        TimingStageSnapshot ExecuteTime = default,
+        TimingStageSnapshot PostTime = default);
 
     // Process + managed-heap memory picture. ProcessWorkingSetMb is the WHOLE process (game +
     // ExileCore/ExileApi + plugin), so per-feature attribution is not possible — the GC table's

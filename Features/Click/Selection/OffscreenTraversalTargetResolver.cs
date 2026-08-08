@@ -16,7 +16,27 @@ namespace ClickIt.Features.Click.Selection
     {
         private readonly OffscreenTraversalTargetResolverDependencies _dependencies = dependencies;
 
+        // The offscreen walk-target scan runs every click tick whenever no label is clickable and
+        // walks all enabled entity categories (altars/shrines/transitions) with per-entity DLR reads
+        // — the dominant click-processing cost in that state. Cache the resolution for a short window;
+        // entities stream in/out within 250ms and the sticky-target gate bounds walk decisions.
+        private Entity? _cachedWalkTarget;
+        private long _cachedWalkTargetAtMs;
+        private const long OffscreenTargetCacheWindowMs = 250;
+
         internal Entity? ResolveNearestOffscreenWalkTarget()
+        {
+            long now = Environment.TickCount64;
+            if (now - _cachedWalkTargetAtMs < OffscreenTargetCacheWindowMs)
+                return _cachedWalkTarget;
+
+            Entity? resolved = ResolveNearestOffscreenWalkTargetCore();
+            _cachedWalkTarget = resolved;
+            _cachedWalkTargetAtMs = now;
+            return resolved;
+        }
+
+        private Entity? ResolveNearestOffscreenWalkTargetCore()
         {
             int maxDistance = OffscreenPathingMath.OffscreenPathfindingTargetSearchDistance;
 

@@ -502,6 +502,23 @@ internal sealed class ImGuiDebugOverlay(
         RenderGcStageRow("Execute", s.Execute, fps, periodMs);
         RenderGcStageRow("Post", s.Post, fps, periodMs);
         RenderGcStageRow("Other", s.Other, fps, periodMs);
+        RenderClickTimingRow("Context", s.ContextTime);
+        RenderClickTimingRow("Acquire", s.AcquireTime);
+        RenderClickTimingRow("Rank", s.RankTime);
+        RenderClickTimingRow("Execute", s.ExecuteTime);
+        RenderClickTimingRow("Post", s.PostTime);
+    }
+
+    private static void RenderClickTimingRow(string label, TimingStageSnapshot s)
+    {
+        if (s.AvgMs <= 0 && s.MaxMs <= 0)
+            return;
+        NumVec4 c = s.AvgMs >= 25 ? CError : s.AvgMs >= 10 ? CWarn : CGreen;
+        ImGui.TableNextRow();
+        _ = ImGui.TableNextColumn(); ImGui.Text($"  {label} ms");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{s.LastMs:F1}");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"{s.AvgMs:F1} avg");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, $"max {s.MaxMs:F1}");
     }
 
     private static void RenderGcStageRow(string label, AllocationStageSnapshot s, double fps, double periodMs)
@@ -1619,6 +1636,12 @@ internal sealed class ImGuiDebugOverlay(
                 AppendGcStageLine(sb, "      Execute", click.Execute, clickPeriodMs);
                 AppendGcStageLine(sb, "      Post", click.Post, clickPeriodMs);
                 AppendGcStageLine(sb, "      Other", click.Other, clickPeriodMs);
+                sb.AppendLine("      Time (ms):");
+                AppendClickTimingLine(sb, "        Context", click.ContextTime);
+                AppendClickTimingLine(sb, "        Acquire", click.AcquireTime);
+                AppendClickTimingLine(sb, "        Rank", click.RankTime);
+                AppendClickTimingLine(sb, "        Execute", click.ExecuteTime);
+                AppendClickTimingLine(sb, "        Post", click.PostTime);
             }
         }
         if (perf.CoroutinesTotal.SampleCount > 0)
@@ -1648,6 +1671,13 @@ internal sealed class ImGuiDebugOverlay(
             sb.AppendLine($"    Observed: {m.ObservedTotalMs:F0} ms");
         }
         sb.AppendLine();
+    }
+
+    private static void AppendClickTimingLine(StringBuilder sb, string label, TimingStageSnapshot s)
+    {
+        if (s.AvgMs <= 0 && s.MaxMs <= 0)
+            return;
+        sb.AppendLine($"{label}: {s.LastMs:F1} ms (avg {s.AvgMs:F1}, max {s.MaxMs:F1})");
     }
 
     private static void AppendTimingLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats)

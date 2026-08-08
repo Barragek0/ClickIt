@@ -20,6 +20,15 @@ namespace ClickIt.Core.Runtime
         private double _clickTargetTimeCorrectionMs;
         private bool _lastClickTimerRestarted;
 
+        // Delve-flare decision cache: per-player-address inputs (darkness-debuff charges, health/ES
+        // percent) refreshed at most every FlareCacheWindowMs to avoid re-materializing Player.Buffs.
+        private long _flarePlayerOwnerAddress;
+        private int _cachedFlareCharges = -1;
+        private float _cachedFlareHealth = 100f;
+        private float _cachedFlareEnergyShield = 100f;
+        private long _flareCacheAtMs;
+        private const long FlareCacheWindowMs = 200;
+
         private static double GetElapsedMs(long startTimestamp)
             => (Stopwatch.GetTimestamp() - startTimestamp) * 1000.0 / Stopwatch.Frequency;
 
@@ -359,19 +368,33 @@ namespace ClickIt.Core.Runtime
 
         private IEnumerator ProcessFlare()
         {
-            if (!_settings.ClickDelveFlares || _gameController?.Player?.Buffs == null)
+            if (!_settings.ClickDelveFlares)
                 yield break;
 
-            int delveBuffCharges = PluginDelveFlarePolicy.FindDarknessDebuffCharges(_gameController.Player.Buffs);
+            long now = Environment.TickCount64;
+            Entity? player = _gameController?.Player;
+            if (player == null)
+                yield break;
 
-            float healthPercent = GetPlayerHealthPercent();
-            float energyShieldPercent = GetPlayerEnergyShieldPercent();
+            // Player.Buffs materializes every buff wrapper and FindDarknessDebuffCharges reads each
+            // buff's Name/Charges over the obfuscated game types — the dominant flare cost at its
+            // 100ms cadence. Cache the decision inputs per player address with a short window; the
+            // darkness-debuff decision tolerates 200ms staleness.
+            if (now - _flareCacheAtMs >= FlareCacheWindowMs || player.Address != _flarePlayerOwnerAddress)
+            {
+                _flarePlayerOwnerAddress = player.Address;
+                _flareCacheAtMs = now;
+                _cachedFlareCharges = PluginDelveFlarePolicy.FindDarknessDebuffCharges(player.Buffs);
+                _cachedFlareHealth = GetPlayerHealthPercent();
+                _cachedFlareEnergyShield = GetPlayerEnergyShieldPercent();
+            }
+
             if (!PluginDelveFlarePolicy.ShouldUseFlare(
-                delveBuffCharges,
+                _cachedFlareCharges,
                 _settings.DarknessDebuffStacks.Value,
-                healthPercent,
+                _cachedFlareHealth,
                 _settings.DelveFlareHealthThreshold.Value,
-                energyShieldPercent,
+                _cachedFlareEnergyShield,
                 _settings.DelveFlareEnergyShieldThreshold.Value))
                 yield break;
 
@@ -380,7 +403,7 @@ namespace ClickIt.Core.Runtime
                 yield break;
 
             Keyboard.KeyPress(_settings.DelveFlareHotkeyBinding, 50);
-            _errorHandler.LogMessage($"Used delve flare (buff charges: {delveBuffCharges}, health: {healthPercent:F1}%, es: {energyShieldPercent:F1}%)", 5);
+            _errorHandler.LogMessage($"Used delve flare (buff charges: {_cachedFlareCharges}, health: {_cachedFlareHealth:F1}%, es: {_cachedFlareEnergyShield:F1}%)", 5);
             yield return new WaitTime(1000);
         }
 
