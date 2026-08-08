@@ -362,9 +362,12 @@ internal sealed class BlightPlanExecutor
                 long childCount = 0;
                 try
                 {
-                    Element c0 = labelElement.GetChildAtIndex(0);
-                    Element? m = c0?.GetChildAtIndex(3);
-                    if (m != null) childCount = m.ChildCount;
+                    if (labelElement.ChildCount > 0)
+                    {
+                        Element c0 = labelElement.GetChildAtIndex(0);
+                        if (c0 != null && c0.ChildCount > 3)
+                            childCount = c0.GetChildAtIndex(3)?.ChildCount ?? 0;
+                    }
                 }
                 catch { }
                 service.AddDebugStage($"Executor: SELECT → {s.TowerType}(idx={(int)s.TowerType}) not found — menu has {childCount} children — FAIL #{_consecutiveFailures + 1}");
@@ -443,21 +446,16 @@ internal sealed class BlightPlanExecutor
                         $"Upgrade {s.TowerType} → lvl {s.TargetLevel}", gc);
                 }
 
-                // Fireball's spec slots are verified in-game (Flamethrower=0, Meteor=1) and the
-                // UpgradeResult dat read is unreliable — so Fireball uses the verified index first;
-                // non-Fireball types have no verified slot and resolve by tower ID.
+                // Prefer the catalog menu index for every type — the UpgradeResult dat read used by
+                // the old tower-ID scan is unreliable in the current build and picked Sentinel
+                // instead of Scout for Summoning.
                 TowerSpecialization spec = (TowerSpecialization)specIndex;
                 int menuIndex = BlightTowerData.GetSpecializationMenuChildIndex(s.TowerType, spec);
                 string targetTowerId = BlightTowerData.GetSpecializationTowerId(s.TowerType, spec);
-                bool verifiedIndex = BlightTowerData.HasVerifiedSpecializationMenuIndex(s.TowerType);
 
-                NumVector2? specPos = verifiedIndex
+                NumVector2? specPos = menuIndex >= 0
                     ? BlightMenuInteractions.GetSpecializationChildClickPosition(labelElement, menuIndex)
-                    : BlightMenuInteractions.GetSpecializationClickPosition(labelElement, targetTowerId);
-                if (specPos is null)
-                    specPos = verifiedIndex
-                        ? BlightMenuInteractions.GetSpecializationClickPosition(labelElement, targetTowerId)
-                        : BlightMenuInteractions.GetSpecializationChildClickPosition(labelElement, menuIndex);
+                    : null;
 
                 if (specPos is null)
                 {

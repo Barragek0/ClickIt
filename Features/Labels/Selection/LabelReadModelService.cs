@@ -20,6 +20,11 @@ namespace ClickIt.Features.Labels.Selection
         private long _labelDataCacheWindowStartMs;
         private const long LabelDataCacheWindowMs = 250;
 
+        // TimeCache.Value runs the scan on whichever thread first accesses it after expiry (overlay
+        // refresh, click coroutine, altar scan, render path), so the shared cache must be serialized
+        // or concurrent scans corrupt the dictionary (InvalidOperationException in UpdateLabelComponent).
+        private readonly Lock _scanLock = new();
+
         public LabelReadModelService(GameController gameController, Func<Vector2, bool> pointIsInClickableArea, Action<double>? recordProcessingMs = null, Action<long>? recordAllocationBytes = null, Action<LabelScanAllocationBreakdown>? recordAllocationBreakdown = null)
         {
             _gameController = gameController;
@@ -36,6 +41,12 @@ namespace ClickIt.Features.Labels.Selection
         }
 
         public List<LabelOnGround> UpdateLabelComponent()
+        {
+            lock (_scanLock)
+                return UpdateLabelComponentCore();
+        }
+
+        private List<LabelOnGround> UpdateLabelComponentCore()
         {
             long start = Stopwatch.GetTimestamp();
             long allocStart = GC.GetAllocatedBytesForCurrentThread();

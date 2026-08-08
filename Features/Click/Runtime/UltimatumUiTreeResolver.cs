@@ -413,19 +413,9 @@ namespace ClickIt.Features.Click.Runtime
             if (source == null)
                 return false;
 
-            if (source is Element element)
-            {
-                try
-                {
-                    value = element.GetChildFromIndices(indices);
-                    if (value != null)
-                        return true;
-                }
-                catch
-                {
-                }
-            }
-
+            // Never call Element.GetChildFromIndices directly — ExileCore logs "Element with index N
+            // not found indices [...]" to the game log on a miss. Walk the path through the
+            // bounds-checked Children reads instead.
             object? current = source;
             for (int i = 0; i < indices.Length; i++)
             {

@@ -184,17 +184,11 @@ internal interface IBlightTowerStrategy
 
     static readonly Color DefaultFoundationColour = new(128, 128, 128, 100);
 
+    // Shared palette (BlightTowerColors) at the lane alpha so dots blend with the lane colours;
+    // strategies can still override per-tower colours via GetTowerRangeColor/GetFoundationOutline.
     static Color DefaultTowerColor(BlightTowerType type)
     {
-        return type switch
-        {
-            BlightTowerType.Chilling => new Color(50, 130, 255, 100),   // blue — matches lane "only chilling"
-            BlightTowerType.ShockNova => new Color(180, 60, 255, 100),  // purple
-            BlightTowerType.Empowering => new Color(0, 200, 0, 100),    // green — matches lane "both covered"
-            BlightTowerType.Seismic => new Color(255, 128, 0, 100),      // orange — matches lane "only seismic"
-            BlightTowerType.Summoning => new Color(255, 160, 50, 100),  // orange
-            BlightTowerType.Fireball => new Color(200, 60, 60, 100),    // red — matches lane "uncovered" red
-            _ => Color.Gray
-        };
+        Color c = BlightTowerColors.AsColor(type);
+        return new Color(c.R, c.G, c.B, (byte)100);
     }
 }

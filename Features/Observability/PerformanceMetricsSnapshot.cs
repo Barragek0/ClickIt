@@ -7,14 +7,16 @@ namespace ClickIt.Features.Observability
 
     // GC pressure per processing section: steady-state alloc/s (bytes per run / run period) plus
     // per-run bytes, so the debug table can rank where allocations actually happen. LastBytesPerRun
-    // and AvgPeriodMs let the summary normalize per-run bytes to per-frame last/avg/max.
+    // and AvgPeriodMs let the summary normalize per-run bytes to per-frame last/avg/max;
+    // MaxAllocPerSecond is the peak single-sample rate (bytes / that sample's own period).
     internal readonly record struct GcAllocationSnapshot(
         double AllocPerSecond,
         double AvgBytesPerRun,
         double MaxBytesPerRun,
         long SampleCount,
         double LastBytesPerRun = 0,
-        double AvgPeriodMs = 0);
+        double AvgPeriodMs = 0,
+        double MaxAllocPerSecond = 0);
 
     // Per-stage allocation inside the label scan (bytes allocated by one stage of one run).
     public readonly record struct LabelScanAllocationBreakdown(
@@ -363,6 +365,22 @@ namespace ClickIt.Features.Observability
                     }
                 }
                 return (last, totalPerSecond, totalMaxRun);
+            }
+        }
+
+        // Total peak allocation rate across every GC section (sum of each section's MaxAllocPerSecond),
+        // for the on-screen GC title's Max cell — same sum convention as TotalMaxBytesPerRun above.
+        public double GcTableTotalMaxBytesPerSecond
+        {
+            get
+            {
+                double total = 0;
+                if (Allocations != null)
+                {
+                    foreach (KeyValuePair<ProcessingSection, GcAllocationSnapshot> entry in Allocations)
+                        total += entry.Value.MaxAllocPerSecond;
+                }
+                return total;
             }
         }
 

@@ -82,6 +82,22 @@ namespace ClickIt.Tests.Features.Observability.Performance
         }
 
         [TestMethod]
+        public void MaxAllocationRate_ReflectsTheFastestSample()
+        {
+            var store = new GcAllocationMetricsStore();
+
+            // A small then a large sample over similar periods: the peak single-sample rate must
+            // exceed the average rate (TickCount64 granularity ~15ms, so keep the bounds loose).
+            store.Record(ProcessingSection.Label, 1000);
+            Thread.Sleep(80);
+            store.Record(ProcessingSection.Label, 5000);
+
+            GcAllocationSnapshot stats = store.GetStats(ProcessingSection.Label);
+            stats.MaxAllocPerSecond.Should().BeGreaterThan(stats.AllocPerSecond);
+            stats.MaxAllocPerSecond.Should().BeGreaterThan(0);
+        }
+
+        [TestMethod]
         public void Record_EverySection_IsTrackedIndependently()
         {
             var store = new GcAllocationMetricsStore();

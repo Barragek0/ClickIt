@@ -205,7 +205,7 @@ public sealed class HarvestService
                 return RectangleF.Empty;
 
             // Use Child[1] for the highlight rectangle (the label's visual frame)
-            Element? child1 = labelElement.GetChildAtIndex(1);
+            Element? child1 = labelElement.ChildCount > 1 ? labelElement.GetChildAtIndex(1) : null;
             if (child1 != null)
                 return child1.GetClientRect();
 

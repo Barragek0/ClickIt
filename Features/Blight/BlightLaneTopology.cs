@@ -15,6 +15,14 @@ internal static class BlightLaneTopology
     internal const float PumpRootRadius = 30f;
     internal const float PumpStubRadius = 30f;
 
+    // A pump connector — the 2-3 underground segments the encounter spawns linking the pump to the
+    // tree — is a SHORT fork-free chain hanging off the pump branch root.  It usually shares the SAME
+    // id-run as the root (the game numbers the pump cluster consecutively), so it is caught by CHAIN
+    // length, not id-run length.  Real monster lanes are long chains that extend past
+    // PumpConnectorRadius, so the radius + segment-count bounds never touch them.
+    internal const float PumpConnectorRadius = 120f;
+    internal const int PumpConnectorMaxSegments = 4;
+
     internal static LaneCoverageResult[] ComputeCoverage(
         IReadOnlyList<NumVector2> positions,
         Func<NumVector2, (bool chilling, bool seismic, bool fireball)> getCoverage,
@@ -448,7 +456,56 @@ internal static class BlightLaneTopology
             if (nearPump[s] && !isLaneMember[s])
                 stub[s] = true;
         }
+
+        // Pump connectors: short fork-free chains hanging off a pump branch root (the 2-3 underground
+        // segments the encounter spawns from the pump to the tree).  They share the SAME id-run as the
+        // branch root (the game numbers the pump cluster consecutively), so they are caught by CHAIN
+        // length, not id-run length: a run whose head sits on the pump and whose whole run is short
+        // and near the pump is a connector, never a monster lane.
+        MarkPumpConnectorChains(positions, parent, pump, children, stub);
+
         return stub;
+    }
+
+    private static void MarkPumpConnectorChains(
+        IReadOnlyList<NumVector2> positions, int[] parent, NumVector2 pump,
+        List<List<int>> children, bool[] stub)
+    {
+        int n = positions.Count;
+        for (int h = 0; h < n; h++)
+        {
+            int par = parent[h];
+            if (par < 0 || par == h)
+                continue;
+            // A run head starts a fork-free lane: its parent is an orphan (a pump branch root) or a
+            // fork point.  Fork arms far down a lane have heads outside the pump radius, so they are
+            // never considered.
+            if (parent[par] >= 0 && children[par].Count < 2)
+                continue;
+            if (Distance(positions[h], pump) > PumpStubRadius)
+                continue;
+
+            List<int> chain = [h];
+            int cur = h;
+            while (children[cur].Count == 1)
+            {
+                cur = children[cur][0];
+                chain.Add(cur);
+            }
+            // The connector DEAD-ENDS at the pump — a chain that keeps forking into real lanes (a
+            // lane trunk up to its first fork, or fork arms) is never a pump connector.
+            if (children[chain[^1]].Count != 0)
+                continue;
+            if (chain.Count > PumpConnectorMaxSegments)
+                continue;
+            bool near = true;
+            for (int k = 0; k < chain.Count && near; k++)
+                near = Distance(positions[chain[k]], pump) <= PumpConnectorRadius;
+            if (!near)
+                continue;
+            for (int k = 0; k < chain.Count; k++)
+                stub[chain[k]] = true;
+        }
     }
 
     private static LaneCoverageResult[] MergeAndPropagate(LaneCoverageResult[] results, int n)

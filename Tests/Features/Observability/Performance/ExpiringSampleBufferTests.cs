@@ -34,35 +34,35 @@ public class ExpiringSampleBufferTests
     }
 
     [TestMethod]
-    public void Samples_ExpireIndividually_AfterThirtySeconds()
+    public void Samples_ExpireIndividually_AfterTenSeconds()
     {
         var clock = new FakeClock();
         var buffer = new ExpiringSampleBuffer(nowProvider: () => clock.Now);
 
         clock.Now = 0;
         buffer.Record(100);
-        clock.Now = 10_000;
+        clock.Now = 3_333;
         buffer.Record(50);
-        clock.Now = 20_000;
+        clock.Now = 6_666;
         buffer.Record(25);
 
-        // All three still live at 29s.
-        clock.Now = 29_000;
+        // All three still live at 9.9s.
+        clock.Now = 9_999;
         buffer.Stats.SampleCount.Should().Be(3);
 
-        // Just past 30s the oldest sample (t=0) expires; the other two remain.
-        clock.Now = 30_001;
+        // Just past 10s the oldest sample (t=0) expires; the other two remain.
+        clock.Now = 10_001;
         (_, double average, double max, long count) = buffer.Stats;
         count.Should().Be(2);
         average.Should().Be(37.5);
         max.Should().Be(50);
 
-        // Past 40s only the t=20s sample remains.
-        clock.Now = 40_001;
+        // Past 13.3s only the t=6.6s sample remains.
+        clock.Now = 13_334;
         buffer.Stats.SampleCount.Should().Be(1);
 
-        // Past 50s everything has expired.
-        clock.Now = 50_001;
+        // Past 16.6s everything has expired.
+        clock.Now = 16_667;
         buffer.Stats.SampleCount.Should().Be(0);
     }
 
@@ -74,7 +74,7 @@ public class ExpiringSampleBufferTests
 
         clock.Now = 0;
         buffer.Record(100);
-        clock.Now = 31_000;
+        clock.Now = 11_000;
 
         buffer.Stats.Should().Be((0d, 0d, 0d, 0L));
     }

@@ -23,15 +23,15 @@ internal static class HarvestLabelScanner
             if (labelElement == null)
                 return rows;
 
-            Element? child1 = labelElement.GetChildAtIndex(1);
+            Element? child1 = labelElement.ChildCount > 1 ? labelElement.GetChildAtIndex(1) : null;
             if (child1 == null)
                 return rows;
 
-            Element? child0 = child1.GetChildAtIndex(0);
+            Element? child0 = child1.ChildCount > 0 ? child1.GetChildAtIndex(0) : null;
             if (child0 == null)
                 return rows;
 
-            Element? seedContainer = child0.GetChildAtIndex(3);
+            Element? seedContainer = child0.ChildCount > 3 ? child0.GetChildAtIndex(3) : null;
             if (seedContainer == null)
                 return rows;
 

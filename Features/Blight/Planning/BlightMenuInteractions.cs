@@ -41,7 +41,7 @@ internal static class BlightMenuInteractions
         try
         {
             Element? menu = GetMenuChildElement(labelElement, 3);
-            if (menu == null) return null;
+            if (menu == null || (int)towerType >= menu.ChildCount) return null;
             Element? slot = menu.GetChildAtIndex((int)towerType);
             return slot == null ? null : Center(slot.GetClientRect());
         }
@@ -61,28 +61,6 @@ internal static class BlightMenuInteractions
             if (child == null || !child.IsVisible)
                 return null;
             return Center(child.GetClientRect());
-        }
-        catch { return null; }
-    }
-
-    internal static NumVector2? GetSpecializationClickPosition(Element labelElement, string targetTowerId)
-    {
-        try
-        {
-            Element? menu = GetMenuChildElement(labelElement, 3);
-            if (menu == null || string.IsNullOrEmpty(targetTowerId)) return null;
-
-            for (int i = 0; i < menu.ChildCount; i++)
-            {
-                Element? child = menu.GetChildAtIndex(i);
-                if (child == null || !child.IsVisible) continue;
-
-                string? id = ReadUpgradeResultTowerId(child);
-                if (id != null && id.Equals(targetTowerId, StringComparison.OrdinalIgnoreCase))
-                    return Center(child.GetClientRect());
-            }
-
-            return null;
         }
         catch { return null; }
     }
@@ -146,8 +124,14 @@ internal static class BlightMenuInteractions
     {
         try
         {
+            // Bounds-check before GetChildAtIndex — ExileCore logs "Element with index N not found"
+            // to the game log on a miss, and the menu is usually absent (0 children) on foundations.
+            if (childIndex < 0 || labelElement.ChildCount <= 0)
+                return null;
             Element? child0 = labelElement.GetChildAtIndex(0);
-            return child0?.GetChildAtIndex(childIndex);
+            if (child0 == null || childIndex >= child0.ChildCount)
+                return null;
+            return child0.GetChildAtIndex(childIndex);
         }
         catch { return null; }
     }

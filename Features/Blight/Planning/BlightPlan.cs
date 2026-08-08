@@ -11,7 +11,15 @@ internal readonly record struct BlightPlanStep(
     NumVector2 FoundationPosition,
     BlightTowerType TowerType,
     int TargetLevel       // level AFTER this step completes
-);
+)
+{
+    // Level 4 is every tower's specialization tier (BlightTowerData.MaxUpgradeLevel) — an upgrade
+    // step ending at 4 is the 3->4 SPEC action, not a plain rank upgrade.
+    internal bool IsSpecializationStep => Action == BlightPlanAction.Upgrade && TargetLevel >= BlightTowerData.MaxUpgradeLevel;
+
+    internal string ActionLabel
+        => Action == BlightPlanAction.Build ? "BUILD" : IsSpecializationStep ? "SPECIAL" : "UPGRADE";
+}
 
 internal sealed class BlightPlan
 {

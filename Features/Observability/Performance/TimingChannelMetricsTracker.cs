@@ -10,7 +10,7 @@ namespace ClickIt.Features.Observability.Performance
         private readonly Stopwatch _ultimatumCoroutineTimer = new();
         private readonly Stopwatch _labelOverlayCoroutineTimer = new();
 
-        // Every timing/period sample expires 30 seconds after it was recorded, so a channel that
+        // Every timing/period sample expires 10 seconds after it was recorded, so a channel that
         // stops running drains to zero instead of reporting a stale all-time average/max/last.
         private readonly ExpiringSampleBuffer _clickCoroutineTimings = new();
         private readonly ExpiringSampleBuffer _altarCoroutineTimings = new();

@@ -7,16 +7,16 @@ namespace ClickIt.Tests.Core.Runtime
         [TestMethod]
         public void FindActiveCoroutine_ReturnsFirstMatchingActiveCoroutine()
         {
-            Coroutine expected = CoroutineTestHarness.CreateCoroutine("ClickIt.ClickLogic", isDone: false);
+            Coroutine expected = CoroutineTestHarness.CreateCoroutine("Click", isDone: false);
 
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
             [
-                CoroutineTestHarness.CreateCoroutine("ClickIt.ClickLogic", isDone: true),
+                CoroutineTestHarness.CreateCoroutine("Click", isDone: true),
                 expected,
-                CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: false),
+                CoroutineTestHarness.CreateCoroutine("Manual UI Hover", isDone: false),
             ]);
 
-            PluginCoroutineRegistry.FindActiveCoroutine("ClickIt.ClickLogic").Should().BeSameAs(expected);
+            PluginCoroutineRegistry.FindActiveCoroutine("Click").Should().BeSameAs(expected);
         }
 
         [TestMethod]
@@ -24,18 +24,18 @@ namespace ClickIt.Tests.Core.Runtime
         {
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
             [
-                CoroutineTestHarness.CreateCoroutine("ClickIt.ClickLogic", isDone: true),
+                CoroutineTestHarness.CreateCoroutine("Click", isDone: true),
                 CoroutineTestHarness.CreateCoroutine("Other.Coroutine", isDone: false),
             ]);
 
-            PluginCoroutineRegistry.FindActiveCoroutine("ClickIt.ManualUiHoverLogic").Should().BeNull();
+            PluginCoroutineRegistry.FindActiveCoroutine("Manual UI Hover").Should().BeNull();
         }
 
         [TestMethod]
         public void ConvenienceMethods_UseExpectedCoroutineNames()
         {
-            Coroutine clickLogic = CoroutineTestHarness.CreateCoroutine("ClickIt.ClickLogic", isDone: false);
-            Coroutine manualUiHover = CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: false);
+            Coroutine clickLogic = CoroutineTestHarness.CreateCoroutine("Click", isDone: false);
+            Coroutine manualUiHover = CoroutineTestHarness.CreateCoroutine("Manual UI Hover", isDone: false);
 
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines([clickLogic, manualUiHover]);
 

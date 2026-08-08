@@ -658,17 +658,19 @@ public class BlightLaneCoverageTests
             new(0, 0),     // 0 root (pump)
             new(30, 0),    // 1 real lane start (at the radius edge, but its subtree extends far)
             new(70, 0),    // 2 real lane continues well beyond the stub radius
-            new(-8, 8),    // 3 spur start
-            new(-16, 16),  // 4 spur leaf
+            new(110, 0),   // 3 real lane
+            new(150, 0),   // 4 real lane extends well beyond the pump-connector radius
+            new(-8, 8),    // 5 spur start
+            new(-16, 16),  // 6 spur leaf
         };
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
             positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0));
 
-        coverage[3].IsPumpStub.Should().BeTrue("the pump-object spur is not a monster lane");
-        coverage[4].IsPumpStub.Should().BeTrue();
-        coverage[1].IsPumpStub.Should().BeFalse("the real lane's near-pump segment is still a lane");
-        coverage[2].IsPumpStub.Should().BeFalse();
+        coverage[5].IsPumpStub.Should().BeTrue("the pump-object spur is not a monster lane");
+        coverage[6].IsPumpStub.Should().BeTrue();
+        coverage[1].IsPumpStub.Should().BeFalse("the real lane's run extends beyond the connector radius");
+        coverage[4].IsPumpStub.Should().BeFalse();
     }
 
     [TestMethod]
@@ -681,6 +683,84 @@ public class BlightLaneCoverageTests
 
         for (int i = 0; i < coverage.Length; i++)
             coverage[i].IsPumpStub.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void ComputeCoverage_PumpConnectorIdRun_IsMarkedNotALane_RealLaneUnaffected()
+    {
+        // The pump spawns 2-3 underground connector segments (their own consecutive id run) linking
+        // the pump to the tree.  Real monster lanes are long id-runs extending past the connector
+        // radius, so only the short pump-rooted run is marked as a stub.
+        var positions = new List<NumVector2>
+        {
+            new(0, 0),      // 0 pump point
+            new(20, 0),     // 1 real lane start (pump-near branch root)
+            new(50, 0),     // 2 real lane
+            new(80, 0),     // 3 real lane
+            new(110, 0),    // 4 real lane
+            new(140, 0),    // 5 real lane extends well beyond the connector radius
+            new(25, -5),    // 6 connector start (pump-near, folded into the branch root)
+            new(55, -15),   // 7 connector
+            new(85, -25),   // 8 connector far end (beyond the old 30u stub radius)
+        };
+        var ids = new List<long> { 0, 10, 11, 12, 13, 14, 20, 21, 22 };
+
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
+
+        coverage[6].IsPumpStub.Should().BeTrue("the pump-connector id-run is not a monster lane");
+        coverage[7].IsPumpStub.Should().BeTrue();
+        coverage[8].IsPumpStub.Should().BeTrue();
+        coverage[2].IsPumpStub.Should().BeFalse("the real lane's run extends beyond the connector radius");
+        coverage[5].IsPumpStub.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void ComputeCoverage_PumpConnectorSharesIdRun_ShortChainMarked_RealLaneUnaffected()
+    {
+        // The pump cluster is ONE consecutive id-run (the game numbers the branch root, the
+        // connector and the lane start together).  The connector is the short fork-free chain from
+        // the pump root; the real lane is the long chain — so the connector is caught by CHAIN
+        // length, not id-run length.
+        var positions = new List<NumVector2>
+        {
+            new(0, 0),      // 0 pump point
+            new(3, 0),      // 1 branch root (orphan)
+            new(0, 5),      // 2 connector 1 (pump-near)
+            new(-5, 10),    // 3 connector 2
+            new(-10, 15),   // 4 connector 3 (far end)
+            new(10, 0),     // 5 real lane 1 (pump-near)
+            new(20, 0),     // 6 real lane 2
+            new(30, 0),     // 7 real lane 3
+            new(40, 0),     // 8 real lane 4
+            new(50, 0),     // 9 real lane 5
+        };
+        var ids = new List<long> { 0, 100, 101, 102, 103, 99, 98, 97, 96, 95 };
+
+        LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
+            positions, _ => (true, false, false), pumpGridPosition: new NumVector2(0, 0), ids: ids);
+
+        coverage[2].IsPumpStub.Should().BeTrue("the short pump-rooted chain is the underground connector");
+        coverage[3].IsPumpStub.Should().BeTrue();
+        coverage[4].IsPumpStub.Should().BeTrue();
+        coverage[5].IsPumpStub.Should().BeFalse("the long pump-rooted chain is a real monster lane");
+        coverage[9].IsPumpStub.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void FindPumpBranches_SkipsStubChildren_DoesNotStartBranchOnConnector()
+    {
+        LaneCoverageResult[] coverage =
+        [
+            new(BlightLaneTopology.OrphanSentinel, false, NumVector2.Zero), // 0 orphan root
+            new(0, false, new NumVector2(5, 5), IsPumpStub: true),          // 1 pump connector stub
+        ];
+        var positions = new List<NumVector2> { new(0, 0), new(5, 5) };
+
+        List<PumpBranch> branches = BlightBranches.FindPumpBranches(
+            coverage, new NumVector2(0, 0), positions, null);
+
+        branches.Should().BeEmpty();
     }
 
     // ── Game-Id lane adjacency (the reference Blight plugin connects pathways whose entity Ids

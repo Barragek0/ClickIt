@@ -11,7 +11,9 @@ namespace ClickIt.UI.Debug
         private static readonly Color HeaderColor = Color.Orange;
         private static readonly Color LabelColor = Color.White;
 
-        private static readonly float[] FourCol = [120f, 175f, 230f];
+        // All three-value tables (render, CR ms/f, processing, GC) share the GC table's column
+        // positions so every Last/Avg/Max value lines up vertically.
+        private static readonly float[] FourCol = [140f, 225f, 310f];
         private static readonly float[] GcCol = [140f, 225f, 310f];
         private static readonly float[] TwoCol = [110f];
 
@@ -49,33 +51,33 @@ namespace ClickIt.UI.Debug
             TextBlock left = new(ctx.TextQueue, originX, originY, lineHeight);
             TextBlock right = new(ctx.TextQueue, originX + rightColX, originY, lineHeight);
 
-            // Left column: render + coroutine ms/f + GC + memory.
+            // Left column: render + coroutine ms/f + GC.
             left.ColumnHeader(FourCol, "Last", "Avg", "Max");
             TimingMetricsSnapshot renderTotal = perf.RenderTableTotal;
-            left.TitleRow(FourCol, "Render", FrameColor(renderTotal.AverageMs), $"{renderTotal.LastMs:F1}", $"{renderTotal.AverageMs:F2}", $"{renderTotal.MaxMs:F1}");
+            left.TitleRow(FourCol, "Render ms/f", FrameColor(renderTotal.AverageMs), $"{renderTotal.LastMs:F1}", $"{renderTotal.AverageMs:F2}", $"{renderTotal.MaxMs:F1}");
             RenderRenderTable(left, perf);
 
             left.Blank();
             left.ColumnHeader(FourCol, "Last", "Avg", "Max");
             TimingMetricsSnapshot frameTotal = perf.CoroutinesTotalPerFrameSnapshot;
-            left.TitleRow(FourCol, "CR ms/f", FrameColor(frameTotal.AverageMs), $"{frameTotal.LastMs:F2}", $"{frameTotal.AverageMs:F2}", $"{frameTotal.MaxMs:F2}");
+            left.TitleRow(FourCol, "Coroutine ms/f", FrameColor(frameTotal.AverageMs), $"{frameTotal.LastMs:F2}", $"{frameTotal.AverageMs:F2}", $"{frameTotal.MaxMs:F2}");
             RenderFrameTable(left, perf);
 
             left.Blank();
-            left.ColumnHeader(GcCol, "Last", "Avg", "Max");
-            (double gcLastKf, double gcTotalRate, double gcTotalMaxRun) = perf.GcTableTotalBytesPerFrame;
-            left.TitleRow(GcCol, "GC", GcColor(gcTotalRate), FormatBytes(gcLastKf), FormatAllocRate(gcTotalRate), FormatBytes(gcTotalMaxRun));
+            left.ColumnHeader(GcCol, "KB/f", "KB/s", "KB/s");
+            (double gcLastKf, double gcTotalRate, _) = perf.GcTableTotalBytesPerFrame;
+            left.TitleRow(GcCol, "GC", GcTotalColor(gcTotalRate), FormatBytes(gcLastKf), FormatAllocRate(gcTotalRate), FormatAllocRate(perf.GcTableTotalMaxBytesPerSecond));
             RenderGcTable(left, perf);
 
-            left.Blank();
-            left.Header("Memory");
-            RenderMemoryTable(left, perf);
-
-            // Right column: processing + click frequency target.
+            // Right column: processing + memory + click frequency target.
             right.ColumnHeader(FourCol, "Last", "Avg", "Max");
             TimingMetricsSnapshot procFrameTotal = perf.ProcessingTotalPerFrameSnapshot;
-            right.TitleRow(FourCol, "Processing", FrameColor(procFrameTotal.AverageMs), $"{procFrameTotal.LastMs:F2}", $"{procFrameTotal.AverageMs:F2}", $"{procFrameTotal.MaxMs:F2}");
+            right.TitleRow(FourCol, "Process ms/f", FrameColor(procFrameTotal.AverageMs), $"{procFrameTotal.LastMs:F2}", $"{procFrameTotal.AverageMs:F2}", $"{procFrameTotal.MaxMs:F2}");
             RenderProcessingTable(right, perf);
+
+            right.Blank();
+            right.Header("Memory");
+            RenderMemoryTable(right, perf);
 
             if (perf.ClickTargetIntervalMs > 0)
             {
@@ -193,18 +195,23 @@ namespace ClickIt.UI.Debug
             if (s.AvgBytesPerRun <= 0 && s.MaxBytesPerRun <= 0)
                 return;
             double allocPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
-            b.SubRow(GcCol, GcColor(allocPerSecond), label,
+            double maxPerSecond = periodMs > 0 ? s.MaxBytesPerRun * 1000.0 / periodMs : 0;
+            Color rateColor = GcColor(allocPerSecond);
+            Color maxColor = GcColor(maxPerSecond);
+            b.SubRow3(GcCol, label, rateColor, rateColor, maxColor,
                 fps > 0 ? FormatBytes(allocPerSecond / fps) : "-",
                 FormatAllocRate(allocPerSecond),
-                FormatBytes(s.MaxBytesPerRun));
+                FormatAllocRate(maxPerSecond));
         }
 
         private static void GcRow(TextBlock b, string label, GcAllocationSnapshot s, double fps)
         {
-            b.Row(GcCol, GcColor(s.AllocPerSecond), label,
+            Color rateColor = GcColor(s.AllocPerSecond);
+            Color maxColor = GcColor(s.MaxAllocPerSecond);
+            b.Row3(GcCol, label, rateColor, rateColor, maxColor,
                 s.SampleCount > 0 && fps > 0 ? FormatBytes(s.AllocPerSecond / fps) : "-",
                 s.SampleCount > 0 ? FormatAllocRate(s.AllocPerSecond) : "-",
-                s.SampleCount > 0 ? FormatBytes(s.MaxBytesPerRun) : "-");
+                s.SampleCount > 0 ? FormatAllocRate(s.MaxAllocPerSecond) : "-");
         }
 
         private static void RenderMemoryTable(TextBlock b, PerformanceMetricsSnapshot perf)
@@ -247,10 +254,19 @@ namespace ClickIt.UI.Debug
         private static Color FrameColor(double avgMs)
             => avgMs <= 6.94 ? Color.LightGreen : avgMs <= 16.67 ? Color.Yellow : Color.Red;
 
+        // Per-feature allocation rate: a single feature consuming the whole acceptable plugin budget
+        // (~50MB/s total) is the red line; elevated but tolerable below that.
         private static Color GcColor(double allocPerSecond)
         {
             double mb = 1024.0 * 1024.0;
-            return allocPerSecond >= 15 * mb ? Color.Red : allocPerSecond >= 6 * mb ? Color.Yellow : Color.LightGreen;
+            return allocPerSecond >= 50 * mb ? Color.Red : allocPerSecond >= 20 * mb ? Color.Yellow : Color.LightGreen;
+        }
+
+        // Whole-plugin allocation rate: ~50MB/s across everything is acceptable in practice.
+        private static Color GcTotalColor(double allocPerSecond)
+        {
+            double mb = 1024.0 * 1024.0;
+            return allocPerSecond >= 100 * mb ? Color.Red : allocPerSecond >= 50 * mb ? Color.Yellow : Color.LightGreen;
         }
 
         private static Color SizeColor(double mb)
@@ -319,6 +335,17 @@ namespace ClickIt.UI.Debug
                 _y += _lineHeight;
             }
 
+            // Three-value row with a distinct color per value (GC table: rate color for last/avg,
+            // single-run spike color for max). Avoids a per-row color array allocation.
+            public void Row3(float[] colX, string label, Color c1, Color c2, Color c3, string v1, string v2, string v3)
+            {
+                _queue.Enqueue(label, new Vector2(_baseX, _y), LabelColor, 14, shadow: true);
+                _queue.Enqueue(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
+                _queue.Enqueue(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
+                _queue.Enqueue(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
+                _y += _lineHeight;
+            }
+
             // Indented sub-table row (indented label + fixed per-column values) for breakdowns
             // nested under a table row, e.g. the per-stage label-scan allocation breakdown.
             public void SubRow(float[] colX, Color color, string label, params string[] values)
@@ -326,6 +353,16 @@ namespace ClickIt.UI.Debug
                 _queue.Enqueue(label, new Vector2(_baseX + 10f, _y), LabelColor, 14, shadow: true);
                 for (int i = 0; i < values.Length; i++)
                     _queue.Enqueue(values[i], new Vector2(_baseX + colX[i], _y), color, 14, shadow: true);
+                _y += _lineHeight;
+            }
+
+            // Indented three-value variant with a distinct color per value (GC stage breakdowns).
+            public void SubRow3(float[] colX, string label, Color c1, Color c2, Color c3, string v1, string v2, string v3)
+            {
+                _queue.Enqueue(label, new Vector2(_baseX + 10f, _y), LabelColor, 14, shadow: true);
+                _queue.Enqueue(v1, new Vector2(_baseX + colX[0], _y), c1, 14, shadow: true);
+                _queue.Enqueue(v2, new Vector2(_baseX + colX[1], _y), c2, 14, shadow: true);
+                _queue.Enqueue(v3, new Vector2(_baseX + colX[2], _y), c3, 14, shadow: true);
                 _y += _lineHeight;
             }
         }

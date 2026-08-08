@@ -105,17 +105,19 @@ internal static class BlightTowerData
 
     internal static int MaxUpgradeLevel => 4;
 
+    // Short display name for a base tower type (ShockNova renders as "Shock" in debug UIs).
+    internal static string DisplayName(BlightTowerType type)
+        => type == BlightTowerType.ShockNova ? "Shock" : type.ToString();
+
+    // Short display name for a specialized tower: strips the " Tower" suffix ("Arc Tower" -> "Arc").
+    internal static string SpecDisplayName(BlightTowerInfo info)
+        => info.Name.EndsWith(" Tower", StringComparison.Ordinal) ? info.Name[..^" Tower".Length] : info.Name;
+
     internal static string GetSpecializationTowerId(BlightTowerType type, TowerSpecialization spec)
         => ByTypeSpec.TryGetValue((type, spec), out BlightTowerInfo info) ? info.DatId : string.Empty;
 
     internal static int GetSpecializationMenuChildIndex(BlightTowerType type, TowerSpecialization spec)
         => ByTypeSpec.TryGetValue((type, spec), out BlightTowerInfo info) ? info.MenuIndex : -1;
-
-    // Fireball's 3→4 panel order is verified in-game (Flamethrower at slot 0, Meteor at slot 1); the
-    // UpgradeResult dat read is unreliable in the current ExileCore build, so the verified slot is
-    // preferred for Fireball. Other types have no verified slot and resolve by tower ID instead.
-    internal static bool HasVerifiedSpecializationMenuIndex(BlightTowerType type)
-        => type == BlightTowerType.Fireball;
 
     internal static int RadiusForLevel(BlightTowerType type, int level)
     {

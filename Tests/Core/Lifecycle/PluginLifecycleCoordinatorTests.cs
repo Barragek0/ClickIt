@@ -128,12 +128,12 @@ namespace ClickIt.Tests.Core.Lifecycle
         {
             var plugin = new ClickIt();
             var settings = new ClickItSettings();
-            var altarCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.AltarLogic", isDone: false);
-            var clickLabelCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.ClickLogic", isDone: false);
-            var manualUiHoverCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: false);
-            var delveFlareCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.DelveFlareLogic", isDone: false);
-            var deepMemoryDumpCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.DeepMemoryDump", isDone: false);
-            var namedClickItCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.NamedCleanup", isDone: false);
+            var altarCoroutine = CoroutineTestHarness.CreateCoroutine("Scan Altars", isDone: false);
+            var clickLabelCoroutine = CoroutineTestHarness.CreateCoroutine("Click", isDone: false);
+            var manualUiHoverCoroutine = CoroutineTestHarness.CreateCoroutine("Manual UI Hover", isDone: false);
+            var delveFlareCoroutine = CoroutineTestHarness.CreateCoroutine("Flare", isDone: false);
+            var deepMemoryDumpCoroutine = CoroutineTestHarness.CreateCoroutine("Memory Dump", isDone: false);
+            var namedClickItCoroutine = CoroutineTestHarness.CreateCoroutine("Blocked UI", isDone: false);
             var namedForeignCoroutine = CoroutineTestHarness.CreateCoroutine("Other.Coroutine", isDone: false);
 
             plugin.State.Runtime.AltarCoroutine = altarCoroutine;
@@ -233,7 +233,7 @@ namespace ClickIt.Tests.Core.Lifecycle
         [TestMethod]
         public void WaitForCoroutineShutdown_ReturnsImmediately_WhenCoroutineAlreadyDone()
         {
-            var coroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Done", isDone: true);
+            var coroutine = CoroutineTestHarness.CreateCoroutine("Done", isDone: true);
 
             Action act = () => InvokePrivateLifecycleMethod("WaitForCoroutineShutdown", coroutine, 0);
 
@@ -244,7 +244,7 @@ namespace ClickIt.Tests.Core.Lifecycle
         [TestMethod]
         public void WaitForCoroutineShutdown_StopsWaiting_WhenTimeoutExpires()
         {
-            var coroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Active", isDone: false);
+            var coroutine = CoroutineTestHarness.CreateCoroutine("Active", isDone: false);
 
             Action act = () => InvokePrivateLifecycleMethod("WaitForCoroutineShutdown", coroutine, 0);
 
@@ -255,7 +255,7 @@ namespace ClickIt.Tests.Core.Lifecycle
         [TestMethod]
         public void WaitForCoroutineShutdown_WaitsUntilCoroutineCompletes()
         {
-            var coroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Active", isDone: false);
+            var coroutine = CoroutineTestHarness.CreateCoroutine("Active", isDone: false);
             using ManualResetEventSlim completionSignal = new(initialState: false);
             Thread worker = new(() =>
             {
@@ -303,7 +303,7 @@ namespace ClickIt.Tests.Core.Lifecycle
         [TestMethod]
         public void WaitForNamedClickItCoroutinesShutdown_WaitsUntilActiveClickItCoroutineCompletes()
         {
-            var activeCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.Active", isDone: false);
+            var activeCoroutine = CoroutineTestHarness.CreateCoroutine("Click", isDone: false);
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines([activeCoroutine]);
             using ManualResetEventSlim completionSignal = new(initialState: false);
             Thread worker = new(() =>

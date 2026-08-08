@@ -132,6 +132,15 @@ namespace ClickIt.Shared.Game
             if (index < 0)
                 return false;
 
+            // ExileCore logs "Element with index N not found" to the game log when GetChildAtIndex
+            // misses, so pre-check ChildCount and never enter the failing traversal. Only guard real
+            // game elements — reflection probe objects subclass Element too, but their ChildCount
+            // reads garbage memory and would spuriously reject valid reads.
+            if (source is Element element
+                && element.GetType().Assembly == typeof(Element).Assembly
+                && index >= element.ChildCount)
+                return false;
+
             Func<dynamic, object?> accessor = index < s_childAccessors.Length
                 ? s_childAccessors[index]
                 : current => current.GetChildAtIndex(index);

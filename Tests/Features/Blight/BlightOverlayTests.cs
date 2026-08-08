@@ -216,10 +216,20 @@ public class BlightOverlayTests
     }
 
     [TestMethod]
-    public void FireballColour_MatchesLaneUncoveredRed()
+    public void DefaultTowerColor_MatchesSharedPalette()
     {
         IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Fireball).Should().Be(
-            new Color(200, 60, 60, 100));
+            new Color(242, 89, 77, 100), "Fireball/Meteor is red, matching the description colouring");
+        IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.ShockNova).Should().Be(
+            new Color(242, 230, 51, 100), "ShockNova/Arc is yellow, matching the description colouring");
+        IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Summoning).Should().Be(
+            new Color(184, 107, 255, 100), "the Summoning/Scout family is purple, matching the description colouring");
+        IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Seismic).Should().Be(
+            new Color(255, 128, 26, 100), "Seismic is orange, matching the description colouring");
+        IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Chilling).Should().Be(
+            new Color(77, 158, 255, 100), "Chilling is blue, matching the description colouring");
+        IBlightTowerStrategy.DefaultTowerColor(BlightTowerType.Empowering).Should().Be(
+            new Color(89, 217, 89, 100), "Empowering is green, matching the description colouring");
     }
 
     [TestMethod]

@@ -25,6 +25,36 @@ namespace ClickIt.Features.Click.Runtime
 
         private const float BlightIconAvoidOffset = 90f;
 
+        // The traversal target's per-tick validation reads (Path/DistancePlayer/IsValid/IsHidden) are
+        // DLR-bound dynamic reads (~9-14KB each). While walking, the same target persists across
+        // ticks, so cache them keyed by the target's address for a short window.
+        private readonly record struct CachedTraversalReads(long Address, string? Path, float Distance, bool IsValid, bool IsHidden, long AtMs);
+        private CachedTraversalReads _cachedTraversalReads;
+        private const long TraversalReadCacheWindowMs = 150;
+
+        private CachedTraversalReads ReadTraversalTarget(Entity target)
+        {
+            long address = DynamicAccess.TryGetDynamicValue(target, DynamicAccessProfiles.Address, out object? rawAddress)
+                && rawAddress != null
+                ? Convert.ToInt64(rawAddress)
+                : 0;
+            long now = Environment.TickCount64;
+            if (address != 0 && _cachedTraversalReads.Address == address && now - _cachedTraversalReads.AtMs < TraversalReadCacheWindowMs)
+                return _cachedTraversalReads;
+
+            string path = DynamicAccess.TryReadString(target, DynamicAccessProfiles.Path, out string resolvedPath)
+                ? resolvedPath
+                : string.Empty;
+            float distance = DynamicAccess.TryReadFloat(target, DynamicAccessProfiles.DistancePlayer, out float resolvedDist)
+                ? resolvedDist
+                : -1f;
+            bool isValid = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsValid, out bool rawValid) && rawValid;
+            bool isHidden = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsHidden, out bool rawHidden) && rawHidden;
+
+            _cachedTraversalReads = new CachedTraversalReads(address, path, distance, isValid, isHidden, now);
+            return _cachedTraversalReads;
+        }
+
         private readonly record struct OffscreenTraversalTargetContext(
             Entity Target,
             string TargetPath);
@@ -380,9 +410,7 @@ namespace ClickIt.Features.Click.Runtime
             if (!TryResolveTraversalTarget(preferredTarget, out Entity? target) || target == null)
                 return false;
 
-            string targetPath = DynamicAccess.TryReadString(target, DynamicAccessProfiles.Path, out string resolvedTargetPath)
-                ? resolvedTargetPath
-                : string.Empty;
+            string targetPath = ReadTraversalTarget(target).Path ?? string.Empty;
             if (preferredTarget == null && _traversalConfirmationGate.ShouldDelay(target, targetPath, out long remainingDelayMs))
             {
                 _dependencies.PathfindingService.ClearLatestPath();
@@ -496,18 +524,13 @@ namespace ClickIt.Features.Click.Runtime
                 return false;
             }
 
-            string targetPath = DynamicAccess.TryReadString(target, DynamicAccessProfiles.Path, out string resolvedTargetPath)
-                ? resolvedTargetPath
-                : string.Empty;
-            float targetDist = DynamicAccess.TryReadFloat(target, DynamicAccessProfiles.DistancePlayer, out float resolvedDist)
-                ? resolvedDist
-                : -1f;
+            CachedTraversalReads reads = ReadTraversalTarget(target);
+            string targetPath = reads.Path ?? string.Empty;
+            float targetDist = reads.Distance;
             _dependencies.DebugLog($"[TryWalkTowardOffscreenTarget] ResolveTraversalTarget: found target path={targetPath} dist={targetDist:F1}");
 
-            bool isValid = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsValid, out bool resolvedIsValid)
-                && resolvedIsValid;
-            bool isHidden = DynamicAccess.TryReadBool(target, DynamicAccessProfiles.IsHidden, out bool resolvedIsHidden)
-                && resolvedIsHidden;
+            bool isValid = reads.IsValid;
+            bool isHidden = reads.IsHidden;
             if (!isValid || isHidden || OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target))
             {
                 AddPathfindingStage($"Walk: target REJECTED path={targetPath} valid={isValid} hidden={isHidden} minimap={OffscreenPathingMath.IsEntityHiddenByMinimapIcon(target)}");

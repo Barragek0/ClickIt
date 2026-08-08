@@ -47,10 +47,13 @@ public class PerformanceInGameOverlayTests
         overlay.Draw(CreateContext(textQueue));
 
         string[] lines = textQueue.GetPendingTextSnapshot();
-        // The render, CR ms/f, GC and processing tables each get a "Last/Avg/Max" header row.
-        lines.Count(l => l == "Last").Should().Be(4);
-        lines.Count(l => l == "Avg").Should().Be(4);
-        lines.Count(l => l == "Max").Should().Be(4);
+        // The render, CR ms/f and processing tables keep "Last/Avg/Max"; the GC table header shows
+        // the per-frame/per-second units instead (KB/f | KB/s | KB/s).
+        lines.Count(l => l == "Last").Should().Be(3);
+        lines.Count(l => l == "Avg").Should().Be(3);
+        lines.Count(l => l == "Max").Should().Be(3);
+        lines.Count(l => l == "KB/f").Should().Be(1);
+        lines.Count(l => l == "KB/s").Should().Be(2);
     }
 
     [TestMethod]

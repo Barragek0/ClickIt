@@ -199,6 +199,55 @@ public class BlightPlannerTests
     }
 
     [TestMethod]
+    public void MixedFillTier_DefaultFirstRule_StillBuildsNearestPumpFirst()
+    {
+        // Regression: AssignFill ordered fill candidates by tierRules[0].Placement, so a fill tier
+        // whose first rule has no placement preference (Empowering) ignored a later rule's
+        // NearestPump (fill Scouts) and built the farthest foundation first.
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = new List<BlightCachedTower>
+        {
+            new(new NumVector2(35, 5), BlightTowerType.Chilling),  // far — index 0
+            new(new NumVector2(25, 5), BlightTowerType.Chilling),  // mid — index 1
+            new(new NumVector2(20, 0), BlightTowerType.Chilling),  // nearest — index 2
+        };
+
+        var rules = new List<TowerBuildRule>
+        {
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Empowering)
+                .SetPriority(TowerBuildPriority.Normal)
+                .SetMaxUpgradeLevel(3)
+                .BuildUntilTowersAreEmpowered(BlightTowerType.Summoning)
+                .Build(),
+            TowerStrategyBuilder.CreateRule()
+                .SetTower(BlightTowerType.Summoning)
+                .SetPriority(TowerBuildPriority.Normal)
+                .SetMaxUpgradeLevel(4)
+                .SetSpecialization(TowerSpecialization.ScoutMinion)
+                .PreferCloseFoundationToPump()
+                .AlwaysUpgradeBeforeBuildingNew()
+                .Build(),
+        };
+
+        BlightPlan plan = BlightPlanner.Build(
+            foundations,
+            BlightLaneTopology.ComputeCoverage(lane, _ => (true, true, false)),
+            rules, new HashSet<NumVector2>(), 1,
+            new NumVector2(0, 0), new NumVector2(36, 5), lane);
+
+        var summoningBuilds = plan.Steps
+            .Where(s => s.Action == BlightPlanAction.Build && s.TowerType == BlightTowerType.Summoning)
+            .ToList();
+
+        summoningBuilds.Should().HaveCount(3);
+        summoningBuilds[0].FoundationPosition.X.Should().BeApproximately(20f, 0.01f,
+            "the fill Scout tower nearest the pump is built first despite the Empowering rule leading the tier");
+        summoningBuilds[1].FoundationPosition.X.Should().BeApproximately(25f, 0.01f);
+        summoningBuilds[2].FoundationPosition.X.Should().BeApproximately(35f, 0.01f);
+    }
+
+    [TestMethod]
     public void FillRule_PlaceNearExistingTowers_ClustersNextToAssignedTower()
     {
         var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
@@ -1081,11 +1130,17 @@ public class BlightPlannerTests
         // uncovered.
         var lane = new List<NumVector2>
         {
-            new(5, 0),    // 0 root (pump-near)
-            new(25, 0),   // 1 arm A
-            new(45, 0),   // 2 arm A far
-            new(5, -25),  // 3 arm B
-            new(5, -45),  // 4 arm B far
+            new(5, 0),      // 0 root (pump-near)
+            new(25, 0),     // 1 arm A
+            new(45, 0),     // 2 arm A
+            new(5, -25),    // 3 arm B
+            new(5, -45),    // 4 arm B
+            new(65, 0),     // 5 arm A
+            new(85, 0),     // 6 arm A
+            new(105, 0),    // 7 arm A far
+            new(5, -65),    // 8 arm B
+            new(5, -85),    // 9 arm B
+            new(5, -105),   // 10 arm B far
         };
 
         LaneCoverageResult[] coverage = BlightLaneTopology.ComputeCoverage(
@@ -1399,6 +1454,36 @@ public class BlightPlannerTests
                 .TreatAsCoverageTower()
                 .Build(),
         ];
+    }
+
+    [TestMethod]
+    public void AdoptedExistingTower_RespectsRuleMaxUpgradeLevel_NotGameMax()
+    {
+        var lane = CreateChain((0, 0), (10, 0), (20, 0), (30, 0));
+        var foundations = new List<BlightCachedTower>
+        {
+            new(new NumVector2(5, 0), BlightTowerType.Chilling),         // coverage
+            new(new NumVector2(10, 0), BlightTowerType.Empowering, 2),   // existing Empowering lvl 2
+        };
+
+        var rules = CoverageRules();
+        rules.Add(TowerStrategyBuilder.CreateRule()
+            .SetTower(BlightTowerType.Empowering)
+            .SetPriority(TowerBuildPriority.High)
+            .SetMaxUpgradeLevel(3)
+            .AlwaysUpgradeBeforeBuildingNew()
+            .Build());
+
+        BlightPlan plan = BuildPlan(lane, foundations, rules, pump: new NumVector2(0, 0));
+
+        var empoweringSteps = plan.Steps
+            .Where(s => s.TowerType == BlightTowerType.Empowering)
+            .ToList();
+
+        empoweringSteps.Should().NotBeEmpty();
+        empoweringSteps.Max(s => s.TargetLevel).Should().BeLessThanOrEqualTo(3,
+            "an adopted tower must never be planned past its strategy rule's MaxUpgradeLevel (was: game max 4)");
+        empoweringSteps.Should().NotContain(s => s.TargetLevel > 3);
     }
 
     private static BlightPlan BuildPlan(

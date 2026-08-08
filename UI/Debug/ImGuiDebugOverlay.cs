@@ -35,6 +35,9 @@ internal sealed class ImGuiDebugOverlay(
     private static readonly NumVec4 CGreen = Vec4(Color.LightGreen);
     private static readonly NumVec4 CLightBlue = Vec4(Color.LightBlue);
     private static readonly NumVec4 COrangeRed = Vec4(Color.OrangeRed);
+    private static readonly NumVec4 CBuildAction = Vec4(new Color(0, 190, 0));     // deep green — plan BUILD
+    private static readonly NumVec4 CUpgradeAction = Vec4(new Color(255, 80, 80)); // red — plan UPGRADE
+    private static readonly NumVec4 CSpecialAction = Vec4(new Color(0, 200, 200)); // cyan — plan 3->4 SPECIALIZATION
 
     private readonly ClickItSettings _settings = settings;
     private readonly PerformanceMonitor? _performanceMonitor = performanceMonitor;
@@ -385,7 +388,7 @@ internal sealed class ImGuiDebugOverlay(
 
         ImGui.Spacing();
         double coroutineFps = perf.Fps.Current;
-        BeginFixedTable("CoroutinesPerFrame", "CR ms/f", 175f, "Last", 38f, "Avg", 38f, "Max", 38f);
+        BeginFixedTable("CoroutinesPerFrame", "Coroutine ms/f", 175f, "Last", 38f, "Avg", 38f, "Max", 38f);
         RenderTimingTotalRow("Total", perf.CoroutinesTotalPerFrameSnapshot);
         RenderScaledTimingRow("Altar", perf.AltarCoroutine, coroutineFps);
         RenderScaledTimingRow("Blight", perf.BlightCoroutine, coroutineFps);
@@ -416,7 +419,7 @@ internal sealed class ImGuiDebugOverlay(
 
     private static void RenderRenderTable(PerformanceMetricsSnapshot perf)
     {
-        BeginFixedTable("RenderBreakdown", "Render", 95f, "Last", 38f, "Avg", 38f, "Max", 38f);
+        BeginFixedTable("RenderBreakdown", "Render ms/f", 95f, "Last", 38f, "Avg", 38f, "Max", 38f);
 
         RenderTimingTotalRow("Total", perf.RenderTableTotal);
         RenderTimingRow("Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
@@ -439,7 +442,7 @@ internal sealed class ImGuiDebugOverlay(
     private static void RenderProcessingTable(PerformanceMetricsSnapshot perf)
     {
         double fps = perf.Fps.Current;
-        BeginFixedTable("ProcessingBreakdown", "Proc ms/f", 110f, "Last", 38f, "Avg", 38f, "Max", 38f);
+        BeginFixedTable("ProcessingBreakdown", "Process ms/f", 110f, "Last", 38f, "Avg", 38f, "Max", 38f);
 
         RenderTimingTotalRow("Total", perf.ProcessingTotalPerFrameSnapshot);
         RenderScaledTimingRow("Altar", perf.GetProcessingSection(ProcessingSection.Altar), fps);
@@ -526,24 +529,37 @@ internal sealed class ImGuiDebugOverlay(
         if (s.AvgBytesPerRun <= 0 && s.MaxBytesPerRun <= 0)
             return;
         double allocPerSecond = periodMs > 0 ? s.AvgBytesPerRun * 1000.0 / periodMs : 0;
-        double mbPerSecond = 1024.0 * 1024.0;
-        NumVec4 c = allocPerSecond >= 15 * mbPerSecond ? CError : allocPerSecond >= 6 * mbPerSecond ? CWarn : CGreen;
+        NumVec4 rateColor = GcColor(allocPerSecond);
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.Text($"  {label}");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, fps > 0 ? FormatBytes(allocPerSecond / fps) : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatAllocRate(allocPerSecond));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(s.MaxBytesPerRun));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(rateColor, fps > 0 ? FormatBytes(allocPerSecond / fps) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(rateColor, FormatAllocRate(allocPerSecond));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcRunColor(s.MaxBytesPerRun), FormatBytes(s.MaxBytesPerRun));
     }
 
     private static void RenderGcRow(string label, GcAllocationSnapshot stats, double fps)
     {
-        double mbPerSecond = 1024.0 * 1024.0;
-        NumVec4 c = stats.AllocPerSecond >= 15 * mbPerSecond ? CError : stats.AllocPerSecond >= 6 * mbPerSecond ? CWarn : CGreen;
+        NumVec4 rateColor = GcColor(stats.AllocPerSecond);
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.Text(label);
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.SampleCount > 0 && fps > 0 ? FormatBytes(stats.AllocPerSecond / fps) : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.SampleCount > 0 ? FormatAllocRate(stats.AllocPerSecond) : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, stats.SampleCount > 0 ? FormatBytes(stats.MaxBytesPerRun) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(rateColor, stats.SampleCount > 0 && fps > 0 ? FormatBytes(stats.AllocPerSecond / fps) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(rateColor, stats.SampleCount > 0 ? FormatAllocRate(stats.AllocPerSecond) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcRunColor(stats.MaxBytesPerRun), stats.SampleCount > 0 ? FormatBytes(stats.MaxBytesPerRun) : "-");
+    }
+
+    // GC allocation-rate pressure: a single feature consuming the whole acceptable budget
+    // (~50MB/s total across the plugin) is the red line; elevated but tolerable below that.
+    private static NumVec4 GcColor(double allocPerSecond)
+    {
+        double mb = 1024.0 * 1024.0;
+        return allocPerSecond >= 50 * mb ? CError : allocPerSecond >= 20 * mb ? CWarn : CGreen;
+    }
+
+    // One run allocating several MB is a real single-collection spike even at a low average rate.
+    private static NumVec4 GcRunColor(double maxBytesPerRun)
+    {
+        double mb = 1024.0 * 1024.0;
+        return maxBytesPerRun >= 8 * mb ? CError : maxBytesPerRun >= 2 * mb ? CWarn : CGreen;
     }
 
     // Table-wide timing totals as the first data row: last/avg/max summed across every row beneath
@@ -563,13 +579,20 @@ internal sealed class ImGuiDebugOverlay(
     private static void RenderGcTotalRow(PerformanceMetricsSnapshot perf)
     {
         (_, double totalPerSecond, double totalMaxRun) = perf.GcTableTotalBytesPerFrame;
-        double mb = 1024.0 * 1024.0;
-        NumVec4 c = totalPerSecond >= 15 * mb ? CError : totalPerSecond >= 6 * mb ? CWarn : CGreen;
+        NumVec4 rateColor = GcTotalColor(totalPerSecond);
         ImGui.TableNextRow();
         _ = ImGui.TableNextColumn(); ImGui.TextColored(CHeader, "Total");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, totalPerSecond > 0 && perf.Fps.Current > 0 ? FormatBytes(totalPerSecond / perf.Fps.Current) : "-");
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatAllocRate(totalPerSecond));
-        _ = ImGui.TableNextColumn(); ImGui.TextColored(c, FormatBytes(totalMaxRun));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(rateColor, totalPerSecond > 0 && perf.Fps.Current > 0 ? FormatBytes(totalPerSecond / perf.Fps.Current) : "-");
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(rateColor, FormatAllocRate(totalPerSecond));
+        _ = ImGui.TableNextColumn(); ImGui.TextColored(GcRunColor(totalMaxRun), FormatBytes(totalMaxRun));
+    }
+
+    // Whole-plugin allocation rate: ~50MB/s total across all features is acceptable in practice
+    // (the game itself allocates far more), so red only starts well above that.
+    private static NumVec4 GcTotalColor(double allocPerSecond)
+    {
+        double mb = 1024.0 * 1024.0;
+        return allocPerSecond >= 100 * mb ? CError : allocPerSecond >= 50 * mb ? CWarn : CGreen;
     }
 
     private static string FormatMemoryMb(double mb)
@@ -1217,7 +1240,7 @@ internal sealed class ImGuiDebugOverlay(
             {
                 ImGui.TextColored(CInfo, $"Plan v{plan.Version} ({summary[..bracketIdx]})");
                 ImGui.PushTextWrapPos(0);
-                ImGui.TextColored(CDim, $" {summary[bracketIdx..]}");
+                ImGui.TextColored(CDim, $"{summary[bracketIdx..]}");
                 ImGui.PopTextWrapPos();
             }
             else
@@ -1245,19 +1268,13 @@ internal sealed class ImGuiDebugOverlay(
                     if (i == plan.CurrentStepIndex) ImGui.TextColored(CInfo, $"> {i + 1}");
                     else ImGui.Text($"  {i + 1}");
                     _ = ImGui.TableNextColumn();
-                    ImGui.Text(s.Action == BlightPlanAction.Build ? "BUILD" : "UPGRADE");
+                    ImGui.TextColored(s.IsSpecializationStep ? CSpecialAction : s.Action == BlightPlanAction.Build ? CBuildAction : CUpgradeAction,
+                        s.ActionLabel);
                     _ = ImGui.TableNextColumn();
                     string targetName = _blight.GetStepTargetName(s);
-                    NumVec4 typeColor = s.TowerType switch
-                    {
-                        BlightTowerType.Chilling => Vec4(new Color(50, 130, 255)),
-                        BlightTowerType.Seismic => CWarn,
-                        BlightTowerType.Fireball => Vec4(new Color(200, 60, 60)),
-                        _ => CWhite
-                    };
-                    ImGui.TextColored(typeColor, targetName);
+                    ImGui.TextColored(BlightTowerColors.AsVector4(s.TowerType), targetName);
                     _ = ImGui.TableNextColumn();
-                    ImGui.Text($"lvl{s.TargetLevel}");
+                    ImGui.TextColored(CGreen, $"{s.TargetLevel}");
                     _ = ImGui.TableNextColumn();
                     ImGui.Text($"({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
                 }
@@ -1269,9 +1286,6 @@ internal sealed class ImGuiDebugOverlay(
                 }
                 ImGui.EndTable();
             }
-
-            if (plan.CurrentStep != null)
-                ImGui.TextColored(CWarn, $"Current step: {plan.CurrentStepIndex + 1}/{plan.Steps.Count}");
         }
         else
         {
@@ -1297,15 +1311,10 @@ internal sealed class ImGuiDebugOverlay(
                     if (mapped == null) continue;
                     int level = BlightHelpers.DetectUpgradeRankFromEntityPath(e);
 
-                    string spec = "";
-                    if (level >= BlightTowerData.MaxUpgradeLevel && level >= 2)
-                    {
-                        BlightTowerInfo? info = BlightTowerData.FindByDatId(tid);
-                        if (info is { Specialization: not TowerSpecialization.None })
-                            spec = info.Value.Name;
-                    }
-
-                    string typeLabel = spec.Length > 0 ? $"{mapped.Value} ({spec})" : mapped.Value.ToString();
+                    BlightTowerInfo? towerInfo = BlightTowerData.FindByDatId(tid);
+                    string typeLabel = towerInfo is { Specialization: not TowerSpecialization.None } && level >= BlightTowerData.MaxUpgradeLevel && level >= 2
+                        ? BlightTowerData.SpecDisplayName(towerInfo.Value)
+                        : BlightTowerData.DisplayName(mapped.Value);
 
                     ImGui.TableNextRow();
                     _ = ImGui.TableNextColumn();
@@ -1313,15 +1322,9 @@ internal sealed class ImGuiDebugOverlay(
                     _ = ImGui.TableNextColumn();
                     ImGui.Text($"({e.GridPosNum.X:F0},{e.GridPosNum.Y:F0})");
                     _ = ImGui.TableNextColumn();
-                    NumVec4 tc = mapped.Value switch
-                    {
-                        BlightTowerType.Chilling => Vec4(SharpDX.Color.DodgerBlue),
-                        BlightTowerType.Seismic => CWarn,
-                        _ => CWhite
-                    };
-                    ImGui.TextColored(tc, typeLabel);
+                    ImGui.TextColored(BlightTowerColors.AsVector4(mapped.Value), typeLabel);
                     _ = ImGui.TableNextColumn();
-                    ImGui.TextColored(level >= 3 ? CGreen : CWhite, $"lvl{level}");
+                    ImGui.TextColored(level >= 3 ? CGreen : CWhite, $"{level}");
                 }
                 ImGui.EndTable();
             }
@@ -1356,7 +1359,10 @@ internal sealed class ImGuiDebugOverlay(
                     ImGui.Text($"({t.WorldPosition.X:F0},{t.WorldPosition.Y:F0})");
                     _ = ImGui.TableNextColumn();
                     bool planned = t.PlannedTowerType != t.TowerType;
-                    ImGui.TextColored(planned ? CInfo : CDim, planned ? t.PlannedTowerType.ToString() : "—");
+                    if (planned)
+                        ImGui.TextColored(BlightTowerColors.AsVector4(t.PlannedTowerType), t.PlannedTowerType.ToString());
+                    else
+                        ImGui.TextColored(CDim, "—");
                     idx++;
                 }
                 ImGui.EndTable();
@@ -1528,18 +1534,19 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine();
 
-        if (_settings.DebugShowStatus.Value) AppendStatus(sb);
-        if (_settings.DebugShowPerformance.Value) AppendPerformance(sb);
-        if (_settings.DebugShowRecentErrors.Value) AppendErrors(sb);
-        if (_settings.DebugShowClicking.Value) AppendClick(sb);
-        if (_settings.DebugShowLabels.Value) AppendLabels(sb);
-        if (_settings.DebugShowPathfinding.Value) AppendPathfinding(sb);
-        if (_settings.DebugShowUltimatum.Value) AppendUltimatum(sb);
-        if (_settings.DebugShowAltarDetection.Value || _settings.DebugShowAltarService.Value)
-            AppendAltar(sb);
-        if (_settings.DebugShowHoveredItemMetadata.Value) AppendHoveredItem(sb);
-        if (_settings.DebugShowInventoryPickup.Value) AppendInventory(sb);
-        if (_settings.DebugShowBlight.Value) AppendBlight(sb);
+        // Copy All dumps every section regardless of which toggles are visible on screen, so the
+        // clipboard always carries a complete overview of the whole plugin state.
+        AppendStatus(sb);
+        AppendPerformance(sb);
+        AppendErrors(sb);
+        AppendClick(sb);
+        AppendLabels(sb);
+        AppendPathfinding(sb);
+        AppendUltimatum(sb);
+        AppendAltar(sb);
+        AppendHoveredItem(sb);
+        AppendInventory(sb);
+        AppendBlight(sb);
 
         try { ImGui.SetClipboardText(sb.ToString()); }
         catch { }
@@ -1566,12 +1573,14 @@ internal sealed class ImGuiDebugOverlay(
     {
         sb.AppendLine("--- Performance ---");
         PerformanceMetricsSnapshot perf = _lastPerformance;
+        double fps = perf.Fps.Current;
         if (perf.Fps.Max > 0)
             sb.AppendLine($"  FPS: {perf.Fps.Current:F1} (avg: {perf.Fps.Average:F1}, max: {perf.Fps.Max:F1})");
         sb.AppendLine($"  Memory: {FormatMemoryMb(perf.Memory.ProcessWorkingSetMb)} (managed {FormatMemoryMb(perf.Memory.ManagedHeapMb)}, gen2 {FormatMemoryMb(perf.Memory.Gen2Mb)}, loh {FormatMemoryMb(perf.Memory.LohMb)}, frag {FormatMemoryMb(perf.Memory.FragmentedMb)}, load {perf.Memory.MemoryLoadPercent:F0}%)");
         if (perf.Render.SampleCount > 0)
         {
             sb.AppendLine($"  Render: {perf.Render.LastMs:F0} ms (avg: {perf.Render.AverageMs:F2}, max: {perf.Render.MaxMs:F0})");
+            AppendTimingTotalLine(sb, "  Render Total", perf.RenderTableTotal);
             AppendTimingLine(sb, "    Altar", perf.GetRenderSection(RenderSection.AltarOverlay));
             AppendTimingLine(sb, "    Blight", perf.GetRenderSection(RenderSection.BlightOverlay));
             AppendTimingLine(sb, "    Click.Hotkey", perf.GetRenderSection(RenderSection.ClickHotkeyToggle));
@@ -1592,30 +1601,30 @@ internal sealed class ImGuiDebugOverlay(
             sb.AppendLine($"  Queue: text={r.PendingTextCount}, frames={r.PendingFrameCount}");
         if (perf.ProcessingTotal.SampleCount > 0)
         {
-            TimingMetricsSnapshot processing = perf.ProcessingTotal;
-            sb.AppendLine($"  Processing: {processing.LastMs:F0} ms (avg: {processing.AverageMs:F2}, max: {processing.MaxMs:F0})");
-            AppendTimingLine(sb, "    Altar", perf.GetProcessingSection(ProcessingSection.Altar));
-            AppendTimingLine(sb, "    Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi));
-            AppendTimingLine(sb, "    Blight", perf.GetProcessingSection(ProcessingSection.Blight));
-            AppendTimingLine(sb, "    Click", perf.GetProcessingSection(ProcessingSection.Click));
-            AppendTimingLine(sb, "    Flare", perf.GetProcessingSection(ProcessingSection.Flare));
-            AppendTimingLine(sb, "    Harvest", perf.GetProcessingSection(ProcessingSection.Harvest));
-            AppendTimingLine(sb, "    Label Scan", perf.GetProcessingSection(ProcessingSection.Label));
-            AppendTimingLine(sb, "    Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover));
-            AppendTimingLine(sb, "    Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding));
-            AppendTimingLine(sb, "    Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox));
-            AppendTimingLine(sb, "    Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum));
+            AppendTimingTotalLine(sb, "  Processing Total (ms/f)", perf.ProcessingTotalPerFrameSnapshot);
+            AppendScaledTimingLine(sb, "    Altar", perf.GetProcessingSection(ProcessingSection.Altar), fps);
+            AppendScaledTimingLine(sb, "    Area.Blocked", perf.GetProcessingSection(ProcessingSection.AreaBlockedUi), fps);
+            AppendScaledTimingLine(sb, "    Blight", perf.GetProcessingSection(ProcessingSection.Blight), fps);
+            AppendScaledTimingLine(sb, "    Click", perf.GetProcessingSection(ProcessingSection.Click), fps);
+            AppendScaledTimingLine(sb, "    Flare", perf.GetProcessingSection(ProcessingSection.Flare), fps);
+            AppendScaledTimingLine(sb, "    Harvest", perf.GetProcessingSection(ProcessingSection.Harvest), fps);
+            AppendScaledTimingLine(sb, "    Label Scan", perf.GetProcessingSection(ProcessingSection.Label), fps);
+            AppendScaledTimingLine(sb, "    Manual Hover", perf.GetProcessingSection(ProcessingSection.ManualUiHover), fps);
+            AppendScaledTimingLine(sb, "    Pathfinding", perf.GetProcessingSection(ProcessingSection.Pathfinding), fps);
+            AppendScaledTimingLine(sb, "    Strongbox", perf.GetProcessingSection(ProcessingSection.Strongbox), fps);
+            AppendScaledTimingLine(sb, "    Ultimatum", perf.GetProcessingSection(ProcessingSection.Ultimatum), fps);
         }
         if (perf.Allocations != null && perf.Allocations.Count > 0)
         {
             sb.AppendLine("  GC Allocations:");
+            AppendGcTotalLine(sb, "    Total", perf);
             foreach (ProcessingSection section in Enum.GetValues<ProcessingSection>())
             {
                 if (section == ProcessingSection.Unknown)
                     continue;
                 GcAllocationSnapshot stats = perf.GetAllocationSection(section);
                 if (stats.SampleCount > 0)
-                    sb.AppendLine($"    {section}: {FormatAllocRate(stats.AllocPerSecond)} (avg {FormatBytes(stats.AvgBytesPerRun)}/run, max {FormatBytes(stats.MaxBytesPerRun)})");
+                    AppendGcLine(sb, $"    {section}", stats, fps);
             }
             LabelScanAllocationStats labelScan = perf.LabelScanAllocation;
             if (labelScan.SampleCount > 0)
@@ -1685,10 +1694,47 @@ internal sealed class ImGuiDebugOverlay(
         sb.AppendLine($"{label}: last={stats.LastMs:F2} avg={stats.AverageMs:F2} max={stats.MaxMs:F2}");
     }
 
+    private static void AppendTimingTotalLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats)
+    {
+        if (stats.SampleCount <= 0)
+            return;
+        sb.AppendLine($"{label}: last={stats.LastMs:F2} avg={stats.AverageMs:F2} max={stats.MaxMs:F2} ms");
+    }
+
+    // Processing rows: per-frame cost (scaled by FPS, matching the on-screen ms/f table) followed by
+    // the raw per-run cost, so the clipboard carries both perspectives.
+    private static void AppendScaledTimingLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats, double fps)
+    {
+        if (stats.SampleCount <= 0)
+            return;
+        double scale = stats.PerFrameScale(fps);
+        if (scale > 0)
+            sb.AppendLine($"{label}: {stats.LastMs * scale:F2}/{stats.AverageMs * scale:F2}/{stats.MaxMs * scale:F2} ms/f | {stats.LastMs:F1}/{stats.AverageMs:F1}/{stats.MaxMs:F1} ms/run");
+        else
+            sb.AppendLine($"{label}: {stats.LastMs:F1}/{stats.AverageMs:F1}/{stats.MaxMs:F1} ms/run");
+    }
+
     private static void AppendGcStageLine(System.Text.StringBuilder sb, string label, AllocationStageSnapshot stats, double periodMs)
     {
         double allocPerSecond = periodMs > 0 ? stats.AvgBytesPerRun * 1000.0 / periodMs : 0;
         sb.AppendLine($"{label}: {FormatAllocRate(allocPerSecond)} (avg {FormatBytes(stats.AvgBytesPerRun)}/run, last {FormatBytes(stats.LastBytesPerRun)}/run, max {FormatBytes(stats.MaxBytesPerRun)})");
+    }
+
+    private static void AppendGcTotalLine(System.Text.StringBuilder sb, string label, PerformanceMetricsSnapshot perf)
+    {
+        (_, double totalPerSecond, double totalMaxRun) = perf.GcTableTotalBytesPerFrame;
+        if (totalPerSecond <= 0)
+            return;
+        double fps = perf.Fps.Current;
+        sb.AppendLine($"{label}: {FormatBytes(totalPerSecond / fps)}/f | {FormatAllocRate(totalPerSecond)} | max {FormatBytes(totalMaxRun)}");
+    }
+
+    private static void AppendGcLine(System.Text.StringBuilder sb, string label, GcAllocationSnapshot stats, double fps)
+    {
+        if (stats.SampleCount <= 0)
+            return;
+        string perFrame = fps > 0 ? FormatBytes(stats.AllocPerSecond / fps) : "-";
+        sb.AppendLine($"{label}: {perFrame}/f | {FormatAllocRate(stats.AllocPerSecond)} | avg {FormatBytes(stats.AvgBytesPerRun)}/run | max {FormatBytes(stats.MaxBytesPerRun)}");
     }
 
     private static void AppendCoroLine(System.Text.StringBuilder sb, string label, TimingMetricsSnapshot stats, double fps)
@@ -1929,7 +1975,7 @@ internal sealed class ImGuiDebugOverlay(
             {
                 BlightPlanStep s = plan.Steps[i];
                 string marker = i == plan.CurrentStepIndex ? ">" : " ";
-                string action = s.Action == BlightPlanAction.Build ? "BUILD" : "UPGRADE";
+                string action = s.ActionLabel;
                 sb.AppendLine($"  {marker}[{i + 1}] {action} {_blight.GetStepTargetName(s)} lvl{s.TargetLevel} ({s.FoundationPosition.X:F0},{s.FoundationPosition.Y:F0})");
             }
         }
@@ -1941,6 +1987,7 @@ internal sealed class ImGuiDebugOverlay(
         }
         sb.Append(_blight.DumpPathwayDebug());
         sb.Append(_blight.DumpBranchRootDebug());
+        sb.Append(_blight.DumpBlightServerLanes());
 
         IReadOnlyList<BlightCachedTower> knownTowers = _blight.KnownTowers;
         bool hasFoundation = false;

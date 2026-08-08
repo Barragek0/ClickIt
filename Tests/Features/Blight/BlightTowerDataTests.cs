@@ -112,26 +112,6 @@ public class BlightTowerDataTests
     }
 
     [TestMethod]
-    public void HasVerifiedSpecializationMenuIndex_Fireball_True_OthersFalse()
-    {
-        // Fireball's 3→4 panel order is verified in-game (Flamethrower at 0, Meteor at 1), so the
-        // executor prefers the child index for Fireball. Other types have no verified slot and must
-        // resolve by tower ID — none of them claim a verified index.
-        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Fireball)
-            .Should().BeTrue();
-        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Chilling)
-            .Should().BeFalse();
-        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.ShockNova)
-            .Should().BeFalse();
-        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Empowering)
-            .Should().BeFalse();
-        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Seismic)
-            .Should().BeFalse();
-        BlightTowerData.HasVerifiedSpecializationMenuIndex(BlightTowerType.Summoning)
-            .Should().BeFalse();
-    }
-
-    [TestMethod]
     public void GetSpecializationMenuChildIndex_FireballMenuOrder_IsReverseOfEnum()
     {
         // Verified in-game: the Fireball 3→4 upgrade panel shows the two

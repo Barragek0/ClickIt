@@ -8,30 +8,42 @@ namespace ClickIt.UI.Settings.Panels;
 // colour.
 internal static class BlightDescriptionColors
 {
-    private static readonly Dictionary<string, Vector4> s_wordColors = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, Vector4> s_wordColors = BuildWordColors();
+
+    // Anoint oils keep their own palette; tower words resolve through BlightTowerColors so the
+    // description rendering always matches the overlay dots and the plan debug box.
+    private static Dictionary<string, Vector4> BuildWordColors()
     {
-        // Anoint oils.
-        ["Silver"] = new(0.82f, 0.82f, 0.86f, 1f),
-        ["Opalescent"] = new(0.80f, 0.65f, 0.95f, 1f),
-        ["Indigo"] = new(0.55f, 0.47f, 0.95f, 1f),
-        ["Violet"] = new(0.76f, 0.55f, 0.95f, 1f),
-        ["Teal"] = new(0.30f, 0.75f, 0.75f, 1f),
-        ["Clear"] = new(0.92f, 0.92f, 0.92f, 1f),
-        ["Amber"] = new(1.00f, 0.72f, 0.12f, 1f),
-        // Blight tower types (all towers must have a colour so any name in a description resolves).
-        ["Chilling"] = new(0.30f, 0.62f, 1.00f, 1f),
-        ["Seismic"] = new(1.00f, 0.50f, 0.10f, 1f),  // Seismic tower is orange (distinct from Arc/Shock yellow)
-        ["Meteor"] = new(0.95f, 0.35f, 0.30f, 1f),   // Meteor — Fireball's specialization, same red
-        ["Fireball"] = new(0.95f, 0.35f, 0.30f, 1f),
-        ["Arc"] = new(0.95f, 0.90f, 0.20f, 1f),      // Arc Tower — ShockNova's specialization, same yellow
-        ["Shock"] = new(0.95f, 0.90f, 0.20f, 1f),
-        ["ShockNova"] = new(0.95f, 0.90f, 0.20f, 1f),
-        ["Scout"] = new(0.72f, 0.42f, 1.00f, 1f),    // Scout Minion — the whole minion family is purple
-        ["Scouts"] = new(0.72f, 0.42f, 1.00f, 1f),
-        ["ScoutMinion"] = new(0.72f, 0.42f, 1.00f, 1f),
-        ["Summoning"] = new(0.72f, 0.42f, 1.00f, 1f),
-        ["Empowering"] = new(0.35f, 0.85f, 0.35f, 1f),
-    };
+        Dictionary<string, Vector4> colors = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Anoint oils.
+            ["Silver"] = new(0.82f, 0.82f, 0.86f, 1f),
+            ["Opalescent"] = new(0.80f, 0.65f, 0.95f, 1f),
+            ["Indigo"] = new(0.55f, 0.47f, 0.95f, 1f),
+            ["Violet"] = new(0.76f, 0.55f, 0.95f, 1f),
+            ["Teal"] = new(0.30f, 0.75f, 0.75f, 1f),
+            ["Clear"] = new(0.92f, 0.92f, 0.92f, 1f),
+            ["Amber"] = new(1.00f, 0.72f, 0.12f, 1f),
+        };
+
+        // All tower names (and their specializations) must resolve so any name in a description renders.
+        AddTower(colors, "Chilling", BlightTowerType.Chilling);
+        AddTower(colors, "Seismic", BlightTowerType.Seismic); // Seismic is orange (distinct from Arc/Shock yellow)
+        AddTower(colors, "Meteor", BlightTowerType.Fireball); // Meteor — Fireball's specialization, same red
+        AddTower(colors, "Fireball", BlightTowerType.Fireball);
+        AddTower(colors, "Arc", BlightTowerType.ShockNova); // Arc Tower — ShockNova's specialization, same yellow
+        AddTower(colors, "Shock", BlightTowerType.ShockNova);
+        AddTower(colors, "ShockNova", BlightTowerType.ShockNova);
+        AddTower(colors, "Scout", BlightTowerType.Summoning); // Scout Minion — the whole minion family is purple
+        AddTower(colors, "Scouts", BlightTowerType.Summoning);
+        AddTower(colors, "ScoutMinion", BlightTowerType.Summoning);
+        AddTower(colors, "Summoning", BlightTowerType.Summoning);
+        AddTower(colors, "Empowering", BlightTowerType.Empowering);
+        return colors;
+    }
+
+    private static void AddTower(Dictionary<string, Vector4> colors, string name, BlightTowerType type)
+        => colors[name] = BlightTowerColors.AsVector4(type);
 
     // Multi-word phrases keyed by lowercase, punctuation-stripped text; the value is the leading
     // word's tower/oil name so the phrase keeps that tower's hue ("Chilling Beams" is blue). Only

@@ -39,7 +39,7 @@ namespace ClickIt.Features.Observability.Performance
 
         private sealed class SectionSamples
         {
-            private const long ExpiryMs = 30_000;
+            private const long ExpiryMs = 10_000;
 
             private readonly Queue<(long TimestampMs, long Bytes)> _samples = new(MaxWindow);
             private readonly Func<long> _now = static () => Environment.TickCount64;
@@ -65,6 +65,7 @@ namespace ClickIt.Features.Observability.Performance
                     long total = 0;
                     long max = 0;
                     long last = 0;
+                    double maxRate = 0;
                     long periodTotal = 0;
                     int periodCount = 0;
                     long? previousTimestamp = null;
@@ -76,7 +77,11 @@ namespace ClickIt.Features.Observability.Performance
                         last = bytes;
                         if (previousTimestamp is long previous)
                         {
-                            periodTotal += SystemMath.Max(1, timestampMs - previous);
+                            long period = SystemMath.Max(1, timestampMs - previous);
+                            double rate = bytes * 1000.0 / period;
+                            if (rate > maxRate)
+                                maxRate = rate;
+                            periodTotal += period;
                             periodCount++;
                         }
                         previousTimestamp = timestampMs;
@@ -84,7 +89,7 @@ namespace ClickIt.Features.Observability.Performance
                     double avgBytes = total / (double)_samples.Count;
                     double avgPeriodMs = periodCount > 0 ? periodTotal / (double)periodCount : 0;
                     double allocPerSecond = avgPeriodMs > 0 ? avgBytes * 1000.0 / avgPeriodMs : 0;
-                    return new GcAllocationSnapshot(allocPerSecond, avgBytes, max, _samples.Count, last, avgPeriodMs);
+                    return new GcAllocationSnapshot(allocPerSecond, avgBytes, max, _samples.Count, last, avgPeriodMs, maxRate);
                 }
             }
 

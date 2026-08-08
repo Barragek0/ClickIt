@@ -78,6 +78,8 @@ internal static class BlightBranches
             int parentSegment = coverage[s].ParentIndex;
             if (coverage[parentSegment].ParentIndex != BlightLaneTopology.OrphanSentinel)
                 continue;
+            if (coverage[s].IsPumpStub)
+                continue; // a pump-connector stub never starts a branch — it is not a monster lane
             if (rootHasBranch[parentSegment])
                 continue;
             rootHasBranch[parentSegment] = true;

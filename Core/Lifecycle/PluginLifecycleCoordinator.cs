@@ -105,7 +105,7 @@ namespace ClickIt.Core.Lifecycle
         {
             try
             {
-                Coroutine[] coroutines = [.. ExileCoreApi.ParallelRunner.Coroutines.Where(c => c != null && c.Name != null && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase))];
+                Coroutine[] coroutines = [.. ExileCoreApi.ParallelRunner.Coroutines.Where(c => c != null && PluginCoroutineNames.IsTrackedName(c.Name))];
 
                 foreach (Coroutine? coroutine in coroutines)
                     coroutine.Done();
@@ -126,8 +126,7 @@ namespace ClickIt.Core.Lifecycle
                 {
                     bool anyActive = ExileCoreApi.ParallelRunner.Coroutines
                         .Any(c => c != null
-                            && c.Name != null
-                            && c.Name.StartsWith("ClickIt.", StringComparison.OrdinalIgnoreCase)
+                            && PluginCoroutineNames.IsTrackedName(c.Name)
                             && !c.IsDone);
 
                     if (!anyActive)

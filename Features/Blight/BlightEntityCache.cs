@@ -24,6 +24,9 @@ internal sealed class BlightEntityCache
     private System.Numerics.Vector3? _persistedPumpWorldPosition;
     private bool _hasDetectedAnyBlightContent;
     private bool _hasCompletedInitialScan;
+    // When no blight content has been found, the entity scan pauses between full scans; this bounds
+    // how long it stays paused so an encounter starting in the current area is still picked up.
+    private const long NoBlightContentRescanIntervalMs = 2000;
     private long _lastFullRefreshEntityScanMs;
     private long _lastRefreshDebugTimestampMs;
     private long _lastAreaHash = long.MinValue;
@@ -357,16 +360,21 @@ internal sealed class BlightEntityCache
         }
 
         bool skipScan;
+        long now = Environment.TickCount64;
         lock (_blightDataLock)
         {
+            // When no blight content has ever been found, re-scan occasionally instead of skipping
+            // forever: the encounter can start in the current area (pump click) with no zone change,
+            // and a plugin load before that must still pick it up. The 2s bound keeps the entity
+            // re-scan cheap in non-blight areas.
             skipScan = _hasCompletedInitialScan && !_hasDetectedAnyBlightContent
-                && _knownTowers.Count == 0 && _pumpEntity == null;
+                && _knownTowers.Count == 0 && _pumpEntity == null
+                && now - _lastFullRefreshEntityScanMs < NoBlightContentRescanIntervalMs;
         }
         if (skipScan)
             return;
 
         const int refreshIntervalMs = 200;
-        long now = Environment.TickCount64;
         if (_hasCompletedInitialScan && now - _lastFullRefreshEntityScanMs < refreshIntervalMs)
         {
             // Keep the debug line current even when the scan is skipped.

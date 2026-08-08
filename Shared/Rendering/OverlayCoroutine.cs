@@ -30,7 +30,7 @@ namespace ClickIt.Shared.Rendering
             _logError = logError;
             _policy = overlay.RefreshPolicy;
 
-            _coroutine = new Coroutine(Run(), plugin, $"ClickIt.{overlay.Name}OverlayRefresh", true);
+            _coroutine = new Coroutine(Run(), plugin, PluginCoroutineNames.OverlayRefresh(overlay.Name), true);
             _ = ExileCoreApi.ParallelRunner.Run(_coroutine);
             _coroutine.Priority = CoroutinePriority.Normal;
         }

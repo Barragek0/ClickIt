@@ -16,9 +16,9 @@ namespace ClickIt.Core.Runtime
         }
 
         internal static Coroutine? FindClickLogicCoroutine()
-            => FindActiveCoroutine("ClickIt.ClickLogic");
+            => FindActiveCoroutine(PluginCoroutineNames.ClickLogic);
 
         internal static Coroutine? FindManualUiHoverCoroutine()
-            => FindActiveCoroutine("ClickIt.ManualUiHoverLogic");
+            => FindActiveCoroutine(PluginCoroutineNames.ManualUiHover);
     }
 }

@@ -16,10 +16,13 @@ namespace ClickIt.Features.Pathfinding
         private readonly PathfindingService _pathfindingService;
         private object? _heightDataOwner;
         private long _heightDataOwnerAddress;
+        private long _heightPendingOwnerAddress;
+        private long _heightPendingAtMs;
         private float[][]? _cachedHeightData;
         private object? _playerHeightOwner;
         private long _playerHeightOwnerAddress;
         private float _cachedPlayerHeight;
+        private const long HeightRebuildConfirmMs = 150;
 
         public PathfindingOverlay(PathfindingService pathfindingService)
         {
@@ -184,8 +187,9 @@ namespace ClickIt.Features.Pathfinding
 
         // RawTerrainHeightData is a multi-million-cell float[][] rebuilt from game memory on every
         // access; cache it per IngameData ADDRESS (ExileCore's CachedValue recreates the wrapper every
-        // ~25ms at the same per-area address) instead of re-reading it every frame the map path is
-        // drawn. Reference identity alone churned and forced a ~21MB re-read on every recreation.
+        // ~25ms, and the pointer can also flap transiently in-map) instead of re-reading it every
+        // frame the map path is drawn. A short confirmation window absorbs transient address churn
+        // so a flap never forces the ~21MB re-read.
         private float[][]? ResolveHeightData(GameController gameController)
         {
             object? data = gameController.IngameState?.Data;
@@ -195,6 +199,19 @@ namespace ClickIt.Features.Pathfinding
             long address = data is RemoteMemoryObject rmo ? rmo.Address : 0;
             if (!ReferenceEquals(data, _heightDataOwner) && address != _heightDataOwnerAddress)
             {
+                long now = Environment.TickCount64;
+                if (address != _heightPendingOwnerAddress)
+                {
+                    _heightPendingOwnerAddress = address;
+                    _heightPendingAtMs = now;
+                    return _cachedHeightData;
+                }
+
+                if (now - _heightPendingAtMs < HeightRebuildConfirmMs)
+                    return _cachedHeightData;
+
+                _heightPendingOwnerAddress = 0;
+                _heightPendingAtMs = 0;
                 _heightDataOwner = data;
                 _heightDataOwnerAddress = address;
                 _cachedHeightData = gameController.IngameState!.Data!.RawTerrainHeightData;

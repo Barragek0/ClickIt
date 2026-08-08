@@ -50,7 +50,7 @@ namespace ClickIt.Core.Runtime
                 runtime.DeepMemoryDumpCoroutine = new Coroutine(
                     dumpEnumerator,
                     _dependencies.Owner,
-                    "ClickIt.DeepMemoryDump",
+                    PluginCoroutineNames.DeepMemoryDump,
                     true)
                 {
                     Priority = CoroutinePriority.Normal

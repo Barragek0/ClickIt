@@ -83,23 +83,23 @@ namespace ClickIt.Core.Runtime
 
         public void StartCoroutines(BaseSettingsPlugin<ClickItSettings> plugin)
         {
-            _state.Runtime.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, "ClickIt.ScanForAltarsLogic", false);
+            _state.Runtime.AltarCoroutine = new Coroutine(MainScanForAltarsLogic(), plugin, PluginCoroutineNames.AltarScan, false);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.AltarCoroutine);
             _state.Runtime.AltarCoroutine.Priority = CoroutinePriority.Normal;
 
-            _state.Runtime.AreaBlockedUiRefreshCoroutine = new Coroutine(MainAreaBlockedUiRefreshCoroutine(), plugin, "ClickIt.BlockedUiRefresh", true);
+            _state.Runtime.AreaBlockedUiRefreshCoroutine = new Coroutine(MainAreaBlockedUiRefreshCoroutine(), plugin, PluginCoroutineNames.BlockedUiRefresh, true);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.AreaBlockedUiRefreshCoroutine);
             _state.Runtime.AreaBlockedUiRefreshCoroutine.Priority = CoroutinePriority.Normal;
 
-            _state.Runtime.ClickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), plugin, "ClickIt.ClickLogic", false);
+            _state.Runtime.ClickLabelCoroutine = new Coroutine(MainClickLabelCoroutine(), plugin, PluginCoroutineNames.ClickLogic, false);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.ClickLabelCoroutine);
             _state.Runtime.ClickLabelCoroutine.Priority = CoroutinePriority.High;
 
-            _state.Runtime.ManualUiHoverCoroutine = new Coroutine(MainManualUiHoverClickCoroutine(), plugin, "ClickIt.ManualUiHoverLogic", false);
+            _state.Runtime.ManualUiHoverCoroutine = new Coroutine(MainManualUiHoverClickCoroutine(), plugin, PluginCoroutineNames.ManualUiHover, false);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.ManualUiHoverCoroutine);
             _state.Runtime.ManualUiHoverCoroutine.Priority = CoroutinePriority.High;
 
-            _state.Runtime.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, "ClickIt.DelveFlareLogic", true);
+            _state.Runtime.DelveFlareCoroutine = new Coroutine(FlareCoroutine(), plugin, PluginCoroutineNames.DelveFlare, true);
             _ = ExileCoreApi.ParallelRunner.Run(_state.Runtime.DelveFlareCoroutine);
             _state.Runtime.DelveFlareCoroutine.Priority = CoroutinePriority.Normal;
 

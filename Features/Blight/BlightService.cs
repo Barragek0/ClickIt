@@ -142,6 +142,64 @@ public sealed class BlightService
         return sb.ToString();
     }
 
+    // The game's authoritative lane list lives on the server data (ServerDataOffsets.BlightLanes, a
+    // NativePtrArray).  ExileCore exposes no wrapper for the per-lane element layout, so this dumps
+    // the array header and the raw bytes of the first elements so the struct (positions/ids/direction)
+    // can be reverse-engineered from an in-encounter capture.
+    internal string DumpBlightServerLanes()
+    {
+        if (_gameController?.Game?.IngameState?.ServerData is not { } serverData)
+            return "(no ServerData)";
+        try
+        {
+            ServerDataOffsets offsets = serverData.ServerDataStruct;
+            NativePtrArray lanes = offsets.BlightLanes;
+            long span = lanes.Last - lanes.First;
+            if (lanes.First == 0 || span <= 0)
+                return $"(BlightLanes empty: First=0x{lanes.First:X} Last=0x{lanes.Last:X} End=0x{lanes.End:X})";
+
+            StringBuilder sb = new();
+            sb.AppendLine($"ServerData.BlightLanes: First=0x{lanes.First:X} Last=0x{lanes.Last:X} End=0x{lanes.End:X} span={span} bytes");
+            foreach (int size in LaneElementSizeCandidates)
+                if (span % size == 0)
+                    sb.AppendLine($"  if {size} bytes/elem -> {span / size} lanes");
+            sb.Append(DumpBlightLaneElements(lanes.First, (int)SystemMath.Min(span, 96)));
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"(BlightLanes read failed: {ex.GetType().Name}: {ex.Message})";
+        }
+    }
+
+    private static readonly int[] LaneElementSizeCandidates = [8, 12, 16, 20, 24, 32, 40, 48, 64];
+
+    private string DumpBlightLaneElements(long first, int count)
+    {
+        if (_gameController?.Memory is not { } mem)
+            return "(no memory access)";
+        byte[] raw;
+        try { raw = mem.ReadBytes(first, count); }
+        catch (Exception ex) { return $"(element read failed: {ex.GetType().Name})"; }
+
+        StringBuilder sb = new();
+        for (int i = 0; i < raw.Length; i += 32)
+        {
+            int len = SystemMath.Min(32, raw.Length - i);
+            sb.Append($"  elem[{i / 32}] hex:");
+            for (int b = 0; b < len; b++)
+                sb.Append($" {raw[i + b]:X2}");
+            sb.Append("\n            ints:");
+            for (int b = 0; b + 4 <= len; b += 4)
+                sb.Append($" {BitConverter.ToInt32(raw, i + b)}");
+            sb.Append("\n            flts:");
+            for (int b = 0; b + 4 <= len; b += 4)
+                sb.Append($" {BitConverter.ToSingle(raw, i + b):F1}");
+            sb.Append('\n');
+        }
+        return sb.ToString();
+    }
+
     internal string DumpBlightTowerDat() => _cache.DumpBlightTowerDat();
 
     internal const int DefaultTowerRadius = 35;
@@ -389,15 +447,10 @@ public sealed class BlightService
                 string towerId = BlightTowerData.GetSpecializationTowerId(step.TowerType, (TowerSpecialization)specIndex);
                 BlightTowerInfo? info = BlightTowerData.FindByDatId(towerId);
                 if (info.HasValue)
-                {
-                    string name = info.Value.Name;
-                    return name.EndsWith(" Tower", StringComparison.Ordinal)
-                        ? name[..^" Tower".Length]
-                        : name;
-                }
+                    return BlightTowerData.SpecDisplayName(info.Value);
             }
         }
-        return step.TowerType.ToString();
+        return BlightTowerData.DisplayName(step.TowerType);
     }
 
     internal void Clear()

@@ -68,8 +68,10 @@ internal static class BlightPlanner
             {
                 preAssignedBuilt++;
                 assignedIndices.Add(i);
+                int adoptedMax = BlightFillPlanner.FindRule(rules, knownTowers[i].TowerType)?.MaxUpgradeLevel
+                    ?? BlightTowerData.MaxUpgradeLevel;
                 assignments[knownTowers[i].WorldPosition]
-                    = (knownTowers[i].TowerType, BlightTowerData.MaxUpgradeLevel);
+                    = (knownTowers[i].TowerType, adoptedMax);
 
                 TowerBuildRule? rule = BlightFillPlanner.FindRule(rules, knownTowers[i].TowerType);
                 if (rule is TowerBuildRule covRule && covRule.IsCoverageTower)
@@ -535,7 +537,7 @@ internal static class BlightPlanner
                 break;
 
             BlightCachedTower tower = knownTowers[bestIdx];
-            assignments[tower.WorldPosition] = (type, BlightTowerData.MaxUpgradeLevel);
+            assignments[tower.WorldPosition] = (type, rule.MaxUpgradeLevel);
             assignedIndices.Add(bestIdx);
 
             bool[] localNext = (bool[])covered.Clone();
@@ -617,7 +619,7 @@ internal static class BlightPlanner
             return;
 
         BlightCachedTower tower = knownTowers[idx];
-        assignments[tower.WorldPosition] = (type, BlightTowerData.MaxUpgradeLevel);
+        assignments[tower.WorldPosition] = (type, rule.MaxUpgradeLevel);
         assignedIndices.Add(idx);
         AddCoveragePlacement(knownTowers, branchIdx, type, idx, distSq, playerPosition, coveragePlacements);
     }

@@ -32,7 +32,7 @@ namespace ClickIt.Tests.Core.Runtime
             var plugin = new ClickIt();
             var state = plugin.State;
 
-            state.Runtime.ClickLabelCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.ClickLogic", isDone: true);
+            state.Runtime.ClickLabelCoroutine = CoroutineTestHarness.CreateCoroutine("Click", isDone: true);
 
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
             [
@@ -58,7 +58,7 @@ namespace ClickIt.Tests.Core.Runtime
             performanceMonitor.ClickActivity.ClickCount = 3;
 
             state.Services.PerformanceMonitor = performanceMonitor;
-            state.Runtime.ManualUiHoverCoroutine = CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: true);
+            state.Runtime.ManualUiHoverCoroutine = CoroutineTestHarness.CreateCoroutine("Manual UI Hover", isDone: true);
 
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
             [
@@ -83,13 +83,13 @@ namespace ClickIt.Tests.Core.Runtime
             settings.LazyMode.Value = false;
             performanceMonitor.ClickActivity.ClickCount = 4;
 
-            Coroutine existing = CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: true);
+            Coroutine existing = CoroutineTestHarness.CreateCoroutine("Manual UI Hover", isDone: true);
             state.Services.PerformanceMonitor = performanceMonitor;
             state.Runtime.ManualUiHoverCoroutine = existing;
 
             using var scope = CoroutineTestHarness.ReplaceParallelRunnerCoroutines(
             [
-                CoroutineTestHarness.CreateCoroutine("ClickIt.ManualUiHoverLogic", isDone: false),
+                CoroutineTestHarness.CreateCoroutine("Manual UI Hover", isDone: false),
             ]);
 
             PluginInputHost.HandleHotkeyReleased(state, settings);

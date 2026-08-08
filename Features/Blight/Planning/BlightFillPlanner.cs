@@ -70,16 +70,20 @@ internal static class BlightFillPlanner
                 if (fIdx < 0)
                     break;
                 assignments[knownTowers[fIdx].WorldPosition]
-                    = (rule.TowerType, BlightTowerData.MaxUpgradeLevel);
+                    = (rule.TowerType, rule.MaxUpgradeLevel);
                 assignedIndices.Add(fIdx);
                 orderedFillPositions.Add(knownTowers[fIdx].WorldPosition);
                 counts[r]++;
             }
         }
 
-        BlightPlacementPreference placement = tierRules.Count > 0
-            ? tierRules[0].Placement
-            : BlightPlacementPreference.Default;
+        // Order fill candidates by the first non-default placement among the tier rules. Empowering
+        // rules place via FindBestEmpowerFoundation, so the candidate order is driven by the
+        // direct-build rules (e.g. the fill Scout rule's NearestPump), which can differ from
+        // tierRules[0].
+        BlightPlacementPreference placement = BlightPlacementPreference.Default;
+        for (int r = 0; r < tierRules.Count && placement == BlightPlacementPreference.Default; r++)
+            placement = tierRules[r].Placement;
         List<(int Index, float Metric)> candidates = [];
         for (int i = 0; i < knownTowers.Count; i++)
         {
@@ -124,7 +128,7 @@ internal static class BlightFillPlanner
             }
 
             assignments[knownTowers[index].WorldPosition]
-                = (rule.TowerType, BlightTowerData.MaxUpgradeLevel);
+                = (rule.TowerType, rule.MaxUpgradeLevel);
             assignedIndices.Add(index);
             orderedFillPositions.Add(knownTowers[index].WorldPosition);
             counts[ruleIdx]++;
